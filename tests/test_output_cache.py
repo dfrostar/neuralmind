@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 
 from neuralmind.output_cache import (
+    ARCHIVE_KEEP,
+    archive_output,
+    archive_path,
     cache_path,
     read_last_output,
     write_last_output,
@@ -290,3 +293,51 @@ class TestCmdLastSurfacesRedaction:
 
         assert payload["redacted"] == ["aws-access-key-id"]
         assert AWS_KEY_ID not in payload["stdout"]
+
+
+class TestArchiveOutput:
+    """Full outputs the opt-in Bash replacement points Claude at.
+
+    Unlike the single last_output.json slot, a later or parallel Bash call
+    can't overwrite one, so the path a replaced result names stays good.
+    """
+
+    def test_written_where_archive_path_says(self, tmp_path):
+        expected = archive_path(tmp_path, "out\n", "err\n", "pip install x")
+        target = archive_output(tmp_path, "out\n", "err\n", command="pip install x")
+        assert target == expected
+        assert target.parent == tmp_path.resolve() / ".neuralmind" / "bash_outputs"
+        assert target.read_text() == "# command: pip install x\n\nout\n\n[stderr]\nerr\n"
+
+    def test_a_later_call_does_not_overwrite_it(self, tmp_path):
+        first = archive_output(tmp_path, "first\n", "", command="pip install a")
+        second = archive_output(tmp_path, "second\n", "", command="pip install b")
+        write_last_output(tmp_path, stdout="third\n", stderr="", exit_code=0)
+        assert first != second
+        assert "first" in first.read_text()
+        assert "second" in second.read_text()
+
+    def test_credentials_are_redacted(self, tmp_path):
+        target = archive_output(tmp_path, f"KEY={AWS_KEY_ID}\n", "", command="pip install x")
+        text = target.read_text()
+        assert AWS_KEY_ID not in text
+        assert "# redacted: aws-access-key-id" in text
+
+    def test_keeps_only_the_newest(self, tmp_path):
+        targets = [
+            archive_output(tmp_path, f"output {n}\n", "", command="pip install x")
+            for n in range(ARCHIVE_KEEP + 5)
+        ]
+        remaining = set((tmp_path / ".neuralmind" / "bash_outputs").glob("*.txt"))
+        assert len(remaining) == ARCHIVE_KEEP
+        assert targets[-1] in remaining
+
+    def test_disabled_with_the_cache(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_OUTPUT_CACHE", "0")
+        assert archive_output(tmp_path, "out\n", "", command="pip install x") is None
+        assert not (tmp_path / ".neuralmind").exists()
+
+    def test_directory_is_self_ignoring(self, tmp_path):
+        archive_output(tmp_path, "out\n", "", command="pip install x")
+        guard = tmp_path / ".neuralmind" / ".gitignore"
+        assert "*" in guard.read_text().splitlines()

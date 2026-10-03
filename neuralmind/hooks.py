@@ -12,9 +12,11 @@ Two responsibilities:
    and, where an action has something to add, writes a JSON response to
    stdout.
 
-The Read/Bash/Grep PostToolUse actions no longer return compressed tool
-output; see run_hook() for why. The compressors in `compressors.py` remain,
-measured by `evals/compression/` (docs/benchmarks/compression.md).
+By default the Read/Bash/Grep PostToolUse actions return nothing; see
+run_hook() for why. Opt in with NEURALMIND_BASH_REPLACE=1 and the Bash action
+replaces the output of an allowlisted noisy log (pip install, neuralmind
+build) with its progress lines elided. Both are measured by
+`evals/compression/` (docs/benchmarks/compression.md).
 """
 
 from __future__ import annotations
@@ -50,7 +52,8 @@ def _hook_block() -> dict:
     """Return the canonical neuralmind hook block.
 
     PostToolUse: Read/Bash/Grep matchers (Bash caches successful output for
-        `neuralmind last`; none of them injects context — see run_hook).
+        `neuralmind last`; none of them injects context — see run_hook —
+        unless NEURALMIND_BASH_REPLACE=1 opts Bash in to trimming noisy logs).
     SessionStart: warm the synapse store and run a decay tick.
     UserPromptSubmit: inject spreading-activation neighbors as context.
     PreCompact: normalize hubs before context shrinks.
@@ -292,16 +295,17 @@ def run_hook(action: str) -> int:
     # and the Read action never saw Claude Code's payload at all. They now
     # inject nothing. Shrinking a result for real takes `updatedToolOutput`,
     # and a replacement must keep what the agent needs — which the same
-    # benchmark measures before anything ships.
+    # benchmark measures before anything ships. The one replacement there is,
+    # opt-in, trims the progress lines of allowlisted noisy Bash logs
+    # (NEURALMIND_BASH_REPLACE=1, _trimmed_bash_output); the benchmark gates it
+    # on keeping their must-keep lines.
     if action == "compress-read":
         file_path = tool_input.get("file_path") or tool_input.get("path") or ""
-        content = (
-            tool_response.get("content")
-            or tool_response.get("output")
-            or tool_response.get("text")
-            or ""
-        )
-        if not (file_path and content):
+        if not (file_path and _read_text(tool_response)):
+            return 0
+        # NeuralMind's own state isn't part of the codebase: reading a full
+        # Bash output kept under .neuralmind/ is not a step between files.
+        if ".neuralmind" in Path(file_path).parts:
             return 0
         # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
         cwd = payload.get("cwd") or os.getcwd()
@@ -314,6 +318,8 @@ def run_hook(action: str) -> int:
         exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
         if not (stdout or stderr):
             return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        command = tool_input.get("command") or ""
         # Stash the output (credential-redacted by write_last_output) so
         # `neuralmind last` can show it again without re-running the command.
         # Only successful calls get here: a failing one fires
@@ -322,11 +328,23 @@ def run_hook(action: str) -> int:
         try:
             from .output_cache import write_last_output
 
-            cwd = payload.get("cwd") or os.getcwd()
-            command = tool_input.get("command") or ""
             write_last_output(cwd, stdout, stderr, exit_code, command=command)
         except Exception:
             pass
+        # Opt-in, off by default: replace an allowlisted noisy log with its
+        # progress lines elided. Anything printed on the way would corrupt the
+        # one JSON object hook stdout may carry, so it is swallowed.
+        if os.environ.get("NEURALMIND_BASH_REPLACE") == "1":
+            import contextlib
+            import io
+
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    replacement = _trimmed_bash_output(cwd, command, tool_response)
+            except Exception:
+                replacement = None
+            if replacement is not None:
+                _emit_updated_tool_output(replacement)
         return 0
 
     if action in ("cap-search", "offload"):
@@ -640,6 +658,108 @@ def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> N
             mind.record_edit_activity(file_path, new_code)
     except Exception:
         return
+
+
+# Claude Code shows a valid Bash result inline up to about this many
+# characters by default (`bashOutputMaxChars`); past it, Claude gets a
+# 2,000-character preview and a file path, which a trimmed copy could cost
+# more than. Such results are left alone.
+_BASH_INLINE_CHARS = 30_000
+# BashOutput fields that mark a result as something other than finished,
+# inline text: an image, a backgrounded or timed-out command, output Claude
+# Code moved to a file. Such results are left alone too.
+_NOT_PLAIN_TEXT = (
+    "isImage",
+    "backgroundTaskId",
+    "backgroundedByUser",
+    "timedOutAfterMs",
+    "persistedOutputPath",
+    "rawOutputPath",
+    "structuredContent",
+)
+
+
+def _trimmed_bash_output(cwd: str, command: str, tool_response: dict) -> dict | None:
+    """The opt-in replacement for one Bash result, or None to leave it whole.
+
+    Applies only to an allowlisted noisy log (``compressors.noisy_log_family``)
+    that came back as plain, finished text Claude Code would show inline. The
+    result is copied and only ``stdout``/``stderr`` are swapped for their
+    trimmed text, so the value keeps the Bash tool's output shape; Claude Code
+    ignores a replacement that doesn't. The full output is archived first and
+    the replacement names the file. If it can't be archived, or trimming
+    wouldn't make the result smaller, nothing is replaced.
+    """
+    from .compressors import noisy_log_family, trim_noisy_log
+    from .output_cache import archive_output, archive_path
+
+    family = noisy_log_family(command)
+    if family is None:
+        return None
+    stdout, stderr = tool_response.get("stdout"), tool_response.get("stderr")
+    if not (isinstance(stdout, str) and isinstance(stderr, str)):
+        return None
+    if tool_response.get("interrupted") is not False:
+        return None
+    if any(tool_response.get(key) for key in _NOT_PLAIN_TEXT):
+        return None
+    if len(stdout) + len(stderr) > _BASH_INLINE_CHARS:
+        return None
+
+    new_stdout, out_elided = trim_noisy_log(stdout, family)
+    new_stderr, err_elided = trim_noisy_log(stderr, family)
+    if not (out_elided or err_elided):
+        return None
+    note = (
+        f"[neuralmind: {family} progress lines elided where marked; every other line "
+        f"is verbatim. Full output: {archive_path(cwd, stdout, stderr, command)}]"
+    )
+    # Last, after whichever stream is shown last.
+    if new_stderr:
+        new_stderr = _append_line(new_stderr, note)
+    else:
+        new_stdout = _append_line(new_stdout, note)
+    if len(new_stdout) + len(new_stderr) >= len(stdout) + len(stderr):
+        return None
+    if archive_output(cwd, stdout, stderr, command) is None:
+        return None
+    return {**tool_response, "stdout": new_stdout, "stderr": new_stderr}
+
+
+def _append_line(text: str, line: str) -> str:
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text + line + "\n"
+
+
+def _emit_updated_tool_output(output: dict) -> None:
+    """Replace the tool result Claude sees (PostToolUse ``updatedToolOutput``)."""
+    response = {
+        "hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "updatedToolOutput": output,
+        },
+    }
+    sys.stdout.write(json.dumps(response))
+    sys.stdout.flush()
+
+
+def _read_text(tool_response: dict) -> str:
+    """The text a Read returned, or '' for an image, PDF or notebook read.
+
+    Claude Code's Read output nests a text file under ``file.content``. The
+    flat ``content``/``output``/``text`` keys are the shape this hook was
+    first written against, and still what older callers send.
+    """
+    file = tool_response.get("file")
+    content = file.get("content") if isinstance(file, dict) else None
+    if isinstance(content, str):
+        return content
+    for key in ("content", "output", "text"):
+        value = tool_response.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
 
 
 def _record_tool_transition(project_path: str, file_path: str) -> None:

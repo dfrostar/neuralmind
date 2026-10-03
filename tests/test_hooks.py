@@ -245,6 +245,71 @@ class TestRunHook:
             assert exit_code == 0
             assert output == ""
 
+    @staticmethod
+    def _read_payload(path: Path, cwd: Path, text: str = "x = 1\n") -> dict:
+        lines = len(text.splitlines())
+        return {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": str(path)},
+            "tool_response": {
+                "type": "text",
+                "file": {
+                    "filePath": str(path),
+                    "content": text,
+                    "numLines": lines,
+                    "startLine": 1,
+                    "totalLines": lines,
+                },
+            },
+            "cwd": str(cwd),
+        }
+
+    def test_compress_read_records_transitions_from_claude_codes_payload(
+        self, monkeypatch, tmp_path
+    ):
+        # Claude Code nests a Read's text under file.content. The hook used to
+        # look only for top-level keys, so real Reads never recorded a step.
+        from neuralmind.namespaces import resolve_namespace
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        first, second = tmp_path / "a.py", tmp_path / "b.py"
+        for path in (first, second):
+            self._invoke("compress-read", self._read_payload(path, tmp_path), monkeypatch)
+
+        store = SynapseStore(
+            default_db_path(str(tmp_path)), namespace=resolve_namespace(str(tmp_path))
+        )
+        edges = {(f, t) for f, t, _w, _c in store.transitions()}
+        assert (str(first), str(second)) in edges
+
+    def test_compress_read_records_only_text_reads_of_the_codebase(self, monkeypatch, tmp_path):
+        import neuralmind.hooks as hooks_mod
+
+        calls = []
+        monkeypatch.setattr(hooks_mod, "_record_tool_transition", lambda *a: calls.append(a))
+        image = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": str(tmp_path / "logo.png")},
+            "tool_response": {"type": "image", "file": {"base64": "iVBOR", "type": "image/png"}},
+            "cwd": str(tmp_path),
+        }
+        kept_output = tmp_path / ".neuralmind" / "bash_outputs" / "0123456789abcdef.txt"
+        for payload in (image, self._read_payload(kept_output, tmp_path)):
+            exit_code, output = self._invoke("compress-read", payload, monkeypatch)
+            assert (exit_code, output) == (0, "")
+        assert calls == []
+
+        # The flat shape older callers send still counts.
+        legacy = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": "src/app.py"},
+            "tool_response": {"content": "x = 1\n"},
+            "cwd": "/proj",
+        }
+        self._invoke("compress-read", legacy, monkeypatch)
+        assert calls == [("/proj", "src/app.py")]
+
     def test_empty_input_noops(self, monkeypatch):
         """Empty stdin should fail-open silently."""
         monkeypatch.setattr(sys, "stdin", io.StringIO(""))
@@ -340,3 +405,171 @@ class TestRunHook:
         assert cached["stdout"].count(verbose_line) == 100
         assert cached["command"] == "pytest -v"
         assert cached["exit_code"] == 0
+
+
+INSTALL_LOG = "".join(
+    f"Collecting pkg{n}\n  Downloading pkg{n}-1.0-py3-none-any.whl (12 kB)\n" for n in range(40)
+) + (
+    "Installing collected packages: " + ", ".join(f"pkg{n}" for n in range(40)) + "\n"
+    "Successfully installed " + " ".join(f"pkg{n}-1.0" for n in range(40)) + "\n"
+)
+
+
+class TestBashReplaceOptIn:
+    """NEURALMIND_BASH_REPLACE=1: trim allowlisted noisy logs via updatedToolOutput."""
+
+    @staticmethod
+    def _bash(command: str, stdout: str, cwd: Path, **extra) -> dict:
+        # Claude Code's BashOutput: stdout, stderr, interrupted, isImage, ...
+        response = {"stdout": stdout, "stderr": "", "interrupted": False, "isImage": False}
+        response.update(extra)
+        return {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+            "tool_response": response,
+            "cwd": str(cwd),
+        }
+
+    def _run(self, action: str, payload: dict, monkeypatch) -> str:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        captured = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", captured)
+        assert run_hook(action) == 0
+        return captured.getvalue()
+
+    def test_off_by_default(self, monkeypatch, tmp_path):
+        monkeypatch.delenv("NEURALMIND_BASH_REPLACE", raising=False)
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
+    def test_trims_an_allowlisted_noisy_log(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        payload = self._bash(
+            "pip install -r requirements.txt",
+            INSTALL_LOG,
+            tmp_path,
+            noOutputExpected=False,
+            staleReadFileStateHint="requirements.txt changed",
+        )
+        response = json.loads(self._run("compress-bash", payload, monkeypatch))
+        out = response["hookSpecificOutput"]
+        assert out["hookEventName"] == "PostToolUse"
+        assert "additionalContext" not in out
+        replaced = out["updatedToolOutput"]
+        # The Bash tool's output shape: the incoming result, with only the
+        # streams swapped. Claude Code ignores a replacement that doesn't match.
+        assert {k: v for k, v in replaced.items() if k not in ("stdout", "stderr")} == {
+            k: v for k, v in payload["tool_response"].items() if k not in ("stdout", "stderr")
+        }
+        stdout = replaced["stdout"]
+        assert not [
+            ln for ln in stdout.splitlines() if "pkg0-1.0-py3" in ln or ln[:10] == "Collecting"
+        ]
+        assert "[neuralmind: 80 progress lines elided: Collecting ×40, Downloading ×40]" in stdout
+        for line in INSTALL_LOG.splitlines()[-2:]:
+            assert line in stdout.splitlines()
+        assert len(stdout) < len(INSTALL_LOG) / 2
+
+        # The note names a file holding the whole output.
+        archive = Path(stdout.rsplit("Full output: ", 1)[1].rstrip("]\n"))
+        assert archive.parent == tmp_path.resolve() / ".neuralmind" / "bash_outputs"
+        assert INSTALL_LOG.rstrip() in archive.read_text()
+
+    def test_note_follows_stderr_when_the_log_is_there(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        progress = "".join(
+            f"Embedding {n}/500 ({n // 5}%) · 0.0s elapsed, ~0.0s left · mod_py__fn_{n}\n"
+            for n in range(1, 500, 25)
+        )
+        payload = self._bash("neuralmind build .", "Build successful!\n   Nodes: 500\n", tmp_path)
+        payload["tool_response"]["stderr"] = progress
+        replaced = json.loads(self._run("compress-bash", payload, monkeypatch))[
+            "hookSpecificOutput"
+        ]["updatedToolOutput"]
+        assert replaced["stdout"] == "Build successful!\n   Nodes: 500\n"
+        marker, note = replaced["stderr"].splitlines()
+        assert marker == "[neuralmind: 20 progress lines elided: embedding progress ×20]"
+        assert note.startswith("[neuralmind: neuralmind build progress lines elided where marked")
+
+    def test_content_is_never_replaced(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        for command in (
+            "pytest -v",
+            "git diff",
+            "cat install.log",
+            "pip list",
+            "grep -rn Collecting .",
+            "pip install -r requirements.txt && pytest -q",
+            "pip install -r requirements.txt | tail -50",
+        ):
+            payload = self._bash(command, INSTALL_LOG, tmp_path)
+            assert self._run("compress-bash", payload, monkeypatch) == "", command
+
+    def test_unusual_results_are_left_alone(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        cases = [
+            {"interrupted": True},
+            {"isImage": True},
+            {"backgroundTaskId": "bash_1"},
+            {"persistedOutputPath": "/tmp/tool-results/x.txt", "persistedOutputSize": 40_000},
+        ]
+        for extra in cases:
+            payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path, **extra)
+            assert self._run("compress-bash", payload, monkeypatch) == "", extra
+        # No `interrupted` at all: not Claude Code's Bash shape.
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        del payload["tool_response"]["interrupted"]
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+        # Over the inline ceiling Claude Code shows a 2,000-character preview.
+        big = INSTALL_LOG * 10
+        assert len(big) > 30_000
+        payload = self._bash("pip install -r requirements.txt", big, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
+    def test_only_when_it_makes_the_result_smaller(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        log = (
+            "Requirement already satisfied: idna in ./v (from requests) (3.2)\n"
+            "Requirement already satisfied: certifi in ./v (from requests) (2026.1)\n"
+        )
+        payload = self._bash("pip install requests", log, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
+    def test_needs_somewhere_to_keep_the_full_output(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        monkeypatch.setenv("NEURALMIND_OUTPUT_CACHE", "0")
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
+    def test_bypass_wins(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        monkeypatch.setenv("NEURALMIND_BYPASS", "1")
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
+    def test_the_cache_still_holds_the_raw_output(self, monkeypatch, tmp_path):
+        from neuralmind.output_cache import read_last_output
+
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) != ""
+        assert read_last_output(tmp_path)["stdout"] == INSTALL_LOG
+
+    def test_read_and_grep_are_never_replaced(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        path = tmp_path / "module.py"
+        text = "def f():\n    return 1\n" * 200
+        read = TestRunHook._read_payload(path, tmp_path, text)
+        assert self._run("compress-read", read, monkeypatch) == ""
+        grep = {
+            "tool_name": "Grep",
+            "tool_input": {"pattern": "def", "output_mode": "content"},
+            "tool_response": {
+                "mode": "content",
+                "numFiles": 1,
+                "filenames": ["module.py"],
+                "content": "\n".join(f"module.py:{i}:def f():" for i in range(1, 400, 2)),
+            },
+        }
+        assert self._run("cap-search", grep, monkeypatch) == ""

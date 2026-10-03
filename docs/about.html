@@ -91,8 +91,8 @@
             <p>A 4-layer retrieval system that starts with the most relevant code entities and escalates only when needed. The result: 12-50× fewer tokens per code question compared to pasting raw source files.</p>
             <h3>Hebbian synapse learning</h3>
             <p>Every co-edit, query, and tool call strengthens associations between code nodes. The longer you use NeuralMind on a codebase, the better it gets at predicting what context you need.</p>
-            <h3>No tool-output compression</h3>
-            <p>NeuralMind&rsquo;s hooks don&rsquo;t compress tool output. Through v4.4.0 its PostToolUse hooks handed Claude compressed copies of Bash and Grep output, but Claude Code adds a hook&rsquo;s context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them &mdash; +17.5% on Bash calls and +22.1% on content-mode Grep in the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>. They now inject nothing; the Bash hook still caches the latest successful command&rsquo;s output, credentials redacted, for <code>neuralmind last</code>.</p>
+            <h3>No tool-output compression by default</h3>
+            <p>NeuralMind&rsquo;s hooks don&rsquo;t compress tool output unless you opt in. Through v4.4.0 its PostToolUse hooks handed Claude compressed copies of Bash and Grep output, but Claude Code adds a hook&rsquo;s context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them &mdash; +17.5% on Bash calls and +22.1% on content-mode Grep in the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>. They now inject nothing; the Bash hook still caches the latest successful command&rsquo;s output, credentials redacted, for <code>neuralmind last</code>. The opt-in (<code>NEURALMIND_BASH_REPLACE=1</code>, v4.7.0) replaces one kind of output, the progress lines of <code>pip install</code> and <code>neuralmind build</code>, and is measured with its retention gates in the same benchmark.</p>
         </section>
         <section>
             <h2>Supply chain</h2>
@@ -195,6 +195,20 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, local-first processing with no telemetry, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v470">
+            <h2>What&rsquo;s New in v4.7.0 &mdash; an opt-in that replaces tool output for real, for noisy logs only</h2>
+            <p><strong>NeuralMind&rsquo;s PostToolUse hooks inject nothing by default, because Claude Code adds <code>additionalContext</code> next to a tool result instead of replacing it.</strong> v4.7.0 adds one replacement that does shrink what Claude sees, through <code>updatedToolOutput</code>, and keeps it narrow enough to gate.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong><code>NEURALMIND_BASH_REPLACE=1</code></strong> &mdash; off by default. <code>pip install</code> and <code>neuralmind build</code> output reaches Claude with its progress lines elided and every other line verbatim; a line mentioning an error, warning, failure or deprecation is never removed, and the full output is kept in a file the result names</li>
+                <li><strong>Measured and gated</strong> &mdash; on the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>&rsquo;s five noisy logs, 81.9% fewer tokens (per call: mean &minus;54.8%, from 0% for the one it leaves alone to &minus;96.5%) with every must-keep line kept. CI fails the build if a replaced call keeps under 95% of them, or if a test run, diff, file dump, search, Read or Grep result is replaced. Five commands from two tools is a small corpus</li>
+                <li><strong>Read transitions fixed</strong> &mdash; the Read hook&rsquo;s file-to-file tracking reads Claude Code&rsquo;s <code>file.content</code> payload, so real Reads record a step again</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v470">Trim noisy install logs</a></p>
         </div>
     </section>
 

@@ -65,6 +65,9 @@ keywords = [
     "retrieval-eval",
     "gitignore-aware-indexing",
     "read-only-queries",
+    "posttooluse-hook",
+    "updated-tool-output",
+    "noisy-log-trimming",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

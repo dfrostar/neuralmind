@@ -2,7 +2,7 @@
 
     python -m evals.compression.run --work-dir .bench-work --out bench/compression
 
-Every sample is one tool call, measured three ways:
+Every sample is one tool call, measured four ways:
 
 ``baseline``
     The tool result as Claude Code delivers it, with no hook installed.
@@ -11,6 +11,14 @@ Every sample is one tool call, measured three ways:
     entry point (:func:`neuralmind.hooks.run_hook`) receives a payload shaped
     like Claude Code's, and its JSON response is applied the way Claude Code's
     documented hook protocol applies it. This is what NeuralMind users get.
+``opt_in``
+    The same, with ``NEURALMIND_BASH_REPLACE=1`` set for the hook: the opt-in
+    replacement of allowlisted noisy logs. It runs on every call, so it shows
+    what the opt-in leaves alone as well as what it replaces, and it is gated
+    (:func:`opt_in_gates`): every replaced call has to keep at least
+    ``MIN_MUST_KEEP_REPLACED`` of its pre-registered must-keep lines, no
+    ``content`` output, Read or Grep result may be replaced, and no call may
+    cost more tokens than with no hook.
 ``compressor_only``
     Hypothetical: the compressor's output delivered *instead of* the result,
     which is what a hook returning ``updatedToolOutput`` would deliver. It is
@@ -93,14 +101,27 @@ READ_PAGE_SENSITIVITY = 25_000
 READ_CHECKOUT_ROOT = "/work"
 BENIGN_EXIT_1 = {"grep", "rg", "egrep", "fgrep", "find", "diff", "test", "["}
 
+# The opt-in arm's switch, and the share of its must-keep lines every call it
+# replaces has to keep.
+OPT_IN_ENV = "NEURALMIND_BASH_REPLACE"
+MIN_MUST_KEEP_REPLACED = 0.95
+# A replaced result names the file holding the full output by absolute path,
+# under the hook's working directory. That directory is shown as this path,
+# so the counts don't depend on where the benchmark ran.
+CWD_SHOWN_AS = "/home/dev/project"
+
 # Compressor thresholds are module constants read from the environment at
-# import time; a run with any of these set would not measure the defaults.
+# import time, and the hooks read their switches from it on every call; a run
+# with any of these set would not measure the defaults.
 _THRESHOLD_ENV = (
     "NEURALMIND_BYPASS",
     "NEURALMIND_BASH_TAIL",
     "NEURALMIND_BASH_MAX_CHARS",
     "NEURALMIND_BASH_SMALL",
     "NEURALMIND_SEARCH_MAX",
+    OPT_IN_ENV,
+    "NEURALMIND_OUTPUT_CACHE",
+    "NEURALMIND_OUTPUT_CACHE_MAX",
 )
 
 # Grep patterns every repo is searched for, on top of its public-benchmark
@@ -173,15 +194,37 @@ def read_result(content: str) -> str:
 # --------------------------------------------------------------------------
 
 
-def drive_hook(action: str, payload: dict[str, Any]) -> dict[str, Any] | None:
-    """Run ``neuralmind _hook <action>`` in-process; return its JSON response."""
+@contextlib.contextmanager
+def _env(name: str, value: str | None):
+    """Set ``name`` to ``value`` (unset it for None) for the duration."""
+    saved = os.environ.get(name)
+    if value is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = value
+    try:
+        yield
+    finally:
+        if saved is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = saved
+
+
+def drive_hook(action: str, payload: dict[str, Any], opt_in: bool = False) -> dict[str, Any] | None:
+    """Run ``neuralmind _hook <action>`` in-process; return its JSON response.
+
+    ``opt_in`` sets ``NEURALMIND_BASH_REPLACE=1`` for the call; otherwise it
+    is unset, whatever the calling environment has.
+    """
     from neuralmind.hooks import run_hook
 
     saved_in, saved_out = sys.stdin, sys.stdout
     sys.stdin = io.StringIO(json.dumps(payload))
     sys.stdout = captured = io.StringIO()
     try:
-        run_hook(action)
+        with _env(OPT_IN_ENV, "1" if opt_in else None):
+            run_hook(action)
     finally:
         sys.stdin, sys.stdout = saved_in, saved_out
     out = captured.getvalue().strip()
@@ -212,6 +255,27 @@ def _read_shape_ok(value: Any) -> bool:
 
 def _grep_shape_ok(value: Any) -> bool:
     return isinstance(value, dict) and all(k in value for k in ("numFiles", "filenames"))
+
+
+_SHAPE_OK = {"Bash": _bash_shape_ok, "Read": _read_shape_ok, "Grep": _grep_shape_ok}
+
+
+def replaces_result(tool: str, response: dict[str, Any] | None) -> bool:
+    """Whether Claude Code would apply the response's ``updatedToolOutput``."""
+    if not response or response.get("_invalid_json"):
+        return False
+    value = (response.get("hookSpecificOutput") or {}).get("updatedToolOutput")
+    return value is not None and _SHAPE_OK[tool](value)
+
+
+def _shown(text: str, cwd: Path) -> str:
+    """``text`` with the hook's working directory shown as ``CWD_SHOWN_AS``."""
+    for raw in sorted({str(cwd.resolve()), str(cwd)}, key=len, reverse=True):
+        text = text.replace(raw, CWD_SHOWN_AS)
+    # And with "/" separators below it, so Windows paths count the same.
+    return re.sub(
+        re.escape(CWD_SHOWN_AS) + r"[^\s\]]*", lambda m: m.group(0).replace("\\", "/"), text
+    )
 
 
 def apply_response(
@@ -309,6 +373,26 @@ def _hook_fields(response: dict[str, Any] | None) -> dict[str, bool]:
     }
 
 
+def _opt_in_arm(
+    tool: str, baseline: str, payload: dict[str, Any] | None, cwd: Path, **ctx: Any
+) -> tuple[dict[str, Any], str]:
+    """Drive the hook with the opt-in set: its fields, and what Claude sees.
+
+    ``payload`` is None for a call no PostToolUse hook receives.
+    """
+    action = {"Bash": "compress-bash", "Read": "compress-read", "Grep": "cap-search"}[tool]
+    response = None if payload is None else drive_hook(action, payload, opt_in=True)
+    result, context = apply_response(tool, baseline, response, **ctx)
+    result, context = _shown(result, cwd), _shown(context, cwd)
+    fields = {
+        "opt_in_hook_json_valid": response is None or not response.get("_invalid_json", False),
+        "opt_in_replaced": replaces_result(tool, response),
+        "opt_in_tokens": count_tokens(result) + count_tokens(context),
+        "opt_in_sha256": _digest(result, context),
+    }
+    return fields, f"{result}\n{context}" if context else result
+
+
 def _pct(after: int, before: int) -> float | None:
     return None if before == 0 else round(100.0 * (after - before) / before, 1)
 
@@ -328,7 +412,7 @@ def bash_samples(corpus_dir: Path, cwd: Path) -> list[dict[str, Any]]:
 
         # PostToolUse fires only for a valid result; a failure goes to
         # PostToolUseFailure, where NeuralMind registers nothing.
-        response = None
+        response = payload = None
         if valid:
             payload = {
                 "hook_event_name": "PostToolUse",
@@ -345,6 +429,7 @@ def bash_samples(corpus_dir: Path, cwd: Path) -> list[dict[str, Any]]:
             }
             response = drive_hook("compress-bash", payload)
         result, context = apply_response("Bash", baseline, response, command=command)
+        opt_in, opt_in_seen = _opt_in_arm("Bash", baseline, payload, cwd, command=command)
 
         # The compressor on its own terms: what a replacing hook would deliver
         # for this call (valid results), or what it would have produced for a
@@ -363,6 +448,7 @@ def bash_samples(corpus_dir: Path, cwd: Path) -> list[dict[str, Any]]:
                 "tool": "Bash",
                 "id": entry["id"],
                 "category": entry["category"],
+                "kind": entry["kind"],
                 "command": command,
                 "exit_code": exit_code,
                 "event": "PostToolUse" if valid else "PostToolUseFailure",
@@ -370,12 +456,14 @@ def bash_samples(corpus_dir: Path, cwd: Path) -> list[dict[str, Any]]:
                 "baseline_tokens": count_tokens(baseline),
                 "as_shipped_tokens": count_tokens(result) + count_tokens(context),
                 "added_context_tokens": count_tokens(context),
+                **opt_in,
                 "compressor_only_tokens": count_tokens(compressed),
                 "as_shipped_sha256": _digest(result, context),
                 "compressor_only_sha256": _digest(compressed),
                 "compressor_reachable": valid,
                 "must_keep_lines": len(needed),
                 "must_keep_kept": _kept_share(needed, compressed),
+                "opt_in_must_keep_kept": _kept_share(needed, opt_in_seen),
             }
         )
     return rows
@@ -412,6 +500,7 @@ def read_samples(repo: str, src: Path, nm: Any, cwd: Path, work_dir: Path) -> li
         }
         response = drive_hook("compress-read", payload)
         result, context = apply_response("Read", baseline, response)
+        opt_in, _ = _opt_in_arm("Read", baseline, payload, cwd)
 
         # The compressor as designed: given the file's text, as the hook gets
         # it in file.content, with the index loaded. A hook returning its
@@ -431,6 +520,7 @@ def read_samples(repo: str, src: Path, nm: Any, cwd: Path, work_dir: Path) -> li
                 "baseline_tokens": count_tokens(baseline),
                 "as_shipped_tokens": count_tokens(result) + count_tokens(context),
                 "added_context_tokens": count_tokens(context),
+                **opt_in,
                 "compressor_only_tokens": count_tokens(delivered),
                 "as_shipped_sha256": _digest(result, context),
                 "compressor_only_sha256": _digest(delivered),
@@ -511,6 +601,7 @@ def grep_samples(repo: dict[str, Any], src: Path, cwd: Path) -> list[dict[str, A
             }
             response = drive_hook("cap-search", payload)
             result, context = apply_response("Grep", baseline, response)
+            opt_in, _ = _opt_in_arm("Grep", baseline, payload, cwd)
             rows.append(
                 {
                     "tool": "Grep",
@@ -520,6 +611,7 @@ def grep_samples(repo: dict[str, Any], src: Path, cwd: Path) -> list[dict[str, A
                     "baseline_tokens": count_tokens(baseline),
                     "as_shipped_tokens": count_tokens(result) + count_tokens(context),
                     "added_context_tokens": count_tokens(context),
+                    **opt_in,
                     "compressor_only_tokens": count_tokens(compressed),
                     "as_shipped_sha256": _digest(result, context),
                     "compressor_only_sha256": _digest(compressed),
@@ -536,28 +628,77 @@ def grep_samples(repo: dict[str, Any], src: Path, cwd: Path) -> list[dict[str, A
 # --------------------------------------------------------------------------
 
 
+def _per_call(rows: list[dict[str, Any]], field: str) -> dict[str, float] | None:
+    pcts = [_pct(r[field], r["baseline_tokens"]) for r in rows]
+    return _spread([p for p in pcts if p is not None])
+
+
 def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     base = sum(r["baseline_tokens"] for r in rows)
     shipped = sum(r["as_shipped_tokens"] for r in rows)
+    opt_in = sum(r["opt_in_tokens"] for r in rows)
     reach = [r for r in rows if r["compressor_reachable"]]
     reach_base = sum(r["baseline_tokens"] for r in reach)
     reach_comp = sum(r["compressor_only_tokens"] for r in reach)
-    per_call = [_pct(r["as_shipped_tokens"], r["baseline_tokens"]) for r in rows]
-    per_call = [p for p in per_call if p is not None]
-    comp_calls = [_pct(r["compressor_only_tokens"], r["baseline_tokens"]) for r in reach]
-    comp_calls = [p for p in comp_calls if p is not None]
     return {
         "calls": len(rows),
         "hook_fired": sum(1 for r in rows if r["hook_fired"]),
         "baseline_tokens": base,
         "as_shipped_tokens": shipped,
         "as_shipped_change_pct": _pct(shipped, base),
-        "as_shipped_per_call_pct": _spread(per_call),
+        "as_shipped_per_call_pct": _per_call(rows, "as_shipped_tokens"),
+        "opt_in_replaced_calls": sum(1 for r in rows if r["opt_in_replaced"]),
+        "opt_in_tokens": opt_in,
+        "opt_in_change_pct": _pct(opt_in, base),
+        "opt_in_per_call_pct": _per_call(rows, "opt_in_tokens"),
         "compressor_reachable_calls": len(reach),
         "compressor_only_tokens": reach_comp,
         "compressor_only_change_pct": _pct(reach_comp, reach_base),
-        "compressor_only_per_call_pct": _spread(comp_calls),
+        "compressor_only_per_call_pct": _per_call(reach, "compressor_only_tokens"),
     }
+
+
+def opt_in_gates(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pass/fail for the opt-in replacement over ``rows``, any mix of tools.
+
+    A replaced Bash call must keep at least ``MIN_MUST_KEEP_REPLACED`` of its
+    pre-registered must-keep lines, and must have some, or nothing shows what
+    it would drop. A ``content`` output, a Read or a Grep result must never be
+    replaced. No call may cost more tokens than with no hook, and the hook's
+    stdout must always be a valid JSON response.
+    """
+    replaced = [r for r in rows if r["opt_in_replaced"]]
+    bash = [r for r in replaced if r["tool"] == "Bash"]
+    kept = [r["opt_in_must_keep_kept"] for r in bash]
+    gates = {
+        "replaced_bash_must_keep_min": {
+            "rule": f">= {MIN_MUST_KEEP_REPLACED} on every replaced Bash call",
+            "measured": None if None in kept or not kept else min(kept),
+            "pass": all(k is not None and k >= MIN_MUST_KEEP_REPLACED for k in kept),
+        },
+        "content_bash_replaced": {
+            "rule": "0",
+            "measured": sum(1 for r in bash if r["kind"] != "noisy-log"),
+        },
+        "read_or_grep_replaced": {
+            "rule": "0",
+            "measured": sum(1 for r in replaced if r["tool"] != "Bash"),
+        },
+        "calls_over_baseline": {
+            "rule": "0",
+            "measured": sum(1 for r in rows if r["opt_in_tokens"] > r["baseline_tokens"]),
+        },
+        "invalid_hook_json": {
+            "rule": "0",
+            "measured": sum(
+                1 for r in rows if not (r["hook_json_valid"] and r["opt_in_hook_json_valid"])
+            ),
+        },
+    }
+    for gate in gates.values():
+        gate.setdefault("pass", gate["measured"] == 0)
+    gates["all_pass"] = all(g["pass"] for g in gates.values())
+    return gates
 
 
 def _spread(values: list[float]) -> dict[str, float] | None:
@@ -574,6 +715,21 @@ def _spread(values: list[float]) -> dict[str, float] | None:
 def _mean(values: list[float | None]) -> float | None:
     vals = [v for v in values if v is not None]
     return None if not vals else round(statistics.fmean(vals), 3)
+
+
+def summarize_bash_kinds(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Bash calls by pre-registered kind, with the opt-in's retention."""
+    out = {}
+    for kind in ("noisy-log", "content"):
+        of_kind = [r for r in rows if r["kind"] == kind]
+        replaced = [r["opt_in_must_keep_kept"] for r in of_kind if r["opt_in_replaced"]]
+        known = [k for k in replaced if k is not None]
+        out[kind] = {
+            **_summarize(of_kind),
+            "opt_in_must_keep_kept_min_replaced": min(known) if known else None,
+            "opt_in_must_keep_kept_mean_replaced": _mean(replaced),
+        }
+    return out
 
 
 def _corpus_digest(corpus_dir: Path) -> str:
@@ -653,8 +809,10 @@ def run(work_dir: Path, corpus_dir: Path = CORPUS_DIR) -> dict[str, Any]:
     summary["Bash"]["must_keep_kept_mean_failures"] = _mean(
         [r["must_keep_kept"] for r in bash_fail]
     )
+    summary["Bash"]["by_kind"] = summarize_bash_kinds(by_tool["Bash"])
     content = [r for r in by_tool["Grep"] if r["category"] == "content"]
     summary["Grep"]["content_mode_matches_kept_mean"] = _mean([r["matches_kept"] for r in content])
+    summary["opt_in_gates"] = opt_in_gates(rows)
 
     return {
         "meta": {
@@ -680,6 +838,11 @@ def run(work_dir: Path, corpus_dir: Path = CORPUS_DIR) -> dict[str, Any]:
                 "read_min_chars": compressors.READ_MIN_CHARS,
             },
             "read_checkout_root_shown_as": READ_CHECKOUT_ROOT,
+            "opt_in": {
+                "env": f"{OPT_IN_ENV}=1",
+                "min_must_keep_replaced": MIN_MUST_KEEP_REPLACED,
+                "hook_cwd_shown_as": CWD_SHOWN_AS,
+            },
             "pinned_repos": {r["name"]: r["commit"] for r in manifest["repos"]},
             "bash_corpus_sha256": _corpus_digest(corpus_dir),
         },
@@ -694,6 +857,12 @@ def _fmt_pct(p: float | None) -> str:
 
 def _fmt_share(p: float | None) -> str:
     return "—" if p is None else f"{100 * p:.0f}%"
+
+
+def _fmt_spread(spread: dict[str, float] | None) -> str:
+    if not spread:
+        return "—"
+    return f"{spread['mean']:+.1f}% ({spread['min']:+.1f}% to {spread['max']:+.1f}%)"
 
 
 def render_markdown(report: dict[str, Any]) -> str:
@@ -739,6 +908,49 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             f"{invalid} hook responses were not valid JSON and were treated as having no effect.",
         ]
+
+    kinds, gates = s["Bash"]["by_kind"], s["opt_in_gates"]
+    out += [
+        "",
+        f"## With the opt-in replacement (`{meta['opt_in']['env']}`)",
+        "",
+        "| Tool call | Calls | Replaced | Tokens, no hook | Tokens, opt-in | Change | Per call: mean (range) |",
+        "|---|---:|---:|---:|---:|---:|---|",
+    ]
+    rows = [
+        ("Bash, noisy logs", kinds["noisy-log"]),
+        ("Bash, content", kinds["content"]),
+        ("Read (whole file)", s["Read"]),
+        ("Grep, content mode", s["Grep"]["per_mode"]["content"]),
+        ("Grep, files_with_matches (default)", s["Grep"]["per_mode"]["files_with_matches"]),
+    ]
+    for label, t in rows:
+        out.append(
+            f"| {label} | {t['calls']} | {t['opt_in_replaced_calls']} | {t['baseline_tokens']:,} | "
+            f"{t['opt_in_tokens']:,} | {_fmt_pct(t['opt_in_change_pct'])} | "
+            f"{_fmt_spread(t['opt_in_per_call_pct'])} |"
+        )
+    noisy = kinds["noisy-log"]
+    out += [
+        "",
+        (
+            "Must-keep lines that reach Claude on the replaced calls: lowest "
+            f"{_fmt_share(noisy['opt_in_must_keep_kept_min_replaced'])}, mean "
+            f"{_fmt_share(noisy['opt_in_must_keep_kept_mean_replaced'])}."
+        ),
+        "",
+        "Gates (the run fails if any fails):",
+        "",
+    ]
+    for name, gate in gates.items():
+        if name == "all_pass":
+            continue
+        measured = gate["measured"]
+        shown = _fmt_share(measured) if isinstance(measured, float) else measured
+        out.append(
+            f"- `{name}`: {gate['rule']}; measured {shown} — {'pass' if gate['pass'] else 'FAIL'}"
+        )
+
     r, b, g = s["Read"], s["Bash"], s["Grep"]
     reads = [x for x in samples if x["tool"] == "Read"]
     bashes = [x for x in samples if x["tool"] == "Bash"]
@@ -794,14 +1006,20 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "## Bash, per command",
         "",
-        "| Command | Exit | Event | Hook responded | No hook | As shipped | Compressor only | Must-keep kept |",
-        "|---|---:|---|:---:|---:|---:|---:|---:|",
+        (
+            "| Command | Kind | Exit | Event | Hook responded | No hook | As shipped | "
+            "Opt-in | Must-keep kept, opt-in | Compressor only | Must-keep kept, compressor |"
+        ),
+        "|---|---|---:|---|:---:|---:|---:|---:|---:|---:|---:|",
     ]
     for x in bashes:
         out.append(
-            f"| `{x['id']}` ({x['category']}) | {x['exit_code']} | {x['event']} | "
+            f"| `{x['id']}` ({x['category']}) | {x['kind']} | {x['exit_code']} | {x['event']} | "
             f"{'yes' if x['hook_fired'] else 'no'} | {x['baseline_tokens']:,} | "
             f"{x['as_shipped_tokens']:,} ({_fmt_pct(_pct(x['as_shipped_tokens'], x['baseline_tokens']))}) | "
+            f"{x['opt_in_tokens']:,} ({_fmt_pct(_pct(x['opt_in_tokens'], x['baseline_tokens']))})"
+            f"{', replaced' if x['opt_in_replaced'] else ''} | "
+            f"{_fmt_share(x['opt_in_must_keep_kept']) if x['opt_in_replaced'] else '—'} | "
             f"{x['compressor_only_tokens']:,}{'' if x['compressor_reachable'] else ' †'} | "
             f"{_fmt_share(x['must_keep_kept'])} |"
         )
@@ -810,6 +1028,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         (
             "† A failed command fires PostToolUseFailure, which cannot replace the result; "
             "the figure is what the compressor would have produced had anything been able to deliver it."
+        ),
+        "",
+        (
+            "Must-keep kept, opt-in is shown for the calls the opt-in replaced. Every other call "
+            "reaches Claude exactly as it does with no hook."
         ),
         "",
     ]
@@ -834,6 +1057,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report["summary"], indent=2))
     else:
         print(render_markdown(report))
+    if not report["summary"]["opt_in_gates"]["all_pass"]:
+        print("an opt-in gate failed; see the gates in the report", file=sys.stderr)
+        return 1
     return 0
 
 

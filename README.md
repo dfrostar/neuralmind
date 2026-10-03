@@ -27,7 +27,8 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.5.0:** numbers measured on your project. `neuralmind eval .` scores retrieval against the questions and gold files in your `.neuralmind.eval.yaml` (hit@1 / hit@5 / MRR, with a history); every reduction ratio divides by the measured size of your code instead of a fixed 50K guess; queries can be read-only (`--no-learn`, MCP `learn: false`, `NEURALMIND_NO_LEARN=1`) so evals never train on their own test; and the index covers what git covers — `.gitignore` is honoured ([release notes](docs/releases/RELEASE_NOTES_v4.5.0.md))
+> - **New in v4.7.0, opt-in:** with `NEURALMIND_BASH_REPLACE=1`, sees `pip install` and `neuralmind build` output without its progress lines, every other line verbatim and the full output one Read away. On the [compression benchmark](docs/benchmarks/compression.md)'s five noisy logs that is 81.9% fewer tokens (per call: mean −54.8%, from 0% on the one it leaves alone to −96.5%), with every must-keep line kept; test runs, diffs, file dumps and searches are never touched ([release notes](docs/releases/RELEASE_NOTES_v4.7.0.md))
+> - **v4.5.0:** numbers measured on your project. `neuralmind eval .` scores retrieval against the questions and gold files in your `.neuralmind.eval.yaml` (hit@1 / hit@5 / MRR, with a history); every reduction ratio divides by the measured size of your code instead of a fixed 50K guess; queries can be read-only (`--no-learn`, MCP `learn: false`, `NEURALMIND_NO_LEARN=1`) so evals never train on their own test; and the index covers what git covers — `.gitignore` is honoured ([release notes](docs/releases/RELEASE_NOTES_v4.5.0.md))
 > - **v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
 >
 > **Works with every IDE your team already uses.**
@@ -181,7 +182,7 @@ truncation currently wins slightly: **0.451 vs 0.505 expected-fact recall, a
 **−0.10**; earlier releases measured +0.013 to +0.143. We publish it as a loss
 rather than drop the eval.
 
-### 10. Tool-output compression (measured, and removed)
+### 10. Tool-output compression (measured, removed, and one opt-in for noisy logs)
 
 Through v4.4.0, NeuralMind's PostToolUse hooks handed Claude Code compressed
 copies of `Bash` and `Grep` output. Claude Code adds a hook's
@@ -189,10 +190,21 @@ copies of `Bash` and `Grep` output. Claude Code adds a hook's
 copies cost tokens instead of saving them: **+17.5% on Bash calls and +22.1% on
 content-mode Grep**, and the Read hook never saw Claude Code's payload at all
 ([compression benchmark](docs/benchmarks/compression.md)). From v4.5.0 the
-hooks inject nothing, so Claude sees exactly the tool result. The compressors
-themselves would cut 66–87%, but a Read replaced by its skeleton would keep
-none of the file's source lines. So nothing replaces tool output until something
-keeps what the agent needs.
+hooks inject nothing by default, so Claude sees exactly the tool result. The
+compressors themselves would cut 70–87%, but a Read replaced by its skeleton
+would keep none of the file's source lines.
+
+**Opt-in since v4.7.0:** `NEURALMIND_BASH_REPLACE=1` replaces one kind of
+output for real, through `updatedToolOutput`: the progress lines of
+`pip install` and `neuralmind build`. It removes only lines it recognizes as
+that tool's progress, never a line that mentions an error or warning, and keeps
+the full output in a file the result names. On the benchmark's five noisy logs
+it cuts **81.9% of the tokens** (per call: mean −54.8%, from 0% for `next build`,
+which isn't on its allowlist, to −96.5%) and every pre-registered must-keep line
+reaches Claude. CI fails the build if a replaced call keeps under 95% of them,
+or if any test run, diff, file dump, search, Read or Grep result is replaced.
+Five commands from two tools is a small corpus: the figure describes those
+logs, not build output in general.
 
 ---
 
@@ -437,7 +449,9 @@ demand with `python -m evals.public.run`, raw per-query data committed:
   tolerance of the legacy graphify backend on every PR.
 - **Tool-output compression:** measured on v4.3.4, the PostToolUse hooks added
   17.5% to Bash calls and 22.1% to content-mode Grep rather than saving
-  anything; they now inject nothing
+  anything; they now inject nothing by default. The opt-in noisy-log
+  replacement (`NEURALMIND_BASH_REPLACE=1`) cuts 81.9% of the tokens on the
+  benchmark's five install and build logs, keeping every must-keep line
   ([compression benchmark](docs/benchmarks/compression.md)).
 
 ![Benchmark chart](docs/images/benchmark_chart.png)
