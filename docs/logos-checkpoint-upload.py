@@ -18,13 +18,15 @@ Usage:
 import argparse
 import os
 import sys
-import time
+
 
 def main():
     parser = argparse.ArgumentParser(description="Upload checkpoint to HF Hub")
     parser.add_argument("checkpoint_dir", help="Path to checkpoint directory")
     parser.add_argument("--repo", required=True, help="HF repo ID")
-    parser.add_argument("--max-checkpoints", type=int, default=3, help="Max checkpoints to keep on HF")
+    parser.add_argument(
+        "--max-checkpoints", type=int, default=3, help="Max checkpoints to keep on HF"
+    )
     args = parser.parse_args()
 
     hf_token = os.environ.get("HF_TOKEN", "")
@@ -38,6 +40,7 @@ def main():
 
     try:
         from huggingface_hub import HfApi
+
         api = HfApi()
 
         # Create repo if needed
@@ -59,7 +62,7 @@ def main():
         # HF API returns directory entries with trailing /
         ckpts = sorted([f for f in files if f.startswith("checkpoint-") and f.endswith("/")])
         if len(ckpts) > args.max_checkpoints:
-            to_delete = ckpts[:len(ckpts) - args.max_checkpoints]
+            to_delete = ckpts[: len(ckpts) - args.max_checkpoints]
             print(f"[CKPT UPLOAD] Pruning {len(to_delete)} old checkpoints: {to_delete}")
             for old in to_delete:
                 api.delete_file(
@@ -74,6 +77,7 @@ def main():
         print(f"[CKPT UPLOAD ERROR] {e}")
         # Don't crash — training continues
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

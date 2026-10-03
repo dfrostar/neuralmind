@@ -10,9 +10,22 @@ Gate before any edge enters the shared namespace:
 3. Weight threshold — edges below threshold are rejected.
 4. Content-hash dedup — identical bundles aren't re-published.
 
+Where it is enforced (``neuralmind.team_memory`` calls in here):
+
+- ``neuralmind memory publish`` reads :func:`load_publish_policy`. Scope
+  ``personal`` refuses to publish; ``shared`` publishes only the team
+  baseline (the ``shared`` namespace); ``both`` publishes personal + shared.
+  Synapse edges below ``weight_threshold`` are left out of the bundle.
+- Publishes, imports, review approvals/rejections and admin removals are
+  written to the hash-chained audit log (:func:`record_team_event`).
+- ``team governance remove-edge`` deletes the association from ``shared``
+  memory and retracts it in the committed bundle, so teammates drop it too.
+
 Governance runs under any valid license, including the auto-issued free
 1-seat license — a paid Team license adds seats (5-50) and support, not
-hidden features. Users who never run ``neuralmind team`` are unaffected.
+hidden features. Users who never run ``neuralmind team`` or ``neuralmind
+onboarding`` (no tier2 config file) are unaffected: nothing is gated or
+audited.
 
 Example:
     >>> from pathlib import Path
@@ -41,12 +54,20 @@ Version:
 
 from __future__ import annotations
 
+import getpass
 import hashlib
+import logging
+import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+from . import config as config_mod
 from .audit import AuditLog
 from .config import Tier2Config, validate_scope
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -163,12 +184,34 @@ class TeamGovernance:
         if not self.is_admin(email):
             raise PermissionError(f"Not a team admin: {email}")
 
-    def remove_edge_from_shared(self, edge_id: str, admin: str) -> None:
-        """Remove an edge from the shared namespace. Admin-only.
+    def remove_edge_from_shared(
+        self,
+        source: str,
+        target: str,
+        admin: str,
+        *,
+        store: Any,
+        project_path: str | Path,
+    ) -> dict:
+        """Stop sharing one association. Admin-only.
+
+        Deletes the edge between ``source`` and ``target`` (and transitions
+        between them) from the project's ``shared`` namespace, and retracts
+        it in the committed team bundle: the pair leaves the bundle, is
+        listed under ``retracted``, and the bundle's content hash changes —
+        so each teammate's next session deletes it from their ``shared``
+        memory too, and no later ``memory publish`` re-adds it. The removal
+        is written to the audit log.
 
         Args:
-            edge_id: The identifier of the edge to remove.
+            source: One node of the association.
+            target: The other node.
             admin: Email of the admin performing the action.
+            store: The project's ``SynapseStore``.
+            project_path: Project root (where the team bundle lives).
+
+        Returns:
+            Counts from :func:`neuralmind.team_memory.retract_team_edge`.
 
         Raises:
             PermissionError: If ``admin`` is not a team admin.
@@ -176,6 +219,7 @@ class TeamGovernance:
         Example:
             >>> from pathlib import Path
             >>> import tempfile
+            >>> from neuralmind.synapses import SynapseStore, default_db_path
             >>> from neuralmind.tier2.config import Tier2Config
             >>> from neuralmind.tier2.audit import AuditLog
             >>> from neuralmind.tier2.governance import TeamGovernance
@@ -184,17 +228,46 @@ class TeamGovernance:
             ...     cfg = Tier2Config()
             ...     cfg.governance.admin_emails = ["admin@test.com"]
             ...     gov = TeamGovernance(Path(td), cfg, audit)
-            ...     gov.remove_edge_from_shared("edge-123", "admin@test.com")
-            ...     audit.count()
-            1
+            ...     store = SynapseStore(default_db_path(td))
+            ...     _ = store.import_edges([("a.py", "b.py", 0.9, 3)], namespace="shared")
+            ...     result = gov.remove_edge_from_shared(
+            ...         "a.py", "b.py", "admin@test.com", store=store, project_path=td
+            ...     )
+            ...     (result["removed_from_store"], audit.count())
+            (1, 1)
         """
         self.require_admin(admin)
+        from ..team_memory import retract_team_edge
+
+        details: dict[str, Any] = {
+            "reason": "admin_removal",
+            "project": str(Path(project_path).resolve()),
+        }
+        try:
+            result = retract_team_edge(project_path, store, source, target)
+        except Exception as exc:
+            # The attempt is on the record too. retract_team_edge writes the
+            # bundle before touching the store, so a failure either changed
+            # nothing or left a retraction the next import will finish.
+            self.audit.log(
+                actor=admin,
+                action="remove",
+                target=f"{source} -> {target}",
+                details={**details, "error": f"{type(exc).__name__}: {exc}"},
+            )
+            raise
         self.audit.log(
             actor=admin,
             action="remove",
-            target=edge_id,
-            details={"reason": "admin_removal"},
+            target=f"{source} -> {target}",
+            details={
+                **details,
+                "removed_from_store": result["removed_from_store"],
+                "removed_from_bundle": result["removed_from_bundle"],
+                "bundle": result["bundle"],
+            },
         )
+        return result
 
     def set_publishing_scope(self, scope: str, admin: str) -> None:
         """Update publishing scope. Admin-only.
@@ -411,3 +484,145 @@ def json_edges_deterministic(edges: list[dict]) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+
+
+# --------------------------------------------------------------------------- #
+# Enforcement entry points for the team-memory flow (neuralmind.team_memory)
+# --------------------------------------------------------------------------- #
+
+# Which learned-memory namespaces each publishing scope lets into the bundle.
+# ``personal`` publishes nothing: memory stays on each developer's machine.
+SCOPE_NAMESPACES: dict[str, tuple[str, ...]] = {
+    "personal": (),
+    "shared": ("shared",),
+    "both": ("personal", "shared"),
+}
+
+
+@dataclass(frozen=True)
+class PublishPolicy:
+    """The governance settings ``neuralmind memory publish`` enforces.
+
+    Args:
+        scope: ``"personal"`` (publishing blocked), ``"shared"`` (only the team
+            baseline is published) or ``"both"`` (personal + shared).
+        weight_threshold: Synapse edges below this weight stay out of the bundle.
+    """
+
+    scope: str
+    weight_threshold: float
+
+    @property
+    def blocks_publishing(self) -> bool:
+        """True when the scope keeps every association on its machine."""
+        return not self.source_namespaces
+
+    @property
+    def source_namespaces(self) -> tuple[str, ...]:
+        """Namespaces whose associations may enter the team bundle."""
+        return SCOPE_NAMESPACES.get(self.scope, ())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"scope": self.scope, "weight_threshold": self.weight_threshold}
+
+
+def _config_file(path: str | Path | None = None) -> Path:
+    # Read DEFAULT_CONFIG_PATH at call time so NEURALMIND_CONFIG_DIR overrides
+    # and test monkeypatches take effect.
+    return Path(path) if path else Path(config_mod.DEFAULT_CONFIG_PATH)
+
+
+def governance_configured(path: str | Path | None = None) -> bool:
+    """True once a tier2 config file exists (``neuralmind onboarding`` or any
+    ``neuralmind team`` command that saved settings). Without one, nothing in
+    the team-memory flow is gated or audited."""
+    return _config_file(path).is_file()
+
+
+def load_publish_policy(path: str | Path | None = None) -> PublishPolicy | None:
+    """The publish policy to enforce, or None when there is nothing to enforce.
+
+    None means governance was never configured or an admin disabled it
+    (``team governance set-governance-enabled false``).
+
+    Raises:
+        OSError, yaml.YAMLError, ValueError: The config file exists but can't
+            be read or parsed, or holds an invalid governance value. Publish
+            fails closed rather than silently publishing ungoverned memory —
+            the lenient ``load_config`` would fall back to permissive defaults.
+    """
+    path = _config_file(path)
+    if not path.is_file():
+        return None
+    cfg = config_mod.load_config(path, strict=True)
+    if not cfg.governance.enabled:
+        return None
+    return PublishPolicy(
+        scope=validate_scope(cfg.governance.publishing_scope),
+        weight_threshold=float(cfg.governance.weight_threshold),
+    )
+
+
+def resolve_actor(project_path: str | Path | None = None) -> str:
+    """Who to record in the audit log for a team-memory event.
+
+    ``NEURALMIND_ACTOR_EMAIL`` / ``NEURALMIND_ACTOR`` first (same variables
+    the ``team`` commands read), then the repository's ``git config
+    user.email``, then the OS user.
+    """
+    env = (
+        os.environ.get("NEURALMIND_ACTOR_EMAIL") or os.environ.get("NEURALMIND_ACTOR") or ""
+    ).strip()
+    if env:
+        return env
+    try:
+        out = subprocess.run(
+            ["git", "config", "user.email"],
+            cwd=str(project_path) if project_path else None,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:
+        pass
+    try:
+        return f"{getpass.getuser()}@local"
+    except Exception:
+        return "unknown"
+
+
+def record_team_event(
+    action: str,
+    target: str,
+    details: dict[str, Any] | None = None,
+    *,
+    project_path: str | Path | None = None,
+    actor: str | None = None,
+    path: str | Path | None = None,
+) -> bool | None:
+    """Append a team-memory event (publish, import, review, removal) to the
+    hash-chained audit log.
+
+    Returns None when governance isn't configured (nothing is written), True
+    once the entry is written, and False when the write failed — logged, never
+    raised, so an audit hiccup can't break a session-start import.
+    """
+    path = _config_file(path)
+    if not path.is_file():
+        return None
+    try:
+        # Strict: an unreadable config must not send entries to the default
+        # audit path; the write fails (False) instead.
+        cfg = config_mod.load_config(path, strict=True)
+        AuditLog(Path(cfg.audit_db)).log(
+            actor=actor or resolve_actor(project_path),
+            action=action,  # type: ignore[arg-type]
+            target=target,
+            details=details or {},
+        )
+        return True
+    except Exception:
+        logger.warning("[governance] could not write %s audit entry for %s", action, target)
+        return False

@@ -20,13 +20,27 @@ Critical changes over v2.1:
   - ADAPTER_SIZE_ALERT: logs adapter size for monitoring
 """
 
-import json, os, re, shutil, signal, subprocess, sys, time
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+
 import torch
-from torch.nn.utils.rnn import pad_sequence
-from transformers import (AutoTokenizer, AutoModelForCausalLM, Trainer,
-                          TrainingArguments, BitsAndBytesConfig, set_seed, TrainerCallback)
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from datasets import load_dataset
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from torch.nn.utils.rnn import pad_sequence
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+    set_seed,
+)
 
 set_seed(42)
 
@@ -57,15 +71,19 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 free_gb = shutil.disk_usage(OUTPUT_DIR).free / 1e9
 print(f"Output dir free space: {free_gb:.0f} GB at {OUTPUT_DIR}")
 if free_gb < 60:
-    print("WARNING: low disk on output volume — ZeRO-3 checkpoints are large; "
-          "save_total_limit=2 may fill the volume")
+    print(
+        "WARNING: low disk on output volume — ZeRO-3 checkpoints are large; "
+        "save_total_limit=2 may fill the volume"
+    )
 
 # Verify HF token
 if HF_TOKEN:
     print("HF_TOKEN found — direct upload enabled")
 else:
-    print("WARNING: HF_TOKEN not set — adapter will save locally only. "
-          "Set HF_TOKEN env var on pod for automatic upload.")
+    print(
+        "WARNING: HF_TOKEN not set — adapter will save locally only. "
+        "Set HF_TOKEN env var on pod for automatic upload."
+    )
 
 # === DeepSpeed config ===
 ds_config = {
@@ -91,9 +109,12 @@ with open(DS_CONFIG_PATH, "w") as f:
     json.dump(ds_config, f, indent=2)
 
 lora_config = LoraConfig(
-    r=32, lora_alpha=64,
+    r=32,
+    lora_alpha=64,
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-    lora_dropout=0.05, bias="none", task_type="CAUSAL_LM",
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
 )
 
 print("Loading tokenizer...")
@@ -105,21 +126,33 @@ nl_ids = tokenizer("\n", add_special_tokens=False).input_ids
 
 print("Loading model in 4-bit...")
 bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True, bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True,
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,
 )
 try:
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, quantization_config=bnb_config, device_map={"": 0},
-        low_cpu_mem_usage=True, cache_dir=CACHE_DIR, trust_remote_code=True,
-        attn_implementation="flash_attention_2")
+        MODEL_ID,
+        quantization_config=bnb_config,
+        device_map={"": 0},
+        low_cpu_mem_usage=True,
+        cache_dir=CACHE_DIR,
+        trust_remote_code=True,
+        attn_implementation="flash_attention_2",
+    )
     print("Attention: Flash Attention 2")
 except Exception as e:
     print(f"flash_attention_2 unavailable ({e}); falling back to sdpa")
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, quantization_config=bnb_config, device_map={"": 0},
-        low_cpu_mem_usage=True, cache_dir=CACHE_DIR, trust_remote_code=True,
-        attn_implementation="sdpa")
+        MODEL_ID,
+        quantization_config=bnb_config,
+        device_map={"": 0},
+        low_cpu_mem_usage=True,
+        cache_dir=CACHE_DIR,
+        trust_remote_code=True,
+        attn_implementation="sdpa",
+    )
 
 model = prepare_model_for_kbit_training(model)
 model.gradient_checkpointing_enable()
@@ -132,13 +165,17 @@ print(f"Loading dataset: {DATASET_PATH}")
 raw = load_dataset("json", data_files=DATASET_PATH, split="train", cache_dir=CACHE_DIR)
 
 fields = set(raw[0].keys())
-assert "instruction" in fields and "output" in fields, \
-    f"FATAL: expected instruction/output fields, got {fields}"
-empty = [i for i, ex in enumerate(raw) if not (ex.get("instruction") or "").strip()
-         or not (ex.get("output") or "").strip()]
+assert (
+    "instruction" in fields and "output" in fields
+), f"FATAL: expected instruction/output fields, got {fields}"
+empty = [
+    i
+    for i, ex in enumerate(raw)
+    if not (ex.get("instruction") or "").strip() or not (ex.get("output") or "").strip()
+]
 assert not empty, f"FATAL: {len(empty)}/{len(raw)} rows have empty instruction/output"
 
-print(f"=== VALIDATION GATE: 3 formatted samples ===")
+print("=== VALIDATION GATE: 3 formatted samples ===")
 for i in (0, len(raw) // 2, len(raw) - 1):
     print(f"--- sample {i} ({raw[i].get('type')}/{raw[i].get('lang')}) ---")
     print(f"USER: {raw[i]['instruction'][:200]}")
@@ -148,18 +185,16 @@ print(f"Dataset OK: {len(raw)} rows, 0 empty")
 
 def tokenize_fn(ex):
     prompt_ids = tokenizer.apply_chat_template(
-        [{"role": "user", "content": ex["instruction"]}],
-        tokenize=True, add_generation_prompt=True)
+        [{"role": "user", "content": ex["instruction"]}], tokenize=True, add_generation_prompt=True
+    )
     if len(prompt_ids) > MAX_LEN - 8:
-        prompt_ids = prompt_ids[:MAX_LEN - 8]
+        prompt_ids = prompt_ids[: MAX_LEN - 8]
     ans_ids = tokenizer(ex["output"], add_special_tokens=False).input_ids
-    ans_ids = ans_ids[:MAX_LEN - len(prompt_ids) - 1 - len(nl_ids)]
+    ans_ids = ans_ids[: MAX_LEN - len(prompt_ids) - 1 - len(nl_ids)]
     answer_ids = ans_ids + [im_end_id] + nl_ids
     input_ids = prompt_ids + answer_ids
     labels = [-100] * len(prompt_ids) + answer_ids
-    return {"input_ids": input_ids,
-            "attention_mask": [1] * len(input_ids),
-            "labels": labels}
+    return {"input_ids": input_ids, "attention_mask": [1] * len(input_ids), "labels": labels}
 
 
 ds = raw.map(tokenize_fn, remove_columns=raw.column_names)
@@ -167,20 +202,28 @@ ds.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 split = ds.train_test_split(test_size=0.02, seed=42)
 train_ds, eval_ds = split["train"], split["test"]
 
-import statistics
+import statistics  # noqa: E402 — kept beside the code that uses it
+
 lens = [len(x) for x in train_ds["input_ids"][:2000]]
-print(f"Token lengths (first 2k): mean={statistics.mean(lens):.0f} "
-      f"median={statistics.median(lens):.0f} max={max(lens)}")
+print(
+    f"Token lengths (first 2k): mean={statistics.mean(lens):.0f} "
+    f"median={statistics.median(lens):.0f} max={max(lens)}"
+)
 
 
 def collate(features):
     return {
-        "input_ids": pad_sequence([f["input_ids"] for f in features],
-                                  batch_first=True, padding_value=tokenizer.pad_token_id),
-        "attention_mask": pad_sequence([f["attention_mask"] for f in features],
-                                       batch_first=True, padding_value=0),
-        "labels": pad_sequence([f["labels"] for f in features],
-                               batch_first=True, padding_value=-100),
+        "input_ids": pad_sequence(
+            [f["input_ids"] for f in features],
+            batch_first=True,
+            padding_value=tokenizer.pad_token_id,
+        ),
+        "attention_mask": pad_sequence(
+            [f["attention_mask"] for f in features], batch_first=True, padding_value=0
+        ),
+        "labels": pad_sequence(
+            [f["labels"] for f in features], batch_first=True, padding_value=-100
+        ),
     }
 
 
@@ -192,24 +235,34 @@ class CheckpointUploadCallback(TrainerCallback):
         ckpt_dir = f"{args.output_dir}/checkpoint-{state.global_step}"
         if os.path.isdir(ckpt_dir) and HF_TOKEN:
             print(f"[CHECKPOINT UPLOAD] Launching async upload: {ckpt_dir}")
-            subprocess.Popen([
-                sys.executable, "/workspace/logos-checkpoint-upload.py",
-                ckpt_dir, "--repo", HF_CHECKPOINT_REPO,
-                "--max-checkpoints", str(MAX_HF_CHECKPOINTS),
-            ])
+            subprocess.Popen(
+                [
+                    sys.executable,
+                    "/workspace/logos-checkpoint-upload.py",
+                    ckpt_dir,
+                    "--repo",
+                    HF_CHECKPOINT_REPO,
+                    "--max-checkpoints",
+                    str(MAX_HF_CHECKPOINTS),
+                ]
+            )
 
 
 # === B-5 FIX: Signal handler — set flag, DON'T exit ===
 # Let Trainer save at next checkpoint or at end
 _preemption_received = False
 
+
 def signal_handler(signum, frame):
     global _preemption_received
     _preemption_received = True
     sig_name = signal.Signals(signum).name
-    print(f"\n[SIGNAL] Received {sig_name} — preemption flag set. Trainer will save at next checkpoint.")
+    print(
+        f"\n[SIGNAL] Received {sig_name} — preemption flag set. Trainer will save at next checkpoint."
+    )
     # DO NOT call sys.exit(1) — that kills Trainer before save
     # The Trainer will see the flag on next iteration
+
 
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
@@ -240,19 +293,27 @@ training_args = TrainingArguments(
     report_to="none",
 )
 
-trainer = Trainer(model=model, args=training_args, train_dataset=train_ds,
-                  eval_dataset=eval_ds, processing_class=tokenizer,
-                  data_collator=collate,
-                  callbacks=[CheckpointUploadCallback()])
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_ds,
+    eval_dataset=eval_ds,
+    processing_class=tokenizer,
+    data_collator=collate,
+    callbacks=[CheckpointUploadCallback()],
+)
 
 # Auto-resume from latest checkpoint (safer parsing)
-import glob as _glob
-_ckpts = sorted(_glob.glob(f"{OUTPUT_DIR}/checkpoint-*"), key=lambda p: int(os.path.basename(p).split("-")[-1]))
+import glob as _glob  # noqa: E402 — kept beside the code that uses it
+
+_ckpts = sorted(
+    _glob.glob(f"{OUTPUT_DIR}/checkpoint-*"), key=lambda p: int(os.path.basename(p).split("-")[-1])
+)
 _resume = _ckpts[-1] if _ckpts else None
 if _resume:
     print(f"Resuming from {_resume}")
 
-print(f"Starting 70B SFT v3.1 (ZeRO-3, direct HF upload, signal-safe)...")
+print("Starting 70B SFT v3.1 (ZeRO-3, direct HF upload, signal-safe)...")
 print(f"Dataset: {len(train_ds)} rows, effective batch: 8")
 print(f"Total steps: ~{len(train_ds) * 3 // 8}")
 t0 = time.time()
@@ -265,11 +326,14 @@ adapter_size_mb = 0.0
 try:
     model.save_pretrained(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
-    adapter_size_mb = sum(
-        os.path.getsize(os.path.join(adapter_dir, f))
-        for f in os.listdir(adapter_dir)
-        if os.path.isfile(os.path.join(adapter_dir, f))
-    ) / 1e6
+    adapter_size_mb = (
+        sum(
+            os.path.getsize(os.path.join(adapter_dir, f))
+            for f in os.listdir(adapter_dir)
+            if os.path.isfile(os.path.join(adapter_dir, f))
+        )
+        / 1e6
+    )
     print(f"Adapter saved to {adapter_dir} ({adapter_size_mb:.1f} MB)")
 except Exception as e:
     print(f"[ADAPTER SAVE ERROR] {e}")
@@ -290,6 +354,7 @@ if HF_TOKEN:
     print("\n=== DIRECT HF UPLOAD ===")
     try:
         from huggingface_hub import HfApi
+
         api = HfApi()
 
         api.create_repo(HF_REPO, token=HF_TOKEN, repo_type="model", exist_ok=True)
@@ -309,7 +374,7 @@ if HF_TOKEN:
         print(f"Files in repo ({len(files)}):")
         for f in sorted(files):
             print(f"  {f}")
-        expected = ['adapter_config.json', 'adapter_model.safetensors', 'tokenizer.json']
+        expected = ["adapter_config.json", "adapter_model.safetensors", "tokenizer.json"]
         missing = [f for f in expected if f not in files]
         if missing:
             print(f"WARNING: Missing expected files: {missing}")

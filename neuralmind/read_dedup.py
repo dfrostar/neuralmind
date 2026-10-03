@@ -1,186 +1,269 @@
-"""read_dedup.py — Deduplicate repeated reads of unchanged files.
+"""read_dedup.py — Replace a repeat read of an unchanged file with a short stub.
 
-When the agent reads the same file multiple times in a session, only the
-first read needs to be full. Subsequent reads of the unchanged file are
-replaced with a compact stub (lean-ctx's ctx_read dedup pattern).
+In a long session an agent often reads a file it already has in context. The
+``compress-read`` PostToolUse hook action uses this module to shorten that
+repeat read: Claude Code's ``updatedToolOutput`` field replaces a tool result
+before the model sees it, provided the value matches the tool's output shape
+(for Read, ``{"type": "text", "file": {"filePath", "content", ...}}``). A value
+that doesn't match is ignored and the original result goes through, so a
+schema change in Claude Code degrades to "no dedup", never to a broken read.
 
-This is implemented as a pre-read hook: when a file read is attempted,
-we check if the file's content hash matches a cached hash. If it does,
-we return a stub summary instead of the full content, saving tokens.
+What counts as a repeat, and what keeps it safe:
 
-Design:
-- Content-hash based (SHA-256) — detects any change.
-- Cache stored in .neuralmind/read_cache.json.
-- Max cache entries: 1,000 (LRU eviction).
-- Auto-invalidate after 1 hour (staleness check).
+- **Scope** — one Claude Code session and one agent: rows are keyed on the
+  hook payload's ``session_id`` plus ``agent_id``, which Claude Code sets
+  inside subagents (a subagent's reads never enter the main conversation's
+  context, and vice versa). A payload without a session id is never deduped.
+- **Identity** — the SHA-256 of the exact text the Read returned, plus the
+  read's ``offset``/``limit``/``pages``: another range of the same file is a
+  different read, and any change to the file is a different hash.
+- **Liveness** — a stub is never followed by another stub for the same read.
+  The next repeat passes through in full, so an agent whose earlier copy has
+  left its context gets the file back by reading it again.
+- **Context resets** — the ``session-start`` and ``pre-compact`` hook actions
+  drop the session's rows (:meth:`ReadCache.clear_session`): after a
+  compaction or ``/clear`` the earlier result is gone from the context.
+- **Age** — a full read older than ``MAX_AGE_SECS`` doesn't count.
+- **Size** — reads shorter than ``MIN_CHARS`` are never stubbed; the stub
+  would cost about as much as the content it replaces.
 
-The dedup cache is shared across the session by the SessionTracker.
+Storage: ``<project>/.neuralmind/read_cache.db`` (stdlib SQLite). Each
+check-and-record runs in one ``BEGIN IMMEDIATE`` transaction, so parallel
+hook processes for the same session can't interleave a read's state.
 """
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
-import logging
-import os
+import sqlite3
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+# Reads shorter than this are never stubbed (the stub is ~350 characters).
+MIN_CHARS = 2000
+# A full read older than this no longer counts as "already in context".
+MAX_AGE_SECS = 3600
+# prune() drops rows untouched for this long, and caps the table at MAX_ROWS.
+PRUNE_AGE_SECS = 86400
+MAX_ROWS = 5000
 
-# Defaults
-DEFAULT_MAX_CACHE_ENTRIES = 1000
-DEFAULT_MAX_AGE_SECS = 3600  # 1 hour
+READ_CACHE_FILENAME = "read_cache.db"
 
-# Stub template for deduplicated reads
-READ_STUB_TEMPLATE = """[DEDUP] File {path} read {n} times.
-Content unchanged since {first_read}.
-Use `read_file` for full content if needed."""
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS reads (
+    session_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL,
+    view TEXT NOT NULL DEFAULT '',
+    content_hash TEXT NOT NULL,
+    reads INTEGER NOT NULL DEFAULT 1,
+    delivered_at REAL NOT NULL,
+    last_seen REAL NOT NULL,
+    stubbed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (session_id, agent_id, path, view)
+);
+CREATE INDEX IF NOT EXISTS idx_reads_last_seen ON reads(last_seen);
+"""
 
 
-def _env_int(name: str, default: int) -> int:
-    """Read an int from the environment, falling back on unset/malformed."""
-    try:
-        return int(os.environ[name])
-    except (KeyError, ValueError):
-        return default
+@dataclass(frozen=True)
+class RepeatRead:
+    """A read that repeats the last full read of the same content.
+
+    Attributes:
+        reads: Times this content has been read in this session, this one included.
+        delivered_at: When the agent last received the content in full (epoch).
+    """
+
+    reads: int
+    delivered_at: float
 
 
-def file_hash(path: str | Path) -> str | None:
-    """Return the SHA-256 hash of a file's contents, or None if unreadable."""
-    try:
-        with open(path, "rb") as f:
-            content = f.read()
-        return hashlib.sha256(content).hexdigest()
-    except Exception:
+def read_cache_path(project_path: str | Path) -> Path:
+    """Path of the project's read-dedup database."""
+    return Path(project_path) / ".neuralmind" / READ_CACHE_FILENAME
+
+
+def content_hash(text: str) -> str:
+    """SHA-256 of the text a Read returned."""
+    return hashlib.sha256(text.encode("utf-8", errors="surrogatepass")).hexdigest()
+
+
+def read_view(tool_input: dict) -> str:
+    """The part of a file a Read asked for, as a stable key ("" for a plain read)."""
+    view = [tool_input.get(key) for key in ("offset", "limit", "pages")]
+    if not any(v not in (None, "", 0) for v in view):
+        return ""
+    return json.dumps(view, sort_keys=True, default=str)
+
+
+def find_read_text(tool_response: Any) -> str | None:
+    """The text a Read returned, or None when there is no text to dedup.
+
+    Claude Code nests a text read under ``file.content``; the older flat
+    ``{"content": ...}`` shape is accepted too. Images, notebooks and PDFs
+    carry no ``content`` string and are never deduped.
+    """
+    if not isinstance(tool_response, dict):
         return None
+    file_part = tool_response.get("file")
+    if isinstance(file_part, dict):
+        text = file_part.get("content")
+        return text if isinstance(text, str) else None
+    text = tool_response.get("content")
+    return text if isinstance(text, str) else None
+
+
+def replace_read_text(tool_response: dict, new_text: str) -> dict:
+    """Copy of ``tool_response`` with its text swapped for ``new_text``.
+
+    Only the text (and, in Claude Code's shape, the line count that describes
+    it) changes, so the value keeps the shape of the tool's own output.
+    """
+    updated = copy.deepcopy(tool_response)
+    file_part = updated.get("file")
+    if isinstance(file_part, dict):
+        file_part["content"] = new_text
+        if isinstance(file_part.get("numLines"), int):
+            file_part["numLines"] = new_text.count("\n") + 1
+    else:
+        updated["content"] = new_text
+    return updated
+
+
+def dedup_stub(file_path: str, repeat: RepeatRead, project_path: str | Path | None = None) -> str:
+    """The text an agent sees in place of a repeat read."""
+    shown = str(file_path)
+    if project_path:
+        try:
+            shown = str(Path(file_path).resolve().relative_to(Path(project_path).resolve()))
+        except (ValueError, OSError):
+            pass
+    at = time.strftime("%H:%M:%S", time.localtime(repeat.delivered_at))
+    return (
+        f"[neuralmind read-dedup] {shown} is unchanged since you read it at {at} in "
+        "this session, so that earlier result is still current and this repeat "
+        "read was shortened. If the earlier result is no longer in your context, "
+        "read the file again: the next read returns it in full."
+    )
 
 
 class ReadCache:
-    """Track file reads and detect duplicates.
+    """Per-project record of which reads each session has already received."""
 
-    Attributes:
-        cache_dir: Directory where the JSON cache lives.
-        entries: Dict mapping file path -> {hash, count, first_read, last_read}.
-        max_entries: Maximum cache entries before LRU eviction.
-        max_age_secs: Staleness threshold for entries.
-    """
+    def __init__(self, project_path: str | Path):
+        self.db_path = read_cache_path(project_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = self._connect()
+        try:
+            conn.executescript(_SCHEMA)
+        finally:
+            conn.close()
 
-    def __init__(
+    def _connect(self) -> sqlite3.Connection:
+        # A short busy timeout: a hook must never stall a tool call. On
+        # contention the caller's try/except treats the read as a miss.
+        conn = sqlite3.connect(self.db_path, timeout=1.0, isolation_level=None)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
+
+    def observe(
         self,
-        project_path: str | Path,
-        max_entries: int = _env_int("NEURALMIND_MAX_READ_CACHE", DEFAULT_MAX_CACHE_ENTRIES),
-        max_age_secs: int = _env_int("NEURALMIND_MAX_READ_AGE_SECS", DEFAULT_MAX_AGE_SECS),
-    ):
-        self.project_path = Path(project_path)
-        self.cache_dir = self.project_path / ".neuralmind" / "read_cache"
-        self.max_entries = max_entries
-        self.max_age_secs = max_age_secs
-        self.entries: dict[str, dict[str, Any]] = {}
-        self._load()
+        session_id: str,
+        agent_id: str,
+        path: str,
+        view: str,
+        digest: str,
+        now: float | None = None,
+    ) -> RepeatRead | None:
+        """Record a read and say whether it repeats the last full delivery.
 
-    def _cache_file(self) -> Path:
-        return self.cache_dir / "read_cache.json"
-
-    def _load(self) -> None:
-        """Load the cache from disk."""
+        Returns a :class:`RepeatRead` when the same agent in the same session
+        already received this exact content less than ``MAX_AGE_SECS`` ago and
+        that delivery wasn't itself followed by a stub. Otherwise records the
+        read as a full delivery and returns None.
+        """
+        ts = time.time() if now is None else now
+        conn = self._connect()
         try:
-            path = self._cache_file()
-            if path.exists():
-                self.entries = json.loads(path.read_text(encoding="utf-8"))
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT content_hash, reads, delivered_at, stubbed FROM reads "
+                "WHERE session_id = ? AND agent_id = ? AND path = ? AND view = ?",
+                (session_id, agent_id, path, view),
+            ).fetchone()
+            key = (session_id, agent_id, path, view)
+            if row is None or row[0] != digest or ts - row[2] > MAX_AGE_SECS:
+                conn.execute(
+                    "INSERT OR REPLACE INTO reads (session_id, agent_id, path, view, "
+                    "content_hash, reads, delivered_at, last_seen, stubbed) "
+                    "VALUES (?, ?, ?, ?, ?, 1, ?, ?, 0)",
+                    (*key, digest, ts, ts),
+                )
+                repeat = None
+            elif row[3]:
+                # The previous repeat was stubbed: this one goes through in
+                # full, so re-reading always recovers the content.
+                conn.execute(
+                    "UPDATE reads SET reads = reads + 1, delivered_at = ?, last_seen = ?, "
+                    "stubbed = 0 WHERE session_id = ? AND agent_id = ? AND path = ? "
+                    "AND view = ?",
+                    (ts, ts, *key),
+                )
+                repeat = None
+            else:
+                conn.execute(
+                    "UPDATE reads SET reads = reads + 1, last_seen = ?, stubbed = 1 "
+                    "WHERE session_id = ? AND agent_id = ? AND path = ? AND view = ?",
+                    (ts, *key),
+                )
+                repeat = RepeatRead(reads=int(row[1]) + 1, delivered_at=float(row[2]))
+            conn.execute("COMMIT")
+            return repeat
         except Exception:
-            self.entries = {}
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
 
-    def _save(self) -> None:
-        """Persist the cache to disk."""
+    def clear_session(self, session_id: str) -> int:
+        """Forget every read in a session (all its agents). Returns rows removed."""
+        conn = self._connect()
         try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            path = self._cache_file()
-            path.write_text(json.dumps(self.entries, indent=2), encoding="utf-8")
-        except Exception as e:
-            logger.warning("[read_dedup] failed to save cache: %s", e)
+            return conn.execute("DELETE FROM reads WHERE session_id = ?", (session_id,)).rowcount
+        finally:
+            conn.close()
 
-    def _evict_lru(self) -> None:
-        """Evict least-recently-used entries when over capacity."""
-        if len(self.entries) <= self.max_entries:
-            return
-        # Sort by last_read ascending
-        sorted_entries = sorted(self.entries.items(), key=lambda kv: kv[1].get("last_read", 0))
-        # Remove oldest 10%
-        n_remove = max(1, len(sorted_entries) // 10)
-        for path, _ in sorted_entries[:n_remove]:
-            del self.entries[path]
-        logger.debug("[read_dedup] evicted %d LRU entries", n_remove)
-
-    def _is_stale(self, entry: dict) -> bool:
-        """Check if an entry has exceeded the staleness threshold."""
-        last_read = entry.get("last_read", 0)
-        return (time.time() - last_read) > self.max_age_secs
-
-    def get(self, path: str | Path) -> dict | None:
-        """Check if a file has been read and its content unchanged."""
-        path_key = str(path)
-        entry = self.entries.get(path_key)
-        if not entry:
-            return None
-        if self._is_stale(entry):
-            del self.entries[path_key]
-            return None
-        current_hash = file_hash(path_key)
-        if current_hash != entry.get("hash"):
-            # File changed — invalidate
-            del self.entries[path_key]
-            return None
-        # Update last_read and count
-        entry["last_read"] = time.time()
-        entry["count"] = entry.get("count", 1) + 1
-        self._save()
-        return entry
-
-    def put(self, path: str | Path, content_hash: str | None = None) -> None:
-        """Record that a file was read at this content state."""
-        path_key = str(path)
-        if content_hash is None:
-            content_hash = file_hash(path_key)
-        if content_hash is None:
-            return
-        self.entries[path_key] = {
-            "hash": content_hash,
-            "count": 1,
-            "first_read": time.time(),
-            "last_read": time.time(),
-        }
-        self._evict_lru()
-        self._save()
-
-    def clear(self) -> None:
-        """Clear the entire cache."""
-        self.entries = {}
+    def prune(self, now: float | None = None) -> int:
+        """Drop rows untouched for ``PRUNE_AGE_SECS``, then cap at ``MAX_ROWS``."""
+        ts = time.time() if now is None else now
+        conn = self._connect()
         try:
-            path = self._cache_file()
-            if path.exists():
-                path.unlink()
-        except Exception:
-            pass
+            removed = conn.execute(
+                "DELETE FROM reads WHERE last_seen < ?", (ts - PRUNE_AGE_SECS,)
+            ).rowcount
+            removed += conn.execute(
+                "DELETE FROM reads WHERE rowid IN (SELECT rowid FROM reads "
+                "ORDER BY last_seen DESC LIMIT -1 OFFSET ?)",
+                (MAX_ROWS,),
+            ).rowcount
+            return removed
+        finally:
+            conn.close()
 
     def stats(self) -> dict:
-        """Return cache statistics."""
-        total_reads = sum(e.get("count", 1) for e in self.entries.values())
-        return {
-            "entries": len(self.entries),
-            "total_reads": total_reads,
-            "max_entries": self.max_entries,
-            "max_age_secs": self.max_age_secs,
-        }
-
-
-def get_dedup_stub(entry: dict, path: str | Path) -> str:
-    """Get a deduplicated read stub for a cached file."""
-    count = entry.get("count", 1)
-    first_read = entry.get("first_read", 0)
-    return READ_STUB_TEMPLATE.format(
-        path=Path(path).name,
-        n=count,
-        first_read=time.strftime("%H:%M:%S", time.localtime(first_read)),
-    )
+        """Row and session counts, for diagnostics."""
+        conn = self._connect()
+        try:
+            rows, sessions = conn.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT session_id) FROM reads"
+            ).fetchone()
+        finally:
+            conn.close()
+        return {"rows": int(rows), "sessions": int(sessions), "db_path": str(self.db_path)}
