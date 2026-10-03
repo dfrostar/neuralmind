@@ -35,7 +35,7 @@ image, or audio files for indexing:
   programming-language source extensions (Python, TypeScript, Go, Rust,
   Java, C, C++, C#, Ruby, PHP) plus Markdown. Anything else is skipped.
 - **Free-form document ingestion** (`neuralmind/document_ingestion.py`,
-  used by `neuralmind ingest-document` / `NeuralMind.ingest_document()`)
+  used by `neuralmind ingest` / `NeuralMind.ingest_document()`)
   accepts only PDF, Markdown, and plain text, capped at 10MB per file, and
   actively **rejects binary content presented under a text-like
   extension** via magic-byte sniffing — a guard built specifically to stop
