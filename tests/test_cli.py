@@ -882,10 +882,16 @@ class TestCLIBenchmark:
         json_text = "\n".join(lines[json_start:])
         data = json.loads(json_text)
         assert data["baseline"]["source"] == "measured"
-        assert data["estimated_full_codebase_tokens"] == data["baseline"]["tokens"]
+        assert data["full_codebase_tokens"] == data["baseline"]["tokens"]
         assert data["avg_reduction_ratio"] == pytest.approx(
             data["baseline"]["tokens"] / data["avg_query_tokens"], abs=0.1
         )
+        # The fixed estimate rides along, so older numbers stay comparable —
+        # and every question's two ratios come from its own token count.
+        assert data["estimated_full_codebase_tokens"] == 50_000
+        for r in data["results"]:
+            assert r["reduction"] == round(data["full_codebase_tokens"] / r["tokens"], 1)
+            assert r["legacy_reduction"] == round(50_000 / r["tokens"], 1)
 
         args.naive_50k = True
         cmd_benchmark(args)

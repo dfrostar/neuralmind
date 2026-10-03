@@ -316,7 +316,7 @@ function compareEntries(a, b, key, numeric) {
 function renderTable() {
     const body = document.getElementById('submissions-body');
     if (tableEntries.length === 0) {
-        body.innerHTML = '<tr><td colspan="10" class="placeholder">No submissions yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="11" class="placeholder">No submissions yet.</td></tr>';
         return;
     }
     const th = document.querySelector(`#submissions-table th[data-key="${sortState.key}"]`);
@@ -340,6 +340,7 @@ function renderTable() {
             <td>${escapeHtml(e.language)}</td>
             <td class="num">${fmtNumber(e.nodes)}</td>
             <td class="num"><strong>${fmtRatio(e.avg_reduction_ratio)}</strong></td>
+            <td class="num">${e.measured_avg_reduction_ratio ? fmtRatio(e.measured_avg_reduction_ratio) : '—'}</td>
             <td class="num">${e.avg_wakeup_tokens ? fmtNumber(e.avg_wakeup_tokens) : '—'}</td>
             <td class="num">${e.avg_query_tokens ? fmtNumber(e.avg_query_tokens) : '—'}</td>
             <td>${escapeHtml(e.model || '—')}</td>
@@ -387,7 +388,7 @@ function renderError(err) {
     }
     const body = document.getElementById('submissions-body');
     if (body) {
-        body.innerHTML = `<tr><td colspan="10" class="placeholder">Load failed: ${escapeHtml(err.message)}.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="11" class="placeholder">Load failed: ${escapeHtml(err.message)}.</td></tr>`;
     }
 }
 

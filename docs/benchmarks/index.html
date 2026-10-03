@@ -20,7 +20,7 @@
       "@context": "https://schema.org",
       "@type": "Dataset",
       "name": "NeuralMind community benchmarks",
-      "description": "Community-submitted, schema-validated token-reduction measurements produced by running `neuralmind benchmark . --json` on real repositories and contributed via pull request.",
+      "description": "Community-submitted, schema-validated token-reduction measurements produced by running `neuralmind benchmark . --contribute` on real repositories and contributed via pull request. Every row reports its ratio against the CLI's fixed 50,000-token estimate; v4.5.0+ rows also report it against the repository's measured code.",
       "url": "https://docs.neuralmind.uk/benchmarks/",
       "isAccessibleForFree": true,
       "license": "https://opensource.org/licenses/MIT",
@@ -82,7 +82,7 @@
         <div class="band-stat"><b>85–100%</b><span>gold-file recall on pinned real OSS repos</span></div>
         <div class="band-stat"><b>45–261×</b><span>fewer tokens than pasting whole files</span></div>
         <div class="band-stat"><b>40</b><span>pre-registered queries — every one reported</span></div>
-        <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos</span></div>
+        <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos, vs the CLI's fixed 50K-token estimate</span></div>
     </div>
 </div>
 
@@ -215,7 +215,7 @@ python -m evals.public.run">Copy</button>
 
         <div class="chart-card">
             <h3>Does the ratio hold as repos get bigger?</h3>
-            <p>Each point is one submission — graph node count (a proxy for codebase size) against the average reduction ratio vs loading the whole repo. Hover any point for the project, language, and exact numbers.</p>
+            <p>Each point is one submission — graph node count (a proxy for codebase size) against the average reduction ratio vs the CLI's fixed 50,000-token estimate, the one ratio every row shares. That ratio is 50,000 ÷ tokens per question, so this chart shows how context size moves with repo size, not the ratio against each repo's own code: v4.5.0+ submissions add that, in the table below. Hover any point for the project, language, and exact numbers.</p>
             <div class="chart-wrap"><canvas id="scatter" role="img" aria-label="Scatter chart of reduction ratio by codebase size; the same data is in the submissions table below"></canvas></div>
         </div>
 
@@ -226,7 +226,7 @@ python -m evals.public.run">Copy</button>
         </div>
 
         <h3 style="margin: 2.2rem 0 0.4rem;">All submissions</h3>
-        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 1.2rem; max-width: 52rem;">The dataset behind both charts. The verification command for every row is <code>neuralmind benchmark . --json</code> — run it on your own repo and the numbers should reproduce in the same range.</p>
+        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 1.2rem; max-width: 52rem;">The dataset behind both charts. On v4.5.0+, <code>neuralmind benchmark . --naive-50k --json</code> reproduces a row's fixed-estimate ratio and <code>neuralmind benchmark . --json</code> its ratio against the measured code — run them on your own repo and the numbers should reproduce in the same range.</p>
         <div class="table-wrap">
             <table id="submissions-table">
                 <thead>
@@ -234,7 +234,8 @@ python -m evals.public.run">Copy</button>
                         <th data-key="project_name">Project</th>
                         <th data-key="language">Language</th>
                         <th class="num" data-key="nodes" data-type="num">Nodes</th>
-                        <th class="num" data-key="avg_reduction_ratio" data-type="num">Reduction</th>
+                        <th class="num" data-key="avg_reduction_ratio" data-type="num">vs 50K est.</th>
+                        <th class="num" data-key="measured_avg_reduction_ratio" data-type="num">vs measured code</th>
                         <th class="num" data-key="avg_wakeup_tokens" data-type="num">Wakeup tok</th>
                         <th class="num" data-key="avg_query_tokens" data-type="num">Query tok</th>
                         <th data-key="model">Model</th>
@@ -244,7 +245,7 @@ python -m evals.public.run">Copy</button>
                     </tr>
                 </thead>
                 <tbody id="submissions-body">
-                    <tr><td colspan="10" class="placeholder">Loading submissions…</td></tr>
+                    <tr><td colspan="11" class="placeholder">Loading submissions…</td></tr>
                 </tbody>
             </table>
         </div>
