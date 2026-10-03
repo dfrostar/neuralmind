@@ -16,7 +16,8 @@ description: "Honest comparison of NeuralMind against Mem0 and Zep/Graphiti, the
 > here — gold-file recall doesn't apply to either tool, the same "wrong
 > axis" situation as our [Headroom comparison](./vs-headroom.md). All
 > Mem0/Zep/Graphiti figures below are their own published numbers or
-> public repo state, not something we measured. Assessed September 2026;
+> public repo state, not something we measured. Assessed September 2026,
+> updated October 2026 to cover mem0's OpenMemory MCP server;
 > both projects ship fast — re-check before relying on specifics.
 
 ## What Mem0 is
@@ -29,9 +30,23 @@ function: extraction defaults to a hosted OpenAI model, and its April 2026
 rework moved to a single-pass "ADD-only" extraction call rather than
 separate update/delete passes. Retrieval combines semantic search, BM25
 keyword matching, and entity linking over embeddings (OpenAI's
-`text-embedding-3-small` by default, swappable). It ships three ways: a
-pip/npm library for prototyping, a self-hosted Docker server, and a hosted
-Mem0 Platform.
+`text-embedding-3-small` by default, swappable). It ships four ways: a
+pip/npm library for prototyping, a self-hosted Docker server, a hosted
+Mem0 Platform, and OpenMemory, a local MCP server.
+
+### OpenMemory: mem0's local MCP server
+
+[OpenMemory](https://mem0.ai/openmemory-mcp) is the part of mem0 closest to
+how NeuralMind is used. It is an MCP server for Claude Desktop, Cursor and
+other MCP clients that keeps one shared memory across them, stored on your
+machine. It runs locally in Docker (an API, Postgres, Qdrant and a
+dashboard) and exposes `add_memories`, `search_memory`, `list_memories` and
+`delete_all_memories`. Its documented setup
+([quickstart](https://docs.mem0.ai/openmemory/quickstart)) requires an
+`OPENAI_API_KEY`; as noted above, mem0's default extraction and embedding
+models are OpenAI's.
+Like the rest of mem0, it remembers what you and your tools tell it; it does
+not parse or index source code.
 
 ## What Zep (and Graphiti) is
 
@@ -118,7 +133,7 @@ same questions.
 | Team/cross-agent portability | Per-deployment store | Per-deployment graph | Git-portable: `.neuralmind-team-memory.json`, markdown export |
 | Code-retrieval / progressive disclosure | No | No | Yes — L0→L3, ~800 tokens/query |
 | Tool-output compression | No | No | Yes — `PostToolUse` on `Read`/`Bash`/`Grep` |
-| Distribution | pip/npm, Docker, hosted platform | Graphiti: pip, self-hosted. Zep: hosted only | PyPI, Docker, VS Code extension, MCP |
+| Distribution | pip/npm, Docker, hosted platform, OpenMemory (local MCP server) | Graphiti: pip, self-hosted. Zep: hosted only | PyPI, Docker, VS Code extension, MCP |
 | License | Apache 2.0 | Apache 2.0 (Graphiti); Zep Cloud proprietary | MIT (core); source-available commercial modules for the Team tier |
 | GitHub stars (point-in-time) | 65k+ | Graphiti ~31k; Zep (examples repo) ~4.9k | — |
 
@@ -128,6 +143,11 @@ same questions.
 and need it to remember user preferences, facts, or history across
 sessions — the "what did the user tell me" problem. NeuralMind has
 nothing to offer there; it has never seen a chat message.
+
+**Pick OpenMemory if:** you want one memory of preferences, notes and facts
+shared across Claude Desktop, Cursor and other MCP clients on your machine,
+and its OpenAI-backed default setup is acceptable to you. It doesn't index
+code, so it sits alongside NeuralMind rather than replacing it.
 
 **Pick Zep Cloud (or self-hosted Graphiti) if:** you need entity memory
 with genuine temporal reasoning — "what was true, and when, and what
