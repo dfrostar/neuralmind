@@ -18,6 +18,7 @@ import re
 import time
 from pathlib import Path
 
+from . import ignore as _ignore
 from .content_node import ContentNode
 from .secret_scan import redact_if_enabled
 
@@ -50,117 +51,11 @@ CHUNK_SIZE = 500  # chars per chunk
 CHUNK_OVERLAP = 50  # chars overlap between chunks
 
 
-def _load_ignore_patterns(project_path: Path, filename: str) -> tuple[str, ...]:
-    """Load .gitignore-style patterns from ``filename`` under ``project_path``."""
-    ignore_path = project_path / filename
-    if not ignore_path.exists():
-        return ()
-    try:
-        content = ignore_path.read_text(encoding="utf-8")
-    except OSError:
-        return ()
-
-    patterns: list[str] = []
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        patterns.append(line)
-    return tuple(patterns)
-
-
-def _gitignore_pattern_regex(pattern: str):
-    """Translate one .gitignore pattern to a regex matching a repo-relative path.
-
-    Implements the semantics that matter for ingestion filtering:
-    - A trailing ``/`` means directory-only; the pattern matches the dir
-      path itself or anything under it.
-    - A leading ``/`` anchors the pattern to the repo root.
-    - A ``/`` anywhere else also anchors the pattern (gitignore rule).
-    - Without a ``/``, the pattern matches the basename at any depth.
-    - ``**`` matches across path separators; ``*``/``?`` do not cross ``/``.
-    Returns None for empty/comment patterns.
-    """
-    p = pattern.strip()
-    if not p or p.startswith("#"):
-        return None
-    dir_only = p.endswith("/")
-    if dir_only:
-        p = p.rstrip("/")
-    rooted = p.startswith("/")
-    if rooted:
-        p = p.lstrip("/")
-    # A '/' anywhere in the pattern anchors it to the repo root
-    # (gitignore rule), except the '**/' prefix which means "any depth".
-    leading_dstar = p.startswith("**/")
-    anchored = rooted or ("/" in p and not leading_dstar)
-    if leading_dstar:
-        p = p[3:]
-
-    out = ["^"]
-    i = 0
-    while i < len(p):
-        c = p[i]
-        if c == "*":
-            if i + 1 < len(p) and p[i + 1] == "*":
-                if i + 2 < len(p) and p[i + 2] == "/":
-                    out.append("(?:[^/]+/)*")
-                    i += 3
-                else:
-                    out.append(".*")
-                    i += 2
-            else:
-                out.append("[^/]*")
-                i += 1
-        elif c == "?":
-            out.append("[^/]")
-            i += 1
-        elif c in ".[](){}+^$|\\":
-            out.append("\\" + c)
-            i += 1
-        else:
-            out.append(c)
-            i += 1
-    out.append("$")
-    body = "".join(out)
-
-    if anchored:
-        if dir_only:
-            return re.compile(body[:-1] + "(?:/.*)?$")
-        return re.compile(body)
-
-    # Unanchored patterns match at any depth. For a file pattern this is a
-    # basename match anywhere; the same glob ALSO matches a directory name
-    # anywhere (gitignore: "temp*" ignores a/temporary/x; "**/name" matches
-    # both nested/name/x and bare name).
-    prefix = "^(?:.*/)?" if leading_dstar else "^(?:.*/)?"
-    if dir_only:
-        return re.compile(prefix + body[1:-1] + "(?:/.*)?$")
-    # file-or-dir: basename match anywhere, or the glob as a directory
-    # name anywhere with anything under it ("temp*" ignores a/temporary/x)
-    return re.compile(prefix + body[1:] + "|" + prefix + body[1:-1] + "(?:/.*)?$")
-
-
-def _matches_ignore(rel_path: str, patterns: tuple) -> bool:
-    """Check if project-relative ``rel_path`` matches any ignore pattern.
-
-    Follows gitignore's last-matching-pattern-wins semantics, including
-    negation (``!pattern``) re-inclusion.
-    """
-    if not patterns:
-        return False
-
-    ignored = False
-    for pattern in patterns:
-        negated = pattern.startswith("!")
-        if negated:
-            pattern = pattern[1:].strip()
-            if not pattern:
-                continue
-        rx = _gitignore_pattern_regex(pattern)
-        if rx is not None and rx.match(rel_path):
-            ignored = not negated
-    return ignored
+# gitignore semantics live in neuralmind.ignore, shared with the code-graph
+# walk so .gitignore and .neuralmindignore mean the same thing everywhere.
+_load_ignore_patterns = _ignore.load_patterns
+_gitignore_pattern_regex = _ignore.pattern_regex
+_matches_ignore = _ignore.matches
 
 
 def _validate_path(path: Path, root: Path) -> Path:

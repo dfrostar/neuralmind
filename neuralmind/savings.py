@@ -43,6 +43,7 @@ def compute_savings(
     cost: bool = False,
     model: str | None = None,
     queries_per_day: int = 100,
+    naive_50k: bool = False,
 ) -> dict[str, Any]:
     """Aggregate logged query/wakeup events into a savings report.
 
@@ -56,7 +57,13 @@ def compute_savings(
     if not events_file.exists():
         return {"error": "no event log found", "path": str(events_file)}
 
-    est_full = BASELINE_TOKENS_PER_QUERY
+    # The per-query "without NeuralMind" cost: the measured token count of
+    # this project's indexed files (see neuralmind.baseline). The global view
+    # spans many projects, so it keeps the fixed estimate, labelled as such.
+    from . import baseline as baseline_mod
+
+    base = baseline_mod.resolve(project_path, naive_50k=naive_50k or use_global)
+    est_full = int(base["tokens"])
     queries: list[dict[str, Any]] = []
     wakeups: list[dict[str, Any]] = []
     try:
@@ -75,6 +82,10 @@ def compute_savings(
                 # 2. query_events.jsonl: {event_type, retrieval_summary: {...}, ...}
                 if "details" in rec and "action" in rec:
                     details = rec.get("details", {})
+                    # Read-only queries (evals, benchmarks) measure; they
+                    # aren't usage, so they don't count as savings.
+                    if isinstance(details, dict) and details.get("learn") is False:
+                        continue
                     tokens = details.get("tokens", 0)
                     search_hits = details.get("search_hits", 0)
                     # Audit log doesn't store reduction_ratio; estimate from tokens
@@ -94,7 +105,7 @@ def compute_savings(
                 else:
                     rs = rec.get("retrieval_summary", {})
                     tokens = rs.get("tokens", 0)
-                    ratio = rs.get("reduction_ratio", 0.0)
+                    ratio = est_full / tokens if tokens > 0 else rs.get("reduction_ratio", 0.0)
                     if rec.get("event_type") == "wakeup":
                         wakeups.append({"tokens": tokens, "ratio": ratio})
                     else:
@@ -128,7 +139,14 @@ def compute_savings(
         "est_total_full_cost": total_full_cost,
         "total_tokens_saved": total_saved,
         "avg_reduction_ratio": round(avg_ratio, 1),
-        "baseline_disclosure": "Reduction ratios are calculated against a hardcoded assumed baseline of 50,000 tokens per query (the 'full codebase' estimate), not a measured value. Real baselines vary by codebase size.",
+        "baseline_tokens_per_query": est_full,
+        "baseline_source": base["source"],
+        "baseline_disclosure": (
+            f"Reduction ratios divide by {base['label']}."
+            if base["source"] == "measured"
+            else f"Reduction ratios divide by a {base['label']}, not a measured value. "
+            "Real baselines vary by codebase size; run `neuralmind build` to measure this one."
+        ),
         "recent_queries": queries[-5:],
     }
 
@@ -157,7 +175,7 @@ def compute_savings(
             "estimated": True,
             "basis": (
                 "with-NM cost is measured from logged tokens; without-NM (and "
-                "saved/projected) is estimated from the fixed per-query baseline"
+                f"saved/projected) is estimated from the per-query baseline ({base['label']})"
             ),
         }
 

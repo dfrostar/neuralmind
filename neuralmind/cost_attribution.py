@@ -83,6 +83,7 @@ def compute_cost_attribution(
     *,
     days: int = 30,
     cost_per_1k_tokens: float | None = None,
+    naive_50k: bool = False,
 ) -> dict[str, Any]:
     """Compute cost attribution for a project from its query event logs.
 
@@ -99,8 +100,15 @@ def compute_cost_attribution(
         - modeled_cost_savings_usd: modeled dollar savings
         - per_session: breakdown by session_id
         - daily: breakdown by day
+        - baseline_source: "measured" (the indexed files' token count from the
+          last build, see neuralmind.baseline) or "reconstructed" (from each
+          event's logged reduction ratio, i.e. the fixed 50K estimate)
     """
+    from . import baseline as baseline_mod
     from .memory import project_query_events_file
+
+    base = baseline_mod.resolve(project_path, naive_50k=naive_50k)
+    measured_baseline = int(base["tokens"]) if base["source"] == "measured" else None
 
     project_path = Path(project_path)
     project_name = project_path.name
@@ -162,7 +170,11 @@ def compute_cost_attribution(
         ts = event.get("timestamp", "")
         day_key = ts[:10] if len(ts) >= 10 else "unknown"
 
-        baseline = _baseline_tokens(tokens_used, reduction_ratio)
+        if measured_baseline is not None and tokens_used > 0:
+            baseline = measured_baseline
+            reduction_ratio = measured_baseline / tokens_used
+        else:
+            baseline = _baseline_tokens(tokens_used, reduction_ratio)
         savings = max(0, baseline - tokens_used)
 
         total_tokens_used += tokens_used
@@ -205,6 +217,7 @@ def compute_cost_attribution(
         "modeled_cost_savings_usd": round(modeled_cost_savings, 4),
         "per_session": per_session_dict,
         "daily": daily_dict,
+        "baseline_source": "measured" if measured_baseline is not None else "reconstructed",
     }
 
 

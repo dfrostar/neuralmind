@@ -10,6 +10,16 @@ project root and exposes the build-time knobs NeuralMind honors:
       - "src/**"
     exclude:          # (optional) glob denylist, applied after include
       - "**/generated/**"
+    graph_source: auto      # (default) prefer .neuralmind/graph.json, else
+                            #   graphify-out/graph.json; a graphify graph that
+                            #   fails the freshness check is replaced by a
+                            #   built-in graph at build time
+    graph_source: builtin   # always the tree-sitter graph; never read graphify-out/
+    graph_source: graphify  # only graphify-out/graph.json (teams that run graphify)
+    respect_gitignore: true # (default) index what git covers; false indexes
+                            #   gitignored files too (the pre-v4.5 behaviour)
+    include_ignored:        # (optional) globs pulled back in despite .gitignore
+      - "generated/api/**"
 
 Example:
     >>> from pathlib import Path
@@ -40,9 +50,15 @@ _CONFIG_FILENAMES = (".neuralmind.yaml", ".neuralmind.yml")
 # Valid values for ``mode``. Anything else falls back to "auto".
 _VALID_MODES = frozenset({"auto", "prose", "code"})
 
+# Valid values for ``graph_source``. Anything else falls back to "auto".
+_VALID_GRAPH_SOURCES = frozenset({"auto", "builtin", "graphify"})
+
 # Tolerant single-key scan used when PyYAML is unavailable or fails:
 # matches a top-level ``mode: value`` line, ignoring quotes and comments.
 _MODE_LINE_RE = re.compile(r"^mode:\s*['\"]?([^'\"#\s]+)['\"]?\s*(?:#.*)?$", re.MULTILINE)
+_GRAPH_SOURCE_LINE_RE = re.compile(
+    r"^graph_source:\s*['\"]?([^'\"#\s]+)['\"]?\s*(?:#.*)?$", re.MULTILINE
+)
 
 
 @dataclass(frozen=True)
@@ -55,11 +71,18 @@ class NeuralmindConfig:
         include: Glob allowlist (POSIX-style relative paths). Empty means
             "everything the walker yields".
         exclude: Glob denylist applied after ``include``.
+        graph_source: Which code graph to use — ``"auto"`` (default),
+            ``"builtin"`` (tree-sitter only) or ``"graphify"`` (graphify only).
+        respect_gitignore: Index only what git covers (default True).
+        include_ignored: Globs for gitignored paths to index anyway.
     """
 
     mode: str = "auto"
     include: tuple[str, ...] = field(default_factory=tuple)
     exclude: tuple[str, ...] = field(default_factory=tuple)
+    graph_source: str = "auto"
+    respect_gitignore: bool = True
+    include_ignored: tuple[str, ...] = field(default_factory=tuple)
 
     @classmethod
     def load(cls, project_path: str | Path) -> NeuralmindConfig:
@@ -85,11 +108,19 @@ class NeuralmindConfig:
                     mode=_normalize_mode(parsed.get("mode")),
                     include=_normalize_globs(parsed.get("include")),
                     exclude=_normalize_globs(parsed.get("exclude")),
+                    graph_source=_normalize_graph_source(parsed.get("graph_source")),
+                    respect_gitignore=_normalize_bool(parsed.get("respect_gitignore"), True),
+                    include_ignored=_normalize_globs(parsed.get("include_ignored")),
                 )
             # PyYAML missing or the document won't parse: salvage just the
-            # ``mode:`` line — globs without a real parser invite surprises.
+            # ``mode:`` and ``graph_source:`` lines — globs without a real
+            # parser invite surprises.
             match = _MODE_LINE_RE.search(text)
-            return cls(mode=_normalize_mode(match.group(1) if match else None))
+            gs_match = _GRAPH_SOURCE_LINE_RE.search(text)
+            return cls(
+                mode=_normalize_mode(match.group(1) if match else None),
+                graph_source=_normalize_graph_source(gs_match.group(1) if gs_match else None),
+            )
         return cls()
 
     def apply_globs(self, root: str | Path, files: list[Path]) -> list[Path]:
@@ -135,6 +166,30 @@ def _normalize_mode(raw: Any) -> str:
     if raw is not None and str(raw).strip().lower() in _VALID_MODES:
         return str(raw).strip().lower()
     return "auto"
+
+
+def _normalize_graph_source(raw: Any) -> str:
+    """Coerce a raw graph_source value to one of ``_VALID_GRAPH_SOURCES``."""
+    if raw is not None:
+        value = str(raw).strip().lower().replace("-", "")
+        if value == "builtin" or value == "built_in":
+            return "builtin"
+        if value in _VALID_GRAPH_SOURCES:
+            return value
+    return "auto"
+
+
+def _normalize_bool(raw: Any, default: bool) -> bool:
+    """Coerce a YAML scalar to a bool, falling back to ``default``."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"true", "yes", "on", "1"}:
+            return True
+        if value in {"false", "no", "off", "0"}:
+            return False
+    return default
 
 
 def _normalize_globs(raw: Any) -> tuple[str, ...]:

@@ -37,7 +37,7 @@ everything here is testable without the vector stack.
 
 from __future__ import annotations
 
-import random
+import hashlib
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -239,8 +239,74 @@ def sample_nodes(
         # Sort for determinism before returning the whole pool — embedder node
         # order is insertion order, which is stable, but be explicit.
         return sorted(pool, key=lambda n: str(n.get("id", "")))
-    rng = random.Random(seed)
-    return rng.sample(pool, sample_size)
+    # Stable sampling: rank every symbol by a hash of (seed, node id) and keep
+    # the lowest ``sample_size``. A symbol's place depends only on its own id,
+    # never on what else is indexed, so an unchanged symbol stays in the sample
+    # across rebuilds — a seeded random draw over the current index reshuffled
+    # the whole sample whenever the index changed, and two runs weren't
+    # comparable.
+    ranked = sorted(pool, key=lambda n: (_sample_key(seed, n), str(n.get("id", ""))))
+    return ranked[:sample_size]
+
+
+def _sample_key(seed: int, node: dict) -> int:
+    digest = hashlib.sha256(f"{seed}:{node.get('id', '')}".encode()).digest()
+    return int.from_bytes(digest[:8], "big")
+
+
+def compare_on_shared(current: quality.SuiteQuality, baseline: dict) -> dict:
+    """Diff a probe against a saved one on the symbols both runs sampled.
+
+    Returns ``{"shared", "added", "dropped", "deltas"}``: metrics recomputed
+    over the shared symbols only (MRR, answerability, hit rate at each k), so
+    a change in what's indexed can't masquerade as a change in quality.
+    ``added`` / ``dropped`` count symbols only in the current / baseline run.
+    """
+    base_rows = {
+        str(row.get("query_id")): row
+        for row in baseline.get("per_query", []) or []
+        if isinstance(row, dict) and row.get("query_id") is not None
+    }
+    cur_rows = {q.query_id: q for q in current.per_query}
+    shared = sorted(set(base_rows) & set(cur_rows))
+    out: dict = {
+        "shared": len(shared),
+        "added": len(set(cur_rows) - set(base_rows)),
+        "dropped": len(set(base_rows) - set(cur_rows)),
+        "deltas": [],
+    }
+    if not shared:
+        return out
+
+    def mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
+
+    pairs = [
+        (
+            "mrr",
+            mean([float(base_rows[i].get("reciprocal_rank", 0.0)) for i in shared]),
+            mean([cur_rows[i].reciprocal_rank for i in shared]),
+        ),
+        (
+            "answerability",
+            mean([1.0 if base_rows[i].get("answerable") else 0.0 for i in shared]),
+            mean([1.0 if cur_rows[i].answerable else 0.0 for i in shared]),
+        ),
+    ]
+    for k in current.ks:
+        pairs.append(
+            (
+                f"hit_rate@{k}",
+                mean(
+                    [float((base_rows[i].get("hit_rate") or {}).get(str(k), 0.0)) for i in shared]
+                ),
+                mean([cur_rows[i].hit_rate.get(k, 0.0) for i in shared]),
+            )
+        )
+    out["deltas"] = [
+        quality.BaselineDelta(metric, base, cur).to_dict() for metric, base, cur in pairs
+    ]
+    return out
 
 
 @dataclass

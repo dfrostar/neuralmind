@@ -69,7 +69,10 @@ def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
     if abs_path not in _mind_cache:
         _mind_cache[abs_path] = NeuralMind(abs_path)
         if auto_build:
-            _mind_cache[abs_path].build()
+            # Load the existing index as it stands; build only when there is
+            # none. Never a rebuild on a read, and nothing on stdout (the
+            # JSON-RPC channel).
+            _mind_cache[abs_path].ensure_ready()
     return _mind_cache[abs_path]
 
 
@@ -107,6 +110,32 @@ def _unindexed_relative_path_hint(project_path: str) -> str | None:
     )
 
 
+def _freshness_line(project_path: str) -> str:
+    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises.
+
+    An index with no readable graph to check it against gets a line too: the
+    read path can still answer from it, but nothing confirms it matches the
+    code.
+    """
+    resolved = str(Path(project_path).resolve())
+    try:
+        from neuralmind.freshness import graph_freshness
+
+        report = graph_freshness(project_path, check_index=True)
+    except Exception:
+        report = None
+    if report is None:
+        if (Path(project_path) / ".neuralmind" / "index_ir.json").exists():
+            return (
+                "Index is unverified: no readable code graph to check it against. "
+                f"Run neuralmind build {resolved}."
+            )
+        return ""
+    if report.ok:
+        return ""
+    return report.one_line(resolved)
+
+
 def tool_wakeup(project_path: str) -> dict[str, Any]:
     """Get wake-up context for starting a conversation."""
     hint = _unindexed_relative_path_hint(project_path)
@@ -114,27 +143,42 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
         raise ValueError(hint)
     mind = get_mind(project_path)
     result = mind.wakeup()
+    # The agent's first call is where it learns the index can't be trusted:
+    # one line, prefixed, only when the graph isn't in step with the code.
+    context = result.context
+    stale_line = _freshness_line(project_path)
+    if stale_line:
+        context = f"{stale_line}\n\n{context}"
     return {
-        "context": result.context,
+        "context": context,
         "tokens": result.budget.total,
         "reduction_ratio": round(result.reduction_ratio, 1),
         "layers": result.layers_used,
     }
 
 
-def tool_query(project_path: str, question: str, include_relevance: bool = False) -> dict[str, Any]:
+def tool_query(
+    project_path: str,
+    question: str,
+    include_relevance: bool = False,
+    learn: bool | None = None,
+) -> dict[str, Any]:
     """Get optimized context for a specific question.
 
     When ``include_relevance`` is set, attach a structured relevance sidecar
     (per-file, per-node score / synapse-boost / recall + line spans) so a
     downstream compressor can protect the load-bearing spans instead of
     shrinking them away. Off by default to keep responses small.
+
+    ``learn=False`` makes the call read-only: nothing is reinforced or logged
+    and the synapse database is opened read-only (see ``neuralmind.learning``).
     """
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         raise ValueError(hint)
-    mind = get_mind(project_path)
-    result = mind.query(question)
+    # A read-only call must not build an index on first use either.
+    mind = get_mind(project_path, auto_build=learn is not False)
+    result = mind.query(question, learn=learn)
     out: dict[str, Any] = {
         "context": result.context,
         "tokens": result.budget.total,
@@ -150,13 +194,15 @@ def tool_query(project_path: str, question: str, include_relevance: bool = False
     return out
 
 
-def tool_search(project_path: str, query: str, n: int = 10) -> list[dict[str, Any]]:
-    """Direct semantic search for code entities."""
+def tool_search(
+    project_path: str, query: str, n: int = 10, learn: bool | None = None
+) -> list[dict[str, Any]]:
+    """Direct semantic search for code entities. ``learn=False``: read-only."""
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         raise ValueError(hint)
-    mind = get_mind(project_path)
-    results = mind.search(query, n=n)
+    mind = get_mind(project_path, auto_build=learn is not False)
+    results = mind.search(query, n=n, learn=learn)
     return [
         {
             "id": r.get("id"),
@@ -216,7 +262,25 @@ def tool_health(project_path: str) -> dict[str, Any]:
         ir_meta = {}
 
     last_build = ir_meta.get("built_at", 0) or ir_path.stat().st_mtime
+    try:
+        last_build = float(last_build)
+    except (TypeError, ValueError):
+        last_build = ir_path.stat().st_mtime
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
+
+    # Staleness = the code graph out of step with the files on disk (same rule
+    # as `neuralmind health`), not the index's age.
+    # No report (no graph to compare, or the check failed) is "unknown", never
+    # healthy: nothing confirmed the index matches the code.
+    freshness = None
+    try:
+        from neuralmind.freshness import graph_freshness
+
+        freshness = graph_freshness(project_path, check_index=True)
+    except Exception:
+        freshness = None
+    unknown = freshness is None
+    stale = unknown or freshness.status != "ok"
 
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
 
@@ -231,9 +295,10 @@ def tool_health(project_path: str) -> dict[str, Any]:
             pass
 
     return {
-        "status": "stale" if age_hours >= 24 else "healthy",
-        "healthy": age_hours < 24,
-        "exit_code": 1 if age_hours >= 24 else 0,
+        "status": "unknown" if unknown else ("stale" if stale else "healthy"),
+        "healthy": not stale,
+        "exit_code": 1 if stale else 0,
+        "freshness": freshness.to_dict() if freshness is not None else None,
         "index_age_hours": round(age_hours, 1),
         "node_count": ir_meta.get("node_count", len(ir_meta.get("nodes", []))),
         "disk_mb": round(disk_mb, 2),
@@ -753,6 +818,13 @@ TOOLS = [
                     "score / synapse-boost / recall + line spans) so a downstream compressor "
                     "can protect the load-bearing spans. Default false.",
                 },
+                "learn": {
+                    "type": "boolean",
+                    "description": "false = read-only: synapse recall still shapes the "
+                    "result, but nothing is reinforced or logged and the synapse database "
+                    "is opened read-only. Use for evals and benchmarks. Default true "
+                    "(unless the server runs with NEURALMIND_NO_LEARN=1).",
+                },
             },
             "required": ["project_path", "question"],
         },
@@ -772,6 +844,13 @@ TOOLS = [
                     "type": "integer",
                     "description": "Number of results to return (default: 10)",
                     "default": 10,
+                },
+                "learn": {
+                    "type": "boolean",
+                    "description": "false = read-only: synapse recall still shapes the "
+                    "result, but nothing is reinforced or logged and the synapse database "
+                    "is opened read-only. Use for evals and benchmarks. Default true "
+                    "(unless the server runs with NEURALMIND_NO_LEARN=1).",
                 },
             },
             "required": ["project_path", "query"],
@@ -1235,10 +1314,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
         "neuralmind_query": lambda args: tool_query(
-            args["project_path"], args["question"], args.get("include_relevance", False)
+            args["project_path"],
+            args["question"],
+            args.get("include_relevance", False),
+            learn=args.get("learn"),
         ),
         "neuralmind_search": lambda args: tool_search(
-            args["project_path"], args["query"], args.get("n", 10)
+            args["project_path"], args["query"], args.get("n", 10), learn=args.get("learn")
         ),
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),

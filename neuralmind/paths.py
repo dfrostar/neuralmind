@@ -84,24 +84,51 @@ def _validated_artifact(base: Path, target: Path) -> Path:
     return target
 
 
-def graph_json_path(project_path: str | Path) -> Path:
-    """Return the path to ``graph.json``, checking canonical then legacy.
+def graph_source_setting(project_path: str | Path) -> str:
+    """The project's ``graph_source`` from ``.neuralmind.yaml`` (default ``auto``)."""
+    try:
+        from .neuralmind_config import NeuralmindConfig
 
-    When neither exists, returns the canonical path (the default for new
-    projects).
+        return NeuralmindConfig.load(_resolve_base(project_path)).graph_source
+    except Exception:
+        return "auto"
+
+
+def graph_json_path(project_path: str | Path, graph_source: str | None = None) -> Path:
+    """Return the path to ``graph.json`` for the project's ``graph_source``.
+
+    ``auto`` (the default) checks canonical then legacy and, when neither
+    exists, returns the canonical path (the default for new projects).
+    ``builtin`` always returns the canonical ``.neuralmind/graph.json`` and
+    ``graphify`` always returns ``graphify-out/graph.json``, whether or not
+    they exist, so neither setting ever reads the other source.
+    ``graph_source`` overrides the ``.neuralmind.yaml`` setting.
     """
     base = _resolve_base(project_path)
+    source = graph_source or graph_source_setting(base)
     canonical = _validated_artifact(
         base, Path(os.path.normpath(os.path.join(base, CANONICAL_DIR, "graph.json")))
     )
-    if canonical.exists():
-        return canonical
     legacy = _validated_artifact(
         base, Path(os.path.normpath(os.path.join(base, LEGACY_DIR, "graph.json")))
     )
+    if source == "builtin":
+        return canonical
+    if source == "graphify":
+        return legacy
+    if canonical.exists():
+        return canonical
     if legacy.exists():
         return legacy
     return canonical
+
+
+def baseline_path(project_path: str | Path) -> Path:
+    """Return the path to ``baseline.json`` (always canonical)."""
+    base = _resolve_base(project_path)
+    return _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, CANONICAL_DIR, "baseline.json")))
+    )
 
 
 def ir_path(project_path: str | Path) -> Path:

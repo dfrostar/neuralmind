@@ -243,49 +243,29 @@ def _make_parser(language: str = "python"):
         return parser
 
 
-def _parse_ignore_file(project_path: Path) -> frozenset[str]:
-    """Load `.neuralmindignore` patterns if present.
+def _parse_ignore_file(project_path: Path) -> tuple[str, ...]:
+    """Load `.neuralmindignore` patterns if present, in file order.
 
-    Supports `.gitignore`-style glob patterns. Lines starting with ``#``
-    are comments; blank lines are ignored.
+    Same syntax and semantics as `.gitignore` (see :mod:`neuralmind.ignore`):
+    ``#`` comments, ``!`` negation, ``/`` anchoring, ``**`` — order matters
+    because the last matching pattern wins.
     """
-    ignore_path = project_path / ".neuralmindignore"
-    if not ignore_path.exists():
-        return frozenset()
-    try:
-        content = ignore_path.read_text(encoding="utf-8")
-    except OSError:
-        return frozenset()
-    patterns: set[str] = set()
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        patterns.add(line)
-    return frozenset(patterns)
+    from neuralmind.ignore import load_patterns
+
+    return load_patterns(project_path, ".neuralmindignore")
 
 
-def _is_ignored(rel_path: str, patterns: frozenset[str]) -> bool:
-    """Check if a project-relative path matches any ignore pattern."""
+def _is_ignored(rel_path: str, patterns) -> bool:
+    """Check if a project-relative path matches the ignore patterns.
+
+    gitignore semantics: ``docs/`` matches a directory named docs at any
+    depth, ``/docs/`` only at the root, ``!keep.py`` re-includes.
+    """
     if not patterns:
         return False
-    from fnmatch import fnmatch
+    from neuralmind.ignore import matches
 
-    parts = rel_path.split("/")
-    for pattern in patterns:
-        # Match against full path
-        if fnmatch(rel_path, pattern):
-            return True
-        # Match against filename alone
-        if fnmatch(parts[-1], pattern):
-            return True
-        # Match directory prefix (e.g., "docs/" matches "docs/foo.md")
-        if pattern.endswith("/") and len(parts) > 1:
-            if fnmatch(rel_path, pattern[:-1]):
-                return True
-            if any(fnmatch(p, pattern[:-1]) for p in parts[:-1]):
-                return True
-    return False
+    return matches(rel_path, tuple(patterns))
 
 
 # Code file suffixes considered "code" (vs prose). Used by detect_project_kind
@@ -293,51 +273,29 @@ def _is_ignored(rel_path: str, patterns: frozenset[str]) -> bool:
 _CODE_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
 
 
-def detect_project_kind(root: Path) -> str:
+def detect_project_kind(root: Path, fileset: _FileSet | None = None) -> str:
     """Return ``"prose"`` if the project has only .md/.txt files (no code),
     else ``"code"``.
 
-    Walks the project tree (honoring ``.neuralmindignore``). A project with
-    *any* code file is treated as code so its symbols get extracted via
-    tree-sitter; a project that is pure prose (markdown/text only) skips the
-    tree-sitter pass entirely and runs heading-aware chunking instead.
+    Uses the same file list as indexing (``.gitignore``, ``.neuralmindignore``
+    and the default ignores). A project with *any* code file is treated as code
+    so its symbols get extracted via tree-sitter; a project that is pure prose
+    (markdown/text only) skips the tree-sitter pass entirely and runs
+    heading-aware chunking instead.
     """
-    ignores = _DEFAULT_IGNORES
-    extra_ignores = _parse_ignore_file(root)
-
-    def _walk(d: Path) -> str:
-        try:
-            entries = sorted(d.iterdir(), key=lambda p: p.name)
-        except (OSError, PermissionError):
-            return "prose"
-        for p in entries:
-            rel = p.relative_to(root).as_posix()
-            if p.name in ignores or p.name.startswith("."):
-                if p.is_dir():
-                    continue
-            if p.is_dir():
-                if p.name not in ignores and not _is_ignored(rel, extra_ignores):
-                    kind = _walk(p)
-                    if kind == "code":
-                        return "code"
-            else:
-                if _is_ignored(rel, extra_ignores):
-                    continue
-                if p.suffix in _CODE_SUFFIXES:
-                    return "code"
-        return "prose"
-
-    return _walk(root)
+    files = _iter_files(root, _DEFAULT_IGNORES, _CODE_SUFFIXES, fileset=fileset)
+    return "code" if files else "prose"
 
 
-def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -> list[Path]:
-    """All files under ``root`` with a suffix in ``suffixes``, skipping ignores.
-
-    Honors ``.neuralmindignore`` if present — ``.gitignore``-style patterns
-    that exclude files from the index (e.g. ``docs/``, ``*.md``, ``tests/``).
-    """
+def _walk_files(
+    root: Path,
+    ignores: frozenset[str],
+    suffixes: frozenset[str],
+    extra_ignores: tuple[str, ...],
+    git_patterns: tuple[str, ...] = (),
+) -> list[Path]:
+    """Directory walk: skip dot-dirs and ``ignores``, apply ignore patterns."""
     out: list[Path] = []
-    extra_ignores = _parse_ignore_file(root)
 
     def walk(d: Path) -> None:
         try:
@@ -352,19 +310,155 @@ def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -
                 if p.is_dir():
                     continue
             if p.is_dir():
-                if p.name not in ignores and not _is_ignored(rel, extra_ignores):
+                if (
+                    p.name not in ignores
+                    and not _is_ignored(rel, extra_ignores)
+                    and not _is_ignored(rel, git_patterns)
+                ):
                     walk(p)
             elif p.suffix in suffixes:
-                if not _is_ignored(rel, extra_ignores):
+                if not _is_ignored(rel, extra_ignores) and not _is_ignored(rel, git_patterns):
                     out.append(p)
 
     walk(root)
     return out
 
 
-def _iter_source_files(root: Path, ignores: frozenset[str]) -> list[Path]:
+def _listing_to_paths(
+    root: Path,
+    listing: set[str],
+    ignores: frozenset[str],
+    suffixes: frozenset[str],
+    extra_ignores: tuple[str, ...],
+) -> list[Path]:
+    """Filter a git listing with the same rules as :func:`_walk_files`."""
+    out: list[tuple[tuple[str, ...], Path]] = []
+    # Directory decisions and Paths are made once per directory, not per file:
+    # a 10K-file listing must stay no slower than the walk it replaces.
+    parents: dict[str, Path | None] = {}
+    for rel in listing:
+        head, _, name = rel.rpartition("/")
+        dot = name.rfind(".")  # Path(name).suffix, without building a Path
+        if dot <= 0 or name[dot:] not in suffixes:
+            continue
+        if head not in parents:
+            dirs = head.split("/") if head else []
+            skip = any(part in ignores or part.startswith(".") for part in dirs)
+            parents[head] = None if skip else (root / head if head else root)
+        parent = parents[head]
+        if parent is None:
+            continue
+        # Directory-level .neuralmindignore patterns (``docs/``) match the
+        # file's path too, so one check per file is enough.
+        if _is_ignored(rel, extra_ignores):
+            continue
+        out.append((tuple(rel.split("/")), parent.joinpath(name)))
+    # Same order as the directory walk: per-level name order.
+    out.sort(key=lambda item: item[0])
+    return [p for _, p in out]
+
+
+class _FileSet:
+    """What one walk needs to decide which files are indexed.
+
+    Computing it costs a ``.neuralmind.yaml`` read and, in a git repo, two
+    ``git ls-files`` calls; a build walks five times (code, markdown, schema,
+    project kind, cache update), so it computes this once and reuses it.
+    (A plain class, not a dataclass: tests load this module without
+    registering it in ``sys.modules``, which dataclasses require.)
+    """
+
+    __slots__ = ("root", "config", "extra_ignores", "listing", "git_patterns")
+
+    def __init__(
+        self,
+        root: Path,
+        config: Any,
+        extra_ignores: tuple[str, ...],
+        listing: set[str] | None,
+        git_patterns: tuple[str, ...],
+    ) -> None:
+        self.root = root
+        self.config = config
+        self.extra_ignores = extra_ignores
+        self.listing = listing  # git's view; None outside git or with the opt-out
+        self.git_patterns = git_patterns  # top-level .gitignore, for a walk outside git
+
+
+def _file_set(root: Path) -> _FileSet:
+    from neuralmind import ignore
+
+    root = Path(root)
+    config = NeuralmindConfig.load(root)
+    extra_ignores = _parse_ignore_file(root)
+    if not config.respect_gitignore:
+        return _FileSet(root, config, extra_ignores, None, ())
+    listing = ignore.git_visible_files(root)
+    git_patterns = ignore.load_patterns(root, ".gitignore") if listing is None else ()
+    return _FileSet(root, config, extra_ignores, listing, git_patterns)
+
+
+def _iter_files(
+    root: Path,
+    ignores: frozenset[str],
+    suffixes: frozenset[str],
+    *,
+    fileset: _FileSet | None = None,
+) -> list[Path]:
+    """All files under ``root`` with a suffix in ``suffixes``, skipping ignores.
+
+    Covers what git covers (see :mod:`neuralmind.ignore`): inside a git repo
+    the list comes from ``git ls-files``, minus tracked files that match an
+    ignore rule; outside one, a directory walk applies the top-level
+    ``.gitignore``. ``.neuralmindignore`` narrows it further. In
+    ``.neuralmind.yaml``, ``respect_gitignore: false`` restores the plain walk
+    and ``include_ignored`` globs pull specific ignored paths back in.
+    """
+    from fnmatch import fnmatch
+
+    root = Path(root)
+    fs = fileset if fileset is not None else _file_set(root)
+    config, extra_ignores = fs.config, fs.extra_ignores
+    if not config.respect_gitignore:
+        return _walk_files(root, ignores, suffixes, extra_ignores)
+
+    if fs.listing is None:
+        files = _walk_files(root, ignores, suffixes, extra_ignores, fs.git_patterns)
+    else:
+        files = _listing_to_paths(root, fs.listing, ignores, suffixes, extra_ignores)
+
+    if config.include_ignored:
+        have = {f.relative_to(root).as_posix() for f in files}
+        for f in _walk_files(root, ignores, suffixes, extra_ignores):
+            rel = f.relative_to(root).as_posix()
+            if rel not in have and any(fnmatch(rel, g) for g in config.include_ignored):
+                files.append(f)
+                have.add(rel)
+        files.sort(key=lambda p: p.relative_to(root).parts)
+    return files
+
+
+def gitignore_exclusions(root: Path, suffixes: frozenset[str] | None = None) -> list[str]:
+    """Indexable files that ``.gitignore`` keeps out of the index (POSIX, relative).
+
+    The difference between a plain walk and :func:`_iter_files` — what
+    honoring ``.gitignore`` removed. Empty when ``respect_gitignore: false``.
+    """
+    root = Path(root)
+    wanted = suffixes or (SUPPORTED_SUFFIXES | _DOC_SUFFIXES)
+    plain = {
+        f.relative_to(root).as_posix()
+        for f in _walk_files(root, _DEFAULT_IGNORES, wanted, _parse_ignore_file(root))
+    }
+    kept = {f.relative_to(root).as_posix() for f in _iter_files(root, _DEFAULT_IGNORES, wanted)}
+    return sorted(plain - kept)
+
+
+def _iter_source_files(
+    root: Path, ignores: frozenset[str], *, fileset: _FileSet | None = None
+) -> list[Path]:
     """All supported code source files under ``root``."""
-    return _iter_files(root, ignores, SUPPORTED_SUFFIXES)
+    return _iter_files(root, ignores, SUPPORTED_SUFFIXES, fileset=fileset)
 
 
 def _node_text(node, src: bytes) -> str:
@@ -1219,7 +1313,9 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
 
     # Detect prose mode: a project with only .md/.txt files (no code) skips
     # the tree-sitter pass entirely and runs heading-aware chunking instead.
-    project_kind = detect_project_kind(root)
+    # One file-set for every walk this build makes (one git listing, not five).
+    fileset = _file_set(root)
+    project_kind = detect_project_kind(root, fileset)
 
     # If config explicitly sets mode, honor it
     if config.mode != "auto":
@@ -1251,9 +1347,17 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         # First build (no cache): all files need extraction
         re_extract_set = set()
 
-    files = _iter_source_files(root, _DEFAULT_IGNORES)
+    files = _iter_source_files(root, _DEFAULT_IGNORES, fileset=fileset)
     # Apply include/exclude globs from config
     files = config.apply_globs(root, files)
+    md_files = config.apply_globs(
+        root, _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES, fileset=fileset)
+    )
+    schema_files = _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES, fileset=fileset)
+    # Every file this build indexes. A node from the previous graph is reused
+    # only if its file is still in this set — so a file that was deleted, or
+    # is now excluded (.gitignore, .neuralmindignore, globs), leaves the graph.
+    indexed = {f.relative_to(root).as_posix() for f in (*files, *md_files, *schema_files)}
 
     # If we have an existing graph + cache, reuse unchanged nodes/edges
     unchanged_nodes: list[dict] = []
@@ -1267,7 +1371,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
                 continue  # skip nonsensical nodes with empty source_file
             if sf in changed_set:
                 continue
-            if not (root / sf).exists():
+            if sf not in indexed:
                 deleted_files.add(sf)
                 continue
             unchanged_nodes.append(dict(node))
@@ -1347,13 +1451,11 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             b.edges.append(edge)
 
     # ---- markdown → document nodes ---------------------------------------- #
-    md_files = _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES)
-    md_files = config.apply_globs(root, md_files)
     for md_path in md_files:
         _extract_markdown(b, md_path, md_path.relative_to(root).as_posix())
 
     # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
-    for sa_path in _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES):
+    for sa_path in schema_files:
         rel = sa_path.relative_to(root).as_posix()
         extractor_ = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
         if extractor_:
@@ -1385,7 +1487,8 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # node_modules, target/, .neuralmind/ etc.
     if re_extract_set:
         extractable = {
-            f.relative_to(root).as_posix() for f in _iter_source_files(root, _DEFAULT_IGNORES)
+            f.relative_to(root).as_posix()
+            for f in _iter_source_files(root, _DEFAULT_IGNORES, fileset=fileset)
         }
         cacheable = re_extract_set & extractable
         if cacheable:

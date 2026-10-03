@@ -108,21 +108,24 @@ _IGNORED_DIRS = {
 }
 
 
-def _dry_run_scan(project_path: str) -> dict:
+def _dry_run_scan(project_path: str, naive_50k: bool = False) -> dict:
     """Scan a project and estimate NeuralMind token savings without building."""
+    from neuralmind import graphgen
+
     path = Path(project_path).resolve()
     lang_counts: dict[str, int] = {}
     total_lines = 0
     total_files = 0
 
-    for f in path.rglob("*"):
-        if any(part in _IGNORED_DIRS for part in f.parts):
-            continue
-        if not f.is_file():
-            continue
+    # The same file list a build indexes: .gitignore, .neuralmindignore and
+    # the default ignores applied.
+    wanted = frozenset(_LANG_EXTS)
+    indexed_files: list[Path] = []
+    for f in graphgen._iter_files(path, graphgen._DEFAULT_IGNORES | _IGNORED_DIRS, wanted):
         ext = f.suffix.lower()
         if ext not in _LANG_EXTS:
             continue
+        indexed_files.append(f)
         lang = _LANG_EXTS[ext]
         lang_counts[lang] = lang_counts.get(lang, 0) + 1
         total_files += 1
@@ -133,20 +136,48 @@ def _dry_run_scan(project_path: str) -> dict:
 
     # Estimate node count: ~10 nodes per code file (functions, classes, etc.)
     est_nodes = total_files * 10
-    # Estimate full-codebase tokens: ~25 tokens per line on average
-    est_full_tokens = max(total_lines * 25, est_nodes * 40)
+    # The baseline every other command uses (neuralmind.baseline): the
+    # measured token count of the files a build would index. --naive-50k
+    # swaps in the fixed estimate for comparison with older numbers.
+    from neuralmind import baseline as baseline_mod
+
+    if naive_50k:
+        est_full_tokens = baseline_mod.NAIVE_BASELINE_TOKENS
+        baseline_label = baseline_mod.NAIVE_LABEL
+    else:
+        est_full_tokens = baseline_mod.count_file_tokens(indexed_files)
+        baseline_label = f"measured: {est_full_tokens:,} tokens in {total_files:,} files"
     # NeuralMind progressive context: L0+L1+L2+L3 ≈ 600-2400 tokens
     est_query_tokens = min(2400, max(600, est_nodes * 2))
     est_wakeup_tokens = min(800, max(150, est_nodes))
     est_reduction = round(est_full_tokens / max(est_query_tokens, 1), 1)
 
+    try:
+        excluded = graphgen.gitignore_exclusions(path, wanted)
+    except Exception:
+        excluded = []
+    excluded_lines = 0
+    for rel in excluded:
+        try:
+            with (path / rel).open("rb") as fh:
+                excluded_lines += sum(1 for _ in fh)
+        except OSError:
+            pass
+
     return {
         "project": path.name,
         "total_files": total_files,
         "total_lines": total_lines,
+        "excluded_by_gitignore": {
+            "files": len(excluded),
+            "lines": excluded_lines,
+            "est_nodes": len(excluded) * 10,
+            "paths": excluded,
+        },
         "languages": lang_counts,
         "est_nodes": est_nodes,
         "est_full_tokens": est_full_tokens,
+        "baseline": baseline_label,
         "est_wakeup_tokens": est_wakeup_tokens,
         "est_query_tokens": est_query_tokens,
         "est_reduction_ratio": est_reduction,
@@ -253,17 +284,30 @@ def _save_build_stats(project_path: str, result: dict) -> None:
     if not state_dir.exists():
         return
     status_path = state_dir / "build_status.json"
-    status = {
-        "project": result.get("project"),
-        "nodes_total": result.get("nodes_total"),
-        "nodes_added": result.get("nodes_added", 0),
-        "nodes_updated": result.get("nodes_updated", 0),
-        "nodes_skipped": result.get("nodes_skipped", 0),
-        "communities": result.get("communities"),
-        "duration_seconds": result.get("duration_seconds"),
-        "backend": result.get("backend"),
-        "built_at": datetime.now().isoformat(),
-    }
+    # Merge rather than overwrite: the build itself records which graph it
+    # used ("graph"), which the next build reads to refuse a silent switch.
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        if not isinstance(status, dict):
+            status = {}
+    except (OSError, ValueError):
+        status = {}
+    status.update(
+        {
+            "project": result.get("project"),
+            "nodes_total": result.get("nodes_total"),
+            "nodes_added": result.get("nodes_added", 0),
+            "nodes_updated": result.get("nodes_updated", 0),
+            "nodes_skipped": result.get("nodes_skipped", 0),
+            "nodes_removed": result.get("nodes_removed", 0),
+            "communities": result.get("communities"),
+            "duration_seconds": result.get("duration_seconds"),
+            "backend": result.get("backend"),
+            "built_at": datetime.now().isoformat(),
+        }
+    )
+    if result.get("graph"):
+        status["graph"] = result["graph"]
     try:
         status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
     except OSError:
@@ -433,7 +477,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
     print("   Scope: code... ", end="", flush=True)
     graph_path = graph_json_path(path)
-    if graph_path.exists():
+    regenerate = getattr(args, "regenerate_graph", False) is True
+    strict = getattr(args, "strict", False) is True
+    if graph_path.exists() or regenerate:
         code_args = argparse.Namespace(
             project_path=project_path,
             force=force,
@@ -441,6 +487,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             content_type="code",
             bootstrap=None,
             redact_secrets=getattr(args, "redact_secrets", False),
+            regenerate_graph=regenerate,
+            strict=strict,
+            prune=getattr(args, "prune", False) is True,
             dry_run=False,
             json=False,
         )
@@ -454,6 +503,10 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
         except SystemExit as e:
             if e.code != 0:
                 print(f"failed (exit {e.code})")
+                if strict:
+                    # --strict is a CI gate: a failing code graph fails the
+                    # whole book build, before the content scope is embedded.
+                    raise
             else:
                 print("done")
     else:
@@ -550,8 +603,15 @@ def cmd_build_status(args):
     added = status.get("nodes_added", 0)
     updated = status.get("nodes_updated", 0)
     skipped = status.get("nodes_skipped", 0)
-    if added or updated or skipped:
-        print(f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped")
+    removed = status.get("nodes_removed", 0)
+    if added or updated or skipped or removed:
+        print(
+            f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped, "
+            f"-{removed} removed"
+        )
+    graph = status.get("graph")
+    if isinstance(graph, dict) and graph.get("path"):
+        print(f"  Graph:         {graph['path']} ({graph.get('kind', 'unknown')})")
     print(f"  Communities:   {status.get('communities', 'unknown')}")
     print(f"  Duration:      {status.get('duration_seconds', 'unknown')}s")
     print(f"  Backend:       {status.get('backend', 'unknown')}")
@@ -565,13 +625,21 @@ def cmd_build(args):
         if not path.exists():
             print(f"Dry-run failed: path does not exist: {project_path}")
             sys.exit(1)
-        scan = _dry_run_scan(project_path)
+        scan = _dry_run_scan(project_path, naive_50k=getattr(args, "naive_50k", False) is True)
         if args.json:
             print(json.dumps(scan, indent=2))
             return
         print(f"NeuralMind dry run — {scan['project']}")
         print(f"  Files scanned : {scan['total_files']}")
         print(f"  Lines of code : {scan['total_lines']:,}")
+        excluded = scan.get("excluded_by_gitignore") or {}
+        if excluded.get("files"):
+            from neuralmind.ignore import summarize_exclusions
+
+            print(
+                f"  Excluded by .gitignore: ~{excluded['est_nodes']:,} nodes in "
+                f"{summarize_exclusions(excluded['paths'])}"
+            )
         if scan["languages"]:
             langs = ", ".join(
                 f"{v} {k}" for k, v in sorted(scan["languages"].items(), key=lambda kv: -kv[1])
@@ -580,7 +648,7 @@ def cmd_build(args):
         print()
 
         print(f"  Estimated nodes       : {scan['est_nodes']:,}")
-        print(f"  Est. full-codebase    : ~{scan['est_full_tokens']:,} tokens")
+        print(f"  Full-codebase tokens  : {scan['est_full_tokens']:,} ({scan['baseline']})")
         print(f"  Est. wake-up context  : ~{scan['est_wakeup_tokens']:,} tokens")
         print(f"  Est. query context    : ~{scan['est_query_tokens']:,} tokens")
         print(f"  Est. token reduction  : ~{scan['est_reduction_ratio']}x per query")
@@ -697,7 +765,15 @@ def cmd_build(args):
     # Wire --bootstrap into the NeuralMind instance
     if getattr(args, "bootstrap", None):
         mind._bootstrap_bundle_path = args.bootstrap
-    result = mind.build(force=force)
+    # Build notices (the graph source line, freshness report, purge
+    # warnings) belong in the build's own output.
+    mind.notice_stream = sys.stdout
+    result = mind.build(
+        force=force,
+        regenerate_graph=getattr(args, "regenerate_graph", False) is True,
+        strict=getattr(args, "strict", False) is True,
+        prune=getattr(args, "prune", False) is True,
+    )
     if result.get("success"):
         print("Build successful!")
         print(f"   Project: {result.get('project')}")
@@ -709,8 +785,12 @@ def cmd_build(args):
         added = result.get("nodes_added", 0)
         updated = result.get("nodes_updated", 0)
         skipped = result.get("nodes_skipped", 0)
-        if added or updated or skipped:
-            print(f"   Delta: +{added} new, ~{updated} updated, ={skipped} skipped")
+        removed = result.get("nodes_removed", 0)
+        if added or updated or skipped or removed:
+            print(
+                f"   Delta: +{added:,} new, ~{updated:,} updated, ={skipped:,} skipped, "
+                f"-{removed:,} removed"
+            )
         ir_meta = result.get("ir")
         if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
             val = ir_meta.get("validation", {})
@@ -719,7 +799,7 @@ def cmd_build(args):
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
-        sys.exit(1)
+        sys.exit(int(result.get("exit_code", 1) or 1))
 
     # Save build stats to ir_meta.json for build-status / status commands
     _save_build_stats(project_path, result)
@@ -770,7 +850,10 @@ def _print_explain(result) -> None:
 
     # Token savings
     budget = result.budget
-    est_full = 50_000  # NeuralMind's internal reference baseline
+    # The baseline the ratio was computed against: the measured size of the
+    # indexed files (neuralmind.baseline), or the 50K estimate before a build.
+    est_full = int(round(result.reduction_ratio * budget.total)) if budget.total else 0
+    est_full = est_full or 50_000
     saved = est_full - budget.total
     print("  Token budget breakdown:")
     if budget.l0_identity:
@@ -1005,8 +1088,14 @@ def _cmd_query_unified(
 
 
 def cmd_query(args):
-    _maybe_prompt_for_memory_opt_in()
-    _increment_wakeup_count()
+    from neuralmind.learning import learning_disabled
+
+    # --no-learn / NEURALMIND_NO_LEARN=1: a read-only query — no synapse
+    # reinforcement, no query logs, no counters, never a build.
+    no_learn = getattr(args, "no_learn", False) is True or learning_disabled()
+    if not no_learn:
+        _maybe_prompt_for_memory_opt_in()
+        _increment_wakeup_count()
 
     # Handle unified mode (content + code search)
     query_mode = getattr(args, "mode", "default")
@@ -1049,7 +1138,8 @@ def cmd_query(args):
     # which the daemon's thin query response does not carry — fall back to
     # direct mode when any is requested.
     query_type = getattr(args, "type", "auto")
-    client = None if (relevance or explain or query_type != "auto") else _try_daemon()
+    # The daemon's warm mind learns from every query; read-only runs go direct.
+    client = None if (relevance or explain or query_type != "auto" or no_learn) else _try_daemon()
     if client is not None:
         try:
             out = client.query(
@@ -1086,13 +1176,17 @@ def cmd_query(args):
         except Exception:
             pass  # fall through to direct mode
 
-    mind = create_mind(args.project_path, auto_build=True)
+    mind = create_mind(args.project_path, auto_build=not no_learn)
 
     # Apply type filter if specified
     query_type = getattr(args, "type", "auto")
 
     result = mind.query(
-        args.question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
+        args.question,
+        trace=trace,
+        trace_verbose=trace_verbose,
+        query_type=query_type,
+        learn=False if no_learn else None,
     )
 
     if args.json:
@@ -1185,10 +1279,11 @@ def cmd_savings(args):
     to compute how many tokens NeuralMind has saved across all logged queries.
     This lets you verify the savings claim against your own real usage.
 
-    Measures your actual logged queries against a fixed 50K-token reference
-    baseline (BASELINE_TOKENS_PER_QUERY) — not the same thing as the
-    what-if ROI formula in docs/BUSINESS-CASE.md, which uses different
-    stated assumptions (8K tok/query, $3/MTok). The two are not meant to
+    Measures your actual logged queries against the measured token count of
+    the project's indexed files (neuralmind.baseline; ``--naive-50k`` or
+    ``--global`` use the fixed 50K-token reference instead) — not the same
+    thing as the what-if ROI formula in docs/BUSINESS-CASE.md, which uses
+    different stated assumptions (8K tok/query, $3/MTok). The two are not meant to
     match; this command reports what actually happened, the doc projects
     what could happen.
 
@@ -1206,6 +1301,7 @@ def cmd_savings(args):
         cost=getattr(args, "cost", False),
         model=getattr(args, "model", None),
         queries_per_day=getattr(args, "queries_per_day", 100),
+        naive_50k=getattr(args, "naive_50k", False) is True,
     )
 
     error = report.get("error")
@@ -1233,7 +1329,7 @@ def cmd_savings(args):
         print(json.dumps(report, indent=2))
         return
 
-    est_full = BASELINE_TOKENS_PER_QUERY
+    est_full = int(report.get("baseline_tokens_per_query") or BASELINE_TOKENS_PER_QUERY)
     dollar_info = report.get("dollar_savings")
     print(f"NeuralMind token savings — {report['scope']}")
     print()
@@ -1244,7 +1340,8 @@ def cmd_savings(args):
     print(f"  Tokens actually used : {report['total_tokens_used']:>10,}")
     print(
         f"  Est. cost without NM : {report['est_total_full_cost']:>10,}  "
-        f"(at {est_full:,} tokens/query)"
+        f"(at {est_full:,} tokens/query — "
+        f"{'measured indexed files' if report.get('baseline_source') == 'measured' else 'fixed 50K estimate'})"
     )
     print(f"  Tokens saved         : {report['total_tokens_saved']:>10,}")
     if dollar_info:
@@ -1427,19 +1524,26 @@ def cmd_benchmark(args):
 
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
-    result = mind.benchmark()
+    contribute = getattr(args, "contribute", False) is True
+    # Community submissions keep the fixed 50K baseline the published table
+    # has always used, so its rows stay comparable with each other.
+    naive_50k = getattr(args, "naive_50k", False) is True or contribute
+    result = mind.benchmark(naive_50k=True) if naive_50k else mind.benchmark()
 
     # Literal True check — MagicMock-auto-attribute would be truthy but not
     # `is True`, so existing tests that use `MagicMock()` without spec
     # don't accidentally trigger the community-submission path.
-    if getattr(args, "contribute", False) is True:
+    if contribute:
         _emit_community_submission(args, result, mind)
         return
 
     if args.json:
         print(json.dumps(result, indent=2))
     else:
+        base = result.get("baseline") or {}
         print(f"Project: {result['project']}")
+        print(f"Baseline: {base.get('label', 'fixed 50K-token estimate')}")
+        print(f"Questions: {result.get('questions', 'generic')}")
         print(f"Wake-up tokens: {result['wakeup_tokens']}")
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
@@ -1497,8 +1601,19 @@ def cmd_probe(args):
             print(f"probe: could not read baseline {args.baseline}: {exc}", file=sys.stderr)
             sys.exit(1)
 
+    comparison = None
+    if baseline is not None and baseline.get("per_query"):
+        # Compare on the symbols both runs sampled, so an index change can't
+        # pass for a quality change (stable sampling keeps that set large).
+        from neuralmind import probe as probe_mod
+
+        comparison = probe_mod.compare_on_shared(report.suite, baseline)
+
     if args.json:
-        if baseline is not None:
+        if comparison is not None:
+            data["baseline_comparison"] = comparison
+            data["baseline_deltas"] = comparison["deltas"]
+        elif baseline is not None:
             from neuralmind import quality
 
             data["baseline_deltas"] = [
@@ -1532,7 +1647,17 @@ def cmd_probe(args):
         f"{recall.get('1', 0):.3f} / {recall.get('3', 0):.3f} / {recall.get('5', 0):.3f}"
     )
     print(f"  blind spots    : {data['blind_spot_total']}")
-    if baseline is not None:
+    if comparison is not None:
+        print("-" * 60)
+        print(
+            f"vs baseline, on the {comparison['shared']} symbols both runs sampled "
+            f"({comparison['added']} added, {comparison['dropped']} dropped since):"
+        )
+        for d in comparison["deltas"]:
+            delta = d["delta"]
+            arrow = "▲" if delta > 5e-4 else ("▼" if delta < -5e-4 else "=")
+            print(f"  {d['metric']}: {d['current']:.3f} ({arrow} {delta:+.3f})")
+    elif baseline is not None:
         from neuralmind import quality
 
         print("-" * 60)
@@ -1938,6 +2063,7 @@ def cmd_cost(args):
         project_path,
         days=days,
         cost_per_1k_tokens=cost_per_1k,
+        naive_50k=getattr(args, "naive_50k", False) is True,
     )
 
     if getattr(args, "json", False):
@@ -2288,6 +2414,83 @@ def _tier2_doctor_checks(args) -> list:
 
 
 def cmd_eval(args):
+    """`neuralmind eval` — the project eval, or a built-in suite with --suite.
+
+    ``neuralmind eval .`` scores retrieval on *this* project against the gold
+    answers in ``.neuralmind.eval.yaml`` (see :mod:`neuralmind.project_eval`).
+    ``--report`` prints the run history, ``--suggest`` drafts questions. The
+    faithfulness and onboarding self-tests that ``neuralmind eval`` ran before
+    v4.5.0 are ``--suite faithfulness`` / ``--suite onboarding`` (``--onboarding``
+    and ``--selfcheck`` still select them), and plain ``neuralmind eval`` with no
+    project still runs the faithfulness suite.
+    """
+    suite = getattr(args, "suite", None)
+    if getattr(args, "onboarding", False) is True:
+        suite = "onboarding"
+    if (
+        suite
+        or getattr(args, "selfcheck", False) is True
+        or (args.project_path is None and not _project_eval_requested(args))
+    ):
+        args.onboarding = suite == "onboarding"
+        return _cmd_eval_suite(args)
+    return _cmd_project_eval(args)
+
+
+def _project_eval_requested(args) -> bool:
+    return any(
+        getattr(args, name, False) is True for name in ("report", "suggest", "show_questions")
+    ) or bool(getattr(args, "questions", None))
+
+
+def _cmd_project_eval(args) -> None:
+    from neuralmind import project_eval
+
+    project = Path(args.project_path or ".").resolve()
+    show_questions = getattr(args, "show_questions", False) is True
+
+    if getattr(args, "suggest", False) is True:
+        drafts = project_eval.suggest_questions(project, n=getattr(args, "count", 10) or 10)
+        text = project_eval.render_suggestions(drafts)
+        target = project_eval.eval_file(project)
+        if getattr(args, "write", False) is True:
+            if target.exists():
+                print(f"{target} already exists — not overwriting it.", file=sys.stderr)
+                print(text)
+                sys.exit(1)
+            target.write_text(text, encoding="utf-8")
+            print(
+                f"Wrote {len(drafts)} draft questions to {target}. Edit them, then run "
+                f"`neuralmind eval {args.project_path or '.'}`."
+            )
+            return
+        print(text, end="")
+        return
+
+    if getattr(args, "report", False) is True:
+        rows = project_eval.read_history(project)
+        if args.json:
+            print(json.dumps(rows, indent=2))
+            return
+        last = project_eval.read_last_run(project) if show_questions else None
+        print(project_eval.render_report(rows, last))
+        return
+
+    try:
+        questions = project_eval.load_questions(project, getattr(args, "questions", None))
+        report = project_eval.run_eval(project, questions)
+    except (ValueError, GraphNotBuiltError) as exc:
+        print(f"eval: {exc}", file=sys.stderr)
+        sys.exit(2)
+    if getattr(args, "no_history", False) is not True:
+        project_eval.append_history(project, report)
+    if args.json:
+        print(json.dumps(report.to_dict(show_questions=show_questions), indent=2))
+    else:
+        print(project_eval.render_summary(report, show_questions=show_questions))
+
+
+def _cmd_eval_suite(args):
     """Run the faithfulness eval: does NeuralMind's selected context contain
     more gold facts than a matched-budget naive baseline?
 
@@ -5554,6 +5757,31 @@ def build_parser() -> argparse.ArgumentParser:
         "(equivalent to NEURALMIND_REDACT_SECRETS=1). Run `neuralmind "
         "scan-for-secrets` first to find and remove them at the source.",
     )
+    build_p.add_argument(
+        "--naive-50k",
+        dest="naive_50k",
+        action="store_true",
+        help="With --dry-run, divide by the fixed 50,000-token estimate instead of the "
+        "measured token count of the files a build would index.",
+    )
+    build_p.add_argument(
+        "--regenerate-graph",
+        dest="regenerate_graph",
+        action="store_true",
+        help="Always rebuild .neuralmind/graph.json with the built-in tree-sitter "
+        "backend, whatever graph exists (the way out of a stale graphify graph).",
+    )
+    build_p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 3 before embedding when the code graph fails the freshness check.",
+    )
+    build_p.add_argument(
+        "--prune",
+        action="store_true",
+        help="Remove orphaned vectors even when they are more than half the store "
+        "(normally kept as a safety valve against a graph that shrank by mistake).",
+    )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.add_argument(
         "--scope",
@@ -5627,6 +5855,14 @@ def build_parser() -> argparse.ArgumentParser:
         "and which synapses fired.",
     )
     query_p.add_argument(
+        "--no-learn",
+        dest="no_learn",
+        action="store_true",
+        help="Read-only query: synapse recall still shapes the answer, but nothing is "
+        "reinforced or logged and the synapse database is opened read-only. For "
+        "evals, benchmarks and CI (same as NEURALMIND_NO_LEARN=1).",
+    )
+    query_p.add_argument(
         "--type",
         choices=["auto", "code", "docs"],
         default="auto",
@@ -5691,6 +5927,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=100,
         help="Assumed queries per day for the --cost monthly projection (default: 100).",
     )
+    savings_p.add_argument(
+        "--naive-50k",
+        dest="naive_50k",
+        action="store_true",
+        help="Divide by the fixed 50,000-token estimate instead of the measured token "
+        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+    )
     savings_p.set_defaults(func=cmd_savings)
 
     review_p = subparsers.add_parser(
@@ -5721,6 +5964,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     bench_p.add_argument("project_path", nargs="?", default=".")
     bench_p.add_argument("--json", "-j", action="store_true")
+    bench_p.add_argument(
+        "--naive-50k",
+        dest="naive_50k",
+        action="store_true",
+        help="Divide by the fixed 50,000-token estimate instead of the measured token "
+        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+    )
     bench_p.add_argument(
         "--quality",
         action="store_true",
@@ -5859,6 +6109,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Cost model: dollars per 1K tokens (default: $0.01, override via NEURALMIND_COST_PER_1K_TOKENS)",
     )
     cost_p.add_argument("--json", "-j", action="store_true")
+    cost_p.add_argument(
+        "--naive-50k",
+        dest="naive_50k",
+        action="store_true",
+        help="Divide by the fixed 50,000-token estimate instead of the measured token "
+        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+    )
     cost_p.set_defaults(func=cmd_cost)
 
     # health command — lightweight health check for CI/CD
@@ -5900,24 +6157,72 @@ def build_parser() -> argparse.ArgumentParser:
 
     eval_p = subparsers.add_parser(
         "eval",
-        help="Run the faithfulness eval (NeuralMind vs naive baseline) on the reference fixture",
+        help="Score retrieval on this project against .neuralmind.eval.yaml "
+        "(or run a built-in suite with --suite)",
     )
     eval_p.add_argument(
         "project_path",
         nargs="?",
         default=None,
-        help="Project to evaluate (default: the committed gold-set fixture)",
+        help="Project to evaluate against its .neuralmind.eval.yaml. With --suite: the "
+        "project to run the suite on (default: the committed gold-set fixture)",
     )
     eval_p.add_argument("--json", "-j", action="store_true")
     eval_p.add_argument(
+        "--report",
+        action="store_true",
+        help="Print the eval history (.neuralmind/eval_history.jsonl) as a markdown table",
+    )
+    eval_p.add_argument(
+        "--show-questions",
+        dest="show_questions",
+        action="store_true",
+        help="Include each question, its gold file and its rank (off by default so "
+        "questions about internal code stay out of pasted reports)",
+    )
+    eval_p.add_argument(
+        "--suggest",
+        action="store_true",
+        help="Draft questions from module docstrings and README headings, with the "
+        "defining file as gold, for you to edit",
+    )
+    eval_p.add_argument(
+        "--write",
+        action="store_true",
+        help="With --suggest, write the drafts to .neuralmind.eval.yaml (never overwrites)",
+    )
+    eval_p.add_argument(
+        "--count",
+        type=int,
+        default=10,
+        help="With --suggest, how many questions to draft (default 10)",
+    )
+    eval_p.add_argument(
+        "--questions",
+        default=None,
+        help="Read questions from this file instead of .neuralmind.eval.yaml",
+    )
+    eval_p.add_argument(
+        "--no-history",
+        dest="no_history",
+        action="store_true",
+        help="Don't append this run to .neuralmind/eval_history.jsonl",
+    )
+    eval_p.add_argument(
+        "--suite",
+        choices=["faithfulness", "onboarding"],
+        default=None,
+        help="Run a built-in self-test suite from the source checkout instead",
+    )
+    eval_p.add_argument(
         "--selfcheck",
         action="store_true",
-        help="Validate the gold set + offline scorer only (no retrieval deps)",
+        help="With a suite: validate the gold set + offline scorer only (no retrieval deps)",
     )
     eval_p.add_argument(
         "--onboarding",
         action="store_true",
-        help="Run the onboarding-lift eval (committed team memory vs a cold agent) instead",
+        help="Same as --suite onboarding",
     )
     eval_p.set_defaults(func=cmd_eval)
 
