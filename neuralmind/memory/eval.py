@@ -922,7 +922,7 @@ class QueryOutcome:
 
 def load_query_set(path: str | Path) -> dict[str, Any]:
     """Read a query-set JSON file (see tests/memory/fixtures/decision_queries.json)."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
     data.setdefault("source", str(path))
     return data
 
@@ -1011,17 +1011,22 @@ class QuerySetEval:
             by_kind.setdefault(o.kind, []).append(o)
         summary: dict[str, dict[str, Any]] = {}
         for kind, group in by_kind.items():
-            scored = [o for o in group if o.recall is not None]
+            # (id, recall, reciprocal rank) of the queries with gold ids
+            scored = [
+                (o.id, o.recall, o.reciprocal_rank)
+                for o in group
+                if o.recall is not None and o.reciprocal_rank is not None
+            ]
             entry: dict[str, Any] = {
                 "queries": len(group),
                 "returned_nothing": sum(1 for o in group if not o.returned),
                 "mean_results": round(sum(len(o.returned) for o in group) / len(group), 2),
             }
             if scored:
-                entry["recall"] = _spread([o.recall for o in scored])
-                entry["mrr"] = _spread([o.reciprocal_rank for o in scored])
-                entry["misses"] = [o.id for o in scored if o.recall < 1.0]
-                entry["not_ranked_first"] = [o.id for o in scored if o.reciprocal_rank < 1.0]
+                entry["recall"] = _spread([recall for _, recall, _ in scored])
+                entry["mrr"] = _spread([rr for _, _, rr in scored])
+                entry["misses"] = [qid for qid, recall, _ in scored if recall < 1.0]
+                entry["not_ranked_first"] = [qid for qid, _, rr in scored if rr < 1.0]
             else:
                 entry["false_positives"] = [o.id for o in group if o.returned]
             summary[kind] = entry
