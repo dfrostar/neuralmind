@@ -40,7 +40,7 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
 - [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
 - [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness
-- [Tool-output compression benchmark](https://docs.neuralmind.uk/benchmarks/compression.html): what the PostToolUse hooks did to tokens in Claude Code (they added them), and why they no longer inject anything
+- [Tool-output compression benchmark](https://docs.neuralmind.uk/benchmarks/compression.html): what the PostToolUse hooks did to tokens in Claude Code (they added them), why they inject nothing by default, and the opt-in that trims pip install and neuralmind build progress lines (NEURALMIND_BASH_REPLACE=1), with its retention gates
 
 ## Comparisons
 
