@@ -1,0 +1,61 @@
+# requests @ 0e322af8 (src/requests) — 30 pre-registered questions; gold = the file whose code answers it
+- q: "When a request gets redirected to a different host, how does the library decide whether to drop the Authorization header?"
+  gold: [sessions.py]
+- q: "If a POST gets a 302 or 303 back, how does the follow-up request end up being a GET?"
+  gold: [sessions.py]
+- q: "How does digest authentication work — how is the challenge answered and the request retried after a 401?"
+  gold: [auth.py]
+- q: "How does the library work out the length of an upload body when it's a file object, a string, or a stream that's already been partly read?"
+  gold: [utils.py]
+- q: "How does reading the response body in chunks work when streaming, and what happens if I try to consume it a second time?"
+  gold: [models.py]
+- q: "How is the text encoding of a response chosen when the server's Content-Type doesn't include a charset?"
+  gold: [models.py, utils.py]
+- q: "How does it figure out which proxy to use for a URL, and how do no_proxy environment settings make a host skip the proxy?"
+  gold: [utils.py]
+- q: "How are uploaded files and form fields turned into a multipart/form-data body?"
+  gold: [models.py]
+- q: "How does the HTTP adapter set up certificate verification and client-side certificates on a connection?"
+  gold: [adapters.py]
+- q: "How do credentials get picked up from a .netrc file when I don't pass any auth?"
+  gold: [utils.py]
+- q: "How does the package check at import time that the installed urllib3 and character-detection library versions are supported?"
+  gold: [__init__.py]
+- q: "How are user-registered callbacks run on the response after a request finishes, and can a callback replace the response?"
+  gold: [hooks.py]
+- q: "Where are the human-friendly names for status codes, like not_found or teapot, mapped to their numbers?"
+  gold: [status_codes.py]
+- q: "Which file produces the system and dependency version report that people paste into bug reports?"
+  gold: [help.py]
+- q: "Which module decides which CA certificate bundle is used by default, and where would a distro packager change it?"
+  gold: [certs.py]
+- q: "Where does the library choose between chardet and charset_normalizer, and between simplejson and the standard json module?"
+  gold: [compat.py]
+- q: "Where are low-level urllib3 failures like max retries, proxy errors and SSL errors translated into the library's own exceptions?"
+  gold: [adapters.py]
+- q: "Where is a URL cleaned up before sending — hostnames IDNA-encoded, query params appended, and missing schemes rejected?"
+  gold: [models.py]
+- q: "Where does it check that header names and values don't contain newlines or leading whitespace?"
+  gold: [utils.py, _internal_utils.py]
+- q: "Where is the error for an unparseable JSON body defined so it can be caught both as a library error and as a standard json decode error?"
+  gold: [exceptions.py]
+- q: "Where does redirect handling re-evaluate proxy settings and strip or re-add the Proxy-Authorization header?"
+  gold: [sessions.py]
+- q: "Where do environment variables like REQUESTS_CA_BUNDLE or CURL_CA_BUNDLE get folded into the verify setting for a request?"
+  gold: [sessions.py]
+- q: "What happens when I look up a cookie by name and several cookies with that name exist on different domains?"
+  gold: [cookies.py]
+- q: "Where's the fake urllib-style request wrapper that lets the standard library's cookie policy inspect our request?"
+  gold: [cookies.py]
+- q: "Where is the dict subclass that returns None instead of raising for missing keys, used behind the status code lookup?"
+  gold: [structures.py]
+- q: "Where's the base class for pluggable auth handlers that you attach to a request and that get called with it?"
+  gold: [auth.py]
+- q: "Where's the auth helper that sends credentials to an HTTP proxy rather than the origin server?"
+  gold: [auth.py]
+- q: "Where's the response helper that throws an error for 4xx and 5xx statuses?"
+  gold: [models.py]
+- q: "Where's the function that combines a per-request setting with the session-wide default and drops keys explicitly set to None?"
+  gold: [sessions.py]
+- q: "Where's the small helper that turns bytes into the native str type, assuming ASCII unless told otherwise?"
+  gold: [_internal_utils.py]

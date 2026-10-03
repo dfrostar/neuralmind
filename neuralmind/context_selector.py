@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from . import l3_slots
 from .paths import graph_report_path
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,10 @@ class ContextResult:
     reduction_ratio: float = 0.0
     top_search_hits: list[dict] = field(default_factory=list)
     trace: dict | None = None
+    # The query intent L3 ranked with ("code", "docs" or "hybrid") and how it
+    # was decided ("classifier" or "keywords"); empty when L3 didn't run.
+    intent: str = ""
+    intent_source: str = ""
 
     @property
     def tokens(self) -> int:
@@ -612,6 +617,12 @@ class ContextSelector:
         else:
             # Code branch: standard RRF merge (default behavior)
             bm25_search = getattr(self.embedder, "bm25_search", None)
+            # One BM25 index over docs and code instead of the turbovec
+            # backend's docs-only one (v4.6.0, on by default;
+            # NEURALMIND_BM25_UNIFIED=0 restores v4.5). Written by build; an
+            # index built before v4.6.0 keeps the old list until rebuilt.
+            if l3_slots.unified_bm25_enabled() and self._unified_index():
+                bm25_search = self._unified_bm25_search
             if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
                 kw_results = bm25_search(query, n=fetch_n)
                 if kw_results and isinstance(kw_results, list):
@@ -621,6 +632,17 @@ class ContextSelector:
                     results = vec_results
             else:
                 results = vec_results
+            # Symbol-name lexical pass (v4.6.0, spec 7 item 5): the default
+            # backend's BM25 index holds only document text, so code symbols
+            # get no keyword signal at all. Fuse a symbol index in by RRF.
+            if l3_slots.code_bm25_enabled() and os.environ.get("NEURALMIND_BM25") != "0":
+                try:
+                    code_kw = self._code_bm25_search(query, fetch_n)
+                except Exception:
+                    logger.debug("code BM25 pass failed", exc_info=True)
+                    code_kw = []
+                if code_kw:
+                    results = self._rrf_merge(results, code_kw)[:fetch_n]
 
         self._query_search_cache[query] = results
         if self._trace is not None:
@@ -988,8 +1010,21 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        energy_by_id = dict(candidates[:num_swap])
-        fetched = get_nodes_by_ids(list(energy_by_id))
+        # A recalled node from a file the hits already cover adds no module,
+        # yet it takes a slot — and, when ranking is good, the slot of the only
+        # hit from a second expected file. With docs and code sharing one
+        # keyword index (v4.6.0) that turned the onboarding lift negative on the
+        # fixture: `create-user` kept three users/crud.py nodes and lost
+        # api/routes.py. So recall spends slots only on files search missed.
+        energy_by_id = dict(candidates)
+        present_modules = {_module_of(r) for r in results}
+        fetched = [
+            node
+            for node in get_nodes_by_ids([nid for nid, _ in candidates]) or []
+            if _module_of(node) not in present_modules
+        ]
+        fetched.sort(key=lambda n: energy_by_id.get(n.get("id"), 0.0), reverse=True)
+        fetched = fetched[:num_swap]
         if not fetched:
             return results
 
@@ -1147,10 +1182,20 @@ class ContextSelector:
         exactly as it did before v3.9.0.
         """
         heuristic = self._detect_intent(query)
+        self._last_intent_source = "keywords"
         try:
-            from .retrieval_enhancement import classify_intent
+            from .retrieval_enhancement import (
+                classify_behaviour_intent,
+                classify_intent,
+                intent_rules_enabled,
+            )
         except Exception:
             return heuristic
+        if intent_rules_enabled():
+            ruled = classify_behaviour_intent(query)
+            if ruled:
+                self._last_intent_source = "question shape"
+                return ruled
         try:
             enhanced = classify_intent(
                 query,
@@ -1160,7 +1205,10 @@ class ContextSelector:
         except Exception:
             logger.debug("enhanced intent classification failed", exc_info=True)
             return heuristic
-        return heuristic if enhanced == "hybrid" else enhanced
+        if enhanced == "hybrid":
+            return heuristic
+        self._last_intent_source = "classifier"
+        return enhanced
 
     def _apply_retrieval_enhancements(
         self, query: str, results: list[dict], intent: str
@@ -1469,6 +1517,12 @@ class ContextSelector:
 
         # Boost factors (configurable via env vars)
         code_boost = float(os.environ.get("NEURALMIND_CODE_BOOST", "3.0"))
+        try:
+            from .retrieval_enhancement import intent_rules_enabled
+
+            rules = intent_rules_enabled()
+        except Exception:
+            rules = False
         doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
         for result in results:
             meta = result.get("metadata", {})
@@ -1479,6 +1533,14 @@ class ContextSelector:
             is_doc = file_type in ("rationale", "document") or source_file.endswith(
                 (".md", ".markdown", ".txt", ".rst", ".org")
             )
+            # A docstring belongs to the code it documents (v4.6.0).
+            if (
+                is_doc
+                and file_type == "rationale"
+                and rules
+                and not source_file.endswith((".md", ".markdown", ".txt", ".rst", ".org"))
+            ):
+                is_doc = False
             is_code = not is_doc and (file_type == "code" or bool(source_file))
 
             if intent == "code":
@@ -1500,6 +1562,85 @@ class ContextSelector:
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
         return results
 
+    def _node_catalog(self):
+        if getattr(self, "_catalog", None) is None:
+            self._catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
+        return self._catalog
+
+    def _hub_stats(self):
+        if getattr(self, "_hub_stats_cache", None) is None:
+            self._hub_stats_cache = l3_slots.HubStats.load(
+                self.project_path, self.embedder, self._node_catalog()
+            )
+        return self._hub_stats_cache
+
+    def _spend_l3_slots(self, query: str, results: list[dict], intent: str, n: int) -> list[dict]:
+        """Re-spend the L3 slots (spec 7 work items 1–3).
+
+        The ranked hits keep their slots unless a pass vacates one: the
+        per-file cap, or hub dampening marking a hit down. Vacated slots are
+        refilled from the rest of this query's search (ranks n+1..10, scored
+        with the same intent multipliers). Doc hits hand off to the code they
+        name, competing at just below the doc's score.
+        """
+        originals = [dict(r) for r in results]
+        present = {r.get("id") for r in originals}
+        refill = [
+            dict(r) for r in self._query_search_cache.get(query, []) if r.get("id") not in present
+        ]
+        if refill:
+            refill = self._apply_intent_boost(refill, intent)
+        try:
+            if l3_slots.hub_dampening_enabled():
+                stats = self._hub_stats()
+                originals = l3_slots.dampen_hubs(originals, stats)
+                refill = l3_slots.dampen_hubs(refill, stats)
+            if l3_slots.handoff_enabled():
+                ranked = sorted(originals, key=lambda r: float(r.get("score") or 0.0), reverse=True)
+                originals += l3_slots.handoff_candidates(ranked[:n], query, self._node_catalog())
+        except Exception:
+            logger.debug("L3 slot passes failed", exc_info=True)
+        if l3_slots.intent_pool_enabled():
+            # Intent ranks the whole candidate pool (NEURALMIND_INTENT_POOL=1):
+            # a code hit at rank 6 can outrank a doc that only made the top
+            # four on raw similarity.
+            return l3_slots.allocate(originals + refill, n, l3_slots.per_file_cap())
+        return l3_slots.spend(originals, refill, n, l3_slots.per_file_cap())
+
+    def _code_bm25_search(self, query: str, n: int) -> list[dict]:
+        """Symbol-name BM25 (``NEURALMIND_BM25_CODE=1``); [] when unavailable."""
+        if getattr(self, "_code_bm25", None) is None:
+            self._code_bm25 = (
+                l3_slots.code_bm25_index(self.project_path, self._node_catalog()) or False
+            )
+        return self._bm25_hits(self._code_bm25, query, n)
+
+    def _unified_index(self):
+        """The build's docs + code BM25 index, loaded once; False when absent."""
+        if getattr(self, "_unified_bm25", None) is None:
+            self._unified_bm25 = l3_slots.unified_bm25_index(self.project_path, None) or False
+        return self._unified_bm25
+
+    def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:
+        """Docs + code BM25 (on by default); [] when the build wrote none."""
+        return self._bm25_hits(self._unified_index(), query, n)
+
+    @staticmethod
+    def _bm25_hits(idx, query: str, n: int) -> list[dict]:
+        if not idx:
+            return []
+        out = []
+        for r in idx.search(query, top_k=n):
+            out.append(
+                {
+                    "id": r["id"],
+                    "document": r.get("document", ""),
+                    "metadata": r.get("metadata", {}),
+                    "score": float(r.get("score") or 0.0),
+                }
+            )
+        return out
+
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
@@ -1509,6 +1650,8 @@ class ContextSelector:
         Returns:
             Tuple of (search_results_text, number of hits)
         """
+        self._last_intent = ""
+        self._last_intent_source = ""
         results = self._fetch_search(query, n=n)
 
         if not results:
@@ -1529,10 +1672,17 @@ class ContextSelector:
         # pipeline boosted with the keyword intent, then boosted the same
         # results again with the corrected one, compounding both multipliers.
         intent = self._resolve_intent(query)
+        self._last_intent = intent
         results = self._apply_intent_boost(results, intent)
 
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)
+
+        # How the slots are spent (v4.6.0, spec 7): per-file cap, doc-to-code
+        # hand-off, hub dampening. Each is behind its own flag; with none set
+        # this is skipped and L3 is exactly as before.
+        if l3_slots.any_slot_pass_enabled():
+            results = self._spend_l3_slots(query, results, intent, n)
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
         # relevance sidecar built from it) carry the same synapse_boost /
@@ -2059,6 +2209,10 @@ class ContextSelector:
             search_hits=search_hits,
             reduction_ratio=reduction_ratio,
             top_search_hits=top_hits,
+            intent=getattr(self, "_last_intent", "") if (include_l3 and query) else "",
+            intent_source=(
+                getattr(self, "_last_intent_source", "") if (include_l3 and query) else ""
+            ),
         )
 
     def get_wakeup_context(self) -> ContextResult:

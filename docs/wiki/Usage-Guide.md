@@ -24,7 +24,7 @@
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
 
-Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) the retrieval phase uses **45–261× fewer tokens than pasting every source file**, at 93.75% mean gold-file recall — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
+Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) the retrieval phase uses **46–263× fewer tokens than pasting every source file**, at 95% mean gold-file recall — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
 
 ### The Core Problem
 

@@ -113,6 +113,8 @@ Output appended after the normal context block:
 
 The trace is the primary tool for diagnosing a retrieval that felt wrong or incomplete — it shows you exactly which clusters loaded and which search hits scored, so you know where to look.
 
+Since v4.6.0 the trace also prints the query intent L3 ranked with, and how it was decided — by keywords, by the classifier, or, with the off-by-default `NEURALMIND_INTENT_RULES=1`, by question shape (`Query intent     : code (by question shape)`) — and its hit list shows each hit's label and file instead of raw node ids. If a code question comes back with `docs` intent, that explains docs outranking code: docs intent multiplies doc hits ×2.0 and code hits ×0.7.
+
 ## Catch co-breaks before you push *(v0.39.0+)*
 
 Before opening a PR, run:
@@ -180,7 +182,7 @@ Tune hook thresholds via env vars — see [PostToolUse Compression](../../README
 
 ## Expected savings
 
-No benchmark measures the combined retrieval + consumption effect yet, so there is no typical multiplier to quote. Run `neuralmind benchmark . --json` on your repo for the retrieval number; on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), retrieval alone uses 45–261× fewer tokens than pasting every source file.
+No benchmark measures the combined retrieval + consumption effect yet, so there is no typical multiplier to quote. Run `neuralmind benchmark . --json` on your repo for the retrieval number; on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), retrieval alone uses 46–263× fewer tokens than pasting every source file.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

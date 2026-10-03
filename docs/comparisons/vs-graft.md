@@ -149,7 +149,7 @@ whatever Graft's tools return.
 - **Their evidence class is stronger than ours where it overlaps.**
   SWE-bench Verified measures whether the agent *solved the issue*;
   our public benchmark measures whether retrieval *ranked the right
-  file* (93.75% mean gold-file recall, 85–100% per repo, four pinned OSS
+  file* (95% mean gold-file recall, 85.71–100% per repo, four pinned OSS
   repos). Ranking is cheaper to run and fully reproducible without
   paying for an LLM, which is why we run it — but it is a weaker claim
   about end-task outcomes, and a reader comparing the two headline

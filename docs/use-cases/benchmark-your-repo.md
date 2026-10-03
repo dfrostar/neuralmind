@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 45–261× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 46–263× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 
@@ -29,6 +29,8 @@ neuralmind build .
 ```
 
 The first build takes 1–3 minutes depending on repo size. Incremental rebuilds after code changes take seconds.
+
+**Indexed with an earlier version?** Run `neuralmind build .` once after upgrading to v4.6.0. The build writes the keyword index that now covers docs and code together; queries never build, so until then every number below measures the previous version's ranking.
 
 **Sanity check — make sure it worked:**
 
@@ -197,6 +199,12 @@ with its commit and NeuralMind version so you can see a refactor or an upgrade
 move the numbers. Walkthrough:
 [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md).
 
+**Comparing rankings (v4.6.0+).** Ranking changes are environment variables
+read at query time, so the same eval scores the previous version's ranking —
+`NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history` — or an
+off-by-default research flag, without a rebuild. Walkthrough:
+[A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md).
+
 ## Step 4 — Translate to real money
 
 At **100 queries/day** on **Claude 3.5 Sonnet** ($3/MTok input):
@@ -251,13 +259,15 @@ A few things to check before giving up:
 2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress.
 3. **Try a larger query set.** The default 5-query benchmark is representative, not exhaustive. Pass `sample_queries` if you use the Python API.
 4. **Enable PostToolUse hooks** (Claude Code only) — that's the second compression phase. Retrieval-only numbers miss half the story.
-5. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
+5. **Check the query intent** (v4.6.0+). `neuralmind query . "your question" --explain` prints the intent L3 ranked with — `Query intent     : docs (by classifier)` on a question about how your code behaves explains why a README ranks above the implementation *within* L3's four hits (a `docs` intent multiplies doc hits by 2.0 and code by 0.7). It can't explain the implementation missing from those four: in v4.6.0's eval, switching intent never changed hit@5. Collect a few of those questions in `.neuralmind.eval.yaml` and [A/B-test the research flags](./ab-test-a-ranking-change.md) on them before turning one on.
+6. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
 
 ## Related
 
 - [Use case: Cost optimization](./cost-optimization.md) — baseline → measure → report template for stakeholders
 - [Use case: Claude Code user](./claude-code.md) — full two-phase workflow
 - [Use case: Measure memory across a major refactor](./measure-memory-across-a-refactor.md) — the before/after version of this benchmark, with a real-world field report
+- [Use case: A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md) — score a research flag, or your own change, before trusting it
 - [Comparisons: vs long context windows](../comparisons/vs-long-context.md) — why 1M-token windows don't solve this
 
 ---

@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory with a stale-decision guard, progressive context disclosure (93.75% mean gold-file recall at 45–261× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://docs.neuralmind.uk/about.html">
     <meta property="og:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
-    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 95% mean gold-file recall at 46–263× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
+    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 95% mean gold-file recall at 46–263× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta name="twitter:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-09-27",
+      "dateModified": "2026-10-01",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -199,6 +199,23 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v460">
+            <h2>What&rsquo;s New in v4.6.0 &mdash; one keyword index for docs and code, measured before it shipped</h2>
+            <p><strong>The default backend&rsquo;s BM25 keyword index held only documents, so on &ldquo;how does X work&rdquo; questions a doc kept taking the search slot the implementation should have had.</strong> v4.6.0 puts docs and code in one keyword index &mdash; and shipped it only after it passed a keep rule fixed in advance, on 30 questions per repository across six repositories &mdash; pre-registered and committed for the five public repositories, plus a private 383-file repository. Evidence level: reproducible on demand, not a CI gate (<code>python -m evals.retrieval.run --public-benchmark</code>; raw output in <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md"><code>bench/retrieval/</code></a>).</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong>One BM25 index for docs and code, on by default</strong> &mdash; <code>neuralmind build</code> writes <code>.neuralmind/bm25_unified_index.json</code> (doc text, symbol names, file paths, docstrings) and queries fuse it; mean hit@5 <strong>72.8% &rarr; 79.4%</strong>, MRR 0.589 &rarr; 0.654, context tokens +1.1%, and one added BM25 lookup per query. <code>NEURALMIND_BM25_UNIFIED=0</code> restores v4.5.0. Run <code>neuralmind build</code> once after upgrading</li>
+                <li><strong>Public benchmark regenerated</strong> &mdash; 95% mean gold-file recall (was 93.75%), 85.71&ndash;100% per repo, 92.5% found-rate, 3 of 40 queries missed, 46&ndash;263&times; fewer tokens than pasting every source file. A bare vector-RAG baseline still leads on recall</li>
+                <li><strong>Losses, published</strong> &mdash; <code>requests</code> drops one question, <code>rich</code>&rsquo;s MRR falls 0.71 &rarr; 0.60, <code>click</code> gains a public-benchmark miss, and a private 383-file repository reaches 73% / 0.60 against a target of 80% / 0.65 &mdash; not met</li>
+                <li><strong><code>query --explain</code> shows the query intent</strong> L3 ranked with, and how it was decided; its hit list shows labels and files instead of raw ids</li>
+                <li><strong>A multi-repo retrieval eval</strong> &mdash; <code>python -m evals.retrieval.run</code> runs every flag configuration read-only against <code>requests</code>, <code>click</code>, <code>flask</code>, <code>rich</code> and this repository, plus your own with <code>--private</code>, and applies the keep rule; raw output committed in <code>bench/retrieval/</code></li>
+                <li><strong>Five ranking changes measured and not kept</strong> &mdash; per-file caps, doc-to-code hand-off, hub dampening, intent rules (alone and over the whole candidate pool) and a code-only keyword list each lost on the eval, and ship off by default behind flags</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.0.md">v4.6.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v450">
             <h2>What&rsquo;s New in v4.5.0 &mdash; numbers measured on your project</h2>
             <p><strong>Three commands printed three unrelated reduction ratios against three baselines, and running an eval weekly trained the synapse layer on its own test.</strong> v4.5.0 makes every number NeuralMind prints about a project measured on that project, and comparable from run to run.</p>
@@ -241,7 +258,7 @@
                 <li><strong>v4.3.0 &mdash; progressive decision retrieval.</strong> Three MCP tools let an agent scan compact decision rows first and fetch full records only for the ones it needs, plus session-boundary summary hooks.</li>
                 <li><strong>v4.3.1 &ndash; v4.3.4 &mdash; fixes.</strong> Package-layout code repos are no longer misread as book projects; dot-files such as <code>.env</code> are never ingested; <code>.gitignore</code> patterns follow git&rsquo;s semantics; synapse decay no longer compounds on repeated calls.</li>
             </ul>
-            <p>The public benchmark was regenerated at v4.3.4 with its raw data committed: <strong>93.75% mean gold-file recall (85&ndash;100% per repo) at 45&ndash;261&times; fewer tokens</strong> than pasting every source file, 4 of 40 queries missed &mdash; <a href="https://neuralmind.uk/benchmark/">see every result</a>.</p>
+            <p>The public benchmark was regenerated at v4.3.4 with its raw data committed: <strong>93.75% mean gold-file recall (85&ndash;100% per repo) at 45&ndash;261&times; fewer tokens</strong> (superseded at v4.6.0: 95%, 46&ndash;263&times;) than pasting every source file, 4 of 40 queries missed &mdash; <a href="https://neuralmind.uk/benchmark/">see every result</a>.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/tree/main/docs/releases">Release notes &rarr;</a> &middot; <a href="https://docs.neuralmind.uk/wiki/Memory-Layer.html">Memory layer guide &rarr;</a></p>
         </div>
     </section>

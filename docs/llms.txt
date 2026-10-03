@@ -1,10 +1,10 @@
 # NeuralMind
 
-> Persistent, local-first codebase memory for AI coding agents. NeuralMind indexes a repository into a code graph, learns which files go together from how you actually work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue and any MCP client — so the agent starts each session already knowing where things are. On a reproducible public benchmark it reaches 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. MIT core, every feature free at 1 seat, `pip install neuralmind`.
+> Persistent, local-first codebase memory for AI coding agents. NeuralMind indexes a repository into a code graph, learns which files go together from how you actually work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue and any MCP client — so the agent starts each session already knowing where things are. On a reproducible public benchmark it reaches 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file. MIT core, every feature free at 1 seat, `pip install neuralmind`.
 
 Key facts, each backed by a runnable eval with its data committed:
 
-- Cheaper context: 85–100% gold-file recall per repo (93.75% mean, 90% found-rate across 40 pre-registered queries) at 45–261× fewer tokens than pasting every source file; beats ripgrep on cost on every repo, and on recall beats it on 2 of 4 repos and ties exactly on the other 2 (public benchmark on `requests`, `click`, `flask`, `rich`; `flask` is NeuralMind's weakest repo at 0.85 recall; 4 of 40 queries missed, every one published). Caveat: a bare vector-RAG baseline matches or beats NeuralMind's recall at fewer tokens on every repo — see "Where NeuralMind loses" in docs/benchmarks/public.md.
+- Cheaper context: 85.71–100% gold-file recall per repo (95% mean, 92.5% found-rate across 40 pre-registered queries) at 46–263× fewer tokens than pasting every source file; beats ripgrep on cost on every repo, and on recall beats it on 3 of 4 repos and ties exactly on the fourth (public benchmark on `requests`, `click`, `flask`, `rich`; `click` is NeuralMind's weakest repo at 0.86 recall; 3 of 40 queries missed, every one published). Caveat: a bare vector-RAG baseline matches or beats NeuralMind's recall at fewer tokens on every repo — see "Where NeuralMind loses" in docs/benchmarks/public.md.
 - On private repos, `neuralmind benchmark .` has reported 12–50× fewer tokens per code question, measured against a fixed 50K-token estimate of naive context (field reports — directional, not a guarantee).
 - Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (a separate, off-by-default eval on `requests`/`click` only; pure retrieval ranking, reproducible).
 - Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate, budget-neutral (reference fixture A/B). CI gates the direction (recall-on >= recall-off), not a magnitude; +3.5 to +14 points observed across runs. Reproduce with `python -m tests.benchmark.run`.
@@ -39,7 +39,7 @@ Key facts, each backed by a runnable eval with its data committed:
 
 - [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
 - [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
-- [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness
+- [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness, and the multi-repo retrieval eval behind v4.6.0's one BM25 index over docs and code
 
 ## Comparisons
 
