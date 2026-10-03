@@ -112,9 +112,12 @@ this public repo. Both repos deploy to `neuralmind.uk`; only this one
 - Tests live in `tests/`. The synapse layer's tests are stdlib-only
   so they run without the full dep set.
 - Generated state lives in `<project>/.neuralmind/` — never committed.
-- Behavior toggles via env vars: `NEURALMIND_BYPASS=1` skips
-  compression, `NEURALMIND_SYNAPSE_INJECT=0` skips prompt-time
-  recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory export.
+- Behavior toggles via env vars: `NEURALMIND_BYPASS=1` switches
+  off every hook action, `NEURALMIND_SYNAPSE_INJECT=0` skips
+  prompt-time recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory
+  export. The Read/Bash/Grep PostToolUse hooks inject nothing:
+  Claude Code adds `additionalContext` beside a tool result rather
+  than replacing it (see `docs/benchmarks/compression.md`).
 
 ## Commercial terms — single source of truth
 
@@ -160,7 +163,7 @@ agent-visible behavior:
 - [ ] `README.md` — bump the top banner, demote the previous
   version into the history trail, add the new release-notes row
   to the bottom table, and update any in-context sections (e.g.
-  "PostToolUse hooks — what happens automatically") with the new
+  the "After install, your agent:" list) with the new
   behavior. Show what the agent actually sees, not just what the
   code does.
 - [ ] `docs/index.html` — top banner block + earlier-releases trail.

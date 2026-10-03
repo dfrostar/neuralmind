@@ -32,10 +32,10 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 
 | Compared against | Short verdict |
 |---|---|
-| Cursor `@codebase` | Works *only* in Cursor; NeuralMind works in any agent and adds tool-output compression |
-| Aider repo-map | Aider is syntactic only; NeuralMind adds semantic retrieval and compression |
+| Cursor `@codebase` | Works *only* in Cursor; NeuralMind works in any agent and remembers across sessions |
+| Aider repo-map | Aider is syntactic only; NeuralMind adds semantic retrieval and learned associations |
 | Sourcegraph Cody | Cody is server-hosted and org-wide; NeuralMind is local and per-project |
-| Continue / Cline | Those are agent runtimes; NeuralMind is the context/compression layer underneath |
+| Continue / Cline | Those are agent runtimes; NeuralMind is the context and memory layer underneath |
 | GitHub Copilot | Copilot is hosted completions; NeuralMind is local context for any agent |
 | Windsurf / Codeium | Vertically integrated IDE; NeuralMind is editor- and model-agnostic |
 | Claude Projects | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
@@ -51,12 +51,12 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 
 ## TL;DR
 
-Most alternatives cover **retrieval** (Cursor `@codebase`, Aider, LangChain) or **indexing** (Copilot, Cody) or **hosting** (Claude Projects, Windsurf) — not the **two-phase** story. NeuralMind optimizes both:
+Most alternatives cover **retrieval** (Cursor `@codebase`, Aider, LangChain) or **indexing** (Copilot, Cody) or **hosting** (Claude Projects, Windsurf). NeuralMind covers two things:
 
 1. What context the agent *retrieves* (progressive disclosure, ~800 tokens/query)
-2. What the agent *consumes* from its own tool calls (PostToolUse compression on Read/Bash/Grep)
+2. What the agent *remembers* between sessions (a synapse layer learned from how you work)
 
-The savings compound.
+It doesn't compress tool output: that turned out to cost tokens in Claude Code ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)).
 
 ---
 

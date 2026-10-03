@@ -242,7 +242,7 @@ exclude_patterns = [
 # 2. Local node_modules / site-packages (yes)
 # 3. External PyPI/npm packages (no, stays private)
 
-# NeuralMind indexes only local code and makes no calls of its own
+# NeuralMind indexes only local code and sends no telemetry
 ```
 
 ---

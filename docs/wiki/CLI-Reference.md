@@ -1836,13 +1836,18 @@ node id), `"semantic"` (resolved via the closest embedding match), or
 
 ### last *(v0.10.0+)*
 
-Print the most recent Bash output the PostToolUse hook cached, so an
-agent can recover the dropped middle without re-running the command.
+Print the most recent Bash output the PostToolUse hook cached, so it can
+be read again without re-running the command.
 
-Every time the `compress-bash` hook fires, it stashes the raw
-pre-compression stdout/stderr to
+Every time the `compress-bash` hook fires (after each successful Bash call),
+it stashes the stdout/stderr, credentials redacted, to
 `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap,
-atomic temp-file + rename writes). `neuralmind last` surfaces it.
+atomic temp-file + rename writes). `neuralmind last` surfaces it. A call
+Claude Code reports as failed (a non-zero exit, other than exit 1 from
+`grep`, `find`, `diff` and a few others) fires `PostToolUseFailure`
+instead, so its output isn't cached. Despite
+its name, the hook no longer returns compressed output to Claude
+([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)), so this is the output Claude already saw.
 
 ```bash
 neuralmind last [project_path] [--json]
@@ -1858,7 +1863,7 @@ neuralmind last [project_path] [--json]
 #### Examples
 
 ```bash
-# Human-readable: what the agent would have seen pre-compression.
+# Human-readable: the last Bash output, as the command printed it.
 neuralmind last
 
 # Full JSON payload — useful for scripted recovery flows.
@@ -1881,9 +1886,9 @@ neuralmind last
 
 | Scenario | Recovery cost without `last` | With `last` |
 |----------|------------------------------|-------------|
-| Inspecting compressed `npm test` middle | Re-run (~28s) | Free lookup |
-| Reading dropped log lines from a non-deterministic API call | Re-run + likely different output | Free lookup, identical bytes |
-| Reading dropped output from a destructive command | Re-run impossible | Free lookup |
+| Reading a long, passing `npm test` run again | Re-run (~28s) | Free lookup |
+| Re-reading a non-deterministic API call's output | Re-run, likely different output | Free lookup, same output (credentials redacted) |
+| Re-reading a destructive command's output | Re-run impossible | Free lookup |
 
 ---
 
@@ -1912,7 +1917,7 @@ NeuralMind block, leaving any user hooks untouched):
 | Event | What runs | Purpose |
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
-| `PostToolUse` | Read/Bash/Grep compressors; Edit/Write reuse feedback *(v0.41.0)* | Token reduction on tool output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
+| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
@@ -1952,10 +1957,10 @@ neuralmind install-hooks --uninstall
 neuralmind install-hooks --uninstall --global
 ```
 
-**Bypass temporarily:**
+**Bypass temporarily** (switches off every NeuralMind hook action):
 
 ```bash
-NEURALMIND_BYPASS=1 claude-code ...
+NEURALMIND_BYPASS=1 claude   # hooks inherit Claude Code's environment
 ```
 
 ---
@@ -3046,7 +3051,7 @@ renewed — issue a new one.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
-| `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
+| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache) |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
@@ -3059,9 +3064,9 @@ renewed — issue a new one.
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
-| `NEURALMIND_BASH_SMALL` | `500` | *(v0.10.0+)* Threshold below which failing Bash outputs pass through verbatim (no compression marker). Tunable to suit your noise tolerance. |
-| `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which successful Bash outputs get compressed. |
-| `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines always kept verbatim in compressed Bash output. |
+| `NEURALMIND_BASH_SMALL` | `500` | *(v0.10.0+)* Threshold below which `compress_bash()` passes failing output through verbatim. Python API only: the hooks no longer compress tool output. |
+| `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which `compress_bash()` compresses successful output. Python API only: the hooks no longer compress tool output. |
+| `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines `compress_bash()` always keeps verbatim. Python API only: the hooks no longer compress tool output. |
 | `NEURALMIND_EVAL_LLM_JUDGE` | `0` | *(v0.13.0+)* Opt-in LLM-as-judge mode for the offline faithfulness eval harness (`evals/faithfulness/`). Off by default and **never** the CI gate; when set, the runner prints a notice that answers + gold facts would be sent to a third-party API. The default judge is the zero-network offline expected-fact-recall scorer. |
 | `NEURALMIND_PARITY_REDUCTION_TOL` | `0.25` | *(v0.15.0+)* Backend parity gate (`evals/parity/run.py`): max fraction the built-in backend's mean token reduction may sit below graphify's (0.25 = within 25%). |
 | `NEURALMIND_PARITY_FAITHFULNESS_TOL` | `0.10` | *(v0.15.0+)* Backend parity gate: max absolute points the built-in backend's faithfulness delta / fact recall may sit below graphify's (0.10 = 10 points). |

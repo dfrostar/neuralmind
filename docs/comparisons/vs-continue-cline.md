@@ -13,7 +13,7 @@ NeuralMind is not an agent — it's a **context provider** that agents call. It 
 | Role | Agent runtime (chat + tools + model) | Context provider (MCP server + CLI) |
 | What it produces | LLM responses, file edits | Token-budgeted context strings, skeletons, search results |
 | Codebase retrieval built-in | Basic (file reads, grep, optional embeddings) | Dedicated 4-layer progressive disclosure system |
-| Tool-output compression | No | Yes (Claude Code hook format; portable to others) |
+| Tool-output compression | No | No (its Claude Code PostToolUse hooks used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Replaces the other? | No | No — they compose |
 
 ## When to pick which
@@ -21,9 +21,9 @@ NeuralMind is not an agent — it's a **context provider** that agents call. It 
 Use both. NeuralMind makes Continue/Cline cheaper and more accurate by:
 
 1. Providing the `neuralmind_query` MCP tool for any code question.
-2. (In Claude Code) compressing every `Read`/`Bash`/`Grep` result via PostToolUse hooks.
+2. Providing the `neuralmind_skeleton` MCP tool, which returns a file's functions, call graph, and cross-file edges without reading the whole file.
 
-If you only use Continue or Cline without NeuralMind, you rely on their built-in file-read/grep flow — which loads raw content and pays for every line the model sees. NeuralMind is the compression layer underneath.
+If you only use Continue or Cline without NeuralMind, you rely on their built-in file-read/grep flow — which loads raw content and pays for every line the model sees. NeuralMind is the retrieval layer that hands the agent a ranked, token-budgeted slice instead.
 
 ---
 

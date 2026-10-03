@@ -132,7 +132,6 @@ same questions.
 | Self-hostable, fully offline | Yes (Docker server) | Yes (Graphiti + self-hosted graph DB); Zep Cloud itself is not | Yes — everything under `.neuralmind/`, air-gap installable |
 | Team/cross-agent portability | Per-deployment store | Per-deployment graph | Git-portable: `.neuralmind-team-memory.json`, markdown export |
 | Code-retrieval / progressive disclosure | No | No | Yes — L0→L3, ~800 tokens/query |
-| Tool-output compression | No | No | Yes — `PostToolUse` on `Read`/`Bash`/`Grep` |
 | Distribution | pip/npm, Docker, hosted platform, OpenMemory (local MCP server) | Graphiti: pip, self-hosted. Zep: hosted only | PyPI, Docker, VS Code extension, MCP |
 | License | Apache 2.0 | Apache 2.0 (Graphiti); Zep Cloud proprietary | MIT (core); source-available commercial modules for the Team tier |
 | GitHub stars (point-in-time) | 65k+ | Graphiti ~31k; Zep (examples repo) ~4.9k | — |

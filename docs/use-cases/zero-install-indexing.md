@@ -128,5 +128,5 @@ neuralmind benchmark .          # your actual reduction ratio + per-query tokens
 
 - [Does it work on your code? (5-minute benchmark)](./benchmark-your-repo.md)
 - [Install NeuralMind anywhere](./install-paths.md) — pip / pipx / uv / Docker / source
-- [Claude Code user](./claude-code.md) — full two-phase optimization
+- [Claude Code user](./claude-code.md) — retrieval plus session memory and lifecycle hooks
 - [CLI Reference → `build`](../wiki/CLI-Reference.md) — backend precedence + options

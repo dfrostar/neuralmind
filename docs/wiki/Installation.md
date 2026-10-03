@@ -2,7 +2,7 @@
 
 This guide covers all installation methods for NeuralMind, including system requirements, dependencies, and platform-specific instructions.
 
-NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbound calls. Once installed, it works from the CLI, via its MCP server, and (for Claude Code) as a PostToolUse compression layer. See the [Setup Guide](Setup-Guide) for post-install configuration or [Use Cases](Use-Cases) to pick a workflow first.
+NeuralMind is a local Python package — no SaaS, no accounts, no telemetry; after a one-time embedding-model download on first build it works offline. Once installed, it works from the CLI, via its MCP server, and (for Claude Code) through lifecycle hooks. See the [Setup Guide](Setup-Guide) for post-install configuration or [Use Cases](Use-Cases) to pick a workflow first.
 
 ## Table of Contents
 

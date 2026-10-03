@@ -52,8 +52,9 @@ That's the shared substrate. Now wire up every agent you use:
 neuralmind install-hooks .
 ```
 
-Registers `PostToolUse` compression + `SessionStart` / `UserPromptSubmit` /
-`PreCompact` synapse hooks. Auto-active in every session.
+Registers `SessionStart` / `UserPromptSubmit` / `PreCompact` synapse hooks,
+a `PreToolUse` stale-decision guard, and a `PostToolUse` Bash output cache
+for `neuralmind last`. Auto-active in every session.
 
 **Claude Desktop:** Edit `claude_desktop_config.json`:
 
@@ -187,7 +188,7 @@ Useful pins for a multi-agent workflow:
 | `NEURALMIND_EVENT_LOG` | `1` | `0` disables JSONL writer (in-process feed still works) |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | `0` disables spreading-activation context injection on `UserPromptSubmit` |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | `0` disables session-start memory export |
-| `NEURALMIND_BYPASS` | unset | `1` disables PostToolUse compression for one command |
+| `NEURALMIND_BYPASS` | unset | `1` switches off every NeuralMind hook action |
 
 ---
 

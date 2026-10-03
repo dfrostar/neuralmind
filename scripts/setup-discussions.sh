@@ -168,7 +168,7 @@ No. Embeddings are local via ChromaDB; synapses live in a local SQLite file at `
 Three things appear automatically:
 
 1. `<project>/.neuralmind/SYNAPSE_MEMORY.md` is written into Claude Code's auto-memory dir → agent boots with your codebase's associations and transitions in context.
-2. PostToolUse hooks compress Bash/Read/Grep output before the agent reads it.
+2. Claude Code hooks add prompt-time recall and a stale-decision guard (tool output reaches the agent untouched).
 3. MCP tools (`neuralmind_query`, `neuralmind_next_likely`, etc.) become available.
 
 ### How long until the memory becomes useful?
@@ -181,7 +181,7 @@ NeuralMind runs per-repo. Multi-repo synapses are on the roadmap, not shipped.
 
 ### Will this work with my model — Gemini / GPT-4 / local Llama?
 
-The MCP server is model-agnostic. For non-MCP chats: `neuralmind wakeup . | pbcopy` pipes context into any chat window. Only the PostToolUse compression hooks are Claude-Code-specific.
+The MCP server is model-agnostic. For non-MCP chats: `neuralmind wakeup . | pbcopy` pipes context into any chat window. Only the lifecycle hooks (session memory, prompt recall, stale-decision guard) are Claude-Code-specific.
 
 ### How do I measure ROI?
 
