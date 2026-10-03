@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.4.0](https://github.com/dfrostar/neuralmind/compare/v4.3.5...v4.4.0) (2026-10-03)
+
+
+### Features
+
+* index freshness — never silently out of step with the code (v4.4.0 specs 1, 2, 3, 8) ([#549](https://github.com/dfrostar/neuralmind/issues/549)) ([f234466](https://github.com/dfrostar/neuralmind/commit/f234466f8039f77233a1e126baef2a4a46d00c8c))
+
+
+### Documentation
+
+* add mem0 gap analysis to the local API spec; cover OpenMemory in the mem0 comparison ([#554](https://github.com/dfrostar/neuralmind/issues/554)) ([c114d25](https://github.com/dfrostar/neuralmind/commit/c114d2575954fc51afe20bca56c2840e09166a8b))
+* **logos:** v3.1 QA-patched training scripts — 5 blockers fixed ([c8c6b8f](https://github.com/dfrostar/neuralmind/commit/c8c6b8f0c4792c260d76cbd812e0fe743deb3610))
+* spec a self-hosted /v1 local API, scope its first PR, add a hand-off prompt ([#552](https://github.com/dfrostar/neuralmind/issues/552)) ([64ed55a](https://github.com/dfrostar/neuralmind/commit/64ed55adc9ce447316ee26d27199d8e082fb1456))
+
 ## [4.3.5](https://github.com/dfrostar/neuralmind/compare/v4.3.4...v4.3.5) (2026-09-28)
 
 
