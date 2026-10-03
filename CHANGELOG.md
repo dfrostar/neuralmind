@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.5.0](https://github.com/dfrostar/neuralmind/compare/v4.4.0...v4.5.0) (2026-10-03)
+
+
+### Features
+
+* measurement you can trust — gitignore-aware index, read-only queries, project eval (v4.5.0 specs 4, 5, 6) ([#548](https://github.com/dfrostar/neuralmind/issues/548)) ([cacadf4](https://github.com/dfrostar/neuralmind/commit/cacadf4590bc788d0f88f0ee7edd573581c172ff))
+
 ## [4.4.0](https://github.com/dfrostar/neuralmind/compare/v4.3.5...v4.4.0) (2026-10-03)
 
 
