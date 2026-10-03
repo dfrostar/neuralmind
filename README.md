@@ -204,7 +204,7 @@ rather than drop the eval.
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, per-tool MCP permissions). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -509,7 +509,7 @@ at 1 seat. The Team tier ($29/user/mo, 5–50 seats) adds seats beyond one,
 priority support, and an annual invoice.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (no repository content transmitted, audit log, RBAC). Certification is on
+patterns (no repository content transmitted, audit log, per-tool MCP permissions). Certification is on
 the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 

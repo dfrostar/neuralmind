@@ -233,19 +233,26 @@ exceptions that policy has accepted.
      so.
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
-   - It runs locally over stdio by default — no network port is opened.
-   - RBAC is enabled by default (`neuralmind/mcp_security.py`) with three roles:
+   - It runs locally over stdio by default — no network port is opened, and only the
+     agent process that launched it can call it.
+   - It does **not authenticate callers**. Each tool call declares its own `actor` and
+     `role` (the role defaults to `builder`), and any caller can declare `admin`. The
+     role policy keeps a well-behaved agent within bounds; it is not a boundary against
+     a hostile caller.
+   - The default policy (`DEFAULT_ROLE_POLICY` in `neuralmind/mcp_security.py`) has three roles:
      - `admin` — all tools.
-     - `builder` — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`.
-     - `reader` — the same retrieval set **minus `build`**.
-     - Everything else is **admin-only by default**: the synapse family
-       (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`,
-       `export_synapse_memory`) plus the learning/feedback tools (`feedback`, `review`).
-   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min) is enforced
-     alongside RBAC.
-   - If you customize the role policy (backend config `security.roles` or
-     `neuralmind/mcp_security.py`), audit it the same way you would any access-control change.
-   - Audit events — actor, role, tool, RBAC decision, rate-limit hits — are written to
+     - `reader` — retrieval and read-only analytics, stats, and decision queries.
+     - `builder` — the `reader` set plus `build`, document ingestion, and decision writes.
+     - A few tools are **admin-only by default**, including `synaptic_neighbors`,
+       `structural_neighbors`, `next_likely`, `impact`, and `review`.
+   - To cap what any caller can claim, set `security.roles` in `neuralmind-backend.yaml`.
+     It replaces the default policy, and a role it doesn't list gets no tools, so a
+     policy without `admin` keeps every caller out of the admin-only tools.
+   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min, `security.rate_limit`)
+     is enforced alongside the role check. It keys on the declared actor, so it stops a
+     runaway agent, not a caller that changes its actor name.
+   - If you customize the role policy, audit it the same way you would any access-control change.
+   - Audit events — actor, role, tool, allow/deny decision, rate-limit hits — are written to
      `<project>/.neuralmind/audit_events.jsonl` on every tool call.
 
 3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.

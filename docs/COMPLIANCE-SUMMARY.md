@@ -28,8 +28,8 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### GOVERN — oversight, accountability, policies
 
-- **Role-based access control (RBAC)** with documented user/permission model — see `SECURITY-GUIDE.md` §Access Control
-- **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the RBAC actor is captured at the MCP boundary)
+- **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). Callers declare their own role and aren't authenticated — see `SECURITY-GUIDE.md` §Access Control
+- **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login)
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
 - **Auto-generated NIST AI RMF report:** `neuralmind audit-report . --compliance nist-ai-rmf --output report.md`
 
