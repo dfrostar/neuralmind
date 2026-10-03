@@ -10,7 +10,8 @@ isolation. Raw per-call data:
 - [`bench/compression/results.json`](../../bench/compression/results.json):
   the hooks as they are now.
 - [`bench/compression/results-v4.3.4.json`](../../bench/compression/results-v4.3.4.json):
-  the run on v4.3.4 that led to the fix below.
+  the run on v4.3.4 that led to the fix below. v4.3.5 and v4.4.0 shipped the
+  same hooks.
 
 **Reproduce it:**
 
@@ -71,7 +72,7 @@ lines it added the first 25 lines again (+10.4% to +96.2% per call).
 
 ## What the hooks do now
 
-**They inject nothing, so Claude sees exactly the tool result: +0.0% for Read,
+**From v4.5.0 they inject nothing, so Claude sees exactly the tool result: +0.0% for Read,
 Bash and Grep alike.** The Read, Bash and Grep hooks stay registered. The Bash
 hook still caches the latest successful command's output, credentials
 redacted, so `neuralmind last` can show it again without re-running the

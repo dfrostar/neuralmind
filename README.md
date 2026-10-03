@@ -183,16 +183,16 @@ rather than drop the eval.
 
 ### 10. Tool-output compression (measured, and removed)
 
-Through v4.3.4, NeuralMind's PostToolUse hooks handed Claude Code compressed
+Through v4.4.0, NeuralMind's PostToolUse hooks handed Claude Code compressed
 copies of `Bash` and `Grep` output. Claude Code adds a hook's
 `additionalContext` next to the tool result rather than replacing it, so the
 copies cost tokens instead of saving them: **+17.5% on Bash calls and +22.1% on
 content-mode Grep**, and the Read hook never saw Claude Code's payload at all
-([compression benchmark](docs/benchmarks/compression.md)). The hooks now inject
-nothing, so Claude sees exactly the tool result. The compressors themselves
-would cut 66–87%, but a Read replaced by its skeleton would keep none of the
-file's source lines. So nothing replaces tool output until something keeps what
-the agent needs.
+([compression benchmark](docs/benchmarks/compression.md)). From v4.5.0 the
+hooks inject nothing, so Claude sees exactly the tool result. The compressors
+themselves would cut 66–87%, but a Read replaced by its skeleton would keep
+none of the file's source lines. So nothing replaces tool output until something
+keeps what the agent needs.
 
 ---
 

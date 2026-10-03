@@ -153,7 +153,7 @@ before/after measurement on your own refactor:
 
 ## Tool-output compression (measured, and withdrawn)
 
-Through v4.3.4, `install-hooks` registered PostToolUse hooks that handed Claude
+Through v4.4.0, `install-hooks` registered PostToolUse hooks that handed Claude
 compressed copies of `Read`, `Bash` and `Grep` output. The
 [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md) drives the real hook with Claude Code-shaped
 payloads and applies each response the way Claude Code's documented hook

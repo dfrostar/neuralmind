@@ -1886,9 +1886,9 @@ neuralmind last
 
 | Scenario | Recovery cost without `last` | With `last` |
 |----------|------------------------------|-------------|
-| Inspecting compressed `npm test` middle | Re-run (~28s) | Free lookup |
-| Reading dropped log lines from a non-deterministic API call | Re-run + likely different output | Free lookup, identical bytes |
-| Reading dropped output from a destructive command | Re-run impossible | Free lookup |
+| Reading a long, passing `npm test` run again | Re-run (~28s) | Free lookup |
+| Re-reading a non-deterministic API call's output | Re-run, likely different output | Free lookup, same output (credentials redacted) |
+| Re-reading a destructive command's output | Re-run impossible | Free lookup |
 
 ---
 
