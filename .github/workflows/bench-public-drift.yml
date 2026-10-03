@@ -47,11 +47,14 @@ jobs:
       - name: Snapshot committed numbers
         run: cp bench/public/results.json "$RUNNER_TEMP/committed-results.json"
 
+      # The default shell has no pipefail, so without it this step took tee's
+      # exit status: a crashed run passed here and only failed later, as an
+      # unreadable public-report.json in the diff step.
       - name: Run the public benchmark
         id: bench
         run: |
+          set -o pipefail
           python -m evals.public.run --json --out bench/public | tee public-report.json
-          echo "exit=$?" >> "$GITHUB_OUTPUT"
 
       - name: Diff against committed numbers
         id: diff

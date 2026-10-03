@@ -8,9 +8,10 @@ is the human-readable copy of that file; this script never parses it.
 
 Per repo and backend it compares gold-file recall (tolerance: 5 percentage
 points, absolute) and mean tokens per query (tolerance: 10% of the committed
-mean, relative). Exit 0 = every committed (repo, backend) was re-measured and
-is within tolerance. Exit 1 = drift, a committed number the fresh run did not
-produce, or no committed numbers at all.
+mean, relative). Exit 0 = both runs measured the same (repo, backend) pairs
+and every one is within tolerance. Exit 1 = drift, a committed number the
+fresh run did not produce, a fresh number the committed run does not publish,
+or no committed numbers at all.
 
 The inline parser this replaced read ``public.md`` with regexes that never
 matched its format, found nothing, printed a warning, and exited 0, so drift
@@ -33,6 +34,20 @@ RECALL_TOLERANCE = 0.05  # absolute: 5 percentage points of gold-file recall
 COST_TOLERANCE = 0.10  # relative: 10% of the committed mean tokens/query
 # Recall values are 4-decimal fractions, so 0.85 vs 0.90 must not trip on float error.
 _EPSILON = 1e-9
+
+REGENERATE = """
+If the change is intended, regenerate the snapshot from a clean work dir. An
+existing .bench-work keeps its index between runs and updates it incrementally,
+so after an indexing change it can produce numbers that a clean build, which is
+what CI runs, does not:
+
+    rm -rf .bench-work && python -m evals.public.run --out bench/public
+
+Commit bench/public/ in the same PR as the matching docs/benchmarks/public.md
+tables and site/claims.json figures. tests/test_public_md_matches_results.py
+and tests/test_site_claims.py check both against bench/public/results.json.
+In CI, this run's fresh results are uploaded as the public-benchmark-drift
+artifact."""
 
 Numbers = dict[str, dict[str, dict[str, float]]]
 
@@ -63,38 +78,42 @@ def compare(
     recall_tolerance: float = RECALL_TOLERANCE,
     cost_tolerance: float = COST_TOLERANCE,
 ) -> tuple[list[str], list[str]]:
-    """Return ``(ok, failures)``, one line per committed (repo, backend).
+    """Return ``(ok, failures)``, one line per (repo, backend) in either run.
 
-    A (repo, backend) only in the fresh run is new and not compared; one only
-    in the committed run is a failure, since a check that compared fewer cells
-    than are published is not a pass.
+    A (repo, backend) in only one run is a failure. Only committed: the fresh
+    run didn't re-measure a published number (e.g. its checkout was skipped).
+    Only fresh: the benchmark measures something the snapshot doesn't publish
+    (e.g. a repo was added to the manifest without regenerating results.json).
     """
     ok: list[str] = []
     failures: list[str] = []
-    for repo in sorted(committed):
-        for backend in sorted(committed[repo]):
-            c = committed[repo][backend]
-            f = fresh.get(repo, {}).get(backend)
-            label = f"{repo}/{backend}"
-            if f is None:
-                failures.append(f"{label}: committed but missing from the fresh run")
-                continue
-            recall_delta = f["recall"] - c["recall"]
-            cost_delta = f["tokens"] - c["tokens"]
-            if c["tokens"]:
-                cost_ratio = cost_delta / c["tokens"]
-            else:
-                cost_ratio = 0.0 if not cost_delta else float("inf")
-            line = (
-                f"{label}: recall {f['recall']:.4f} vs committed {c['recall']:.4f} "
-                f"(Δ{recall_delta:+.4f}), tokens {f['tokens']:.1f} vs committed "
-                f"{c['tokens']:.1f} (Δ{cost_ratio:+.1%})"
-            )
-            drifted = (
-                abs(recall_delta) > recall_tolerance + _EPSILON
-                or abs(cost_ratio) > cost_tolerance + _EPSILON
-            )
-            (failures if drifted else ok).append(line)
+    pairs = {(repo, backend) for run in (committed, fresh) for repo in run for backend in run[repo]}
+    for repo, backend in sorted(pairs):
+        c = committed.get(repo, {}).get(backend)
+        f = fresh.get(repo, {}).get(backend)
+        label = f"{repo}/{backend}"
+        if f is None:
+            failures.append(f"{label}: committed but missing from the fresh run")
+            continue
+        if c is None:
+            failures.append(f"{label}: in the fresh run but not in the committed snapshot")
+            continue
+        recall_delta = f["recall"] - c["recall"]
+        cost_delta = f["tokens"] - c["tokens"]
+        if c["tokens"]:
+            cost_ratio = cost_delta / c["tokens"]
+        else:
+            cost_ratio = 0.0 if not cost_delta else float("inf")
+        line = (
+            f"{label}: recall {f['recall']:.4f} vs committed {c['recall']:.4f} "
+            f"(Δ{recall_delta:+.4f}), tokens {f['tokens']:.1f} vs committed "
+            f"{c['tokens']:.1f} (Δ{cost_ratio:+.1%})"
+        )
+        drifted = (
+            abs(recall_delta) > recall_tolerance + _EPSILON
+            or abs(cost_ratio) > cost_tolerance + _EPSILON
+        )
+        (failures if drifted else ok).append(line)
     return ok, failures
 
 
@@ -118,8 +137,6 @@ def main(argv: list[str] | None = None) -> int:
     ok, failures = compare(fresh, committed)
     for line in ok:
         print(f"  OK     {line}")
-    for repo in sorted(set(fresh) - set(committed)):
-        print(f"  NEW    {repo}: not in the committed run, not compared")
     if failures:
         print(
             f"\nDRIFT DETECTED (tolerance: recall ±{RECALL_TOLERANCE:.2f}, "
@@ -127,11 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         for line in failures:
             print(f"  {line}")
-        print(
-            "\nIf the change is intended, regenerate and commit the numbers: "
-            "python -m evals.public.run --out bench/public, then update "
-            "docs/benchmarks/public.md and site/claims.json to match."
-        )
+        print(REGENERATE)
         return 1
     print(f"\nAll {len(ok)} committed (repo, backend) numbers within tolerance.")
     return 0

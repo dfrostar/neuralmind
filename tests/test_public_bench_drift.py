@@ -115,3 +115,35 @@ def test_repo_skipped_by_the_fresh_run_fails() -> None:
     assert len(failures) == len(BACKENDS)
     assert all(f.startswith("rich/") for f in failures)
     assert _run_main(fresh, report) == 1
+
+
+def test_numbers_the_committed_run_does_not_publish_fail() -> None:
+    # A repo added to the manifest, or a backend added to the run, without
+    # regenerating results.json: the snapshot no longer covers everything the
+    # benchmark measures. This used to pass as "NEW, not compared".
+    report = _report()
+    without_rich = copy.deepcopy(report)
+    without_rich["repos"] = [r for r in without_rich["repos"] if r["name"] != "rich"]
+    _, failures = drift.compare(drift.extract(report), drift.extract(without_rich))
+    assert len(failures) == len(BACKENDS)
+    assert all(f.startswith("rich/") for f in failures)
+    assert _run_main(report, without_rich) == 1
+
+    without_backend = copy.deepcopy(report)
+    flask = next(r for r in without_backend["repos"] if r["name"] == "flask")
+    del flask["summary"]["embedding-rag"]
+    _, failures = drift.compare(drift.extract(report), drift.extract(without_backend))
+    assert [f.split(":")[0] for f in failures] == ["flask/embedding-rag"]
+    assert _run_main(report, without_backend) == 1
+
+
+def test_drift_message_names_the_pair_and_how_to_regenerate(capsys) -> None:
+    report = _report()
+    fresh = copy.deepcopy(report)
+    _summary(fresh, "rich", "neuralmind")["mean_recall"] -= 0.1
+    assert _run_main(fresh, report) == 1
+    out = capsys.readouterr().out
+    assert "rich/neuralmind: recall 0.9000 vs committed 1.0000" in out
+    assert "python -m evals.public.run --out bench/public" in out
+    # The surfaces that must change with the snapshot, and the tests that say so.
+    assert "site/claims.json" in out and "tests/test_site_claims.py" in out
