@@ -187,7 +187,23 @@ What this does not capture, and which way each gap leans:
   Claude answers better. With the hooks as shipped nothing is removed, so the
   question doesn't arise.
 
-[`tests/test_compression_benchmark.py`](../../tests/test_compression_benchmark.py)
-recomputes the Bash results from the committed corpus on every CI run and
-fails if the hooks stop doing what `results.json` records. It also fails if
-this page stops quoting its figures.
+CI fails when `results.json` stops describing the code, in two places:
+
+- [`tests/test_compression_benchmark.py`](../../tests/test_compression_benchmark.py)
+  runs offline on every CI run. It recomputes the Bash results from the
+  committed corpus and fails if the hooks stop doing what `results.json`
+  records. It also pins the compressor thresholds and the Read hook's handling
+  of Claude Code's payload, and fails if this page stops quoting its figures.
+- The `public-benchmark-drift` job in
+  [`bench-public-drift.yml`](../../.github/workflows/bench-public-drift.yml)
+  recomputes Read and Grep too. On every pull request and push to `main`, it
+  re-runs the whole benchmark over the public benchmark's pinned checkouts,
+  with an index built for each repo. Every call has to match `results.json`
+  exactly: the digests of what each arm delivers, the token counts and what
+  survives. Only the run date and the NeuralMind version aren't compared
+  ([`evals/compression/drift.py`](../../evals/compression/drift.py)). So a
+  change to the skeletons, the compressors, the hooks or the index build that
+  moves a published figure fails CI until someone re-runs
+  `python -m evals.compression.run --out bench/compression` and commits the
+  result. The job uploads its fresh run as the `compression-benchmark-drift`
+  artifact.
