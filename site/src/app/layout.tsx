@@ -113,7 +113,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'Hebbian synapse layer that learns which files go together from how you use the codebase — budget-neutral recall',
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
                 'MCP server for Claude Code, Codex, Cursor, Cline, Continue and any MCP-compatible agent',
-                'Claude Code lifecycle hooks: session-start memory, tool-output compression and recovery',
+                'Claude Code lifecycle hooks: session-start memory, prompt-time recall, stale-decision guard',
                 'Team memory that travels with git clone, with a quality review queue for imports and a hash-chained audit log',
                 'Bundled tree-sitter code graph indexing ten languages',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',

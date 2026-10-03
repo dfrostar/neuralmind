@@ -1,0 +1,306 @@
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+  --> src/click/_compat.py:68:9
+   |
+67 |       def __del__(self) -> None:
+68 | /         try:
+69 | |             self.detach()
+70 | |         except Exception:
+71 | |             pass
+   | |________________^
+72 |
+73 |       def isatty(self) -> bool:
+   |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/click/_compat.py:549:9
+    |
+547 |           rv.write = _safe_write
+548 |
+549 | /         try:
+550 | |             _ansi_stream_wrappers[stream] = rv
+551 | |         except Exception:
+552 | |             pass
+    | |________________^
+553 |
+554 |           return rv
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/click/_compat.py:597:9
+    |
+595 |               return rv
+596 |           rv = wrapper_func()
+597 | /         try:
+598 | |             cache[stream] = rv
+599 | |         except Exception:
+600 | |             pass
+    | |________________^
+601 |           return rv
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM115 Use a context manager for opening files
+   --> src/click/_termui_impl.py:591:16
+    |
+589 |             args.append("-R")
+590 |         args.append(_unquote_file(url))
+591 |         null = open("/dev/null", "w")
+    |                ^^^^
+592 |         try:
+593 |             return subprocess.Popen(args, stderr=null).wait()
+    |
+
+SIM108 Use ternary operator `func = msvcrt.getwche if echo else msvcrt.getwch` instead of `if`-`else`-block
+   --> src/click/_termui_impl.py:685:9
+    |
+683 |           func: t.Callable[[], str]
+684 |
+685 | /         if echo:
+686 | |             func = msvcrt.getwche  # type: ignore
+687 | |         else:
+688 | |             func = msvcrt.getwch  # type: ignore
+    | |________________________________^
+689 |
+690 |           rv = func()
+    |
+help: Replace `if`-`else`-block with `func = msvcrt.getwche if echo else msvcrt.getwch`
+
+SIM115 Use a context manager for opening files
+   --> src/click/_termui_impl.py:710:17
+    |
+709 |         if not isatty(sys.stdin):
+710 |             f = open("/dev/tty")
+    |                 ^^^^
+711 |             fd = f.fileno()
+712 |         else:
+    |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/click/_winconsole.py:193:9
+    |
+191 |           if isinstance(x, str):
+192 |               return self._text_stream.write(x)
+193 | /         try:
+194 | |             self.flush()
+195 | |         except Exception:
+196 | |             pass
+    | |________________^
+197 |           return self.buffer.write(x)
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+B905 `zip()` without an explicit `strict=` parameter
+  --> src/click/core.py:92:17
+   |
+91 | def batch(iterable: t.Iterable[V], batch_size: int) -> t.List[t.Tuple[V, ...]]:
+92 |     return list(zip(*repeat(iter(iterable), batch_size)))
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: Add explicit value for parameter `strict=`
+
+SIM117 [*] Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> src/click/core.py:781:9
+    |
+779 |               ctx = __self
+780 |
+781 | /         with augment_usage_errors(__self):
+782 | |             with ctx:
+    | |_____________________^
+783 |                   return __callback(*args, **kwargs)
+    |
+help: Combine `with` statements
+    |
+780 |
+    -         with augment_usage_errors(__self):
+    -             with ctx:
+    -                 return __callback(*args, **kwargs)
+781 +         with augment_usage_errors(__self), ctx:
+782 +             return __callback(*args, **kwargs)
+783 |
+    |
+
+SIM108 Use ternary operator `nargs = self.type.arity if self.type.is_composite else 1` instead of `if`-`else`-block
+    --> src/click/core.py:2119:13
+     |
+2117 |           # information available.
+2118 |           if nargs is None:
+2119 | /             if self.type.is_composite:
+2120 | |                 nargs = self.type.arity
+2121 | |             else:
+2122 | |                 nargs = 1
+     | |_________________________^
+2123 |
+2124 |           self.required = required
+     |
+help: Replace `if`-`else`-block with `nargs = self.type.arity if self.type.is_composite else 1`
+
+SIM103 Return the condition directly
+    --> src/click/core.py:2350:9
+     |
+2348 |               return True
+2349 |
+2350 | /         if (self.nargs != 1 or self.multiple) and value == ():
+2351 | |             return True
+2352 | |
+2353 | |         return False
+     | |____________________^
+2354 |
+2355 |       def process_value(self, ctx: Context, value: t.Any) -> t.Any:
+     |
+help: Inline condition
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+    --> src/click/core.py:2764:13
+     |
+2762 |               envvar = self.envvar
+2763 |
+2764 | /             if envvar is None:
+2765 | |                 if (
+2766 | |                     self.allow_from_autoenv
+2767 | |                     and ctx.auto_envvar_prefix is not None
+2768 | |                     and self.name is not None
+2769 | |                 ):
+     | |__________________^
+2770 |                       envvar = f"{ctx.auto_envvar_prefix}_{self.name.upper()}"
+     |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+    --> src/click/core.py:2996:9
+     |
+2994 |           super().__init__(param_decls, required=required, **attrs)
+2995 |
+2996 | /         if __debug__:
+2997 | |             if self.default is not None and self.nargs == -1:
+     | |_____________________________________________________________^
+2998 |                   raise TypeError("'default' is not supported for nargs=-1.")
+     |
+help: Combine `if` statements using `and`
+
+SIM105 Use `contextlib.suppress(KeyboardInterrupt, EOFError)` instead of `try`-`except`-`pass`
+   --> src/click/termui.py:778:9
+    |
+776 |           if info:
+777 |               echo(info, nl=False, err=err)
+778 | /         try:
+779 | |             getchar()
+780 | |         except (KeyboardInterrupt, EOFError):
+781 | |             pass
+    | |________________^
+782 |       finally:
+783 |           if info:
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(KeyboardInterrupt, EOFError): ...`
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/click/testing.py:324:21
+    |
+322 |                   old_env[key] = os.environ.get(key)
+323 |                   if value is None:
+324 | /                     try:
+325 | |                         del os.environ[key]
+326 | |                     except Exception:
+327 | |                         pass
+    | |____________________________^
+328 |                   else:
+329 |                       os.environ[key] = value
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/click/testing.py:334:21
+    |
+332 |               for key, value in old_env.items():
+333 |                   if value is None:
+334 | /                     try:
+335 | |                         del os.environ[key]
+336 | |                     except Exception:
+337 | |                         pass
+    | |____________________________^
+338 |                   else:
+339 |                       os.environ[key] = value
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM108 Use ternary operator `stderr = None if self.mix_stderr else outstreams[1].getvalue()` instead of `if`-`else`-block
+   --> src/click/testing.py:435:17
+    |
+433 |                   sys.stdout.flush()
+434 |                   stdout = outstreams[0].getvalue()
+435 | /                 if self.mix_stderr:
+436 | |                     stderr = None
+437 | |                 else:
+438 | |                     stderr = outstreams[1].getvalue()  # type: ignore
+    | |_____________________________________________________^
+439 |
+440 |           return Result(
+    |
+help: Replace `if`-`else`-block with `stderr = None if self.mix_stderr else outstreams[1].getvalue()`
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> src/click/testing.py:476:17
+    |
+475 |               if temp_dir is None:
+476 | /                 try:
+477 | |                     shutil.rmtree(dt)
+478 | |                 except OSError:  # noqa: B014
+479 | |                     pass
+    | |________________________^
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(OSError): ...`
+
+SIM108 Use ternary operator `name = self.name if hasattr(self, "name") else param_type` instead of `if`-`else`-block
+  --> src/click/types.py:69:9
+   |
+68 |           # Custom subclasses might not remember to set a name.
+69 | /         if hasattr(self, "name"):
+70 | |             name = self.name
+71 | |         else:
+72 | |             name = param_type
+   | |_____________________________^
+73 |
+74 |           return {"param_type": param_type, "name": name}
+   |
+help: Replace `if`-`else`-block with `name = self.name if hasattr(self, "name") else param_type`
+
+B905 `zip()` without an explicit `strict=` parameter
+   --> src/click/types.py:996:53
+    |
+994 |             )
+995 |
+996 |         return tuple(ty(x, param, ctx) for ty, x in zip(self.types, value))
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^
+help: Add explicit value for parameter `strict=`
+
+SIM108 Use ternary operator `file = _default_text_stderr() if err else _default_text_stdout()` instead of `if`-`else`-block
+   --> src/click/utils.py:265:9
+    |
+263 |       """
+264 |       if file is None:
+265 | /         if err:
+266 | |             file = _default_text_stderr()
+267 | |         else:
+268 | |             file = _default_text_stdout()
+    | |_________________________________________^
+269 |
+270 |           # There are no standard streams attached to write to. For example,
+    |
+help: Replace `if`-`else`-block with `file = _default_text_stderr() if err else _default_text_stdout()`
+
+SIM108 Use ternary operator `filename = os.path.basename(filename) if shorten else os.fspath(filename)` instead of `if`-`else`-block
+   --> src/click/utils.py:431:5
+    |
+429 |                       path that leads up to it.
+430 |       """
+431 | /     if shorten:
+432 | |         filename = os.path.basename(filename)
+433 | |     else:
+434 | |         filename = os.fspath(filename)
+    | |______________________________________^
+435 |
+436 |       if isinstance(filename, bytes):
+    |
+help: Replace `if`-`else`-block with `filename = os.path.basename(filename) if shorten else os.fspath(filename)`
+
+Found 22 errors.
+[*] 1 fixable with the `--fix` option (16 hidden fixes can be enabled with the `--unsafe-fixes` option).

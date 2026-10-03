@@ -1,0 +1,49 @@
+
+> neuralmind-marketing@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.24
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 2.8s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/22) ...
+   Generating static pages (5/22) 
+   Generating static pages (10/22) 
+   Generating static pages (16/22) 
+ ✓ Generating static pages (22/22)
+   Finalizing page optimization ...
+   Collecting build traces ...
+   Exporting (0/2) ...
+ ✓ Exporting (2/2)
+
+Route (app)                                             Size  First Load JS
+┌ ○ /                                                9.73 kB         116 kB
+├ ○ /_not-found                                        992 B         104 kB
+├ ○ /benchmark                                       2.72 kB         109 kB
+├ ○ /effectiveness                                   2.72 kB         109 kB
+├ ○ /field-reports/measure-memory-across-a-refactor  2.72 kB         109 kB
+├ ○ /llms.txt                                          127 B         103 kB
+├ ○ /measure-your-own                                2.72 kB         109 kB
+├ ○ /pricing                                         2.72 kB         109 kB
+├ ○ /privacy                                         2.72 kB         109 kB
+├ ○ /publications                                    2.72 kB         109 kB
+├ ○ /publications/budget-neutral-synaptic-recall     2.72 kB         109 kB
+├ ○ /publications/claude-teams-deep-dive             2.72 kB         109 kB
+├ ○ /publications/codex-setup                        2.72 kB         109 kB
+├ ○ /publications/quality-weighted-merge             2.72 kB         109 kB
+├ ○ /publications/synapse-learning-loop              2.72 kB         109 kB
+├ ○ /security                                        2.72 kB         109 kB
+├ ○ /services                                        2.72 kB         109 kB
+├ ○ /sitemap.xml                                       127 B         103 kB
+├ ○ /team                                            2.72 kB         109 kB
+└ ○ /terms                                           2.72 kB         109 kB
++ First Load JS shared by all                         103 kB
+  ├ chunks/255-9d0d2ba8fe9ae3d9.js                   46.5 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js              54.2 kB
+  └ other shared chunks (total)                      1.92 kB
+
+
+○  (Static)  prerendered as static content
+

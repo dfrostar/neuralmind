@@ -96,7 +96,7 @@ neuralmind/
 │   ├── synapses.py              # SQLite-backed Hebbian + directional graph (v0.4 + v0.11)
 │   ├── synapse_memory.py        # Markdown export → Claude Code auto-memory
 │   ├── watcher.py               # File activity → synapse co-activation + transitions
-│   ├── compressors.py           # PostToolUse compressors (Read/Bash/Grep)
+│   ├── compressors.py           # Read/Bash/Grep compressors (Python API; hooks don't apply them)
 │   ├── output_cache.py          # Recovery cache for `neuralmind last` (v0.10+)
 │   ├── reranker.py              # Cooccurrence reranker (deprecation tracked in #143)
 │   ├── memory.py                # Query/event log + learned-patterns scaffold

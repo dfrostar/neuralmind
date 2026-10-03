@@ -25,6 +25,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/benchmarks/compression.html</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/comparisons/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -519,6 +525,12 @@
   <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.3.1.html</loc>
     <lastmod>2026-09-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.3.5.html</loc>
+    <lastmod>2026-09-28</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>

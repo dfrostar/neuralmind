@@ -348,11 +348,11 @@ source first.
 
 ### What is scrubbed automatically
 
-One thing *is* redacted with no flag: the PostToolUse Bash recovery
-cache (`.neuralmind/last_output.json`). It stores whatever your commands
-printed, so `printenv`, `aws configure list`, or a `curl -H
-"Authorization: Bearer …"` would otherwise write a live credential to a
-plaintext file. Credentials are stripped before the payload is written,
+One thing *is* redacted with no flag: the PostToolUse Bash output
+cache behind `neuralmind last` (`.neuralmind/last_output.json`). It
+stores whatever your commands printed, so `printenv`,
+`aws configure list`, or a `curl -H "Authorization: Bearer …"` would
+otherwise write a live credential to a plaintext file. Credentials are stripped before the payload is written,
 and the entry records which kinds were removed. Opt out with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 
