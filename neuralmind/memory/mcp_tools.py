@@ -6,7 +6,7 @@ NeuralMind MCP server by providing a TOOLS list and handle_tool_call()
 function that follows the same pattern as ``neuralmind.mcp_server``.
 
 Tools:
-- neuralmind_query_decisions: Search decisions by keyword
+- neuralmind_query_decisions: Search decisions by keywords or a question
 - neuralmind_audit_decisions: List all decisions with status
 - neuralmind_record_decision: Store a new architecture decision
 - neuralmind_invalidate_decision: Mark a decision as stale/invalid
@@ -41,14 +41,15 @@ def get_decision_store(project_path: str) -> DecisionStore:
 
 
 def tool_query_decisions(project_path: str, query: str, limit: int = 5) -> dict[str, Any]:
-    """Search project decisions by keyword (titles and rationales).
+    """Search project decisions by keywords or a question (titles and rationales).
 
     Uses FTS5 when available (relevance-ranked via bm25), falling back to
     a LIKE scan otherwise.  By default only ACTIVE decisions are returned.
 
     Args:
         project_path: Path to the project root directory.
-        query: Keywords to match (title + rationale are searched).
+        query: Keywords or a question; any word can match (title +
+            rationale are searched).
         limit: Maximum number of results to return (default: 5).
 
     Returns:
@@ -204,7 +205,8 @@ def tool_memory_search(
 
     Args:
         project_path: Path to the project root directory.
-        query: Keywords to match (title + rationale are searched).
+        query: Keywords or a question; any word can match (title +
+            rationale are searched).
         limit: Maximum rows to return (default: 10, capped at 25).
         status: Filter by status, case-insensitive: "ACTIVE" (default),
             "STALE", "INVALIDATED", or "ALL" / None for every status.
@@ -334,7 +336,8 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "neuralmind_query_decisions",
         "description": (
-            "Search project decisions by keyword over titles and rationales. "
+            "Search project decisions over titles and rationales, by keywords "
+            "or a question; decisions matching more of the words rank first. "
             "Returns the top matching decisions with confidence, commit SHAs, "
             "and file references."
         ),
@@ -348,9 +351,11 @@ TOOLS: list[dict[str, Any]] = [
                 "query": {
                     "type": "string",
                     "description": (
-                        "Keywords matched against decision titles and rationales "
-                        "(prefix match; every word must appear, so pass a few "
-                        "distinctive words rather than a sentence)"
+                        "Keywords or a question, matched against decision titles "
+                        "and rationales. Any word can match (prefix match; common "
+                        "words such as 'how' and 'the' are ignored), and decisions "
+                        "matching more of the words rank first. A question nothing "
+                        "answers can still return partial matches, so check the titles"
                     ),
                 },
                 "limit": {
@@ -478,9 +483,11 @@ TOOLS: list[dict[str, Any]] = [
                 "query": {
                     "type": "string",
                     "description": (
-                        "Keywords matched against decision titles and rationales "
-                        "(prefix match; every word must appear, so pass a few "
-                        "distinctive words rather than a sentence)"
+                        "Keywords or a question, matched against decision titles "
+                        "and rationales. Any word can match (prefix match; common "
+                        "words such as 'how' and 'the' are ignored), and decisions "
+                        "matching more of the words rank first. A question nothing "
+                        "answers can still return partial matches, so check the titles"
                     ),
                 },
                 "limit": {

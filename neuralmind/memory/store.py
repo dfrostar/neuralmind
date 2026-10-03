@@ -15,7 +15,10 @@ Storage:
   SynapseStore / TraceStore pattern in this codebase)
 
 Query strategy:
-- FTS5 MATCH for text search (relevance-ranked via ``bm25()``)
+- The query's words, minus stopwords, are the search terms; any term can
+  match, so a question finds what its keywords would
+- FTS5 MATCH for text search (relevance-ranked via ``bm25()``, so decisions
+  matching more of the terms rank first)
 - Fallback to LIKE-based scan when FTS5 is unavailable (old SQLite builds)
 - Default filter excludes STALE and INVALIDATED decisions
 
@@ -36,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -209,6 +213,36 @@ STALE_DAYS = 90
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
+
+# Dropped from a search before matching. Any term can match, so without
+# this "how do we ..." would match nearly every decision ("we" is also a
+# prefix of "weights"). This is NLTK's English stopword list: function words
+# only, so a word that could name what a decision is about stays searchable.
+# It includes contraction fragments ("what's" splits into "what" and "s"),
+# which as prefixes would match every word starting with that letter.
+_QUERY_STOPWORDS: frozenset[str] = frozenset("""
+    i me my myself we our ours ourselves you your yours yourself yourselves
+    he him his himself she her hers herself it its itself they them their
+    theirs themselves what which who whom this that these those am is are was
+    were be been being have has had having do does did doing a an the and but
+    if or because as until while of at by for with about against between into
+    through during before after above below to from up down in out on off
+    over under again further then once here there when where why how all any
+    both each few more most other some such no nor not only own same so than
+    too very can will just should now
+    s t d ll m o re ve y don ain aren couldn didn doesn hadn hasn haven isn
+    ma mightn mustn needn shan shouldn wasn weren won wouldn
+    """.split())
+
+
+def _search_terms(text: str) -> list[str]:
+    """The words a search matches on: lower-cased, de-duplicated, minus stopwords.
+
+    A query made only of stopwords keeps them, so it still searches.
+    """
+    words = list(dict.fromkeys(w.lower() for w in re.findall(r"[A-Za-z0-9_]+", text)))
+    return [w for w in words if w not in _QUERY_STOPWORDS] or words
 
 
 def _row_to_record(row: tuple) -> DecisionRecord:
@@ -698,12 +732,16 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """Search decisions by full-text query.
 
-        Uses FTS5 when available (relevance-ranked via bm25()), falling back
-        to a LIKE scan otherwise. By default only ACTIVE decisions are
-        returned; pass ``status=None`` (or ``"ALL"``) to include all statuses.
+        The query's words, minus stopwords ("how", "do", "the", …), are
+        matched against title and rationale, and a decision needs only one
+        of them, so a question works as well as keywords. Uses FTS5 when
+        available (relevance-ranked via bm25(), so decisions matching more
+        of the words rank first), falling back to a LIKE scan otherwise.
+        By default only ACTIVE decisions are returned; pass ``status=None``
+        (or ``"ALL"``) to include all statuses.
 
         Args:
-            text: Search query (title + rationale are searched).
+            text: Keywords or a question (title + rationale are searched).
             limit: Maximum records to return.
             status: Filter by status ("ACTIVE", "STALE", "INVALIDATED",
                 case-insensitive), or None / "ALL" to include all.
@@ -745,19 +783,17 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """FTS5-backed relevance-ranked search.
 
-        bm25() returns lower-is-better; we use ASC ordering so the most
-        relevant result comes first. The MATCH query uses prefix matching so
-        partial words work; tokens are double-quoted to escape FTS5 special
-        characters (hyphens, etc.).
+        Any search term can match (OR), so a question works as well as a
+        few keywords. bm25() sums each matched term's weight, so decisions
+        that match more of the terms, and rarer ones, rank first; it returns
+        lower-is-better, hence ASC. Each term is prefix-matched so partial
+        words work, and double-quoted to escape FTS5 special characters
+        (hyphens, etc.).
         """
-        import re
-
-        # Extract alphanumeric tokens (preserve original case for search).
-        tokens = re.findall(r"[A-Za-z0-9_]+", text)
-        if not tokens:
+        terms = _search_terms(text)
+        if not terms:
             return []
-        # Quote each token to escape FTS5 special chars, then add prefix.
-        match_query = " ".join(f'"{t}"*' for t in tokens)
+        match_query = " OR ".join(f'"{t}"*' for t in terms)
 
         clauses: list[str] = ["d.id = f.id"]
         params: list[Any] = []
@@ -800,13 +836,24 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """LIKE-based fallback for SQLite builds without FTS5.
 
-        Orders by created_at DESC (most recent first) as a rough proxy for
-        relevance when we can't rank by text match.
+        Same terms as the FTS path, each matched as a substring of the title
+        or rationale; any term can match. Decisions containing more of the
+        terms rank first, then the most recent, as a rough stand-in for
+        bm25.
         """
-        clauses: list[str] = ["(title LIKE ? OR rationale LIKE ?)"]
-        like_pattern = f"%{text}%"
-        params: list[Any] = [like_pattern, like_pattern]
+        terms = _search_terms(text)
+        if not terms:
+            return []
+        # One 0/1 per term: does the title or rationale contain it?
+        hits = " + ".join(
+            "(title LIKE ? ESCAPE '\\' OR rationale LIKE ? ESCAPE '\\')" for _ in terms
+        )
+        params: list[Any] = []
+        for term in terms:
+            pattern = "%" + re.sub(r"([\\%_])", r"\\\1", term) + "%"
+            params += [pattern, pattern]
 
+        clauses: list[str] = ["hits > 0"]
         if status is not None:
             clauses.append("status = ?")
             params.append(status)
@@ -822,9 +869,9 @@ class DecisionStore:
                        decision_type, confidence, status, author,
                        created_at, updated_at, evidence,
                        rejected_alternatives, dependency_constraints, tags
-                FROM decisions
+                FROM (SELECT *, {hits} AS hits FROM decisions)
                 WHERE {where}
-                ORDER BY created_at DESC
+                ORDER BY hits DESC, created_at DESC
                 LIMIT ?""",
             (*params, limit),
         )

@@ -3007,7 +3007,7 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by keyword (titles and rationales)."""
+    """Search decisions by keywords or a question (titles and rationales)."""
     store = _get_decisions_store(args.project_path)
     results = store.query(
         text=args.query,
@@ -6596,9 +6596,11 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.set_defaults(func=cmd_decisions_record)
 
     d_query = decisions_sub.add_parser(
-        "query", help="Search decisions by keyword (titles and rationales)"
+        "query", help="Search decisions by keywords or a question (titles and rationales)"
     )
-    d_query.add_argument("query", help="Keywords to match")
+    d_query.add_argument(
+        "query", help="Keywords or a question; any word can match, best matches first"
+    )
     d_query.add_argument("--limit", "-n", type=int, default=5)
     d_query.add_argument(
         "--status",
