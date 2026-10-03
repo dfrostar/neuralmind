@@ -171,6 +171,71 @@ class TestHandleToolCall:
             assert data["indexed"] is True
 
 
+class TestErrorCodes:
+    """Side finding 3: every RuntimeError, including a missing index, was
+    reported as ``security_denied``. Only the security manager's own
+    refusals are security denials now."""
+
+    def test_missing_index_is_index_not_built(self, empty_project):
+        """End to end, no mocks: a read-only query on a project with no index."""
+        result = handle_tool_call(
+            "neuralmind_query",
+            {"project_path": str(empty_project), "question": "what is this?", "learn": False},
+        )
+        data = json.loads(result)
+        assert data["code"] == "index_not_built"
+        assert "neuralmind build" in data["error"]
+        assert "neuralmind_build" in data["hint"]
+
+    def test_graph_not_built_from_any_tool(self, temp_project):
+        from neuralmind.core import GraphNotBuiltError
+
+        with patch("neuralmind.mcp_server.get_mind", side_effect=GraphNotBuiltError("no graph")):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data["code"] == "index_not_built"
+        assert data["error"] == "no graph"
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            RuntimeError("tree-sitter grammar for 'go' is not installed"),
+            PermissionError(13, "Permission denied", "/proj/secret.py"),
+        ],
+        ids=["tool-runtime-error", "os-permission-error"],
+    )
+    def test_tool_failure_is_not_a_security_denial(self, temp_project, exc):
+        with patch("neuralmind.mcp_server.get_mind", side_effect=exc):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data.get("code") != "security_denied"
+        assert str(exc) == data["error"]
+
+    def test_rbac_denial_reason(self, temp_project):
+        data = json.loads(
+            handle_tool_call(
+                "neuralmind_impact", {"project_path": str(temp_project), "symbol": "x"}
+            )
+        )
+        assert data["code"] == "security_denied"
+        assert data["reason"] == "rbac"
+
+    def test_rate_limit_reason(self, temp_project):
+        from neuralmind.mcp_security import MCPSecurityManager, RateLimiter
+
+        _security_cache[str(Path(temp_project).resolve())] = MCPSecurityManager(
+            str(temp_project), rate_limiter=RateLimiter(max_calls=1, window_seconds=60)
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        first = json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert "code" not in first
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
+
 class TestToolBuild:
     """Tests for tool_build()."""
 

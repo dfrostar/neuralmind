@@ -43,8 +43,8 @@ except ImportError:
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neuralmind.core import NeuralMind
-from neuralmind.mcp_security import MCPSecurityManager
+from neuralmind.core import GraphNotBuiltError, NeuralMind
+from neuralmind.mcp_security import AccessDeniedError, MCPSecurityManager, RateLimitExceededError
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 
 # Cache for NeuralMind instances per project
@@ -1414,8 +1414,21 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         security = get_security_manager(project_path)
         result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
-    except (PermissionError, RuntimeError) as e:
-        return json.dumps({"error": str(e), "code": "security_denied"})
+    # Only the security manager's own refusals are security denials. A tool
+    # that fails with a RuntimeError (a missing parser, an unreadable PDF) or
+    # an OS PermissionError is a tool error, not an access decision.
+    except GraphNotBuiltError as e:
+        return json.dumps(
+            {
+                "error": str(e),
+                "code": "index_not_built",
+                "hint": "Call neuralmind_build with this project_path, then retry.",
+            }
+        )
+    except AccessDeniedError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "rbac"})
+    except RateLimitExceededError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "rate_limit"})
     except Exception as e:
         return json.dumps({"error": str(e)})
 
