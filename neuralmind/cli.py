@@ -2553,21 +2553,23 @@ def cmd_synapse_prune(args) -> None:
 
 
 def cmd_cognition_loop(args) -> None:
-    """Run background knowledge consolidation."""
+    """Run one on-demand maintenance pass over the learned memory."""
     from neuralmind.cognition_loop import run_cognition_loop
 
     report = run_cognition_loop(args.project_path)
     if args.json:
         print(json.dumps(report.to_dict()))
-    else:
-        print(f"✓ Cognition loop complete in {report.duration_secs:.1f}s")
-        print(f"  Steps: {report.steps_taken}")
-        print(f"  Edges reinforced: {report.edges_reinforced}")
-        print(f"  Edges decayed: {report.edges_decayed}")
-        print(f"  Edges pruned: {report.edges_pruned}")
-        print(f"  Clusters consolidated: {report.clusters_consolidated}")
-        print(f"  Summaries pruned: {report.summaries_pruned}")
-        print(f"  Read cache cleared: {report.read_cache_cleared}")
+        return
+    if report.skipped:
+        print(f"Nothing to do: {report.skipped}.")
+        return
+    print(f"✓ Memory maintenance pass complete in {report.duration_secs:.1f}s")
+    print(
+        f"  Decay: {report.edges_pruned} edge(s) pruned, {report.edges_remaining} remain; "
+        f"{report.transitions_pruned} transition(s) pruned, "
+        f"{report.transitions_remaining} remain"
+    )
+    print(f"  Read-dedup rows pruned: {report.read_cache_pruned}")
 
 
 def cmd_synapse_stats(args) -> None:
@@ -2740,6 +2742,25 @@ def cmd_audit_recent(args):
         print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
 
 
+def _audit_review(action: str, args) -> None:
+    """Write a review approve/reject to the governance audit log.
+
+    A no-op unless team governance is configured; never raises (the review
+    itself has already been applied).
+    """
+    try:
+        from neuralmind.tier2.governance import record_team_event
+
+        record_team_event(
+            action,
+            f"{args.source} -> {args.target}",
+            {"project": str(Path(args.project_path).resolve())},
+            project_path=args.project_path,
+        )
+    except Exception:
+        pass
+
+
 def cmd_memory(args):
     """Namespace-level controls over the learned synapse memory (PRD 4).
 
@@ -2847,9 +2868,18 @@ def cmd_memory(args):
         return
 
     if args.memory_cmd == "publish":
-        from neuralmind.team_memory import publish_team_memory
+        from neuralmind.team_memory import PublishBlockedError, publish_team_memory
 
-        summary = publish_team_memory(args.project_path, store)
+        try:
+            summary = publish_team_memory(args.project_path, store)
+        except PublishBlockedError as exc:
+            print(f"Not published: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if summary.get("audited") is False:
+            print(
+                "Warning: published, but the governance audit entry could not be written.",
+                file=sys.stderr,
+            )
         if args.json:
             print(json.dumps(summary, indent=2))
             return
@@ -2858,6 +2888,20 @@ def cmd_memory(args):
             f"Published team memory → {summary['path']} "
             f"({c['synapses']} synapses, {c['transitions']} transitions)."
         )
+        gov = summary.get("governance")
+        if gov:
+            left = summary.get("left_out", {})
+            audit_note = "audited" if summary.get("audited") else "NOT audited"
+            print(
+                f"Team governance applied: scope={gov['scope']}, weight threshold "
+                f"{gov['weight_threshold']} — {left.get('below_threshold', 0)} edge(s) below "
+                f"the threshold left out; {audit_note}."
+            )
+        if summary.get("left_out", {}).get("retracted"):
+            print(
+                f"{summary['left_out']['retracted']} retracted association(s) left out "
+                "(see `retracted` in the bundle)."
+            )
         print(
             "Commit it so teammates inherit it automatically:\n"
             f"  git add {summary['path']} && git commit -m 'chore: publish neuralmind team memory'"
@@ -2905,6 +2949,7 @@ def cmd_memory(args):
 
         # Promote to shared namespace
         promoted = store.import_edges([(args.source, args.target, 1.0, 1)], namespace="shared")
+        _audit_review("review_approve", args)
         if args.json:
             print(json.dumps({"approved": True, "promoted": promoted}, indent=2))
             return
@@ -2923,6 +2968,7 @@ def cmd_memory(args):
             print(f"Edge {args.source} → {args.target} not found in pending review queue.")
             sys.exit(1)
         _save_pending_review(store, remaining)
+        _audit_review("review_reject", args)
         if args.json:
             print(json.dumps({"rejected": True}, indent=2))
             return
@@ -3135,6 +3181,75 @@ def cmd_decisions_invalidate(args):
     store = _get_decisions_store(args.project_path)
     store.invalidate(args.decision_id, reason=args.reason)
     print(f"Invalidated decision: {args.decision_id}")
+
+
+def cmd_decisions_scan(args):
+    """Mark decisions STALE when the last commit changed their files.
+
+    Runs the InvalidationEngine over the HEAD commit. The post-commit hook
+    installed by ``neuralmind init-hook`` calls ``decisions scan . --quiet``
+    after every commit, so the PreToolUse stale-decision guard sees what went
+    stale without anyone running ``decisions invalidate`` by hand. A project
+    with no decision store is left alone (none is created). Opt-out:
+    NEURALMIND_DECISION_SCAN=0. Always exits 0 — a git hook must never fail
+    the commit it follows.
+    """
+    project = Path(args.project_path).resolve()
+    quiet = bool(getattr(args, "quiet", False))
+    as_json = bool(getattr(args, "json", False))
+    db = project / ".neuralmind" / "memory.db"
+    if os.environ.get("NEURALMIND_DECISION_SCAN") == "0" or not db.exists():
+        if as_json:
+            print(json.dumps({"commit": "", "stale": []}))
+        elif not quiet:
+            why = (
+                "disabled (NEURALMIND_DECISION_SCAN=0)" if db.exists() else "no decisions recorded"
+            )
+            print(f"Decision scan skipped: {why}.")
+        return
+
+    from neuralmind.memory.invalidate import InvalidationEngine, get_current_commit
+
+    store = _get_decisions_store(project)
+    engine = InvalidationEngine(str(project), store)
+    try:
+        stale_ids = engine.scan()
+    except Exception as exc:  # never fail the commit this follows
+        if not quiet:
+            print(f"Decision scan failed: {exc}", file=sys.stderr)
+        return
+    head = get_current_commit(project)
+    if not head:
+        if as_json:
+            print(json.dumps({"commit": "", "stale": []}))
+        elif not quiet:
+            print("Decision scan skipped: not a git repository with commits.")
+        return
+    reasons = {event.decision_id: event.reason for event in engine.last_events}
+    stale = []
+    for decision_id in stale_ids:
+        record = store.get(decision_id)
+        stale.append(
+            {
+                "id": decision_id,
+                "title": record.title if record else "",
+                "reason": reasons.get(decision_id, ""),
+            }
+        )
+    if as_json:
+        print(json.dumps({"commit": head, "stale": stale}, indent=2))
+        return
+    if not stale:
+        if not quiet:
+            print(f"No recorded decisions affected by commit {head[:7]}.")
+        return
+    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by commit {head[:7]}:")
+    for entry in stale:
+        print(f"  - {entry['title']} ({entry['id']}) — {entry['reason']}")
+    print(
+        "  Review: neuralmind decisions audit --stale   "
+        "Still valid? neuralmind decisions restore <id>"
+    )
 
 
 def cmd_decisions_eval(args):
@@ -5605,7 +5720,9 @@ def cmd_init_hook(args):
     Installs two hooks, both idempotent and both appended to any existing
     script rather than overwriting it:
 
-    - ``post-commit`` rebuilds the index so it never drifts stale;
+    - ``post-commit`` marks recorded decisions STALE when the commit changed
+      their files (``decisions scan``), then rebuilds the index so it never
+      drifts stale;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
@@ -5636,9 +5753,15 @@ def cmd_init_hook(args):
     # Note: `neuralmind build` has no --quiet flag; we redirect output to
     # /dev/null instead. Using --force keeps it fast (skips nothing) but
     # still reuses existing embeddings for unchanged nodes via hash checks.
+    #
+    # `decisions scan --quiet` prints only when a recorded decision went
+    # stale, does nothing in a project with no decisions, and always exits 0;
+    # `|| true` keeps a hook that can never fail the commit regardless.
     nm_block = """# neuralmind-hook-start
-# Auto-rebuild NeuralMind index after each commit. Managed by `neuralmind init-hook`.
+# Retire decisions this commit made stale, then rebuild the NeuralMind index.
+# Managed by `neuralmind init-hook`.
 if command -v neuralmind >/dev/null 2>&1; then
+    neuralmind decisions scan . --quiet || true
     echo "[neuralmind] Rebuilding neural index..."
     neuralmind build . >/dev/null 2>&1 && \\
         echo "[neuralmind] OK" || \\
@@ -5650,7 +5773,8 @@ fi
     try:
         action = _write_hook(hook_path, nm_block)
         print(f"✓ NeuralMind post-commit hook {action} at {hook_path}")
-        print("  The index will rebuild automatically after every commit.")
+        print("  After every commit: decisions whose files it changed are marked STALE,")
+        print("  then the index rebuilds.")
     except Exception as e:
         print(f"Error installing hook: {e}")
         sys.exit(1)
@@ -6633,6 +6757,21 @@ def build_parser() -> argparse.ArgumentParser:
     d_invalidate.add_argument("project_path", nargs="?", default=".")
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
+    d_scan = decisions_sub.add_parser(
+        "scan",
+        help="Mark decisions STALE when the last commit changed their files "
+        "(run by the init-hook post-commit hook)",
+    )
+    d_scan.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Print only when a decision went stale (for git hooks)",
+    )
+    d_scan.add_argument("--json", "-j", action="store_true")
+    d_scan.add_argument("project_path", nargs="?", default=".")
+    d_scan.set_defaults(func=cmd_decisions_scan)
+
     d_eval = decisions_sub.add_parser("eval", help="Run maintenance replay benchmark")
     d_eval.add_argument("--tasks", type=int, default=10, help="Number of tasks")
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
@@ -6667,7 +6806,8 @@ def build_parser() -> argparse.ArgumentParser:
     # Cognition loop subcommand
     cognition_p = subparsers.add_parser(
         "cognition-loop",
-        help="Run background knowledge consolidation (decay, coaccess reinforce, cluster promote, prune)",
+        help="Run one memory maintenance pass now (half-life decay + read-dedup cleanup); "
+        "idempotent, safe for cron",
     )
     cognition_p.add_argument("project_path", nargs="?", default=".")
     cognition_p.add_argument("--json", "-j", action="store_true")
@@ -6772,7 +6912,8 @@ def build_parser() -> argparse.ArgumentParser:
     # Init-hook command
     init_parser = subparsers.add_parser(
         "init-hook",
-        help="Install Git hooks: post-commit index rebuild + pre-commit drift guard",
+        help="Install Git hooks: post-commit decision scan + index rebuild, "
+        "pre-commit drift guard",
     )
     init_parser.add_argument(
         "project_path",
@@ -6784,7 +6925,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--no-drift",
         action="store_true",
-        help="Skip the pre-commit drift guard; install the post-commit rebuild only",
+        help="Skip the pre-commit drift guard; install the post-commit hook only",
     )
     init_parser.add_argument(
         "--strict",

@@ -76,20 +76,49 @@ neuralmind team seats remove <email>  # remove a seat (soft-delete)
 
 ```bash
 neuralmind team governance status
-neuralmind team governance set-scope <personal|shared|both>
-neuralmind team governance set-weight-threshold <0.0-1.0>
-neuralmind team governance set-governance-enabled <true|false>
-neuralmind team governance list-shared
-neuralmind team governance remove-edge <edge_id>
+neuralmind team governance set-scope <personal|shared|both> --admin <email>
+neuralmind team governance set-weight-threshold <0.0-1.0> --admin <email>
+neuralmind team governance set-governance-enabled <true|false> --admin <email>
+neuralmind team governance list-shared [--project PATH] [--json]
+neuralmind team governance remove-edge SOURCE TARGET [--project PATH] --admin <email>
 ```
+
+What each setting does *(enforced since v4.6.0; earlier versions recorded
+scope and threshold without enforcing them)*:
+
+| Setting | Effect on `neuralmind memory publish` |
+|---|---|
+| `set-scope personal` | Publishing is refused (exit 1): memory stays on each machine |
+| `set-scope shared` | Only the team baseline (the `shared` namespace) is published |
+| `set-scope both` *(default)* | Personal + shared memory is published |
+| `set-weight-threshold 0.1` *(default)* | Synapse edges below the threshold are left out of the bundle (transitions aren't weight-filtered) |
+| `set-governance-enabled false` | The scope and threshold gates are off; events are still audited |
+
+Settings live in `~/.config/neuralmind/tier2.yaml` (per user, not per
+repository). A config that exists but can't be read makes publish refuse
+rather than publish ungoverned memory.
+
+`remove-edge SOURCE TARGET` stops sharing one association: it is deleted from
+the project's `shared` memory and review queue, dropped from
+`.neuralmind-team-memory.json` and listed under that file's `retracted` key.
+Commit the file: each teammate's next session deletes the pair from their own
+shared memory, and no later publish re-adds it. `list-shared` shows what is in
+shared memory now, strongest first. Walkthrough:
+[Govern what your team's agents share](../use-cases/govern-team-memory.md).
 
 ### Audit
 
 ```bash
 neuralmind team audit list            # recent audit events
-neuralmind team audit export --format csv|json
+neuralmind team audit export --format csv|json --output <file>
 neuralmind team audit verify          # verify SHA-256 hash chain integrity
 ```
+
+Recorded: governance configuration changes, seat and license actions, and
+(since v4.6.0) every team-memory `publish` (including refused ones), `import`
+of a teammate's bundle, `review_approve` / `review_reject`, and `remove`. The
+actor is `NEURALMIND_ACTOR_EMAIL` (or `--admin` for admin commands), else the
+repository's `git config user.email`.
 
 ### Self-hosted
 
@@ -121,7 +150,7 @@ neuralmind team self-hosted validate-license
 | "License not found" | `neuralmind wakeup .` auto-issues free tier on first run |
 | "Downgrade guard triggered" | Fresh `tier2.yaml` should have `tier: free` (v1.7.0+). If not, delete and re-`wakeup` |
 | "Seat limit exceeded" | `neuralmind team seats remove <email>` to free a seat |
-| "Audit log empty" | Audit events only fire on Team-tier governance/seat operations |
+| "Audit log empty" | Events fire on governance, seat and license operations and on team-memory publish/import/review/removal — and only once a tier2 config exists (`neuralmind onboarding`) |
 | "Self-hosted data dir permission denied" | `neuralmind team self-hosted init` sets 0700 permissions |
 
 ---

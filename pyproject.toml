@@ -65,6 +65,9 @@ keywords = [
     "retrieval-eval",
     "gitignore-aware-indexing",
     "read-only-queries",
+    "read-deduplication",
+    "decision-invalidation",
+    "memory-governance",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

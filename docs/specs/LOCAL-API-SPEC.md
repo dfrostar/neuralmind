@@ -786,7 +786,7 @@ Every PR ships with the `CLAUDE.md` docs and SEO checklist in the same PR.
 Found while surveying for this spec; each was verified against `39617aa`.
 
 1. **`neuralmind_memory_search` with `status: "all"` matches nothing.** The schema advertises "all" (`memory/mcp_tools.py:480`), but `tool_memory_search` passes the string straight to `DecisionStore.query`, which treats only `None` as "all statuses" (`:193-226`).
-2. **`InvalidationEngine` raises `AttributeError` in its error path.** The event-bus failure branch logs `event.id` (`memory/invalidate.py:387`), but `InvalidationEvent` has `decision_id`, not `id` (`:195-212`).
+2. **`InvalidationEngine` raises `AttributeError` in its error path.** The event-bus failure branch logs `event.id` (`memory/invalidate.py:387`), but `InvalidationEvent` has `decision_id`, not `id` (`:195-212`). *Fixed in v4.6.0 (the engine was wired into `decisions scan`).*
 3. **"Not built" is reported as a security denial.** `GraphNotBuiltError` subclasses `RuntimeError` (`core.py:129`), and MCP maps every `RuntimeError` to `code: "security_denied"` (`mcp_server.py:1335-1336`).
 4. **The compose service restart-loops, and the license path is wrong** (A7).
 5. **`neuralmind/memory/cli.py` is dead code.** It defines a second decision store at `.neuralmind/memory/decisions.sqlite` with a different schema and lowercase statuses, and its `build_memory_subparsers` is never called. The live path is `neuralmind decisions` → `DecisionStore`.

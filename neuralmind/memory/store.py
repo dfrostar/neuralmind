@@ -506,6 +506,29 @@ class DecisionStore:
         except Exception:
             logger.exception("[memory] invalidate(%s) failed — decision still active", decision_id)
 
+    def mark_stale(self, decision_id: str, reason: str = "") -> None:
+        """Mark a decision STALE, keeping why in its evidence list.
+
+        Used by the InvalidationEngine when a commit changes a decision's
+        files: the note (e.g. "commit 1a2b3c4 changed auth.py after this
+        decision was recorded") travels with the record, so ``audit`` and
+        ``restore`` users can see what moved. No-op if the id doesn't exist.
+        """
+        reason = reason.strip()
+        note = f"Marked STALE: {reason}" if reason else "Marked STALE"
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    """UPDATE decisions
+                       SET status = 'STALE',
+                           updated_at = ?,
+                           evidence = json_insert(evidence, '$[#]', ?)
+                       WHERE id = ?""",
+                    (_now_iso(), note, decision_id),
+                )
+        except Exception:
+            logger.exception("[memory] mark_stale(%s) failed — status unchanged", decision_id)
+
     def restore(self, decision_id: str, new_commit_sha: str) -> DecisionRecord:
         """Re-anchor a decision to a new commit and reset its status to ACTIVE.
 

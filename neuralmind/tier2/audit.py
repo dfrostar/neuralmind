@@ -46,6 +46,9 @@ MAX_AUDIT_LINE_BYTES = 1_000_000  # Reject crafted DoS lines >1MB
 
 AuditAction = Literal[
     "publish",
+    "import",
+    "review_approve",
+    "review_reject",
     "remove",
     "config_change",
     "seat_add",

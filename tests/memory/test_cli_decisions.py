@@ -157,3 +157,104 @@ def test_record_then_query_and_audit_agree(parser, project, capsys):
     assert "U-100 default" in query_out
     assert "U-100 default" in audit_out
     assert "lib/utils/dose_conversion.dart" in audit_out
+
+
+# ------------------------------------------------------------------ #
+# decisions scan — the post-commit invalidation entry point
+# ------------------------------------------------------------------ #
+
+
+def _git(repo, *args):
+    import subprocess
+
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+@pytest.fixture
+def repo(tmp_path):
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "lib" / "dose.dart").write_text("const u = 100;\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "initial")
+    return tmp_path
+
+
+def _change_and_commit(repo):
+    (repo / "lib" / "dose.dart").write_text("const u = 40; // changed\n")
+    _git(repo, "commit", "-qam", "switch to U-40")
+
+
+def test_scan_marks_touched_decision_stale(parser, repo, capsys, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_DECISION_SCAN", raising=False)
+    store = DecisionStore(str(repo))
+    rec = _record(store, files_affected=["lib/dose.dart"])
+    _change_and_commit(repo)
+    out = _run(parser, ["decisions", "scan", str(repo)], capsys)
+    assert "1 decision(s) marked STALE" in out
+    assert "Syringe units model" in out
+    assert rec.id in out  # the full id, so `decisions restore <id>` works
+    assert store.get(rec.id).status == "STALE"
+
+
+def test_scan_json(parser, repo, capsys, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_DECISION_SCAN", raising=False)
+    rec = _record(DecisionStore(str(repo)), files_affected=["lib/dose.dart"])
+    _change_and_commit(repo)
+    payload = json.loads(_run(parser, ["decisions", "scan", str(repo), "--json"], capsys))
+    assert payload["commit"] == _git(repo, "rev-parse", "HEAD")
+    assert [s["id"] for s in payload["stale"]] == [rec.id]
+    assert "changed lib/dose.dart" in payload["stale"][0]["reason"]
+
+
+def test_scan_quiet_prints_nothing_when_nothing_went_stale(parser, repo, capsys, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_DECISION_SCAN", raising=False)
+    _record(DecisionStore(str(repo)), files_affected=["lib/other.dart"])
+    _change_and_commit(repo)
+    assert _run(parser, ["decisions", "scan", str(repo), "--quiet"], capsys) == ""
+
+
+def test_scan_never_creates_a_decision_store(parser, repo, capsys, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_DECISION_SCAN", raising=False)
+    _change_and_commit(repo)
+    assert _run(parser, ["decisions", "scan", str(repo), "--quiet"], capsys) == ""
+    assert not (repo / ".neuralmind" / "memory.db").exists()
+
+
+def test_scan_opt_out(parser, repo, capsys, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_DECISION_SCAN", "0")
+    store = DecisionStore(str(repo))
+    rec = _record(store, files_affected=["lib/dose.dart"])
+    _change_and_commit(repo)
+    out = _run(parser, ["decisions", "scan", str(repo)], capsys)
+    assert "skipped" in out
+    assert store.get(rec.id).status == "ACTIVE"
+
+
+def test_scan_outside_a_git_repo_is_a_noop(parser, project, capsys, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_DECISION_SCAN", raising=False)
+    rec = _record(DecisionStore(str(project)))
+    out = _run(parser, ["decisions", "scan", str(project)], capsys)
+    assert "not a git repository" in out
+    assert DecisionStore(str(project)).get(rec.id).status == "ACTIVE"
+
+
+def test_init_hook_post_commit_runs_the_scan(tmp_path, capsys):
+    from unittest.mock import MagicMock
+
+    from neuralmind.cli import cmd_init_hook
+
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    args = MagicMock()
+    args.project_path = str(tmp_path)
+    args.no_drift = True
+    cmd_init_hook(args)
+    hook = (tmp_path / ".git" / "hooks" / "post-commit").read_text()
+    assert "neuralmind decisions scan . --quiet || true" in hook
+    # The scan runs before the (slower) rebuild, inside the managed block.
+    assert hook.index("decisions scan") < hook.index("neuralmind build .")
+    assert hook.index("neuralmind-hook-start") < hook.index("decisions scan")

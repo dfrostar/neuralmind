@@ -56,11 +56,7 @@ def build_team_subparsers(subparsers) -> None:
     en_p = gov_g_sub.add_parser("set-governance-enabled")
     en_p.add_argument("value")
     en_p.add_argument("--admin")
-    list_p = gov_g_sub.add_parser("list-shared")
-    list_p.add_argument("--json", action="store_true")
-    rm_p = gov_g_sub.add_parser("remove-edge")
-    rm_p.add_argument("edge_id")
-    rm_p.add_argument("--admin")
+    _add_shared_memory_parsers(gov_g_sub)
     gov_g.set_defaults(func=cmd_team_governance)
 
     # audit
@@ -114,6 +110,32 @@ def build_team_subparsers(subparsers) -> None:
     act_p.add_argument("key")
     lic_sub.add_parser("portal")
     lic_p.set_defaults(func=cmd_team_license)
+
+
+def _add_shared_memory_parsers(gov_sub) -> None:
+    """`list-shared` and `remove-edge` — the governance commands that act on a
+    project's shared memory (shared by both parser trees)."""
+    list_p = gov_sub.add_parser("list-shared", help="List the project's shared-memory associations")
+    list_p.add_argument("--project", default=".", help="Project root (default: .)")
+    list_p.add_argument("--limit", type=int, default=200)
+    list_p.add_argument("--json", action="store_true")
+    rm_p = gov_sub.add_parser(
+        "remove-edge",
+        help="Stop sharing one association: remove it from shared memory and "
+        "retract it in the committed team bundle",
+    )
+    rm_p.add_argument("source", help="One node of the association")
+    rm_p.add_argument("target", help="The other node")
+    rm_p.add_argument("--project", default=".", help="Project root (default: .)")
+    rm_p.add_argument("--admin")
+
+
+def _shared_memory_store(project: str | Path):
+    """The project's synapse store, or None when it has no learned memory."""
+    from ..synapses import SynapseStore, default_db_path
+
+    db = default_db_path(project)
+    return SynapseStore(db) if db.exists() else None
 
 
 def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, None]:
@@ -176,7 +198,17 @@ def cmd_team_governance(args) -> int:
         return 1
 
     gov = TeamGovernance(Path(config.audit_db), config, audit)
+    try:
+        return _run_governance_command(args, config, gov)
+    except PermissionError as exc:
+        print(f"Permission denied: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
 
+
+def _run_governance_command(args, config: Tier2Config, gov: TeamGovernance) -> int:
     if args.subcommand == "status":
         print(
             json.dumps(
@@ -217,15 +249,46 @@ def cmd_team_governance(args) -> int:
         return 0
 
     if args.subcommand == "list-shared":
-        # Placeholder — real shared-namespace listing comes from team_memory.py
-        print(json.dumps([], indent=2))
+        from ..synapses import SHARED_NAMESPACE
+
+        store = _shared_memory_store(args.project)
+        rows = store.edges(namespaces=[SHARED_NAMESPACE], limit=args.limit) if store else []
+        edges = [
+            {"source": a, "target": b, "weight": round(w, 4), "activation_count": c}
+            for a, b, w, c in rows
+        ]
+        if args.json:
+            print(json.dumps(edges, indent=2))
+            return 0
+        if not edges:
+            print("No associations in shared memory for this project.")
+            return 0
+        print(f"Shared memory ({len(edges)} association(s), strongest first):")
+        for e in edges:
+            print(f"  {e['weight']:.3f}  {e['source']} <-> {e['target']}")
+        print(
+            "Stop sharing one: neuralmind team governance remove-edge SOURCE TARGET --admin <email>"
+        )
         return 0
 
     if args.subcommand == "remove-edge":
         admin = args.admin or os_get_actor_email()
-        gov.remove_edge_from_shared(args.edge_id, admin)
-        save_config(config)
-        print(f"Edge removed: {args.edge_id}")
+        gov.require_admin(admin)  # before touching the store
+        from ..synapses import SynapseStore, default_db_path
+
+        store = _shared_memory_store(args.project) or SynapseStore(default_db_path(args.project))
+        result = gov.remove_edge_from_shared(
+            args.source, args.target, admin, store=store, project_path=args.project
+        )
+        print(
+            f"Removed {args.source} <-> {args.target}: {result['removed_from_store']} row(s) "
+            f"from shared memory, {result['removed_from_bundle']} from the team bundle; "
+            "retraction recorded."
+        )
+        print(
+            f"Commit {result['bundle']} so teammates drop it on their next session "
+            "and later publishes leave it out."
+        )
         return 0
 
     print(f"Unknown governance subcommand: {args.subcommand}")
@@ -574,11 +637,7 @@ def main(argv: list[str] | None = None) -> int:
     en_p = gov_sub.add_parser("set-governance-enabled")
     en_p.add_argument("value")
     en_p.add_argument("--admin")
-    list_p = gov_sub.add_parser("list-shared")
-    list_p.add_argument("--json", action="store_true")
-    rm_p = gov_sub.add_parser("remove-edge")
-    rm_p.add_argument("edge_id")
-    rm_p.add_argument("--admin")
+    _add_shared_memory_parsers(gov_sub)
     gov_p.set_defaults(func=cmd_team_governance)
 
     # --- audit ---

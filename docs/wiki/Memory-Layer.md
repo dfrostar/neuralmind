@@ -1,12 +1,12 @@
 # Memory Layer
 
-The Memory Layer gives agents persistent, queryable decision memory: every architectural decision is recorded with its rationale, evidence, and the git commit where it was made — and is automatically invalidated when the code it describes changes.
+The Memory Layer gives agents persistent, queryable decision memory: every architectural decision is recorded with its rationale, evidence, and the git commit where it was made — and goes stale when a commit changes the code it describes (v4.6.0+, through the post-commit hook from `neuralmind init-hook`).
 
 ## Overview
 
 - **Storage:** SQLite (`.neuralmind/memory.db` in your project root), created on first use
 - **Search:** FTS5 full-text search over titles, rationales, and evidence
-- **Invalidation:** file-touch, commit mismatch, and cascade rules — decisions referencing changed files go stale automatically
+- **Invalidation:** file-touch and cascade rules, run after every commit by `neuralmind decisions scan` (the `init-hook` post-commit hook, v4.6.0+) — decisions whose files a commit changed after they were recorded go STALE
 - **Access:** CLI (`neuralmind decisions`), MCP tools (4), and Python API
 
 ## CLI Reference
@@ -53,6 +53,17 @@ neuralmind decisions invalidate <decision-id> --reason "why"
 neuralmind decisions restore <decision-id> [--commit SHA]
 ```
 
+### Scan the last commit *(v4.6.0+)*
+
+```bash
+neuralmind decisions scan [project_path] [--quiet] [--json]
+```
+
+Marks STALE every decision whose files the `HEAD` commit changed after the
+decision was recorded. The post-commit hook installed by `neuralmind init-hook`
+runs it after every commit (re-run `init-hook` on an older checkout). See
+[Invalidation semantics](#invalidation-semantics).
+
 ### Export
 
 ```bash
@@ -74,7 +85,7 @@ Registered in the MCP server (28 tools total as of v4.3.0):
 | `neuralmind_query_decisions` | `project_path`, `query`, `limit` | Natural-language search over decisions |
 | `neuralmind_audit_decisions` | `project_path`, `stale_only` | List decisions, filter by status |
 | `neuralmind_record_decision` | `project_path`, `title`, `rationale`, `commit_sha`, `files_affected`, `decision_type`, `confidence`, `evidence`, `rejected_alternatives`, `tags` | Store a new decision |
-| `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision stale |
+| `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision INVALIDATED (reason kept in its evidence) |
 | `neuralmind_memory_search` | `project_path`, `query`, `limit`, `status` | **Layer 1** — compact index rows (~50–100 tokens each). Cheap first call; filter here before fetching |
 | `neuralmind_memory_timeline` | `project_path`, `decision_id` or `query`, `before`, `after` | **Layer 2** — chronological context around an anchor decision |
 | `neuralmind_memory_get` | `project_path`, `ids` (max 20) | **Layer 3** — full records (rationale, rejected alternatives, evidence); batch-capped to force filtering |
@@ -99,7 +110,10 @@ for compatibility.
 ## Invalidation Semantics
 
 - `invalidate()` sets status to `INVALIDATED` (not `STALE`) and appends the reason to the decision's evidence
-- Invalidation is **file-scoped**: a commit mismatch only invalidates decisions whose `files_affected` include the changed files — untouched decisions stay active even on commit mismatch
+- **Automatic staleness (v4.6.0+):** `neuralmind decisions scan` (run by the `init-hook` post-commit hook) diffs `HEAD` against its first parent, relative to the project. A decision whose `files_affected` includes a changed file goes **STALE**, with `Marked STALE: commit <sha> changed <files> after this decision was recorded` appended to its evidence; dependents cascade. Any change counts — no diff analysis
+- **The commit that carries a decision keeps it ACTIVE:** a decision anchored to `HEAD`, or recorded/amended/restored after every changed file was last edited (an edit within 2 s counts as after), is left alone
+- Invalidation is **file-scoped**: untouched decisions stay ACTIVE. Renames count both paths; merge commits count everything they brought in; pulls and rebases don't run post-commit hooks
+- `restore` re-anchors a STALE or INVALIDATED decision to a commit (default `HEAD`) and makes it ACTIVE again
 - `audit` lists all decisions by default; `--stale`/`--orphaned` filter to entries needing attention (age-based 90-day staleness plus orphaned-SHA detection)
 - `DecisionStore` has no `.close()` — connections are managed internally
 
@@ -111,8 +125,12 @@ The runtime counterpart of the eval harness's `stale_influence_rate` metric: ins
 
 ```
 [neuralmind stale-guard] 1 decision(s) governing neuralmind/db.py are no longer ACTIVE. Their rationale may not hold — verify before relying on them:
-- [STALE] Use SQLite WAL (confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers...
+- [STALE] Use SQLite WAL (id 5b1e0c7a-…, confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers... — commit 3f9c2ab changed neuralmind/db.py after this decision was recorded
+If a STALE decision still holds after you check the code, `neuralmind decisions restore <id>` re-anchors it to HEAD.
 ```
+
+Since v4.6.0 each line carries the full id and the reason the decision left
+ACTIVE (from its evidence).
 
 The agent sees which remembered rationales may no longer hold — before it edits, not after.
 
@@ -144,4 +162,4 @@ results = store.query("database choice")
 
 ## Testing
 
-60 tests in `tests/memory/` cover store CRUD/FTS/audit/export, invalidation engine (file-touch, commit mismatch, cascade, idempotency), MCP tool dispatch, eval harness, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation). All stdlib-only.
+`tests/memory/` covers store CRUD/FTS/audit/export, the invalidation engine (file-touch, the carrying-commit exemption, renames, merges, subdirectory projects, cascade, idempotency), `decisions scan`, MCP tool dispatch, eval harness, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation). All stdlib-only.
