@@ -41,9 +41,10 @@ _GUARD_CONTENTS = """\
 # Created automatically by NeuralMind — do not commit this directory.
 #
 # .neuralmind/ holds per-machine state: the synapse store, index
-# metadata, the event log, and last_output.json (a cache of the most
-# recent Bash stdout/stderr, which can contain credentials your commands
-# printed). None of it is portable between machines.
+# metadata, the event log, last_output.json (a cache of the most
+# recent Bash stdout/stderr) and bash_outputs/ (full outputs of trimmed
+# Bash calls), both of which can contain credentials your commands
+# printed. None of it is portable between machines.
 #
 # The `*` below makes this directory ignore itself, so no entry is
 # needed in your project's own .gitignore.

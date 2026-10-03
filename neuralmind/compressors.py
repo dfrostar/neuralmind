@@ -2,16 +2,20 @@
 compressors.py — Token-reducing transforms for Claude Code tool outputs
 ========================================================================
 
-Provides Pith-parity compression functions that run inside Claude Code
-PostToolUse hooks:
+Pith-parity compression functions:
 
 1. compress_read(file_path, raw_content) → skeleton (uses graph if indexed)
 2. compress_bash(stdout, stderr, exit_code) → errors + summary
 3. cap_search_results(output, n) → truncate long grep/find output
 4. offload_if_large(content) → write to tmp, return pointer
 
-These functions are pure and framework-agnostic. They are wrapped by
-`neuralmind/hooks.py` to integrate with Claude Code's PostToolUse protocol.
+The hooks no longer call these: they keep too little of what an agent needs
+to stand in for a tool result (evals/compression/, measured in
+docs/benchmarks/compression.md). They remain a Python API.
+
+5. noisy_log_family(command) + trim_noisy_log(text, family) → the opt-in
+   ``NEURALMIND_BASH_REPLACE`` hook path. It elides the progress lines of
+   allowlisted install/build commands and passes every other line through.
 
 Design principles:
 - Never lose critical information silently — always log what was trimmed
@@ -23,7 +27,9 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 # Size thresholds (tunable via env vars for tests and power users)
@@ -312,3 +318,182 @@ def offload_if_large(
         f"[Full content at: {path}]"
     )
     return summary, path
+
+
+# -----------------------------------------------------------------------------
+# Noisy-log trimming: the opt-in NEURALMIND_BASH_REPLACE hook path
+# -----------------------------------------------------------------------------
+#
+# compress_bash keeps the lines it recognizes as signal and drops the rest,
+# and the benchmark shows how many of the lines a reader needs go with them.
+# Trimming works the other way round: for a command on an explicit allowlist,
+# it removes only the lines it recognizes as that tool's progress reporting,
+# and every other line reaches Claude as the command printed it. Which
+# commands qualify is decided by what they are, never by how much they print.
+
+# Each family: the progress lines it may elide, with the label a marker gives
+# them. A line has to match one of these to be removed.
+_NOISE: dict[str, tuple[tuple[str, re.Pattern[str]], ...]] = {
+    "pip install": (
+        ("Collecting", re.compile(r"^Collecting \S")),
+        ("Downloading", re.compile(r"^\s*Downloading \S")),
+        ("Using cached", re.compile(r"^\s*Using cached \S")),
+        ("progress bar", re.compile(r"^\s*[━╸╺]+\s+[\d.]+/[\d.]+ \w")),
+        # A requirement's own dependencies; one read from a requirements file
+        # says "(from -r <file>" and is kept, like any requirement asked for.
+        (
+            "dependency already satisfied",
+            re.compile(r"^Requirement already satisfied: .*\(from [^-]"),
+        ),
+        (
+            "build step",
+            re.compile(
+                r"^\s*(Installing build dependencies|Installing backend dependencies"
+                r"|Checking if build backend supports \w+|Getting requirements to build \w+"
+                r"|Preparing (editable )?metadata \([^)]*\)|Building (wheel|editable) for \S+ \([^)]*\))"
+                r"(: started|: finished with status '\w+'| \.\.\. \w+)$"
+            ),
+        ),
+        ("build step", re.compile(r"^Building wheels for collected packages: ")),
+        ("build step", re.compile(r"^\s*Created (editable )?wheel for \S+: filename=")),
+        ("build step", re.compile(r"^\s*Stored in directory: ")),
+        (
+            "uninstall step",
+            re.compile(
+                r"^\s*(Attempting uninstall: \S+|Found existing installation: \S+ \S+|Uninstalling \S+:)$"
+            ),
+        ),
+    ),
+    "neuralmind build": (("embedding progress", re.compile(r"^Embedding \d+/\d+ \(\d+%\)")),),
+}
+
+# Whatever pattern it matches, a line that reports trouble is never elided.
+_NEVER_ELIDE = re.compile(
+    r"(?i)\b(errors?|warn(ings?)?|fail(s|ed|ures?|ing)?|exceptions?|traceback|"
+    r"deprecat\w*|conflicts?|incompatible|fatal)\b"
+)
+
+# A run shorter than this stays verbatim: its marker would be as long as it.
+_MIN_ELIDED_RUN = 2
+
+_PIP = re.compile(r"^pip(3(\.\d+)?)?(\.exe)?$")
+_PYTHON = re.compile(r"^(python(3(\.\d+)?)?|py)(\.exe)?$")
+_NEURALMIND = re.compile(r"^neuralmind(\.exe)?$")
+_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# Steps that print nothing, so a command line may set up with them.
+_SILENT_SETUP = {"cd", "source", ".", "export"}
+_OPERATOR = re.compile(r"^[();<>|&]+$")
+
+
+def _family_of(argv: list[str]) -> str | None:
+    """The allowlisted family one simple command belongs to, if any."""
+    name = re.split(r"[\\/]", argv[0])[-1]
+    if _PIP.match(name) and argv[1:2] == ["install"]:
+        return "pip install"
+    if _PYTHON.match(name) and argv[1:4] == ["-m", "pip", "install"]:
+        return "pip install"
+    if _NEURALMIND.match(name) and argv[1:2] == ["build"]:
+        return "neuralmind build"
+    return None
+
+
+def noisy_log_family(command: str) -> str | None:
+    """Which allowlisted noisy log ``command`` prints, or None.
+
+    The allowlist is ``pip install`` (also as ``python -m pip install``) and
+    ``neuralmind build``. The whole command line has to be such an invocation,
+    optionally after variable assignments and silent setup steps (``cd``,
+    ``source``, ``.``, ``export``) joined with ``&&`` or ``;``, and optionally
+    with ``2>&1``. Anything else — a pipe, a redirect to a file, a subshell,
+    command substitution, ``||``, a second program, a line break — makes it
+    None, because then the output is not, or not only, that tool's log.
+    """
+    command = command.replace("\\\n", " ")  # line continuations
+    if "\n" in command or "\r" in command or "`" in command:
+        return None
+    try:
+        lex = shlex.shlex(command, posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        tokens = list(lex)
+    except ValueError:
+        return None
+
+    segments: list[list[str]] = [[]]
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if not _OPERATOR.match(token):
+            segments[-1].append(token)
+        elif token in ("&&", ";"):
+            segments.append([])
+        elif token == ">&" and segments[-1][-1:] == ["2"] and tokens[i + 1 : i + 2] == ["1"]:
+            segments[-1].pop()  # "2>&1": stderr joins stdout
+            i += 1
+        else:
+            return None
+        i += 1
+
+    family = None
+    for argv in segments:
+        while argv and _ASSIGNMENT.match(argv[0]):
+            argv = argv[1:]
+        if not argv or argv[0] in _SILENT_SETUP:
+            continue
+        found = _family_of(argv)
+        if found is None or (family is not None and found != family):
+            return None
+        family = found
+    return family
+
+
+def _noise_label(line: str, patterns: tuple[tuple[str, re.Pattern[str]], ...]) -> str | None:
+    if _NEVER_ELIDE.search(line):
+        return None
+    for label, pattern in patterns:
+        if pattern.search(line):
+            return label
+    return None
+
+
+def _marker(labels: Counter[str]) -> str:
+    total = sum(labels.values())
+    detail = ", ".join(f"{label} ×{n}" for label, n in labels.items())
+    return f"[neuralmind: {total} progress lines elided: {detail}]\n"
+
+
+def trim_noisy_log(text: str, family: str) -> tuple[str, int]:
+    """Elide ``family``'s progress lines from ``text``; keep every other line.
+
+    Each run of at least two consecutive progress lines becomes one marker
+    line that counts what was elided, by kind; every line that isn't a
+    progress line is returned verbatim, in order. Returns the trimmed text and
+    the number of lines elided (0 means ``text`` came back unchanged).
+    """
+    patterns = _NOISE[family]
+    out: list[str] = []
+    run: list[str] = []
+    labels: Counter[str] = Counter()
+    elided = 0
+
+    def flush() -> None:
+        nonlocal elided
+        if len(run) >= _MIN_ELIDED_RUN:
+            out.append(_marker(labels))
+            elided += len(run)
+        else:
+            out.extend(run)
+        run.clear()
+        labels.clear()
+
+    for line in text.splitlines(keepends=True):
+        label = _noise_label(line.rstrip("\r\n"), patterns)
+        if label is None:
+            flush()
+            out.append(line)
+        else:
+            run.append(line)
+            labels[label] += 1
+    flush()
+    if not elided:
+        return text, 0
+    return "".join(out), elided
