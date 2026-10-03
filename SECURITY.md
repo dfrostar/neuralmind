@@ -8,7 +8,7 @@ NeuralMind is designed with **enterprise security as a first-class concern**:
 - **No telemetry** – no usage tracking, no analytics, no hidden data collection, no update checks.
 - **One network event, pinned** – the only outbound network activity is a **one-time, SHA256-pinned** download of the ONNX model archive during install (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that).
 - **Fully auditable** – open-source code, MIT license, complete transparency. Every claim below is verifiable.
-- **Architecture supports major compliance frameworks** (GDPR, SOC 2, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
+- **Architecture supports major compliance frameworks** (GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
 - **Supply-chain discipline** – minimal runtime dependencies, CycloneDX SBOM attached to every release, no cloud lock-in.
 
 ---
@@ -324,12 +324,20 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **Audit Logging**: All processing happens locally with no external calls
 - **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
 
-### ✅ SOC 2 Type II
+### ✅ SOC 2 (Trust Services Criteria)
 - **Security**: Local processing, no repository content transmitted, encrypted at rest (your choice)
 - **Availability**: No dependencies on external services for core functionality
 - **Confidentiality**: NeuralMind stores and processes locally; no repository content is transmitted (its only outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
-- **Integrity**: Deterministic, reproducible indexing from your source code
+- **Processing Integrity**: Deterministic, reproducible indexing from your source code
 - **Privacy**: No collection, no analytics, no tracking
+- **No SOC 2 report**: NeuralMind runs inside your environment, so in your audit it is software within your system boundary. Criterion-by-criterion evidence is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
+
+### ✅ CMMC 2.0
+- **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
+- **Access Control** (AC.L2-3.1.1, 3.1.2): RBAC roles and per-tool permissions at the MCP boundary
+- **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
+- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): Not provided by NeuralMind; use FIPS-validated full-disk encryption on the host
+- **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
 ### ✅ ISO 27001 / 27002
 - **Information Security Management**: Runs entirely within your security perimeter

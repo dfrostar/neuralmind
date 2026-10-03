@@ -1,6 +1,6 @@
 # NeuralMind Compliance Summary
 
-**One-page reference for procurement, security review, and compliance teams.** Consolidates the NIST AI RMF, SOC 2, and GDPR claims already documented across [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) and [`ENTERPRISE.md`](ENTERPRISE.md) into a single reviewable surface.
+**One-page reference for procurement, security review, and compliance teams.** Consolidates the NIST AI RMF, SOC 2, CMMC 2.0, and GDPR claims already documented across [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) and [`ENTERPRISE.md`](ENTERPRISE.md) into a single reviewable surface.
 
 > **Honest scope:** NeuralMind itself is not certified to any compliance framework. The *architecture* supports certification of *your deployment* — every required control is either built in or available to switch on. The evidence below is auditable; the certifications are yours to obtain.
 
@@ -14,6 +14,7 @@
 | Code uploaded to a cloud provider | **No** — all embeddings generated and stored locally via ChromaDB or the local ONNX backend |
 | Outbound network at runtime | **None by default** — install-time only unless `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` are explicitly set, which sends only README/architecture-doc prose (never code, never client files) to Anthropic for synapse seeding. See [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) and the [air-gapped walkthrough](use-cases/air-gapped.md) |
 | Video/media file ingestion | **Not supported** — no code path accepts video, image, or audio files at any layer; see [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) §2 |
+| Certifications held | **None.** NeuralMind has no SOC 2 report and no CMMC assessment. Both frameworks assess an organization's environment; the sections below show what NeuralMind gives your assessor |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
 | License | **MIT** — full source review, no vendor lock-in |
@@ -52,20 +53,49 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ---
 
-## SOC 2 Type II — control evidence
+## SOC 2 — Trust Services Criteria evidence
 
-The five Trust Service Criteria categories and where NeuralMind provides evidence:
+A SOC 2 report is a CPA firm's attestation about a *service organization's* controls, measured against the AICPA Trust Services Criteria. Security (the Common Criteria, CC) is in every report; Availability (A), Processing Integrity (PI), Confidentiality (C), and Privacy (P) are optional. NeuralMind runs inside your environment and transmits no repository content to us, so in your audit it is software within your system boundary, not a subservice organization.
 
-| SOC 2 Criterion | NeuralMind evidence |
-|---|---|
-| **CC6.1 Access Control** | RBAC implementation, `.neuralmind/audit_events.jsonl` |
-| **CC7.1 Monitoring** | Query logging, performance metrics, live activity feed |
-| **CC7.2 System Monitoring** | `/healthz` endpoint (v0.8+), error tracking, structured logging |
-| **A1.1 Processing Integrity** | Index validation on every build, audit trail of state changes |
-| **C1.2 Availability** | Backup/recovery via standard SQLite/filesystem ops; no external state |
-| **P3.1/4.1 Privacy** | No PII collection; data residency under operator control |
+| Criterion | What it covers | NeuralMind evidence |
+|---|---|---|
+| **CC6.1** | Logical access security | RBAC at the MCP boundary (`neuralmind/mcp_security.py`), denials written to the audit log |
+| **CC6.3** | Role-based access, least privilege | Three default roles (`admin`, `builder`, `reader`) with per-tool permissions |
+| **CC6.7** | Restricting transmission of information | No telemetry; no repository content sent off the machine. The one outbound request is the embedding-model download, pre-seedable with `NEURALMIND_ONNX_MODEL_DIR` |
+| **CC7.1** | Detecting vulnerabilities | CycloneDX SBOM on every tagged release, for your SCA scanner |
+| **CC7.2** | Monitoring for anomalies | Hash-chained `.neuralmind/audit_events.jsonl` (`neuralmind audit verify` walks the chain), `/healthz` endpoint, live activity feed |
+| **CC9.2** | Vendor and business-partner risk | MIT source, SBOM, and the [third-party LLM disclosure](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) for the opt-in `NEURALMIND_LLM_SEED` path |
+| **A1.2** | Backup and recovery | All state is local SQLite and files under `.neuralmind/`: back it up with your normal tooling, or rebuild it from source with `neuralmind build` |
+| **C1.1 / C1.2** | Keeping and disposing of confidential information | The index and audit log stay in the project directory under your access controls; the [deletion procedure](compliance/DATA_DELETION.md) lists every location to remove, including the committed `.neuralmind-team-memory.json` |
+| **P3.1 / P4.1** | Collecting and using personal information only for stated purposes | NeuralMind collects no personal data and sends no telemetry |
 
-Full mapping with line-item evidence pointers: `docs/SOC2_COMPLIANCE_MAPPING.md` (separate detail doc).
+The policies the project itself runs under (access control, change management, incident response, and others) are in [`compliance/`](compliance/), each tagged with the criteria it addresses.
+
+---
+
+## CMMC 2.0 — practice evidence
+
+CMMC assesses a defense contractor's environment, not a tool. Level 1 covers the 15 FAR 52.204-21 requirements for Federal Contract Information (FCI); Level 2 covers the 110 NIST SP 800-171 Rev. 2 requirements for Controlled Unclassified Information (CUI); Level 3 adds selected NIST SP 800-172 requirements.
+
+If NeuralMind indexes source code that is CUI, the index, synapse store, and audit log derived from it are CUI too, and NeuralMind becomes an asset inside your assessment scope. The table shows what NeuralMind gives your assessor and what stays your environment's job. Practice IDs are Level 2.
+
+| Practice | Requirement | NeuralMind provides | Still yours |
+|---|---|---|---|
+| **AC.L2-3.1.1** | Limit system access to authorized users | RBAC at the MCP boundary; the graph server and HTTP MCP transport bind to `127.0.0.1` | OS accounts and file permissions on `.neuralmind/` |
+| **AC.L2-3.1.2** | Limit access to permitted functions | Per-role tool permissions (`admin`, `builder`, `reader`) | Assigning roles to people |
+| **AC.L2-3.1.20** | Control connections to external systems | No telemetry; no repository content sent off the machine. `NEURALMIND_LLM_SEED` is off by default | Keeping `NEURALMIND_LLM_SEED` off in a CUI enclave; pre-seeding the model with `NEURALMIND_ONNX_MODEL_DIR` |
+| **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
+| **AU.L2-3.3.2** | Trace actions to individual users | Actor recorded at the MCP boundary | Local CLI queries record a system-level actor; tie them to OS login records |
+| **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain makes edits detectable; `neuralmind audit verify` checks it | Preventing deletion: file permissions, log forwarding |
+| **CM.L2-3.4.1** | Baseline configurations and inventories | CycloneDX SBOM on every tagged release | Recording the pinned version in your baseline |
+| **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to localhost; [air-gapped install](use-cases/air-gapped.md) | Not exposing the HTTP transport beyond the enclave |
+| **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | Not provided: NeuralMind does not encrypt data at rest | FIPS-validated full-disk encryption on the host |
+| **SC.L2-3.13.16** | Protect CUI at rest | Not provided | The same host encryption covers `.neuralmind/` |
+| **SI.L2-3.14.1** | Identify and correct system flaws | [Vulnerability disclosure policy](../SECURITY.md), SBOM for your scanner | Staying on the latest release |
+
+**The AI agent is the boundary that matters.** NeuralMind hands code slices to your coding agent, and the agent sends them to its model provider. If that code is CUI, the provider is a cloud service handling covered defense information and must meet DFARS 252.204-7012 (FedRAMP Moderate or equivalent). NeuralMind reduces how much code the agent sends; it does not make a provider eligible.
+
+To point an assessor at where a practice is implemented in your own code, `neuralmind compliance .` lists annotations such as `// AC.L2-3.1.1: Authorized access control`. Finding an annotation shows where a practice is claimed, not that it works.
 
 ---
 
@@ -157,7 +187,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 
 This is the **summary** view. For depth:
 
-- [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, line-by-line SOC 2 control evidence
+- [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, SOC 2 and CMMC 2.0 summaries
 - [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) — precise, code-cited answer to "does any client content (including media files) ever reach a third-party LLM"
 - [`use-cases/air-gapped.md`](use-cases/air-gapped.md) — strictest deployment posture, step-by-step
 - [`use-cases/offline-regulated.md`](use-cases/offline-regulated.md) — broader regulated-industry walkthrough

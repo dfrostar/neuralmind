@@ -188,7 +188,7 @@ export default async function SecurityPage() {
                         <div>
                             <p className="text-white font-semibold">Architecture supports, certification is yours</p>
                             <p className="text-slate-400 text-sm mt-1">
-                                NeuralMind&apos;s architecture supports GDPR, SOC 2, HIPAA, and ISO 27017 requirements.
+                                NeuralMind&apos;s architecture supports GDPR, SOC 2, CMMC 2.0, HIPAA, and ISO 27017 requirements.
                                 We provide the evidence (audit trail, SBOM, hash chain); certification is maintained by the
                                 operator. See <a href={COMPLIANCE_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">COMPLIANCE-SUMMARY.md</a>.
                             </p>
@@ -196,6 +196,7 @@ export default async function SecurityPage() {
                         <div className="flex gap-3 flex-wrap">
                             <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">GDPR</span>
                             <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">SOC 2</span>
+                            <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">CMMC 2.0</span>
                             <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">HIPAA</span>
                             <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">ISO 27017</span>
                             <span className="px-3 py-1.5 rounded-lg bg-carbon border border-carbon-border text-xs text-slate-300">NIST AI RMF</span>

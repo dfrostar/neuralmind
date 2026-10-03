@@ -1,8 +1,8 @@
 # Third-Party LLM Disclosure & Media Ingestion Scope
 
-**Date:** 2026-08-31
-**Version:** 1.0
-**SOC 2 Controls:** CC6.1, CC7.1, P4.1, P6.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** CC6.7, CC9.2, P4.1, P6.1
 
 ---
 
@@ -141,7 +141,9 @@ weights from the HF Hub, or calling HF's hosted Inference API)? No. The
 only Hugging-Face-authored package anywhere in `pyproject.toml` is
 `tokenizers` (the fast-tokenizer library), and it runs entirely
 in-process to prepare text for the local ONNX MiniLM model described in
-§3 — it makes no network calls of its own. There is no `huggingface_hub` or
+§3. NeuralMind only calls `Tokenizer.from_file` on the `tokenizer.json`
+inside that model's archive, which reads a local file and never touches
+the network. There is no `huggingface_hub` or
 `transformers` dependency, and no `HF_API_KEY`/Inference API code path
 anywhere in the codebase. The embedding model archive itself is fetched
 from a pinned, SHA256-verified URL on Chroma's own S3 bucket

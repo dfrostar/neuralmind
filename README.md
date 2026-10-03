@@ -513,6 +513,12 @@ patterns (no repository content transmitted, audit log, RBAC). Certification is 
 the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 
+**What about CMMC 2.0?** CMMC assesses a defense contractor's environment, not
+a tool, so there is nothing for NeuralMind to be certified against. If you index
+CUI source code, NeuralMind is in your assessment scope: it provides RBAC and a
+hash-chained audit log, and leaves encryption at rest to your host. The Level 2
+practice mapping is in [docs/COMPLIANCE-SUMMARY.md](docs/COMPLIANCE-SUMMARY.md).
+
 **What about SSO/SAML?** Roadmap-only. Not available today. See
 [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 

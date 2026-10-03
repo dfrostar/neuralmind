@@ -493,28 +493,52 @@ MANAGE (Risk)
 └─ Anomaly alerts
 ```
 
-### SOC 2 Compliance
+### SOC 2 Trust Services Criteria
+
+NeuralMind has no SOC 2 report. A SOC 2 report covers a service
+organization, and NeuralMind runs inside yours, so in your audit it is
+software within your system boundary. These are the criteria it gives your
+auditor evidence for:
 
 ```
-NeuralMind satisfies SOC 2 Type II criteria:
+CC6.1 / CC6.3 - Logical access, role-based permissions
+   Evidence: RBAC roles (admin / builder / reader) at the MCP boundary
 
-✅ CC6.1 - Access Control
-   Evidence: RBAC implementation, audit logs
+CC6.7 - Restricting transmission of information
+   Evidence: no telemetry; no repository content sent off the machine
 
-✅ CC7.1 - Monitoring
-   Evidence: Query logging, performance metrics
+CC7.1 - Detecting vulnerabilities
+   Evidence: CycloneDX SBOM on every release, for your SCA scanner
 
-✅ CC7.2 - System Monitoring
-   Evidence: Health checks, error tracking
+CC7.2 - Monitoring for anomalies
+   Evidence: hash-chained audit log, "neuralmind audit verify", /healthz
 
-✅ A1.1 - Processing Integrity
-   Evidence: Index validation, audit trail
-
-✅ C1.2 - Availability
-   Evidence: Backup/recovery procedures
-
-See docs/SOC2_COMPLIANCE_MAPPING.md for details.
+C1.2 - Disposing of confidential information
+   Evidence: documented deletion procedure (docs/compliance/DATA_DELETION.md)
 ```
+
+The full table, with what each criterion covers, is in
+[COMPLIANCE-SUMMARY.md](COMPLIANCE-SUMMARY.md).
+
+### CMMC 2.0
+
+CMMC assesses a defense contractor's environment, not a tool. If NeuralMind
+indexes source code that is CUI, the index is CUI too, and NeuralMind is an
+asset inside your assessment scope:
+
+```
+AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
+   Evidence: RBAC roles and per-tool permissions at the MCP boundary
+
+AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
+   Evidence: append-only audit log with a SHA-256 hash chain
+
+SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
+   Not provided: use FIPS-validated full-disk encryption on the host
+```
+
+The full Level 2 table, including what stays your responsibility, is in
+[COMPLIANCE-SUMMARY.md](COMPLIANCE-SUMMARY.md).
 
 ---
 
