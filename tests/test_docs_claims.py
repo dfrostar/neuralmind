@@ -190,7 +190,8 @@ FORBIDDEN = [
         # for months beside a summary that said nothing was certified, because
         # the pattern above only knew "compliant" and "certified".
         re.compile(
-            r"\b(satisf(y|ies|ied)|meets?)\s+(all\s+)?(the\s+)?(soc[-\s]?2|cmmc)\b",
+            r"\b(satisf(y|ies|ied)|meets?|compl(y|ies)\s+with)\s+(all\s+)?(the\s+)?"
+            r"(soc[-\s]?2|cmmc)\b",
             re.IGNORECASE,
         ),
         "Only an audit can say criteria are satisfied. Say what evidence NeuralMind provides.",
@@ -345,6 +346,8 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search("CMMC 2.0 Level 2 certified") for p, _ in FORBIDDEN)
     assert any(p.search("a CMMC-compliant code index") for p, _ in FORBIDDEN)
     assert any(p.search("meets CMMC requirements") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind complies with CMMC 2.0") for p, _ in FORBIDDEN)
+    assert any(p.search("it complies with the SOC 2 criteria") for p, _ in FORBIDDEN)
     # Accurate scoped wording must still pass, or the guard blocks correct copy.
     ok = "No telemetry, and nothing on the wire at query time."
     assert not any(p.search(ok) for p, _ in FORBIDDEN)
@@ -352,7 +355,7 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
         "**SOC 2-ready posture, certification on the roadmap.**",
         "### ✅ SOC 2 (Trust Services Criteria)",
         "## CMMC 2.0 — practice evidence",
-        "Next certification target: SOC 2 Type I — Q3 2027",
+        "Next audit target: a SOC 2 Type I report — Q3 2027",
     ):
         assert not any(p.search(ok) for p, _ in FORBIDDEN), ok
 

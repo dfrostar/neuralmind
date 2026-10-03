@@ -69,10 +69,13 @@ CMMC_DOMAINS = {
 
 # A SOC 2 header line in a policy: "**SOC 2 Controls:** CC6.1, CC6.2".
 SOC2_HEADER_RE = re.compile(r"SOC\s?2 Controls?:")
+MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)")
+SOC2_HEADING_RE = re.compile(r"soc\s?2", re.IGNORECASE)
 TSC_ID_RE = re.compile(r"\b(?:CC\d{1,2}|A\d|PI\d|C\d|P\d)\.\d{1,2}\b")
 # "CC" never starts anything else on these surfaces, so CC IDs are checked on
 # every line. A1.1 or P2.1 could be anything, so those are checked only in a
-# SOC 2 header or next to a category name.
+# SOC 2 header, under a markdown heading that names SOC 2, or next to a
+# category name.
 CC_ID_RE = re.compile(r"\bCC\d{1,2}\.\d{1,2}\b")
 CATEGORY_LABEL_RE = re.compile(
     r"\b(A1|PI1|C1|P[1-8])\.\d\b[\s*:|\-–—]{0,8}"
@@ -86,10 +89,29 @@ def _series(control_id: str) -> str:
     return "P" if re.fullmatch(r"P\d", prefix) else prefix
 
 
-def _tsc_problems(line: str) -> list[str]:
+def _soc2_sections(lines: list[str]) -> list[bool]:
+    """Flag each markdown line that sits under a heading naming SOC 2.
+
+    Lines starting with "#" inside a code fence are not headings.
+    """
+    flags: list[bool] = []
+    headings: dict[int, str] = {}
+    in_fence = False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and (m := MD_HEADING_RE.match(line)):
+            level = len(m.group(1))
+            headings = {lvl: text for lvl, text in headings.items() if lvl < level}
+            headings[level] = m.group(2)
+        flags.append(any(SOC2_HEADING_RE.search(text) for text in headings.values()))
+    return flags
+
+
+def _tsc_problems(line: str, in_soc2_section: bool = False) -> list[str]:
     problems = []
     ids = set(CC_ID_RE.findall(line))
-    if SOC2_HEADER_RE.search(line):
+    if in_soc2_section or SOC2_HEADER_RE.search(line):
         ids |= set(TSC_ID_RE.findall(line))
     for control_id in sorted(ids):
         if control_id not in TSC_IDS:
@@ -121,8 +143,9 @@ def test_published_compliance_ids_exist_and_are_correctly_named() -> None:
     for path in _published_paths():
         rel = path.relative_to(REPO_ROOT)
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        sections = _soc2_sections(lines) if path.suffix == ".md" else [False] * len(lines)
         for index, line in enumerate(lines):
-            for problem in _tsc_problems(line) + _cmmc_problems(line):
+            for problem in _tsc_problems(line, sections[index]) + _cmmc_problems(line):
                 violations.append(f"{rel}:{index + 1}: {problem}")
     assert not violations, (
         "A published surface quotes a compliance ID that doesn't exist or names "
@@ -138,16 +161,38 @@ def test_checks_trip_on_the_ids_that_shipped() -> None:
     assert _tsc_problems("| **A1.1 Processing Integrity** | Index validation |")
     assert _tsc_problems("**SOC 2 Controls:** CC10.1")
     assert _tsc_problems("**SOC 2 Control:** P9.1")
+    # Optional-category IDs on ordinary table rows count only under SOC 2.
+    assert _tsc_problems("| **A1.9** | Backup and recovery |", in_soc2_section=True)
+    assert not _tsc_problems("| **A1.9** | Backup and recovery |")
     assert _cmmc_problems("# CMMC AU.L2-3.1.1: audit")
     assert _cmmc_problems("// AC.L2-3.1.23: no such requirement")
     assert _cmmc_problems("// ZZ.L2-3.1.1: no such domain")
     # The corrected forms pass.
-    assert not _tsc_problems("| **A1.2** | Backup and recovery | local SQLite |")
+    assert not _tsc_problems("| **A1.2** | Backup and recovery |", in_soc2_section=True)
+    assert not _tsc_problems("| **C1.1 / C1.2** | Confidential |", in_soc2_section=True)
     assert not _tsc_problems("**SOC 2 Controls:** C1.2, P4.3")
     assert not _tsc_problems("**SOC 2 Controls:** CC7.3, CC7.4, CC7.5")
     assert not _tsc_problems("C1.2 - Disposing of confidential information")
     assert not _cmmc_problems("| **SC.L2-3.13.16** | Protect CUI at rest |")
     assert not _cmmc_problems("// AC.L2-3.1.22: last AC requirement")
+
+
+def test_soc2_sections_follow_headings_and_ignore_fences() -> None:
+    doc = [
+        "## SOC 2 — Trust Services Criteria evidence",  # 0
+        "| **A1.2** | Backup |",  # 1
+        "### Subsection",  # 2: still under the SOC 2 heading
+        "```",  # 3
+        "# not a heading inside a fence",  # 4
+        "```",  # 5
+        "## CMMC 2.0",  # 6: a sibling heading ends the section
+        "| **AC.L2-3.1.1** | Access |",  # 7
+    ]
+    assert _soc2_sections(doc) == [True, True, True, True, True, True, False, False]
+    summary = (REPO_ROOT / "docs/COMPLIANCE-SUMMARY.md").read_text(encoding="utf-8").splitlines()
+    flagged = [line for line, on in zip(summary, _soc2_sections(summary), strict=True) if on]
+    assert any("**A1.2**" in line for line in flagged)
+    assert any("**P3.1 / P4.1**" in line for line in flagged)
 
 
 def test_the_criteria_tables_are_scanned() -> None:

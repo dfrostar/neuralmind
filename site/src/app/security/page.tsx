@@ -203,7 +203,7 @@ export default async function SecurityPage() {
                         </div>
                         <div>
                             <p className="text-slate-400 text-sm">
-                                Next certification target: <span className="text-white font-semibold">SOC 2 Type I</span> — Q3 2027
+                                Next audit target: a <span className="text-white font-semibold">SOC 2 Type I</span> report — Q3 2027
                             </p>
                         </div>
                     </div>

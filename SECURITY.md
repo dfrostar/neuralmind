@@ -334,7 +334,7 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 
 ### ✅ CMMC 2.0
 - **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
-- **Access Control** (AC.L2-3.1.1, 3.1.2): RBAC roles and per-tool permissions at the MCP boundary
+- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets applied to the role each MCP call declares. NeuralMind doesn't authenticate callers, so binding identities to roles is the operator's job
 - **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
 - **Encryption at rest** (SC.L2-3.13.11, 3.13.16): Not provided by NeuralMind; use FIPS-validated full-disk encryption on the host
 - **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)

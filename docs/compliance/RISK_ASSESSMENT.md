@@ -35,7 +35,7 @@ Risks are scored on two dimensions:
 | R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode, `neuralmind build --verify`, local backups | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |
 | R-06 | Key person dependency (solo maintainer) | 3 | 4 | 12 | HIGH | Documented runbooks, bus factor reduction plan, paid support option | Maintainer |
-| R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects edits), git-backed evidence | Maintainer |
+| R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects a changed or removed record mid-log, not truncation or a recomputed chain), git-backed evidence | Maintainer |
 | R-08 | Compliance failure (SOC 2 audit) | 2 | 3 | 6 | MEDIUM | Documented controls in `docs/compliance/`; compliance-automation platform planned (vendor not yet selected) | Maintainer |
 | R-09 | Cloudflare Pages outage | 2 | 3 | 6 | MEDIUM | No data loss (static), easy to redeploy, 99.9% SLA | Cloudflare |
 | R-10 | GitHub Actions disruption | 2 | 2 | 4 | LOW | Local fallback (`pytest`, `build`), no hard dependency on CI | GitHub |

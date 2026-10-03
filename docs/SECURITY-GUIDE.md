@@ -502,10 +502,14 @@ auditor evidence for:
 
 ```
 CC6.1 / CC6.3 - Logical access, role-based permissions
-   Evidence: RBAC roles (admin / builder / reader) at the MCP boundary
+   Evidence: stdio MCP transport by default; per-tool permission sets
+   (admin / builder / reader). Each MCP call declares its own role and
+   callers aren't authenticated, so binding identities to roles is yours
 
 CC6.7 - Restricting transmission of information
-   Evidence: no telemetry; no repository content sent off the machine
+   Evidence: by default, no telemetry and no repository content sent off
+   the machine. Opt-in NEURALMIND_LLM_SEED=1 sends README.md and
+   docs/architecture.md to Anthropic
 
 CC7.1 - Detecting vulnerabilities
    Evidence: CycloneDX SBOM on every release, for your SCA scanner
@@ -528,10 +532,13 @@ asset inside your assessment scope:
 
 ```
 AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
-   Evidence: RBAC roles and per-tool permissions at the MCP boundary
+   Evidence: stdio MCP transport by default; per-tool permission sets
+   Not provided: authentication. Each MCP call declares its own role, so
+   binding authenticated identities to roles is yours
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
-   Evidence: append-only audit log with a SHA-256 hash chain
+   Evidence: append-only audit log with a SHA-256 hash chain. It shows a
+   changed record mid-log, not truncation or a recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
    Not provided: use FIPS-validated full-disk encryption on the host
