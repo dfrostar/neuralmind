@@ -131,7 +131,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  ... and {len(differences) - SHOWN} more")
     print(
         "The docs quote these results, so they have to describe the hooks, compressors and "
-        f"index as they are now: {REGENERATE}."
+        f"index as they are now: {REGENERATE}. If the change is to how indexes are built, "
+        "delete .bench-work first: a re-run updates the indexes it finds there incrementally, "
+        "which keeps parts of the old graph."
     )
     return 1
 

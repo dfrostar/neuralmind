@@ -23,7 +23,8 @@ python -m evals.compression.run --out bench/compression
 The Bash inputs are committed. The Read and Grep inputs are the four
 public-benchmark repos at their pinned commits, cloned on first run. Runs from
 two different checkout directories, each rebuilding its indexes, agreed on
-every one of the 248 calls.
+every one of the 248 calls. So did a run on macOS (Apple Silicon, Python 3.11)
+and CI's on Linux (x86-64, Python 3.12), so a run on either can be committed.
 
 ## What we found in v4.3.4
 
@@ -205,5 +206,7 @@ CI fails when `results.json` stops describing the code, in two places:
   change to the skeletons, the compressors, the hooks or the index build that
   moves a published figure fails CI until someone re-runs
   `python -m evals.compression.run --out bench/compression` and commits the
-  result. The job uploads its fresh run as the `compression-benchmark-drift`
-  artifact.
+  result. After a change to the index build, delete `.bench-work` first: a
+  re-run updates the indexes it finds there incrementally, which keeps parts
+  of the old graph. The job uploads its fresh run as the
+  `compression-benchmark-drift` artifact.

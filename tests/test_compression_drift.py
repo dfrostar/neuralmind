@@ -142,7 +142,8 @@ def test_the_summary_is_compared() -> None:
 def test_a_skeleton_change_is_reported_without_flooding_the_log() -> None:
     # A change to the skeleton format moves every compressed Read at once.
     fresh = _committed()
-    reads = [s for s in fresh["samples"] if s["tool"] == "Read"]
+    reads = [s for s in fresh["samples"] if s["tool"] == "Read" and s["compressed"]]
+    assert len(reads) > drift.SHOWN
     for read in reads:
         read["compressor_only_sha256"] = "0" * 64
     code, out = _run(fresh)
