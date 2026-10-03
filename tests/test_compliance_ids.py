@@ -163,6 +163,8 @@ def test_checks_trip_on_the_ids_that_shipped() -> None:
     assert _tsc_problems("**SOC 2 Control:** P9.1")
     # Optional-category IDs on ordinary table rows count only under SOC 2.
     assert _tsc_problems("| **A1.9** | Backup and recovery |", in_soc2_section=True)
+    for bad in ("A1.99", "PI1.9", "C1.9", "C1.1 / C1.9"):
+        assert _tsc_problems(f"| **{bad}** | Row |", in_soc2_section=True), bad
     assert not _tsc_problems("| **A1.9** | Backup and recovery |")
     assert _cmmc_problems("# CMMC AU.L2-3.1.1: audit")
     assert _cmmc_problems("// AC.L2-3.1.23: no such requirement")

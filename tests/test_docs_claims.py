@@ -177,7 +177,8 @@ FORBIDDEN = [
     ),
     (
         re.compile(
-            r"\b(soc[-\s]?2|cmmc(\s+2\.0)?(\s+level\s+[123])?)[-\s]*(compliant|certified)\b",
+            r"\b(soc[-\s]?2(\s+type\s+(ii|i|2|1))?|cmmc(\s+2\.0)?(\s+level\s+[123])?)"
+            r"[-\s]*(compliant|certified)\b",
             re.IGNORECASE,
         ),
         (
@@ -344,6 +345,8 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search("NeuralMind satisfies SOC 2 Type II criteria:") for p, _ in FORBIDDEN)
     assert any(p.search("### ✅ SOC 2 Type II") for p, _ in FORBIDDEN)
     assert any(p.search("CMMC 2.0 Level 2 certified") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind is SOC 2 Type II certified") for p, _ in FORBIDDEN)
+    assert any(p.search("a SOC 2 Type I compliant deployment") for p, _ in FORBIDDEN)
     assert any(p.search("a CMMC-compliant code index") for p, _ in FORBIDDEN)
     assert any(p.search("meets CMMC requirements") for p, _ in FORBIDDEN)
     assert any(p.search("NeuralMind complies with CMMC 2.0") for p, _ in FORBIDDEN)
