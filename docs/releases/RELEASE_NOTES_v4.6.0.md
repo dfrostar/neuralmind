@@ -176,6 +176,13 @@ on v4.6.0 (tiktoken o200k_base; reproduce with
   though `requests` lost a question and `rich`'s gold files rank lower. The
   default intent classifier still treats many "how does X…" questions as docs
   questions; `query --explain` shows which it chose.
+- **Learned recall only takes a slot for a file the hits don't already show.**
+  Synapse recall swaps the weakest L3 hits for nodes your team co-edits. With
+  the stronger keyword ranking, those swaps started trading the only hit from a
+  second relevant file for more of the first, and the CI onboarding gate's lift
+  went negative: −0.009 on the fixture, where v4.5.0 measured +0.046. Recall now
+  skips neighbours from files already in the hits; the gate measures +0.046
+  again, and faithfulness on the same fixture moves from −0.001 to +0.027.
 - **`neuralmind query --explain` shows the intent** the query was ranked with,
   and why.
 - **Nothing changes until `neuralmind build` runs once.** An index built before

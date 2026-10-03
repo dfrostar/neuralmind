@@ -1010,8 +1010,21 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        energy_by_id = dict(candidates[:num_swap])
-        fetched = get_nodes_by_ids(list(energy_by_id))
+        # A recalled node from a file the hits already cover adds no module,
+        # yet it takes a slot — and, when ranking is good, the slot of the only
+        # hit from a second expected file. With docs and code sharing one
+        # keyword index (v4.6.0) that turned the onboarding lift negative on the
+        # fixture: `create-user` kept three users/crud.py nodes and lost
+        # api/routes.py. So recall spends slots only on files search missed.
+        energy_by_id = dict(candidates)
+        present_modules = {_module_of(r) for r in results}
+        fetched = [
+            node
+            for node in get_nodes_by_ids([nid for nid, _ in candidates]) or []
+            if _module_of(node) not in present_modules
+        ]
+        fetched.sort(key=lambda n: energy_by_id.get(n.get("id"), 0.0), reverse=True)
+        fetched = fetched[:num_swap]
         if not fetched:
             return results
 
