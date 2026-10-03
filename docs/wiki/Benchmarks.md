@@ -142,7 +142,7 @@ codebase, but not a CI-gated claim.
 
 | Headline | Value |
 |---|---|
-| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs 50K+ naive) |
+| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0) |
 | Personal synapse edges across the rebuild | **36 → 135** — the learning layer tracked the new code |
 | Shared edge weight | **+5.4%** (denser cross-links after a new shared layer) |
 | Full `--force` rebuild / incremental after | **326 s** / **~30 s** |

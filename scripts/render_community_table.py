@@ -28,12 +28,16 @@ def render_table(entries: list[dict]) -> str:
         return "_No community benchmarks yet — be the first!_\n"
 
     # Sort by reduction ratio, highest first. Keeps the table interesting
-    # while remaining deterministic.
+    # while remaining deterministic. avg_reduction_ratio is the one ratio
+    # every row shares (the fixed 50K estimate), so it is the sort key.
     entries = sorted(entries, key=lambda e: e.get("avg_reduction_ratio", 0), reverse=True)
 
     lines = [
-        "| Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |",
-        "|---------|------|------:|-------:|----------:|----------:|-------|-----------|",
+        (
+            "| Project | Lang | Nodes | Wakeup | Avg Query | Reduction (vs fixed 50K) "
+            "| Reduction (vs measured code) | Model | Submitted |"
+        ),
+        "|---------|------|------:|-------:|----------:|----------:|----------:|-------|-----------|",
     ]
     for e in entries:
         project = e["project_name"]
@@ -41,15 +45,23 @@ def render_table(entries: list[dict]) -> str:
             project = f"[{project}]({e['repo_url']})"
         wakeup = f"{e['avg_wakeup_tokens']:,}" if e.get("avg_wakeup_tokens") else "—"
         query = f"{e['avg_query_tokens']:,}" if e.get("avg_query_tokens") else "—"
+        measured = (
+            f"{e['measured_avg_reduction_ratio']:.1f}× of {e['full_codebase_tokens']:,} tok"
+            if e.get("measured_avg_reduction_ratio")
+            else "—"
+        )
         model = e.get("model", "—")
         submitter = f"[@{e['submitted_by']}](https://github.com/{e['submitted_by']}) · {e['date_submitted']}"
         lines.append(
             f"| {project} | {e['language']} | {e['nodes']:,} | {wakeup} | "
-            f"{query} | **{e['avg_reduction_ratio']:.1f}×** | {model} | {submitter} |"
+            f"{query} | **{e['avg_reduction_ratio']:.1f}×** | {measured} | {model} | {submitter} |"
         )
     lines.append("")
     lines.append(
-        f"_{len(entries)} submission(s). See the [JSON data]"
+        f"_{len(entries)} submission(s). **vs fixed 50K**: a fixed 50,000-token "
+        f"estimate over tokens per question — the one ratio every row shares, so it "
+        f"tracks context size, not repo size. **vs measured code**: the submitter's "
+        f"measured code over tokens per question (v4.5.0+ submissions). See the [JSON data]"
         f"(docs/community-benchmarks.json) for notes and verification commands, "
         f"or the [interactive dashboard]"
         f"(https://docs.neuralmind.uk/benchmarks/) for scatter + "

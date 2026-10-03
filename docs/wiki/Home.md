@@ -44,7 +44,7 @@ every run with its commit and version (`eval --report`). Measurement never
 trains: `query --no-learn`, MCP `learn: false` and `NEURALMIND_NO_LEARN=1` read
 the learned layer without writing to it, and `benchmark`, `probe` and `eval` are
 read-only by default. Every reduction ratio now divides by the measured token
-count of the files the index covers instead of a fixed 50K estimate, `probe`
+count of the code the index covers instead of a fixed 50K estimate, `probe`
 samples stably across rebuilds, and the index covers what git covers —
 `.gitignore` is honoured, including tracked files that match an ignore rule.
 Walkthrough: [Measure retrieval on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-retrieval-on-your-repo.md) ·

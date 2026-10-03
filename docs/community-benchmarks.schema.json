@@ -14,7 +14,16 @@
     "verification_command"
   ],
   "additionalProperties": false,
+  "dependencies": {
+    "measured_avg_reduction_ratio": ["full_codebase_tokens"],
+    "full_codebase_tokens": ["measured_avg_reduction_ratio"]
+  },
   "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Entry format. 2 — written by `neuralmind benchmark --contribute` from v4.5.0 — adds the ratio against the submitter's measured code (`measured_avg_reduction_ratio`, `full_codebase_tokens`). Entries without it are 1: the fixed-estimate ratio only.",
+      "enum": [1, 2]
+    },
     "project_name": {
       "type": "string",
       "description": "Short, human-readable project name. Keep under 40 chars.",
@@ -48,7 +57,17 @@
     },
     "avg_reduction_ratio": {
       "type": "number",
-      "description": "Average reduction ratio vs naive 'load everything' baseline. Must be >= 1 (ratio, not percentage).",
+      "description": "Average reduction ratio against the fixed 50,000-token estimate every row of the table compares on: `avg_reduction_ratio` from `neuralmind benchmark . --naive-50k --json` (v4.5.0+), or from `neuralmind benchmark . --json` before v4.5.0. It is 50,000 ÷ tokens per question, so it tracks context size, not repo size. Must be >= 1 (ratio, not percentage).",
+      "minimum": 1
+    },
+    "measured_avg_reduction_ratio": {
+      "type": "number",
+      "description": "v2: the same run against the measured size of the code the index covers — `avg_reduction_ratio` from `neuralmind benchmark . --json` (v4.5.0+). Scales with the repo, and is below 1 on a repo smaller than NeuralMind's context.",
+      "exclusiveMinimum": 0
+    },
+    "full_codebase_tokens": {
+      "type": "integer",
+      "description": "v2: the measured baseline — tokens (at ~4 chars/token, the context's own estimate) of every code file the index covers. `full_codebase_tokens` from `neuralmind benchmark . --json` (v4.5.0+).",
       "minimum": 1
     },
     "queries_per_day": {
@@ -87,7 +106,7 @@
     },
     "verification_command": {
       "type": "string",
-      "description": "The exact command you ran to produce these numbers. Reviewers can re-run it locally to verify — this is what makes the table auditable.",
+      "description": "The exact command you ran to produce these numbers. Reviewers can re-run it locally to verify — this is what makes the table auditable. To reproduce a v1 entry on v4.5.0+, add --naive-50k.",
       "minLength": 5
     },
     "notes": {

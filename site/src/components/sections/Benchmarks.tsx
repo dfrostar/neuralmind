@@ -10,7 +10,7 @@ const dataPoints = [
     { metric: 'Tokens vs. pasting every file', value: '45–261×', detail: 'same 40 queries, against pasting every source file; cheaper than ripgrep on every repo' },
     { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
     { metric: 'Facts vs. naive truncation', value: '−0.054', detail: 'a published loss: at an equal token budget, truncation keeps slightly more gold facts on the prose-heavy CI fixture (v4.3.4). CI fails the build below −0.10' },
-    { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the CLI’s 50K-token naive baseline — method reproducible, not CI-gated' },
+    { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the fixed 50K-token estimate the CLI used before v4.5.0 — method reproducible, not CI-gated' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
 ];
 
