@@ -1983,7 +1983,7 @@ characters are never stubbed. Only in projects that already have
 
 **Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
 its full id and the reason it left ACTIVE (for example
-`commit 3f9c2ab changed db.py after this decision was recorded`), plus a
+`commit 3f9c2ab changed db.py since this decision was recorded`), plus a
 pointer to `neuralmind decisions restore <id>` when one is STALE.
 
 ```bash
@@ -2089,6 +2089,12 @@ existing hook script rather than overwriting it:
   [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
   Re-run `init-hook` on an existing checkout to get the scan; the managed
   block is replaced in place.
+
+For a project in a subdirectory of its repository, or in a linked worktree,
+the hooks go in the repository's hooks directory and name the project by its
+path from the repository root, since git runs hooks from there (for example
+`neuralmind decisions scan services/api`). The managed block is one per hook
+file, so a second project in the same repository replaces the first's.
 - **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
   staged diff — the commit-time drift guard described under
   [`drift`](#drift-v320) below.
@@ -2152,9 +2158,13 @@ post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
   project directory.
 - **Any** change to a file a decision names counts — no diff analysis.
 - Two exemptions keep a fresh decision from going stale on the commit that
-  carries it: a decision anchored to `HEAD` itself, and a decision recorded,
-  amended or restored after every changed file was last edited (an edit within
-  two seconds of the decision counts as after it).
+  carries it: a decision anchored to `HEAD` itself, and a decision whose
+  fingerprints match what the commit stores. Recording, amending or
+  restoring a decision fingerprints each affected file with its git blob id
+  (`git hash-object`, as `git add` would store it); when every changed file
+  the decision names matches, the commit carries exactly the code the
+  decision describes. Decisions without fingerprints (recorded before v4.6.0,
+  or naming a file that didn't exist yet) get no exemption.
 - Dependents (`dependency_constraints`) cascade. The reason is appended to
   each decision's evidence (`Marked STALE: commit 3f9c2ab changed … after this
   decision was recorded`).
@@ -2173,7 +2183,7 @@ post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
 ```
 $ neuralmind decisions scan .
 [neuralmind] 1 decision(s) marked STALE by commit 3f9c2ab:
-  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py after this decision was recorded
+  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py since this decision was recorded
   Review: neuralmind decisions audit --stale   Still valid? neuralmind decisions restore <id>
 ```
 
@@ -3040,14 +3050,17 @@ neuralmind team governance remove-edge SOURCE TARGET [--project PATH] --admin EM
 | `set-governance-enabled false` | Turns the scope and threshold gates off; events are still audited |
 
 The bundle's `provenance.governance` records the policy it was published
-under. A governance config that exists but can't be read makes publish refuse.
+under. A governance config that exists but can't be read (unreadable, malformed
+YAML, an invalid value) makes publish refuse.
 
 **`remove-edge SOURCE TARGET`** (admin-only) deletes the association, and the
 transitions between the two nodes, from the project's `shared` memory and
 review queue. It drops the pair from `.neuralmind-team-memory.json` and lists
 it under `retracted` (creating the file if needed). Commit the file: each
 teammate's next session deletes the pair from their own `shared` memory, and
-no later publish re-adds it. A non-admin gets `Permission denied` and exit 1.
+no later publish re-adds it. The file is written first, atomically; if the
+local store update then fails, the next import finishes it. A non-admin gets
+`Permission denied` and exit 1.
 *Changed in v4.6.0:* the command takes the two nodes instead of one `edge_id`
 (the old form only wrote an audit entry).
 

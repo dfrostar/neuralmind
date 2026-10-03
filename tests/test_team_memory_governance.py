@@ -13,6 +13,8 @@ keeps a developer's real ~/.config/neuralmind/tier2.yaml out of the rest.
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -165,6 +167,42 @@ class TestPublishPolicy:
             publish_team_memory(project, store)
         assert not team_bundle_path(project).exists()
 
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "governance: {publishing_scope: both\n",  # malformed YAML
+            "- just\n- a list\n",  # not a mapping
+        ],
+        ids=["malformed-yaml", "not-a-mapping"],
+    )
+    def test_unparseable_governance_config_fails_closed(self, project, governance, content):
+        """The lenient loader would fall back to permissive defaults; publish must not."""
+        configure, _ = governance
+        configure(scope="personal")
+        Path(tier2_config.DEFAULT_CONFIG_PATH).write_text(content)
+        store = _store(project)
+        _seed(store)
+        with pytest.raises(PublishBlockedError, match="could not be read"):
+            publish_team_memory(project, store)
+        assert not team_bundle_path(project).exists()
+
+    @pytest.mark.skipif(
+        os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+        reason="needs POSIX permissions and a non-root user",
+    )
+    def test_unreadable_governance_config_file_fails_closed(self, project, governance):
+        configure, _ = governance
+        configure()
+        path = Path(tier2_config.DEFAULT_CONFIG_PATH)
+        path.chmod(0)
+        try:
+            store = _store(project)
+            _seed(store)
+            with pytest.raises(PublishBlockedError, match="could not be read"):
+                publish_team_memory(project, store)
+        finally:
+            path.chmod(0o600)
+
     def test_policy_object(self, governance):
         configure, _ = governance
         assert load_publish_policy() is None  # nothing configured yet
@@ -286,6 +324,64 @@ class TestRetraction:
         )
         retract_team_edge(project, store, "y.py", "x.py")
         assert [e["source"] for e in _load_pending_review(store)] == ["p.py"]
+
+
+class TestRetractionFailures:
+    def test_a_failed_bundle_write_leaves_local_memory_alone(self, project, monkeypatch):
+        import neuralmind.team_memory as team_memory
+
+        store = _store(project)
+        store.import_edges([("a.py", "b.py", 0.9, 3)], namespace=SHARED_NAMESPACE)
+
+        def _disk_full(*_a, **_k):
+            raise OSError("No space left on device")
+
+        monkeypatch.setattr(team_memory, "_write_bundle", _disk_full)
+        with pytest.raises(OSError, match="No space left"):
+            retract_team_edge(project, store, "a.py", "b.py")
+        assert len(store.edges(namespaces=[SHARED_NAMESPACE])) == 1
+        assert not team_bundle_path(project).exists()
+
+    def test_a_failed_store_update_is_finished_by_the_next_import(self, project, monkeypatch):
+        store = _store(project)
+        store.import_edges([("a.py", "b.py", 0.9, 3)], namespace=SHARED_NAMESPACE)
+        real_delete = store.delete_edge
+
+        def _locked(*_a, **_k):
+            raise sqlite3.OperationalError("database is locked")
+
+        monkeypatch.setattr(store, "delete_edge", _locked)
+        with pytest.raises(sqlite3.OperationalError):
+            retract_team_edge(project, store, "a.py", "b.py")
+        # The retraction is recorded where teammates will see it...
+        bundle = json.loads(team_bundle_path(project).read_text())
+        assert [(r["source"], r["target"]) for r in bundle["retracted"]] == [("a.py", "b.py")]
+        # ...and this machine's next session applies it.
+        monkeypatch.setattr(store, "delete_edge", real_delete)
+        result = maybe_import_team_memory(project, store)
+        assert result is not None and result["retracted"] == 1
+        assert store.edges(namespaces=[SHARED_NAMESPACE]) == []
+
+    def test_a_failed_removal_is_audited(self, project, governance, monkeypatch):
+        import neuralmind.team_memory as team_memory
+        from neuralmind.tier2.config import load_config
+        from neuralmind.tier2.governance import TeamGovernance
+
+        configure, audit = governance
+        configure()
+        cfg = load_config()
+        gov = TeamGovernance(Path(cfg.audit_db), cfg, AuditLog(Path(cfg.audit_db)))
+        store = _store(project)
+
+        def _disk_full(*_a, **_k):
+            raise OSError("No space left on device")
+
+        monkeypatch.setattr(team_memory, "_write_bundle", _disk_full)
+        with pytest.raises(OSError):
+            gov.remove_edge_from_shared("a.py", "b.py", ADMIN, store=store, project_path=project)
+        entry = audit()[-1]
+        assert (entry.action, entry.target) == ("remove", "a.py -> b.py")
+        assert "No space left" in entry.details["error"]
 
 
 class TestGovernanceCLI:

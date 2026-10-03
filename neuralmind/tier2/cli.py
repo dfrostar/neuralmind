@@ -203,7 +203,7 @@ def cmd_team_governance(args) -> int:
     except PermissionError as exc:
         print(f"Permission denied: {exc}", file=sys.stderr)
         return 1
-    except ValueError as exc:
+    except Exception as exc:  # ValueError, OSError, sqlite3.Error, ...
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

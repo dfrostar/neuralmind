@@ -110,8 +110,8 @@ for compatibility.
 ## Invalidation Semantics
 
 - `invalidate()` sets status to `INVALIDATED` (not `STALE`) and appends the reason to the decision's evidence
-- **Automatic staleness (v4.6.0+):** `neuralmind decisions scan` (run by the `init-hook` post-commit hook) diffs `HEAD` against its first parent, relative to the project. A decision whose `files_affected` includes a changed file goes **STALE**, with `Marked STALE: commit <sha> changed <files> after this decision was recorded` appended to its evidence; dependents cascade. Any change counts — no diff analysis
-- **The commit that carries a decision keeps it ACTIVE:** a decision anchored to `HEAD`, or recorded/amended/restored after every changed file was last edited (an edit within 2 s counts as after), is left alone
+- **Automatic staleness (v4.6.0+):** `neuralmind decisions scan` (run by the `init-hook` post-commit hook) diffs `HEAD` against its first parent, relative to the project. A decision whose `files_affected` includes a changed file goes **STALE**, with `Marked STALE: commit <sha> changed <files> since this decision was recorded` appended to its evidence; dependents cascade. Any change counts — no diff analysis
+- **The commit that carries a decision keeps it ACTIVE:** a decision anchored to `HEAD` is left alone, and so is one whose fingerprints match the commit. `record`, `amend` and `restore` store each affected file's git blob id (`decision_fingerprints` table); when every changed file the decision names is stored by the commit exactly as fingerprinted, the commit carries the code the decision describes. No fingerprint, no exemption
 - Invalidation is **file-scoped**: untouched decisions stay ACTIVE. Renames count both paths; merge commits count everything they brought in; pulls and rebases don't run post-commit hooks
 - `restore` re-anchors a STALE or INVALIDATED decision to a commit (default `HEAD`) and makes it ACTIVE again
 - `audit` lists all decisions by default; `--stale`/`--orphaned` filter to entries needing attention (age-based 90-day staleness plus orphaned-SHA detection)
@@ -125,7 +125,7 @@ The runtime counterpart of the eval harness's `stale_influence_rate` metric: ins
 
 ```
 [neuralmind stale-guard] 1 decision(s) governing neuralmind/db.py are no longer ACTIVE. Their rationale may not hold — verify before relying on them:
-- [STALE] Use SQLite WAL (id 5b1e0c7a-…, confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers... — commit 3f9c2ab changed neuralmind/db.py after this decision was recorded
+- [STALE] Use SQLite WAL (id 5b1e0c7a-…, confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers... — commit 3f9c2ab changed neuralmind/db.py since this decision was recorded
 If a STALE decision still holds after you check the code, `neuralmind decisions restore <id>` re-anchors it to HEAD.
 ```
 

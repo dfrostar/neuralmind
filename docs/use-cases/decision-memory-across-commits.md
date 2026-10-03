@@ -39,9 +39,10 @@ neuralmind decisions record \
 Agents can do the same over MCP with `neuralmind_record_decision`. Name files
 relative to the project root (absolute paths work too).
 
-Recording before you commit is fine. The commit that lands the change keeps the
-decision ACTIVE, because the decision was recorded after those files were last
-edited, so it already describes what's being committed.
+Recording before you commit is fine. Recording fingerprints each file with its
+git blob id. When the commit stores exactly those blobs, it carries the code
+the decision describes, so it leaves the decision ACTIVE, however quickly you
+commit. Edit one of those files again first and the commit marks it STALE.
 
 ## 3. Commit: stale decisions are reported
 
@@ -50,13 +51,13 @@ Months later someone moves sessions to Redis and commits:
 ```
 $ git commit -am "Move sessions to Redis"
 [neuralmind] 1 decision(s) marked STALE by commit 3f9c2ab:
-  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py after this decision was recorded
+  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py since this decision was recorded
   Review: neuralmind decisions audit --stale   Still valid? neuralmind decisions restore <id>
 [neuralmind] Rebuilding neural index...
 ```
 
 The reason is kept on the decision itself (`Marked STALE: commit 3f9c2ab
-changed auth/session.py after this decision was recorded` in its evidence), and
+changed auth/session.py since this decision was recorded` in its evidence), and
 any decision that lists it in `dependency_constraints` goes STALE with it.
 
 ## 4. Your agent is warned before it edits
@@ -66,7 +67,7 @@ guard adds this to its context. It never blocks the edit:
 
 ```
 [neuralmind stale-guard] 1 decision(s) governing auth/session.py are no longer ACTIVE. Their rationale may not hold — verify before relying on them:
-- [STALE] Sessions live in Postgres (id 5b1e0c7a-…, confidence 1.00, updated 2026-10-03): One datastore to back up and fail over; … — commit 3f9c2ab changed auth/session.py after this decision was recorded
+- [STALE] Sessions live in Postgres (id 5b1e0c7a-…, confidence 1.00, updated 2026-10-03): One datastore to back up and fail over; … — commit 3f9c2ab changed auth/session.py since this decision was recorded
 If a STALE decision still holds after you check the code, `neuralmind decisions restore <id>` re-anchors it to HEAD.
 ```
 
@@ -86,13 +87,13 @@ print.
 
 | Situation | Result |
 |---|---|
-| A commit changes a file the decision names, after the decision was recorded or last amended | **STALE**. Any change counts; there is no diff analysis |
-| The commit lands the change the decision was written about (recorded after the files' last edits) | Stays ACTIVE |
+| A commit stores a file the decision names differently from how the decision saw it | **STALE**. Any change counts; there is no diff analysis |
+| The commit stores every changed file exactly as the decision saw it (its fingerprints, taken when it was recorded, amended or restored) | Stays ACTIVE: this commit carries the decision |
 | The decision is anchored to the new commit itself | Stays ACTIVE |
-| An edit within two seconds of recording the decision | Counts as after it (coarse filesystem clocks) |
+| The decision has no fingerprint for a changed file (recorded before v4.6.0, or the file didn't exist yet) | **STALE** |
 | A file is deleted or renamed | STALE (both sides of a rename count) |
 | A merge commit | Everything it brought into the branch counts |
-| Project in a subdirectory of the repository | Paths are matched relative to the project |
+| Project in a subdirectory of the repository, or a linked worktree | Works; `init-hook` names the project by its path from the repository root |
 | Another decision depends on a stale one | STALE too (cascade) |
 
 Run it by hand any time with `neuralmind decisions scan .`

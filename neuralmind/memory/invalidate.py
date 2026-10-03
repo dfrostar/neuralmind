@@ -4,14 +4,15 @@ Conservative invalidation: when a commit changes a file named in a decision's
 ``files_affected``, the decision is marked STALE — there is no diff analysis,
 any change counts. Better to lose a valid memory than serve a stale one.
 
-The one exemption is the commit that *carries* the decision. A decision
-recorded after its files were last edited already describes the code being
-committed, so that commit leaves it ACTIVE. In practice: edit ``auth.py``,
-record why, commit — the decision survives; edit ``auth.py`` again in a later
-commit and it goes STALE. A file counts as edited before the decision only
-when its modification time is at least ``EDIT_SLACK_SECS`` older than the
-decision's last update; anything closer, or a file that no longer exists,
-is treated as edited after it.
+The one exemption is the commit that *carries* the decision. When a decision
+is recorded, amended or restored, the store fingerprints each affected file
+(its git blob id, exactly as ``git add`` would store it). If the commit
+contains exactly those blobs for every changed file the decision names, it
+carries the code the decision describes, so it leaves the decision ACTIVE.
+In practice: edit ``auth.py``, record why, commit — the decision survives,
+however quickly the three steps follow each other; edit ``auth.py`` again
+before or after committing and it goes STALE. No fingerprint (an older
+record, a file that didn't exist yet, no git) means no exemption.
 
 Lifecycle:
     1. ``neuralmind decisions scan`` runs ``scan()``; the post-commit hook
@@ -38,12 +39,14 @@ The DecisionStore interface expected by this module::
         def update_status(self, decision_id: str, status: str) -> None:
             ...  # Persist status change
 
-        # Optional: mark_stale(decision_id, reason) records the reason too.
+        # Optional: mark_stale(decision_id, reason) -> bool records the
+        # reason and reports whether the status was persisted;
+        # fingerprints(decision_id) -> {path: blob id} enables the
+        # carried-by-this-commit exemption.
 
 Each DecisionRecord needs ``id``, ``status``, ``commit_sha``,
-``files_affected`` and ``dependency_constraints``; ``updated_at`` (a
-datetime) enables the carried-by-this-commit exemption — without it every
-touched decision goes STALE.
+``files_affected`` and ``dependency_constraints``. Without ``fingerprints``
+every touched decision goes STALE.
 """
 
 from __future__ import annotations
@@ -51,20 +54,16 @@ from __future__ import annotations
 import logging
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
-# A file whose modification time is within this many seconds of a decision's
-# last update counts as edited *after* it. Covers coarse filesystem clocks
-# (Linux stamps mtimes from a clock that lags by a few ms; HFS+ truncates to
-# 1 s, FAT to 2 s) so "record, then edit" can never look like the reverse.
-EDIT_SLACK_SECS = 2.0
-
 # Paths per find_by_files() call — under SQLite's legacy 999-parameter limit.
 _LOOKUP_CHUNK = 900
+
+# Paths per git hash-object / ls-tree call, to stay under OS argv limits.
+_GIT_PATH_CHUNK = 200
 
 
 # --------------------------------------------------------------------------- #
@@ -237,20 +236,50 @@ def _project_relative(path: str, root: Path) -> str:
     return PurePosixPath(text).as_posix()
 
 
-def _epoch(value: Any) -> float | None:
-    """A timestamp (datetime, ISO string or number) as epoch seconds."""
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return float(value.timestamp())
-    return None
+def file_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
+    """``{project-relative path: git blob id}`` for the files as they are now.
+
+    Uses ``git hash-object``, which applies the same clean filters and
+    line-ending normalization as ``git add``, so the ids compare equal to what
+    a commit stores. Files that don't exist are left out; any git failure
+    returns what was hashed so far (possibly nothing).
+    """
+    root = Path(project_path).resolve()
+    existing: list[str] = []
+    for path in files or []:
+        rel = _project_relative(path, root)
+        if rel not in existing and (root / rel).is_file():
+            existing.append(rel)
+    blobs: dict[str, str] = {}
+    for start in range(0, len(existing), _GIT_PATH_CHUNK):
+        chunk = existing[start : start + _GIT_PATH_CHUNK]
+        result = _git(["hash-object", "--", *chunk], cwd=root)
+        ids = result.stdout.split()
+        if result.returncode != 0 or len(ids) != len(chunk):
+            break
+        blobs.update(zip(chunk, ids, strict=True))
+    return blobs
+
+
+def committed_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
+    """``{project-relative path: git blob id}`` of the files as HEAD stores them.
+
+    Files HEAD doesn't contain (deleted, or the old side of a rename) are
+    left out, which makes them count as changed.
+    """
+    blobs: dict[str, str] = {}
+    paths = list(dict.fromkeys(files or []))
+    for start in range(0, len(paths), _GIT_PATH_CHUNK):
+        chunk = paths[start : start + _GIT_PATH_CHUNK]
+        result = _git(["ls-tree", "-z", "HEAD", "--", *chunk], cwd=project_path)
+        if result.returncode != 0:
+            continue
+        for record in result.stdout.split("\0"):
+            meta, _, path = record.partition("\t")
+            parts = meta.split()
+            if len(parts) == 3 and parts[1] == "blob" and path:
+                blobs[path] = parts[2]
+    return blobs
 
 
 # --------------------------------------------------------------------------- #
@@ -331,6 +360,7 @@ class InvalidationEngine:
             head[:7] or "?",
         )
 
+        committed: dict[str, str] | None = None  # HEAD's blob ids, fetched on first need
         newly_invalidated: list[str] = []
         for decision in self._decisions_naming(changed_files, root):
             if decision.status in ("STALE", "INVALIDATED"):
@@ -338,20 +368,24 @@ class InvalidationEngine:
             if head and getattr(decision, "commit_sha", "") == head:
                 continue  # recorded against this very commit
             touched = self._touched_files(decision, changed, root)
-            if not touched or self._recorded_after_edits(decision, touched, root):
+            if not touched:
+                continue
+            if committed is None:
+                committed = committed_blob_ids(self.project_path, changed_files)
+            if self._carried_by_commit(decision, touched, committed):
                 continue
             shown = ", ".join(touched[:3])
             if len(touched) > 3:
                 shown += f" (+{len(touched) - 3} more)"
-            reason = f"commit {head[:7] or '?'} changed {shown} after this decision was recorded"
-            self.invalidate_decision(
+            reason = f"commit {head[:7] or '?'} changed {shown} since this decision was recorded"
+            if self.invalidate_decision(
                 decision.id,
                 reason=reason,
                 triggered_by="file_change",
                 commit_sha=head,
                 files=touched,
-            )
-            newly_invalidated.append(decision.id)
+            ):
+                newly_invalidated.append(decision.id)
 
         for decision_id in list(newly_invalidated):
             newly_invalidated.extend(self.cascade_invalidation(decision_id, commit_sha=head))
@@ -366,18 +400,25 @@ class InvalidationEngine:
         triggered_by: str = "file_change",
         commit_sha: str | None = None,
         files: list[str] | None = None,
-    ) -> None:
-        """Mark a single decision as STALE.
+    ) -> bool:
+        """Mark a single decision as STALE; True once the store has it.
 
         Uses the store's ``mark_stale`` when it has one, so the reason is kept
-        on the decision itself; otherwise ``update_status``. Publishes an
-        event on the process event bus.
+        on the decision itself; otherwise ``update_status``. A store that
+        reports the write failed (``mark_stale`` returning False) gets no
+        event and the decision isn't reported as stale — it is still ACTIVE.
+        Publishes an event on the process event bus.
         """
         mark_stale = getattr(self.store, "mark_stale", None)
         if callable(mark_stale):
-            mark_stale(decision_id, reason)
+            persisted = mark_stale(decision_id, reason)
         else:
-            self.store.update_status(decision_id, "STALE")
+            persisted = self.store.update_status(decision_id, "STALE")
+        if persisted is False:
+            logger.warning(
+                "[invalidate] could not mark decision %s STALE; leaving it unreported", decision_id
+            )
+            return False
         event = InvalidationEvent(
             decision_id=decision_id,
             reason=reason,
@@ -390,6 +431,7 @@ class InvalidationEngine:
         self._last_events.append(event)
         self._emit_audit_event(event)
         logger.info("[invalidate] decision %s marked STALE: %s", decision_id, reason)
+        return True
 
     def cascade_invalidation(self, decision_id: str, commit_sha: str | None = None) -> list[str]:
         """For a stale decision, find and invalidate its dependents.
@@ -407,9 +449,10 @@ class InvalidationEngine:
             if dep.status in ("STALE", "INVALIDATED"):
                 continue
             reason = f"depends on stale decision {decision_id}"
-            self.invalidate_decision(
+            if not self.invalidate_decision(
                 dep.id, reason=reason, triggered_by="cascade", commit_sha=commit_sha
-            )
+            ):
+                continue
             invalidated.append(dep.id)
 
             # Recursive cascade: dependents of dependents
@@ -476,24 +519,28 @@ class InvalidationEngine:
                 touched.append(rel)
         return touched
 
-    @staticmethod
-    def _recorded_after_edits(decision: DecisionRecord, touched: list[str], root: Path) -> bool:
-        """True when every touched file was last edited before the decision.
+    def _carried_by_commit(
+        self, decision: DecisionRecord, touched: list[str], committed: dict[str, str]
+    ) -> bool:
+        """True when the commit contains exactly what the decision saw.
 
-        That decision already describes the committed content, so this commit
-        is the one carrying it. A missing timestamp or file is never exempt.
+        Every changed file the decision names must have a fingerprint (its
+        blob id when the decision was recorded, amended or restored) equal to
+        the blob HEAD stores. Then this commit carries the code the decision
+        describes. A store without fingerprints, a missing fingerprint, or a
+        file HEAD no longer contains is never exempt.
         """
-        recorded = _epoch(getattr(decision, "updated_at", None))
-        if recorded is None:
+        fingerprints = getattr(self.store, "fingerprints", None)
+        if not callable(fingerprints):
             return False
-        for rel in touched:
-            try:
-                mtime = (root / rel).stat().st_mtime
-            except OSError:
-                return False  # deleted or unreadable: assume edited after
-            if mtime > recorded - EDIT_SLACK_SECS:
-                return False
-        return True
+        try:
+            recorded = fingerprints(decision.id) or {}
+        except Exception:
+            return False
+        return all(
+            recorded.get(rel) is not None and recorded.get(rel) == committed.get(rel)
+            for rel in touched
+        )
 
     def _emit_audit_event(self, event: InvalidationEvent) -> None:
         """Publish an invalidation event on the process-wide event bus.

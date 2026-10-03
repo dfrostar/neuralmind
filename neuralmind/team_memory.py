@@ -40,6 +40,7 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -128,6 +129,23 @@ def _read_bundle(path: Path) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def _write_bundle(path: Path, bundle: dict[str, Any]) -> None:
+    """Replace the bundle atomically: a failed write leaves the old file whole."""
+    try:
+        mode = path.stat().st_mode & 0o777  # keep an existing file's permissions
+    except OSError:
+        mode = 0o644  # mkstemp's 0600 would be wrong for a committed file
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(bundle, indent=2) + "\n")
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _record_team_event(
@@ -385,7 +403,7 @@ def publish_team_memory(
     )
     if policy is not None:
         bundle["provenance"]["governance"] = policy.to_dict()
-    path.write_text(json.dumps(bundle, indent=2) + "\n", encoding="utf-8")
+    _write_bundle(path, bundle)
     try:
         store.set_meta(_META_TEAM_HASH, bundle["content_hash"])
     except Exception:
@@ -424,10 +442,16 @@ def retract_team_edge(
     where every teammate and every later publish will see it. Commit the
     bundle to share the removal.
 
+    Order matters: the bundle is written first, atomically. If that fails,
+    nothing else has changed. If the store update fails afterwards, the
+    bundle already carries the retraction and this machine's import hash
+    hasn't moved, so the next session's import deletes the pair.
+
     Raises:
         ValueError: ``source``/``target`` don't name two different nodes, or
             the bundle file exists but isn't valid JSON (it is never
             overwritten blindly).
+        OSError: the bundle couldn't be written (local state untouched).
     """
     pair = _pair(source, target)
     if pair is None:
@@ -439,8 +463,6 @@ def retract_team_edge(
             raise ValueError(f"{path} is not a valid team bundle; fix it before retracting")
         bundle, _ = _build_bundle(store, namespaces=())
 
-    removed = store.delete_edge(source, target, SHARED_NAMESPACE)
-    _drop_from_pending_review(store, {pair})
     before = len(bundle.get("synapses", [])) + len(bundle.get("transitions", []))
     for section in ("synapses", "transitions"):
         bundle[section] = [
@@ -465,9 +487,12 @@ def retract_team_edge(
         "transitions": len(bundle["transitions"]),
     }
     bundle["content_hash"] = _content_hash(bundle)
-    path.write_text(json.dumps(bundle, indent=2) + "\n", encoding="utf-8")
+    _write_bundle(path, bundle)
+
+    removed = store.delete_edge(source, target, SHARED_NAMESPACE)
+    _drop_from_pending_review(store, {pair})
     try:
-        # This machine already reflects the edited bundle; don't re-import it.
+        # This machine now reflects the edited bundle; don't re-import it.
         store.set_meta(_META_TEAM_HASH, bundle["content_hash"])
     except Exception:
         pass

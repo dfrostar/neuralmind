@@ -34,15 +34,57 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+try:  # POSIX
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+try:  # Windows
+    import msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    msvcrt = None  # type: ignore[assignment]
+
 GENESIS_HASH = hashlib.sha256(b"neuralmind-team-audit-v1").hexdigest()
 
 MAX_AUDIT_LINE_BYTES = 1_000_000  # Reject crafted DoS lines >1MB
+
+
+@contextmanager
+def _exclusive_file_lock(lock_path: Path) -> Iterator[None]:
+    """Hold an exclusive cross-process lock on ``lock_path`` for the block.
+
+    ``flock`` on POSIX, a byte-range lock on Windows (``msvcrt.locking``
+    retries for about ten seconds, then raises ``OSError``). Locks belong to
+    the open file, so separate processes — and separate ``AuditLog``
+    instances in one process — exclude each other.
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        elif msvcrt is not None:  # pragma: no cover - Windows
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            elif msvcrt is not None:  # pragma: no cover - Windows
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    finally:
+        os.close(fd)
+
 
 AuditAction = Literal[
     "publish",
@@ -230,7 +272,13 @@ class AuditLog:
             ...     entry.sha256 != ""
             True
         """
-        with self._lock:
+        # The thread lock serializes this instance; the file lock serializes
+        # every writer of this log — other processes, other instances. Under
+        # it the log is re-read, so the new entry chains onto the tail that is
+        # actually on disk, not the one this instance loaded earlier (two
+        # writers chaining onto the same stale tail would break verify()).
+        with self._lock, _exclusive_file_lock(self._lock_path()):
+            self._load()
             now = datetime.now(timezone.utc).isoformat()
             entry = AuditEntry(
                 actor=actor,
@@ -244,6 +292,10 @@ class AuditLog:
             self._save_append(entry)
             self._entries.append(entry)
             return entry
+
+    def _lock_path(self) -> Path:
+        """Sidecar lock file serializing appends to this log."""
+        return self.db_path.with_name(self.db_path.name + ".lock")
 
     def verify(self, fast: bool = False) -> dict[str, Any]:
         """Walk the hash chain, return ``{ok, first_bad_line, total}``.

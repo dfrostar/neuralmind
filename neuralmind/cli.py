@@ -5714,6 +5714,44 @@ def _write_hook(hook_path: str, block: str) -> str:
     return action
 
 
+def _git_hooks_location(project_path: str) -> tuple[str | None, str | None]:
+    """``(hooks directory, repository root)`` for a project, or ``(None, None)``.
+
+    A project at the root of a normal clone has ``.git/hooks`` right there.
+    A project in a subdirectory of its repository, or a linked worktree
+    (where ``.git`` is a file), gets the repository's own hooks directory
+    from git; hooks are shared by every worktree of a repository.
+    """
+    import os
+    import subprocess
+
+    direct = os.path.join(project_path, ".git", "hooks")
+    if os.path.isdir(direct):
+        return direct, project_path
+
+    def _rev_parse(flag: str) -> str | None:
+        try:
+            out = subprocess.run(
+                ["git", "-C", project_path, "rev-parse", flag],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except Exception:
+            return None
+        return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+    top = _rev_parse("--show-toplevel")
+    common = _rev_parse("--git-common-dir")
+    if not top or not common:
+        return None, None
+    if not os.path.isabs(common):
+        common = os.path.join(project_path, common)
+    hooks = os.path.join(os.path.normpath(common), "hooks")
+    os.makedirs(hooks, exist_ok=True)
+    return hooks, top
+
+
 def cmd_init_hook(args):
     """Initialize the Git hooks that keep the index fresh and the code honest.
 
@@ -5730,19 +5768,32 @@ def cmd_init_hook(args):
     The pre-commit guard warns and exits 0 by default — a check that
     blocks commits on a heuristic loses its welcome fast. ``--strict``
     makes it blocking; ``--no-drift`` skips it entirely.
+
+    A project in a subdirectory of its repository works too: the hooks go in
+    the repository's hooks directory and name the project by its path from
+    the repository root (git runs hooks from there). The managed block is
+    one per hook file, so a second project in the same repository replaces
+    the first's.
     """
     import os
+    import shlex
     import sys
 
     project_path = getattr(args, "project_path", ".")
     project_path = os.path.abspath(project_path)
-    git_hooks_dir = os.path.join(project_path, ".git", "hooks")
+    git_hooks_dir, repo_root = _git_hooks_location(project_path)
 
-    if not os.path.exists(git_hooks_dir):
+    if git_hooks_dir is None or repo_root is None:
         print(
             f"Error: .git/hooks directory not found in {project_path}. Are you in a Git repository?"
         )
         sys.exit(1)
+
+    # How the hooks name the project: "." at the repository root, otherwise
+    # its path from the root (git runs hooks there), with forward slashes for
+    # the hook's shell on every platform.
+    rel = os.path.relpath(os.path.realpath(project_path), os.path.realpath(repo_root))
+    target = "." if rel == "." else shlex.quote(rel.replace(os.sep, "/"))
 
     hook_path = os.path.join(git_hooks_dir, "post-commit")
 
@@ -5757,13 +5808,13 @@ def cmd_init_hook(args):
     # `decisions scan --quiet` prints only when a recorded decision went
     # stale, does nothing in a project with no decisions, and always exits 0;
     # `|| true` keeps a hook that can never fail the commit regardless.
-    nm_block = """# neuralmind-hook-start
+    nm_block = f"""# neuralmind-hook-start
 # Retire decisions this commit made stale, then rebuild the NeuralMind index.
 # Managed by `neuralmind init-hook`.
 if command -v neuralmind >/dev/null 2>&1; then
-    neuralmind decisions scan . --quiet || true
+    neuralmind decisions scan {target} --quiet || true
     echo "[neuralmind] Rebuilding neural index..."
-    neuralmind build . >/dev/null 2>&1 && \\
+    neuralmind build {target} >/dev/null 2>&1 && \\
         echo "[neuralmind] OK" || \\
         echo "[neuralmind] Rebuild failed (non-critical)"
 fi
@@ -5773,6 +5824,8 @@ fi
     try:
         action = _write_hook(hook_path, nm_block)
         print(f"✓ NeuralMind post-commit hook {action} at {hook_path}")
+        if target != ".":
+            print(f"  For the project at {rel} in the repository {repo_root}.")
         print("  After every commit: decisions whose files it changed are marked STALE,")
         print("  then the index rebuilds.")
     except Exception as e:
@@ -5788,7 +5841,7 @@ fi
     # exits 0 without --strict, but a hook that can never block a commit by
     # accident is one people leave installed.
     strict = getattr(args, "strict", False)
-    drift_cmd = "neuralmind drift . --staged" + (" --strict" if strict else "")
+    drift_cmd = f"neuralmind drift {target} --staged" + (" --strict" if strict else "")
     tail = "" if strict else " || true"
     drift_block = f"""# neuralmind-hook-start
 # Flag staged changes that drift from a pattern their peers share.

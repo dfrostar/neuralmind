@@ -813,7 +813,7 @@ def _stale_decision_context(project_path: str, file_path: str) -> str:
                 f"updated {r.updated_at.date().isoformat()}): {r.rationale[:160]}"
             )
             # Why it left ACTIVE — the note mark_stale()/invalidate() appended,
-            # e.g. "commit 1a2b3c4 changed db.py after this decision was recorded".
+            # e.g. "commit 1a2b3c4 changed db.py since this decision was recorded".
             why = next(
                 (
                     e.split(":", 1)[1].strip()

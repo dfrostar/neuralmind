@@ -84,7 +84,7 @@ stale, the commit says so:
 ```
 $ git commit -m "Switch sessions to Redis"
 [neuralmind] 1 decision(s) marked STALE by commit 3f9c2ab:
-  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py after this decision was recorded
+  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py since this decision was recorded
   Review: neuralmind decisions audit --stale   Still valid? neuralmind decisions restore <id>
 [neuralmind] Rebuilding neural index...
 ```
@@ -94,16 +94,21 @@ decision names marks it STALE. There's no diff analysis. Two exemptions keep a
 fresh decision from going stale on the commit that carries it:
 
 - a decision anchored to the new commit itself is left alone;
-- a decision recorded (or amended, or restored) after every file the commit
-  changed was last edited already describes that code, so it stays ACTIVE.
-  Edit `auth.py`, record why, commit: the decision survives. Edit `auth.py`
-  again later: it goes STALE. An edit within two seconds of the decision
-  counts as after it, to allow for coarse filesystem clocks.
+- a decision whose files the commit stores exactly as the decision saw them
+  stays ACTIVE. Recording (or amending, or restoring) a decision fingerprints
+  each affected file with its git blob id, the way `git add` would store it;
+  when every changed file the decision names matches its fingerprint, the
+  commit carries the code the decision describes. Edit `auth.py`, record why,
+  commit, as quickly as you like: the decision survives. Edit `auth.py` again,
+  before or after that commit: it goes STALE. Decisions recorded before
+  v4.6.0 have no fingerprints, so any change to their files marks them STALE.
 
 The scan diffs the new commit against its first parent, so a merge commit
 counts everything it brought in. A rename counts both the old and the new
-path. A project in a subdirectory of its repository matches its own relative
-paths. Dependent decisions cascade, and the reason is kept on each decision
+path. A project in a subdirectory of its repository, or in a linked
+worktree, works too: `init-hook` installs into the repository's hooks and
+names the project by its path from the repository root (one NeuralMind
+project per repository's hooks). Dependent decisions cascade, and the reason is kept on each decision
 (`Marked STALE: commit 3f9c2ab changed auth/session.py after this decision was
 recorded` in its evidence).
 
@@ -112,7 +117,7 @@ id, and how to re-anchor one that still holds:
 
 ```
 [neuralmind stale-guard] 1 decision(s) governing auth/session.py are no longer ACTIVE. Their rationale may not hold — verify before relying on them:
-- [STALE] Sessions live in Postgres (id 5b1e0c7a-…, confidence 0.90, updated 2026-10-03): … — commit 3f9c2ab changed auth/session.py after this decision was recorded
+- [STALE] Sessions live in Postgres (id 5b1e0c7a-…, confidence 0.90, updated 2026-10-03): … — commit 3f9c2ab changed auth/session.py since this decision was recorded
 If a STALE decision still holds after you check the code, `neuralmind decisions restore <id>` re-anchors it to HEAD.
 ```
 
@@ -144,8 +149,9 @@ tier2 config. Without that config, nothing below changes anything.
 Synapse edges below `weight_threshold` (default 0.1) are left out of the bundle
 and counted in the output. Transitions use a different scale and aren't
 weight-filtered. The bundle's provenance records the policy it was published
-under. If the governance config exists but can't be read (an invalid scope, for
-example), publish refuses rather than publishing ungoverned memory.
+under. If the governance config exists but can't be read (unreadable, malformed
+YAML, or an invalid scope, for example), publish refuses rather than publishing
+ungoverned memory.
 `team governance set-governance-enabled false` turns these gates off; events
 are still audited.
 
@@ -161,6 +167,11 @@ are still audited.
   personal memory;
 - commit the bundle to share the removal.
 
+The bundle is written first, atomically. If that write fails, nothing has
+changed. If the local store update fails after it, the bundle already carries
+the retraction and the next session's import finishes it. A failed removal is
+audited too.
+
 Admin-only; a non-admin gets `Permission denied` and exit 1. **Breaking:** the
 command now takes the two nodes (`remove-edge SOURCE TARGET [--project PATH]`)
 instead of one `edge_id`. The old form never removed anything.
@@ -171,7 +182,9 @@ project's shared-memory associations, strongest first. It used to print `[]`.
 **Audited:** publishes (including refused ones), imports of a teammate's
 bundle, `memory review-approve` / `review-reject`, and removals now write to
 the hash-chained audit log, alongside the configuration changes they already
-covered. `neuralmind team audit verify` checks the chain;
+covered. Appends are serialized across processes (a lock file beside the log),
+so hooks and commands writing at the same moment can't fork the hash chain.
+`neuralmind team audit verify` checks the chain;
 `neuralmind team audit export --format csv --output audit.csv` hands it to an
 auditor. The actor is `NEURALMIND_ACTOR_EMAIL`, else the repository's
 `git config user.email`, else the OS user.

@@ -239,14 +239,29 @@ class TeamGovernance:
         self.require_admin(admin)
         from ..team_memory import retract_team_edge
 
-        result = retract_team_edge(project_path, store, source, target)
+        details: dict[str, Any] = {
+            "reason": "admin_removal",
+            "project": str(Path(project_path).resolve()),
+        }
+        try:
+            result = retract_team_edge(project_path, store, source, target)
+        except Exception as exc:
+            # The attempt is on the record too. retract_team_edge writes the
+            # bundle before touching the store, so a failure either changed
+            # nothing or left a retraction the next import will finish.
+            self.audit.log(
+                actor=admin,
+                action="remove",
+                target=f"{source} -> {target}",
+                details={**details, "error": f"{type(exc).__name__}: {exc}"},
+            )
+            raise
         self.audit.log(
             actor=admin,
             action="remove",
             target=f"{source} -> {target}",
             details={
-                "reason": "admin_removal",
-                "project": str(Path(project_path).resolve()),
+                **details,
                 "removed_from_store": result["removed_from_store"],
                 "removed_from_bundle": result["removed_from_bundle"],
                 "bundle": result["bundle"],
@@ -531,13 +546,15 @@ def load_publish_policy(path: str | Path | None = None) -> PublishPolicy | None:
     (``team governance set-governance-enabled false``).
 
     Raises:
-        ValueError: The config file holds an invalid governance value. Publish
-            fails closed rather than silently publishing ungoverned memory.
+        OSError, yaml.YAMLError, ValueError: The config file exists but can't
+            be read or parsed, or holds an invalid governance value. Publish
+            fails closed rather than silently publishing ungoverned memory —
+            the lenient ``load_config`` would fall back to permissive defaults.
     """
     path = _config_file(path)
     if not path.is_file():
         return None
-    cfg = config_mod.load_config(path)
+    cfg = config_mod.load_config(path, strict=True)
     if not cfg.governance.enabled:
         return None
     return PublishPolicy(
@@ -596,7 +613,9 @@ def record_team_event(
     if not path.is_file():
         return None
     try:
-        cfg = config_mod.load_config(path)
+        # Strict: an unreadable config must not send entries to the default
+        # audit path; the write fails (False) instead.
+        cfg = config_mod.load_config(path, strict=True)
         AuditLog(Path(cfg.audit_db)).log(
             actor=actor or resolve_actor(project_path),
             action=action,  # type: ignore[arg-type]

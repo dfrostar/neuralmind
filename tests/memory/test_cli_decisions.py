@@ -258,3 +258,45 @@ def test_init_hook_post_commit_runs_the_scan(tmp_path, capsys):
     # The scan runs before the (slower) rebuild, inside the managed block.
     assert hook.index("decisions scan") < hook.index("neuralmind build .")
     assert hook.index("neuralmind-hook-start") < hook.index("decisions scan")
+
+
+def _init_hook(project, no_drift=False):
+    from unittest.mock import MagicMock
+
+    from neuralmind.cli import cmd_init_hook
+
+    args = MagicMock()
+    args.project_path = str(project)
+    args.no_drift = no_drift
+    args.strict = False
+    cmd_init_hook(args)
+
+
+def test_init_hook_for_a_project_in_a_subdirectory(repo, capsys):
+    """Git runs hooks from the repository root: name the project from there."""
+    project = repo / "services" / "api"
+    project.mkdir(parents=True)
+    _init_hook(project)
+    post_commit = (repo / ".git" / "hooks" / "post-commit").read_text()
+    assert "neuralmind decisions scan services/api --quiet || true" in post_commit
+    assert "neuralmind build services/api" in post_commit
+    pre_commit = (repo / ".git" / "hooks" / "pre-commit").read_text()
+    assert "neuralmind drift services/api --staged" in pre_commit
+    assert "For the project at services" in capsys.readouterr().out
+
+
+def test_init_hook_quotes_a_path_with_spaces(repo):
+    project = repo / "my service"
+    project.mkdir()
+    _init_hook(project, no_drift=True)
+    post_commit = (repo / ".git" / "hooks" / "post-commit").read_text()
+    assert "neuralmind decisions scan 'my service' --quiet || true" in post_commit
+
+
+def test_init_hook_in_a_linked_worktree(repo, tmp_path):
+    """A worktree's `.git` is a file; its hooks are the repository's."""
+    worktree = tmp_path / "wt"
+    _git(repo, "worktree", "add", "-q", str(worktree))
+    _init_hook(worktree, no_drift=True)
+    post_commit = (repo / ".git" / "hooks" / "post-commit").read_text()
+    assert "neuralmind decisions scan . --quiet || true" in post_commit

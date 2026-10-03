@@ -247,49 +247,93 @@ def test_in_memory_store_finds_dependents():
 # ------------------------------------------------------------------ #
 
 
-def _backdate(path, seconds=120):
-    """Make a file look as if it was last edited ``seconds`` ago."""
-    import os
-    import time
+@pytest.fixture
+def repo_store(git_repo):
+    """A decision store inside the repository, as in real use.
 
-    then = time.time() - seconds
-    os.utime(path, (then, then))
-
-
-def test_commit_carrying_the_decision_keeps_it_active(git_repo, store):
-    """Edit, record why, commit: the commit that lands the change keeps it.
-
-    The decision was recorded after the file's last edit, so it already
-    describes what this commit contains.
+    Fingerprints resolve a decision's files against the store's project root,
+    which must be the root the scan diffs. `.neuralmind/` is excluded so
+    `git add -A` in the helpers never commits the database.
     """
-    (git_repo / "src.py").write_text("x = 22\n")  # new size: git can't miss it
-    _backdate(git_repo / "src.py")
-    rec = store.record(
+    exclude = git_repo / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    with exclude.open("a") as f:
+        f.write(".neuralmind/\n")
+    return DecisionStore(str(git_repo))
+
+
+def test_commit_carrying_the_decision_keeps_it_active(git_repo, repo_store):
+    """Edit, record why, commit — back to back: that commit keeps it ACTIVE.
+
+    No backdating and no waiting: the fingerprint taken when the decision is
+    recorded is the blob the commit stores, however fast the steps follow.
+    """
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
         title="Bump x",
-        rationale="x must be 2 for the new protocol",
+        rationale="x must be 22 for the new protocol",
         commit_sha=get_current_commit(git_repo),  # CLI default: the parent
         files_affected=["src.py"],
     )
     _git(git_repo, "commit", "-qam", "bump x")
-    assert InvalidationEngine(str(git_repo), store).scan() == []
-    assert store.get(rec.id).status == "ACTIVE"
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
+    assert repo_store.get(rec.id).status == "ACTIVE"
 
 
-def test_edit_after_recording_goes_stale_in_the_next_commit(git_repo, store):
-    (git_repo / "src.py").write_text("x = 22\n")  # new size: git can't miss it
-    _backdate(git_repo / "src.py")
-    rec = store.record(
+def test_edit_between_recording_and_commit_goes_stale(git_repo, repo_store):
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
+        title="Bump x", rationale="r", commit_sha="abc", files_affected=["src.py"]
+    )
+    (git_repo / "src.py").write_text("x = 333\n")  # an edit the decision never saw
+    _git(git_repo, "commit", "-qam", "bump x")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+
+
+def test_edit_after_recording_goes_stale_in_the_next_commit(git_repo, repo_store):
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
         title="Bump x",
-        rationale="x must be 2",
+        rationale="x must be 22",
         commit_sha=get_current_commit(git_repo),
         files_affected=["src.py"],
     )
     _git(git_repo, "commit", "-qam", "bump x")
-    assert InvalidationEngine(str(git_repo), store).scan() == []
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
     # A later edit the decision never saw:
     _commit_change(git_repo, "src.py", "x = 3\n")
-    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
-    assert store.get(rec.id).status == "STALE"
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+    assert repo_store.get(rec.id).status == "STALE"
+
+
+def test_restore_refreshes_the_fingerprint(git_repo, repo_store):
+    rec = repo_store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _commit_change(git_repo, "src.py", "x = 3\n")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+    # Still holds for the code as it is now: restore, then commit that code.
+    (git_repo / "src.py").write_text("x = 4444\n")
+    repo_store.restore(rec.id, get_current_commit(git_repo))
+    _git(git_repo, "commit", "-qam", "x = 4444")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
+    assert repo_store.get(rec.id).status == "ACTIVE"
+
+
+def test_store_fingerprints_follow_the_decision(git_repo, repo_store):
+    rec = repo_store.record(
+        title="t", rationale="r", commit_sha="abc", files_affected=["src.py", "not-yet.py"]
+    )
+    assert repo_store.fingerprints(rec.id) == {"src.py": _git(git_repo, "rev-parse", "HEAD:src.py")}
+    repo_store.delete(rec.id)
+    assert repo_store.fingerprints(rec.id) == {}
+
+
+def test_blob_helpers_agree_with_git(git_repo):
+    from neuralmind.memory.invalidate import committed_blob_ids, file_blob_ids
+
+    head_blob = _git(git_repo, "rev-parse", "HEAD:src.py")
+    blobs = file_blob_ids(git_repo, ["src.py", str(git_repo / "src.py"), "missing.py"])
+    assert blobs == {"src.py": head_blob}
+    assert committed_blob_ids(git_repo, ["src.py", "gone.py"]) == {"src.py": head_blob}
 
 
 def test_decision_without_commit_anchor_goes_stale(git_repo, store):
@@ -300,19 +344,34 @@ def test_decision_without_commit_anchor_goes_stale(git_repo, store):
 
 
 def test_decision_anchored_at_head_is_left_alone(git_repo, store):
-    from datetime import datetime, timedelta, timezone
-
+    # No fingerprint here (the store isn't rooted at the repository), so only
+    # the HEAD anchor keeps it ACTIVE.
     _commit_change(git_repo)
     rec = store.record(
         title="Made at HEAD",
         rationale="r",
         commit_sha=get_current_commit(git_repo),
         files_affected=["src.py"],
-        # Older than the edit, so only the HEAD anchor keeps it ACTIVE.
-        updated_at=datetime.now(timezone.utc) - timedelta(hours=1),
     )
     assert InvalidationEngine(str(git_repo), store).scan() == []
     assert store.get(rec.id).status == "ACTIVE"
+
+
+def test_a_failed_status_write_is_not_reported(git_repo, store, monkeypatch):
+    """A locked or corrupt store must not make `scan` claim a STALE it didn't write."""
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    monkeypatch.setattr(store, "mark_stale", lambda *_a, **_k: False)
+    _commit_change(git_repo)
+    engine = InvalidationEngine(str(git_repo), store)
+    assert engine.scan() == []
+    assert engine.last_events == []
+    assert store.get(rec.id).status == "ACTIVE"
+
+
+def test_mark_stale_reports_whether_it_wrote(store):
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    assert store.mark_stale(rec.id, "why") is True
+    assert store.mark_stale("no-such-id", "why") is False
 
 
 def test_reason_is_recorded_on_the_decision(git_repo, store):
@@ -323,7 +382,7 @@ def test_reason_is_recorded_on_the_decision(git_repo, store):
     head = get_current_commit(git_repo)
     note = store.get(rec.id).evidence[-1]
     assert (
-        note == f"Marked STALE: commit {head[:7]} changed src.py after this decision was recorded"
+        note == f"Marked STALE: commit {head[:7]} changed src.py since this decision was recorded"
     )
     assert engine.last_events[0].files == ["src.py"]
     assert engine.last_events[0].commit_sha == head

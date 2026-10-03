@@ -95,8 +95,9 @@ scope and threshold without enforcing them)*:
 | `set-governance-enabled false` | The scope and threshold gates are off; events are still audited |
 
 Settings live in `~/.config/neuralmind/tier2.yaml` (per user, not per
-repository). A config that exists but can't be read makes publish refuse
-rather than publish ungoverned memory.
+repository). A config that exists but can't be read (unreadable, malformed
+YAML, an invalid value) makes publish refuse rather than publish ungoverned
+memory.
 
 `remove-edge SOURCE TARGET` stops sharing one association: it is deleted from
 the project's `shared` memory and review queue, dropped from
