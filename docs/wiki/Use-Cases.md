@@ -8,7 +8,7 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 
 | Use case | Best for you if… | Primary outcome |
 |---|---|---|
-| [Claude Code user](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md) | You use Claude Code daily | Two-phase optimization: retrieval + PostToolUse compression |
+| [Claude Code user](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md) | You use Claude Code daily | Retrieval + session memory + lifecycle hooks |
 | [Cost optimization](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cost-optimization.md) | You need to reduce and *report* LLM spend | Baseline → measure → stakeholder-ready report |
 | [Any LLM (ChatGPT / Gemini / local)](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/any-llm.md) | You use a non-MCP chat or mixed models | Copy-paste + CLI-piped context into any model |
 | [Offline / regulated work](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | Local-first, no telemetry, compliance properties table |

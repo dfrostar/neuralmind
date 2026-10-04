@@ -66,9 +66,9 @@ You are not stuck with the default budget. In rough order of reach:
    current state with `neuralmind self-improve status`.
 3. **Run several targeted queries**, one per concern, rather than one broad query.
    Retrieval is cheap; breadth comes from *more* queries, not a bigger single one.
-4. **Bypass compression entirely for a tool call.** `NEURALMIND_BYPASS=1` skips the
-   PostToolUse compression so the agent reads the full output of one `Read`/`Bash`/
-   `Grep` — use it when you knowingly need the whole file in front of the model.
+4. **Read the whole file.** NeuralMind's hooks don't touch tool output, so a plain
+   `Read` puts the full file in front of the model — use it when you knowingly need
+   all of it.
 
 > **Rule of thumb.** If the task is "understand / locate / seed", trust the query.
 > If it's "rewrite across the repo at once", use `review` to enumerate the blast

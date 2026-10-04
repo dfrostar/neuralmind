@@ -1,0 +1,395 @@
+src/flask/cli.py:41:def find_best_app(module: ModuleType) -> Flask:
+src/flask/cli.py:94:def _called_with_wrong_args(f: t.Callable[..., Flask]) -> bool:
+src/flask/cli.py:120:def find_app_by_string(module: ModuleType, app_name: str) -> Flask:
+src/flask/cli.py:200:def prepare_import(path: str) -> str:
+src/flask/cli.py:230:def locate_app(
+src/flask/cli.py:236:def locate_app(
+src/flask/cli.py:241:def locate_app(
+src/flask/cli.py:267:def get_version(ctx: click.Context, param: click.Parameter, value: t.Any) -> None:
+src/flask/cli.py:302:    def __init__(
+src/flask/cli.py:319:    def load_app(self) -> Flask:
+src/flask/cli.py:366:def with_appcontext(f: F) -> F:
+src/flask/cli.py:381:    def decorator(ctx: click.Context, /, *args: t.Any, **kwargs: t.Any) -> t.Any:
+src/flask/cli.py:399:    def command(  # type: ignore[override]
+src/flask/cli.py:408:        def decorator(f: t.Callable[..., t.Any]) -> click.Command:
+src/flask/cli.py:415:    def group(  # type: ignore[override]
+src/flask/cli.py:426:def _set_app(ctx: click.Context, param: click.Option, value: str | None) -> str | None:
+src/flask/cli.py:454:def _set_debug(ctx: click.Context, param: click.Option, value: bool) -> bool | None:
+src/flask/cli.py:479:def _env_file_callback(
+src/flask/cli.py:543:    def __init__(
+src/flask/cli.py:580:    def _load_plugin_commands(self) -> None:
+src/flask/cli.py:597:    def get_command(self, ctx: click.Context, name: str) -> click.Command | None:
+src/flask/cli.py:624:    def list_commands(self, ctx: click.Context) -> list[str]:
+src/flask/cli.py:645:    def make_context(
+src/flask/cli.py:669:    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+src/flask/cli.py:680:def _path_is_ancestor(path: str, other: str) -> bool:
+src/flask/cli.py:687:def load_dotenv(path: str | os.PathLike[str] | None = None) -> bool:
+src/flask/cli.py:748:def show_server_banner(debug: bool, app_import_path: str | None) -> None:
+src/flask/cli.py:770:    def __init__(self) -> None:
+src/flask/cli.py:773:    def convert(
+src/flask/cli.py:810:def _validate_key(ctx: click.Context, param: click.Parameter, value: t.Any) -> t.Any:
+src/flask/cli.py:855:    def convert(
+src/flask/cli.py:917:def run_command(
+src/flask/cli.py:945:            def app(
+src/flask/cli.py:983:def shell_command() -> None:
+src/flask/cli.py:1043:def routes_command(sort: str, all_methods: bool) -> None:
+src/flask/cli.py:1104:def main() -> None:
+src/flask/json/provider.py:38:    def __init__(self, app: App) -> None:
+src/flask/json/provider.py:41:    def dumps(self, obj: t.Any, **kwargs: t.Any) -> str:
+src/flask/json/provider.py:49:    def dump(self, obj: t.Any, fp: t.IO[str], **kwargs: t.Any) -> None:
+src/flask/json/provider.py:59:    def loads(self, s: str | bytes, **kwargs: t.Any) -> t.Any:
+src/flask/json/provider.py:67:    def load(self, fp: t.IO[t.AnyStr], **kwargs: t.Any) -> t.Any:
+src/flask/json/provider.py:75:    def _prepare_response_obj(
+src/flask/json/provider.py:89:    def response(self, *args: t.Any, **kwargs: t.Any) -> Response:
+src/flask/json/provider.py:108:def _default(o: t.Any) -> t.Any:
+src/flask/json/provider.py:166:    def dumps(self, obj: t.Any, **kwargs: t.Any) -> str:
+src/flask/json/provider.py:181:    def loads(self, s: str | bytes, **kwargs: t.Any) -> t.Any:
+src/flask/json/provider.py:189:    def response(self, *args: t.Any, **kwargs: t.Any) -> Response:
+src/flask/json/__init__.py:13:def dumps(obj: t.Any, **kwargs: t.Any) -> str:
+src/flask/json/__init__.py:47:def dump(obj: t.Any, fp: t.IO[str], **kwargs: t.Any) -> None:
+src/flask/json/__init__.py:77:def loads(s: str | bytes, **kwargs: t.Any) -> t.Any:
+src/flask/json/__init__.py:108:def load(fp: t.IO[t.AnyStr], **kwargs: t.Any) -> t.Any:
+src/flask/json/__init__.py:138:def jsonify(*args: t.Any, **kwargs: t.Any) -> Response:
+src/flask/json/tag.py:32:        def check(self, value):
+src/flask/json/tag.py:35:        def to_json(self, value):
+src/flask/json/tag.py:38:        def to_python(self, value):
+src/flask/json/tag.py:69:    def __init__(self, serializer: TaggedJSONSerializer) -> None:
+src/flask/json/tag.py:73:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:77:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:82:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:87:    def tag(self, value: t.Any) -> dict[str, t.Any]:
+src/flask/json/tag.py:103:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:110:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:114:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:122:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:125:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:137:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:140:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:143:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:150:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:153:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:163:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:166:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:169:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:181:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:184:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:187:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:195:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:198:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:201:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:209:    def check(self, value: t.Any) -> bool:
+src/flask/json/tag.py:212:    def to_json(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:215:    def to_python(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:249:    def __init__(self) -> None:
+src/flask/json/tag.py:256:    def register(
+src/flask/json/tag.py:289:    def tag(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:297:    def untag(self, value: dict[str, t.Any]) -> t.Any:
+src/flask/json/tag.py:309:    def _untag_scan(self, value: t.Any) -> t.Any:
+src/flask/json/tag.py:321:    def dumps(self, value: t.Any) -> str:
+src/flask/json/tag.py:325:    def loads(self, value: str) -> t.Any:
+src/flask/sessions.py:28:    def permanent(self) -> bool:
+src/flask/sessions.py:33:    def permanent(self, value: bool) -> None:
+src/flask/sessions.py:75:    def __init__(self, initial: t.Any = None) -> None:
+src/flask/sessions.py:76:        def on_update(self: te.Self) -> None:
+src/flask/sessions.py:82:    def __getitem__(self, key: str) -> t.Any:
+src/flask/sessions.py:86:    def get(self, key: str, default: t.Any = None) -> t.Any:
+src/flask/sessions.py:90:    def setdefault(self, key: str, default: t.Any = None) -> t.Any:
+src/flask/sessions.py:101:    def _fail(self, *args: t.Any, **kwargs: t.Any) -> t.NoReturn:
+src/flask/sessions.py:162:    def make_null_session(self, app: Flask) -> NullSession:
+src/flask/sessions.py:174:    def is_null_session(self, obj: object) -> bool:
+src/flask/sessions.py:183:    def get_cookie_name(self, app: Flask) -> str:
+src/flask/sessions.py:187:    def get_cookie_domain(self, app: Flask) -> str | None:
+src/flask/sessions.py:199:    def get_cookie_path(self, app: Flask) -> str:
+src/flask/sessions.py:207:    def get_cookie_httponly(self, app: Flask) -> bool:
+src/flask/sessions.py:214:    def get_cookie_secure(self, app: Flask) -> bool:
+src/flask/sessions.py:220:    def get_cookie_samesite(self, app: Flask) -> str | None:
+src/flask/sessions.py:227:    def get_expiration_time(self, app: Flask, session: SessionMixin) -> datetime | None:
+src/flask/sessions.py:237:    def should_set_cookie(self, app: Flask, session: SessionMixin) -> bool:
+src/flask/sessions.py:253:    def open_session(self, app: Flask, request: Request) -> SessionMixin | None:
+src/flask/sessions.py:267:    def save_session(
+src/flask/sessions.py:280:def _lazy_sha1(string: bytes = b"") -> t.Any:
+src/flask/sessions.py:307:    def get_signing_serializer(self, app: Flask) -> URLSafeTimedSerializer | None:
+src/flask/sessions.py:320:    def open_session(self, app: Flask, request: Request) -> SecureCookieSession | None:
+src/flask/sessions.py:334:    def save_session(
+src/flask/templating.py:24:def _default_template_ctx_processor() -> dict[str, t.Any]:
+src/flask/templating.py:45:    def __init__(self, app: App, **options: t.Any) -> None:
+src/flask/templating.py:57:    def __init__(self, app: App) -> None:
+src/flask/templating.py:60:    def get_source(
+src/flask/templating.py:67:    def _get_source_explained(
+src/flask/templating.py:91:    def _get_source_fast(
+src/flask/templating.py:101:    def _iter_loaders(self, template: str) -> t.Iterator[tuple[Scaffold, BaseLoader]]:
+src/flask/templating.py:111:    def list_templates(self) -> list[str]:
+src/flask/templating.py:126:def _render(app: Flask, template: Template, context: dict[str, t.Any]) -> str:
+src/flask/templating.py:138:def render_template(
+src/flask/templating.py:153:def render_template_string(source: str, **context: t.Any) -> str:
+src/flask/templating.py:165:def _stream(
+src/flask/templating.py:173:    def generate() -> t.Iterator[str]:
+src/flask/templating.py:188:def stream_template(
+src/flask/templating.py:207:def stream_template_string(source: str, **context: t.Any) -> t.Iterator[str]:
+src/flask/ctx.py:52:    def __getattr__(self, name: str) -> t.Any:
+src/flask/ctx.py:58:    def __setattr__(self, name: str, value: t.Any) -> None:
+src/flask/ctx.py:61:    def __delattr__(self, name: str) -> None:
+src/flask/ctx.py:67:    def get(self, name: str, default: t.Any | None = None) -> t.Any:
+src/flask/ctx.py:78:    def pop(self, name: str, default: t.Any = _sentinel) -> t.Any:
+src/flask/ctx.py:92:    def setdefault(self, name: str, default: t.Any = None) -> t.Any:
+src/flask/ctx.py:104:    def __contains__(self, item: str) -> bool:
+src/flask/ctx.py:107:    def __iter__(self) -> t.Iterator[str]:
+src/flask/ctx.py:110:    def __repr__(self) -> str:
+src/flask/ctx.py:117:def after_this_request(
+src/flask/ctx.py:127:        def index():
+src/flask/ctx.py:129:            def add_header(response):
+src/flask/ctx.py:155:def copy_current_request_context(f: F) -> F:
+src/flask/ctx.py:168:        def index():
+src/flask/ctx.py:170:            def do_some_work():
+src/flask/ctx.py:189:    def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+src/flask/ctx.py:196:def has_request_context() -> bool:
+src/flask/ctx.py:206:            def __init__(self, username, remote_addr=None):
+src/flask/ctx.py:217:            def __init__(self, username, remote_addr=None):
+src/flask/ctx.py:228:def has_app_context() -> bool:
+src/flask/ctx.py:245:    def __init__(self, app: Flask) -> None:
+src/flask/ctx.py:251:    def push(self) -> None:
+src/flask/ctx.py:256:    def pop(self, exc: BaseException | None = _sentinel) -> None:  # type: ignore
+src/flask/ctx.py:274:    def __enter__(self) -> AppContext:
+src/flask/ctx.py:278:    def __exit__(
+src/flask/ctx.py:309:    def __init__(
+src/flask/ctx.py:337:    def copy(self) -> RequestContext:
+src/flask/ctx.py:357:    def match_request(self) -> None:
+src/flask/ctx.py:367:    def push(self) -> None:
+src/flask/ctx.py:396:    def pop(self, exc: BaseException | None = _sentinel) -> None:  # type: ignore
+src/flask/ctx.py:433:    def __enter__(self) -> RequestContext:
+src/flask/ctx.py:437:    def __exit__(
+src/flask/ctx.py:445:    def __repr__(self) -> str:
+src/flask/config.py:23:    def __init__(
+src/flask/config.py:30:    def __get__(self, obj: None, owner: None) -> te.Self: ...
+src/flask/config.py:33:    def __get__(self, obj: App, owner: type[App]) -> T: ...
+src/flask/config.py:35:    def __get__(self, obj: App | None, owner: type[App] | None = None) -> T | te.Self:
+src/flask/config.py:46:    def __set__(self, obj: App, value: t.Any) -> None:
+src/flask/config.py:94:    def __init__(
+src/flask/config.py:102:    def from_envvar(self, variable_name: str, silent: bool = False) -> bool:
+src/flask/config.py:126:    def from_prefixed_env(
+src/flask/config.py:190:    def from_pyfile(
+src/flask/config.py:221:    def from_object(self, obj: object | str) -> None:
+src/flask/config.py:259:    def from_file(
+src/flask/config.py:307:    def from_mapping(
+src/flask/config.py:326:    def get_namespace(
+src/flask/config.py:369:    def __repr__(self) -> str:
+src/flask/__init__.py:46:def __getattr__(name: str) -> t.Any:
+src/flask/helpers.py:27:def get_debug_flag() -> bool:
+src/flask/helpers.py:35:def get_load_dotenv(default: bool = True) -> bool:
+src/flask/helpers.py:50:def stream_with_context(
+src/flask/helpers.py:64:        def streamed_response():
+src/flask/helpers.py:66:            def generate():
+src/flask/helpers.py:77:        def streamed_response():
+src/flask/helpers.py:78:            def generate():
+src/flask/helpers.py:90:        def decorator(*args: t.Any, **kwargs: t.Any) -> t.Any:
+src/flask/helpers.py:96:    def generator() -> t.Iterator[t.AnyStr | None]:
+src/flask/helpers.py:127:def make_response(*args: t.Any) -> Response:
+src/flask/helpers.py:136:        def index():
+src/flask/helpers.py:141:        def index():
+src/flask/helpers.py:176:def url_for(
+src/flask/helpers.py:230:def redirect(
+src/flask/helpers.py:254:def abort(code: int | BaseResponse, *args: t.Any, **kwargs: t.Any) -> t.NoReturn:
+src/flask/helpers.py:277:def get_template_attribute(template_name: str, attribute: str) -> t.Any:
+src/flask/helpers.py:299:def flash(message: str, category: str = "message") -> None:
+src/flask/helpers.py:333:def get_flashed_messages(
+src/flask/helpers.py:375:def _prepare_send_file_kwargs(**kwargs: t.Any) -> dict[str, t.Any]:
+src/flask/helpers.py:388:def send_file(
+src/flask/helpers.py:514:def send_from_directory(
+src/flask/helpers.py:524:        def download_file(name):
+src/flask/helpers.py:557:def get_root_path(import_name: str) -> str:
+src/flask/helpers.py:615:def _split_blueprint_path(name: str) -> list[str]:
+src/flask/blueprints.py:19:    def __init__(
+src/flask/blueprints.py:55:    def get_send_file_max_age(self, filename: str | None) -> int | None:
+src/flask/blueprints.py:82:    def send_static_file(self, filename: str) -> Response:
+src/flask/blueprints.py:104:    def open_resource(self, resource: str, mode: str = "rb") -> t.IO[t.AnyStr]:
+src/flask/sansio/blueprints.py:41:    def __init__(
+src/flask/sansio/blueprints.py:87:    def add_url_rule(
+src/flask/sansio/blueprints.py:174:    def __init__(
+src/flask/sansio/blueprints.py:213:    def _check_setup_finished(self, f_name: str) -> None:
+src/flask/sansio/blueprints.py:224:    def record(self, func: DeferredSetupFunction) -> None:
+src/flask/sansio/blueprints.py:233:    def record_once(self, func: DeferredSetupFunction) -> None:
+src/flask/sansio/blueprints.py:240:        def wrapper(state: BlueprintSetupState) -> None:
+src/flask/sansio/blueprints.py:246:    def make_setup_state(
+src/flask/sansio/blueprints.py:256:    def register_blueprint(self, blueprint: Blueprint, **options: t.Any) -> None:
+src/flask/sansio/blueprints.py:273:    def register(self, app: App, options: dict[str, t.Any]) -> None:
+src/flask/sansio/blueprints.py:379:    def _merge_blueprint_funcs(self, app: App, name: str) -> None:
+src/flask/sansio/blueprints.py:380:        def extend(
+src/flask/sansio/blueprints.py:413:    def add_url_rule(
+src/flask/sansio/blueprints.py:444:    def app_template_filter(
+src/flask/sansio/blueprints.py:454:        def decorator(f: T_template_filter) -> T_template_filter:
+src/flask/sansio/blueprints.py:461:    def add_app_template_filter(
+src/flask/sansio/blueprints.py:472:        def register_template(state: BlueprintSetupState) -> None:
+src/flask/sansio/blueprints.py:478:    def app_template_test(
+src/flask/sansio/blueprints.py:490:        def decorator(f: T_template_test) -> T_template_test:
+src/flask/sansio/blueprints.py:497:    def add_app_template_test(
+src/flask/sansio/blueprints.py:510:        def register_template(state: BlueprintSetupState) -> None:
+src/flask/sansio/blueprints.py:516:    def app_template_global(
+src/flask/sansio/blueprints.py:528:        def decorator(f: T_template_global) -> T_template_global:
+src/flask/sansio/blueprints.py:535:    def add_app_template_global(
+src/flask/sansio/blueprints.py:548:        def register_template(state: BlueprintSetupState) -> None:
+src/flask/sansio/blueprints.py:554:    def before_app_request(self, f: T_before_request) -> T_before_request:
+src/flask/sansio/blueprints.py:564:    def after_app_request(self, f: T_after_request) -> T_after_request:
+src/flask/sansio/blueprints.py:574:    def teardown_app_request(self, f: T_teardown) -> T_teardown:
+src/flask/sansio/blueprints.py:584:    def app_context_processor(
+src/flask/sansio/blueprints.py:596:    def app_errorhandler(
+src/flask/sansio/blueprints.py:603:        def decorator(f: T_error_handler) -> T_error_handler:
+src/flask/sansio/blueprints.py:604:            def from_blueprint(state: BlueprintSetupState) -> None:
+src/flask/sansio/blueprints.py:613:    def app_url_value_preprocessor(
+src/flask/sansio/blueprints.py:625:    def app_url_defaults(self, f: T_url_defaults) -> T_url_defaults:
+src/flask/sansio/app.py:52:def _make_timedelta(value: timedelta | int | None) -> timedelta | None:
+src/flask/sansio/app.py:282:    def __init__(
+src/flask/sansio/app.py:397:        #:        def to_python(self, value):
+src/flask/sansio/app.py:399:        #:        def to_url(self, values):
+src/flask/sansio/app.py:413:    def _check_setup_finished(self, f_name: str) -> None:
+src/flask/sansio/app.py:426:    def name(self) -> str:  # type: ignore
+src/flask/sansio/app.py:443:    def logger(self) -> logging.Logger:
+src/flask/sansio/app.py:470:    def jinja_env(self) -> Environment:
+src/flask/sansio/app.py:479:    def create_jinja_environment(self) -> Environment:
+src/flask/sansio/app.py:482:    def make_config(self, instance_relative: bool = False) -> Config:
+src/flask/sansio/app.py:498:    def make_aborter(self) -> Aborter:
+src/flask/sansio/app.py:510:    def auto_find_instance_path(self) -> str:
+src/flask/sansio/app.py:523:    def create_global_jinja_loader(self) -> DispatchingJinjaLoader:
+src/flask/sansio/app.py:536:    def select_jinja_autoescape(self, filename: str) -> bool:
+src/flask/sansio/app.py:550:    def debug(self) -> bool:
+src/flask/sansio/app.py:563:    def debug(self, value: bool) -> None:
+src/flask/sansio/app.py:570:    def register_blueprint(self, blueprint: Blueprint, **options: t.Any) -> None:
+src/flask/sansio/app.py:597:    def iter_blueprints(self) -> t.ValuesView[Blueprint]:
+src/flask/sansio/app.py:605:    def add_url_rule(
+src/flask/sansio/app.py:664:    def template_filter(
+src/flask/sansio/app.py:672:          def reverse(s):
+src/flask/sansio/app.py:679:        def decorator(f: T_template_filter) -> T_template_filter:
+src/flask/sansio/app.py:686:    def add_template_filter(
+src/flask/sansio/app.py:698:    def template_test(
+src/flask/sansio/app.py:706:          def is_prime(n):
+src/flask/sansio/app.py:720:        def decorator(f: T_template_test) -> T_template_test:
+src/flask/sansio/app.py:727:    def add_template_test(
+src/flask/sansio/app.py:741:    def template_global(
+src/flask/sansio/app.py:749:            def double(n):
+src/flask/sansio/app.py:758:        def decorator(f: T_template_global) -> T_template_global:
+src/flask/sansio/app.py:765:    def add_template_global(
+src/flask/sansio/app.py:779:    def teardown_appcontext(self, f: T_teardown) -> T_teardown:
+src/flask/sansio/app.py:813:    def shell_context_processor(
+src/flask/sansio/app.py:823:    def _find_error_handler(
+src/flask/sansio/app.py:848:    def trap_http_exception(self, e: Exception) -> bool:
+src/flask/sansio/app.py:883:    def should_ignore_error(self, error: BaseException | None) -> bool:
+src/flask/sansio/app.py:893:    def redirect(self, location: str, code: int = 302) -> BaseResponse:
+src/flask/sansio/app.py:911:    def inject_url_defaults(self, endpoint: str, values: dict[str, t.Any]) -> None:
+src/flask/sansio/app.py:932:    def handle_url_build_error(
+src/flask/sansio/scaffold.py:42:def setupmethod(f: F) -> F:
+src/flask/sansio/scaffold.py:45:    def wrapper_func(self: Scaffold, *args: t.Any, **kwargs: t.Any) -> t.Any:
+src/flask/sansio/scaffold.py:75:    def __init__(
+src/flask/sansio/scaffold.py:217:    def __repr__(self) -> str:
+src/flask/sansio/scaffold.py:220:    def _check_setup_finished(self, f_name: str) -> None:
+src/flask/sansio/scaffold.py:224:    def static_folder(self) -> str | None:
+src/flask/sansio/scaffold.py:234:    def static_folder(self, value: str | os.PathLike[str] | None) -> None:
+src/flask/sansio/scaffold.py:241:    def has_static_folder(self) -> bool:
+src/flask/sansio/scaffold.py:249:    def static_url_path(self) -> str | None:
+src/flask/sansio/scaffold.py:265:    def static_url_path(self, value: str | None) -> None:
+src/flask/sansio/scaffold.py:272:    def jinja_loader(self) -> BaseLoader | None:
+src/flask/sansio/scaffold.py:284:    def _method_route(
+src/flask/sansio/scaffold.py:296:    def get(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:304:    def post(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:312:    def put(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:320:    def delete(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:328:    def patch(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:336:    def route(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+src/flask/sansio/scaffold.py:344:            def index():
+src/flask/sansio/scaffold.py:360:        def decorator(f: T_route) -> T_route:
+src/flask/sansio/scaffold.py:368:    def add_url_rule(
+src/flask/sansio/scaffold.py:383:            def index():
+src/flask/sansio/scaffold.py:388:            def index():
+src/flask/sansio/scaffold.py:414:            def index():
+src/flask/sansio/scaffold.py:436:    def endpoint(self, endpoint: str) -> t.Callable[[F], F]:
+src/flask/sansio/scaffold.py:446:            def example():
+src/flask/sansio/scaffold.py:453:        def decorator(f: F) -> F:
+src/flask/sansio/scaffold.py:460:    def before_request(self, f: T_before_request) -> T_before_request:
+src/flask/sansio/scaffold.py:469:            def load_user():
+src/flask/sansio/scaffold.py:487:    def after_request(self, f: T_after_request) -> T_after_request:
+src/flask/sansio/scaffold.py:508:    def teardown_request(self, f: T_teardown) -> T_teardown:
+src/flask/sansio/scaffold.py:542:    def context_processor(
+src/flask/sansio/scaffold.py:559:    def url_value_preprocessor(
+src/flask/sansio/scaffold.py:584:    def url_defaults(self, f: T_url_defaults) -> T_url_defaults:
+src/flask/sansio/scaffold.py:598:    def errorhandler(
+src/flask/sansio/scaffold.py:607:            def page_not_found(error):
+src/flask/sansio/scaffold.py:613:            def special_exception_handler(error):
+src/flask/sansio/scaffold.py:635:        def decorator(f: T_error_handler) -> T_error_handler:
+src/flask/sansio/scaffold.py:642:    def register_error_handler(
+src/flask/sansio/scaffold.py:657:    def _get_exc_class_and_code(
+src/flask/sansio/scaffold.py:701:def _endpoint_from_view_func(view_func: ft.RouteCallable) -> str:
+src/flask/sansio/scaffold.py:709:def _path_is_relative_to(path: pathlib.PurePath, base: str) -> bool:
+src/flask/sansio/scaffold.py:718:def _find_package_path(import_name: str) -> str:
+src/flask/sansio/scaffold.py:763:def find_package(import_name: str) -> tuple[str | None, str]:
+src/flask/wrappers.py:56:    def max_content_length(self) -> int | None:  # type: ignore[override]
+src/flask/wrappers.py:64:    def endpoint(self) -> str | None:
+src/flask/wrappers.py:79:    def blueprint(self) -> str | None:
+src/flask/wrappers.py:98:    def blueprints(self) -> list[str]:
+src/flask/wrappers.py:114:    def _load_form_data(self) -> None:
+src/flask/wrappers.py:129:    def on_json_loading_failed(self, e: ValueError | None) -> t.Any:
+src/flask/wrappers.py:164:    def max_cookie_size(self) -> int:  # type: ignore
+src/flask/testing.py:48:    def __init__(
+src/flask/testing.py:88:    def json_dumps(self, obj: t.Any, **kwargs: t.Any) -> str:  # type: ignore
+src/flask/testing.py:100:def _get_werkzeug_version() -> str:
+src/flask/testing.py:125:    def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
+src/flask/testing.py:136:    def session_transaction(
+src/flask/testing.py:185:    def _copy_environ(self, other: WSGIEnvironment) -> WSGIEnvironment:
+src/flask/testing.py:193:    def _request_from_builder_args(
+src/flask/testing.py:204:    def open(
+src/flask/testing.py:249:    def __enter__(self) -> FlaskClient:
+src/flask/testing.py:255:    def __exit__(
+src/flask/testing.py:271:    def __init__(self, app: Flask, **kwargs: t.Any) -> None:
+src/flask/testing.py:275:    def invoke(  # type: ignore
+src/flask/app.py:72:def _make_timedelta(value: timedelta | int | None) -> timedelta | None:
+src/flask/app.py:218:    def __init__(
+src/flask/app.py:273:    def get_send_file_max_age(self, filename: str | None) -> int | None:
+src/flask/app.py:300:    def send_static_file(self, filename: str) -> Response:
+src/flask/app.py:322:    def open_resource(self, resource: str, mode: str = "rb") -> t.IO[t.AnyStr]:
+src/flask/app.py:349:    def open_instance_resource(self, resource: str, mode: str = "rb") -> t.IO[t.AnyStr]:
+src/flask/app.py:361:    def create_jinja_environment(self) -> Environment:
+src/flask/app.py:401:    def create_url_adapter(self, request: Request | None) -> MapAdapter | None:
+src/flask/app.py:441:    def raise_routing_exception(self, request: Request) -> t.NoReturn:
+src/flask/app.py:469:    def update_template_context(self, context: dict[str, t.Any]) -> None:
+src/flask/app.py:497:    def make_shell_context(self) -> dict[str, t.Any]:
+src/flask/app.py:509:    def run(
+src/flask/app.py:632:    def test_client(self, use_cookies: bool = True, **kwargs: t.Any) -> FlaskClient:
+src/flask/app.py:662:                def __init__(self, *args, **kwargs):
+src/flask/app.py:690:    def test_cli_runner(self, **kwargs: t.Any) -> FlaskCliRunner:
+src/flask/app.py:707:    def handle_http_exception(
+src/flask/app.py:742:    def handle_user_exception(
+src/flask/app.py:774:    def handle_exception(self, e: Exception) -> Response:
+src/flask/app.py:827:    def log_exception(
+src/flask/app.py:842:    def dispatch_request(self) -> ft.ResponseReturnValue:
+src/flask/app.py:867:    def full_dispatch_request(self) -> Response:
+src/flask/app.py:885:    def finalize_request(
+src/flask/app.py:916:    def make_default_options_response(self) -> Response:
+src/flask/app.py:929:    def ensure_sync(self, func: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
+src/flask/app.py:943:    def async_to_sync(
+src/flask/app.py:966:    def url_for(
+src/flask/app.py:1092:    def make_response(self, rv: ft.ResponseReturnValue) -> Response:
+src/flask/app.py:1233:    def preprocess_request(self) -> ft.ResponseReturnValue | None:
+src/flask/app.py:1260:    def process_response(self, response: Response) -> Response:
+src/flask/app.py:1288:    def do_teardown_request(
+src/flask/app.py:1322:    def do_teardown_appcontext(
+src/flask/app.py:1348:    def app_context(self) -> AppContext:
+src/flask/app.py:1369:    def request_context(self, environ: WSGIEnvironment) -> RequestContext:
+src/flask/app.py:1385:    def test_request_context(self, *args: t.Any, **kwargs: t.Any) -> RequestContext:
+src/flask/app.py:1441:    def wsgi_app(
+src/flask/app.py:1491:    def __call__(
+src/flask/views.py:30:            def dispatch_request(self, name):
+src/flask/views.py:78:    def dispatch_request(self) -> ft.ResponseReturnValue:
+src/flask/views.py:86:    def as_view(
+src/flask/views.py:106:            def view(**kwargs: t.Any) -> ft.ResponseReturnValue:
+src/flask/views.py:115:            def view(**kwargs: t.Any) -> ft.ResponseReturnValue:
+src/flask/views.py:153:            def get(self):
+src/flask/views.py:156:            def post(self):
+src/flask/views.py:165:    def __init_subclass__(cls, **kwargs: t.Any) -> None:
+src/flask/views.py:182:    def dispatch_request(self, **kwargs: t.Any) -> ft.ResponseReturnValue:
+src/flask/debughelpers.py:28:    def __init__(self, request: Request, key: str) -> None:
+src/flask/debughelpers.py:46:    def __str__(self) -> str:
+src/flask/debughelpers.py:57:    def __init__(self, request: Request) -> None:
+src/flask/debughelpers.py:81:def attach_enctype_error_multidict(request: Request) -> None:
+src/flask/debughelpers.py:91:        def __getitem__(self, key: str) -> t.Any:
+src/flask/debughelpers.py:107:def _dump_loader_info(loader: BaseLoader) -> t.Iterator[str]:
+src/flask/debughelpers.py:124:def explain_template_loading_attempts(
+src/flask/logging.py:16:def wsgi_errors_stream() -> t.TextIO:
+src/flask/logging.py:31:def has_level_handler(logger: logging.Logger) -> bool:
+src/flask/logging.py:58:def create_logger(app: App) -> logging.Logger:

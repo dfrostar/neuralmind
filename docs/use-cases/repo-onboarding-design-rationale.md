@@ -75,7 +75,7 @@ explicit "never fabricate this number" rule. This keeps every plan credible.
 MCP/hooks/CI are all viable, but not equally valuable per repo. I added a
 small decision table mapping repo type to primary surface:
 - Security tools → CLI + MCP (used interactively; risk of indexing signatures).
-- Business engines / agent-heavy → MCP + PostToolUse hooks (the token win).
+- Business engines / agent-heavy → MCP + Claude Code hooks (session memory, prompt recall, stale-decision guard).
 - Web apps (+ Node/Go) → MCP + CI refresh.
 This keeps the procedure *actionable* (a decision rule, not a menu) while
 still general. Each target repo (`cmmc20`, `cybersentinel-evolver`,

@@ -16,14 +16,14 @@ Code is not prose. It has structure (call graphs, imports, class hierarchies) th
 | Community/cluster awareness | None | First-class (top clusters by relevance in L2) |
 | Cross-file edges | Not encoded | Explicit (`imports_from`, `shares_data_with`) |
 | Token budget | You enforce it | Built-in, reported per query |
-| Consumption-side savings | None | Read/Bash/Grep PostToolUse compression |
+| Consumption-side savings | None | None (its Read/Bash/Grep PostToolUse hooks used to compress; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 
 ## When to pick which
 
 - **Pick generic RAG** if you are indexing docs, tickets, or mixed content where structure doesn't matter.
 - **Pick NeuralMind** for code. The graph-aware layers and skeleton output capture the structural context that generic chunking throws away — and you don't pay for the throwaway tokens.
 
-If you already have a generic RAG pipeline and only want the compression half, NeuralMind's PostToolUse hooks can run standalone without the retrieval layer.
+If you already have a generic RAG pipeline and only want to compress tool output, NeuralMind isn't that tool; see [vs. Headroom](./vs-headroom.md).
 
 ---
 

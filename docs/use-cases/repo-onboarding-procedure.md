@@ -73,7 +73,7 @@ savings number, not a guess.
    | Repo type | Primary | Add if… |
    |-----------|---------|---------|
    | Security tool (e.g. `cybersentinel-evolver`) | CLI + MCP (agents use it interactively) | CI refresh if it ships rules; keep secrets out |
-   | Business engine (e.g. `agencyOS`) | MCP + PostToolUse hooks (agent-heavy) | `watch --reindex` if actively developed; `learn` for docs |
+   | Business engine (e.g. `agencyOS`) | MCP + Claude Code hooks (agent-heavy) | `watch --reindex` if actively developed; `learn` for docs |
    | Web/API app (e.g. `cmmc20`, Node/Go) | MCP + CI refresh | SCIP precision pass if you need compiler-accurate edges |
 
 4. Commit the plan to `integrations/<repo>/plan.md` (or
@@ -122,7 +122,8 @@ neuralmind install-mcp --all
 # For a project-scoped .mcp.json (portable, committed):
 #   { "mcpServers": { "neuralmind": { "command": "neuralmind-mcp", "args": ["."] } } }
 
-# PostToolUse compression hooks (compress Read/Bash/Grep output)
+# Claude Code hooks (session memory, prompt recall, stale-decision guard,
+# Bash output cache for `neuralmind last`)
 neuralmind install-hooks .
 
 # Auto-rebuild after every git commit (idempotent)
@@ -136,8 +137,10 @@ neuralmind init-hook .
 - **MCP** — the universal path; any agent host gets `neuralmind_wakeup`,
   `neuralmind_query`, `neuralmind_search`, `neuralmind_skeleton`,
   `neuralmind_recursive_query`, etc.
-- **Hooks** — biggest token win for agent-heavy repos (compresses tool output
-  the LLM would otherwise read in full).
+- **Hooks** (Claude Code) — learned memory at session start, prompt-time
+  recall, a stale-decision guard before edits, and a Bash output cache for
+  `neuralmind last`. They don't compress tool output
+  ([benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)).
 - **CI/hook/watch** — keep the index fresh as the repo evolves; a stale index
   is the top cause of "wrong code surfaced" reports.
 
@@ -180,7 +183,7 @@ index is stale or mis-wired.
 |------|------|----------------------|
 | `cmmc20` | CMMC SaaS (existing, reference) | already integrated — re-run Verify + capture savings baseline if not done |
 | `cybersentinel-evolver` | Python security tool | CLI + MCP; keep any signatures/rules out of the index per risky-path list |
-| `agencyOS` | Python business engine | MCP + PostToolUse hooks; `watch --reindex` given active development |
+| `agencyOS` | Python business engine | MCP + Claude Code hooks; `watch --reindex` given active development |
 
 Same five steps, same templates, same failure rules — only the filled-in
 answers differ. That is what makes the procedure repeatable.
