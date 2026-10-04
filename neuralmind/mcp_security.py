@@ -36,6 +36,9 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_audit_decisions",
         "neuralmind_record_decision",
         "neuralmind_invalidate_decision",
+        "neuralmind_memory_search",
+        "neuralmind_memory_timeline",
+        "neuralmind_memory_get",
     },
     "reader": {
         "neuralmind_wakeup",
@@ -55,6 +58,9 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         # Decision memory (v1.0) — read-only for readers
         "neuralmind_query_decisions",
         "neuralmind_audit_decisions",
+        "neuralmind_memory_search",
+        "neuralmind_memory_timeline",
+        "neuralmind_memory_get",
     },
 }
 

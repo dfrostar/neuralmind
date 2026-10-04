@@ -78,7 +78,7 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 |---|---|
 | `admin` | All tools |
 | `builder` | The `reader` set, plus `build`, document ingestion, and recording or invalidating decisions |
-| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`) and read-only analytics, stats, and decision queries |
+| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
 
 A few tools are admin-only by default, including `synaptic_neighbors`,
 `structural_neighbors`, `next_likely`, `impact`, and `review`.
