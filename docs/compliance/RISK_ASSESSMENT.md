@@ -32,7 +32,7 @@ Risks are scored on two dimensions:
 | R-01 | Vulnerable dependency (Critical CVE) | 3 | 5 | 15 | HIGH | Automated Dependabot alerts, 72h patch SLA for critical | Maintainer |
 | R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Code review required, branch protection, CI gates | Maintainer |
 | R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default (stdio transport), per-tool permission policy (roles are caller-declared, and the MCP server applies the default policy whatever `security.roles` says), audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
-| R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode, `neuralmind build --verify`, local backups | Maintainer |
+| R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode; `neuralmind health` and `neuralmind doctor` report a missing or stale index; the graph and index rebuild from source (`neuralmind build --force`). Synapses, decisions, and the audit log can't be rebuilt, so they need operator backups ([Backup & Recovery](../DEPLOYMENT-GUIDE.md#backup--recovery)) | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |
 | R-06 | Key person dependency (solo maintainer) | 3 | 4 | 12 | HIGH | Documented runbooks, bus factor reduction plan, paid support option | Maintainer |
 | R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects a changed or removed record mid-log, not changes at the end of the log or a recomputed chain), git-backed evidence | Maintainer |
