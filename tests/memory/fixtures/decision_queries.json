@@ -1,0 +1,272 @@
+{
+  "_comment": "Decision-search eval set: questions an agent asks, each with the decision ids that answer it. The corpus is the maintenance eval's seed decisions (neuralmind/memory/eval.py, _TASK_SEED_DECISIONS) plus the distractors below, which share its vocabulary (sqlite, index, tokens, log, server) so that ranking matters: the seed alone has 10 ACTIVE decisions, and a top-5 would be half of it. All of it is synthetic. Queries run with the default status filter (ACTIVE), so gold ids are ACTIVE decisions only. The queries were written and frozen before any search variant was measured; don't tune them to a variant. Run: neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json",
+  "_kinds": "sentence = a question phrased the way agents send it; negative = nothing in the corpus answers it, so the right result is none. Keyword-style queries live in the maintenance eval's five tasks. Paraphrases that share no word with their answer belong to spec LOCAL-API-SPEC.md §4.2 (PR M, semantic search): add them here as kind 'paraphrase' with the mode that is expected to find them.",
+  "extra_decisions": [
+    {
+      "id": "dec-fx-embed-cache",
+      "title": "Cache embeddings on disk keyed by content hash",
+      "rationale": "Re-embedding unchanged files wastes minutes on large repos. A content-hash cache lets incremental builds skip files whose text has not changed.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-ci-matrix",
+      "title": "Run the test suite on Python 3.10 through 3.12 in CI",
+      "rationale": "Users install on all three versions. A matrix build catches version-specific failures before release.",
+      "decision_type": "TEST"
+    },
+    {
+      "id": "dec-fx-synapse-db",
+      "title": "Store synapse weights in a separate SQLite database",
+      "rationale": "Synapse writes happen on every tool call. Keeping them out of the main index database avoids lock contention with builds.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-argparse",
+      "title": "Use argparse subcommands for the CLI",
+      "rationale": "argparse ships with Python, so the CLI adds no dependency. Subcommands keep build, query and serve options separate.",
+      "decision_type": "DEPENDENCY"
+    },
+    {
+      "id": "dec-fx-graph-server",
+      "title": "Serve the graph view from a local HTTP server",
+      "rationale": "The graph view needs live updates. A small HTTP server with server-sent events avoids a websocket dependency.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-loopback",
+      "title": "Bind the local server to 127.0.0.1 only",
+      "rationale": "The server exposes project structure. Binding to loopback keeps it off the network unless the user opts into server mode.",
+      "decision_type": "CONFIG"
+    },
+    {
+      "id": "dec-fx-synapse-decay",
+      "title": "Decay unused synapse edges on a schedule",
+      "rationale": "Edges that are never reinforced should fade so recall reflects current usage, not history.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-tool-budget",
+      "title": "Limit MCP tool output to a token budget",
+      "rationale": "Agents pay for every token a tool returns. Capping output keeps a single call from flooding the context window.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-release-please",
+      "title": "Use release-please for versioning and the changelog",
+      "rationale": "Conventional commits drive version bumps and the changelog, so nobody edits version numbers by hand.",
+      "decision_type": "CONFIG"
+    },
+    {
+      "id": "dec-fx-gitignore",
+      "title": "Skip files listed in .gitignore when indexing",
+      "rationale": "Generated and vendored files add noise and tokens. Respecting .gitignore matches what developers consider source.",
+      "decision_type": "CONFIG"
+    },
+    {
+      "id": "dec-fx-onnx-pin",
+      "title": "Pin ONNX runtime for the local embedder",
+      "rationale": "Newer ONNX runtime releases changed thread handling and crashed on some platforms. Pinning keeps embeddings reproducible.",
+      "decision_type": "DEPENDENCY"
+    },
+    {
+      "id": "dec-fx-compact-rows",
+      "title": "Return compact rows from memory search before full records",
+      "rationale": "Progressive disclosure: an index row costs about 80 tokens, a full record several hundred. Agents filter first, then fetch.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-stale-on-change",
+      "title": "Mark decisions stale when their files change",
+      "rationale": "A decision tied to code that has since changed may no longer hold. Flagging it stale warns the agent without deleting it.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-hook-log",
+      "title": "Write hook errors to a log file instead of stderr",
+      "rationale": "Claude Code shows hook stderr to the user. Logging to a file keeps failures diagnosable without cluttering the session.",
+      "decision_type": "CONFIG"
+    },
+    {
+      "id": "dec-fx-token-hash",
+      "title": "Hash API tokens before storing them",
+      "rationale": "A leaked database must not leak usable tokens. Tokens are stored as SHA-256 hashes and compared in constant time.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-rate-limit",
+      "title": "Rate-limit MCP tool calls per client",
+      "rationale": "A runaway agent loop can issue thousands of calls. A per-client token bucket protects the index from overload.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-static-site",
+      "title": "Keep the marketing site as a static export",
+      "rationale": "A static Next.js export deploys to Cloudflare Pages with no server to maintain.",
+      "decision_type": "CONFIG"
+    },
+    {
+      "id": "dec-fx-rrf",
+      "title": "Fuse keyword and vector rankings with reciprocal rank fusion",
+      "rationale": "BM25 finds exact identifiers; embeddings find paraphrases. Reciprocal rank fusion combines both without tuning score scales.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-single-writer",
+      "title": "Use a single writer thread for database writes",
+      "rationale": "SQLite allows one writer at a time. Funnelling writes through one thread avoids busy errors under load.",
+      "decision_type": "ARCHITECTURE"
+    },
+    {
+      "id": "dec-fx-index-age",
+      "title": "Log a warning when the index is older than the last commit",
+      "rationale": "A stale index gives wrong answers silently. A warning tells the user to rebuild.",
+      "decision_type": "CONFIG"
+    }
+  ],
+  "queries": [
+    {
+      "id": "s01-wal-readers",
+      "kind": "sentence",
+      "query": "how do we handle sqlite wal mode for concurrent readers?",
+      "gold": ["dec-refactor-db-001", "dec-dep-sqlite-001"]
+    },
+    {
+      "id": "s02-pool-vs-threadlocal",
+      "kind": "sentence",
+      "query": "why did we pick connection pooling instead of thread-local connections?",
+      "gold": ["dec-refactor-db-001"]
+    },
+    {
+      "id": "s03-sqlite-version",
+      "kind": "sentence",
+      "query": "what is the minimum sqlite version we require and why?",
+      "gold": ["dec-dep-sqlite-001"]
+    },
+    {
+      "id": "s04-handler-auth",
+      "kind": "sentence",
+      "query": "where should authentication happen for each api handler?",
+      "gold": ["dec-bugfix-auth-001"]
+    },
+    {
+      "id": "s05-jwt-algorithm",
+      "kind": "sentence",
+      "query": "which algorithm do we use to sign jwt tokens?",
+      "gold": ["dec-bugfix-auth-002"]
+    },
+    {
+      "id": "s06-logging-tracing",
+      "kind": "sentence",
+      "query": "how should I add logging to a new module so it shows up in tracing?",
+      "gold": ["dec-config-logging-001"]
+    },
+    {
+      "id": "s07-prod-log-level",
+      "kind": "sentence",
+      "query": "what log level do we run in production?",
+      "gold": ["dec-config-logging-002"]
+    },
+    {
+      "id": "s08-test-isolation",
+      "kind": "sentence",
+      "query": "how do the DecisionStore tests stay isolated from each other?",
+      "gold": ["dec-test-store-001"]
+    },
+    {
+      "id": "s09-fts5-fallback-tests",
+      "kind": "sentence",
+      "query": "do we have tests for the fallback when sqlite is built without fts5?",
+      "gold": ["dec-test-store-002"]
+    },
+    {
+      "id": "s10-json-each",
+      "kind": "sentence",
+      "query": "is there a reason we use json_each in the overlap query?",
+      "gold": ["dec-dep-sqlite-002"]
+    },
+    {
+      "id": "s11-raw-sql-pool",
+      "kind": "sentence",
+      "query": "why is raw sql kept out of the connection pool?",
+      "gold": ["dec-refactor-db-002"]
+    },
+    {
+      "id": "s12-reembedding",
+      "kind": "sentence",
+      "query": "how do we avoid re-embedding files that have not changed?",
+      "gold": ["dec-fx-embed-cache"]
+    },
+    {
+      "id": "s13-ci-pythons",
+      "kind": "sentence",
+      "query": "which python versions does ci test against?",
+      "gold": ["dec-fx-ci-matrix"]
+    },
+    {
+      "id": "s14-synapse-own-db",
+      "kind": "sentence",
+      "query": "why are synapse weights in their own database file?",
+      "gold": ["dec-fx-synapse-db"]
+    },
+    {
+      "id": "s15-server-network",
+      "kind": "sentence",
+      "query": "is the graph server reachable from other machines on the network?",
+      "gold": ["dec-fx-loopback"]
+    },
+    {
+      "id": "s16-tool-output-tokens",
+      "kind": "sentence",
+      "query": "what keeps an MCP tool from returning too many tokens?",
+      "gold": ["dec-fx-tool-budget"]
+    },
+    {
+      "id": "s17-delete-on-change",
+      "kind": "sentence",
+      "query": "should a decision be deleted when the code it describes changes?",
+      "gold": ["dec-fx-stale-on-change"]
+    },
+    {
+      "id": "s18-token-storage",
+      "kind": "sentence",
+      "query": "how are api tokens stored in the database?",
+      "gold": ["dec-fx-token-hash"]
+    },
+    {
+      "id": "s19-bm25-embeddings",
+      "kind": "sentence",
+      "query": "how do we combine bm25 and embedding results?",
+      "gold": ["dec-fx-rrf"]
+    },
+    {
+      "id": "s20-index-out-of-date",
+      "kind": "sentence",
+      "query": "what happens when the index is out of date compared to git?",
+      "gold": ["dec-fx-index-age"]
+    },
+    {
+      "id": "n01-kubernetes",
+      "kind": "negative",
+      "query": "how do we deploy to kubernetes?",
+      "gold": []
+    },
+    {
+      "id": "n02-gdpr",
+      "kind": "negative",
+      "query": "what is our gdpr data retention policy?",
+      "gold": []
+    },
+    {
+      "id": "n03-frontend-framework",
+      "kind": "negative",
+      "query": "why did we choose react for the dashboard frontend?",
+      "gold": []
+    },
+    {
+      "id": "n04-payments",
+      "kind": "negative",
+      "query": "which payment provider handles billing for team seats?",
+      "gold": []
+    }
+  ]
+}

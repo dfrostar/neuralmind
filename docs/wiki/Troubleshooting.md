@@ -441,6 +441,20 @@ neuralmind build /path/to/project
 neuralmind-mcp 2>&1 | tee mcp.log
 ```
 
+**Reading the error.** A failed tool call returns JSON with an `error` message
+and, for the failures an agent can act on, a `code`:
+
+| `code` | Meaning | What to do |
+|--------|---------|------------|
+| `invalid_request` | `project_path` is missing, or an argument is missing, has the wrong type or isn't one of the allowed values | Fix the call; `error` names the argument |
+| `index_not_built` | The project has no index yet | Call `neuralmind_build` for the project, or run `neuralmind build /path/to/project`, then retry |
+| `security_denied` with `reason: "rbac"` | The caller's role isn't allowed to use this tool | Use a role that allows it, or extend the role policy |
+| `security_denied` with `reason: "rate_limit"` | The caller made too many calls in the rate-limit window | Wait, then retry |
+| *(no code)* | The tool itself failed, for example a missing parser or an unreadable file | Read `error`, then try the same operation with the CLI |
+
+Earlier releases reported a missing index, and any other `RuntimeError` a tool
+raised, as `security_denied`.
+
 ---
 
 ## Scheduling & Automation Issues

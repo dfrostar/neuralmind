@@ -3056,13 +3056,12 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by natural language."""
+    """Search decisions by keywords or a question (titles and rationales)."""
     store = _get_decisions_store(args.project_path)
-    status = None if args.status == "ALL" else args.status
     results = store.query(
         text=args.query,
         limit=args.limit,
-        status=status,
+        status=args.status,
     )
     if args.json:
         import json
@@ -3187,11 +3186,15 @@ def cmd_decisions_invalidate(args):
 
 
 def cmd_decisions_eval(args):
-    """Run the maintenance replay benchmark."""
-    from neuralmind.memory.eval import MaintenanceEval
+    """Run the maintenance replay benchmark, or score a query set (--queries)."""
+    from neuralmind.memory.eval import MaintenanceEval, QuerySetEval, load_query_set
 
-    eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
-    report = eval_harness.run(output_format=args.format)
+    output_format = "markdown" if args.format == "md" else args.format
+    if args.queries:
+        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+    else:
+        eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
+    report = eval_harness.run(output_format=output_format)
 
     if args.output:
         Path(args.output).write_text(report)
@@ -6646,10 +6649,20 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("project_path", nargs="?", default=".")
     d_record.set_defaults(func=cmd_decisions_record)
 
-    d_query = decisions_sub.add_parser("query", help="Search decisions by natural language")
-    d_query.add_argument("query", help="Search query")
+    d_query = decisions_sub.add_parser(
+        "query", help="Search decisions by keywords or a question (titles and rationales)"
+    )
+    d_query.add_argument(
+        "query", help="Keywords or a question; any word can match, best matches first"
+    )
     d_query.add_argument("--limit", "-n", type=int, default=5)
-    d_query.add_argument("--status", default="ACTIVE", help="ACTIVE/STALE/ALL")
+    d_query.add_argument(
+        "--status",
+        default="ACTIVE",
+        type=str.upper,
+        choices=["ACTIVE", "STALE", "INVALIDATED", "ALL"],
+        help="Status filter, case-insensitive (default: ACTIVE)",
+    )
     d_query.add_argument("--json", "-j", action="store_true")
     d_query.add_argument("project_path", nargs="?", default=".")
     d_query.set_defaults(func=cmd_decisions_query)
@@ -6687,8 +6700,21 @@ def build_parser() -> argparse.ArgumentParser:
     d_invalidate.add_argument("project_path", nargs="?", default=".")
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
-    d_eval = decisions_sub.add_parser("eval", help="Run maintenance replay benchmark")
+    d_eval = decisions_sub.add_parser(
+        "eval",
+        help="Run the maintenance replay benchmark on a scratch store "
+        "(never the project's decisions)",
+    )
     d_eval.add_argument("--tasks", type=int, default=10, help="Number of tasks")
+    d_eval.add_argument(
+        "--queries",
+        metavar="FILE",
+        help="Score search against a query set with gold decision ids instead "
+        "(e.g. tests/memory/fixtures/decision_queries.json)",
+    )
+    d_eval.add_argument(
+        "--limit", type=int, default=5, help="Results per query with --queries (default: 5)"
+    )
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
     d_eval.add_argument("--output", "-o", help="Output file")
     d_eval.add_argument("project_path", nargs="?", default=".")

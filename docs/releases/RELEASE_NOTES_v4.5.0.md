@@ -14,7 +14,8 @@ about a project mean something, and keeps them comparable from run to run:
 
 It also stops a cost a new benchmark turned up: through v4.4.0, the Read, Bash
 and Grep hooks sold as tool-output compression added tokens instead of saving
-them (section 5).
+them (section 5). And decision search now answers questions, not only
+exact keyword sets (section 6).
 
 ## 1. `.gitignore` is honoured by default
 
@@ -243,6 +244,37 @@ Method, per-command results and raw data:
 - Docs, README, site and `llms.txt` no longer describe tool-output compression
   as a feature.
 
+## 6. Decision search answers questions
+
+Decision search required every word of the query, so `neuralmind decisions query`
+found a decision for "sqlite wal" but not for "how do we handle sqlite wal?",
+and agents send questions.
+
+- **Any word of the query can match.** Common words such as "how" and "the"
+  are ignored, and decisions matching more of the words, and rarer ones, rank
+  first. This covers `decisions query`, the `neuralmind_query_decisions` and
+  `neuralmind_memory_search` MCP tools, and the LIKE fallback used when SQLite
+  lacks FTS5. A question nothing answers can still return partial matches, so
+  check the titles.
+- **Status filters are case-insensitive**, and `ALL` returns every status
+  (over MCP, the advertised `"all"` used to match nothing). The CLI's
+  `--status` also accepts `INVALIDATED`. An unknown status is an error,
+  `invalid_request` over MCP, instead of an empty result.
+- **`neuralmind decisions eval` leaves your decisions alone.** It used to delete
+  the project's `.neuralmind/memory.db` and leave synthetic decisions with the
+  author `eval-harness` behind; it now runs on a scratch store. The
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness) shows how to retire
+  any it left. `--format md` no longer crashes.
+- **`neuralmind decisions eval --queries FILE`** scores search against
+  questions with known answers: recall@k and MRR as mean and range per query
+  kind, with every miss and false positive listed. The committed query set and
+  its measured results are in the
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness).
+- **MCP errors say what to do.** A missing index is `code: "index_not_built"`
+  with a hint to call `neuralmind_build`, not `security_denied`;
+  `security_denied` carries `reason: "rbac"` or `"rate_limit"`. See
+  [Troubleshooting](../wiki/Troubleshooting.md).
+
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
@@ -270,4 +302,4 @@ Method, per-command results and raw data:
 
 - Use case: [Measure retrieval on your own repo](../use-cases/measure-retrieval-on-your-repo.md)
 - Benchmark: [Tool-output compression](../benchmarks/compression.md)
-- CLI reference: [`eval`](../wiki/CLI-Reference.md#eval-v0140-project-eval-v450), [`query`](../wiki/CLI-Reference.md#query), [`benchmark`](../wiki/CLI-Reference.md#benchmark), [`probe`](../wiki/CLI-Reference.md#probe-v0270)
+- CLI reference: [`eval`](../wiki/CLI-Reference.md#eval-v0140-project-eval-v450), [`query`](../wiki/CLI-Reference.md#query), [`benchmark`](../wiki/CLI-Reference.md#benchmark), [`probe`](../wiki/CLI-Reference.md#probe-v0270), [`decisions`](../wiki/CLI-Reference.md#decisions)
