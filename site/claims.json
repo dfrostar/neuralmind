@@ -58,7 +58,7 @@
     },
     {
       "value": 48.8,
-      "context": "Field report: anonymized ~9,300-node private TypeScript SaaS platform. Never name the client — the docs and the community-benchmark entry are both anonymized on purpose. Measured against the CLI's pre-v4.5.0 fixed 50K-token estimate and not re-run with the measured baseline, so say which baseline it used wherever it appears.",
+      "context": "Field report: anonymized ~9,300-node private TypeScript SaaS platform. Never name the client — the docs and the community-benchmark entry are both anonymized on purpose. Measured against the CLI's pre-v4.5.0 fixed 50K-token estimate and not re-run with the measured baseline, so say which baseline it used wherever it appears — every description, card, table row and metadata/JSON-LD description. Only a page <title> may carry the bare figure, and only on a page whose own copy names the baseline.",
       "source": "docs/use-cases/measure-memory-across-a-refactor.md",
       "reproduce": "neuralmind benchmark <your repo> --naive-50k",
       "evidence": "field-report",
@@ -91,7 +91,7 @@
       "value": 41.8,
       "context": "The same psf/requests v2.32.3 run against the fixed 50K-token estimate — the legacy line `benchmark` prints beside the measured ratio (50,000 over ~1,200 tokens per question).",
       "source": "docs/use-cases/benchmark-your-repo.md",
-      "reproduce": "neuralmind benchmark . --naive-50k",
+      "reproduce": "git clone --depth 1 --branch v2.32.3 https://github.com/psf/requests && cd requests && neuralmind build . && neuralmind benchmark . --naive-50k",
       "evidence": "reproducible"
     },
     {

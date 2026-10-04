@@ -9,7 +9,7 @@ const PUBLISHED = '2026-07-20';
 export const metadata = {
     title: 'Field Report: 48.8× Fewer Tokens Across a Refactor | NeuralMind',
     description:
-        'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
+        'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction vs the CLI’s pre-v4.5.0 fixed 50K-token estimate, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
     keywords: [
         'AI coding agent memory',
         'token reduction case study',
@@ -32,7 +32,7 @@ export const metadata = {
     openGraph: {
         title: 'Field Report: AI Agent Memory Across a Major Refactor',
         description:
-            'A ~9,300-node TypeScript SaaS platform was rebuilt with NeuralMind watching: 48.8× token reduction, synapse edges 36→135. One repo, honestly measured — with the recipe to run it on yours.',
+            'A ~9,300-node TypeScript SaaS platform was rebuilt with NeuralMind watching: 48.8× token reduction vs the CLI’s pre-v4.5.0 fixed 50K-token estimate, synapse edges 36→135. One repo, honestly measured — with the recipe to run it on yours.',
         url: CANONICAL,
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -54,7 +54,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'Field Report: AI Agent Memory Across a Major Refactor',
         description:
-            '48.8× token reduction and synapse edges 36→135, measured across a real rebuild of a ~9,300-node TypeScript SaaS platform.',
+            '48.8× token reduction (vs the CLI’s pre-v4.5.0 fixed 50K-token estimate) and synapse edges 36→135, measured across a real rebuild of a ~9,300-node TypeScript SaaS platform.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -91,9 +91,9 @@ const jsonLd = {
         {
             '@type': 'TechArticle',
             headline: 'Field Report: AI Agent Memory Across a Major Refactor',
-            alternativeHeadline: '48.8× token reduction and synapse growth measured across a real rebuild',
+            alternativeHeadline: '48.8× token reduction (vs the pre-v4.5.0 fixed 50K-token estimate) and synapse growth measured across a real rebuild',
             description:
-                'Real-world case study measuring NeuralMind across a major internal rebuild of a private ~9,300-node TypeScript SaaS platform: 48.8× average token reduction, personal synapse edges 36→135, shared edge weight +5.4%.',
+                'Real-world case study measuring NeuralMind across a major internal rebuild of a private ~9,300-node TypeScript SaaS platform: 48.8× average token reduction against the CLI’s pre-v4.5.0 fixed 50K-token estimate, personal synapse edges 36→135, shared edge weight +5.4%.',
             author: {
                 '@type': 'Person',
                 name: 'Darren Frost',

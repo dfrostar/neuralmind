@@ -62,7 +62,7 @@ export default function Benchmarks() {
                 <p className="mt-6 text-slate-400 text-sm max-w-3xl">
                     Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
                     <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
-                    platform, through a major rebuild.{' '}
+                    platform, through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0.{' '}
                     <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
                         Read the field report →
                     </a>

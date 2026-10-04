@@ -125,8 +125,8 @@ baselines, no two runs comparable.
     whenever the index holds code — on `psf/requests` its `HISTORY.md`
     changelog alone was 15,088 tokens, 14% of an all-files count — so prose
     can't pad a ratio, and `build --dry-run` (which always counted code only)
-    now agrees with `build`. A prose-only index (a book, a docs corpus) is
-    measured over its documents.
+    now agrees with `build`. An index with no code (a book, a docs corpus, a
+    set of SQL, Protobuf or OpenAPI schemas) is measured over its documents.
   - **In the context's own units.** It is counted at the ~4 chars/token every
     context layer is counted in, so the ratio is a ratio of characters. With
     tiktoken installed it used to switch tokenizers and read `psf/requests`'

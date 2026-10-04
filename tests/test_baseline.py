@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shlex
 import sys
 import types
 from pathlib import Path
@@ -87,6 +88,25 @@ class TestWhatTheBaselineCounts:
         _write(tmp_path, "chapters/02.md", "y" * 400)
         nodes = [_node("chapters/01.md", "document"), _node("chapters/02.md", "document")]
         assert _measure(tmp_path, *nodes) == (200, 2, "documents")
+
+    def test_a_schema_only_index_is_measured_over_its_schema_documents(self, tmp_path):
+        # graphgen emits SQL, Protobuf and OpenAPI files as "document" nodes;
+        # an index of nothing else still has readable text to measure.
+        _write(tmp_path, "db/schema.sql", "x" * 400)
+        _write(tmp_path, "api/svc.proto", "y" * 400)
+        _write(tmp_path, "api/openapi.yaml", "z" * 400)
+        nodes = [
+            _node("db/schema.sql", "document"),
+            _node("api/svc.proto", "document"),
+            _node("api/openapi.yaml", "document"),
+        ]
+        assert _measure(tmp_path, *nodes) == (300, 3, "documents")
+
+    def test_schema_documents_are_left_out_when_the_index_holds_code(self, tmp_path):
+        _write(tmp_path, "a.py", "x" * 400)
+        _write(tmp_path, "db/schema.sql", "y" * 40_000)
+        nodes = [_node("a.py"), _node("db/schema.sql", "document")]
+        assert _measure(tmp_path, *nodes) == (100, 1, "code")
 
     def test_code_is_recognised_by_file_type_or_by_suffix(self, tmp_path):
         # graphify marks code nodes "code" whatever the language; a producer
@@ -340,6 +360,15 @@ class TestContributePayload:
         assert "full_codebase_tokens" not in entry
         assert "not your code" in out
         assert not list(_validator().iter_errors(entry))
+
+    def test_verification_command_survives_a_path_a_shell_would_split(self, tmp_path, capsys):
+        project = tmp_path / "my repo; echo pwned"
+        project.mkdir()
+        _write(project, "a.py", "x" * 40_000)
+        result = _mind(project, _graph(_node("a.py")), [1_000]).benchmark(_questions(1))
+        entry, _ = _submit(project, result, capsys)
+        argv = shlex.split(entry["verification_command"])
+        assert argv == ["neuralmind", "benchmark", str(project), "--naive-50k", "--json"]
 
     def test_a_measured_ratio_cannot_travel_without_its_baseline(self):
         entry = json.loads(ENTRIES_PATH.read_text(encoding="utf-8"))["entries"][0]

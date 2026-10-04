@@ -12,8 +12,8 @@ covers**: every distinct ``source_file`` in the graph that is code, read from
 disk. Prose — Markdown, reStructuredText, plain text — is left out when the
 index holds code, as ``build --dry-run`` always left it out: a changelog is not
 part of what a code question would load, and counting it would inflate every
-ratio. A prose-only index (a book, a docs corpus) is measured over its
-documents instead.
+ratio. An index with no code (a book, a docs corpus, a set of SQL, Protobuf
+or OpenAPI schemas) is measured over its documents instead.
 
 It is counted at the same ~4 chars/token as the context it is divided by
 (``ContextSelector`` estimates every layer that way), so a ratio is a ratio of
@@ -41,8 +41,10 @@ NAIVE_BASELINE_TOKENS = 50_000
 
 NAIVE_LABEL = "fixed 50K-token naive estimate (--naive-50k)"
 
-# Measured only when an index holds no code. Images and PDFs a graphify graph
-# can name are neither prose nor code, so they are never read as text.
+# Measured only when an index holds no code, together with the schema files
+# (SQL, Protobuf, OpenAPI YAML) the built-in parser indexes as documents.
+# Images and PDFs a graphify graph can name are neither, so they are never
+# read as text.
 PROSE_SUFFIXES = frozenset({".md", ".markdown", ".mdx", ".rst", ".txt", ".adoc"})
 
 
@@ -65,10 +67,11 @@ def baseline_files(project: str | Path, nodes: Iterable[Any]) -> tuple[list[Path
     A file is code when a node naming it has ``file_type: "code"`` (graphify's
     and the built-in parser's convention) or its suffix is one the built-in
     parser handles. Returns ``(files, scope)`` with scope ``"code"``,
-    ``"documents"`` (a prose-only index) or ``"none"``.
+    ``"documents"`` (an index with no code: prose or schema files) or
+    ``"none"``.
     """
     from .freshness import normalize_source_path
-    from .graphgen import SUPPORTED_SUFFIXES
+    from .graphgen import _SCHEMA_SUFFIXES, SUPPORTED_SUFFIXES
 
     root = Path(project).resolve()
     named: dict[str, bool] = {}  # relative path -> named by a code node
@@ -92,7 +95,10 @@ def baseline_files(project: str | Path, nodes: Iterable[Any]) -> tuple[list[Path
     rels = [rel for rel, code in named.items() if code or suffix(rel) in SUPPORTED_SUFFIXES]
     scope = "code"
     if not rels:
-        rels = [rel for rel in named if suffix(rel) in PROSE_SUFFIXES]
+        # No code: the readable documents — prose, and the SQL/Proto/OpenAPI
+        # files graphgen emits as ``document`` nodes.
+        documents = PROSE_SUFFIXES | _SCHEMA_SUFFIXES
+        rels = [rel for rel in named if suffix(rel) in documents]
         scope = "documents"
     # Keyed by the resolved path, so two spellings of one file count once.
     files: dict[Path, None] = {}
@@ -104,7 +110,7 @@ def baseline_files(project: str | Path, nodes: Iterable[Any]) -> tuple[list[Path
 
 
 def measure_graph_files(project: str | Path, graph: dict) -> dict:
-    """Measure the code (or, for a prose-only index, the documents) the graph covers."""
+    """Measure the code (or, for an index with no code, the documents) the graph covers."""
     files, scope = baseline_files(project, graph.get("nodes", []) or [])
     return {
         "tokens": count_file_tokens(files),

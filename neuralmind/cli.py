@@ -1864,6 +1864,7 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     prompted interactively (TTY) or left as `null` with a comment
     explaining the omission (non-TTY / scripted use).
     """
+    import shlex
     from datetime import date
 
     project_name = getattr(args, "project_name", None) or _prompt(
@@ -1921,8 +1922,11 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
         "date_submitted": date.today().isoformat(),
         "submitted_by": submitted_by or None,
         # Reproduces avg_reduction_ratio; the measured fields come from the
-        # same command without --naive-50k.
-        "verification_command": f"neuralmind benchmark {args.project_path} --naive-50k --json",
+        # same command without --naive-50k. shlex.quote so a path with spaces
+        # or shell metacharacters survives the copy-paste as one argument.
+        "verification_command": (
+            f"neuralmind benchmark {shlex.quote(str(args.project_path))} --naive-50k --json"
+        ),
     }
     if repo_url:
         entry["repo_url"] = repo_url
