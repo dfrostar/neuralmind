@@ -68,6 +68,9 @@ keywords = [
     "hybrid-bm25",
     "pre-registered-eval",
     "retrieval-ab-testing",
+    "read-deduplication",
+    "decision-invalidation",
+    "memory-governance",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

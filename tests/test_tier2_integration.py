@@ -73,18 +73,27 @@ def test_publish_creates_audit_record(tmp_governance: TeamGovernance) -> None:
     assert latest.details["count"] == 2
 
 
-def test_remove_creates_audit_record(tmp_governance: TeamGovernance) -> None:
-    """gov.remove_edge_from_shared() → audit entry with action='remove'."""
-    gov = tmp_governance
-    gov.remove_edge_from_shared("edge-abc-123", admin="<EMAIL>")
+def test_remove_creates_audit_record(tmp_governance: TeamGovernance, tmp_path: Path) -> None:
+    """gov.remove_edge_from_shared() removes the edge and writes action='remove'."""
+    from neuralmind.synapses import SynapseStore, default_db_path
 
+    gov = tmp_governance
+    project = tmp_path / "project"
+    store = SynapseStore(default_db_path(project))
+    store.import_edges([("api.py", "db.py", 0.8, 4)], namespace="shared")
+    gov.remove_edge_from_shared(
+        "api.py", "db.py", admin="<EMAIL>", store=store, project_path=project
+    )
+
+    assert store.edges(namespaces=["shared"]) == []
     assert gov.audit.count() == 1
     latest = gov.audit.latest()
     assert latest is not None
     assert latest.action == "remove"
-    assert latest.target == "edge-abc-123"
+    assert latest.target == "api.py -> db.py"
     assert latest.actor == "<EMAIL>"
     assert latest.details["reason"] == "admin_removal"
+    assert latest.details["removed_from_store"] == 1
 
 
 def test_governance_gates_publish(tmp_governance: TeamGovernance) -> None:

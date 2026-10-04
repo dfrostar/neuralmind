@@ -30,6 +30,8 @@ neuralmind init-hook .
 
 After every `git commit`, the hook runs `neuralmind build .` in the background. Incremental — only re-embeds changed nodes — so it's seconds, not minutes.
 
+Since v4.6.0 it first runs `neuralmind decisions scan`: any recorded decision whose files the commit changed after it was recorded goes STALE, so a fast-moving codebase doesn't keep serving rationale the code has outgrown ([walkthrough](./decision-memory-across-commits.md)). Re-run `neuralmind init-hook .` on an existing checkout to pick that up.
+
 Coexists with existing hooks (husky, pre-commit, lint-staged) — appends safely rather than overwriting.
 
 ### 2. CI pipeline

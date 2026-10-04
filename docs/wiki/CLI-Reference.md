@@ -25,12 +25,13 @@ Complete command-line interface documentation for NeuralMind.
   - [self-improve status](#self-improve-status-v0260)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
-  - [decisions](#decisions)
+  - [cognition-loop](#cognition-loop)
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
+  - [decisions](#decisions-v410)
   - [drift](#drift-v320)
   - [compliance](#compliance-v314)
   - [ci-check](#ci-check-v314)
@@ -41,6 +42,7 @@ Complete command-line interface documentation for NeuralMind.
   - [savings](#savings-v0400)
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
+  - [team governance](#team-governance)
   - [optimize-docs](#optimize-docs-v172)
   - [license — issuer-side](#license--issuer-side)
 - [Exit Codes](#exit-codes)
@@ -1004,6 +1006,46 @@ neuralmind stats .
 neuralmind stats /path/to/project --json
 ```
 
+### cognition-loop
+
+*On demand since v4.0.0; rebuilt in v4.6.0.* Runs one maintenance pass over
+the project's learned memory, using the same machinery the hooks use:
+
+1. **Decay** — the synapse store's half-life decay (30 days for personal and
+   branch memory, 60 for shared, 1 for ephemeral; long-term edges keep their
+   floor; dead edges are pruned). It charges only the time since the previous
+   decay, so running it often never decays anything twice.
+2. **Read-dedup cleanup** — drops `.neuralmind/read_cache.db` rows untouched
+   for a day.
+
+```bash
+neuralmind cognition-loop [project_path] [--json]
+```
+
+Idempotent and safe while NeuralMind is in use, so it can go in cron. Nothing
+schedules it: the `SessionStart` hook already decays at every Claude Code
+session start and `neuralmind watch` every 10 minutes, so it's for setups that
+run neither (an MCP-only client, say). Hub normalization is left to the
+`PreCompact` hook, because it compounds on every call. A project with no
+learned memory, or a process with `NEURALMIND_NO_LEARN=1`, is skipped
+(`"skipped"` in the JSON) and nothing is created.
+
+```cron
+0 * * * * cd /path/to/repo && neuralmind cognition-loop . >/dev/null
+```
+
+`--json` fields: `edges_pruned`, `edges_remaining`, `transitions_pruned`,
+`transitions_remaining`, `read_cache_pruned`, `duration_secs`, `timestamp`,
+`skipped`.
+
+> Before v4.6.0 this command ran its own SQL that deleted most learned edges
+> idle for about two days, replayed recent queries into an unread `traversal`
+> namespace and deleted session summaries older than 30 days. Leftover
+> `traversal` rows are inert; `neuralmind memory reset --namespace traversal`
+> removes them.
+
+---
+
 ### synapse prune *(v3.1.4+)*
 
 Remove stale synapses older than N days.
@@ -1716,6 +1758,7 @@ neuralmind memory reset   [project_path] --namespace NAME [--json]
 neuralmind memory export  [project_path] [--namespace NAME] [-o FILE]
 neuralmind memory import  <file> [--project-path PATH] [--namespace NAME] [--json]
 neuralmind memory publish [project_path] [--json]
+neuralmind memory review-list|review-approve SOURCE TARGET|review-reject SOURCE TARGET [project_path]
 ```
 
 #### Subcommands
@@ -1726,7 +1769,7 @@ neuralmind memory publish [project_path] [--json]
 | `reset` | Clear **one** namespace (`--namespace` is required). The project index and every other namespace are untouched — the surgical alternative to a full retrain. |
 | `export` | Write one namespace as a portable, versioned JSON bundle reusing the IR's `IRSynapse` shape. Defaults to the active namespace; `-o` writes a file, otherwise stdout. |
 | `import` | Validate a bundle (format + version + entries) and merge it into a target namespace (default: the bundle's own). Merging keeps the MAX of weight/count per edge, so re-importing the same bundle is **idempotent**. A malformed bundle is rejected wholesale — never partially imported. |
-| `publish` *(v0.30.0)* | **Team memory.** Export the project's learned memory (`personal` + `shared`, MAX-merged) to a committed bundle at the repo root, **`.neuralmind-team-memory.json`**. Commit it, and every teammate's agent inherits it once into `shared` on its next `SessionStart`/`build` (content-hash-gated, off-switch `NEURALMIND_TEAM_MEMORY=0`). |
+| `publish` *(v0.30.0)* | **Team memory.** Export the project's learned memory (`personal` + `shared`, MAX-merged) to a committed bundle at the repo root, **`.neuralmind-team-memory.json`**. Commit it, and every teammate's agent inherits it once into `shared` on its next `SessionStart`/`build` (content-hash-gated, off-switch `NEURALMIND_TEAM_MEMORY=0`). *v4.6.0:* with [team governance](#team-governance) configured, the publishing scope picks the source namespaces (`personal` refuses to publish) and edges below the weight threshold are left out; pairs listed under the bundle's `retracted` key are never re-published, and importing a bundle deletes them from `shared`. |
 
 #### Examples
 
@@ -1745,6 +1788,11 @@ neuralmind memory import team-baseline.json --namespace shared
 neuralmind memory publish .
 git add .neuralmind-team-memory.json && git commit -m "publish team memory"
 # teammates: their next `neuralmind build` / Claude Code session inherits it
+
+# Imported associations that need a human decision (v4.6.0: audited under governance)
+neuralmind memory review-list .
+neuralmind memory review-approve SOURCE TARGET .
+neuralmind memory review-reject SOURCE TARGET .
 ```
 
 #### How the active namespace is resolved
@@ -1773,42 +1821,6 @@ decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
 rates, `ephemeral` fades fast with no LTP floor. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
-
----
-
-### decisions
-
-Record, search and retire architecture decisions: the decision memory behind
-the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools. The
-subcommands are `record`, `query`, `audit`, `amend`, `invalidate`, `restore`,
-`export` and `eval`; each takes an optional `project_path` (default `.`), and
-[Memory Layer](Memory-Layer.md#cli-reference) documents every one.
-
-```bash
-neuralmind decisions query "how do we handle sqlite wal?" [project_path] [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json]
-neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
-neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
-```
-
-`query` takes keywords or a question, matched against decision titles and
-rationales: any word can match (common words such as "how" and "the" are
-ignored), and decisions matching more of the words rank first.
-
-#### decisions eval
-
-Measures decision search. Both modes seed a scratch store in a temporary
-directory and never read or change the project's decisions.
-
-| Option | Description |
-|--------|-------------|
-| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
-| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
-| `--limit N` | Results per query with `--queries` (default 5) |
-| `--format json\|md` | Report format (default `json`) |
-| `--output FILE`, `-o` | Write the report to a file instead of stdout |
-
-The measured numbers for the committed query set are in
-[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
 
 ---
 
@@ -2054,6 +2066,24 @@ NeuralMind block, leaving any user hooks untouched):
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 
+**Read dedup** *(v4.6.0)*: the `Read` PostToolUse action replaces a repeat
+read of unchanged content with a short stub, through `updatedToolOutput` (the
+replacement keeps the Read tool's output shape; Claude Code delivers the
+original read when it doesn't match). The same agent in the same session must
+have received exactly that text and range less than an hour ago, and the read
+right after a stub always goes through in full. Reads are keyed on
+`session_id` + `agent_id`, so subagents and other sessions never share them;
+`SessionStart` and `PreCompact` forget the session's reads; reads under 2,000
+characters are never stubbed. Only in projects that already have
+`.neuralmind/`; state in `.neuralmind/read_cache.db`. Off-switch
+`NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
+`NEURALMIND_NO_LEARN=1`).
+
+**Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
+its full id and the reason it left ACTIVE (for example
+`commit 3f9c2ab changed db.py since this decision was recorded`), plus a
+pointer to `neuralmind decisions restore <id>` when one is STALE.
+
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
 ```
@@ -2151,7 +2181,18 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 Install (or update) two Git hooks, both idempotent and both appended to any
 existing hook script rather than overwriting it:
 
-- **`post-commit`** rebuilds the neural index automatically after every commit.
+- **`post-commit`** first runs `neuralmind decisions scan . --quiet`
+  *(v4.6.0+)*, which marks STALE any recorded decision whose file the commit
+  changed after the decision was recorded and prints them (see
+  [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
+  Re-run `init-hook` on an existing checkout to get the scan; the managed
+  block is replaced in place.
+
+For a project in a subdirectory of its repository, or in a linked worktree,
+the hooks go in the repository's hooks directory and name the project by its
+path from the repository root, since git runs hooks from there (for example
+`neuralmind decisions scan services/api`). The managed block is one per hook
+file, so a second project in the same repository replaces the first's.
 - **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
   staged diff — the commit-time drift guard described under
   [`drift`](#drift-v320) below.
@@ -2165,7 +2206,7 @@ neuralmind init-hook [project_path] [--no-drift] [--strict]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
-| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit rebuild only |
+| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit hook only |
 | `--strict` | No | Make the installed drift guard block commits instead of warning |
 
 #### Examples
@@ -2177,9 +2218,99 @@ neuralmind init-hook .
 # Install both hooks, with drift blocking the commit
 neuralmind init-hook . --strict
 
-# Install only the post-commit rebuild, no drift guard
+# Install only the post-commit hook (decision scan + rebuild), no drift guard
 neuralmind init-hook . --no-drift
 ```
+
+---
+
+### decisions *(v4.1.0+)*
+
+Decision memory: architecture decisions stored with rationale, evidence,
+affected files and the commit they came from, in `.neuralmind/memory.db`. It
+backs the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools, and
+[Memory Layer](Memory-Layer.md#cli-reference) documents every subcommand.
+
+```bash
+neuralmind decisions record --title T --rationale R [--files F ...] [--commit SHA] [project_path]
+neuralmind decisions query "TEXT" [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json] [project_path]
+neuralmind decisions audit [--stale | --orphaned] [--format md|json] [project_path]
+neuralmind decisions amend ID [--rationale R] [--evidence E ...] [project_path]
+neuralmind decisions invalidate ID [--reason R] [project_path]
+neuralmind decisions restore ID [--commit SHA] [project_path]
+neuralmind decisions scan [--quiet] [--json] [project_path]     # v4.6.0+
+neuralmind decisions export [--format md|json] [-o FILE] [project_path]
+neuralmind decisions eval [--tasks 10] [--format json|md] [--output FILE] [project_path]
+neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
+```
+
+`query` takes keywords or a question, matched against decision titles and
+rationales: any word can match (common words such as "how" and "the" are
+ignored), and decisions matching more of the words rank first (v4.5.1+; before,
+every word had to match). `--status` is case-insensitive.
+
+`--commit` defaults to `HEAD`. `restore` re-anchors a STALE or INVALIDATED
+decision to a commit (default `HEAD`) and makes it ACTIVE again. Before an
+agent edits a file, the `PreToolUse` stale-decision guard
+([`install-hooks`](#install-hooks)) surfaces decisions governing it that are
+STALE or INVALIDATED.
+
+#### decisions scan *(v4.6.0+)*
+
+Marks decisions STALE when the `HEAD` commit changed their files. The
+post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
+
+- The commit is diffed against its first parent (a merge commit counts
+  everything it brought in; a rename counts both paths), relative to the
+  project directory.
+- **Any** change to a file a decision names counts — no diff analysis.
+- Two exemptions keep a fresh decision from going stale on the commit that
+  carries it: a decision anchored to `HEAD` itself, and a decision whose
+  fingerprints match what the commit stores. Recording, amending or
+  restoring a decision fingerprints each affected file with its git blob id
+  (`git hash-object`, as `git add` would store it); when every changed file
+  the decision names matches, the commit carries exactly the code the
+  decision describes. Decisions without fingerprints (recorded before v4.6.0,
+  or naming a file that didn't exist yet) get no exemption.
+- Dependents (`dependency_constraints`) cascade. The reason is appended to
+  each decision's evidence (`Marked STALE: commit 3f9c2ab changed … after this
+  decision was recorded`).
+- A project with no decision store is left alone (none is created). Always
+  exits 0, so it can never fail the commit it follows. Off-switch
+  `NEURALMIND_DECISION_SCAN=0`.
+- Pulls and rebases don't run post-commit hooks: a decision whose files changed
+  only in pulled commits stays ACTIVE until one of your commits touches them.
+  Files are matched by exact path (project-relative or absolute).
+
+| Option | Description |
+|--------|-------------|
+| `--quiet`, `-q` | Print only when a decision went stale (what the git hook uses) |
+| `--json`, `-j` | `{"commit": SHA, "stale": [{"id", "title", "reason"}]}` |
+
+```
+$ neuralmind decisions scan .
+[neuralmind] 1 decision(s) marked STALE by commit 3f9c2ab:
+  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py since this decision was recorded
+  Review: neuralmind decisions audit --stale   Still valid? neuralmind decisions restore <id>
+```
+
+#### decisions eval
+
+Measures decision search. Both modes seed a scratch store in a temporary
+directory and never read or change the project's decisions.
+
+| Option | Description |
+|--------|-------------|
+| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
+| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
+| `--limit N` | Results per query with `--queries` (default 5) |
+| `--format json\|md` | Report format (default `json`) |
+| `--output FILE`, `-o` | Write the report to a file instead of stdout |
+
+The measured numbers for the committed query set are in
+[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
+
+Walkthrough: [Keep decision memory honest across commits](../use-cases/decision-memory-across-commits.md).
 
 ---
 
@@ -3019,6 +3150,60 @@ Run `neuralmind team license status` to view.
 
 ---
 
+### team governance
+
+Team-memory governance (source-available tier2 modules; runs free at 1 seat).
+Settings live in `~/.config/neuralmind/tier2.yaml`, per user; until an
+operator saves them (here or with [`onboarding`](#onboarding-v170)), nothing in
+the team-memory flow is gated or audited. *Enforced since v4.6.0; earlier
+versions recorded scope and threshold without enforcing them.*
+
+```bash
+neuralmind team governance status
+neuralmind team governance set-scope personal|shared|both --admin EMAIL
+neuralmind team governance set-weight-threshold 0.0-1.0 --admin EMAIL
+neuralmind team governance set-governance-enabled true|false --admin EMAIL
+neuralmind team governance list-shared [--project PATH] [--limit N] [--json]
+neuralmind team governance remove-edge SOURCE TARGET [--project PATH] --admin EMAIL
+```
+
+| Setting | Effect on `neuralmind memory publish` |
+|---|---|
+| scope `personal` | Refuses to publish (exit 1); memory stays on each machine |
+| scope `shared` | Publishes only the team baseline (the `shared` namespace) |
+| scope `both` *(default)* | Publishes personal + shared memory |
+| `weight_threshold` *(default 0.1)* | Synapse edges below it are left out of the bundle (transitions aren't weight-filtered) |
+| `set-governance-enabled false` | Turns the scope and threshold gates off; events are still audited |
+
+The bundle's `provenance.governance` records the policy it was published
+under. A governance config that exists but can't be read (unreadable, malformed
+YAML, an invalid value) makes publish refuse.
+
+**`remove-edge SOURCE TARGET`** (admin-only) deletes the association, and the
+transitions between the two nodes, from the project's `shared` memory and
+review queue. It drops the pair from `.neuralmind-team-memory.json` and lists
+it under `retracted` (creating the file if needed). Commit the file: each
+teammate's next session deletes the pair from their own `shared` memory, and
+no later publish re-adds it. The file is written first, atomically; if the
+local store update then fails, the next import finishes it. A non-admin gets
+`Permission denied` and exit 1.
+*Changed in v4.6.0:* the command takes the two nodes instead of one `edge_id`
+(the old form only wrote an audit entry).
+
+**`list-shared`** prints the project's shared-memory associations, strongest
+first (`--json`: `source`, `target`, `weight`, `activation_count`).
+
+**Audit** (`neuralmind team audit list|verify|export`): configuration changes,
+seat and license actions, and, since v4.6.0, every team-memory `publish`
+(including refused ones), `import`, `review_approve` / `review_reject` and
+`remove`. The actor is `--admin` for admin commands, otherwise
+`NEURALMIND_ACTOR_EMAIL`, the repository's `git config user.email`, or the OS
+user.
+
+Walkthrough: [Govern what your team's agents share](../use-cases/govern-team-memory.md).
+
+---
+
 ### optimize-docs *(v1.7.2+)*
 
 Run the **DocEvolver** — an evolutionary JSDoc optimizer that finds undocumented methods, generates JSDoc variants using mutation strategies, and evolves them against a retrieval fitness function (Recall@1).
@@ -3194,6 +3379,9 @@ renewed — issue a new one.
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
+| `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
+| `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
+| `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
