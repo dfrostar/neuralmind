@@ -58,8 +58,9 @@ server.
 - **Streamable HTTP** (`NEURALMIND_MCP_TRANSPORT=streamable_http`) is an
   unfinished skeleton. It binds to `127.0.0.1:8765` and has no OAuth or other
   authentication, so don't expose it beyond the host.
-- **Graph view** (`neuralmind serve`) binds to `127.0.0.1` and requires a
-  per-session token, unless started with `--host` or `--no-auth`.
+- **Graph view** (`neuralmind serve`) binds to `127.0.0.1` by default and
+  requires a per-session token. `--host` changes the bind address and keeps
+  the token. Only `--no-auth` removes it.
 
 ### The role policy
 

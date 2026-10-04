@@ -59,7 +59,7 @@ A SOC 2 report is a CPA firm's attestation about a *service organization's* cont
 
 | Criterion | What it covers | NeuralMind evidence |
 |---|---|---|
-| **CC6.1** | Logical access security | The MCP server uses the stdio transport by default, so only the agent process that launched it can call it. The graph server binds to `127.0.0.1` and requires a per-session token unless started with `--host` or `--no-auth`. NeuralMind does not authenticate MCP callers |
+| **CC6.1** | Logical access security | The MCP server uses the stdio transport by default, so only the agent process that launched it can call it. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires a per-session token unless started with `--no-auth`. NeuralMind does not authenticate MCP callers |
 | **CC6.3** | Role-based access, least privilege | Per-tool permission sets for `admin`, `builder`, and `reader` (`neuralmind/mcp_security.py`), with denials written to the audit log. Each MCP call declares its own role and any caller can declare `admin`, so binding authenticated identities to roles is yours |
 | **CC6.7** | Restricting transmission of information | By default, no telemetry and no repository content sent off the machine; the one outbound request is the embedding-model download, pre-seedable with `NEURALMIND_ONNX_MODEL_DIR`. The opt-in `NEURALMIND_LLM_SEED=1` sends the project's `README.md` and `docs/architecture.md` to Anthropic |
 | **CC7.1** | Detecting vulnerabilities | CycloneDX SBOM on every tagged release, for your SCA scanner |
@@ -81,7 +81,7 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 
 | Practice | Requirement | NeuralMind provides | Still yours |
 |---|---|---|---|
-| **AC.L2-3.1.1** | Limit system access to authorized users | Stdio MCP transport by default, reachable only by the agent process that launched it. The HTTP MCP transport binds to `127.0.0.1`; the graph server does too and requires a per-session token, unless started with `--host` or `--no-auth`. NeuralMind does not authenticate MCP callers | Authenticating users: OS accounts, file permissions on `.neuralmind/`, and control over what can reach the MCP server |
+| **AC.L2-3.1.1** | Limit system access to authorized users | Stdio MCP transport by default, reachable only by the agent process that launched it. The HTTP MCP transport binds to `127.0.0.1`; the graph server does too by default (`--host` changes it) and requires a per-session token unless started with `--no-auth`. NeuralMind does not authenticate MCP callers | Authenticating users: OS accounts, file permissions on `.neuralmind/`, and control over what can reach the MCP server |
 | **AC.L2-3.1.2** | Limit access to permitted functions | Per-tool permission sets for `admin`, `builder`, and `reader`. Each MCP call declares its own role, and any caller can declare `admin` | Binding authenticated identities to roles; until you do, the permission sets limit a well-behaved agent, not a hostile caller |
 | **AC.L2-3.1.20** | Control connections to external systems | By default, no telemetry and no repository content sent off the machine. The opt-in `NEURALMIND_LLM_SEED=1` sends `README.md` and `docs/architecture.md` to Anthropic; it is off by default | Keeping `NEURALMIND_LLM_SEED` off in a CUI enclave; pre-seeding the model with `NEURALMIND_ONNX_MODEL_DIR` |
 | **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
