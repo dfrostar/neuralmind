@@ -2340,12 +2340,14 @@ agent queries. v0.6.0 made the canvas live: synapse + file events
 stream to the browser over SSE, affected nodes pulse, a sidebar log
 shows recent events. Stops cleanly on Ctrl-C.
 
-The server binds to 127.0.0.1 by default and prints a per-session
-auth-token URL on startup; pass that URL to the browser so untrusted
-local processes can't read your graph.
+The server binds to 127.0.0.1 by default and prints an auth-token URL on
+startup; pass that URL to the browser so untrusted local processes can't
+read your graph. The token persists in `~/.neuralmind/server-token.json`
+(mode `0600`), so the URL stays valid across restarts; delete that file and
+restart the server to rotate it.
 
 ```bash
-neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [--no-auth]
+neuralmind serve [project_path] [--host HOST] [--port PORT] [--no-browser] [--editor EDITOR] [--no-auth]
 ```
 
 #### Arguments
@@ -2358,10 +2360,11 @@ neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--host` | `127.0.0.1` | Address to bind to. The token stays on |
 | `--port` | `8787` | TCP port to bind to |
 | `--no-browser` | off | Don't auto-open a browser tab on startup |
 | `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
-| `--no-auth` | off | Disable the per-session auth token. Only use on a trusted host. |
+| `--no-auth` | off | Disable the auth token. Only use on a trusted host. |
 
 #### Examples
 

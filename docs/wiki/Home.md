@@ -296,8 +296,8 @@ The Obsidian-style force-directed graph that v0.6.0 made live first
 shipped in v0.5.4. Code nodes coloured by community; structural edges
 and Hebbian synapses drawn together; backlinks, synaptic neighbours,
 semantic quick-switch, and one-click open-in-editor. Per-session
-access token bound to 127.0.0.1 by default. Builds on v0.5.0's
-bundled MCP server.
+access token bound to 127.0.0.1 by default (since v0.46.2 the token
+persists across restarts). Builds on v0.5.0's bundled MCP server.
 
 ### v0.4.0 — Brain-like synapse layer
 
