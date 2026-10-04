@@ -2,7 +2,7 @@
   "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.75% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
   "_evidence_levels": {
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
-    "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number.",
+    "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number on the same machine. Token counts, and the ratios built on them, can shift slightly from one machine to another; where that has been measured, recall-type figures did not move, and the source page states the token spread (docs/benchmarks/public.md: per-repo mean tokens within 1.3% across CI runners; recall, found-rate and MRR identical on every machine compared).",
     "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
     "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional."
   },

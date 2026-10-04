@@ -106,7 +106,7 @@
             </div>
             <div class="card">
                 <h3>Pre-registered queries</h3>
-                <p>Queries are committed in <code>evals/public/manifest.json</code> before tuning. Every one is reported; re-running yields identical numbers.</p>
+                <p>Queries are committed in <code>evals/public/manifest.json</code> before tuning. Every one is reported. Re-runs have matched recall, found-rate and MRR exactly on every machine compared; token counts can differ slightly between machines (<a href="public.md#how-exactly-a-re-run-reproduces">how much</a>).</p>
             </div>
         </div>
 
@@ -189,12 +189,13 @@
         <div class="codeblock">
             <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 pip install -e . tiktoken
-python -m evals.public.run">Copy</button>
-            <pre><span class="cmt"># Reproduce it yourself — no trust required. Deterministic:</span>
-<span class="cmt"># your numbers match the tables above to the token.</span>
+NEURALMIND_ORT_THREADS=1 python -m evals.public.run">Copy</button>
+            <pre><span class="cmt"># Reproduce it yourself — no trust required. Recall, found-rate and MRR</span>
+<span class="cmt"># should match the tables above exactly; token counts can differ slightly between</span>
+<span class="cmt"># machines (up to 1.3% on a per-repo mean in CI so far).</span>
 <span class="kw">git clone</span> https://github.com/dfrostar/neuralmind <span class="kw">&amp;&amp; cd</span> neuralmind
 <span class="kw">pip install</span> -e . tiktoken
-<span class="kw">python</span> -m evals.public.run</pre>
+NEURALMIND_ORT_THREADS=1 <span class="kw">python</span> -m evals.public.run</pre>
         </div>
     </div>
 </section>

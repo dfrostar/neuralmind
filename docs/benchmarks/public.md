@@ -11,14 +11,20 @@ token-reduction number with no correctness number attached is meaningless.
 ```bash
 git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 pip install -e . tiktoken           # source checkout — ships the evals/public harness
-python -m evals.public.run          # clones the pinned repos, prints the table
+NEURALMIND_ORT_THREADS=1 python -m evals.public.run   # clones the pinned repos, prints the table
 # or, from the clone: neuralmind benchmark --public
 ```
 
 > The benchmark harness (`evals/public`) ships in the **source tree**, not the
 > PyPI wheel, so run it from a clone — `pip install neuralmind` alone won't have
-> it. The pinned repos are cloned at fixed commit SHAs and the run is
-> deterministic, so your numbers match the table below to the token.
+> it. The pinned repos are cloned at fixed commit SHAs and nothing in the run
+> is random, so **gold-file recall, found-rate and MRR should match the tables
+> below exactly**; they have on every machine we've compared. **Token counts
+> can differ slightly between machines:** an Apple M3 reproduced the committed
+> v4.3.4 run byte for byte, but some CI runners land up to 1.3% off on a per-repo
+> mean. `NEURALMIND_ORT_THREADS=1` matches CI's configuration (it applies to
+> `neuralmind benchmark --public` too). What moves, and the evidence:
+> [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces).
 
 ---
 
@@ -31,7 +37,7 @@ python -m evals.public.run          # clones the pinned repos, prints the table
 | **Cost + correctness reported jointly** | The headline is "recall at N× fewer tokens," never a lone ratio. |
 | **Strong baselines, disclosed** | Not just naive whole-file dumps — we include keyword (`ripgrep`) and a function-level vector RAG using the *same encoder* NeuralMind uses. |
 | **Pre-registered queries, every one reported** | Queries are committed in `evals/public/manifest.json` before tuning; losses are shown, not hidden. |
-| **Deterministic** | Synapse injection is OFF (see "What this does *not* measure"). Re-running yields identical numbers. |
+| **Deterministic per machine** | Synapse injection is OFF (see "What this does *not* measure") and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall, found-rate and MRR have matched exactly, and token counts have moved slightly on some CI runners — see [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces). |
 
 ### The baselines
 
@@ -187,6 +193,86 @@ across runs, CI-gated on direction, budget-
   the *answering* signal — see below — but it stays a clearly-labeled secondary,
   never the headline.
 
+## How exactly a re-run reproduces
+
+Nothing in the run is random: synapse injection is off and no step samples,
+and every same-machine re-run we've done has been byte-identical. Across
+machines, correctness has not moved in any run we've compared, but token
+counts sometimes have. Only the two embedding-backed backends, `embedding-rag`
+and `neuralmind`, are affected, which points at floating-point results in the
+embedding path differing slightly between machines: a tiny difference can
+reorder near-tied candidates and change which chunks fill the context.
+
+| What you compare | What we've seen |
+|---|---|
+| Gold-file recall, found-rate, MRR | Identical in every query row and every per-repo summary, on every machine below |
+| `full-file` and `ripgrep` (no embeddings) | Identical |
+| `embedding-rag` and `neuralmind` token counts | Identical to the committed v4.3.4 run on the M3 and in one of the three CI runs. Between the two CI states below, 11 of 80 query rows differ, by 1 to 67 tokens (at most 14% of one query's context), and per-repo means by at most 1.3% |
+| Files in the assembled context | 4 of those 11 rows gain, lose or swap a file — never a gold file |
+| "vs full-file" ratios | Move with the means: the headline range is 45.0×–260.7× in the v4.3.4 run and 44.9×–259.5× in the other state |
+
+**CI runs (observed; CI gates drift, not exact reproduction).** The
+`public-benchmark-drift` job re-runs this benchmark on every PR and push to
+`main`, fails if any repo's recall moves more than 5 points or its mean
+tokens/query more than 10% from the committed snapshot, and uploads its fresh
+`results.json` as an artifact. The spread below is well inside those
+tolerances, so the check passes in either state. Artifacts are kept for 90
+days, which is why the numbers are copied here. Three `main` runs on 2026-10-03, compared against
+the snapshot committed at v4.3.4, had the same runner image (ubuntu-24.04
+`20260927.320.1`), CPython 3.12.14, identical third-party packages (numpy
+2.5.3, onnxruntime 1.30.0, tokenizers 0.23.2, turbovec 1.0.0, tiktoken 0.14.0)
+and `NEURALMIND_ORT_THREADS=1`. Each run landed exactly on one of two states:
+
+| Run | Commit | Fresh `results.json` |
+|---|---|---|
+| [37092548906](https://github.com/dfrostar/neuralmind/actions/runs/37092548906) | `c8c6b8f` | state B |
+| [37117393222](https://github.com/dfrostar/neuralmind/actions/runs/37117393222) | `cacadf4` | state A: byte-identical to the committed v4.3.4 file |
+| [37133642769](https://github.com/dfrostar/neuralmind/actions/runs/37133642769) | `8b1e827` | state B: byte-identical to `c8c6b8f`'s run |
+
+Code doesn't explain the split. `8b1e827` differs from `cacadf4` only in a test
+file, and `c8c6b8f`, from before `cacadf4`'s indexing changes, matches
+`8b1e827` byte for byte. With the software identical, the runner's hardware is
+the likely cause, since GitHub's hosted runners don't all have the same CPU.
+Which hardware difference decides it is not known. State A has come from three
+very different machines: the x86-64 AVX-512 host that produced the committed
+run, one CI runner, and the Apple M3 below. State B has come only from CI
+runners, and those jobs didn't log their CPU. The drift job logs the runner's
+CPU model and SIMD flags from now on, so the next split can be attributed.
+The self-benchmark has a recorded history of the same kind of host dependence
+(token totals differing between runners, hit rates identical), in
+[`tests/test_benchmark_regression.py`](../../tests/test_benchmark_regression.py).
+
+**Apple Silicon (two runs on one maintainer machine, not CI).** On 2026-10-03,
+an Apple M3 (macOS, arm64) ran the benchmark at `8b1e827`, the same code as the
+third CI run above, with Python 3.11.16 and numpy 2.4.6 (the newest numpy for
+Python 3.11) and CI's onnxruntime, tokenizers, turbovec and tiktoken versions.
+Its `results.json` was byte-identical to the committed v4.3.4 one, both with
+`NEURALMIND_ORT_THREADS=1` and with it unset (ONNX Runtime's default thread
+pool, on 8 cores). The unset run took about 3 minutes, the pinned one about 9½.
+
+Mean tokens/query in the two CI states, for the (repo, backend) pairs that
+differ:
+
+| repo | backend | v4.3.4 run (state A) | state B |
+|---|---|---:|---:|
+| `requests` | `embedding-rag` | 606.9 | 604.1 |
+| `requests` | `neuralmind` | 927.9 | 929.8 |
+| `click` | `embedding-rag` | 636.0 | 637.3 |
+| `click` | `neuralmind` | 711.3 | 702.0 |
+| `flask` | `embedding-rag` | 676.7 | 676.5 |
+| `rich` | `embedding-rag` | 669.2 | 670.4 |
+| `rich` | `neuralmind` | 891.9 | 895.8 |
+
+**Comparing your own run.** Add `--out bench/public` to the command at the top;
+`git diff bench/public/results.json` is then empty when your run matches the
+committed one byte for byte. `NEURALMIND_ORT_THREADS=1` matches CI's
+configuration. It made no difference on the M3, so treat it as a precaution
+rather than a requirement, and drop it if you want the faster run. Expect
+recall, found-rate and MRR to match exactly; token counts may match byte for
+byte or land close to the tables. The spread above is what we've seen for this
+snapshot so far, not a guaranteed bound; a regenerated snapshot needs its own
+check.
+
 ## Answerability arm — `--judge` (opt-in, secondary signal)
 
 Gold-file recall measures *locating* the right file, not *answering* the
@@ -264,7 +350,11 @@ could not be checked against the data they cited. (Its "93.6%" was also the
 unweighted average of the per-repo means, labelled as a weighted mean.) The
 tables above and `results.json` now come from the same run: two independent
 runs from fresh clones on the same host (x86-64, AVX-512) produced
-byte-identical output. The movement since the previous tables: `requests`
+byte-identical output. That shows the run repeats on one machine, not that
+every machine gets these bytes: some CI runners have come out up to 67 tokens
+off on individual queries (at most 1.3% on a per-repo mean), with identical
+recall — see [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces).
+The movement since the previous tables: `requests`
 recovers `xfile-send-adapter` (recall 0.89 → 0.93); every other recall figure
 is unchanged, with small shifts in tokens and MRR.
 
