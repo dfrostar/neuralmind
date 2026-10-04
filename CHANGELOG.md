@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.5.0](https://github.com/dfrostar/neuralmind/compare/v4.4.0...v4.5.0) (2026-10-04)
+
+
+### Features
+
+* benchmark's measured baseline counts code only, in the context's units, with the 50K ratio beside it ([#557](https://github.com/dfrostar/neuralmind/issues/557)) ([bcad5b9](https://github.com/dfrostar/neuralmind/commit/bcad5b9964981789bff34cabac570874ad2e091a))
+* measurement you can trust — gitignore-aware index, read-only queries, project eval (v4.5.0 specs 4, 5, 6) ([#548](https://github.com/dfrostar/neuralmind/issues/548)) ([cacadf4](https://github.com/dfrostar/neuralmind/commit/cacadf4590bc788d0f88f0ee7edd573581c172ff))
+
+
+### Bug Fixes
+
+* **hooks:** stop the PostToolUse compression hooks adding tokens; add a compression benchmark ([#546](https://github.com/dfrostar/neuralmind/issues/546)) ([1806907](https://github.com/dfrostar/neuralmind/commit/18069070232634814e54c9dcfe230e1994a8da11))
+
+
+### Documentation
+
+* **bench:** say what a public-benchmark re-run actually reproduces ([#566](https://github.com/dfrostar/neuralmind/issues/566)) ([b13c3ca](https://github.com/dfrostar/neuralmind/commit/b13c3ca5f27be7e77040acae781ed1be282d0ded))
+* correct SOC 2 criteria, add CMMC 2.0 evidence mapping ([#564](https://github.com/dfrostar/neuralmind/issues/564)) ([4dc1b1b](https://github.com/dfrostar/neuralmind/commit/4dc1b1b3dad82beb84f7dda845e6a43c3bdaa33d))
+
 ## [4.4.0](https://github.com/dfrostar/neuralmind/compare/v4.3.5...v4.4.0) (2026-10-03)
 
 
