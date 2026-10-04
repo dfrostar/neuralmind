@@ -93,7 +93,7 @@ language via FTS5. But the design choices diverge sharply from both:
 - **No LLM in the write or invalidation path.** Mem0 and Graphiti both
   *extract* memories automatically from raw conversation via an LLM call.
   NeuralMind's decision memory is explicitly recorded — the agent or
-  developer calls `neuralmind memory record --title ... --rationale ...`
+  developer calls `neuralmind decisions record --title ... --rationale ...`
   themselves; nothing is inferred from a transcript. Invalidation is
   equally rule-based: a decision goes stale when its `files_affected`
   changes (file-touch, commit mismatch, age) or a cascade rule fires — not
