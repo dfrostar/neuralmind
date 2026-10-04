@@ -52,7 +52,7 @@ Git Repository
        ↓
 [Build Pipeline] → [PostgreSQL pgvector] ← [Audit Logs]
        ↓
-[MCP Server] (with RBAC)
+[MCP Server] (role policy)
        ↓
 Claude Code / Cursor / Internal Tools
 ```
@@ -116,12 +116,11 @@ neuralmind-mcp \
   --project-path /path/to/project \
   --backend postgres \
   --db-url postgresql://neuralmind:password@db.company.com/neuralmind \
-  --rbac-enabled \
   --rate-limit-per-minute 60 \
   --port 8000
 ```
 
-**Pros:** Shared index, audit trail, RBAC, scales to 1M+ nodes
+**Pros:** Shared index, audit trail, role policy, scales to 1M+ nodes
 **Cons:** Requires infrastructure, complexity
 
 ---
@@ -182,7 +181,6 @@ services:
     environment:
       NEURALMIND_BACKEND: postgres
       NEURALMIND_DB_URL: postgresql://postgres:secure_password@db:5432/neuralmind
-      NEURALMIND_RBAC_ENABLED: "true"
     ports:
       - "8000:8000"
     depends_on:
@@ -217,13 +215,6 @@ backend:
     database: neuralmind
     user: neuralmind
     passwordSecret: neuralmind-db-pass
-
-rbac:
-  enabled: true
-  roles:
-    - name: viewer
-    - name: developer
-    - name: admin
 
 resources:
   requests:
@@ -282,59 +273,26 @@ neuralmind-mcp \
 
 ### Access Control
 
-**1. RBAC Configuration**
-```python
-from neuralmind.mcp_security import MCPSecurityMiddleware, Role
+NeuralMind does not authenticate callers, and its HTTP MCP transport is an
+unfinished skeleton with no OAuth support. Each MCP tool call declares its own
+role, and `security.roles` in `neuralmind-backend.yaml` decides what each role
+can call:
 
-# Define roles
-roles = {
-    "viewer": {
-        "permissions": ["query", "search", "wakeup"],
-        "rate_limit": 30  # per minute
-    },
-    "developer": {
-        "permissions": ["query", "search", "skeleton", "audit-report"],
-        "rate_limit": 60
-    },
-    "admin": {
-        "permissions": ["*"],
-        "rate_limit": 0  # unlimited
-    }
-}
-
-# Enforce per request
-middleware = MCPSecurityMiddleware(
-    project_path=".",
-    user_id=request.user.email,
-    role=get_user_role(request.user),  # From LDAP/OAuth
-    rate_limit_config=RateLimit(calls_per_minute=60)
-)
+```yaml
+# neuralmind-backend.yaml, in the project root
+security:
+  roles:
+    builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
+    reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
+  rate_limit:
+    max_calls: 60
+    window_seconds: 60
 ```
 
-**2. Authentication**
-```bash
-# OAuth 2.0 / SAML integration
-# Route MCP server through auth proxy:
-# Client → [Auth Proxy] → [NeuralMind MCP] → [PostgreSQL]
-
-# Example: nginx with OAuth2 proxy
-upstream neuralmind {
-    server localhost:8000;
-}
-
-server {
-    listen 443 ssl;
-    server_name neuralmind.company.com;
-    
-    ssl_certificate /etc/ssl/certs/cert.pem;
-    ssl_certificate_key /etc/ssl/private/key.pem;
-    
-    location / {
-        auth_request /oauth2/auth;
-        proxy_pass http://neuralmind;
-    }
-}
-```
+A role the policy doesn't list gets no tools, so leaving `admin` out caps what
+any caller can claim. Who can reach the MCP server at all is up to the host:
+stdio by default, or OS accounts and network controls around it. See
+[SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
 ### Secret Management
 
@@ -459,7 +417,6 @@ curl http://localhost:8000/metrics
 # Includes:
 # - neuralmind_query_duration_seconds
 # - neuralmind_index_size_bytes
-# - neuralmind_rbac_rejections_total
 # - neuralmind_audit_events_total
 ```
 
@@ -627,7 +584,7 @@ neuralmind build . --force --optimize
 ## Best Practices Checklist
 
 - ✅ Use PostgreSQL for teams >20 people
-- ✅ Enable RBAC and audit logging
+- ✅ Set `security.roles` (without `admin` unless needed) and keep audit logging on
 - ✅ Encrypt data in transit (TLS) and at rest
 - ✅ Back up daily with recovery tested
 - ✅ Monitor index health and query latency

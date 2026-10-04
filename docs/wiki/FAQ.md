@@ -273,14 +273,14 @@ Cons: Requires infrastructure
 
 ### "Can I restrict who can use NeuralMind?"
 
-**Yes, with MCP server + RBAC:**
-```bash
-# Launch MCP with access control
-neuralmind-mcp . --rbac-enabled \
-  --admin-users alice@company.com \
-  --developer-users bob@company.com,charlie@company.com \
-  --viewer-users intern@company.com
-```
+**Partly.** NeuralMind doesn't authenticate users. Who can use it is decided by
+who can run the agent that launches its MCP server (stdio, the default) and who
+can read the project's `.neuralmind/` directory.
+
+Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
+each role can call. Callers declare their own role, so leave `admin` out of the
+policy to cap what any caller can reach. See the
+[Security Guide](../SECURITY-GUIDE.md#access-control).
 
 ---
 

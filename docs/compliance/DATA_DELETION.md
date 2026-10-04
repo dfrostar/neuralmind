@@ -1,8 +1,8 @@
 # Data Deletion Procedure
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Control:** P3.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** C1.2, P4.3
 
 ---
 
