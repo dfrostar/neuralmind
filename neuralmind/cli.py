@@ -4941,13 +4941,13 @@ def cmd_ci_check(args):
 
 
 def cmd_last(args):
-    """Print the most recent cached bash output (recovery without re-running).
+    """Print the most recent cached bash output (see it again without re-running).
 
-    Whenever NeuralMind's PostToolUse hook compresses a Bash output, it
-    stashes the raw stdout/stderr to ``.neuralmind/last_output.json``.
-    This command surfaces that cache so an agent can fetch the dropped
-    middle on demand instead of re-running an expensive command with
-    NEURALMIND_BYPASS=1.
+    NeuralMind's Bash PostToolUse hook stashes the stdout/stderr of each Bash
+    call Claude Code reports as successful to ``.neuralmind/last_output.json``.
+    A failing call fires PostToolUseFailure instead, so it isn't cached. This
+    command prints that cache, so the last output can be read again without
+    re-running an expensive command.
 
     Credentials are redacted on the way into the cache, so a value shown
     as ``[REDACTED:<kind>]`` here was never written to disk. The header
@@ -5010,11 +5010,15 @@ def cmd_install_hooks(args):
         print(f"✓ NeuralMind hooks {action} at {path}")
         if action == "installed":
             print(
-                "  PostToolUse hooks active: compress-read, compress-bash, "
-                "cap-search, edit-activity (reuse feedback)"
+                "  Hooks active: session memory (SessionStart), prompt recall "
+                "(UserPromptSubmit), stale-decision guard (PreToolUse), reuse feedback "
+                "and the `neuralmind last` output cache (PostToolUse), session digest "
+                "(Stop, SessionEnd)"
             )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
-            print("  Set NEURALMIND_BYPASS=1 env var to disable compression temporarily.")
+            print(
+                "  Set NEURALMIND_BYPASS=1 to switch every NeuralMind hook action off temporarily."
+            )
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -5767,9 +5771,10 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description=(
-            "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
-            "Local semantic codebase index + MCP server + PostToolUse compression hooks "
-            "for Claude Code, Cursor, Cline, and Continue."
+            "NeuralMind — persistent codebase memory for AI coding agents. A local "
+            "semantic code index and MCP server for Claude Code, Codex, Cursor, Cline and "
+            "Continue, plus Claude Code lifecycle hooks. Measure the token savings on your "
+            "repo with `neuralmind benchmark .`."
         ),
         epilog=(
             "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
@@ -7176,11 +7181,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo_p.set_defaults(func=cmd_demo)
 
-    # last command — recovery cache for the most recent compressed bash output
+    # last command — the cached output of the most recent successful Bash call
     last_p = subparsers.add_parser(
         "last",
         help="Print the last bash output the PostToolUse hook cached "
-        "(recover dropped content without re-running)",
+        "(see it again without re-running)",
     )
     last_p.add_argument(
         "project_path",
@@ -7191,10 +7196,11 @@ def build_parser() -> argparse.ArgumentParser:
     last_p.add_argument("--json", "-j", action="store_true")
     last_p.set_defaults(func=cmd_last)
 
-    # install-hooks command — Claude Code PostToolUse integration
+    # install-hooks command — Claude Code lifecycle integration
     hooks_p = subparsers.add_parser(
         "install-hooks",
-        help="Install/uninstall Claude Code PostToolUse compression hooks",
+        help="Install/uninstall NeuralMind's Claude Code hooks (session memory, "
+        "prompt recall, stale-decision guard, Bash output cache)",
     )
     hooks_p.add_argument(
         "project_path",

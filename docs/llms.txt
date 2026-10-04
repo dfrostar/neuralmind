@@ -40,6 +40,7 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
 - [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
 - [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness
+- [Tool-output compression benchmark](https://docs.neuralmind.uk/benchmarks/compression.html): what the PostToolUse hooks did to tokens in Claude Code (they added them), and why they no longer inject anything
 
 ## Comparisons
 
@@ -57,7 +58,7 @@ Key facts, each backed by a runnable eval with its data committed:
 
 ## Use cases
 
-- [Claude Code daily driver](https://docs.neuralmind.uk/use-cases/claude-code.html): hooks, tool-output compression, synapse memory on session start
+- [Claude Code daily driver](https://docs.neuralmind.uk/use-cases/claude-code.html): hooks, synapse memory on session start, prompt-time recall
 - [Cost optimization](https://docs.neuralmind.uk/use-cases/cost-optimization.html)
 - [Growing monorepo](https://docs.neuralmind.uk/use-cases/growing-monorepo.html)
 - [Offline / regulated environments](https://docs.neuralmind.uk/use-cases/offline-regulated.html)

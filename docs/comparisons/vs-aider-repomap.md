@@ -12,15 +12,15 @@ Aider builds a concise, tree-sitter-derived map of your repository — a ranked 
 | Semantic retrieval | No — syntactic signal only | Yes — embedding similarity over all nodes |
 | Output | Ranked signatures injected every turn | On-demand progressive layers (wakeup / query / skeleton) |
 | Host | Aider CLI only | Any MCP agent + CLI + copy-paste to any LLM |
-| Tool-output compression | None | Read/Bash/Grep PostToolUse hooks |
-| Learns from usage | No | Yes — a Hebbian synapse layer learns associations automatically from queries, edits, and tool calls (with decay) |
+| Tool-output compression | None | None (its Read/Bash/Grep PostToolUse hooks used to compress; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
+| Learns from usage | No | Yes — a Hebbian synapse layer learns associations automatically from queries, prompts, and edits (with decay) |
 | Languages | Whatever tree-sitter supports | Same (via graphify) |
 | Install methods | `pip install aider-chat` + LLM API key | `pip` / `pipx` / `uv` / Docker / source — no API key required for the local index |
 
 ## When to pick which
 
 - **Pick Aider repo-map** if you use Aider and want a zero-dependency, deterministic map.
-- **Pick NeuralMind** if you want semantic (not just syntactic) retrieval, want it outside Aider, or want the consumption-side compression. Aider's map answers "what symbols exist"; NeuralMind's query answers "which 800 tokens best explain X".
+- **Pick NeuralMind** if you want semantic (not just syntactic) retrieval or want it outside Aider. Aider's map answers "what symbols exist"; NeuralMind's query answers "which 800 tokens best explain X".
 
 They compose: you can feed NeuralMind's `wakeup` output into an Aider session as additional context.
 

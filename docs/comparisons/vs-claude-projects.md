@@ -14,10 +14,10 @@ Claude Projects is Anthropic's feature for attaching a persistent set of files (
 | Cost per turn | Pays for all attached content every turn | Pays only for the ~800 tokens actually retrieved |
 | File limit | Bounded by the attached-files quota | Bounded only by disk |
 | Works in IDE agents | No | Yes |
-| Tool-output compression | No | Yes |
+| Tool-output compression | No | No (its PostToolUse hooks used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Offline | No | Yes |
 | Model choice | Claude only | Any model |
-| Install methods | Claude.ai web account | `pip` / `pipx` / `uv` / Docker / source — fully local |
+| Install methods | Claude.ai web account | `pip` / `pipx` / `uv` / Docker / source — runs locally |
 
 ## When to pick which
 

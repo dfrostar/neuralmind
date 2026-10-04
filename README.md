@@ -20,7 +20,7 @@ that publishes every miss.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
-> - Receives PostToolUse compression automatically (Bash output → errors + signals)
+> - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook)
 > - Queries your codebase in ~800 tokens instead of ~50,000
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
@@ -76,7 +76,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 
 | Agent | What You Get | Status |
 |-------|-------------|--------|
-| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. PostToolUse compression runs automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
+| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. Prompt-time recall and a stale-decision guard run automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
 | **Claude Teams** | `neuralmind memory publish` writes a learned-weights bundle (no source code); commit it and teammates' agents inherit it on their next session. | ✅ Tested |
 | **Cursor** | `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory. | 🔬 Theoretical |
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
@@ -181,6 +181,19 @@ truncation currently wins slightly: **0.451 vs 0.505 expected-fact recall, a
 **−0.10**; earlier releases measured +0.013 to +0.143. We publish it as a loss
 rather than drop the eval.
 
+### 10. Tool-output compression (measured, and removed)
+
+Through v4.4.0, NeuralMind's PostToolUse hooks handed Claude Code compressed
+copies of `Bash` and `Grep` output. Claude Code adds a hook's
+`additionalContext` next to the tool result rather than replacing it, so the
+copies cost tokens instead of saving them: **+17.5% on Bash calls and +22.1% on
+content-mode Grep**, and the Read hook never saw Claude Code's payload at all
+([compression benchmark](docs/benchmarks/compression.md)). From v4.5.0 the
+hooks inject nothing, so Claude sees exactly the tool result. The compressors
+themselves would cut 66–87%, but a Read replaced by its skeleton would keep
+none of the file's source lines. So nothing replaces tool output until something
+keeps what the agent needs.
+
 ---
 
 ## Use Cases
@@ -236,7 +249,7 @@ neuralmind build .          # index the codebase (tree-sitter, ~seconds to minut
 neuralmind wakeup .         # what the agent sees at session start
 neuralmind query . "How does authentication work?"  # ~800 tokens, not 50,000
 
-neuralmind install-hooks .  # Claude Code: automatic PostToolUse compression
+neuralmind install-hooks .  # Claude Code: session memory, prompt recall, stale-decision guard
 neuralmind serve .          # Obsidian-style graph view in your browser
 neuralmind savings . --cost # measured token savings, priced for your model
 neuralmind doctor           # verify the install end to end — incl. graph vs files on disk
@@ -370,9 +383,10 @@ neuralmind benchmark .
   you work.
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
-- **Tool-output compression + recovery.** PostToolUse hooks compress noisy
-  Bash output to errors + signals, and `neuralmind last` recovers the full
-  output the compressor trimmed from a cache written before compression.
+- **`neuralmind last`.** The Bash hook caches the latest successful command's
+  output, credentials redacted, so it can be printed again without re-running
+  the command. A failing command fires a different hook event and isn't
+  cached.
 - **Team memory.** `neuralmind memory publish` writes a learned-weights
   bundle (no source code); commit it and teammates' agents inherit it on
   their next session — a fresh clone starts with the team's earned intuition.
@@ -424,11 +438,16 @@ demand with `python -m evals.public.run`, raw per-query data committed:
 - **Content QA (N-16):** book/markdown content retrieval — 30 queries, 11 chapters, 150K-word corpus. N-15 IR metrics + RAGAS on long-form content. `ingest-content` CLI + `benchmark --content` end-to-end command.
 - Backend parity gate: the built-in tree-sitter backend is held within
   tolerance of the legacy graphify backend on every PR.
+- **Tool-output compression:** measured on v4.3.4, the PostToolUse hooks added
+  17.5% to Bash calls and 22.1% to content-mode Grep rather than saving
+  anything; they now inject nothing
+  ([compression benchmark](docs/benchmarks/compression.md)).
 
 ![Benchmark chart](docs/images/benchmark_chart.png)
 
 Methodology, gold sets, and community submissions:
-[benchmarks/](benchmarks/) · [public methodology and results](docs/benchmarks/public.md).
+[benchmarks/](benchmarks/) · [public methodology and results](docs/benchmarks/public.md) ·
+[tool-output compression](docs/benchmarks/compression.md).
 
 <!-- COMMUNITY-BENCHMARKS:START -->
 | Project | Lang | Nodes | Wakeup | Avg Query | Reduction (vs fixed 50K) | Reduction (vs measured code) | Model | Submitted |
@@ -464,7 +483,7 @@ _3 submission(s). **vs fixed 50K**: a fixed 50,000-token estimate over tokens pe
   [Third-party LLM & media disclosure](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md) ·
   [SDLC policy](docs/compliance/SDLC_POLICY.md)
 
-Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
+Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action),
 `NEURALMIND_SYNAPSE_INJECT=0` (skip prompt-time recall),
 `NEURALMIND_SYNAPSE_EXPORT=0` (skip memory export),
 `NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import),

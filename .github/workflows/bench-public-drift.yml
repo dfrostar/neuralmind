@@ -72,3 +72,25 @@ jobs:
             public-report.json
             bench/public/results.json
             bench/public/report.md
+
+      # Compression benchmark: its Read and Grep arms need these same pinned
+      # checkouts (.bench-work, the public run's default) and an index per
+      # repo, so only this job can recompute them; the Bash arm is redone
+      # offline by tests/test_compression_benchmark.py. Every call in the
+      # fresh run must match bench/compression/results.json exactly (see
+      # evals/compression/drift.py). Runs even if the public check failed.
+      - name: Run the compression benchmark
+        id: compression
+        if: ${{ !cancelled() }}
+        run: python -m evals.compression.run --work-dir .bench-work --out "$RUNNER_TEMP/compression"
+
+      - name: Diff against committed compression results
+        if: ${{ !cancelled() && steps.compression.outcome == 'success' }}
+        run: python -m evals.compression.drift --fresh "$RUNNER_TEMP/compression/results.json"
+
+      - name: Upload fresh compression results
+        if: ${{ !cancelled() && steps.compression.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: compression-benchmark-drift
+          path: ${{ runner.temp }}/compression/

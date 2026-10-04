@@ -287,13 +287,19 @@ is **$4,125/month in lost engineering time** before any LLM cost.
 (15 devs × 15 min/day × 22 days × $50/hr = $4,125 — the earlier
 $1,650 figure was a math error, corrected 2026-07-31.)
 
-**With NeuralMind:** `install-hooks` auto-compresses large Read/Bash/Grep
-output (the per-tool reduction is not benchmarked yet). Context-limit failures drop to ~zero. LLM bill
-drops 1.5–3× alongside.
+**With NeuralMind:** agents answer code questions from a retrieved
+slice (`neuralmind query`, or `neuralmind_query` over MCP) instead of
+reading whole files into context. NeuralMind doesn't shrink the
+`Read`/`Bash`/`Grep` output the agent still produces: its hooks used
+to, and
+[measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
+that added tokens, so they now inject nothing. How many context-limit
+failures retrieval alone prevents is not measured. LLM bill drops
+1.5–3×.
 
-**Combined value:** $4,125 productivity recovery + $200–400 LLM
-savings = **~$4,500/month** for a team of 15. ROI on 2 hours of
-setup: ≥10×.
+**Combined value:** the $200–400/month LLM saving is the derived part.
+Count any of the $4,125 in lost time only after you've measured how
+often your agents still hit the limit with NeuralMind installed.
 
 ### Scenario B — Solo dev with growing monorepo
 
@@ -341,7 +347,7 @@ Skeptical? Each row of this table is a single command:
 | The "works on my code" claim | `neuralmind benchmark . --contribute` | YOUR ratio, YOUR tokens, YOUR dollar estimate |
 | The "no repository content is transmitted" claim | Read [`SECURITY.md`](../SECURITY.md), audit dependencies (chromadb, mcp, pyyaml — all local-only), and run with network disabled (`unshare -n bash scripts/demo.sh` on Linux, or block on a firewall) — the demo completes after the first-run model download | local-only at runtime, not just at install |
 | The "incremental updates work" claim | `neuralmind build . --force` then `neuralmind build .` | second run reports ~all skipped |
-| The "composes with prompt caching" claim | Run any agent with NeuralMind's compressed Read output through your normal cached prompt — observe lower input tokens at cache reads | Math holds |
+| The "composes with prompt caching" claim | Run any agent with NeuralMind's retrieved context (`neuralmind query`) in place of whole-file reads through your normal cached prompt — observe lower input tokens at cache reads | Math holds |
 
 If any claim above doesn't reproduce, [open an issue](https://github.com/dfrostar/neuralmind/issues/new)
 — that's a higher-priority bug than any feature work.
