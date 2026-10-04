@@ -465,7 +465,8 @@ AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
-   changed record mid-log, not truncation or a recomputed chain
+   changed record mid-log, not changes at the end (records removed, or
+   edited or appended there without a hash) or a recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
    Not provided: use FIPS-validated full-disk encryption on the host
