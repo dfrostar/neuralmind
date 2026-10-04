@@ -160,4 +160,4 @@ def test_reader_still_cannot_write_decisions(temp_project):
         )
     )
     assert parsed["code"] == "security_denied"
-    assert parsed["reason"] == "rbac"
+    assert "Access denied for role 'reader'" in parsed["error"]
