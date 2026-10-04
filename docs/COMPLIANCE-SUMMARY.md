@@ -31,7 +31,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 - **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). Callers declare their own role and aren't authenticated — see `SECURITY-GUIDE.md` §Access Control
 - **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login)
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
-- **Auto-generated NIST AI RMF report:** `neuralmind audit-report . --compliance nist-ai-rmf --output report.md`
+- **Audit export for your assessor:** `neuralmind audit export . --format jsonl` (or `--format cef`). NeuralMind has no report generator, so build the report from the export
 
 ### MAP — impact assessment, context
 
@@ -43,13 +43,13 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 - **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark`); CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
-- **Query latency** logged for every retrieval — performance regressions visible in `audit-report` output
+- **Context tokens** recorded for every query in the audit log
 
 ### MANAGE — risk controls
 
-- **Secret detection** runs before any retrieval result is returned (configurable scanners)
+- **Secret scanning** before indexing: `neuralmind scan-for-secrets` is a separate step, and `build --redact-secrets` scrubs indexed text as a backstop. Neither runs at query time
 - **Rate limiting** enforceable at the MCP server boundary
-- **Anomaly alerts** — `events.jsonl` + the live activity feed surface unexpected access patterns in real time
+- **No anomaly detection or alerting.** Denied calls are in the audit log; feed `neuralmind audit export` to your SIEM to alert on them
 
 ---
 
