@@ -487,21 +487,26 @@ The full Level 2 table, including what stays your responsibility, is in
 
 | Threat | Likelihood | Impact | Mitigation |
 |--------|-----------|--------|-----------|
-| **Unauthorized access to MCP** | Medium | High | Stdio transport by default (no network port); keep any HTTP transport on localhost. NeuralMind has no authentication of its own |
-| **Secrets exposed in code** | High | Critical | Secret scanning + redaction |
-| **Index data breach** | Low | High | Encryption at rest + access logs |
-| **Query interception** | Low | Medium | TLS 1.3 + mutual auth |
-| **Resource exhaustion (DoS)** | Medium | Medium | Rate limiting + monitoring |
-| **Insider threat** | Low | Critical | Audit trail + least privilege |
-| **Configuration error** | Medium | High | Security checklist + automation |
+| **Unauthorized access to MCP** | Medium | High | Stdio transport by default (no network port); keep any HTTP transport on localhost. NeuralMind has no authentication of its own, and the server accepts any `project_path` its OS account can read, so confine that account |
+| **Secrets exposed in code** | High | Critical | `neuralmind scan-for-secrets` before indexing. It is a separate step, not automatic. `build --redact-secrets` scrubs embedded text but not node labels or `graph.json`. The Bash output cache is redacted automatically |
+| **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
+| **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
+| **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared, so least privilege comes from OS accounts |
+| **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios
 
-**Scenario 1: SQL Injection in queries**
+**Scenario 1: SQL injection through queries or tool arguments**
 ```
-Attack: Attacker crafts malicious query to extract schema
-Mitigation: Parameterized queries, input validation
-Status: ✅ Not vulnerable (GraphQL queries, no SQL)
+Attack: A crafted query or tool argument tries to inject SQL into
+        NeuralMind's SQLite stores
+Mitigation: Query text goes to the vector index, not into SQL. The SQLite
+            stores (synapses, decisions, index metadata) bind caller-supplied
+            values as parameters. SQL built with string formatting only
+            interpolates placeholders and fixed internal names
+Status: No known injection path. This comes from code review, not a
+        penetration test
 ```
 
 **Scenario 2: Privilege escalation**
@@ -509,15 +514,22 @@ Status: ✅ Not vulnerable (GraphQL queries, no SQL)
 Attack: A caller declares role "admin" to reach admin-only tools
 Mitigation: None in NeuralMind itself: roles are caller-declared. Leave
             admin out of security.roles, and limit who can reach the
-            MCP server
-Status: ⚠️ Possible with the default policy
+            MCP server. The policy comes from the neuralmind-backend.yaml of
+            the project_path the call names, and a project without one gets
+            the default policy, which includes admin
+Status: ⚠️ Possible with the default policy, and against any readable
+        project that has no security.roles
 ```
 
 **Scenario 3: Data exfiltration**
 ```
-Attack: User downloads entire index to external device
-Mitigation: Rate limiting, DLP rules, audit logs
-Status: ✅ Detected (100MB/hour limit, logged)
+Attack: A user copies the index or source text off the machine
+Mitigation: None in NeuralMind itself. Anyone who can read .neuralmind/ can
+            copy it directly, with no NeuralMind call. Calls through the MCP
+            server are rate-limited by count, not bytes, and recorded in the
+            audit log with actor, role, and tool; query and search events
+            include the query text
+Status: ⚠️ Not prevented. Use OS permissions and your DLP controls
 ```
 
 ---

@@ -1,282 +1,202 @@
-# Enterprise Deployment Guide
+# Deployment Guide
 
-**Deploying NeuralMind to production at scale with security, compliance, and reliability.**
+**How NeuralMind runs, what it opens, what it writes, and how to deploy it
+across a team.**
+
+NeuralMind is a local tool. Each developer (or CI job) runs it against a
+project checkout under their own OS account. It has no central server, no
+shared index, and no database server to run. Every command and setting below
+exists in the shipped code. If something you need isn't here, NeuralMind
+doesn't do it yet.
 
 ---
 
 ## Table of Contents
 
-- [Architecture Patterns](#architecture-patterns)
+- [What You Are Deploying](#what-you-are-deploying)
 - [Deployment Options](#deployment-options)
 - [Security Hardening](#security-hardening)
-- [Performance Tuning](#performance-tuning)
-- [Monitoring & Alerting](#monitoring--alerting)
+- [Index Size and Performance](#index-size-and-performance)
+- [Monitoring](#monitoring)
 - [Backup & Recovery](#backup--recovery)
-- [Scaling to Large Teams](#scaling-to-large-teams)
+- [Rolling Out to a Team](#rolling-out-to-a-team)
+- [Troubleshooting](#troubleshooting)
+- [Deployment Checklist](#deployment-checklist)
 
 ---
 
-## Architecture Patterns
+## What You Are Deploying
 
-### Single-Machine Deployment (Monorepo/Team)
+| Component | How it runs | Network |
+|---|---|---|
+| `neuralmind` CLI | Builds and queries the index, installs hooks | None, except the embedding-model download on a cold first build ([below](#outbound-network)) |
+| `neuralmind-mcp` | MCP server, launched by the agent over stdio | None. Opens no port |
+| `neuralmind serve` (optional) | Local graph-view UI | HTTP on `127.0.0.1:8787` by default, per-session token |
+| `neuralmind daemon start` (optional, experimental) | Keeps project state warm for faster repeat CLI queries | HTTP on `127.0.0.1:8787` by default, bearer token |
+| State | `<project>/.neuralmind/` | n/a |
 
-**Best for:** Teams <20 people, codebases <500K LOC
+`neuralmind-mcp` takes no command-line arguments. The agent passes the project
+with each tool call, as the `project_path` argument, so one server process can
+serve any project its OS account can read.
 
-```
-Developer Machines
-       ↓
-[NeuralMind CLI] → [Local ChromaDB] → [graph.json]
-       ↓
-Claude Code / Cursor / ChatGPT
-```
-
-**Setup:**
-```bash
-# Per developer
-pip install neuralmind
-graphify update /path/to/project
-neuralmind build /path/to/project
-```
-
-**Pros:** Zero infrastructure, instant setup, full privacy
-**Cons:** Index duplication, manual updates per developer
-
----
-
-### Centralized Shared Index (Enterprise)
-
-**Best for:** Teams 20-200+ people, mission-critical codebases
-
-```
-Git Repository
-       ↓
-[Build Pipeline] → [PostgreSQL pgvector] ← [Audit Logs]
-       ↓
-[MCP Server] (role policy)
-       ↓
-Claude Code / Cursor / Internal Tools
-```
-
-**Setup:**
-
-1. **PostgreSQL + pgvector** (central)
-```bash
-# On DB server
-docker run -d \
-  -e POSTGRES_DB=neuralmind \
-  -e POSTGRES_PASSWORD=secure_password \
-  -p 5432:5432 \
-  pgvector/pgvector:latest
-
-# Create neuralmind user
-psql -U postgres -c "CREATE USER neuralmind WITH PASSWORD 'password';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE neuralmind TO neuralmind;"
-```
-
-2. **Index Builder Pipeline** (CI/CD)
-```yaml
-# .github/workflows/build-index.yml
-name: Build NeuralMind Index
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-index:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
-      - run: pip install neuralmind graphifyy
-      - run: graphify update .
-      
-      - name: Build index
-        env:
-          NEURALMIND_BACKEND: postgres
-          NEURALMIND_DB_URL: postgresql://neuralmind:${{ secrets.DB_PASSWORD }}@db.company.com/neuralmind
-        run: neuralmind build . --backend postgres
-      
-      - name: Generate audit report
-        run: neuralmind audit-report . --format json --output audit_${{ github.run_number }}.json
-      
-      - uses: actions/upload-artifact@v3
-        with:
-          name: audit-report
-          path: audit_*.json
-```
-
-3. **MCP Server** (per team/environment)
-```bash
-# Launch MCP server with security
-neuralmind-mcp \
-  --project-path /path/to/project \
-  --backend postgres \
-  --db-url postgresql://neuralmind:password@db.company.com/neuralmind \
-  --rate-limit-per-minute 60 \
-  --port 8000
-```
-
-**Pros:** Shared index, audit trail, role policy, scales to 1M+ nodes
-**Cons:** Requires infrastructure, complexity
+The MCP server also has a Streamable HTTP transport
+(`NEURALMIND_MCP_TRANSPORT=streamable_http`). It is an unfinished skeleton: it
+returns placeholder responses rather than handling MCP calls, has no
+authentication, and binds to a hardcoded `127.0.0.1:8765`. Don't deploy it.
+Use stdio.
 
 ---
 
 ## Deployment Options
 
-### Option 1: Local Development (Recommended for Teams <20)
+### Option 1: Per-developer install (pip)
 
-**Installation per developer:**
 ```bash
 pip install neuralmind
-neuralmind install-hooks .  # PostToolUse compression
-neuralmind init-hook .       # Auto-rebuild on commits
+cd /path/to/project
+neuralmind build .           # builds .neuralmind/graph.json and the vector index
+neuralmind install-mcp .     # registers neuralmind-mcp with Claude Code (--client or --all for others)
+neuralmind install-hooks .   # Claude Code PostToolUse output compression (optional)
+neuralmind init-hook .       # git post-commit index rebuild + pre-commit drift guard (optional)
 ```
 
-**Pros:** Instant, private, zero infrastructure  
-**Cons:** Index duplication, requires manual sync
+`neuralmind build` parses the project with its built-in tree-sitter graph
+backend. An external `graphify` install is optional. NeuralMind reads an
+existing `graphify-out/graph.json` for backward compatibility, and
+`neuralmind build . --regenerate-graph` replaces a stale one with the built-in
+backend.
 
----
+### Option 2: Container image (GHCR)
 
-### Option 2: Docker Container
+Every release tag publishes a multi-platform image (linux/amd64 and
+linux/arm64) through `.github/workflows/docker-publish.yml`:
 
-**Dockerfile for MCP server:**
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-RUN pip install neuralmind
-
-# Copy project
-COPY . /project
-
-# Build index on startup
-RUN cd /project && graphify update . && neuralmind build .
-
-# Launch MCP server
-CMD ["neuralmind-mcp", "--project-path", "/project", "--port", "8000"]
-```
-
-**Docker Compose** (MCP + PostgreSQL):
-```yaml
-version: '3.9'
-
-services:
-  db:
-    image: pgvector/pgvector:latest
-    environment:
-      POSTGRES_DB: neuralmind
-      POSTGRES_PASSWORD: secure_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  neuralmind-mcp:
-    build: .
-    environment:
-      NEURALMIND_BACKEND: postgres
-      NEURALMIND_DB_URL: postgresql://postgres:secure_password@db:5432/neuralmind
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-
-volumes:
-  pgdata:
-```
-
-**Deploy:**
 ```bash
-docker-compose up -d
+docker pull ghcr.io/dfrostar/neuralmind:vX.Y.Z   # pin a release tag
+docker pull ghcr.io/dfrostar/neuralmind:latest   # moves with each stable release
 ```
 
----
+Pick the tag from the [releases page](https://github.com/dfrostar/neuralmind/releases).
+The image is built from the repo-root `Dockerfile`: a `python:3.12-slim` base,
+NeuralMind and `graphifyy` installed from prebuilt wheels, running as the
+non-root user `neuralmind`. The default command prints `neuralmind --help`, so
+name the command you want.
 
-### Option 3: Kubernetes (Large Enterprise)
+Constraints to plan around:
 
-**Helm values** (`values.yaml`):
-```yaml
-replicaCount: 3
+- **Mount the project read-write.** NeuralMind writes `.neuralmind/` into the
+  project, and the MCP server appends to the audit log on every tool call.
+  On a read-only mount those calls fail. The `neuralmind` user in the container
+  needs write access to the mount.
+- **Mount the project at the same absolute path the agent uses.** The agent
+  sends `project_path` as it sees it, and the container has to resolve the
+  same path.
+- **The image doesn't bundle the embedding model.** Without one, every fresh
+  container downloads it on its first build, and `--rm` throws it away again.
+  Copy the extracted model from a host that has built once
+  (`~/.cache/neuralmind/onnx_models/all-MiniLM-L6-v2/onnx/`), mount it
+  read-only, and point `NEURALMIND_ONNX_MODEL_DIR` at it. That also keeps the
+  container off the network ([below](#outbound-network)).
 
-image:
-  repository: ghcr.io/dfrostar/neuralmind
-  tag: v0.4.2
+Build the index, then run the MCP server over stdio:
 
-backend:
-  type: postgres
-  postgres:
-    host: postgres.default.svc.cluster.local
-    port: 5432
-    database: neuralmind
-    user: neuralmind
-    passwordSecret: neuralmind-db-pass
-
-resources:
-  requests:
-    memory: "2Gi"
-    cpu: "1"
-  limits:
-    memory: "4Gi"
-    cpu: "2"
-
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-```
-
-**Deploy:**
 ```bash
-helm install neuralmind ./charts/neuralmind -f values.yaml
+docker run --rm \
+  -v /srv/myproject:/srv/myproject \
+  -v /opt/models/all-MiniLM-L6-v2/onnx:/models/minilm:ro \
+  -e NEURALMIND_ONNX_MODEL_DIR=/models/minilm \
+  ghcr.io/dfrostar/neuralmind:vX.Y.Z neuralmind build /srv/myproject
+
+# In the agent's MCP config: command "docker", with these args
+docker run --rm -i \
+  -v /srv/myproject:/srv/myproject \
+  -v /opt/models/all-MiniLM-L6-v2/onnx:/models/minilm:ro \
+  -e NEURALMIND_ONNX_MODEL_DIR=/models/minilm \
+  ghcr.io/dfrostar/neuralmind:vX.Y.Z neuralmind-mcp
 ```
+
+To reach the graph view from the host, bind it to all interfaces inside the
+container and publish the port on the host's loopback only. Leave the token on:
+
+```bash
+docker run --rm -p 127.0.0.1:8787:8787 \
+  -v /srv/myproject:/srv/myproject \
+  -v /opt/models/all-MiniLM-L6-v2/onnx:/models/minilm:ro \
+  -e NEURALMIND_ONNX_MODEL_DIR=/models/minilm \
+  ghcr.io/dfrostar/neuralmind:vX.Y.Z \
+  neuralmind serve /srv/myproject --host 0.0.0.0 --no-browser
+```
+
+The server prints the URL with its token (`http://0.0.0.0:8787/?token=…`).
+Open it as `http://127.0.0.1:8787/?token=…` on the host.
+
+The repository contains no Helm chart or Kubernetes manifests. NeuralMind has
+no network service to scale. The MCP server is a stdio process owned by one
+agent session.
+
+### Option 3: CI
+
+A CI job can install NeuralMind and use its exit codes as gates:
+
+```bash
+pip install neuralmind
+neuralmind scan-for-secrets .   # exit 1 on any high-confidence finding
+neuralmind build .
+neuralmind health .             # exit 0 healthy, 1 stale, 2 no index
+```
+
+An index built in CI stays on that runner. Nothing publishes it to developers.
 
 ---
 
 ## Security Hardening
 
-### Network Security
+### Network exposure
 
-**1. Firewall Rules** (allow only from trusted networks)
-```bash
-# Allow only internal IPs to MCP server
-ufw allow from 10.0.0.0/8 to any port 8000
-ufw allow from 192.168.0.0/16 to any port 8000
+- **MCP over stdio opens no port.** Only the agent that launched
+  `neuralmind-mcp` can call it.
+- **The graph view and the daemon are plain HTTP.** Neither serves TLS. Both
+  bind to `127.0.0.1` by default and require a token. `neuralmind serve --host`
+  changes the bind address but keeps the token. `--no-auth` removes it, so use
+  `--no-auth` only on a host nobody else can reach.
+- **`/healthz` on the graph view is unauthenticated** by design, so container
+  health checks work without the token. It returns only `{"status": "ok",
+  "version": "…"}`.
+- To view the graph from another machine, use an SSH tunnel
+  (`ssh -L 8787:127.0.0.1:8787 host`) rather than binding to a routable
+  interface. If you do expose it, terminate TLS in a reverse proxy you
+  operate. NeuralMind provides no TLS of its own.
 
-# Deny everything else
-ufw default deny incoming
-```
+### Outbound network
 
-**2. TLS/SSL** (encrypt all connections)
-```bash
-# Generate self-signed cert (dev) or use Let's Encrypt (prod)
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365
+By default NeuralMind sends no telemetry and transmits no repository content
+off your machine. In normal use it makes one outbound request, and one more
+if you opt in:
 
-# Run MCP server with TLS
-neuralmind-mcp \
-  --project-path /path \
-  --tls-cert cert.pem \
-  --tls-key key.pem \
-  --port 8000
-```
+1. **Embedding-model download.** On a cold first build, NeuralMind downloads
+   the `all-MiniLM-L6-v2` ONNX archive over HTTPS and checks it against a
+   pinned SHA-256 before extracting it to `~/.cache/neuralmind/onnx_models/`.
+   For air-gapped or egress-restricted hosts, pre-extract the model and set
+   `NEURALMIND_ONNX_MODEL_DIR` to its folder. See the
+   [air-gapped walkthrough](use-cases/air-gapped.md).
+2. **Opt-in documentation seeding.** With both `NEURALMIND_LLM_SEED=1` and
+   `ANTHROPIC_API_KEY` set, NeuralMind sends the text of `README.md` and
+   `docs/architecture.md` to Anthropic's API. This is off by default. See
+   [THIRD_PARTY_LLM_DISCLOSURE.md](compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 
-**3. VPN/Private Network** (for remote teams)
-```bash
-# Run MCP behind VPN gateway
-# Connect via: vpn.company.com → internal-neuralmind-server
-```
+Commands whose purpose is fetching, such as `pip install` or
+`neuralmind benchmark --public` (which clones pinned public repositories from
+a source checkout), reach the network when you run them.
 
-### Access Control
+Your agent still sends the context NeuralMind hands it to the agent's own
+model. That egress belongs to the agent, not to NeuralMind.
 
-NeuralMind does not authenticate callers, and its HTTP MCP transport is an
-unfinished skeleton with no OAuth support. Each MCP tool call declares its own
-role, and `security.roles` in `neuralmind-backend.yaml` decides what each role
-can call:
+### Access control
+
+NeuralMind does not authenticate callers. Each MCP tool call declares its own
+`actor` (default `anonymous`) and `role` (default `builder`), and
+`security.roles` in the project's `neuralmind-backend.yaml` decides what each
+role can call:
 
 ```yaml
 # neuralmind-backend.yaml, in the project root
@@ -290,27 +210,31 @@ security:
 ```
 
 A role the policy doesn't list gets no tools, so leaving `admin` out caps what
-any caller can claim. Who can reach the MCP server at all is up to the host:
-stdio by default, or OS accounts and network controls around it. See
+any caller can claim. The server loads the policy from the
+`neuralmind-backend.yaml` of whatever `project_path` the call names. A project
+without one gets the default policy, which includes `admin`. Who can reach the
+server, and which directories its OS account can read, is up to the host. See
 [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
-### Secret Management
+### File permissions
 
-**1. No Secrets in Code**
+`.neuralmind/` is created with your umask, typically `0755` with `0644`
+files, so other accounts on a shared host can read it. It holds indexed source
+text, the audit log (including query text), learned synapses, and a cache of
+recent Bash output. Restrict it as you would the source tree:
+
 ```bash
-# ✅ Good: Use environment variables
-NEURALMIND_DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id neuralmind-db-pass --query SecretString --output text)
-
-# ✅ Good: Use Kubernetes secrets
-kubectl create secret generic neuralmind-db --from-literal=password=...
-
-# ❌ Bad: Hardcode passwords
-# neuralmind-mcp --db-url postgresql://user:password@host/db
+chmod -R go-rwx /path/to/project/.neuralmind
 ```
 
-**2. Secret Scanning in Indexes**
+NeuralMind doesn't encrypt its state. Use full-disk encryption on the host.
 
-Scanning is explicit, not automatic — run it before you index. It exits
+`.neuralmind/` contains its own `.gitignore` with `*`, so a `git add -A`
+won't commit it.
+
+### Secret scanning
+
+Scanning is explicit, not automatic. Run it before you index. It exits
 non-zero on high-confidence findings, so it works as a CI gate:
 
 ```bash
@@ -329,266 +253,206 @@ neuralmind scan-for-secrets .
 neuralmind build . --redact-secrets
 ```
 
----
-
-## Performance Tuning
-
-### Index Size Optimization
-
-**For large codebases (1M+ LOC):**
-
-```bash
-# 1. Exclude unnecessary files
-# In neuralmind.toml:
-[build]
-exclude_patterns = [
-    "*.test.js",
-    "*.spec.py",
-    "node_modules/",
-    ".git/",
-    "dist/",
-    "build/"
-]
-
-# 2. Rebuild with optimization
-neuralmind build . --optimize
-
-# 3. Check node count
-neuralmind stats .
-# Nodes: 15234
-# Size: 245 MB
-```
-
-### Embedding Backend Performance
-
-**ChromaDB (local, <100K nodes):**
-```bash
-neuralmind build . --backend chromadb
-# Fast startup, zero server cost
-```
-
-**PostgreSQL pgvector (enterprise, 100K-10M nodes):**
-```bash
-# Use connection pooling (PgBouncer)
-neuralmind build . \
-  --backend postgres \
-  --db-url postgresql://neuralmind:pass@pgbouncer:6432/neuralmind \
-  --batch-size 1000
-```
-
-**LanceDB (edge/offline, fast):**
-```bash
-neuralmind build . --backend lancedb
-# Lightweight, Rust-based, serverless
-```
+See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#secret-management) for what
+redaction does and doesn't cover.
 
 ---
 
-## Monitoring & Alerting
+## Index Size and Performance
 
-### Health Checks
+### Controlling what gets indexed
 
-```bash
-# Liveness check (server is running)
-curl http://localhost:8000/health
+Add a `.neuralmindignore` file to the project root to keep paths out of the
+index, such as generated code, vendored dependencies, or fixtures. It uses
+`.gitignore` pattern syntax:
 
-# Readiness check (index is ready)
-curl http://localhost:8000/ready
-
-# Full status
-curl http://localhost:8000/status
-# Returns:
-# {
-#   "status": "healthy",
-#   "index_version": "v0.4.2",
-#   "nodes_indexed": 15234,
-#   "last_build": "2026-04-22T10:30:00Z",
-#   "backend": "postgres",
-#   "uptime_seconds": 864000
-# }
+```gitignore
+# .neuralmindignore
+dist/
+vendor/
+**/*.min.js
+tests/fixtures/
 ```
 
-### Metrics Export
+### Vector backend
+
+| Backend | How to select | Status |
+|---|---|---|
+| `turbovec` | Default, no configuration | Installed with NeuralMind on Linux, macOS arm64, and Windows AMD64. On other platforms pip installs ChromaDB in its place |
+| `chroma` / `graph` | `backend: chroma` in `neuralmind-backend.yaml`, plus `pip install "neuralmind[chromadb]"` | Deprecated |
+
+Both backends store the index as local files under `.neuralmind/`. There is no
+server backend. If you build your own image, use a glibc base such as
+`python:3.12-slim`, not Alpine.
+
+### Measuring on your codebase
+
+NeuralMind publishes no scale limits. Measure your own repository:
 
 ```bash
-# Prometheus metrics
-curl http://localhost:8000/metrics
-
-# Includes:
-# - neuralmind_query_duration_seconds
-# - neuralmind_index_size_bytes
-# - neuralmind_audit_events_total
+neuralmind stats .       # node count for the built index
+neuralmind benchmark .   # token reduction on sample queries
 ```
 
-### Logging
+The embedder uses ONNX Runtime, which sizes its thread pool to the host's core
+count. In a CPU-limited container, set `NEURALMIND_ORT_THREADS` to the CPU
+limit.
+
+---
+
+## Monitoring
+
+### Health checks
 
 ```bash
-# Structured JSON logging
-tail -f neuralmind.log | jq
+neuralmind health .          # exit 0 healthy, 1 stale index, 2 no index
+neuralmind health . --json
 
-# Monitor for errors
-grep "ERROR" neuralmind.log
-
-# Audit trail
-grep "audit" neuralmind.log
+neuralmind doctor .          # diagnoses graph, index, hooks, MCP, and synapses
+neuralmind doctor . --json   # read "status": doctor always exits 0
 ```
+
+`doctor` exits 0 even when a check fails, so don't use its exit code as a
+health probe. Use `health`, or parse `doctor --json`.
+
+While `neuralmind serve` is running:
+
+```bash
+curl http://127.0.0.1:8787/healthz
+# {"status": "ok", "version": "…"}
+```
+
+### Metrics
+
+NeuralMind exposes no metrics endpoint and no Prometheus exporter. The
+per-query record is the audit log below: each `query` event carries the token
+count of the context it returned. `neuralmind savings .` summarizes those
+events.
+
+### Audit log
+
+NeuralMind writes no application log file. Its durable record is the audit
+log at `.neuralmind/audit_events.jsonl`. Every MCP tool call is recorded with
+the declared actor and role and the outcome: allowed, denied by policy, denied
+by rate limit, or failed. Builds, document ingestion, backend switches, and
+every `wakeup`, `query`, and `search` are recorded too, including the query
+text. For CLI calls, the actor is `NEURALMIND_ACTOR` if set, otherwise the OS
+login.
+
+```bash
+neuralmind audit recent . -n 50
+neuralmind audit verify .                                         # check the hash chain
+neuralmind audit export . --format cef --since 2026-01-01 -o audit.cef   # or --format jsonl
+```
+
+Each record carries a SHA-256 hash chained to the previous one. `audit verify`
+detects a record that was edited, or deleted from the middle of the log. It
+can't detect tampering at the tail (records removed from the end, or the last
+record edited with its hash stripped), or a chain recomputed by anyone with
+write access to the file. To keep a copy outside the host's control, ship
+`audit export` output to your SIEM.
+
+NeuralMind doesn't rotate or expire the audit log. The file grows until you
+archive it.
 
 ---
 
 ## Backup & Recovery
 
-### Backup Strategy
+Most of `.neuralmind/` is rebuilt from source by `neuralmind build`. Three
+stores aren't:
 
-**Daily backups of index + audit logs:**
+| File | Contents | Rebuildable? |
+|---|---|---|
+| `.neuralmind/synapses.db` | Learned associations (SQLite, WAL mode) | No |
+| `.neuralmind/memory.db` | Recorded decisions (SQLite, WAL mode), if you use decision memory | No |
+| `.neuralmind/audit_events.jsonl` | Audit log | No |
+| `graph.json`, `index_ir.json`, `neuralmind_turbovec/`, caches | Graph and index | Yes, with `neuralmind build . --force` |
+
+Use SQLite's online backup for the databases, so a backup taken while an agent
+is writing stays consistent:
 
 ```bash
 #!/bin/bash
-# backup-neuralmind.sh
+# backup-neuralmind.sh <project>
+set -euo pipefail
+P="$1/.neuralmind"
+DEST="/backups/neuralmind-$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$DEST"
 
-BACKUP_DIR="/backups/neuralmind-$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-
-# Backup PostgreSQL
-pg_dump -U neuralmind neuralmind > "$BACKUP_DIR/index.sql.gz"
-
-# Backup audit logs
-cp .neuralmind/audit_events.jsonl "$BACKUP_DIR/"
-
-# Backup code graph
-cp graphify-out/graph.json "$BACKUP_DIR/"
-
-# Upload to S3
-aws s3 sync "$BACKUP_DIR" s3://company-backups/neuralmind/
-
-echo "Backup complete: $BACKUP_DIR"
+sqlite3 "$P/synapses.db" ".backup '$DEST/synapses.db'"
+if [ -f "$P/memory.db" ]; then sqlite3 "$P/memory.db" ".backup '$DEST/memory.db'"; fi
+cp "$P/audit_events.jsonl" "$DEST/"
 ```
 
-**Schedule in cron:**
-```bash
-# Daily at 2 AM
-0 2 * * * /scripts/backup-neuralmind.sh
-```
+The audit log contains query text, and the synapse store names files and
+symbols. Protect backups the way you protect the source tree.
 
-### Recovery
+To recover, stop any agents using the project, then:
 
 ```bash
-# 1. Restore database
-psql -U neuralmind < /backups/neuralmind-20260422_020000/index.sql.gz
-
-# 2. Verify index
-neuralmind stats .
-
-# 3. Restore audit logs (for compliance)
-cp -r /backups/neuralmind-20260422_020000/audit .neuralmind/
+B=/backups/neuralmind-YYYYMMDD_HHMMSS
+cp "$B/synapses.db" "$B/audit_events.jsonl" /path/to/project/.neuralmind/
+if [ -f "$B/memory.db" ]; then cp "$B/memory.db" /path/to/project/.neuralmind/; fi
+neuralmind build /path/to/project                          # regenerates the graph and index
+neuralmind audit verify /path/to/project
 ```
 
 ---
 
-## Scaling to Large Teams
+## Rolling Out to a Team
 
-### Multi-Region Deployment
+Each developer builds and queries their own index. There is no shared index
+service, and real-time cross-machine sync is roadmap-only. A team shares two
+things through git:
 
-```
-US Region              EU Region              APAC Region
-[PostgreSQL]          [PostgreSQL]           [PostgreSQL]
-    ↓                     ↓                       ↓
-[MCP Server]          [MCP Server]           [MCP Server]
-    ↓                     ↓                       ↓
-Users (US)            Users (EU)             Users (APAC)
-```
+- **Policy.** Commit `neuralmind-backend.yaml` so every checkout loads the
+  same `security.roles` and `rate_limit`. It is a guard rail for well-behaved
+  agents. A developer can edit their local copy, and NeuralMind doesn't
+  authenticate callers.
+- **Learned memory (optional).** `neuralmind memory publish` writes
+  `.neuralmind-team-memory.json` (learned weights between files and symbols,
+  no source text). Once it's committed, each teammate's agent merges it into
+  its `shared` namespace on the next session start or build. Set
+  `NEURALMIND_TEAM_MEMORY=0` to turn the import off. Anyone who can commit
+  that file can influence what teammates' agents recall, so review changes to
+  it like code.
 
-**Setup:**
-```bash
-# Use read replicas for scaling
-psql -U postgres -c "CREATE PUBLICATION neuralmind_pub FOR ALL TABLES;"
-
-# Configure each region's standby
-pg_basebackup -h primary.us.db.company.com -D /var/lib/postgresql/data
-```
-
-### Load Balancing
-
-```nginx
-upstream neuralmind {
-    server mcp-1.internal:8000;
-    server mcp-2.internal:8000;
-    server mcp-3.internal:8000;
-}
-
-server {
-    listen 443 ssl;
-    server_name neuralmind.company.com;
-    
-    location / {
-        proxy_pass http://neuralmind;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-```
-
-### Cost Optimization
-
-| Deployment | Scale | Cost/Month | Notes |
-|------------|-------|-----------|-------|
-| Local (1 dev) | 1-5 people | $0 | Free, private |
-| Docker (team) | 5-50 people | $100-500 | Small server |
-| PostgreSQL (enterprise) | 50-500 people | $1K-5K | Database + servers |
-| Kubernetes (massive) | 500+ people | $5K-50K | Auto-scaling |
+NeuralMind has no user directory or LDAP integration, and SSO/SAML is
+roadmap-only. Per-person access comes from OS accounts and file permissions.
 
 ---
 
-## Troubleshooting Deployments
-
-### Index Build Fails
+## Troubleshooting
 
 ```bash
-# Check graph exists
-ls -la graphify-out/graph.json
-
-# Check database connection
-neuralmind backend-check postgres
-
-# Enable debug logging
-NEURALMIND_DEBUG=1 neuralmind build .
+neuralmind doctor .                      # start here: names each failing piece and its fix
+neuralmind build . --force               # rebuild the index from scratch
+neuralmind build . --regenerate-graph    # replace a stale graphify graph.json
+neuralmind install-mcp                   # re-register the MCP server with your agent
 ```
 
-### MCP Server Crashes
-
-```bash
-# Check logs
-journalctl -u neuralmind-mcp -n 100
-
-# Verify database
-psql -h db.internal -U neuralmind -c "SELECT COUNT(*) FROM embeddings;"
-
-# Restart
-systemctl restart neuralmind-mcp
-```
-
-### Performance Degradation
-
-```bash
-# Check index size
-neuralmind stats .
-
-# Monitor DB connections
-psql -c "SELECT * FROM pg_stat_activity;"
-
-# Rebuild if needed
-neuralmind build . --force --optimize
-```
+- **The MCP server isn't responding.** It runs under your agent, so its
+  stderr goes to the agent's MCP log, not to a NeuralMind log file. Check
+  the agent's MCP logs first.
+- **A tool call returns `security_denied`.** The declared role isn't allowed
+  that tool by the project's `security.roles`, or the declared actor hit the
+  rate limit. Both cases are recorded: `neuralmind audit recent . --action mcp_call_denied`.
+- **Calls fail in a container.** Check that the project mount is writable and
+  sits at the same absolute path the agent sends as `project_path`.
 
 ---
 
-## Best Practices Checklist
+## Deployment Checklist
 
-- ✅ Use PostgreSQL for teams >20 people
-- ✅ Set `security.roles` (without `admin` unless needed) and keep audit logging on
-- ✅ Encrypt data in transit (TLS) and at rest
-- ✅ Back up daily with recovery tested
-- ✅ Monitor index health and query latency
-- ✅ Use version pinning for dependencies
-- ✅ Document your deployment architecture
-- ✅ Test disaster recovery quarterly
-
+- [ ] `neuralmind-mcp` runs over stdio. The Streamable HTTP transport is not used
+- [ ] `security.roles` committed in `neuralmind-backend.yaml`, without `admin` unless needed
+- [ ] The OS account running the agent can read only the projects it should
+- [ ] `.neuralmind/` restricted with file permissions, and the host disk encrypted
+- [ ] `neuralmind scan-for-secrets` passes before the first build
+- [ ] Embedding model pre-seeded with `NEURALMIND_ONNX_MODEL_DIR` on egress-restricted hosts
+- [ ] `NEURALMIND_LLM_SEED` left unset unless approved
+- [ ] Graph view and daemon left on `127.0.0.1` with the token on
+- [ ] `audit export` shipped to your SIEM, and `audit verify` scheduled
+- [ ] `synapses.db`, `memory.db`, and `audit_events.jsonl` backed up, and a restore tested
+- [ ] Container image pinned to a release tag, not `latest`

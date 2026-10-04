@@ -332,7 +332,7 @@ sections.
 
 | Page | For... |
 |------|--------|
-| **[Deployment Guide](../DEPLOYMENT-GUIDE.md)** | DevOps/Infrastructure: Architecture patterns, Docker, Kubernetes, PostgreSQL backend, scaling, monitoring |
+| **[Deployment Guide](../DEPLOYMENT-GUIDE.md)** | DevOps/Infrastructure: what runs and what it opens, pip and container installs, hardening, health checks, audit log, backup, team rollout |
 | **[Security Guide](../SECURITY-GUIDE.md)** | Security teams: access control, encryption, secrets management, NIST AI RMF, SOC 2, threat models |
 | **[Upgrading Guide](../UPGRADING.md)** | Everyone: How to upgrade between versions, breaking changes, rollback procedures |
 
