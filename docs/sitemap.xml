@@ -157,6 +157,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/use-cases/cmmc-cui-enclave.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/use-cases/always-on.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -561,6 +567,12 @@
   <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.6.0.html</loc>
     <lastmod>2026-10-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.7.0.html</loc>
+    <lastmod>2026-10-04</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>

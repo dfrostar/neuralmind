@@ -10,6 +10,7 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings — `neuralmind savings --cost` prices them in dollars (v0.45.0+) |
 | [Any LLM (ChatGPT / Gemini / local)](./any-llm.md) | You use non-MCP chats or a model-agnostic workflow | Get NeuralMind context into any chat window |
 | [Offline / regulated work](./offline-regulated.md) | Regulated industries, air-gapped machines | Local retrieval, no telemetry |
+| [CMMC CUI enclave](./cmmc-cui-enclave.md) | Defense contractors indexing CUI source code | MCP roles bound to OS accounts, encrypted storage verified *(v4.7.0+)* |
 | [Growing monorepo](./growing-monorepo.md) | Codebase where old context goes stale fast | Keep the index fresh with minimal effort |
 | [Multi-agent codebase](./multi-agent.md) | You use multiple AI tools (Claude Code + Cursor + Hermes + OpenClaw) on the same project | One shared associative memory across every agent; v0.6.0 live graph shows the union |
 | **[Slim & sovereign: ChromaDB-free local stack](./chromadb-free-local.md)** | **Security-sensitive teams, tiny-footprint installs (v0.21.0+)** | **Embed + search with zero ChromaDB — smaller deps, smaller index, fewer advisories** |

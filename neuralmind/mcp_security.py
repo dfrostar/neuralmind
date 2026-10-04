@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import stat
+import sys
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -10,6 +13,13 @@ from typing import Any
 
 from .audit import AuditTrail, get_audit_trail
 from .backend_manager import load_backend_config
+from .identity import os_identity
+from .security_config import (
+    IDENTITY_DECLARED,
+    IDENTITY_INVALID,
+    SecuritySettings,
+    load_security_settings,
+)
 
 DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
     "admin": "*",
@@ -89,6 +99,14 @@ class AccessDeniedError(PermissionError):
     """
 
 
+class IdentityDeniedError(AccessDeniedError):
+    """``security.identity: os`` could not establish who is calling.
+
+    Raised before the role check, so a caller the server can't identify never
+    reaches the policy at all.
+    """
+
+
 class RateLimitExceededError(RuntimeError):
     """The actor made more calls than the rate limit allows.
 
@@ -122,19 +140,79 @@ class MCPSecurityManager:
         policy: RBACPolicy | None = None,
         rate_limiter: RateLimiter | None = None,
         audit_trail: AuditTrail | None = None,
+        settings: SecuritySettings | None = None,
     ):
         self.project_path = str(Path(project_path).resolve())
         self.policy = policy or RBACPolicy()
         self.rate_limiter = rate_limiter or RateLimiter()
         self.audit = audit_trail or get_audit_trail(self.project_path)
+        self.settings = settings or SecuritySettings()
+
+    def resolve_caller(self, actor: str | None, role: str | None) -> tuple[str, str, dict]:
+        """Decide who is calling and with which role.
+
+        ``security.identity: declared`` (the default) believes the call's own
+        ``actor`` and ``role``. ``os`` ignores them: the actor is the OS
+        account this server runs as — over stdio, the agent that launched it —
+        and the role comes from ``security.users``. What the call claimed is
+        returned in the details so the audit log shows any mismatch.
+        """
+        if self.settings.identity == IDENTITY_DECLARED:
+            return actor or "anonymous", role or "builder", {}
+        if self.settings.identity == IDENTITY_INVALID:
+            raise IdentityDeniedError(f"Refusing MCP calls: {self.settings.problem}")
+
+        if os.environ.get("NEURALMIND_MCP_TRANSPORT") == "streamable_http":
+            raise IdentityDeniedError(
+                "security.identity: os needs the stdio transport; over HTTP the "
+                "server's OS account is not the caller's"
+            )
+        problem = _policy_file_problem(self.settings.config_path)
+        if problem:
+            raise IdentityDeniedError(problem)
+        name = os_identity()
+        if not name:
+            raise IdentityDeniedError(
+                "security.identity: os, but the OS account this server runs as "
+                "could not be determined"
+            )
+        resolved = self.settings.users.get(name, self.settings.default_role)
+        if resolved is None:
+            raise IdentityDeniedError(
+                f"OS account '{name}' has no role in security.users and "
+                "security.default_role is not set"
+            )
+        details: dict[str, Any] = {"identity": "os"}
+        if actor and actor != name:
+            details["claimed_actor"] = actor
+        if role and role != resolved:
+            details["claimed_role"] = role
+        return name, resolved, details
 
     def secure_call(
         self,
-        actor: str,
-        role: str,
+        actor: str | None,
+        role: str | None,
         tool_name: str,
         call: Callable[[], Any],
     ) -> Any:
+        try:
+            actor, role, identity = self.resolve_caller(actor, role)
+        except IdentityDeniedError as exc:
+            claimed = {
+                key: value
+                for key, value in (("claimed_actor", actor), ("claimed_role", role))
+                if value
+            }
+            self.audit.append_event(
+                category="security",
+                action="mcp_call_denied",
+                status="denied",
+                target=tool_name,
+                details={"reason": "identity", "error": str(exc), **claimed},
+            )
+            raise
+
         if not self.policy.is_allowed(role, tool_name):
             self.audit.append_event(
                 category="security",
@@ -142,7 +220,7 @@ class MCPSecurityManager:
                 actor=actor,
                 status="denied",
                 target=tool_name,
-                details={"reason": "rbac", "role": role},
+                details={"reason": "rbac", "role": role, **identity},
             )
             raise AccessDeniedError(f"Access denied for role '{role}' on tool '{tool_name}'")
 
@@ -153,7 +231,7 @@ class MCPSecurityManager:
                 actor=actor,
                 status="denied",
                 target=tool_name,
-                details={"reason": "rate_limit", "role": role},
+                details={"reason": "rate_limit", "role": role, **identity},
             )
             raise RateLimitExceededError(f"Rate limit exceeded for actor '{actor}'")
 
@@ -165,7 +243,7 @@ class MCPSecurityManager:
                 actor=actor,
                 status="success",
                 target=tool_name,
-                details={"role": role},
+                details={"role": role, **identity},
             )
             return result
         except Exception as exc:
@@ -175,7 +253,7 @@ class MCPSecurityManager:
                 actor=actor,
                 status="failure",
                 target=tool_name,
-                details={"role": role, "error": str(exc)},
+                details={"role": role, "error": str(exc), **identity},
             )
             raise
 
@@ -205,6 +283,7 @@ def build_security_manager(project_path: str) -> MCPSecurityManager:
         project_path=key,
         policy=RBACPolicy(parsed_roles) if parsed_roles else RBACPolicy(),
         rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
+        settings=load_security_settings(key),
     )
 
 
@@ -213,3 +292,21 @@ def get_security_manager(project_path: str) -> MCPSecurityManager:
     if key not in _SECURITY_MANAGERS:
         _SECURITY_MANAGERS[key] = build_security_manager(key)
     return _SECURITY_MANAGERS[key]
+
+
+def _policy_file_problem(path: Path | None) -> str | None:
+    """A role mapping any local user can edit is not a policy.
+
+    POSIX only: refuse when the config file is world-writable. Group-writable
+    is common in shared checkouts and is reported by ``neuralmind doctor``
+    instead. Windows ACLs aren't mode bits, so nothing is checked there.
+    """
+    if path is None or sys.platform == "win32":
+        return None
+    try:
+        mode = path.stat().st_mode
+    except OSError:
+        return f"cannot read the permissions of {path.name}"
+    if mode & stat.S_IWOTH:
+        return f"{path.name} is writable by every user, so its role mapping can't be trusted (chmod o-w)"
+    return None

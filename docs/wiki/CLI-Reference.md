@@ -1207,6 +1207,15 @@ memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
 to (`turbovec` or `chroma`), and whether the turbovec stack is installed — so the
 per-environment default is never a silent mystery.
 
+**Security policy** and **Storage encryption** *(v4.7.0+)* report the
+[security settings](#security-settings-security-in-neuralmind-backendyaml):
+which identity mode MCP calls use and the role the current OS account gets,
+whether the policy file is group- or world-writable, and whether the project's
+volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
+mode where the OS has one. Storage encryption only fails when the project sets
+`require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
+"not required".
+
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any
 check **failed** — so you can gate a CI step or an agent's provisioning on
 `neuralmind doctor`.
@@ -3276,6 +3285,41 @@ is left in place as a fallback — nothing is deleted.
 
 Run `neuralmind doctor` to see which backend the current environment resolves to
 (see the **Backend** line).
+
+### Security settings (`security:` in neuralmind-backend.yaml)
+
+The same file carries the MCP security policy. The file is read once per
+process, so restart the MCP server after changing it.
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools. The MCP server in v4.5.1 and earlier ignored this setting |
+| `rate_limit` | `max_calls: 60`, `window_seconds: 60` | Calls allowed per actor per window |
+| `identity` *(v4.7.0+)* | `declared` | `declared`: each MCP call names its own `actor` and `role`, unauthenticated. `os`: the actor is the OS account the server runs as, read from the OS rather than environment variables, and the role comes from `users`. Stdio transport only |
+| `users` *(v4.7.0+)* | `{}` | OS account name → role, used with `identity: os` |
+| `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
+| `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless the project's volume is verified encrypted |
+
+```yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  roles:
+    builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
+    reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
+  require_encrypted_storage: true
+```
+
+With `identity: os`, NeuralMind refuses every MCP call when it can't establish
+the caller: the HTTP transport is in use, the OS account can't be read, the
+account has no role, or the policy file is world-writable (POSIX). A policy file
+that names `identity` or `require_encrypted_storage` but doesn't parse is
+refused too, rather than silently ignored. Each refusal is written to
+`.neuralmind/audit_events.jsonl` with `reason: identity` or `reason: storage`,
+and the actor and role a call claimed are kept as `claimed_actor` and
+`claimed_role`.
 
 ---
 

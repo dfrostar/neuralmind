@@ -47,9 +47,11 @@ steps, and how to keep it disabled:
 
 ## Access Control
 
-NeuralMind does not authenticate anyone. Access to it is access to the OS
-account and project directory it runs in, plus whatever can reach its MCP
-server.
+NeuralMind has no logins of its own. By default, access to it is access to
+the OS account and project directory it runs in, plus whatever can reach its
+MCP server. With `security.identity: os` *(v4.7.0+)* it takes each MCP
+caller's identity from that OS account, which the OS authenticated
+([below](#binding-roles-to-os-accounts-identity-os)).
 
 ### Who can call the MCP server
 
@@ -71,9 +73,10 @@ Every MCP tool call goes through `MCPSecurityManager.secure_call`
 permission policy and a per-actor rate limit, then writes the decision to the
 audit log.
 
-The caller declares its own `actor` and `role` in the tool arguments. The role
-defaults to `builder`, and any caller can declare `admin`. Treat the policy as
-a guard rail for a well-behaved agent, not a boundary against a hostile caller.
+By default the caller declares its own `actor` and `role` in the tool
+arguments. The role defaults to `builder`, and any caller can declare `admin`.
+In that mode, treat the policy as a guard rail for a well-behaved agent, not a
+boundary against a hostile caller.
 
 Default roles (`DEFAULT_ROLE_POLICY`):
 
@@ -106,15 +109,72 @@ security:
 The MCP server in v4.5.1 and earlier built its security manager without
 reading this file, so both settings were ignored there.
 
-The rate limit keys on the declared actor, so it stops a runaway agent, not a
-caller that changes its actor name.
+The rate limit keys on the actor, so with declared identities it stops a
+runaway agent, not a caller that changes its actor name. Under
+`identity: os` it keys on the OS account.
+
+### Binding roles to OS accounts (`identity: os`)
+
+*(v4.7.0+)* Over the stdio transport, the MCP server runs as the OS account of
+the agent that launched it, and the OS authenticated that account at login.
+`security.identity: os` makes the server use it:
+
+```yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  default_role: reader     # optional; unset refuses accounts missing from users
+```
+
+- The actor is the account name from the OS (the passwd entry for the
+  effective uid, or `GetUserNameW` on Windows), never `LOGNAME`, `USER` or
+  `USERNAME`, which the launching process controls.
+- The role comes from `users`, then `default_role`. The `actor` and `role` a
+  call declares are ignored and kept in the audit log as `claimed_actor` and
+  `claimed_role`.
+- Every call is refused, with `reason: identity`, when the HTTP transport is in
+  use, the account can't be read, the account has no role, the policy file is
+  world-writable (POSIX), or the `security:` section is invalid. A policy file
+  that names `identity` but doesn't parse is refused rather than ignored.
+- Audit events written outside MCP (CLI builds and queries) take the OS account
+  as their actor too, with `NEURALMIND_ACTOR` recorded as a claim.
+
+This makes roles and audit attribution trustworthy on a host where users have
+separate OS accounts and an administrator owns the policy file. It doesn't stop
+someone from doing as that account what the account can already do: read
+`.neuralmind/` directly, or edit a policy file they own. Keep the file
+writable only by its owner; `neuralmind doctor` warns when it's group-writable.
 
 ### Per-user roles
 
 NeuralMind has no user directory, LDAP, or OAuth integration, and SSO/SAML is
-roadmap-only. If different people need different permissions, give each their
-own OS account and checkout; OS file permissions then decide who can read
-the index.
+roadmap-only. For different permissions per person, give each an OS account
+and map it in `security.users` with `identity: os`. OS file permissions still
+decide who can read the index.
+
+### Requiring encrypted storage
+
+*(v4.7.0+)* NeuralMind doesn't encrypt `.neuralmind/` itself. The OpenSSL
+inside a pip-installed `cryptography` wheel isn't FIPS-validated, so
+in-process encryption wouldn't count as the FIPS-validated cryptography CMMC
+asks for. It verifies the OS's full-disk encryption instead:
+
+```yaml
+security:
+  require_encrypted_storage: true
+```
+
+With this set, NeuralMind checks the project's volume for FileVault (macOS),
+dm-crypt/LUKS (Linux), or BitLocker (Windows). Until the check passes, it
+refuses to build or query, MCP tools return `reason: storage`, hooks write
+nothing, and the decision store won't open. A check that can't tell (a
+container's overlay filesystem, BitLocker suspended, a timeout) counts as not
+encrypted. The verdict goes into the audit log as a `storage_check` event once
+per process. `neuralmind doctor` shows what the check sees, plus the OS FIPS
+mode on Linux and Windows. macOS has no FIPS switch; FileVault uses Apple
+corecrypto, which Apple lists in its CMVP certificates.
 
 ---
 
@@ -470,16 +530,18 @@ asset inside your assessment scope:
 
 ```
 AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
-   Evidence: stdio MCP transport by default; per-tool permission sets
-   Not provided: authentication. Each MCP call declares its own role, so
-   binding authenticated identities to roles is yours
+   Evidence: stdio MCP transport; per-tool permission sets; with
+   identity: os, roles bound to the OS account the OS authenticated
+   Yours: OS accounts, and owning the policy file
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
    changed record mid-log, not truncation or a recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
-   Not provided: use FIPS-validated full-disk encryption on the host
+   Evidence: require_encrypted_storage verifies full-disk encryption and
+   refuses to run without it, with an audit record of each check
+   Yours: the encryption itself, FIPS-validated (OS FIPS mode on)
 ```
 
 The full Level 2 table, including what stays your responsibility, is in
@@ -518,10 +580,10 @@ Status: No known injection path. This comes from code review, not a
 **Scenario 2: Privilege escalation**
 ```
 Attack: A caller declares role "admin" to reach admin-only tools
-Mitigation: Roles are caller-declared. Leave admin out of
-            security.roles so no declared role reaches admin-only
-            tools, and limit who can reach the MCP server
-Status: ⚠️ Possible with the default policy
+Mitigation: Set security.identity: os so the role comes from the OS
+            account, not the call. Otherwise leave admin out of
+            security.roles, and limit who can reach the MCP server
+Status: ⚠️ Possible with the default (declared) identity
 ```
 
 **Scenario 3: Data exfiltration**
@@ -543,6 +605,8 @@ Before deploying NeuralMind to production:
 
 ### Access & Authentication
 - [ ] `security.roles` set in `neuralmind-backend.yaml`, without `admin` unless you need it
+- [ ] `security.identity: os` with each OS account in `security.users`, and the policy file writable only by its owner
+- [ ] `security.require_encrypted_storage: true` where the index holds CUI, and `neuralmind doctor` shows Storage encryption `ok`
 - [ ] MCP server reachable only by the agent that launched it (stdio), or the HTTP transport kept on localhost
 - [ ] MFA enabled for admin accounts
 - [ ] Service account credentials secured
