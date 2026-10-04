@@ -8,7 +8,10 @@ command, raw data committed) but is not a CI gate. Where a number is an
 estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
-in CI.
+in CI. On the public benchmark, "reproducible" means gold-file recall,
+found-rate and MRR have come back identical on every machine compared, while
+per-repo mean tokens have varied by up to 1.3% between machines
+([details](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces)).
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
 > + synapse A/B), `python -m evals.faithfulness.runner --run` (answer quality),

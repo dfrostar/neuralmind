@@ -408,7 +408,7 @@ When NeuralMind answers a question, it provides complete metadata about the cont
 - **Reduction ratio** – How much you saved vs. loading the full codebase
 
 You can always:
-- **Reproduce any result** – Same query + same codebase = same context (deterministic)
+- **Reproduce any result** – Same query + same codebase on the same machine = same context (deterministic); on a different machine, near-tied results can occasionally rank differently
 - **Audit the decision path** – See exactly which code entities and clusters were selected
 - **Verify completeness** – Check if all relevant code was captured
 - **Understand the tradeoffs** – View the token budget breakdown by layer
