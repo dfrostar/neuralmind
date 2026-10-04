@@ -2177,7 +2177,7 @@ neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--outpu
 
 `query` takes keywords or a question, matched against decision titles and
 rationales: any word can match (common words such as "how" and "the" are
-ignored), and decisions matching more of the words rank first (v4.6.0+; before,
+ignored), and decisions matching more of the words rank first (v4.5.1+; before,
 every word had to match). `--status` is case-insensitive.
 
 `--commit` defaults to `HEAD`. `restore` re-anchors a STALE or INVALIDATED
