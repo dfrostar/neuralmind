@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .store import DecisionStore
+from .store import DecisionStore, normalize_status_filter
 
 # ---------------------------------------------------------------------------
 # Store accessor
@@ -576,6 +576,23 @@ TOOLS: list[dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 
+def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> str | None:
+    """Check the argument values a memory tool's ``inputSchema`` can't express.
+
+    ``status`` on ``neuralmind_memory_search`` is case-insensitive, so its
+    schema can't carry an ``enum``. Both dispatchers call this before the tool
+    runs, so an unknown status is reported as ``invalid_request`` like any
+    other disallowed value. Returns a problem naming the argument, or
+    ``None`` when the values are acceptable.
+    """
+    if name == "neuralmind_memory_search" and arguments.get("status") is not None:
+        try:
+            normalize_status_filter(arguments["status"])
+        except ValueError as e:
+            return f"argument 'status': {e}"
+    return None
+
+
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a decision memory tool call and return the result as JSON.
 
@@ -641,6 +658,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})
+
+    problem = validate_tool_arguments(name, arguments)
+    if problem:
+        return json.dumps({"error": problem, "code": "invalid_request"})
 
     try:
         result = handlers[name](arguments)

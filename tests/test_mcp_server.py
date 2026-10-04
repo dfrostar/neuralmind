@@ -235,6 +235,27 @@ class TestErrorCodes:
         assert second["code"] == "security_denied"
         assert second["reason"] == "rate_limit"
 
+    def test_unknown_decision_status_is_invalid_request(self, temp_project):
+        """The status filter is case-insensitive, so its schema has no enum; an
+        unknown value used to run inside the security manager and come back
+        without a code, audited as a successful call. It is rejected up front
+        now, like any other disallowed argument value."""
+        args = {"project_path": str(temp_project), "query": "queue", "role": "admin"}
+        with patch("neuralmind.mcp_server.get_security_manager") as security:
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": "archived"})
+            )
+        security.assert_not_called()
+        assert data["code"] == "invalid_request"
+        assert "'status'" in data["error"]
+        assert "ALL" in data["error"]
+        for word in ("all", "Stale"):
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": word})
+            )
+            assert "code" not in data, word
+            assert data["count"] == 0, word
+
 
 class TestToolBuild:
     """Tests for tool_build()."""

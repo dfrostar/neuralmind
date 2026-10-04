@@ -166,6 +166,10 @@ commit they came from (`neuralmind decisions record`), search them
 `PreToolUse` hook surfaces any decision governing it that has been marked stale
 or invalidated. Invalidation is manual today: the engine that would retire
 decisions automatically on commit exists but is not yet wired into the hooks.
+Search takes keywords or a question: any word can match, and decisions matching
+more of the words rank first (v4.5.0+). `neuralmind decisions eval --queries FILE`
+scores it against questions with known answers; the
+[Memory Layer wiki](docs/wiki/Memory-Layer.md#eval-harness) has the results.
 
 ### 8. Finds the right code (not just less of it)
 

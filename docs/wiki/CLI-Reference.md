@@ -25,6 +25,7 @@ Complete command-line interface documentation for NeuralMind.
   - [self-improve status](#self-improve-status-v0260)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
+  - [decisions](#decisions)
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
@@ -1679,6 +1680,42 @@ decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
 rates, `ephemeral` fades fast with no LTP floor. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
+
+---
+
+### decisions
+
+Record, search and retire architecture decisions: the decision memory behind
+the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools. The
+subcommands are `record`, `query`, `audit`, `amend`, `invalidate`, `restore`,
+`export` and `eval`; each takes an optional `project_path` (default `.`), and
+[Memory Layer](Memory-Layer.md#cli-reference) documents every one.
+
+```bash
+neuralmind decisions query "how do we handle sqlite wal?" [project_path] [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json]
+neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
+neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
+```
+
+`query` takes keywords or a question, matched against decision titles and
+rationales: any word can match (common words such as "how" and "the" are
+ignored), and decisions matching more of the words rank first.
+
+#### decisions eval
+
+Measures decision search. Both modes seed a scratch store in a temporary
+directory and never read or change the project's decisions.
+
+| Option | Description |
+|--------|-------------|
+| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
+| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
+| `--limit N` | Results per query with `--queries` (default 5) |
+| `--format json\|md` | Report format (default `json`) |
+| `--output FILE`, `-o` | Write the report to a file instead of stdout |
+
+The measured numbers for the committed query set are in
+[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
 
 ---
 

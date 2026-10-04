@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from neuralmind.core import GraphNotBuiltError, NeuralMind
 from neuralmind.mcp_security import AccessDeniedError, MCPSecurityManager, RateLimitExceededError
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
+from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -1279,9 +1280,11 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
     ``@server.call_tool()``; the 2.x constructor-callback API dropped that, so a
     missing required key reached the handler as a bare ``KeyError`` string.
     This restores the contract for both SDK lines: required keys, top-level
-    JSON types and ``enum`` membership. Returns a human-readable problem, or
-    ``None`` when the arguments are acceptable. Unknown tools are not this
-    function's concern (``handle_tool_call`` reports them).
+    JSON types and ``enum`` membership, plus the value checks a schema can't
+    express (``validate_memory_arguments``: the case-insensitive decision
+    ``status`` filter). Returns a human-readable problem, or ``None`` when the
+    arguments are acceptable. Unknown tools are not this function's concern
+    (``handle_tool_call`` reports them).
     """
     schema = next((t.get("inputSchema") for t in TOOLS if t.get("name") == name), None)
     if not schema:
@@ -1306,7 +1309,7 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
                 return f"argument {key!r} must be of type {spec.get('type')}"
         if "enum" in spec and value not in spec["enum"]:
             return f"argument {key!r} must be one of {spec['enum']!r}"
-    return None
+    return validate_memory_arguments(name, arguments)
 
 
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:

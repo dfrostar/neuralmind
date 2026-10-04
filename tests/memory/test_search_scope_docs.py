@@ -55,7 +55,10 @@ def indexed_fields(tmp_path_factory) -> set[str]:
     store = DecisionStore(str(tmp_path_factory.mktemp("scope")))
     with store._connect() as conn:
         columns = [row[1] for row in conn.execute("PRAGMA table_info(decisions_fts)")]
-    assert columns, "decisions_fts not created; FTS5 unavailable in this SQLite build"
+    if not columns:
+        # The store supports such builds (LIKE fallback), but there are no
+        # FTS columns to pin the docs to.
+        pytest.skip("decisions_fts not created; FTS5 unavailable in this SQLite build")
     return {_norm(c) for c in columns if c != "id"}
 
 

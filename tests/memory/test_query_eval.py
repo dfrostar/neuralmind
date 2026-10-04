@@ -10,6 +10,7 @@ page does.
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,25 @@ from neuralmind.memory.store import DecisionStore
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decision_queries.json"
 WIKI = Path(__file__).resolve().parents[2] / "docs" / "wiki" / "Memory-Layer.md"
+
+
+def _sqlite_has_fts5() -> bool:
+    """Whether this SQLite build can create the decision store's FTS5 table."""
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.executescript(store_mod.FTS_SCHEMA)
+        return True
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
+
+
+# Without FTS5 the store falls back to LIKE, which ranks differently; the
+# wiki's table quotes FTS5 numbers (its LIKE row is measured separately).
+requires_fts5 = pytest.mark.skipif(
+    not _sqlite_has_fts5(), reason="SQLite built without FTS5; the wiki quotes FTS5 numbers"
+)
 
 
 def _summary(monkeypatch=None, *, like=False):
@@ -66,6 +86,7 @@ def test_sentence_queries_find_their_answers(summary):
     assert sentences["recall"]["mean"] >= 0.9
 
 
+@requires_fts5
 def test_wiki_quotes_the_measured_numbers(summary, monkeypatch):
     """Each row of the wiki's eval table is what the eval measures now."""
 

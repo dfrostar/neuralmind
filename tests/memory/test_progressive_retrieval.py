@@ -124,6 +124,7 @@ class TestLayer1StatusFilter:
         self._seed_statuses(tmp_path)
         out = self._search(tmp_path, status="archived")
         assert "results" not in out
+        assert out["code"] == "invalid_request"
         assert "unknown status filter" in out["error"]
         assert "ALL" in out["error"]
 
