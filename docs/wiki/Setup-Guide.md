@@ -2,7 +2,7 @@
 
 First-time setup for NeuralMind on any platform in under 5 minutes.
 
-NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and Claude Code hooks that hand that memory to your agent at session start and with each prompt. Token reduction is **12-50× per query on real repos** in field reports (`neuralmind benchmark`); CI gates a conservative floor on a small fixture every commit, and the [public benchmark](https://neuralmind.uk/benchmark/) measures 45–261× against every source file at 93.75% mean gold-file recall.
+NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and Claude Code hooks that hand that memory to your agent at session start and with each prompt. Token reduction was **12-50× per query on real repos** in field reports (`neuralmind benchmark` before v4.5.0, against a fixed 50K-token estimate — it now divides the measured size of your code); CI gates a conservative floor on a small fixture every commit, and the [public benchmark](https://neuralmind.uk/benchmark/) measures 45–261× against every source file at 93.75% mean gold-file recall.
 
 See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflow, or [Comparisons](Comparisons) for how it differs from Cursor `@codebase`, Copilot, Claude Projects, long context, and others.
 

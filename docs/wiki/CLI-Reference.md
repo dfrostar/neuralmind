@@ -25,6 +25,7 @@ Complete command-line interface documentation for NeuralMind.
   - [self-improve status](#self-improve-status-v0260)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
+  - [decisions](#decisions)
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
@@ -642,7 +643,8 @@ neuralmind benchmark <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
-| `--naive-50k` | False | *(v4.5.0+)* Divide by the fixed 50,000-token estimate instead of the measured token count of the indexed files — for comparison with pre-v4.5.0 numbers |
+| `--naive-50k` | False | *(v4.5.0+)* Divide by the fixed 50,000-token estimate instead of the measured token count of the code the index covers — for comparison with pre-v4.5.0 numbers |
+| `--contribute` | False | Print your numbers and a schema-ready entry for [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json). Nothing is uploaded. From v4.5.0 the entry is v2: `avg_reduction_ratio` against the fixed 50K estimate every row compares on, plus `measured_avg_reduction_ratio` and `full_codebase_tokens` |
 | `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
 | `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
 | `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
@@ -655,10 +657,16 @@ neuralmind benchmark <project_path> [OPTIONS]
 #### Output
 
 Comprehensive benchmark report including:
-- **The baseline it divides by** *(v4.5.0+)* — `Baseline: measured: 1,117,552 tokens in 341 indexed files`: the token count of every file the index covers, measured at build. Before v4.5.0 every ratio divided by a fixed 50,000-token guess whatever the repo's size; `--naive-50k` reproduces those numbers, and `--contribute` keeps using it so the community table stays comparable
+- **The baseline it divides by** *(v4.5.0+)* — `Baseline: measured: 94,069 tokens in 36 indexed code files`: the token count of every code file the index covers, measured at build, at the same ~4 chars/token as the context. Prose (Markdown, reStructuredText, plain text) is left out unless the index holds nothing else, and an index built before v4.5.0 is measured on the spot without writing anything. Before v4.5.0 every ratio divided by a fixed 50,000-token guess whatever the repo's size
+- **The legacy ratio beside it** *(v4.5.0+)* — `Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)`, so older numbers and the community table stay comparable; `--naive-50k` makes the fixed estimate the headline instead
 - **Which questions it asked** — the ones in `.neuralmind.eval.yaml` when the project has one (see [`eval`](#eval-v0140)), else five generic questions
 - Token counts and reduction ratios for each query
 - Benchmark queries are read-only (v4.5.0+): they never train the synapse layer
+
+`--json` carries `avg_reduction_ratio` with the baseline it used (`baseline`,
+and `full_codebase_tokens`), plus `legacy_avg_reduction_ratio` against
+`estimated_full_codebase_tokens` (always 50,000); every entry in `results` has
+its own `reduction` and `legacy_reduction`.
 
 #### Examples
 
@@ -668,6 +676,19 @@ neuralmind benchmark /path/to/project
 
 # JSON output
 neuralmind benchmark /path/to/project --json
+```
+
+On `psf/requests` v2.32.3 (verbatim, v4.5.0):
+
+```
+Project: requests
+Baseline: measured: 94,069 tokens in 36 indexed code files
+Questions: generic
+Wake-up tokens: 510
+Avg query tokens: 1200.6
+Avg reduction: 78.6x
+Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)
+Summary: 78.6x average token reduction vs measured: 94,069 tokens in 36 indexed code files
 ```
 
 #### Quality-eval mode *(v0.23.0+)*
@@ -752,8 +773,12 @@ The run is **deterministic** — synapse injection is **OFF** (session-dependent
 learning can't be a fixed, reproducible public number; its lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
-[Environment Variables](#environment-variables) table. Re-running matches the
-published table to the token.
+[Environment Variables](#environment-variables) table. Re-running on the same
+machine matches the published table to the token. Across machines, recall,
+found-rate and MRR have matched exactly, while token counts differed slightly
+on some CI runners (up to 1.3% on a per-repo mean so far);
+`NEURALMIND_ORT_THREADS=1` matches CI's configuration — see
+[how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 
 **Honest headline:** against what agents actually do today — paste files or grep
 — NeuralMind reaches **85–100% gold-file recall (93.75% mean) at 45–261× fewer
@@ -1272,7 +1297,7 @@ reports:
 | MRR | mean of 1 / rank of the first gold file (0 when missed) |
 | avg context tokens | what the agent would receive per question |
 | × vs gold files | gold-file tokens ÷ context tokens — what a perfect retriever would load |
-| × vs indexed files | measured baseline ÷ context tokens (see [`benchmark`](#benchmark)) |
+| × vs indexed code | measured baseline (the code the index covers) ÷ context tokens (see [`benchmark`](#benchmark)) |
 
 Each run appends date, commit, NeuralMind version, node count and the metrics to
 `.neuralmind/eval_history.jsonl` (machine-specific, untracked).
@@ -1679,6 +1704,42 @@ decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
 rates, `ephemeral` fades fast with no LTP floor. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
+
+---
+
+### decisions
+
+Record, search and retire architecture decisions: the decision memory behind
+the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools. The
+subcommands are `record`, `query`, `audit`, `amend`, `invalidate`, `restore`,
+`export` and `eval`; each takes an optional `project_path` (default `.`), and
+[Memory Layer](Memory-Layer.md#cli-reference) documents every one.
+
+```bash
+neuralmind decisions query "how do we handle sqlite wal?" [project_path] [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json]
+neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
+neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
+```
+
+`query` takes keywords or a question, matched against decision titles and
+rationales: any word can match (common words such as "how" and "the" are
+ignored), and decisions matching more of the words rank first.
+
+#### decisions eval
+
+Measures decision search. Both modes seed a scratch store in a temporary
+directory and never read or change the project's decisions.
+
+| Option | Description |
+|--------|-------------|
+| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
+| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
+| `--limit N` | Results per query with `--queries` (default 5) |
+| `--format json\|md` | Report format (default `json`) |
+| `--output FILE`, `-o` | Write the report to a file instead of stdout |
+
+The measured numbers for the committed query set are in
+[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
 
 ---
 
@@ -2503,10 +2564,10 @@ neuralmind savings [project_path] [OPTIONS]
 | `--cost` | False | *(v0.45.0+)* Also show estimated **dollar** savings, priced on input tokens ($/MTok) |
 | `--model` | `claude-opus-4-8` | *(v0.45.0+)* Pricing model for `--cost` — choices come from the built-in input-price table (Claude / GPT / Gemini) |
 | `--queries-per-day` | 100 | *(v0.45.0+)* Assumed daily query volume behind the `--cost` daily/monthly projection |
-| `--naive-50k` | False | *(v4.5.0+)* Price "without NeuralMind" at the fixed 50,000 tokens/query instead of the measured token count of the indexed files |
+| `--naive-50k` | False | *(v4.5.0+)* Price "without NeuralMind" at the fixed 50,000 tokens/query instead of the measured token count of the code the index covers |
 
 Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
-count of the files the index covers (cached at build), labelled in the output;
+count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
 
@@ -3081,7 +3142,7 @@ renewed — issue a new one.
 | `NEURALMIND_PARITY_COVERAGE_FLOOR` | `0.90` | *(v0.16.0+)* Backend parity gate: minimum fraction of the gold graph's per-language symbols the built-in backend must recover for TypeScript/Go/Rust/Java/C/C++ (structural parity, since no gold-fact set exists for those fixtures yet). |
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
-| `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` makes embeddings machine-independent at some indexing-throughput cost. The self-benchmark harness sets `1` automatically so its published numbers don't depend on which CI runner it drew. |
+| `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` removes that dependence at some indexing-throughput cost. It does not make output identical on every machine: with `1` set, public-benchmark CI runs still split into two states with slightly different token counts depending on the runner, while on an Apple M3 the public benchmark gave byte-identical output with and without it ([details](../benchmarks/public.md#how-exactly-a-re-run-reproduces)). The self-benchmark harness sets `1` automatically, and the public-benchmark CI job runs with it. |
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |

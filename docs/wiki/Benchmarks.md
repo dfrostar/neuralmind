@@ -8,7 +8,10 @@ command, raw data committed) but is not a CI gate. Where a number is an
 estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
-in CI.
+in CI. On the public benchmark, "reproducible" means gold-file recall,
+found-rate and MRR have come back identical on every machine compared, while
+per-repo mean tokens have varied by up to 1.3% between machines
+([details](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces)).
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
 > + synapse A/B), `python -m evals.faithfulness.runner --run` (answer quality),
@@ -142,7 +145,7 @@ codebase, but not a CI-gated claim.
 
 | Headline | Value |
 |---|---|
-| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs 50K+ naive) |
+| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0) |
 | Personal synapse edges across the rebuild | **36 → 135** — the learning layer tracked the new code |
 | Shared edge weight | **+5.4%** (denser cross-links after a new shared layer) |
 | Full `--force` rebuild / incremental after | **326 s** / **~30 s** |

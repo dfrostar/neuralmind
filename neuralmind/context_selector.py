@@ -352,9 +352,9 @@ class ContextSelector:
         self.synapse_recall_detailed = None
         self._synapse_store: Any = None  # For synapse-seeded expansion
         self._structural_index: Any = None  # For dependency graph expansion
-        # The reduction ratio's denominator: the measured token count of the
-        # indexed files, set by NeuralMind from neuralmind.baseline. None
-        # falls back to the fixed 50,000-token estimate.
+        # The reduction ratio's numerator: the measured token count of the
+        # code the index covers, set by NeuralMind from neuralmind.baseline.
+        # None falls back to the fixed 50,000-token estimate.
         self.baseline_tokens: int | None = None
 
         # Optional structural recall, injected by NeuralMind.build().
@@ -1936,9 +1936,9 @@ class ContextSelector:
             include_l2: Include on-demand context
             include_l3: Include search results
             full_codebase_tokens: Tokens of the whole codebase — the reduction
-                ratio's denominator. Defaults to :attr:`baseline_tokens` (the
-                measured size of the indexed files, see ``neuralmind.baseline``),
-                else the fixed 50,000-token estimate.
+                ratio's numerator. Defaults to :attr:`baseline_tokens` (the
+                measured size of the code the index covers, see
+                ``neuralmind.baseline``), else the fixed 50,000-token estimate.
 
         Returns:
             ContextResult with optimized context and token budget

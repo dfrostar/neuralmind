@@ -142,9 +142,12 @@ class OnnxMiniLMEmbedder:
         the embedding floats. Downstream, near-tie rankings (and TurboQuant
         quantization buckets) can flip on those bits — so the same commit can
         rank two near-equal candidates differently on runners that differ only
-        in core count. ``NEURALMIND_ORT_THREADS=1`` pins the pool for a
-        machine-independent summation order; the benchmark harness sets it so
-        its published numbers are not a function of the runner it drew.
+        in core count. ``NEURALMIND_ORT_THREADS=1`` pins the pool so the
+        summation order no longer depends on core count; the self-benchmark
+        harness and the public-benchmark CI job set it. It does not make the
+        output identical on every machine: public-benchmark CI runs with it
+        set still split into two output states by runner (see
+        docs/benchmarks/public.md, "How exactly a re-run reproduces").
         Unset (the default) keeps ORT's own sizing — indexing throughput on
         real repos matters more than bit-stable floats there.
         """

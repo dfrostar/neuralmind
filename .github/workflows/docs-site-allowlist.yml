@@ -1,0 +1,30 @@
+name: Docs site allowlist (docs.neuralmind.uk)
+
+# GitHub Pages publishes main:/docs at https://docs.neuralmind.uk/ on every
+# push, without waiting for CI. This fails when docs/ holds a file type the
+# site doesn't use; scripts/check_docs_site_allowlist.py has the allowlist and
+# the 2026-10-02 incident it exists for. The domain is in the workflow name so
+# a "Run failed" notification says what is at stake.
+#
+# No paths filter: if this becomes a required check it has to report on every
+# PR, and it finishes in seconds.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Manual trigger for release-please's branch, whose GITHUB_TOKEN pushes
+  # can't fire pull_request workflows — see ci.yml (#98).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: docs-site-allowlist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Every file under docs/ belongs on the public docs site
+        run: python3 scripts/check_docs_site_allowlist.py

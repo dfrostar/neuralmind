@@ -213,6 +213,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v451">
+            <h2>What&rsquo;s New in v4.5.1 &mdash; decision memory answers questions, for every role</h2>
+            <p><strong>Agents ask questions, and decision search required every word of one to match; the progressive-retrieval memory tools turned away every caller that hadn&rsquo;t declared <code>admin</code>.</strong> v4.5.1 fixes both.</p>
+            <ul>
+                <li><strong>Questions find decisions</strong> &mdash; any word of the query can match, common words are ignored, and decisions matching more and rarer words rank first, in <code>neuralmind decisions query</code>, the MCP decision tools and the fallback for SQLite without FTS5</li>
+                <li><strong>Memory retrieval for the default roles</strong> &mdash; <code>neuralmind_memory_search</code>, <code>neuralmind_memory_timeline</code> and <code>neuralmind_memory_get</code> work for <code>builder</code> and <code>reader</code>; writing decisions stays builder-only</li>
+                <li><strong><code>neuralmind decisions eval</code> leaves your decisions alone</strong> &mdash; it runs on a scratch store, and <code>--queries FILE</code> scores search against questions with known answers</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.5.1.md">v4.5.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v450">
             <h2>What&rsquo;s New in v4.5.0 &mdash; numbers measured on your project</h2>
             <p><strong>Three commands printed three unrelated reduction ratios against three baselines, and running an eval weekly trained the synapse layer on its own test.</strong> v4.5.0 makes every number NeuralMind prints about a project measured on that project, and comparable from run to run.</p>
@@ -220,7 +233,7 @@
             <ul>
                 <li><strong><code>neuralmind eval .</code></strong> &mdash; hit@1, hit@5 and MRR against the questions and gold files you commit in <code>.neuralmind.eval.yaml</code>, with a run history (<code>--report</code>) and drafted questions (<code>--suggest</code>)</li>
                 <li><strong>Read-only queries</strong> &mdash; <code>query --no-learn</code>, MCP <code>learn: false</code> and <code>NEURALMIND_NO_LEARN=1</code> read the learned layer without writing to it; <code>benchmark</code>, <code>probe</code> and <code>eval</code> are read-only by default</li>
-                <li><strong>One measured baseline</strong> &mdash; <code>benchmark</code>, <code>savings</code>, <code>cost</code> and <code>build --dry-run</code> divide by the token count of the files the index covers, not a fixed 50K estimate (<code>--naive-50k</code> keeps the old number)</li>
+                <li><strong>One measured baseline</strong> &mdash; <code>benchmark</code>, <code>savings</code>, <code>cost</code> and <code>build --dry-run</code> divide by the token count of the code the index covers &mdash; prose left out, counted in the context's own units &mdash; not a fixed 50K estimate (<code>--naive-50k</code> keeps the old number; <code>benchmark</code> prints it alongside)</li>
                 <li><strong><code>.gitignore</code> honoured</strong> &mdash; the index covers what git covers, including tracked files that match an ignore rule; <code>.neuralmindignore</code> uses gitignore semantics</li>
                 <li><strong>Stable probe sampling</strong> &mdash; an unchanged symbol stays in the sample across rebuilds, and <code>--baseline</code> compares only the symbols both runs sampled</li>
                 <li><strong>The Read, Bash and Grep hooks stop adding tokens</strong> &mdash; through v4.4.0 they returned compressed copies of tool output as <code>additionalContext</code>, which Claude Code adds next to the result rather than replacing it: +17.5% on Bash calls and +22.1% on content-mode Grep in the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>, while the Read hook never received Claude Code&rsquo;s payload. They now inject nothing; no reinstall needed</li>
@@ -753,7 +766,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Real pinned repos</strong>, not our fixtures &mdash; <code>git checkout &lt;sha&gt;</code> and audit.</li>
                 <li><strong>Objective gold, no LLM judge</strong> &mdash; each gold file is a symbol's definition site, verifiable with one <code>rg</code>; scoring reuses the same <code>neuralmind/quality.py</code> the CI gate runs.</li>
                 <li><strong>Cost + correctness jointly</strong>, never a lone reduction ratio; pre-registered queries, every one reported including losses.</li>
-                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its lift is measured separately by the synapse A/B eval, which CI gates on direction rather than magnitude). Re-running matches to the token.</li>
+                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its lift is measured separately by the synapse A/B eval, which CI gates on direction rather than magnitude). Re-running on the same machine matches to the token; across machines, recall, found-rate and MRR have matched exactly, while token counts differed slightly on some CI runners (up to 1.3% on a per-repo mean &mdash; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces">details</a>).</li>
                 <li><strong>Forkable</strong> &mdash; <code>.github/workflows/bench-public.yml</code> regenerates the table on demand; raw per-query data at <code>bench/public/results.json</code>.</li>
             </ul>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">Full methodology, caveats, and where NeuralMind loses →</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.31.0.md">v0.31.0 release notes →</a></p>
