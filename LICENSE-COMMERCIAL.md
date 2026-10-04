@@ -18,7 +18,7 @@ Subject to payment of applicable fees and compliance with this Agreement, Licens
 
 - Deploy the Software on Licensee's infrastructure
 - Access paid-tier features: **shared-memory governance, seat management, hash-chained audit log, compliance export, self-hosted deployment**
-- Receive **priority support** (SLA defined in Exhibit A)
+- Receive **priority support**
 - Use accompanying documentation and updates during the term
 
 **The MIT core remains free for everyone** — including all token compression and savings — and a 1-seat free-tier license auto-issues on first run (no signup, never expires).
@@ -97,7 +97,7 @@ Licensor shall defend Licensee against third-party claims that the Software infr
 
 **Warranty:** Licensor warrants, for the term of this Agreement, that (i) the Commercial Modules will, when operated in accordance with the documentation on a supported platform, function materially in accordance with their published specifications, including that the hash-chained audit log will accurately and tamper-evidently record the events it is documented to record; (ii) the Commercial Modules do not, as delivered, infringe any third-party copyright or patent; and (iii) the license validation feature will not falsely reject a validly-licensed, non-expired Licensee deployment. Licensor's sole obligation for breach of the warranty in (i) is to remediate the defect or provide a workaround within a reasonable period, subject to the Limitation of Liability below. EXCEPT AS EXPRESSLY WARRANTED IN THIS PARAGRAPH, THE COMMERCIAL MODULES ARE PROVIDED "AS IS" AND WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
-**Limitation of Liability:** TO THE MAXIMUM EXTENT PERMITTED BY LAW, (A) LICENSOR'S AGGREGATE LIABILITY FOR DIRECT DAMAGES UNDER THIS AGREEMENT SHALL NOT EXCEED THE GREATER OF (I) THE FEES PAID BY LICENSEE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM OR (II) TWENTY-FIVE THOUSAND DOLLARS (US$25,000); (B) NEITHER PARTY SHALL BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS OR LOST DATA, EXCEPT AS REQUIRED BY APPLICABLE LAW; AND (C) THE FOREGOING CAPS AND EXCLUSIONS DO NOT APPLY TO (I) EITHER PARTY'S WILLFUL MISCONDUCT OR GROSS NEGLIGENCE, (II) BREACH OF CONFIDENTIALITY, (III) INDEMNIFICATION OBLIGATIONS, OR (IV) A FALSE-DENY OR VALIDATION FAILURE DESCRIBED IN THE WARRANTY PARAGRAPH, FOR WHICH LICENSOR SHALL, AS LICENSEE'S SOLE REMEDY, PROVIDE A REFUND OF FEES PAID FOR THE AFFECTED PERIOD AND REASONABLE SERVICE CREDITS PER THE DEFINED SLA.
+**Limitation of Liability:** TO THE MAXIMUM EXTENT PERMITTED BY LAW, (A) LICENSOR'S AGGREGATE LIABILITY FOR DIRECT DAMAGES UNDER THIS AGREEMENT SHALL NOT EXCEED THE GREATER OF (I) THE FEES PAID BY LICENSEE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM OR (II) TWENTY-FIVE THOUSAND DOLLARS (US$25,000); (B) NEITHER PARTY SHALL BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS OR LOST DATA, EXCEPT AS REQUIRED BY APPLICABLE LAW; AND (C) THE FOREGOING CAPS AND EXCLUSIONS DO NOT APPLY TO (I) EITHER PARTY'S WILLFUL MISCONDUCT OR GROSS NEGLIGENCE, (II) BREACH OF CONFIDENTIALITY, (III) INDEMNIFICATION OBLIGATIONS, OR (IV) A FALSE-DENY OR VALIDATION FAILURE DESCRIBED IN THE WARRANTY PARAGRAPH, FOR WHICH LICENSOR SHALL, AS LICENSEE'S SOLE REMEDY, PROVIDE A REFUND OF FEES PAID FOR THE AFFECTED PERIOD.
 
 ---
 
