@@ -372,6 +372,22 @@ def isolate_tests(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_tier2_config(tmp_path, monkeypatch):
+    """Keep the developer's ~/.config/neuralmind/tier2.yaml out of every test.
+
+    Team-memory publish/import read the governance policy and write the audit
+    log when that file exists. Pointing the default at a path that doesn't
+    exist makes "governance not configured" the baseline everywhere (as on
+    CI); tests that need governance set the path themselves.
+    """
+    from neuralmind.tier2 import config as _config
+
+    monkeypatch.setattr(
+        _config, "DEFAULT_CONFIG_PATH", tmp_path / ".no-tier2-config" / "tier2.yaml"
+    )
+
+
+@pytest.fixture(autouse=True)
 def _release_chroma_file_handles():
     """Stop chromadb's cached Systems after each test.
 

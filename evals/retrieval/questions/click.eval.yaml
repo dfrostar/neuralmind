@@ -1,0 +1,61 @@
+# click @ 874ca2bc (src/click) — 30 pre-registered questions; gold = the file whose code answers it
+- q: "How does a group in chain mode run several subcommands one after another and collect what each of them returns?"
+  gold: [core.py]
+- q: "How do parameter defaults get picked up from a nested settings dictionary handed to the top-level command?"
+  gold: [core.py]
+- q: "How can my code find out whether a value was typed on the command line, came from an environment variable, or fell back to a default?"
+  gold: [core.py]
+- q: "Where are on/off switch declarations like --shout/--no-shout split into the positive and negative flag names?"
+  gold: [core.py]
+- q: "In what order are a command's parameters processed, and how do eager ones like --help get handled before the rest?"
+  gold: [core.py]
+- q: "Where does standalone mode catch errors, Ctrl-C and broken pipes and turn them into a process exit code?"
+  gold: [core.py]
+- q: "How does the --version flag work out the installed package version when no version string is passed in?"
+  gold: [decorators.py]
+- q: "How do I build a decorator that looks up an object of a given type somewhere in the context chain and passes it to my function?"
+  gold: [decorators.py]
+- q: "How does the integer range type clamp out-of-bounds input to the nearest limit instead of rejecting it?"
+  gold: [types.py]
+- q: "Which strings are accepted as true or false when converting a boolean parameter?"
+  gold: [types.py]
+- q: "Where does the filesystem-location parameter type check that something exists, is readable, or is a directory rather than a file?"
+  gold: [types.py]
+- q: "How does the parser deal with several single-letter flags bundled together like -abc, or a value glued straight onto a short flag?"
+  gold: [parser.py]
+- q: "How is a half-typed command line with an unclosed quote broken into tokens without throwing an error?"
+  gold: [parser.py]
+- q: "When someone mistypes a long option, where are the 'possible options' suggestions worked out and put into the error text?"
+  gold: [parser.py, exceptions.py]
+- q: "Where does a usage error print the usage line and the 'Try --help' hint before the actual error message?"
+  gold: [exceptions.py]
+- q: "How does the library choose a per-OS folder for storing an app's configuration?"
+  gold: [utils.py]
+- q: "On Windows, where the shell doesn't expand wildcards, which code expands globs, ~ and environment variables in the arguments?"
+  gold: [utils.py]
+- q: "How is the program name shown in help figured out when the tool is launched with python -m?"
+  gold: [utils.py]
+- q: "How is writing a file atomically done, i.e. writing to a temp file next to it and swapping it in on close?"
+  gold: [_compat.py]
+- q: "Which file decides whether color escape codes should be stripped from output, for example when not attached to a terminal or running in Jupyter?"
+  gold: [_compat.py]
+- q: "How does it pick which pager program to pipe long output through?"
+  gold: [_termui_impl.py]
+- q: "Which text editor gets launched when the user is asked to edit some text, and how is it chosen?"
+  gold: [_termui_impl.py]
+- q: "How is the estimated time remaining calculated for the progress meter?"
+  gold: [_termui_impl.py]
+- q: "How does asking the user for input with hidden typing and a repeat-to-confirm step work?"
+  gold: [termui.py]
+- q: "Where's the helper that applies color styling and prints the text in a single call?"
+  gold: [termui.py]
+- q: "How does the test harness swap out stdin, stdout, stderr and environment variables while it runs a command?"
+  gold: [testing.py]
+- q: "How does tab completion figure out which subcommand and parameter are being completed from the partial words on the line?"
+  gold: [shell_completion.py]
+- q: "Where are the bash/zsh/fish completion scripts produced, and where is the check that bash is new enough?"
+  gold: [shell_completion.py]
+- q: "How can code deep inside a callback get hold of the currently active invocation context without it being passed in?"
+  gold: [globals.py]
+- q: "Where are an option's aliases like -v and --verbose joined and ordered by prefix length for the help listing?"
+  gold: [formatting.py]

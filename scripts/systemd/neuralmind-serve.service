@@ -20,13 +20,15 @@
 #   curl -fsS http://127.0.0.1:8765/healthz
 #   journalctl --user -u neuralmind-serve -f
 #   # The full tokenized URL prints to journalctl on startup;
-#   # `neuralmind serve` requires the per-session token by default.
+#   # `neuralmind serve` requires the access token by default.
 #
 # Stop / disable:
 #   systemctl --user disable --now neuralmind-serve
 #
 # This is a TEMPLATE — change WorkingDirectory and ExecStart to your
-# project. The graph view embeds a per-session auth token in URLs.
+# project. The graph view embeds an auth token in URLs. The token persists
+# in ~/.neuralmind/server-token.json, so it survives restarts; delete that
+# file and restart the unit to rotate it.
 
 [Unit]
 Description=NeuralMind graph-view server

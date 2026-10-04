@@ -25,12 +25,13 @@ Complete command-line interface documentation for NeuralMind.
   - [self-improve status](#self-improve-status-v0260)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
-  - [decisions](#decisions)
+  - [cognition-loop](#cognition-loop)
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
+  - [decisions](#decisions-v410)
   - [drift](#drift-v320)
   - [compliance](#compliance-v314)
   - [ci-check](#ci-check-v314)
@@ -41,6 +42,7 @@ Complete command-line interface documentation for NeuralMind.
   - [savings](#savings-v0400)
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
+  - [team governance](#team-governance)
   - [optimize-docs](#optimize-docs-v172)
   - [license — issuer-side](#license--issuer-side)
 - [Exit Codes](#exit-codes)
@@ -357,7 +359,7 @@ Results are tagged with source project and deduplicated by ID.
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
-| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
+| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`). *(v4.6.0+)* Also prints the query intent L3 ranked with and how it was decided, and labels each top hit with its name and file |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
 | `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
 | `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
@@ -459,10 +461,28 @@ neuralmind query /path/to/project "auth flow" --explain
 # →     L3 search     :    980 tokens
 # →     Total used    :  2,435 tokens
 # →     Est. saved    : 47,565 tokens  (20.5x reduction)
+# →   Query intent     : code (by classifier)
 # →   Top search hits (L3, 4 nodes):
 # →     0.912  authenticate  (auth/handlers.py)
 # →     0.887  JWTMiddleware  (auth/middleware.py)
 ```
+
+**Query intent *(v4.6.0+)*.** L3 re-weights its hits by the question's intent —
+a `docs` question multiplies doc hits by 2.0 and code hits by 0.7 — and
+`--explain` now says which intent it used and how it was decided:
+
+| Shown as | Decided by |
+|---|---|
+| `code (by classifier)` / `docs (by classifier)` | the v3.9.0 pattern classifier |
+| `… (by keywords)` | the older keyword count, when the classifier calls the question `hybrid` |
+| `code (by question shape)` / `docs (by question shape)` | the opt-in intent rules, `NEURALMIND_INTENT_RULES=1` (see [Environment Variables](#environment-variables)) |
+
+When a "how does X work" question comes back ranked as `docs`, this line
+explains why a README ranks above the implementation *within* L3's four hits
+(a `docs` intent multiplies doc hits by 2.0 and code by 0.7). It can't explain
+the implementation missing from those four: in v4.6.0's eval, switching intent
+never changed hit@5. The hit list prints each hit's label and
+file; before v4.6.0 it printed raw node ids.
 
 #### Sample Output
 
@@ -781,12 +801,13 @@ on some CI runners (up to 1.3% on a per-repo mean so far);
 [how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **85–100% gold-file recall (93.75% mean) at 45–261× fewer
-tokens** than pasting every source file, and beats `ripgrep` on cost on every
-repo; on recall it's ahead on 2 of 4 repos and ties exactly on the other 2. The
-benchmark also reports, without hiding it, that a well-tuned vector RAG matches
-or beats it at *findability* on every repo (and cheaper on raw tokens), and that
-`flask` is NeuralMind's weakest repo in the corpus. Full methodology,
+— NeuralMind reaches **85.71–100% gold-file recall (95% mean, 92.5% found-rate)
+at 46–263× fewer tokens** than pasting every source file, and beats `ripgrep` on
+cost on every repo; on recall it's ahead on 3 of 4 repos and ties exactly on the
+fourth. The benchmark also reports, without hiding it, that a well-tuned vector
+RAG matches or beats it at *findability* on every repo (and cheaper on raw
+tokens), and that `click` is NeuralMind's weakest repo in the corpus (3 of 40
+queries missed, every one published). Full methodology,
 results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
@@ -984,6 +1005,46 @@ Displays:
 neuralmind stats .
 neuralmind stats /path/to/project --json
 ```
+
+### cognition-loop
+
+*On demand since v4.0.0; rebuilt in v4.6.0.* Runs one maintenance pass over
+the project's learned memory, using the same machinery the hooks use:
+
+1. **Decay** — the synapse store's half-life decay (30 days for personal and
+   branch memory, 60 for shared, 1 for ephemeral; long-term edges keep their
+   floor; dead edges are pruned). It charges only the time since the previous
+   decay, so running it often never decays anything twice.
+2. **Read-dedup cleanup** — drops `.neuralmind/read_cache.db` rows untouched
+   for a day.
+
+```bash
+neuralmind cognition-loop [project_path] [--json]
+```
+
+Idempotent and safe while NeuralMind is in use, so it can go in cron. Nothing
+schedules it: the `SessionStart` hook already decays at every Claude Code
+session start and `neuralmind watch` every 10 minutes, so it's for setups that
+run neither (an MCP-only client, say). Hub normalization is left to the
+`PreCompact` hook, because it compounds on every call. A project with no
+learned memory, or a process with `NEURALMIND_NO_LEARN=1`, is skipped
+(`"skipped"` in the JSON) and nothing is created.
+
+```cron
+0 * * * * cd /path/to/repo && neuralmind cognition-loop . >/dev/null
+```
+
+`--json` fields: `edges_pruned`, `edges_remaining`, `transitions_pruned`,
+`transitions_remaining`, `read_cache_pruned`, `duration_secs`, `timestamp`,
+`skipped`.
+
+> Before v4.6.0 this command ran its own SQL that deleted most learned edges
+> idle for about two days, replayed recent queries into an unread `traversal`
+> namespace and deleted session summaries older than 30 days. Leftover
+> `traversal` rows are inert; `neuralmind memory reset --namespace traversal`
+> removes them.
+
+---
 
 ### synapse prune *(v3.1.4+)*
 
@@ -1317,6 +1378,56 @@ neuralmind eval .                     # → hit@1 40% · hit@5 60% · MRR 0.50 (
 neuralmind eval . --report            # history table
 ```
 
+Ranking flags are read at query time, so the same eval scores a variant
+without a rebuild — pass `--no-history` so the variant stays out of your trend:
+
+```bash
+NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0's keyword index, for comparison
+NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default research flag
+```
+
+#### Retrieval eval harness (`python -m evals.retrieval.run`) *(v4.6.0+)*
+
+From a source checkout, the harness that chose v4.6.0's default runs the same
+scorer as `neuralmind eval` across several repositories and every ranking-flag
+configuration, **read-only**, and applies a keep rule fixed in advance:
+
+- mean hit@5 across repos goes up, and it goes up on at least 3 repos;
+- no repo drops by more than one question;
+- average context tokens rise by at most 10%;
+- with `--public-benchmark`, the public 4-repo benchmark's gold-file recall
+  doesn't drop.
+
+The repositories are `requests`, `click`, `flask` and `rich` at the public
+benchmark's pinned commits (cloned on demand) and this repository, with 30
+questions each, pre-registered and committed in `evals/retrieval/questions/`.
+v4.6.0's default was measured on those five public repos plus a private
+383-file repository, added with `--private` and its own local question set.
+
+```bash
+pip install -e . tiktoken
+NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark --out bench/retrieval/on-v4.6
+python -m evals.retrieval.run --private ~/work/your-repo     # add your own repo, locally
+python -m evals.retrieval.run --repos flask --configs baseline,per_file
+```
+
+| Option | Description |
+|--------|-------------|
+| `--private PATH` | Add a git repository whose questions live in its own `.neuralmind.eval.yaml`. It is copied into the work dir, so its own `.neuralmind/` is never touched, and reported only in aggregate, as `private` — `--out` writes no per-question ranks for it |
+| `--repos LIST` | Comma-separated subset of `requests`, `click`, `flask`, `rich`, `neuralmind` |
+| `--configs LIST` | Comma-separated flag configurations (`baseline` always runs); the names and their flags are listed in [`bench/retrieval/README.md`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md) |
+| `--public-benchmark` | Also re-run the public benchmark per configuration, each on its own fresh copy of the pinned clones |
+| `--out DIR` | Write `results.json` and `report.md` |
+| `--work-dir DIR` | Where clones and copies go (default `.bench-work`, gitignored) |
+| `--no-build` | Reuse the existing indexes instead of rebuilding them from nothing |
+
+Every run rebuilds each repository's index from nothing — learned synapses from
+an earlier run would otherwise move the baseline — and runs the baseline again
+after every configuration; the report says whether it reproduced. The raw
+output behind v4.6.0's default is committed in
+[`bench/retrieval/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md).
+Walkthrough: [A/B-test a ranking change on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md).
+
 #### Built-in suites (`--suite`)
 
 The **faithfulness eval**: does NeuralMind's selected context contain more gold
@@ -1647,6 +1758,7 @@ neuralmind memory reset   [project_path] --namespace NAME [--json]
 neuralmind memory export  [project_path] [--namespace NAME] [-o FILE]
 neuralmind memory import  <file> [--project-path PATH] [--namespace NAME] [--json]
 neuralmind memory publish [project_path] [--json]
+neuralmind memory review-list|review-approve SOURCE TARGET|review-reject SOURCE TARGET [project_path]
 ```
 
 #### Subcommands
@@ -1657,7 +1769,7 @@ neuralmind memory publish [project_path] [--json]
 | `reset` | Clear **one** namespace (`--namespace` is required). The project index and every other namespace are untouched — the surgical alternative to a full retrain. |
 | `export` | Write one namespace as a portable, versioned JSON bundle reusing the IR's `IRSynapse` shape. Defaults to the active namespace; `-o` writes a file, otherwise stdout. |
 | `import` | Validate a bundle (format + version + entries) and merge it into a target namespace (default: the bundle's own). Merging keeps the MAX of weight/count per edge, so re-importing the same bundle is **idempotent**. A malformed bundle is rejected wholesale — never partially imported. |
-| `publish` *(v0.30.0)* | **Team memory.** Export the project's learned memory (`personal` + `shared`, MAX-merged) to a committed bundle at the repo root, **`.neuralmind-team-memory.json`**. Commit it, and every teammate's agent inherits it once into `shared` on its next `SessionStart`/`build` (content-hash-gated, off-switch `NEURALMIND_TEAM_MEMORY=0`). |
+| `publish` *(v0.30.0)* | **Team memory.** Export the project's learned memory (`personal` + `shared`, MAX-merged) to a committed bundle at the repo root, **`.neuralmind-team-memory.json`**. Commit it, and every teammate's agent inherits it once into `shared` on its next `SessionStart`/`build` (content-hash-gated, off-switch `NEURALMIND_TEAM_MEMORY=0`). *v4.6.0:* with [team governance](#team-governance) configured, the publishing scope picks the source namespaces (`personal` refuses to publish) and edges below the weight threshold are left out; pairs listed under the bundle's `retracted` key are never re-published, and importing a bundle deletes them from `shared`. |
 
 #### Examples
 
@@ -1676,6 +1788,11 @@ neuralmind memory import team-baseline.json --namespace shared
 neuralmind memory publish .
 git add .neuralmind-team-memory.json && git commit -m "publish team memory"
 # teammates: their next `neuralmind build` / Claude Code session inherits it
+
+# Imported associations that need a human decision (v4.6.0: audited under governance)
+neuralmind memory review-list .
+neuralmind memory review-approve SOURCE TARGET .
+neuralmind memory review-reject SOURCE TARGET .
 ```
 
 #### How the active namespace is resolved
@@ -1704,42 +1821,6 @@ decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
 rates, `ephemeral` fades fast with no LTP floor. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
-
----
-
-### decisions
-
-Record, search and retire architecture decisions: the decision memory behind
-the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools. The
-subcommands are `record`, `query`, `audit`, `amend`, `invalidate`, `restore`,
-`export` and `eval`; each takes an optional `project_path` (default `.`), and
-[Memory Layer](Memory-Layer.md#cli-reference) documents every one.
-
-```bash
-neuralmind decisions query "how do we handle sqlite wal?" [project_path] [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json]
-neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
-neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
-```
-
-`query` takes keywords or a question, matched against decision titles and
-rationales: any word can match (common words such as "how" and "the" are
-ignored), and decisions matching more of the words rank first.
-
-#### decisions eval
-
-Measures decision search. Both modes seed a scratch store in a temporary
-directory and never read or change the project's decisions.
-
-| Option | Description |
-|--------|-------------|
-| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
-| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
-| `--limit N` | Results per query with `--queries` (default 5) |
-| `--format json\|md` | Report format (default `json`) |
-| `--output FILE`, `-o` | Write the report to a file instead of stdout |
-
-The measured numbers for the committed query set are in
-[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
 
 ---
 
@@ -1990,6 +2071,24 @@ NeuralMind block, leaving any user hooks untouched):
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 
+**Read dedup** *(v4.6.0)*: the `Read` PostToolUse action replaces a repeat
+read of unchanged content with a short stub, through `updatedToolOutput` (the
+replacement keeps the Read tool's output shape; Claude Code delivers the
+original read when it doesn't match). The same agent in the same session must
+have received exactly that text and range less than an hour ago, and the read
+right after a stub always goes through in full. Reads are keyed on
+`session_id` + `agent_id`, so subagents and other sessions never share them;
+`SessionStart` and `PreCompact` forget the session's reads; reads under 2,000
+characters are never stubbed. Only in projects that already have
+`.neuralmind/`; state in `.neuralmind/read_cache.db`. Off-switch
+`NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
+`NEURALMIND_NO_LEARN=1`).
+
+**Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
+its full id and the reason it left ACTIVE (for example
+`commit 3f9c2ab changed db.py since this decision was recorded`), plus a
+pointer to `neuralmind decisions restore <id>` when one is STALE.
+
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
 ```
@@ -2087,7 +2186,18 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 Install (or update) two Git hooks, both idempotent and both appended to any
 existing hook script rather than overwriting it:
 
-- **`post-commit`** rebuilds the neural index automatically after every commit.
+- **`post-commit`** first runs `neuralmind decisions scan . --quiet`
+  *(v4.6.0+)*, which marks STALE any recorded decision whose file the commit
+  changed after the decision was recorded and prints them (see
+  [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
+  Re-run `init-hook` on an existing checkout to get the scan; the managed
+  block is replaced in place.
+
+For a project in a subdirectory of its repository, or in a linked worktree,
+the hooks go in the repository's hooks directory and name the project by its
+path from the repository root, since git runs hooks from there (for example
+`neuralmind decisions scan services/api`). The managed block is one per hook
+file, so a second project in the same repository replaces the first's.
 - **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
   staged diff — the commit-time drift guard described under
   [`drift`](#drift-v320) below.
@@ -2101,7 +2211,7 @@ neuralmind init-hook [project_path] [--no-drift] [--strict]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
-| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit rebuild only |
+| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit hook only |
 | `--strict` | No | Make the installed drift guard block commits instead of warning |
 
 #### Examples
@@ -2113,9 +2223,99 @@ neuralmind init-hook .
 # Install both hooks, with drift blocking the commit
 neuralmind init-hook . --strict
 
-# Install only the post-commit rebuild, no drift guard
+# Install only the post-commit hook (decision scan + rebuild), no drift guard
 neuralmind init-hook . --no-drift
 ```
+
+---
+
+### decisions *(v4.1.0+)*
+
+Decision memory: architecture decisions stored with rationale, evidence,
+affected files and the commit they came from, in `.neuralmind/memory.db`. It
+backs the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools, and
+[Memory Layer](Memory-Layer.md#cli-reference) documents every subcommand.
+
+```bash
+neuralmind decisions record --title T --rationale R [--files F ...] [--commit SHA] [project_path]
+neuralmind decisions query "TEXT" [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json] [project_path]
+neuralmind decisions audit [--stale | --orphaned] [--format md|json] [project_path]
+neuralmind decisions amend ID [--rationale R] [--evidence E ...] [project_path]
+neuralmind decisions invalidate ID [--reason R] [project_path]
+neuralmind decisions restore ID [--commit SHA] [project_path]
+neuralmind decisions scan [--quiet] [--json] [project_path]     # v4.6.0+
+neuralmind decisions export [--format md|json] [-o FILE] [project_path]
+neuralmind decisions eval [--tasks 10] [--format json|md] [--output FILE] [project_path]
+neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
+```
+
+`query` takes keywords or a question, matched against decision titles and
+rationales: any word can match (common words such as "how" and "the" are
+ignored), and decisions matching more of the words rank first (v4.5.1+; before,
+every word had to match). `--status` is case-insensitive.
+
+`--commit` defaults to `HEAD`. `restore` re-anchors a STALE or INVALIDATED
+decision to a commit (default `HEAD`) and makes it ACTIVE again. Before an
+agent edits a file, the `PreToolUse` stale-decision guard
+([`install-hooks`](#install-hooks)) surfaces decisions governing it that are
+STALE or INVALIDATED.
+
+#### decisions scan *(v4.6.0+)*
+
+Marks decisions STALE when the `HEAD` commit changed their files. The
+post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
+
+- The commit is diffed against its first parent (a merge commit counts
+  everything it brought in; a rename counts both paths), relative to the
+  project directory.
+- **Any** change to a file a decision names counts — no diff analysis.
+- Two exemptions keep a fresh decision from going stale on the commit that
+  carries it: a decision anchored to `HEAD` itself, and a decision whose
+  fingerprints match what the commit stores. Recording, amending or
+  restoring a decision fingerprints each affected file with its git blob id
+  (`git hash-object`, as `git add` would store it); when every changed file
+  the decision names matches, the commit carries exactly the code the
+  decision describes. Decisions without fingerprints (recorded before v4.6.0,
+  or naming a file that didn't exist yet) get no exemption.
+- Dependents (`dependency_constraints`) cascade. The reason is appended to
+  each decision's evidence (`Marked STALE: commit 3f9c2ab changed … after this
+  decision was recorded`).
+- A project with no decision store is left alone (none is created). Always
+  exits 0, so it can never fail the commit it follows. Off-switch
+  `NEURALMIND_DECISION_SCAN=0`.
+- Pulls and rebases don't run post-commit hooks: a decision whose files changed
+  only in pulled commits stays ACTIVE until one of your commits touches them.
+  Files are matched by exact path (project-relative or absolute).
+
+| Option | Description |
+|--------|-------------|
+| `--quiet`, `-q` | Print only when a decision went stale (what the git hook uses) |
+| `--json`, `-j` | `{"commit": SHA, "stale": [{"id", "title", "reason"}]}` |
+
+```
+$ neuralmind decisions scan .
+[neuralmind] 1 decision(s) marked STALE by commit 3f9c2ab:
+  - Sessions live in Postgres (5b1e0c7a-…) — commit 3f9c2ab changed auth/session.py since this decision was recorded
+  Review: neuralmind decisions audit --stale   Still valid? neuralmind decisions restore <id>
+```
+
+#### decisions eval
+
+Measures decision search. Both modes seed a scratch store in a temporary
+directory and never read or change the project's decisions.
+
+| Option | Description |
+|--------|-------------|
+| `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
+| `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
+| `--limit N` | Results per query with `--queries` (default 5) |
+| `--format json\|md` | Report format (default `json`) |
+| `--output FILE`, `-o` | Write the report to a file instead of stdout |
+
+The measured numbers for the committed query set are in
+[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
+
+Walkthrough: [Keep decision memory honest across commits](../use-cases/decision-memory-across-commits.md).
 
 ---
 
@@ -2406,12 +2606,14 @@ agent queries. v0.6.0 made the canvas live: synapse + file events
 stream to the browser over SSE, affected nodes pulse, a sidebar log
 shows recent events. Stops cleanly on Ctrl-C.
 
-The server binds to 127.0.0.1 by default and prints a per-session
-auth-token URL on startup; pass that URL to the browser so untrusted
-local processes can't read your graph.
+The server binds to 127.0.0.1 by default and prints an auth-token URL on
+startup; pass that URL to the browser so untrusted local processes can't
+read your graph. The token persists in `~/.neuralmind/server-token.json`
+(mode `0600`), so the URL stays valid across restarts; delete that file and
+restart the server to rotate it.
 
 ```bash
-neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [--no-auth]
+neuralmind serve [project_path] [--host HOST] [--port PORT] [--no-browser] [--editor EDITOR] [--no-auth]
 ```
 
 #### Arguments
@@ -2424,10 +2626,11 @@ neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--host` | `127.0.0.1` | Address to bind to. The token stays on |
 | `--port` | `8787` | TCP port to bind to |
 | `--no-browser` | off | Don't auto-open a browser tab on startup |
 | `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
-| `--no-auth` | off | Disable the per-session auth token. Only use on a trusted host. |
+| `--no-auth` | off | Disable the auth token. Only use on a trusted host. |
 
 #### Examples
 
@@ -2952,6 +3155,60 @@ Run `neuralmind team license status` to view.
 
 ---
 
+### team governance
+
+Team-memory governance (source-available tier2 modules; runs free at 1 seat).
+Settings live in `~/.config/neuralmind/tier2.yaml`, per user; until an
+operator saves them (here or with [`onboarding`](#onboarding-v170)), nothing in
+the team-memory flow is gated or audited. *Enforced since v4.6.0; earlier
+versions recorded scope and threshold without enforcing them.*
+
+```bash
+neuralmind team governance status
+neuralmind team governance set-scope personal|shared|both --admin EMAIL
+neuralmind team governance set-weight-threshold 0.0-1.0 --admin EMAIL
+neuralmind team governance set-governance-enabled true|false --admin EMAIL
+neuralmind team governance list-shared [--project PATH] [--limit N] [--json]
+neuralmind team governance remove-edge SOURCE TARGET [--project PATH] --admin EMAIL
+```
+
+| Setting | Effect on `neuralmind memory publish` |
+|---|---|
+| scope `personal` | Refuses to publish (exit 1); memory stays on each machine |
+| scope `shared` | Publishes only the team baseline (the `shared` namespace) |
+| scope `both` *(default)* | Publishes personal + shared memory |
+| `weight_threshold` *(default 0.1)* | Synapse edges below it are left out of the bundle (transitions aren't weight-filtered) |
+| `set-governance-enabled false` | Turns the scope and threshold gates off; events are still audited |
+
+The bundle's `provenance.governance` records the policy it was published
+under. A governance config that exists but can't be read (unreadable, malformed
+YAML, an invalid value) makes publish refuse.
+
+**`remove-edge SOURCE TARGET`** (admin-only) deletes the association, and the
+transitions between the two nodes, from the project's `shared` memory and
+review queue. It drops the pair from `.neuralmind-team-memory.json` and lists
+it under `retracted` (creating the file if needed). Commit the file: each
+teammate's next session deletes the pair from their own `shared` memory, and
+no later publish re-adds it. The file is written first, atomically; if the
+local store update then fails, the next import finishes it. A non-admin gets
+`Permission denied` and exit 1.
+*Changed in v4.6.0:* the command takes the two nodes instead of one `edge_id`
+(the old form only wrote an audit entry).
+
+**`list-shared`** prints the project's shared-memory associations, strongest
+first (`--json`: `source`, `target`, `weight`, `activation_count`).
+
+**Audit** (`neuralmind team audit list|verify|export`): configuration changes,
+seat and license actions, and, since v4.6.0, every team-memory `publish`
+(including refused ones), `import`, `review_approve` / `review_reject` and
+`remove`. The actor is `--admin` for admin commands, otherwise
+`NEURALMIND_ACTOR_EMAIL`, the repository's `git config user.email`, or the OS
+user.
+
+Walkthrough: [Govern what your team's agents share](../use-cases/govern-team-memory.md).
+
+---
+
 ### optimize-docs *(v1.7.2+)*
 
 Run the **DocEvolver** — an evolutionary JSDoc optimizer that finds undocumented methods, generates JSDoc variants using mutation strategies, and evolves them against a retrieval fitness function (Recall@1).
@@ -3127,6 +3384,9 @@ renewed — issue a new one.
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
+| `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
+| `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
+| `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. It also turns off `NEURALMIND_BASH_REPLACE`, which never trims an output it has nowhere to keep whole. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
@@ -3146,7 +3406,9 @@ renewed — issue a new one.
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
-| `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. |
+| `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. `0` also turns off the v4.6.0 keyword indexes below. |
+| `NEURALMIND_BM25_UNIFIED` | `1` | *(v4.6.0+)* One BM25 index over every node — doc text, symbol names, file paths, docstrings — written by `neuralmind build` to `<project>/.neuralmind/bm25_unified_index.json` and fused into L3 by RRF. On the default turbovec backend the keyword index otherwise holds only document nodes, so docs get a keyword signal code never does; the ChromaDB backend's index already covered every node, and this makes both behave the same. Set to `0` to restore v4.5.0's keyword list. An index built before v4.6.0 keeps the old list until the next `neuralmind build` (queries never build). It adds one BM25 lookup per query. Measured on six repos: mean hit@5 72.8% → 79.4%; `requests` −1 question, `rich` MRR 0.71 → 0.60, and on the public benchmark `click` gains a miss (reproducible on demand, not a CI gate; [eval](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)). |
+| `NEURALMIND_BM25_CODE` | unset | *(v4.6.0+, research flag)* Set to `1` to fuse a second, code-only keyword list (symbol names, their files and docstrings) by RRF. **Off by default because it lost on the retrieval eval:** `requests` −3 questions against v4.5.0; on top of the unified index, `rich` −4 and `click` −3. |
 | `NEURALMIND_SELECTOR_AUTOTUNE` | `0` | *(v0.26.0+)* Set to `1` to enable the self-improvement engine's selector auto-tuner: the `SessionStart` hook adjusts the L2 recall depth from the re-query rate (once per session), and `build()` threads the persisted value into the selector. Opt-in (`== "1"`, not the `!= "0"` pattern) because it is net behavior change. With it unset the hot path does **zero** extra I/O and the selector keeps its hard-coded default. Inspect state with `neuralmind self-improve status`. |
 | `NEURALMIND_STRUCTURAL` | `1` | *(v0.42.0+)* Master switch for the structural code-graph layer (`calls`/`inherits`/`imports_from` edges from `graph.json`). Powers the `neuralmind structural` command, the `neuralmind_structural_neighbors` MCP tool, and blast-radius. Set to `0` to skip building the index entirely, leaving retrieval byte-identical to v0.41.0. |
 | `NEURALMIND_STRUCTURAL_RECALL` | `0` | *(v0.42.0+)* Opt-in (`== "1"`). Fold a query hit's structural neighbors (callers/callees/base classes) into L3 retrieval, budget-neutrally (displacement, not addition). **Off by default** because the structural signal can saturate top-k recall and crowd out the learned synapse reranker on some graphs; the always-on structural **query tools** carry the value with zero effect on the tuned retrieval stack. |
@@ -3163,6 +3425,11 @@ renewed — issue a new one.
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
 | `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when a query is classified `docs` (code hits are multiplied by `0.7`). |
 | `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.10.0+)* Opt-in — set to `1`, `true`, `yes` or `on` (case- and whitespace-insensitive); anything else, including unset, is off. Lets the v3.9.0 retrieval pull-in — two-pass source-file search, synapse-seeded expansion, and snippet extraction — contend for L3 slots, budget-neutrally (displacement, not addition). **Off by default because it was measured, not because it is unfinished:** on the faithfulness fixture it takes the delta from `+0.041` to `-0.065` appended (how v3.9.0 shipped) or `-0.107` displaced, against a `+0.000` gate floor. Making it budget-neutral made it worse, which is the useful finding — displacing evicts a real hit per candidate, so candidates that are worse than what they replace cost facts, not just tokens. Intent classification and the code-signal boost are unaffected by this flag and stay on; they are bit-for-bit neutral on the same fixture. Turning this on is a research setting until a gate says otherwise. Reproducing these numbers requires a **fresh copy of the fixture per sample** — `query()` reinforces synapses into `<project>/.neuralmind/synapses.db`, so re-running against the same directory measures a progressively trained index, not a repeat. |
+| `NEURALMIND_L3_PER_FILE` | unset | *(v4.6.0+, research flag)* Set to `N` to allow at most N L3 hits per file, refilling vacated slots from the next-best candidates of the same search. **Off by default:** at `2` it raised mean hit@5 by 1.1 points with two repos up and none down on hit@5 (public recall 96.25%), but mean MRR fell 0.654 → 0.629 (`requests` 0.75 → 0.69, `flask` 0.71 → 0.65), and the keep rule needs three repos. |
+| `NEURALMIND_DOC_HANDOFF` | unset | *(v4.6.0+, research flag)* Set to `1` so a doc hit that names a code file or symbol brings that code into contention for an L3 slot. **Off by default:** it helps only where the docs name code (against v4.5.0: the private repo +3 questions, `neuralmind` +1) and was a wash on top of the unified index. |
+| `NEURALMIND_HUB_DAMPEN` | unset | *(v4.6.0+, research flag)* Set to `1` to down-weight files returned far more often than chance (with a floor, so a hub that is the only match still wins). **Off by default:** it cost `click` 3–4 questions — on a small library the most-returned files are central modules, not hubs. |
+| `NEURALMIND_INTENT_RULES` | unset | *(v4.6.0+, research flag)* Set to `1` to classify "how does X…", "where is X…" and "which X is…" questions as `code` intent (and questions that name a document or ask how to install as `docs`) before the v3.9.0 classifier runs; `query --explain` then shows `(by question shape)`. **Off by default:** it only re-orders the four hits L3 already chose, so it moved MRR (0.654 → 0.672) and never hit@5. |
+| `NEURALMIND_INTENT_POOL` | unset | *(v4.6.0+, research flag)* Set to `1` (measured with `NEURALMIND_INTENT_RULES=1`) to let intent rank all 10 search candidates instead of re-ordering the four L3 chose. **Off by default:** it cost `click` 8 questions and took the public benchmark's recall to 83.75% (measured against v4.5.0). |
 
 ---
 
