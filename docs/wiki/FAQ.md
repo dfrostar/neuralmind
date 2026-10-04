@@ -277,9 +277,10 @@ Cons: Requires infrastructure
 who can run the agent that launches its MCP server (stdio, the default) and who
 can read the project's `.neuralmind/` directory.
 
-Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
-each role can call. Callers declare their own role, so leave `admin` out of the
-policy to cap what any caller can reach. See the
+Within that, each MCP call declares its own role, and the server applies a
+default per-tool policy. Any caller can declare `admin`. `security.roles` in
+`neuralmind-backend.yaml` is parsed but not applied by the MCP server today, so
+it can't cap that. See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 
 ---

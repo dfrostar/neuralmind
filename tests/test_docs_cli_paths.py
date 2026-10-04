@@ -50,9 +50,8 @@ ALLOWED_MISSING_COMMANDS = {
     "revoke-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-status",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-list",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "backend-check",  # docs/wiki/FAQ.md, docs/DEPLOYMENT-GUIDE.md
+    "backend-check",  # docs/wiki/FAQ.md, docs/UPGRADING.md
     "backend-list",  # docs/UPGRADING.md
-    "graphify",  # docs/DEPLOYMENT-GUIDE.md (legacy pre-rename CLI name)
 }
 
 # ---------------------------------------------------------------------------
