@@ -532,8 +532,8 @@ Details are in
 ### "Is commercial support available?"
 
 **Yes, with a Team license:** priority support, self-hosted deployment
-support, and an annual invoice. Response targets are set in your contract.
-Enterprise terms are custom. Contact hello@neuralmind.uk.
+support, and an annual invoice. Enterprise terms are custom. Contact
+hello@neuralmind.uk.
 
 Without a paid license, support is
 [GitHub Issues](https://github.com/dfrostar/neuralmind/issues) and
@@ -559,20 +559,27 @@ maintainer has time. Security reports have their own response targets in
 
 ### "Why not just use long context windows?"
 
-Because every token in the window is paid for on every query. The
+It depends on how you pay for input tokens. What NeuralMind changes is how
+many go in. The
 [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)
-measures the difference on four pinned open-source repos with 40
-pre-registered queries:
+measures that on four pinned open-source repos with 40 pre-registered
+queries:
 
 | | Tokens per query | Gold-file recall |
 |---|---:|---:|
 | Paste every source file | 41,729–232,483 | 100% |
 | NeuralMind | 711–928 | 85–100% per repo, 93.75% mean |
 
-That is 45–261× fewer tokens. Input cost scales with input tokens, so the
-same ratio applies to input cost at any per-token price. On the largest repo,
-`rich`, pasting everything took 232,483 tokens per query (counted with
-tiktoken `o200k_base`), more than a 200K-token window holds.
+That is 45–261× fewer input tokens per query, not 45–261× less spend. The
+token ratio only becomes the cost ratio for uncached input billed per token.
+Prompt caching, flat-rate plans, and local models change the arithmetic, and
+output tokens are unaffected. Long context with prompt caching is the
+strongest alternative, and on top of it NeuralMind saves much less than these
+ratios suggest; see the [honest assessment](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md).
+
+Size matters apart from cost. On the largest repo, `rich`, pasting everything
+took 232,483 tokens per query (counted with tiktoken `o200k_base`), more than
+a 200K-token window holds.
 
 The trade-off is recall. Pasting everything always includes the right file;
 NeuralMind missed at least one gold file in 4 of the 40 queries. A plain
