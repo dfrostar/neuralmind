@@ -11,12 +11,23 @@ on the [releases page](https://github.com/dfrostar/neuralmind/releases) or in
 `docs/releases/` in the repository. Releases that change behavior say so under
 **Upgrade notes**.
 
-**Back up the state a build can't recreate.** Most of `.neuralmind/` is
-rebuilt from source, but three stores aren't: learned synapses
-(`synapses.db`), recorded decisions (`memory.db`), and the audit log
-(`audit_events.jsonl`). The
+**Snapshot `.neuralmind/`.** A build can recreate most of it, but not learned
+synapses (`synapses.db`), recorded decisions (`memory.db`), or the audit log
+(`audit_events.jsonl`). Rolling back also needs the index files the older
+version wrote. First stop everything that opens the project's stores: agents
+running `neuralmind-mcp`, `neuralmind watch`, `neuralmind serve`, and
+`neuralmind daemon`. Then copy the whole directory:
+
+```bash
+cp -a .neuralmind .neuralmind.pre-upgrade
+```
+
+With nothing running, each SQLite database and its write-ahead log are copied
+as a matching pair. The snapshot holds query text and indexed source, so
+protect it like the source tree. For routine backups while agents are
+running, use the
 [backup script in the deployment guide](DEPLOYMENT-GUIDE.md#backup--recovery)
-copies them safely while an agent is running.
+instead.
 
 ## Upgrade
 
@@ -70,13 +81,29 @@ deprecated `chroma`/`graph`, and `in_memory`. See
 
 ## Rolling back
 
+An older version isn't guaranteed to read state that a newer one wrote, so
+roll back the package and `.neuralmind/` together. Stop everything that opens
+the project's stores, as above, then:
+
 ```bash
-pip install "neuralmind==X.Y.Z"   # the version you upgraded from
+# 1. Save audit records written since the upgrade, while the newer version is
+#    still installed. --since compares against UTC timestamps.
+neuralmind audit export . --since 2026-10-04T15:00:00 -o audit-after-upgrade.jsonl
+
+# 2. Reinstall the version you upgraded from
+pip install "neuralmind==X.Y.Z"
+
+# 3. Swap the snapshot back in, keeping the upgraded state aside
+mv .neuralmind .neuralmind.upgraded
+cp -a .neuralmind.pre-upgrade .neuralmind
+
+# 4. Catch the index up with the code, and check it
+neuralmind build .
+neuralmind health .
 ```
 
-Then restore `.neuralmind/` from the backup you took before upgrading. An
-older version isn't guaranteed to read state that a newer one wrote. After
-restoring, run `neuralmind build .` and `neuralmind health .`.
+Synapses learned and decisions recorded after the upgrade stay in
+`.neuralmind.upgraded/`. The older version may not be able to read them.
 
 ## Upgrading many projects
 

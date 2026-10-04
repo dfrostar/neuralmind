@@ -221,9 +221,13 @@ it with per-branch isolation.
 
 **If not supported:**
 ```bash
-# Ingest the source files as plain text documents
-neuralmind ingest src/ --project-path .
+# Ingest each source file as a plain text document (Kotlin here)
+find src -name '*.kt' -exec neuralmind ingest {} --project-path . \;
 ```
+
+Pass the files one at a time. Given a directory, `neuralmind ingest` only
+picks up document types (`.md`, `.txt`, `.rst`, `.pdf`, and similar), so it
+would skip the source files.
 
 Retrieval then works on the text, but the graph has no symbols, calls, or
 imports for those files.

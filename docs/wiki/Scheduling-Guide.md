@@ -619,16 +619,20 @@ foreach ($projectPath in $projects) {
     try {
         Push-Location $projectPath
         
+        # A native command's non-zero exit doesn't trigger catch, and the next
+        # command overwrites $LASTEXITCODE, so check it after every step.
+        
         # Run wakeup
         neuralmind wakeup . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        if ($LASTEXITCODE -ne 0) { throw "wakeup failed (exit $LASTEXITCODE)" }
         
         # Export the audit log and check its hash chain
         $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
         $auditJsonl = "$LogDir\audit_${projectName}_$timestamp.jsonl"
         
         neuralmind audit export . --format jsonl -o $auditJsonl 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        if ($LASTEXITCODE -ne 0) { throw "audit export failed (exit $LASTEXITCODE)" }
         neuralmind audit verify . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
-        # A native command's non-zero exit doesn't trigger catch, so check it
         if ($LASTEXITCODE -ne 0) { throw "audit verify failed (exit $LASTEXITCODE)" }
         
         Log "✓ Completed: $projectName"

@@ -377,9 +377,18 @@ neuralmind audit export . --format cef -o audit.cef    # for SIEM ingest
 bare date means the start of that day. `--until 2026-04-01` takes in all of
 March 31, and `--until 2026-03-31` would leave March 31 out.
 
-`audit verify` catches an edited record or one deleted from the middle of the
-log. It misses records removed from the end, and a chain recomputed by anyone
-who can write the file, so ship `audit export` output off the host.
+`audit verify` catches an edited record, or one deleted from the middle of the
+log. It passes a log that was changed at the end, because it accepts any
+record with no `sha256` as a legacy, pre-chain line:
+
+- records deleted from the end
+- the last records edited, with their `sha256` removed
+- forged records appended with no `sha256`
+
+It also can't detect a chain recomputed by anyone who can write the file. A
+passing check is therefore weak evidence on its own. Ship `audit export`
+output off the host, and compare against that copy.
+
 NeuralMind doesn't rotate or expire the log, and it has no report command:
 build compliance reports from the export.
 
