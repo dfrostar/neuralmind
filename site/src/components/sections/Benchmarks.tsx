@@ -10,7 +10,7 @@ const dataPoints = [
     { metric: 'Tokens vs. pasting every file', value: '46–263×', detail: 'same 40 queries, against pasting every source file; cheaper than ripgrep on every repo' },
     { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
     { metric: 'Facts vs. naive truncation', value: '−0.054', detail: 'a published loss: at an equal token budget, truncation keeps slightly more gold facts on the prose-heavy CI fixture (v4.3.4). CI fails the build below −0.10' },
-    { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the CLI’s 50K-token naive baseline — method reproducible, not CI-gated' },
+    { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the fixed 50K-token estimate the CLI used before v4.5.0 — method reproducible, not CI-gated' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
 ];
 
@@ -62,7 +62,7 @@ export default function Benchmarks() {
                 <p className="mt-6 text-slate-400 text-sm max-w-3xl">
                     Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
                     <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
-                    platform, through a major rebuild.{' '}
+                    platform, through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0.{' '}
                     <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
                         Read the field report →
                     </a>

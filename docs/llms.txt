@@ -5,7 +5,7 @@
 Key facts, each backed by a runnable eval with its data committed:
 
 - Cheaper context: 85.71–100% gold-file recall per repo (95% mean, 92.5% found-rate across 40 pre-registered queries) at 46–263× fewer tokens than pasting every source file; beats ripgrep on cost on every repo, and on recall beats it on 3 of 4 repos and ties exactly on the fourth (public benchmark on `requests`, `click`, `flask`, `rich`; `click` is NeuralMind's weakest repo at 0.86 recall; 3 of 40 queries missed, every one published). Caveat: a bare vector-RAG baseline matches or beats NeuralMind's recall at fewer tokens on every repo — see "Where NeuralMind loses" in docs/benchmarks/public.md.
-- On private repos, `neuralmind benchmark .` has reported 12–50× fewer tokens per code question, measured against a fixed 50K-token estimate of naive context (field reports — directional, not a guarantee).
+- `neuralmind benchmark .` measures the reduction on your own repo: the token count of the code the index covers (prose excluded, at the same ~4 chars/token as the context) over the tokens each question costs, so it scales with the repo — 78.6× on psf/requests v2.32.3 at v4.5.0. Before v4.5.0 it divided a fixed 50K-token estimate instead; the 12–50× reported on private repos then (field reports — directional, not a guarantee) is on that scale, and `--naive-50k` reproduces it.
 - Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (a separate, off-by-default eval on `requests`/`click` only; pure retrieval ranking, reproducible).
 - Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate, budget-neutral (reference fixture A/B). CI gates the direction (recall-on >= recall-off), not a magnitude; +3.5 to +14 points observed across runs. Reproduce with `python -m tests.benchmark.run`.
 - Answer grounding (a published loss): at a matched token budget, naive truncation currently keeps slightly more gold facts than NeuralMind's context on the prose-heavy reference fixture — delta -0.054 at v4.3.4; CI fails below -0.10; earlier releases measured +0.013 to +0.143.
@@ -40,6 +40,7 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
 - [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
 - [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness, and the multi-repo retrieval eval behind v4.6.0's one BM25 index over docs and code
+- [Tool-output compression benchmark](https://docs.neuralmind.uk/benchmarks/compression.html): what the PostToolUse hooks did to tokens in Claude Code (they added them), and why they no longer inject anything
 
 ## Comparisons
 
@@ -57,7 +58,7 @@ Key facts, each backed by a runnable eval with its data committed:
 
 ## Use cases
 
-- [Claude Code daily driver](https://docs.neuralmind.uk/use-cases/claude-code.html): hooks, tool-output compression, synapse memory on session start
+- [Claude Code daily driver](https://docs.neuralmind.uk/use-cases/claude-code.html): hooks, synapse memory on session start, prompt-time recall
 - [Cost optimization](https://docs.neuralmind.uk/use-cases/cost-optimization.html)
 - [Growing monorepo](https://docs.neuralmind.uk/use-cases/growing-monorepo.html)
 - [Offline / regulated environments](https://docs.neuralmind.uk/use-cases/offline-regulated.html)

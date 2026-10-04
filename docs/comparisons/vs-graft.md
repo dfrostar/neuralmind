@@ -1,6 +1,6 @@
 ---
 title: "NeuralMind vs. Graft — a rebuilt-on-demand code graph, or a graph that learns from how you use the repo?"
-description: "Honest comparison of NeuralMind and trailhq's Graft for AI coding agents: two-pass tree-sitter + LLM concept graph with published SWE-bench agent-loop results vs. progressive disclosure, Hebbian usage learning, and tool-output compression. When to pick which."
+description: "Honest comparison of NeuralMind and trailhq's Graft for AI coding agents: two-pass tree-sitter + LLM concept graph with published SWE-bench agent-loop results vs. progressive disclosure, Hebbian usage learning, and git-portable team memory. When to pick which."
 ---
 
 # NeuralMind vs. Graft
@@ -14,9 +14,8 @@ description: "Honest comparison of NeuralMind and trailhq's Graft for AI coding 
 > structure plus an optional LLM-written semantic layer — into a folder
 > of plain-English markdown nodes, rebuilt against the working tree on
 > every query. NeuralMind serves progressive-disclosure slices (L0→L3)
-> from a graph whose edges are **reinforced and decayed by actual usage**,
-> and additionally compresses the agent's own `Read`/`Bash`/`Grep` output
-> in-session. Graft's headline evidence is **stronger in kind** than
+> from a graph whose edges are **reinforced and decayed by actual usage**.
+> Graft's headline evidence is **stronger in kind** than
 > ours: it publishes agent-loop task outcomes on SWE-bench Verified,
 > where we publish retrieval ranking. We have not run a head-to-head.
 > Assessed September 2026 — re-check before relying on specifics.
@@ -60,7 +59,7 @@ baseline correctness, 23% fewer tokens, and $42.43 vs. $52.34 cost.
 ## How NeuralMind differs
 
 Both tools answer "give the agent less, better context." The divergence
-is on three axes.
+is on two axes.
 
 **1. The graph learns, or it doesn't.** This is the substantive
 difference. Graft's graph is a pure function of the code at build time —
@@ -75,15 +74,7 @@ things: Graft's encodes *the code*, NeuralMind's encodes *the code plus
 how this team moves through it*. Whether that's worth having is
 workload-dependent — on a repo you touch rarely, it isn't.
 
-**2. Retrieval-side vs. both sides.** Graft reduces the *need* for tool
-calls by front-loading ranked context — its own framing, and its 46%
-fewer-tool-calls figure measures exactly that. NeuralMind does that too
-(L0→L3 progressive disclosure, ~600 tokens at wake-up, ~500–1000 per
-query) **and** compresses what comes back from the calls the agent still
-makes, via `PostToolUse` hooks on `Read`/`Bash`/`Grep`. These are
-different levers and they compose; Graft does not attempt the second.
-
-**3. Portable team memory.** NeuralMind exports learned associations to
+**2. Portable team memory.** NeuralMind exports learned associations to
 a git-portable `.neuralmind-team-memory.json` plus a markdown memory
 file any MCP-capable agent reads. Graft's graph is deliberately
 git-ignored and per-checkout.
@@ -95,7 +86,7 @@ git-ignored and per-checkout.
 | Graph artifact | Folder of plain-English markdown concept nodes | Embedded graph + ChromaDB vectors under `.neuralmind/` |
 | Freshness | Rebuilt against working tree per query (~3ms unchanged), sees uncommitted edits | Incremental rebuild + file watcher |
 | Learns from usage | No — fixed at build time, regenerable cache | Yes — Hebbian reinforcement with half-life decay |
-| Tool-output compression | No — reduces the need for calls, doesn't compress their output | Yes — `PostToolUse` on `Read`/`Bash`/`Grep` |
+| Tool-output compression | No — reduces the need for calls, doesn't compress their output | No (its `PostToolUse` hooks on `Read`/`Bash`/`Grep` used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Blast radius | Yes — `graft callers -d N`, post-edit warnings | Spreading activation over synapses (different shape, not a transitive caller set) |
 | Team memory | Git-ignored, per-checkout | Git-portable `.neuralmind-team-memory.json` |
 | Language coverage | 8 full-fidelity, ~14 name-resolved, optional LSP refinement | 10 tree-sitter, optional SCIP precision on Python/TS/Go |
@@ -125,8 +116,6 @@ git-ignored and per-checkout.
 - You want the layer to **get better on this repo over time**, not just
   stay accurate to the current commit — and you're on the repo enough
   for that to accumulate.
-- You want savings on **both** sides of the loop: less context retrieved
-  *and* compressed tool output from the calls the agent still makes.
 - Several people or several agents (Claude Code, Cursor, Cline, Codex)
   hit the same repo and you want one memory they all reinforce, moved
   between machines by git.
@@ -136,9 +125,7 @@ git-ignored and per-checkout.
 
 **Running both is coherent** and we'd expect it to work: they occupy the
 same retrieval slot, so the honest reason to run both is evaluation —
-point them at the same repo and compare — rather than stacking. If you
-do stack them, NeuralMind's `PostToolUse` compression still applies to
-whatever Graft's tools return.
+point them at the same repo and compare — rather than stacking.
 
 ## The honest caveats
 

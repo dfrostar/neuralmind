@@ -135,8 +135,8 @@ const METHOD = [
         why: 'Every query is committed to the manifest before tuning, and every one is reported. Losses are shown, not dropped.',
     },
     {
-        decision: 'Deterministic',
-        why: 'Synapse injection is off, the repos are pinned, and re-running yields identical numbers. Your run matches this table to the token.',
+        decision: 'Deterministic per machine',
+        why: 'Synapse injection is off, the repos are pinned and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall, found-rate and MRR have come back identical; token counts have shifted slightly on some CI runners, by up to 1.3% on a per-repo mean.',
     },
 ];
 
@@ -190,7 +190,7 @@ export default function BenchmarkPage() {
                             '@type': 'Dataset',
                             name: 'NeuralMind public retrieval benchmark',
                             description:
-                                'Gold-file recall and token cost for four retrieval backends across 40 pre-registered queries on four pinned open-source Python repositories (requests, click, flask, rich). Deterministic and reproducible from a fresh clone.',
+                                'Gold-file recall and token cost for four retrieval backends across 40 pre-registered queries on four pinned open-source Python repositories (requests, click, flask, rich). Reproducible from a fresh clone: recall, found-rate and MRR exactly; token counts exactly on the same machine and within 1.3% per repo across the machines compared.',
                             url: 'https://neuralmind.uk/benchmark/',
                             license: 'https://opensource.org/licenses/MIT',
                             isAccessibleForFree: true,
@@ -241,14 +241,22 @@ export default function BenchmarkPage() {
                     <div className="rounded-card border border-carbon-border bg-carbon-card overflow-x-auto">
                         <pre className="font-mono text-[0.8125rem] leading-relaxed text-slate-300 p-5 whitespace-pre">
 {`git clone `}<span className="text-electric">https://github.com/dfrostar/neuralmind</span>{` && cd neuralmind
-pip install -e . tiktoken      `}<span className="text-faint"># source checkout ships the harness</span>{`
-python -m evals.public.run     `}<span className="text-faint"># clones the pinned repos, prints the table</span>
+pip install -e . tiktoken                            `}<span className="text-faint"># source checkout ships the harness</span>{`
+NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-faint"># clones the pinned repos, prints the table</span>
                         </pre>
                     </div>
                     <p className="text-slate-400 text-sm mt-4 leading-relaxed">
                         The harness lives in the source tree, not the PyPI wheel, so run it from a clone.
-                        The repos are cloned at fixed commit SHAs and the run is deterministic, so your
-                        numbers match the tables below to the token. Raw per-query data is committed in{' '}
+                        The repos are cloned at fixed commit SHAs and nothing in the run is random, so
+                        recall, found-rate and MRR should match the tables below exactly. Token counts
+                        can shift slightly between machines — some CI runners land up to 1.3% off on a
+                        per-repo mean;{' '}
+                        <code className="font-mono text-[0.85em] text-slate-300">NEURALMIND_ORT_THREADS=1</code> matches
+                        CI&rsquo;s setup (
+                        <a href={`${PUBLIC_MD}#how-exactly-a-re-run-reproduces`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
+                            what moves, and the evidence
+                        </a>
+                        ). Raw per-query data is committed in{' '}
                         <a href={RESULTS_JSON} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
                             bench/public/results.json
                         </a>

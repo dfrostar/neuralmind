@@ -1,8 +1,8 @@
 # Incident Response Plan
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Control:** CC4.2
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** CC7.3, CC7.4, CC7.5
 
 ---
 
@@ -34,7 +34,6 @@ Incidents may be detected via:
 - GitHub Security Advisories (automated dependency scanning)
 - User reports (GitHub Issues, email)
 - Manual code review
-- Vanta monitoring alerts
 
 ### 4.2 Triage
 

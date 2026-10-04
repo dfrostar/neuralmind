@@ -256,37 +256,11 @@ export default function PublicationPage() {
                     </div>
 
                     <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-white mb-3">Consumption-Side Compression</h3>
-                        <div className="bg-carbon-card border border-carbon-border rounded-xl p-4 mb-4">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-carbon-border">
-                                        <th className="text-left py-2 text-slate-400 font-medium">Tool</th>
-                                        <th className="text-left py-2 text-slate-400 font-medium">Typical reduction</th>
-                                        <th className="text-left py-2 text-slate-400 font-medium">Mechanism</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-slate-300">
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Read</td>
-                                        <td className="py-2">Up to ~88%</td>
-                                        <td className="py-2">File → skeleton (functions + rationales + call graph)</td>
-                                    </tr>
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Bash</td>
-                                        <td className="py-2">Up to ~91%</td>
-                                        <td className="py-2">Keep errors + tail, drop middle</td>
-                                    </tr>
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Grep</td>
-                                        <td className="py-2">Capped</td>
-                                        <td className="py-2">Max 25 matches, "N more hidden" pointer</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-3">Tool-output compression (correction)</h3>
                         <p className="text-slate-300 text-sm">
-                            <strong className="text-white">Note:</strong> The 88%/91% figures are documentation claims, not measured benchmarks. Actual compression depends on file size (Read only fires on files ≥1500 chars) and content type. Combined retrieval + consumption 5-10× is a documentation claim without measured evidence.
+                            Earlier versions of this report described consumption-side compression by PostToolUse hooks, with reductions of up to ~88% (Read) and ~91% (Bash) that were never measured. When the hooks were finally benchmarked against Claude Code’s documented hook protocol, they turned out not to shrink anything: Claude Code adds a hook’s output next to the tool result instead of replacing it, so they added tokens, and the Read hook never received Claude Code’s payload. The hooks no longer inject anything; the{' '}
+                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="text-electric hover:text-electric-bright">compression benchmark</a>{' '}
+                            has the measurements. The savings come from retrieval.
                         </p>
                     </div>
                 </section>
@@ -350,8 +324,8 @@ export default function PublicationPage() {
                             <tbody className="text-slate-300">
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-2">88%/91% compression (measured)</td>
-                                    <td className="py-2">Only in docs, not benchmarked. Actual ratio varies by file size.</td>
-                                    <td className="py-2 text-yellow-400">Aspirational</td>
+                                    <td className="py-2">Never measured. Once benchmarked, the hooks turned out to add tokens instead of saving them, and were switched off.</td>
+                                    <td className="py-2 text-red-400">Refuted</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-2">30-50x reduction (measured)</td>

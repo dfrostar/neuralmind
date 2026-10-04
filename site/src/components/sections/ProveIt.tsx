@@ -11,7 +11,7 @@ const steps = [
     {
         step: '2',
         title: 'Then measure YOUR codebase',
-        body: 'No clone needed: install from PyPI and point it at your repo. The fixture above is tiny (~500 lines, ~5.5×); on real repos `neuralmind benchmark` has reported 12–50× against its fixed 50K-token naive baseline — a maintainer field report on a ~9,300-node private TypeScript codebase measured 48.8×. Read your own number.',
+        body: 'No clone needed: install from PyPI and point it at your repo. The fixture above is tiny (~500 lines, ~5.5×); before v4.5.0, `neuralmind benchmark` reported 12–50× on real repos against a fixed 50K-token estimate — a maintainer field report on a ~9,300-node private TypeScript codebase measured 48.8×. It now divides the measured size of your own code, so the ratio scales with the repo. Read your own number.',
         code: ['pip install neuralmind', 'cd /path/to/your-repo', 'neuralmind build .', 'neuralmind benchmark .'],
     },
     {

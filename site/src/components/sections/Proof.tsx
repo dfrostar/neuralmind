@@ -19,7 +19,7 @@ const evidence = [
     {
         title: 'Production field report',
         kind: 'Field report',
-        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
+        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
         link: '/field-reports/measure-memory-across-a-refactor/',
         linkText: 'Read the field report →',
     },

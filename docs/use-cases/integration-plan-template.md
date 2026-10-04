@@ -30,8 +30,9 @@ Check the ONE primary path taken first, then secondary:
 - [ ] **MCP server** — `neuralmind install-mcp --all` (auto-detects Claude Code,
       Cursor, Cline, Claude Desktop). Hosts: `<list>`. Config is
       `project_path = <REPO_DIR>`. *(chosen)*
-- [ ] **PostToolUse compression hooks** — `neuralmind install-hooks .`
-      (compress Read/Bash/Grep output; biggest win for agent-heavy repos).
+- [ ] **Claude Code hooks** — `neuralmind install-hooks .`
+      (session memory, prompt-time recall, stale-decision guard, Bash output
+      cache for `neuralmind last`; they don't compress tool output).
 - [ ] **CI refresh** — add `<CI file>` job: `pip install neuralmind` +
       `neuralmind build .` on push to `main` (paths: `**.py`/`**.ts`/`**.go`).
 - [ ] **Git hook / watch** — `neuralmind init-hook .` (rebuild on commit) and/or

@@ -1017,8 +1017,9 @@ in CI before embedding.
 
 ### "Why did this query return *that*?"
 
-The retrieval path is transparent and reproducible (same query + same index ⇒ same
-context). The inspection surface, from cheapest to deepest:
+The retrieval path is transparent and reproducible (same query + same index on the
+same machine ⇒ same context; a different machine can occasionally rank near-ties
+differently). The inspection surface, from cheapest to deepest:
 
 | Command | Answers |
 |---|---|

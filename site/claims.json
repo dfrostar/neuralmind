@@ -2,7 +2,7 @@
   "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (95% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
   "_evidence_levels": {
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
-    "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number.",
+    "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number on the same machine. Token counts, and the ratios built on them, can shift slightly from one machine to another; where that has been measured, recall-type figures did not move, and the source page states the token spread (docs/benchmarks/public.md: per-repo mean tokens within 1.3% across CI runners; recall, found-rate and MRR identical on every machine compared).",
     "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
     "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional."
   },
@@ -51,41 +51,55 @@
     },
     {
       "value": 12,
-      "context": "Low end of the published real-repo positioning range. Directional, not a guarantee — the docs say so explicitly.",
+      "context": "Low end of the published real-repo positioning range. Directional, not a guarantee — the docs say so explicitly. Measured by `neuralmind benchmark` before v4.5.0, against its fixed 50K-token estimate; v4.5.0+ divides the measured code instead, so a new run is not on this scale — quote the range only with that baseline named.",
       "source": "docs/wiki/Benchmarks.md",
-      "reproduce": "neuralmind benchmark <your repo>",
+      "reproduce": "neuralmind benchmark <your repo> --naive-50k",
       "evidence": "field-report"
     },
     {
       "value": 50,
-      "context": "High end of the published real-repo positioning range.",
+      "context": "High end of the published real-repo positioning range. Same pre-v4.5.0 fixed-50K baseline as the low end.",
       "source": "docs/wiki/Benchmarks.md",
-      "reproduce": "neuralmind benchmark <your repo>",
+      "reproduce": "neuralmind benchmark <your repo> --naive-50k",
       "evidence": "field-report"
     },
     {
       "value": 48.8,
-      "context": "Field report: anonymized ~9,300-node private TypeScript SaaS platform. Never name the client — the docs and the community-benchmark entry are both anonymized on purpose.",
+      "context": "Field report: anonymized ~9,300-node private TypeScript SaaS platform. Never name the client — the docs and the community-benchmark entry are both anonymized on purpose. Measured against the CLI's pre-v4.5.0 fixed 50K-token estimate and not re-run with the measured baseline, so say which baseline it used wherever it appears — every description, card, table row and metadata/JSON-LD description. Only a page <title> may carry the bare figure, and only on a page whose own copy names the baseline.",
       "source": "docs/use-cases/measure-memory-across-a-refactor.md",
-      "reproduce": "neuralmind benchmark <your repo>",
+      "reproduce": "neuralmind benchmark <your repo> --naive-50k",
       "evidence": "field-report",
       "nodes": 9293
     },
     {
       "value": 65.6,
-      "context": "Community-submitted: project-alpha, JavaScript, 241 nodes. NOT a 1,486-node repo — that attribution was invented on the site and matches nothing in the data.",
+      "context": "Community-submitted: project-alpha, JavaScript, 241 nodes. NOT a 1,486-node repo — that attribution was invented on the site and matches nothing in the data. A v1 entry: against the fixed 50K-token estimate.",
       "source": "docs/community-benchmarks.json",
-      "reproduce": "neuralmind benchmark . --json",
+      "reproduce": "neuralmind benchmark . --naive-50k --json",
       "evidence": "community",
       "nodes": 241
     },
     {
       "value": 46,
-      "context": "Community-submitted: project-beta, Python, 1,626 nodes.",
+      "context": "Community-submitted: project-beta, Python, 1,626 nodes. A v1 entry: against the fixed 50K-token estimate.",
       "source": "docs/community-benchmarks.json",
-      "reproduce": "neuralmind benchmark . --json",
+      "reproduce": "neuralmind benchmark . --naive-50k --json",
       "evidence": "community",
       "nodes": 1626
+    },
+    {
+      "value": 78.6,
+      "context": "psf/requests v2.32.3 (0e322af877), `neuralmind benchmark .` at v4.5.0: the measured code the index covers — 94,069 tokens in 36 code files, at the context's ~4 chars/token, Markdown excluded — over the tokens each of the five generic questions cost (~1,200 on average), averaged per question. Retrieval changes move the tokens per question, so quote it with its release.",
+      "source": "docs/use-cases/benchmark-your-repo.md",
+      "reproduce": "git clone --depth 1 --branch v2.32.3 https://github.com/psf/requests && cd requests && neuralmind build . && neuralmind benchmark .",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 41.8,
+      "context": "The same psf/requests v2.32.3 run against the fixed 50K-token estimate — the legacy line `benchmark` prints beside the measured ratio (50,000 over ~1,200 tokens per question).",
+      "source": "docs/use-cases/benchmark-your-repo.md",
+      "reproduce": "git clone --depth 1 --branch v2.32.3 https://github.com/psf/requests && cd requests && neuralmind build . && neuralmind benchmark . --naive-50k",
+      "evidence": "reproducible"
     },
     {
       "value": 5.1,

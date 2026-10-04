@@ -51,8 +51,8 @@ repo, e.g.:
 ## 4. Integration points (where NeuralMind hooks in)
 - MCP: which agent hosts are present (Claude Code, Cursor, Cline, Claude
   Desktop, Hermes)? Recommend `neuralmind install-mcp --all` or per-client.
-- Hooks: is a code agent present that benefits from PostToolUse
-  compression? (recommend `neuralmind install-hooks .`)
+- Hooks: is Claude Code in use? (recommend `neuralmind install-hooks .`
+  for session memory, prompt-time recall, and a stale-decision guard)
 - CI: does repo use GitHub Actions / GitLab / Makefile targets? Recommend a
   `neuralmind build .` refresh job and/or `neuralmind init-hook .`.
 - Watch: is the repo actively developed such that `neuralmind watch

@@ -6,7 +6,7 @@ NeuralMind MCP server by providing a TOOLS list and handle_tool_call()
 function that follows the same pattern as ``neuralmind.mcp_server``.
 
 Tools:
-- neuralmind_query_decisions: Search decisions by natural language
+- neuralmind_query_decisions: Search decisions by keywords or a question
 - neuralmind_audit_decisions: List all decisions with status
 - neuralmind_record_decision: Store a new architecture decision
 - neuralmind_invalidate_decision: Mark a decision as stale/invalid
@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .store import DecisionStore
+from .store import DecisionStore, normalize_status_filter
 
 # ---------------------------------------------------------------------------
 # Store accessor
@@ -41,14 +41,15 @@ def get_decision_store(project_path: str) -> DecisionStore:
 
 
 def tool_query_decisions(project_path: str, query: str, limit: int = 5) -> dict[str, Any]:
-    """Search project decisions by natural language.
+    """Search project decisions by keywords or a question (titles and rationales).
 
     Uses FTS5 when available (relevance-ranked via bm25), falling back to
     a LIKE scan otherwise.  By default only ACTIVE decisions are returned.
 
     Args:
         project_path: Path to the project root directory.
-        query: Natural language search query (searches title + rationale).
+        query: Keywords or a question; any word can match (title +
+            rationale are searched).
         limit: Maximum number of results to return (default: 5).
 
     Returns:
@@ -204,9 +205,14 @@ def tool_memory_search(
 
     Args:
         project_path: Path to the project root directory.
-        query: Natural language query (title + rationale are searched).
+        query: Keywords or a question; any word can match (title +
+            rationale are searched).
         limit: Maximum rows to return (default: 10, capped at 25).
-        status: Filter by status ("ACTIVE" default; None = all).
+        status: Filter by status, case-insensitive: "ACTIVE" (default),
+            "STALE", "INVALIDATED", or "ALL" / None for every status.
+
+    Raises:
+        ValueError: ``status`` is not a known status or "ALL".
 
     Returns:
         Dict with ``query``, ``count``, ``results`` (compact rows), and
@@ -330,8 +336,10 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "neuralmind_query_decisions",
         "description": (
-            "Search project decisions by natural language. Returns top "
-            "matching decisions with scores, commit SHAs, and file references."
+            "Search project decisions over titles and rationales, by keywords "
+            "or a question; decisions matching more of the words rank first. "
+            "Returns the top matching decisions with confidence, commit SHAs, "
+            "and file references."
         ),
         "inputSchema": {
             "type": "object",
@@ -342,7 +350,13 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "query": {
                     "type": "string",
-                    "description": "Natural language search query",
+                    "description": (
+                        "Keywords or a question, matched against decision titles "
+                        "and rationales. Any word can match (prefix match; common "
+                        "words such as 'how' and 'the' are ignored), and decisions "
+                        "matching more of the words rank first. A question nothing "
+                        "answers can still return partial matches, so check the titles"
+                    ),
                 },
                 "limit": {
                     "type": "integer",
@@ -468,7 +482,13 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "query": {
                     "type": "string",
-                    "description": "Natural language search query",
+                    "description": (
+                        "Keywords or a question, matched against decision titles "
+                        "and rationales. Any word can match (prefix match; common "
+                        "words such as 'how' and 'the' are ignored), and decisions "
+                        "matching more of the words rank first. A question nothing "
+                        "answers can still return partial matches, so check the titles"
+                    ),
                 },
                 "limit": {
                     "type": "integer",
@@ -477,7 +497,10 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "status": {
                     "type": "string",
-                    "description": "Filter: ACTIVE (default), STALE, INVALIDATED, or all",
+                    "description": (
+                        "Filter: ACTIVE (default), STALE, INVALIDATED, or ALL for "
+                        "every status. Case-insensitive."
+                    ),
                 },
             },
             "required": ["project_path", "query"],
@@ -553,6 +576,23 @@ TOOLS: list[dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 
+def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> str | None:
+    """Check the argument values a memory tool's ``inputSchema`` can't express.
+
+    ``status`` on ``neuralmind_memory_search`` is case-insensitive, so its
+    schema can't carry an ``enum``. Both dispatchers call this before the tool
+    runs, so an unknown status is reported as ``invalid_request`` like any
+    other disallowed value. Returns a problem naming the argument, or
+    ``None`` when the values are acceptable.
+    """
+    if name == "neuralmind_memory_search" and arguments.get("status") is not None:
+        try:
+            normalize_status_filter(arguments["status"])
+        except ValueError as e:
+            return f"argument 'status': {e}"
+    return None
+
+
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a decision memory tool call and return the result as JSON.
 
@@ -618,6 +658,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})
+
+    problem = validate_tool_arguments(name, arguments)
+    if problem:
+        return json.dumps({"error": problem, "code": "invalid_request"})
 
     try:
         result = handlers[name](arguments)

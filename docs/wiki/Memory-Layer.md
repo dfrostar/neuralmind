@@ -5,9 +5,9 @@ The Memory Layer gives agents persistent, queryable decision memory: every archi
 ## Overview
 
 - **Storage:** SQLite (`.neuralmind/memory.db` in your project root), created on first use
-- **Search:** FTS5 full-text search over titles, rationales, and evidence
+- **Search:** FTS5 keyword search over titles and rationales, prefix-matched. Common words (how, do, the…) are dropped, any remaining word can match, and bm25 ranks decisions that match more of the words first, so a question works as well as keywords. Evidence, tags and rejected alternatives are stored and returned with each record, but search doesn't look at them yet.
 - **Invalidation:** file-touch, commit mismatch, and cascade rules — decisions referencing changed files go stale automatically
-- **Access:** CLI (`neuralmind decisions`), MCP tools (4), and Python API
+- **Access:** CLI (`neuralmind decisions`), MCP tools (7), and Python API
 
 ## CLI Reference
 
@@ -30,10 +30,20 @@ neuralmind decisions record [project_path] --title "TITLE" --rationale TEXT
 ### Query decisions
 
 ```bash
-neuralmind decisions query "natural language query" [project_path] [--limit 10] [--status ACTIVE|STALE|ALL] [--json]
+neuralmind decisions query "keywords or a question" [project_path] [--limit 10] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json]
 ```
 
 The query text comes **first**; the project path is optional and comes second.
+Search matches the query's words against titles and rationales, prefix-matched
+("pool" finds "pooling"). Common words such as "how", "do" and "the" are
+dropped, a decision needs to contain only one of the remaining words, and bm25
+ranks the decisions that contain more of them, and rarer ones, first. So "how
+do we handle sqlite wal?" finds what "sqlite wal" finds. The flip side: a
+question nothing answers still returns the closest partial matches, so check
+the titles before relying on a hit. Without FTS5 (some minimal SQLite builds)
+the same words are matched as substrings, and decisions containing more of
+them rank first. `--status` is case-insensitive and defaults to `ACTIVE`;
+`ALL` includes every status.
 
 ### Audit
 
@@ -63,7 +73,43 @@ neuralmind decisions export [project_path] [--format md|json] [--output FILE]
 
 ```bash
 neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
+neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json [--limit 5] [--format json|md]
 ```
+
+Both seed a scratch store in a temporary directory and never read or change
+your project's decisions. Earlier versions deleted `.neuralmind/memory.db` in
+`project_path` (the current directory by default) and left 15 synthetic
+decisions in its place. If you ran `decisions eval` inside a project, those
+decisions have the author `eval-harness`: find them with
+`neuralmind decisions audit --format json` and retire each with
+`neuralmind decisions invalidate <id> --reason "eval seed"`.
+
+The default run replays five maintenance tasks with keyword queries and
+reports recall, precision and stale influence with the status filter on and
+off. `--queries` scores search against questions with known answers and lists
+every miss, false positive and answer not ranked first. The committed set,
+`tests/memory/fixtures/decision_queries.json`, is synthetic: 35 decisions (30
+ACTIVE), 20 agent-style questions that each share at least one word with their
+answer, and 4 questions nothing answers. The eval also asks every ACTIVE
+decision's exact title. Measured with FTS5 at the default limit of 5
+(`tests/memory/test_query_eval.py` keeps this table in step with the eval):
+
+| Measure | Result |
+|---------|--------|
+| Recall@5 on 20 questions, mean (range) | 1.00 (1.00–1.00) |
+| MRR on 20 questions, mean (range) | 0.94 (0.33–1.00) |
+| Exact titles ranked first | 30 of 30 |
+| Questions nothing answers that still return decisions | 2 of 4 |
+| Recall@5 without FTS5 (LIKE fallback), mean (range) | 0.95 (0.00–1.00) |
+| Maintenance tasks, recall / precision at limit 10 | 90% / 53% |
+
+When every word had to appear, none of the 20 questions returned anything, and
+the maintenance tasks scored 50% recall and 83% precision. The misses now: two
+answers rank second and third rather than first; two of the four unanswerable
+questions return partial matches; without FTS5 one question misses its answer;
+and the maintenance tasks' precision fell because partial matches fill the
+list below the answers, which still rank first to third. A question that
+shares no word with its answer is still not found: that takes semantic search.
 
 ## MCP Tools
 
@@ -71,11 +117,11 @@ Registered in the MCP server (28 tools total as of v4.3.0):
 
 | Tool | Arguments | Description |
 |------|-----------|-------------|
-| `neuralmind_query_decisions` | `project_path`, `query`, `limit` | Natural-language search over decisions |
+| `neuralmind_query_decisions` | `project_path`, `query`, `limit` | Search decision titles and rationales by keywords or a question (ACTIVE only) |
 | `neuralmind_audit_decisions` | `project_path`, `stale_only` | List decisions, filter by status |
 | `neuralmind_record_decision` | `project_path`, `title`, `rationale`, `commit_sha`, `files_affected`, `decision_type`, `confidence`, `evidence`, `rejected_alternatives`, `tags` | Store a new decision |
-| `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision stale |
-| `neuralmind_memory_search` | `project_path`, `query`, `limit`, `status` | **Layer 1** — compact index rows (~50–100 tokens each). Cheap first call; filter here before fetching |
+| `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision INVALIDATED; the reason is appended to its evidence |
+| `neuralmind_memory_search` | `project_path`, `query`, `limit`, `status` | **Layer 1** — compact index rows (~50–100 tokens each). Cheap first call; filter here before fetching. `status` is `ACTIVE` (default), `STALE`, `INVALIDATED` or `ALL`, case-insensitive; an unknown value returns an error |
 | `neuralmind_memory_timeline` | `project_path`, `decision_id` or `query`, `before`, `after` | **Layer 2** — chronological context around an anchor decision |
 | `neuralmind_memory_get` | `project_path`, `ids` (max 20) | **Layer 3** — full records (rationale, rejected alternatives, evidence); batch-capped to force filtering |
 
@@ -95,6 +141,7 @@ for compatibility.
 
 - **Builder role:** all 7 memory tools
 - **Reader role:** `query` + `audit` + the 3 progressive-retrieval tools — write tools verified denied
+- Roles are declared by the MCP caller and not authenticated; see the [Security Guide](../SECURITY-GUIDE.md#access-control)
 
 ## Invalidation Semantics
 
@@ -144,4 +191,4 @@ results = store.query("database choice")
 
 ## Testing
 
-60 tests in `tests/memory/` cover store CRUD/FTS/audit/export, invalidation engine (file-touch, commit mismatch, cascade, idempotency), MCP tool dispatch, eval harness, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation). All stdlib-only.
+The tests in `tests/memory/` cover store CRUD/FTS/audit/export, search terms and ranking on both the FTS5 path and the LIKE fallback, invalidation engine (file-touch, commit mismatch, cascade, idempotency), MCP tool dispatch, both eval harnesses and the decision-search eval set, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation).

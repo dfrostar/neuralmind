@@ -80,12 +80,6 @@ const groups: Group[] = [
                 desc: 'Recall is a local index lookup, not another round trip to a model. The ChromaDB-free TurboVec backend keeps 4-bit vectors 8–16× smaller with fact recall 0.800 vs 0.744 for float32 — parity gated in CI.',
                 badge: 'TurboVec',
             },
-            {
-                icon: 'restore',
-                title: 'Tool-output compression & recovery',
-                desc: 'PostToolUse hooks compress noisy Read, Bash and Grep output before the model reads it. The full Bash output is cached first, so `neuralmind last` recovers anything the compressor trimmed.',
-                badge: 'Claude Code',
-            },
         ],
     },
     {

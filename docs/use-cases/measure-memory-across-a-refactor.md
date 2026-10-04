@@ -31,16 +31,19 @@ anonymized; every one of them came from the shipped CLI.
 | Shared edge weight | 2,774.73 | 2,924.66 | **+5.4%** |
 | Wake-up tokens | — | 455 | |
 | Avg query tokens | — | 1,033 | |
-| Avg token reduction | — | **48.8×** | vs loading files naively |
+| Avg token reduction | — | **48.8×** | vs the fixed 50K-token estimate the CLI used before v4.5.0 |
 | Full `--force` rebuild | — | 326 s (~5.4 min) | incremental rebuilds ~30 s after |
 
 **What the numbers say**
 
 - **48.8× token reduction** — after the rebuild, an average code question cost
-  ~1,033 tokens of context instead of the 50K+ a naive "load the relevant
-  files" approach would spend. That is one repo's measured ratio from
-  `neuralmind benchmark .`, consistent with the
-  [12-50× real-repo range](../wiki/Benchmarks.md) — not a universal guarantee.
+  ~1,033 tokens of context, against the fixed 50,000-token estimate of a naive
+  "load the relevant files" approach that `neuralmind benchmark .` used before
+  v4.5.0. That is one repo's ratio, consistent with the
+  [12-50× real-repo range](../wiki/Benchmarks.md) measured the same way — not a
+  universal guarantee. Since v4.5.0 the CLI divides the measured size of the
+  code the index covers instead; this repo hasn't been re-run with it, so 48.8×
+  stays the pre-v4.5.0 figure.
 - **Personal synapse edges tripled (36 → 135)** — the
   [Hebbian synapse layer](../wiki/Learning-Guide.md) learned co-activations
   across the *new* code as it was being written and queried. The memory didn't
