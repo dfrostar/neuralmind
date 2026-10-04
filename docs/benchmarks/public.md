@@ -211,10 +211,13 @@ reorder near-tied candidates and change which chunks fill the context.
 | Files in the assembled context | 4 of those 11 rows gain, lose or swap a file — never a gold file |
 | "vs full-file" ratios | Move with the means: the headline range is 45.0×–260.7× in the v4.3.4 run and 44.9×–259.5× in the other state |
 
-**CI runs (observed, not a CI gate).** The `public-benchmark-drift` job re-runs
-this benchmark on every PR and push to `main` and uploads its fresh
-`results.json` as an artifact. Artifacts are kept for 90 days, which is why
-the numbers are copied here. Three `main` runs on 2026-10-03, compared against
+**CI runs (observed; CI gates drift, not exact reproduction).** The
+`public-benchmark-drift` job re-runs this benchmark on every PR and push to
+`main`, fails if any repo's recall moves more than 5 points or its mean
+tokens/query more than 10% from the committed snapshot, and uploads its fresh
+`results.json` as an artifact. The spread below is well inside those
+tolerances, so the check passes in either state. Artifacts are kept for 90
+days, which is why the numbers are copied here. Three `main` runs on 2026-10-03, compared against
 the snapshot committed at v4.3.4, had the same runner image (ubuntu-24.04
 `20260927.320.1`), CPython 3.12.14, identical third-party packages (numpy
 2.5.3, onnxruntime 1.30.0, tokenizers 0.23.2, turbovec 1.0.0, tiktoken 0.14.0)
