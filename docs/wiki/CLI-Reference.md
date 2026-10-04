@@ -642,7 +642,8 @@ neuralmind benchmark <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
-| `--naive-50k` | False | *(v4.5.0+)* Divide by the fixed 50,000-token estimate instead of the measured token count of the indexed files — for comparison with pre-v4.5.0 numbers |
+| `--naive-50k` | False | *(v4.5.0+)* Divide by the fixed 50,000-token estimate instead of the measured token count of the code the index covers — for comparison with pre-v4.5.0 numbers |
+| `--contribute` | False | Print your numbers and a schema-ready entry for [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json). Nothing is uploaded. From v4.5.0 the entry is v2: `avg_reduction_ratio` against the fixed 50K estimate every row compares on, plus `measured_avg_reduction_ratio` and `full_codebase_tokens` |
 | `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
 | `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
 | `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
@@ -655,10 +656,16 @@ neuralmind benchmark <project_path> [OPTIONS]
 #### Output
 
 Comprehensive benchmark report including:
-- **The baseline it divides by** *(v4.5.0+)* — `Baseline: measured: 1,117,552 tokens in 341 indexed files`: the token count of every file the index covers, measured at build. Before v4.5.0 every ratio divided by a fixed 50,000-token guess whatever the repo's size; `--naive-50k` reproduces those numbers, and `--contribute` keeps using it so the community table stays comparable
+- **The baseline it divides by** *(v4.5.0+)* — `Baseline: measured: 94,069 tokens in 36 indexed code files`: the token count of every code file the index covers, measured at build, at the same ~4 chars/token as the context. Prose (Markdown, reStructuredText, plain text) is left out unless the index holds nothing else, and an index built before v4.5.0 is measured on the spot without writing anything. Before v4.5.0 every ratio divided by a fixed 50,000-token guess whatever the repo's size
+- **The legacy ratio beside it** *(v4.5.0+)* — `Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)`, so older numbers and the community table stay comparable; `--naive-50k` makes the fixed estimate the headline instead
 - **Which questions it asked** — the ones in `.neuralmind.eval.yaml` when the project has one (see [`eval`](#eval-v0140)), else five generic questions
 - Token counts and reduction ratios for each query
 - Benchmark queries are read-only (v4.5.0+): they never train the synapse layer
+
+`--json` carries `avg_reduction_ratio` with the baseline it used (`baseline`,
+and `full_codebase_tokens`), plus `legacy_avg_reduction_ratio` against
+`estimated_full_codebase_tokens` (always 50,000); every entry in `results` has
+its own `reduction` and `legacy_reduction`.
 
 #### Examples
 
@@ -668,6 +675,19 @@ neuralmind benchmark /path/to/project
 
 # JSON output
 neuralmind benchmark /path/to/project --json
+```
+
+On `psf/requests` v2.32.3 (verbatim, v4.5.0):
+
+```
+Project: requests
+Baseline: measured: 94,069 tokens in 36 indexed code files
+Questions: generic
+Wake-up tokens: 510
+Avg query tokens: 1200.6
+Avg reduction: 78.6x
+Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)
+Summary: 78.6x average token reduction vs measured: 94,069 tokens in 36 indexed code files
 ```
 
 #### Quality-eval mode *(v0.23.0+)*
@@ -1276,7 +1296,7 @@ reports:
 | MRR | mean of 1 / rank of the first gold file (0 when missed) |
 | avg context tokens | what the agent would receive per question |
 | × vs gold files | gold-file tokens ÷ context tokens — what a perfect retriever would load |
-| × vs indexed files | measured baseline ÷ context tokens (see [`benchmark`](#benchmark)) |
+| × vs indexed code | measured baseline (the code the index covers) ÷ context tokens (see [`benchmark`](#benchmark)) |
 
 Each run appends date, commit, NeuralMind version, node count and the metrics to
 `.neuralmind/eval_history.jsonl` (machine-specific, untracked).
@@ -2502,10 +2522,10 @@ neuralmind savings [project_path] [OPTIONS]
 | `--cost` | False | *(v0.45.0+)* Also show estimated **dollar** savings, priced on input tokens ($/MTok) |
 | `--model` | `claude-opus-4-8` | *(v0.45.0+)* Pricing model for `--cost` — choices come from the built-in input-price table (Claude / GPT / Gemini) |
 | `--queries-per-day` | 100 | *(v0.45.0+)* Assumed daily query volume behind the `--cost` daily/monthly projection |
-| `--naive-50k` | False | *(v4.5.0+)* Price "without NeuralMind" at the fixed 50,000 tokens/query instead of the measured token count of the indexed files |
+| `--naive-50k` | False | *(v4.5.0+)* Price "without NeuralMind" at the fixed 50,000 tokens/query instead of the measured token count of the code the index covers |
 
 Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
-count of the files the index covers (cached at build), labelled in the output;
+count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
 

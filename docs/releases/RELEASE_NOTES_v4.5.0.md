@@ -97,13 +97,13 @@ Example output (illustrative numbers):
 ```
 NeuralMind eval — myrepo (10 questions, read-only)
   hit@1 40% · hit@5 60% · MRR 0.50
-  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed files (1,299,512 tokens, measured)
+  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed code (1,299,512 tokens, measured)
 ```
 
 - **hit@1, hit@5, MRR** rank the files the answer drew on by their best hit
   score — the same relevance sidecar `query --relevance` returns.
 - **Two reductions:** vs the gold files (what a perfect retriever would load)
-  and vs every indexed file (the measured baseline below).
+  and vs all the code the index covers (the measured baseline below).
 - **History:** each run appends date, commit, NeuralMind version, node count
   and the metrics to `.neuralmind/eval_history.jsonl`. `--report` prints
   metrics and the question count only, so questions that name internal code
@@ -123,21 +123,50 @@ guess (on a ~1.3M-token repo), `build --dry-run` used a lines × 25 estimate, an
 `probe` resampled whenever the index changed: three commands, three
 baselines, no two runs comparable.
 
-- `build` measures the **token count of every file the graph covers** (the
-  context-budget tokenizer) and caches it in `.neuralmind/baseline.json`.
+- `build` measures the **token count of the code the graph covers** and
+  caches it in `.neuralmind/baseline.json`:
+  - **Code only.** Markdown, reStructuredText and plain text are left out
+    whenever the index holds code — on `psf/requests` its `HISTORY.md`
+    changelog alone was 15,088 tokens, 14% of an all-files count — so prose
+    can't pad a ratio, and `build --dry-run` (which always counted code only)
+    now agrees with `build`. An index with no code (a book, a docs corpus, a
+    set of SQL, Protobuf or OpenAPI schemas) is measured over its documents.
+  - **In the context's own units.** It is counted at the ~4 chars/token every
+    context layer is counted in, so the ratio is a ratio of characters. With
+    tiktoken installed it used to switch tokenizers and read `psf/requests`'
+    code 8.5% lower than the context's units — one index, two ratios,
+    depending on an optional package.
+  - **Only inside the project.** A graph path that resolves outside it
+    (`../`, an absolute path, a symlink out) is never opened, and images or
+    PDFs a graphify graph names are never read as text.
 - `benchmark`, `savings`, `cost` and `build --dry-run` all divide by it, and
-  say so: `Baseline: measured: 1,117,552 tokens in 341 indexed files`. So do
-  the per-query ratios `query`, `query --explain`, `wakeup` and the MCP tools
-  print.
+  say so: `Baseline: measured: 94,069 tokens in 36 indexed code files` on
+  `psf/requests` v2.32.3. So do the per-query ratios `query`,
+  `query --explain`, `wakeup` and the MCP tools print. An index built before
+  v4.5.0 has nothing cached; `benchmark` measures it on the spot (writing
+  nothing) and the rest use the fixed estimate until the next `build`.
+- `benchmark` prints the old ratio beside the new one —
+  `Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)` —
+  and `--json` carries both: `full_codebase_tokens` (the measured code) and
+  `legacy_avg_reduction_ratio` against `estimated_full_codebase_tokens`
+  (always 50,000).
 - `--naive-50k` on each of them keeps the old fixed estimate, labelled, for
-  comparison with older numbers. `benchmark --contribute` keeps it too, so the
-  community table's rows stay comparable with each other.
+  comparison with older numbers.
+- `benchmark --contribute` writes a **v2** community entry: `avg_reduction_ratio`
+  stays on the fixed estimate every row of the table compares on, and
+  `measured_avg_reduction_ratio` + `full_codebase_tokens` add the ratio against
+  your code. Its `verification_command` now carries `--naive-50k`, so a
+  reviewer re-running it gets the submitted number; and it fills `nodes` and
+  whole-number `avg_query_tokens`, without which no entry it printed had
+  passed the schema.
 - `benchmark` uses the questions in `.neuralmind.eval.yaml` when there is one,
   instead of five generic ones.
 
 **Expect different ratios.** On a large repo the measured baseline is far
 bigger than 50K, so ratios go up; on a small one they go down. Neither is a
-change in retrieval — it's the denominator becoming true.
+change in retrieval — it's the numerator becoming true. On `psf/requests`
+v2.32.3 the same five questions read 41.8× against the fixed estimate and
+78.6× against the 94,069 tokens of code the index covers.
 
 ### Stable probe sampling
 
