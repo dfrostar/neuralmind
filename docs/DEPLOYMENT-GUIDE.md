@@ -56,7 +56,7 @@ pip install neuralmind
 cd /path/to/project
 neuralmind build .           # builds .neuralmind/graph.json and the vector index
 neuralmind install-mcp .     # registers neuralmind-mcp with Claude Code (--client or --all for others)
-neuralmind install-hooks .   # Claude Code PostToolUse output compression (optional)
+neuralmind install-hooks .   # Claude Code: session memory, prompt recall, stale-decision guard, Bash output cache (optional)
 neuralmind init-hook .       # git post-commit index rebuild + pre-commit drift guard (optional)
 ```
 

@@ -248,40 +248,14 @@ export default function PublicationPage() {
                     </div>
 
                     <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-white mb-3">PostToolUse Hook Compression</h3>
+                        <h3 className="text-lg font-semibold text-white mb-3">Tool-output compression (correction)</h3>
                         <p className="text-slate-300 mb-3">
-                            When installed via <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind install-hooks</code>, PostToolUse hooks compress three output types automatically:
+                            Earlier versions of this guide described PostToolUse hooks that compress Read, Bash and Grep output, with reductions of up to ~88% and ~91% that were never measured. When the hooks were finally benchmarked against Claude Code’s documented hook protocol, they turned out not to shrink anything: Claude Code adds a hook’s output next to the tool result instead of replacing it, so they added tokens, and the Read hook never received Claude Code’s payload. The hooks no longer inject anything; the{' '}
+                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="text-electric hover:text-electric-bright">compression benchmark</a>{' '}
+                            has the measurements.
                         </p>
-                        <div className="bg-carbon-card border border-carbon-border rounded-xl p-4 mb-4">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-carbon-border">
-                                        <th className="text-left py-2 text-slate-400 font-medium">Tool</th>
-                                        <th className="text-left py-2 text-slate-400 font-medium">Typical reduction</th>
-                                        <th className="text-left py-2 text-slate-400 font-medium">Mechanism</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-slate-300">
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Read</td>
-                                        <td className="py-2">Up to ~88%</td>
-                                        <td className="py-2">File → skeleton (functions + rationales + call graph)</td>
-                                    </tr>
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Bash</td>
-                                        <td className="py-2">Up to ~91%</td>
-                                        <td className="py-2">Keep errors + tail, drop middle</td>
-                                    </tr>
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">Grep</td>
-                                        <td className="py-2">Capped</td>
-                                        <td className="py-2">Max 25 matches, &quot;N more hidden&quot; pointer</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
                         <p className="text-slate-300 text-sm">
-                            <strong className="text-white">Note:</strong> The 88%/91% figures are documentation claims, not measured benchmarks. Actual compression depends on file size and content type. The Hooks are Claude Code-specific; Codex does not fire them. For Codex, token savings come from the MCP retrieval layer (wakeup/query) alone.
+                            The hooks are Claude Code-specific, so Codex never ran them. For Codex, token savings come from the MCP retrieval layer (wakeup/query) alone.
                         </p>
                     </div>
 
@@ -345,9 +319,9 @@ export default function PublicationPage() {
                                         <td className="py-2 text-yellow-400">Modeled</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2">88%/91% Read/Bash compression</td>
-                                        <td className="py-2">Documentation claims, not benchmarked</td>
-                                        <td className="py-2 text-yellow-400">Aspirational</td>
+                                        <td className="py-2">Read/Bash tool-output compression</td>
+                                        <td className="py-2">Benchmarked: as shipped, the hooks added tokens instead of saving them; switched off</td>
+                                        <td className="py-2 text-red-400">Refuted</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
                                         <td className="py-2">Dollar savings ($/day, $/mo)</td>
@@ -368,7 +342,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex users get the retrieval-stage savings; Claude Code users add PostToolUse hook compression on top.
+                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage savings: the Claude Code hooks add no compression on top (see the correction above).
                         </p>
                     </div>
                 </section>
@@ -442,8 +416,8 @@ export default function PublicationPage() {
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-2">&quot;88%/91% compression measured&quot;</td>
-                                    <td className="py-2">Documentation claims only, not benchmarked.</td>
-                                    <td className="py-2 text-yellow-400">Aspirational</td>
+                                    <td className="py-2">Never measured. Once benchmarked, the hooks turned out to add tokens instead of saving them, and were switched off.</td>
+                                    <td className="py-2 text-red-400">Refuted</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-2">&quot;~800-1100 tokens per query&quot;</td>

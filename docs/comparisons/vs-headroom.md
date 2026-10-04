@@ -10,12 +10,14 @@ description: "Honest comparison of NeuralMind and Headroom (chopratejas/headroom
 > agent and the model (60–95%, their measurement). NeuralMind stops most
 > of those tokens from being fetched in the first place — semantic
 > retrieval answers code questions in ~800 tokens instead of 50,000+
-> (12-50× on the retrieval side in real-repo field reports) — and additionally compresses
-> the tool outputs that do flow, while remembering your codebase
-> across sessions. They overlap on tool-output compression, and they
-> compose. If you only want compression, Headroom is the more general and
-> more mature tool — use it. Assessed June 2026; both projects move fast,
-> so re-check their READMEs.
+> (12-50× on the retrieval side in real-repo field reports) — and remembers
+> your codebase across sessions. NeuralMind does not compress tool output:
+> its PostToolUse hooks used to, and
+> [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
+> that added tokens, so they now inject nothing. Headroom is the
+> compression layer, NeuralMind is retrieval and memory, and they compose.
+> If you only want compression, use Headroom. Assessed June 2026; both
+> projects move fast, so re-check their READMEs.
 
 ## What Headroom is
 
@@ -50,23 +52,26 @@ NeuralMind's core is a semantic index of your codebase (a code graph with
 which files go together from how you actually work. A code question is
 answered in ~800 tokens of *retrieved* context instead of the agent
 reading whole files; next session the agent boots already knowing the
-shape of your code. Tool-output compression (the part that overlaps with
-Headroom) is one feature of that pipeline — PostToolUse hooks in Claude
-Code that shrink `Read`/`Bash`/`Grep` output (not yet benchmarked), with a recovery
-cache for the dropped middle.
+shape of your code. NeuralMind does not compress tool output, so the two
+don't overlap. Its Claude Code PostToolUse hooks used to hand the model
+compressed copies of `Read`/`Bash`/`Grep` output, but Claude Code adds a
+hook's output next to the tool result rather than replacing it, so
+[measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
+that added tokens. The hooks now inject nothing; compressing what reaches
+the model is Headroom's job.
 
 | Dimension | Headroom | NeuralMind |
 |---|---|---|
 | Core mechanism | Compress assembled context in flight | Retrieve less context from a semantic index; remember it across sessions |
-| Compression surface | Tool outputs, logs, RAG chunks, files, conversation history, images — any provider | `Read`/`Bash`/`Grep` outputs in Claude Code (not yet benchmarked) |
+| Compression surface | Tool outputs, logs, RAG chunks, files, conversation history, images — any provider | None (its PostToolUse hooks on `Read`/`Bash`/`Grep` used to compress; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Conversation-history compression | Yes | No |
 | KV-cache alignment | Yes (CacheAligner) | No |
-| Reversible compression | Yes, generalized (CCR + retrieve tool) | Yes, for its own compressed tool outputs (recovery cache) |
+| Reversible compression | Yes, generalized (CCR + retrieve tool) | No — nothing is compressed to reverse |
 | Semantic codebase index | No | Yes — code graph, communities, 4-layer disclosure |
 | Persistent memory | Failure post-mortems written to `CLAUDE.md` (`headroom learn`) | Learned co-activation graph with decay, branch-isolated namespaces, team memory bundles, next-file prediction |
-| Learning style | Mines failed sessions into instructions | Continuous Hebbian learning from queries, edits, and tool calls |
+| Learning style | Mines failed sessions into instructions | Continuous Hebbian learning from queries, prompts, and edits |
 | Deployment | Library, HTTP proxy, MCP server | MCP server, Claude Code hooks, CLI |
-| AST code compression | Python, JS, Go, Rust, Java, C++ | Python, TypeScript, Go (skeletons) |
+| AST code compression | Python, JS, Go, Rust, Java, C++ | None applied to tool output; `neuralmind skeleton` gives a graph-backed outline of a file on request |
 | Claim validation | Own eval suite (GSM8K parity, TruthfulQA) | CI gates on every commit: reduction floor, retrieval quality (MRR/recall), synapse A/B |
 | License | Apache 2.0 | MIT |
 
@@ -99,9 +104,9 @@ sessions. Nothing in either tool conflicts with the other.
 ## The honest caveats
 
 - Headroom is the more mature project in its category (24k+ GitHub stars,
-  150+ releases at the time of writing) and its compression scope is a
-  strict superset of NeuralMind's. If compression is the whole job,
-  there is no contest — use Headroom.
+  150+ releases at the time of writing), and compression is its category,
+  not NeuralMind's: NeuralMind no longer compresses tool output at all. If
+  compression is the whole job, there is no contest — use Headroom.
 - NeuralMind's 12-50× headline is retrieval-input reduction, not total
   bill reduction; see our [honest assessment](../HONEST-ASSESSMENT.md)
   for the ~1.6–3× end-to-end framing. Headroom's 60–95% is their claim

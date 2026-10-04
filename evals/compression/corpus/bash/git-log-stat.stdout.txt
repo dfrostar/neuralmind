@@ -1,0 +1,188 @@
+commit f69202cd7d990957fadddd71d9e98ca607c17037
+
+    docs: public-surface messaging + SEO overhaul; public benchmark regenerated at v4.3.4 (#539)
+
+
+ .github/ISSUE_TEMPLATE/community-benchmark.yml                       |   2 +-
+ .github/workflows/deploy-site.yml                                    |   2 +
+ .github/workflows/site-build.yml                                     |   1 +
+ CLAUDE.md                                                            |   6 +-
+ README.md                                                            | 126 ++++++----
+ bench/public/report.md                                               |  37 ++-
+ bench/public/results.json                                            | 446 ++++++++++++++++++------------------
+ benchmarks/README.md                                                 |  18 +-
+ docs/BUSINESS-CASE.md                                                |   4 +-
+ docs/COMPLIANCE-SUMMARY.md                                           |   6 +-
+ docs/_config.yml                                                     |   6 +-
+ docs/_layouts/default.html                                           |   2 +-
+ docs/about.html                                                      |  46 ++--
+ docs/assets/README.md                                                |  44 ++--
+ docs/assets/social-preview.png                                       | Bin 222639 -> 876817 bytes
+ docs/assets/social-preview.svg                                       | 144 ------------
+ docs/benchmarks/index.html                                           |  32 +--
+ docs/benchmarks/public.md                                            |  88 ++++---
+ docs/comparisons/context-engineering-stack.md                        |   2 +-
+ docs/comparisons/vs-codebase-memory-mcp.md                           |   2 +-
+ docs/comparisons/vs-cody.md                                          |   6 +-
+ docs/comparisons/vs-graft.md                                         |   2 +-
+ docs/comparisons/vs-headroom.md                                      |   8 +-
+ docs/index.html                                                      |   4 +-
+ docs/llms.txt                                                        |  34 ++-
+ docs/sitemap.xml                                                     | 128 +++++++++--
+ docs/use-cases/README.md                                             |   2 +-
+ docs/use-cases/benchmark-your-repo.md                                |   4 +-
+ docs/use-cases/claude-code.md                                        |   2 +-
+ docs/use-cases/cost-optimization.md                                  |  10 +-
+ docs/use-cases/unified-stack.md                                      |   2 +-
+ docs/wiki/Benchmarks.md                                              |  57 ++---
+ docs/wiki/CLI-Reference.md                                           |  12 +-
+ docs/wiki/FAQ.md                                                     |  17 +-
+ docs/wiki/Home.md                                                    |  48 ++--
+ docs/wiki/Learning-Guide.md                                          |   4 +-
+ docs/wiki/Setup-Guide.md                                             |   2 +-
+ docs/wiki/Usage-Guide.md                                             |   7 +-
+ docs/wiki/Use-Cases.md                                               |   6 +-
+ pyproject.toml                                                       |   6 +-
+ scripts/og-card/README.md                                            |   3 +-
+ scripts/og-card/card.html                                            |   6 +-
+ scripts/og-card/github-social-preview.png                            | Bin 883102 -> 887287 bytes
+ scripts/og-card/render.mjs                                           |   6 +-
+ scripts/render_community_table.py                                    |   2 +-
+ site/claims.json                                                     |  43 ++--
+ site/public/site.webmanifest                                         |   2 +-
+ site/public/social-preview.png                                       | Bin 873429 -> 876817 bytes
+ site/src/app/benchmark/page.tsx                                      |  61 ++---
+ site/src/app/effectiveness/page.tsx                                  |  36 +--
+ site/src/app/field-reports/measure-memory-across-a-refactor/page.tsx |  19 +-
+ site/src/app/layout.tsx                                              |  97 +++++---
+ site/src/app/llms.txt/route.ts                                       |  21 ++
+ site/src/app/measure-your-own/page.tsx                               | 185 +++++++--------
+ site/src/app/page.tsx                                                |   9 +-
+ site/src/app/pricing/page.tsx                                        |  43 +++-
+ site/src/app/privacy/page.tsx                                        |  12 +-
+ site/src/app/publications/claude-teams-deep-dive/page.tsx            |   2 +-
+ site/src/app/publications/codex-setup/page.tsx                       |   2 +-
+ site/src/app/publications/page.tsx                                   |   9 +-
+ site/src/app/security/page.tsx                                       |  87 ++++++-
+ site/src/app/services/page.tsx                                       |  19 +-
+ site/src/app/team/page.tsx                                           | 530 ++++++++++++++++++-------------------------
+ site/src/components/Navbar.tsx                                       |   5 +-
+ site/src/components/sections/Assessment.tsx                          |   6 +-
+ site/src/components/sections/Benchmarks.tsx                          |  20 +-
+ site/src/components/sections/BusinessCase.tsx                        |  25 +-
+ site/src/components/sections/CTA.tsx                                 |   9 +-
+ site/src/components/sections/FAQ.tsx                                 |  61 +++--
+ site/src/components/sections/Features.tsx                            | 380 +++++++++++++++++--------------
+ site/src/components/sections/Footer.tsx                              |  16 +-
+ site/src/components/sections/Hero.tsx                                |  24 +-
+ site/src/components/sections/HowItWorks.tsx                          |  17 +-
+ site/src/components/sections/Problem.tsx                             |  62 +++++
+ site/src/components/sections/Proof.tsx                               | 160 +++++--------
+ site/src/components/sections/ProveIt.tsx                             |  21 +-
+ site/src/lib/release.ts                                              |   2 +-
+ tests/test_docs_claims.py                                            |  17 +-
+ tests/test_site_claims.py                                            | 164 ++++++++++++-
+ 79 files changed, 1995 insertions(+), 1563 deletions(-)
+commit ad49d3ba44bf5c4ea0e8b3d7f03eb975d49b5219
+
+    chore(sbom): publish neuralmind-v4.3.4.sbom.json to the site
+
+
+ site/public/sbom/neuralmind-v4.3.4.sbom.json | 1 +
+ 1 file changed, 1 insertion(+)
+commit 53bf6cc8d10d7e22e66638ebf3b2ef79f7bac192
+
+    perf spec + plan (re-baselined on v4.3.3) and Phase 0: MCP stdio round-trip on both SDK lines, argument validation, tree-sitter 0.23 floor (#538)
+
+
+ .github/workflows/ci.yml                       |  22 ++-
+ docs/specs/PERFORMANCE-FUTURE-PROOFING-PLAN.md | 198 +++++++++++++++++++++
+ docs/specs/PERFORMANCE-FUTURE-PROOFING-SPEC.md | 610 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ neuralmind/graphgen.py                         |  32 +++-
+ neuralmind/mcp_server.py                       |  51 ++++++
+ pyproject.toml                                 |  41 +++--
+ requirements-pinned.txt                        |   3 +-
+ scripts/mcp_stdio_smoke.py                     | 230 +++++++++++++++++++++++++
+ tests/test_mcp_transport.py                    |  78 +++++++++
+ tests/test_version.py                          |  45 +++++
+ 10 files changed, 1292 insertions(+), 18 deletions(-)
+commit 51dac25f7ec3e153ce18e9aba0bc1ac1ff975983
+
+    chore: update NeuralMind team memory snapshot [skip ci]
+
+
+ .neuralmind-team-memory.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+commit bd13c00f83f5f924242621fe704aa1fa256a0192
+
+    chore(main): release 4.3.4 (#537)
+
+
+ .release-please-manifest.json |  2 +-
+ CHANGELOG.md                  | 12 ++++++++++++
+ neuralmind/__init__.py        |  2 +-
+ pyproject.toml                |  2 +-
+ skills/neuralmind/SKILL.md    |  2 +-
+ 5 files changed, 16 insertions(+), 4 deletions(-)
+commit 97d6e061cd96c3dee8b641fae98c5d7bdafd52a8
+
+    chore: update NeuralMind team memory snapshot [skip ci]
+
+
+ .neuralmind-team-memory.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+commit 8ceda538cd117c7dd783863b4c816f88223e802b
+
+    docs: close LLM-disclosure gap in air-gapped/offline-regulated use cases (#512)
+
+
+ .github/workflows/ci-benchmark.yml            |  4 ++++
+ SECURITY.md                                   |  2 +-
+ docs/VULNERABILITY-MANAGEMENT-POLICY.md       |  7 ++++---
+ docs/about.html                               |  6 +++---
+ docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md |  5 +++++
+ docs/use-cases/air-gapped.md                  | 61 ++++++++++++++++++++++++++++++++++++++++++-------------------
+ docs/use-cases/offline-regulated.md           | 39 +++++++++++++++++++++++++++++++++------
+ 7 files changed, 92 insertions(+), 32 deletions(-)
+commit 24ee2924b9fda60f5a2e16c8a3d0fa7f3f8b758c
+
+    fix(synapses): stop decay() compounding on every call (#422) (#536)
+
+
+ neuralmind/synapse_client.py |  6 ++++--
+ neuralmind/synapses.py       | 64 +++++++++++++++++++++++++++++++++++++---------------------------
+ tests/test_synapses.py       | 36 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 29 deletions(-)
+commit 2289b1f94d49487e9507d5f306d4edc42eedab47
+
+    chore(sbom): publish neuralmind-v4.3.3.sbom.json to the site
+
+
+ site/public/sbom/neuralmind-v4.3.3.sbom.json | 1 +
+ 1 file changed, 1 insertion(+)
+commit 223147c3ddc614018b5d2a7ea7c0e7bd51dc5669
+
+    chore: update NeuralMind team memory snapshot [skip ci]
+
+
+ .neuralmind-team-memory.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+commit 404ccad4a98987310a0f6f93d6863f0baab59d5c
+
+    fix(security): never ingest dot-files (.env secrets leak); correct gitignore semantics (v4.3.3) (#535)
+
+
+ .release-please-manifest.json    |   2 +-
+ neuralmind/__init__.py           |   2 +-
+ neuralmind/document_ingestion.py | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ pyproject.toml                   |   2 +-
+ skills/neuralmind/SKILL.md       |   2 +-
+ tests/test_document_ingestion.py |  64 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 154 insertions(+), 20 deletions(-)
+commit 954ae2afff3268eae9db29dd1e1fe985025b6ff5
+
+    chore(sbom): publish neuralmind-v4.3.2.sbom.json to the site
+
+
+ site/public/sbom/neuralmind-v4.3.2.sbom.json | 1 +
+ 1 file changed, 1 insertion(+)

@@ -169,9 +169,12 @@ will.
   the same retrieval across multiple agents (Claude Code + Cursor +
   ChatGPT) or if you want measurable, reproducible numbers.
 - **Claude Code's built-in retrieval** — improving constantly. The
-  baseline keeps moving. NeuralMind's compression hooks
-  (`PostToolUse`) compose with it; the retrieval value-add depends
-  on how good Claude Code's built-in is on the day you measure.
+  baseline keeps moving, and the retrieval value-add depends on how
+  good Claude Code's built-in is on the day you measure. NeuralMind
+  doesn't shrink what Claude Code's own `Read`/`Bash`/`Grep` return:
+  its `PostToolUse` hooks used to try, and
+  [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
+  that added tokens, so they now inject nothing.
 - **Long context (1M, 2M tokens) + prompt caching** — the most
   honest competitor. Caching gives you ~90% cost reduction with no
   retrieval infrastructure. NeuralMind is additive (smaller cached
@@ -182,8 +185,8 @@ will.
   query volume.
 - **Headroom (universal context compression)** — compresses tool
   outputs, conversation history, RAG chunks, and files for any
-  provider, with prompt-cache alignment; strictly more general
-  *compression* than ours, and more mature in that category. It has
+  provider, with prompt-cache alignment. NeuralMind doesn't compress
+  tool output at all, so there's no overlap. Headroom has
   no semantic codebase index and no persistent memory of your code.
   The two compose (their proxy under, our retrieval on top). If
   compression is your whole problem, use Headroom.
