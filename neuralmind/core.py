@@ -961,8 +961,8 @@ class NeuralMind:
             l2_recall_k=self._tuned_l2_recall_k(),
             project_kind=self.project_kind,
         )
-        # Reduction ratios divide by the measured size of the indexed files
-        # (neuralmind.baseline) — the same baseline benchmark, savings and
+        # Reduction ratios divide by the measured size of the code the index
+        # covers (neuralmind.baseline) — the same baseline benchmark, savings and
         # cost use — or the labelled 50K estimate before anything is measured.
         try:
             from . import baseline as baseline_mod
@@ -2476,13 +2476,20 @@ class NeuralMind:
         """
         Run a benchmark to measure token reduction.
 
+        Each ratio is the measured size of the code the index covers
+        (``full_codebase_tokens``) over the tokens a question costs, so it
+        scales with the repository. ``legacy_avg_reduction_ratio`` is the same
+        run against the fixed 50,000-token estimate
+        (``estimated_full_codebase_tokens``) that every ratio used before
+        v4.5.0, so older results stay comparable.
+
         Args:
             sample_queries: Optional list of queries to test. If None, uses the
                 questions in the project's ``.neuralmind.eval.yaml`` when there
                 is one, else five generic questions.
             naive_50k: Divide by the fixed 50,000-token estimate instead of the
-                measured token count of the indexed files (for comparison with
-                pre-v4.5.0 numbers).
+                measured token count of the code the index covers (for
+                comparison with pre-v4.5.0 numbers).
 
         Returns:
             Benchmark results with average reduction ratio, and the baseline
@@ -2492,6 +2499,16 @@ class NeuralMind:
 
         self._ensure_built()
         base = baseline_mod.resolve(self.project_path, naive_50k=naive_50k)
+        if base["source"] != "measured" and not naive_50k:
+            # An index built before the baseline existed has nothing cached.
+            # The graph is loaded, so measure it now rather than fall back to
+            # the fixed estimate; nothing is written.
+            measured = baseline_mod.measure_graph_files(
+                self.project_path, getattr(self.embedder, "graph", None) or {}
+            )
+            if measured["tokens"] > 0:
+                base = baseline_mod.describe(measured)
+        legacy_tokens = baseline_mod.NAIVE_BASELINE_TOKENS
 
         question_source = "argument"
         if sample_queries is None:
@@ -2524,6 +2541,7 @@ class NeuralMind:
                 "query": None,
                 "tokens": wakeup.budget.total,
                 "reduction": baseline_mod.ratio(base["tokens"], wakeup.budget.total),
+                "legacy_reduction": baseline_mod.ratio(legacy_tokens, wakeup.budget.total),
             }
         )
 
@@ -2537,6 +2555,7 @@ class NeuralMind:
                     "query": q,
                     "tokens": result.budget.total,
                     "reduction": baseline_mod.ratio(base["tokens"], result.budget.total),
+                    "legacy_reduction": baseline_mod.ratio(legacy_tokens, result.budget.total),
                     "layers": result.layers_used,
                 }
             )
@@ -2545,13 +2564,16 @@ class NeuralMind:
         query_results = [r for r in results if r["type"] == "query"]
         avg_tokens = sum(r["tokens"] for r in query_results) / len(query_results)
         avg_reduction = sum(r["reduction"] for r in query_results) / len(query_results)
+        avg_legacy = sum(r["legacy_reduction"] for r in query_results) / len(query_results)
 
         return {
             "project": self.project_path.name,
             "wakeup_tokens": wakeup.budget.total,
             "avg_query_tokens": round(avg_tokens, 1),
             "avg_reduction_ratio": round(avg_reduction, 1),
-            "estimated_full_codebase_tokens": base["tokens"],
+            "full_codebase_tokens": base["tokens"],
+            "legacy_avg_reduction_ratio": round(avg_legacy, 1),
+            "estimated_full_codebase_tokens": legacy_tokens,
             "baseline": base,
             "questions": question_source,
             "results": results,

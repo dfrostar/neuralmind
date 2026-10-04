@@ -74,7 +74,7 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 
 ## What you lose vs. Claude Code
 
-- **No PostToolUse compression** — that's Claude-Code-specific. You still get the retrieval-side savings (12-50×), just not the additional Read/Bash/Grep compression layer.
+- **No Claude Code hooks** — automatic memory load at session start, prompt-time recall, and the stale-decision guard are Claude-Code-specific. You still get the retrieval-side savings.
 - **No MCP tool calls** — the model can't invoke `neuralmind_query` itself; you invoke it and paste.
 
 ## What you still get
@@ -82,7 +82,7 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 - The same 4-layer progressive disclosure
 - The same skeleton views (`neuralmind skeleton <file>`)
 - The same semantic search (`neuralmind search . "term"`)
-- Fully local — NeuralMind transmits no repository content (one first-build model download aside, pre-seedable)
+- Local-first — NeuralMind transmits no repository content (one first-build model download aside, pre-seedable)
 - Works with any model — OpenAI, Google, Anthropic, Ollama, vLLM, anything
 
 ## Graph view works with any LLM (v0.6.0+)

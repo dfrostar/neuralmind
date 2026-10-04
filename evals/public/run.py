@@ -249,9 +249,12 @@ def render_markdown(report: dict[str, Any]) -> str:
     )
     out.append(f"- **Tokenizer:** {report['tokenizer']}")
     out.append(
-        "- **Determinism:** synapse injection OFF, so every backend's numbers "
-        "reproduce exactly. The synapse *learning* lift is session-dependent and "
-        "measured separately by the synapse A/B eval — not part of this fixed number."
+        "- **Determinism:** synapse injection OFF and nothing is sampled, so a re-run on "
+        "the same machine reproduces every number exactly. Across machines, recall, "
+        "found-rate and MRR have matched exactly, while token counts differed slightly on "
+        "some CI runners (see docs/benchmarks/public.md). The synapse *learning* lift is "
+        "session-dependent and measured separately by the synapse A/B eval — not part of "
+        "this fixed number."
     )
     out.append(f"- **Correctness oracle:** {report['oracle']} (gold = symbol definition site)")
     out.append(

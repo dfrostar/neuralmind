@@ -255,7 +255,7 @@ tests/
 # 2. Local node_modules / site-packages (yes)
 # 3. External PyPI/npm packages (no, stays private)
 
-# NeuralMind indexes only local code and makes no calls of its own
+# NeuralMind indexes only local code and sends no telemetry
 ```
 
 ---
@@ -275,8 +275,9 @@ neuralmind install-hooks .
 There is no shared index server or database backend, and real-time
 cross-machine sync is roadmap-only. What a team can share is through git:
 
-- **Policy:** commit `neuralmind-backend.yaml` so every checkout loads the
-  same `security.roles` and rate limit.
+- **Backend settings:** commit `neuralmind-backend.yaml` so every checkout
+  uses the same backend. It doesn't share a role policy: the MCP server
+  ignores `security.roles`.
 - **Learned memory (optional):** `neuralmind memory publish` writes
   `.neuralmind-team-memory.json`. Once it's committed, teammates' agents merge
   it on their next session start or build.
@@ -291,9 +292,10 @@ See [Rolling Out to a Team](../DEPLOYMENT-GUIDE.md#rolling-out-to-a-team).
 who can run the agent that launches its MCP server (stdio, the default) and who
 can read the project's `.neuralmind/` directory.
 
-Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
-each role can call. Callers declare their own role, so leave `admin` out of the
-policy to cap what any caller can reach. See the
+Within that, each MCP call declares its own role, and the server applies a
+default per-tool policy. Any caller can declare `admin`. `security.roles` in
+`neuralmind-backend.yaml` is parsed but not applied by the MCP server today, so
+it can't cap that. See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 
 ---

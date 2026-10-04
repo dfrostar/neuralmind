@@ -245,13 +245,13 @@ exceptions that policy has accepted.
      - `builder` — the `reader` set plus `build`, document ingestion, and decision writes.
      - A few tools are **admin-only by default**, including `synaptic_neighbors`,
        `structural_neighbors`, `next_likely`, `impact`, and `review`.
-   - To cap what any caller can claim, set `security.roles` in `neuralmind-backend.yaml`.
-     It replaces the default policy, and a role it doesn't list gets no tools, so a
-     policy without `admin` keeps every caller out of the admin-only tools.
-   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min, `security.rate_limit`)
-     is enforced alongside the role check. It keys on the declared actor, so it stops a
-     runaway agent, not a caller that changes its actor name.
-   - If you customize the role policy, audit it the same way you would any access-control change.
+   - `security.roles` and `security.rate_limit` in `neuralmind-backend.yaml` are **not
+     applied** by the MCP server today. `neuralmind-mcp` builds its security manager
+     without the config loader, so every call gets the default policy, and any caller
+     can declare `admin` whatever the YAML says.
+   - A per-actor **rate limiter** (`RateLimiter`, fixed at 60 calls/min) is enforced
+     alongside the role check. It keys on the declared actor, so it stops a runaway
+     agent, not a caller that changes its actor name.
    - Audit events — actor, role, tool, allow/deny decision, rate-limit hits — are written to
      `<project>/.neuralmind/audit_events.jsonl` on every tool call.
 
@@ -423,7 +423,7 @@ When NeuralMind answers a question, it provides complete metadata about the cont
 - **Reduction ratio** – How much you saved vs. loading the full codebase
 
 You can always:
-- **Reproduce any result** – Same query + same codebase = same context (deterministic)
+- **Reproduce any result** – Same query + same codebase on the same machine = same context (deterministic); on a different machine, near-tied results can occasionally rank differently
 - **Audit the decision path** – See exactly which code entities and clusters were selected
 - **Verify completeness** – Check if all relevant code was captured
 - **Understand the tradeoffs** – View the token budget breakdown by layer

@@ -3,7 +3,7 @@
 Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-site oracle — no LLM judge) across pinned real repositories. Every query is reported, including losses. Reproduce with `python -m evals.public.run`.
 
 - **Tokenizer:** tiktoken o200k_base
-- **Determinism:** synapse injection OFF, so every backend's numbers reproduce exactly. The synapse *learning* lift is session-dependent and measured separately by the synapse A/B eval — not part of this fixed number.
+- **Determinism:** synapse injection OFF and nothing is sampled, so a re-run on the same machine reproduces every number exactly. Across machines, recall, found-rate and MRR have matched exactly, while token counts differed slightly on some CI runners (see docs/benchmarks/public.md). The synapse *learning* lift is session-dependent and measured separately by the synapse A/B eval — not part of this fixed number.
 - **Correctness oracle:** def-site (gold = symbol definition site)
 - **Baselines:** `full-file` (paste every file), `ripgrep` (keyword → top files), `embedding-rag` (top-k chunks, same encoder), `neuralmind` (progressive disclosure + synapses)
 

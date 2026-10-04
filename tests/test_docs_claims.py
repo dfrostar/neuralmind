@@ -148,7 +148,9 @@ FORBIDDEN = [
         # for the MiniLM ONNX archive. The fetch is NeuralMind's own code, not
         # a dependency's, which is precisely what "of its own" denies.
         re.compile(
-            r"\b(no|zero)\s+(network|external)\s+calls?\s+of\s+its\s+own\b",
+            # "(network|external)" is optional: "makes no calls of its own" made
+            # the same false claim in a comparison table and a FAQ snippet.
+            r"\b(no|zero)\s+((network|external)\s+)?calls?\s+of\s+its\s+own\b",
             re.IGNORECASE,
         ),
         (
@@ -341,6 +343,7 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search("NeuralMind makes no network calls of its own") for p, _ in FORBIDDEN)
     assert any(p.search("makes zero network calls of its own") for p, _ in FORBIDDEN)
     assert any(p.search("and makes no external calls of its own") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind makes no calls of its own") for p, _ in FORBIDDEN)
     # The compliance overclaims that shipped, and the CMMC forms of the same.
     assert any(p.search("NeuralMind satisfies SOC 2 Type II criteria:") for p, _ in FORBIDDEN)
     assert any(p.search("### ✅ SOC 2 Type II") for p, _ in FORBIDDEN)

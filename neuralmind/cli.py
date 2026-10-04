@@ -851,7 +851,7 @@ def _print_explain(result) -> None:
     # Token savings
     budget = result.budget
     # The baseline the ratio was computed against: the measured size of the
-    # indexed files (neuralmind.baseline), or the 50K estimate before a build.
+    # code the index covers (neuralmind.baseline), or the 50K estimate before a build.
     est_full = int(round(result.reduction_ratio * budget.total)) if budget.total else 0
     est_full = est_full or 50_000
     saved = est_full - budget.total
@@ -1280,7 +1280,7 @@ def cmd_savings(args):
     This lets you verify the savings claim against your own real usage.
 
     Measures your actual logged queries against the measured token count of
-    the project's indexed files (neuralmind.baseline; ``--naive-50k`` or
+    the code the project's index covers (neuralmind.baseline; ``--naive-50k`` or
     ``--global`` use the fixed 50K-token reference instead) — not the same
     thing as the what-if ROI formula in docs/BUSINESS-CASE.md, which uses
     different stated assumptions (8K tok/query, $3/MTok). The two are not meant to
@@ -1341,7 +1341,7 @@ def cmd_savings(args):
     print(
         f"  Est. cost without NM : {report['est_total_full_cost']:>10,}  "
         f"(at {est_full:,} tokens/query — "
-        f"{'measured indexed files' if report.get('baseline_source') == 'measured' else 'fixed 50K estimate'})"
+        f"{'measured indexed code' if report.get('baseline_source') == 'measured' else 'fixed 50K estimate'})"
     )
     print(f"  Tokens saved         : {report['total_tokens_saved']:>10,}")
     if dollar_info:
@@ -1525,9 +1525,11 @@ def cmd_benchmark(args):
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     contribute = getattr(args, "contribute", False) is True
-    # Community submissions keep the fixed 50K baseline the published table
-    # has always used, so its rows stay comparable with each other.
-    naive_50k = getattr(args, "naive_50k", False) is True or contribute
+    # Community submissions still compare on the fixed 50K baseline the
+    # published table has always used; every run reports that ratio alongside
+    # the measured one (legacy_avg_reduction_ratio), so --contribute needs no
+    # second run to submit both.
+    naive_50k = getattr(args, "naive_50k", False) is True
     result = mind.benchmark(naive_50k=True) if naive_50k else mind.benchmark()
 
     # Literal True check — MagicMock-auto-attribute would be truthy but not
@@ -1541,12 +1543,23 @@ def cmd_benchmark(args):
         print(json.dumps(result, indent=2))
     else:
         base = result.get("baseline") or {}
+        measured = base.get("source") == "measured"
         print(f"Project: {result['project']}")
         print(f"Baseline: {base.get('label', 'fixed 50K-token estimate')}")
         print(f"Questions: {result.get('questions', 'generic')}")
         print(f"Wake-up tokens: {result['wakeup_tokens']}")
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
+        if measured and result.get("legacy_avg_reduction_ratio") is not None:
+            print(
+                f"Legacy reduction: {result['legacy_avg_reduction_ratio']}x "
+                "(vs the fixed 50K-token estimate used before v4.5.0)"
+            )
+        if measured and result["avg_reduction_ratio"] < 1:
+            print(
+                "Note: on a repo this small, NeuralMind's context is larger than "
+                "the code it covers."
+            )
         print(f"Summary: {result['summary']}")
 
 
@@ -1851,6 +1864,7 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     prompted interactively (TTY) or left as `null` with a comment
     explaining the omission (non-TTY / scripted use).
     """
+    import shlex
     from datetime import date
 
     project_name = getattr(args, "project_name", None) or _prompt(
@@ -1879,19 +1893,40 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
         stats = mind.get_stats() if hasattr(mind, "get_stats") else {}
     except Exception:
         stats = {}
-    nodes = stats.get("total_nodes") or benchmark_result.get("nodes")
+    # NeuralMind.get_stats() names it "nodes"; embedder stats say "total_nodes".
+    nodes = stats.get("nodes") or stats.get("total_nodes") or benchmark_result.get("nodes")
+
+    base = benchmark_result.get("baseline") or {}
+    measured = base.get("source") == "measured"
+    ratio = float(benchmark_result.get("avg_reduction_ratio", 0))
+    # The table compares every row on the fixed 50K estimate it has always
+    # used; a measured run carries that figure as its legacy ratio.
+    table_ratio = float(benchmark_result.get("legacy_avg_reduction_ratio", ratio))
+    query_tokens = benchmark_result.get("avg_query_tokens")
+    avg_query_tokens = query_tokens or 0
 
     entry = {
+        # v2 adds the ratio against the submitter's measured code. Rows
+        # without schema_version are v1: the fixed-estimate ratio only.
+        "schema_version": 2,
         "project_name": project_name,
         "language": language or "Other",
         "nodes": nodes,
         "avg_wakeup_tokens": benchmark_result.get("wakeup_tokens"),
-        "avg_query_tokens": benchmark_result.get("avg_query_tokens"),
-        "avg_reduction_ratio": round(float(benchmark_result.get("avg_reduction_ratio", 0)), 1),
+        # The schema counts tokens in whole numbers; benchmark averages them.
+        "avg_query_tokens": round(query_tokens) if query_tokens is not None else None,
+        "avg_reduction_ratio": round(table_ratio, 1),
+        "measured_avg_reduction_ratio": round(ratio, 1) if measured else None,
+        "full_codebase_tokens": base.get("tokens") if measured else None,
         "model": model or None,
         "date_submitted": date.today().isoformat(),
         "submitted_by": submitted_by or None,
-        "verification_command": f"neuralmind benchmark {args.project_path} --json",
+        # Reproduces avg_reduction_ratio; the measured fields come from the
+        # same command without --naive-50k. shlex.quote so a path with spaces
+        # or shell metacharacters survives the copy-paste as one argument.
+        "verification_command": (
+            f"neuralmind benchmark {shlex.quote(str(args.project_path))} --naive-50k --json"
+        ),
     }
     if repo_url:
         entry["repo_url"] = repo_url
@@ -1901,15 +1936,14 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     # Drop null fields — schema treats them as missing, not null.
     entry = {k: v for k, v in entry.items() if v is not None and v != ""}
 
-    # Lead with the value, not the JSON.
-    ratio = float(benchmark_result.get("avg_reduction_ratio", 0))
-    avg_query_tokens = benchmark_result.get("avg_query_tokens") or 0
-    naive_tokens_estimate = int(avg_query_tokens * ratio) if avg_query_tokens else 0
+    # Lead with the value, not the JSON. What the agent would load without
+    # NeuralMind: the measured code, or the fixed estimate.
+    naive_tokens = int(base.get("tokens") or avg_query_tokens * ratio)
 
     # Rough per-query dollar cost at Claude 3.5 Sonnet input pricing.
     # The user can adjust if they run against a different model.
     sonnet_per_mtok = 3.0
-    monthly_naive = naive_tokens_estimate / 1_000_000 * sonnet_per_mtok * 100 * 30
+    monthly_naive = naive_tokens / 1_000_000 * sonnet_per_mtok * 100 * 30
     monthly_nm = avg_query_tokens / 1_000_000 * sonnet_per_mtok * 100 * 30
     monthly_saved = monthly_naive - monthly_nm
 
@@ -1917,11 +1951,26 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     print("=" * 68)
     print("What you just proved on your code:")
     print("=" * 68)
-    print(f"  Reduction ratio  :  {ratio:.1f}×  (on YOUR codebase, not a demo fixture)")
-    print(f"  Tokens per query :  {avg_query_tokens:,}  (vs ~{naive_tokens_estimate:,} raw)")
-    print(
-        f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}  (Claude 3.5 Sonnet input, 100 queries/day)"
-    )
+    if measured:
+        print(f"  Reduction ratio  :  {ratio:.1f}×  vs your code ({base.get('label', 'measured')})")
+        print(f"  Tokens per query :  {avg_query_tokens:,}  (vs {naive_tokens:,} to load the code)")
+    else:
+        print(f"  Reduction ratio  :  {ratio:.1f}×  vs the fixed 50K-token estimate, not your code")
+        print(
+            f"  Tokens per query :  {avg_query_tokens:,}  (vs the {naive_tokens:,}-token estimate)"
+        )
+    if monthly_saved >= 0:
+        print(
+            f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}  "
+            "(Claude 3.5 Sonnet input, 100 queries/day)"
+        )
+    else:
+        print("  Est. $ saved/mo  :  none — on a repo this small the context costs more")
+    if measured:
+        print(
+            f"  Table ratio      :  {table_ratio:.1f}×  vs the fixed 50K estimate every "
+            "community row compares on"
+        )
     print("")
     print("  Different model or volume? Scale linearly: GPT-4o ≈ 5× Sonnet cost;")
     print("  Haiku ≈ 1/4. Ratio stays the same.")
@@ -3007,13 +3056,12 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by natural language."""
+    """Search decisions by keywords or a question (titles and rationales)."""
     store = _get_decisions_store(args.project_path)
-    status = None if args.status == "ALL" else args.status
     results = store.query(
         text=args.query,
         limit=args.limit,
-        status=status,
+        status=args.status,
     )
     if args.json:
         import json
@@ -3138,11 +3186,15 @@ def cmd_decisions_invalidate(args):
 
 
 def cmd_decisions_eval(args):
-    """Run the maintenance replay benchmark."""
-    from neuralmind.memory.eval import MaintenanceEval
+    """Run the maintenance replay benchmark, or score a query set (--queries)."""
+    from neuralmind.memory.eval import MaintenanceEval, QuerySetEval, load_query_set
 
-    eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
-    report = eval_harness.run(output_format=args.format)
+    output_format = "markdown" if args.format == "md" else args.format
+    if args.queries:
+        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+    else:
+        eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
+    report = eval_harness.run(output_format=output_format)
 
     if args.output:
         Path(args.output).write_text(report)
@@ -4892,13 +4944,13 @@ def cmd_ci_check(args):
 
 
 def cmd_last(args):
-    """Print the most recent cached bash output (recovery without re-running).
+    """Print the most recent cached bash output (see it again without re-running).
 
-    Whenever NeuralMind's PostToolUse hook compresses a Bash output, it
-    stashes the raw stdout/stderr to ``.neuralmind/last_output.json``.
-    This command surfaces that cache so an agent can fetch the dropped
-    middle on demand instead of re-running an expensive command with
-    NEURALMIND_BYPASS=1.
+    NeuralMind's Bash PostToolUse hook stashes the stdout/stderr of each Bash
+    call Claude Code reports as successful to ``.neuralmind/last_output.json``.
+    A failing call fires PostToolUseFailure instead, so it isn't cached. This
+    command prints that cache, so the last output can be read again without
+    re-running an expensive command.
 
     Credentials are redacted on the way into the cache, so a value shown
     as ``[REDACTED:<kind>]`` here was never written to disk. The header
@@ -4961,11 +5013,15 @@ def cmd_install_hooks(args):
         print(f"✓ NeuralMind hooks {action} at {path}")
         if action == "installed":
             print(
-                "  PostToolUse hooks active: compress-read, compress-bash, "
-                "cap-search, edit-activity (reuse feedback)"
+                "  Hooks active: session memory (SessionStart), prompt recall "
+                "(UserPromptSubmit), stale-decision guard (PreToolUse), reuse feedback "
+                "and the `neuralmind last` output cache (PostToolUse), session digest "
+                "(Stop, SessionEnd)"
             )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
-            print("  Set NEURALMIND_BYPASS=1 env var to disable compression temporarily.")
+            print(
+                "  Set NEURALMIND_BYPASS=1 to switch every NeuralMind hook action off temporarily."
+            )
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -5718,9 +5774,10 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description=(
-            "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
-            "Local semantic codebase index + MCP server + PostToolUse compression hooks "
-            "for Claude Code, Cursor, Cline, and Continue."
+            "NeuralMind — persistent codebase memory for AI coding agents. A local "
+            "semantic code index and MCP server for Claude Code, Codex, Cursor, Cline and "
+            "Continue, plus Claude Code lifecycle hooks. Measure the token savings on your "
+            "repo with `neuralmind benchmark .`."
         ),
         epilog=(
             "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
@@ -5932,7 +5989,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     savings_p.set_defaults(func=cmd_savings)
 
@@ -5969,7 +6026,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     bench_p.add_argument(
         "--quality",
@@ -6114,7 +6171,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     cost_p.set_defaults(func=cmd_cost)
 
@@ -6592,10 +6649,20 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("project_path", nargs="?", default=".")
     d_record.set_defaults(func=cmd_decisions_record)
 
-    d_query = decisions_sub.add_parser("query", help="Search decisions by natural language")
-    d_query.add_argument("query", help="Search query")
+    d_query = decisions_sub.add_parser(
+        "query", help="Search decisions by keywords or a question (titles and rationales)"
+    )
+    d_query.add_argument(
+        "query", help="Keywords or a question; any word can match, best matches first"
+    )
     d_query.add_argument("--limit", "-n", type=int, default=5)
-    d_query.add_argument("--status", default="ACTIVE", help="ACTIVE/STALE/ALL")
+    d_query.add_argument(
+        "--status",
+        default="ACTIVE",
+        type=str.upper,
+        choices=["ACTIVE", "STALE", "INVALIDATED", "ALL"],
+        help="Status filter, case-insensitive (default: ACTIVE)",
+    )
     d_query.add_argument("--json", "-j", action="store_true")
     d_query.add_argument("project_path", nargs="?", default=".")
     d_query.set_defaults(func=cmd_decisions_query)
@@ -6633,8 +6700,21 @@ def build_parser() -> argparse.ArgumentParser:
     d_invalidate.add_argument("project_path", nargs="?", default=".")
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
-    d_eval = decisions_sub.add_parser("eval", help="Run maintenance replay benchmark")
+    d_eval = decisions_sub.add_parser(
+        "eval",
+        help="Run the maintenance replay benchmark on a scratch store "
+        "(never the project's decisions)",
+    )
     d_eval.add_argument("--tasks", type=int, default=10, help="Number of tasks")
+    d_eval.add_argument(
+        "--queries",
+        metavar="FILE",
+        help="Score search against a query set with gold decision ids instead "
+        "(e.g. tests/memory/fixtures/decision_queries.json)",
+    )
+    d_eval.add_argument(
+        "--limit", type=int, default=5, help="Results per query with --queries (default: 5)"
+    )
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
     d_eval.add_argument("--output", "-o", help="Output file")
     d_eval.add_argument("project_path", nargs="?", default=".")
@@ -7127,11 +7207,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo_p.set_defaults(func=cmd_demo)
 
-    # last command — recovery cache for the most recent compressed bash output
+    # last command — the cached output of the most recent successful Bash call
     last_p = subparsers.add_parser(
         "last",
         help="Print the last bash output the PostToolUse hook cached "
-        "(recover dropped content without re-running)",
+        "(see it again without re-running)",
     )
     last_p.add_argument(
         "project_path",
@@ -7142,10 +7222,11 @@ def build_parser() -> argparse.ArgumentParser:
     last_p.add_argument("--json", "-j", action="store_true")
     last_p.set_defaults(func=cmd_last)
 
-    # install-hooks command — Claude Code PostToolUse integration
+    # install-hooks command — Claude Code lifecycle integration
     hooks_p = subparsers.add_parser(
         "install-hooks",
-        help="Install/uninstall Claude Code PostToolUse compression hooks",
+        help="Install/uninstall NeuralMind's Claude Code hooks (session memory, "
+        "prompt recall, stale-decision guard, Bash output cache)",
     )
     hooks_p.add_argument(
         "project_path",

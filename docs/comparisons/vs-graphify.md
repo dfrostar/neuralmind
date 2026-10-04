@@ -57,10 +57,9 @@ The two tools now answer overlapping but distinct questions:
   *this* codebase across sessions and across every agent you use."
 
 NeuralMind's scope is deliberately narrower — code only, retrieval and
-compression only — in exchange for things graphify's general-purpose
+memory only — in exchange for things graphify's general-purpose
 design doesn't do: a learned Hebbian synapse layer that strengthens
 associations from actual usage (not just extraction-time inference),
-PostToolUse hooks that compress `Read`/`Bash`/`Grep` output in-session,
 and git-portable team memory that any MCP-compatible agent can read, not
 just the ones graphify's own CLI targets.
 
@@ -71,7 +70,7 @@ just the ones graphify's own CLI targets.
 | Edge provenance | EXTRACTED / INFERRED / AMBIGUOUS audit trail | Not tracked the same way — retrieval scores, not edge-confidence tags |
 | Learned/usage-based memory | No — graph reflects extraction time, not usage | Yes — Hebbian synapse layer strengthens from real query/edit activity, with decay |
 | Cross-session team memory | No | Yes — git-portable `.neuralmind-team-memory.json`, importable by any teammate's agent |
-| Tool-output compression | No | Yes — PostToolUse hooks (`Read`/`Bash`/`Grep`) |
+| Tool-output compression | No | No (its PostToolUse hooks on `Read`/`Bash`/`Grep` used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Agent integration | Own CLI/MCP server, exports to Obsidian/Neo4j/etc. | MCP server + Claude Code hooks; any MCP-compatible agent |
 | Paid tier | Enterprise (Early Access) — merge-gate verification, graph-aware review, engineering digest, self-hosted; no public price | Team ($29/user/mo) — seats beyond one, priority support, annual invoice; every feature runs free at 1 seat |
 | Backing | Y Combinator (S26), organizational | Bootstrapped, solo maintainer |

@@ -15,8 +15,8 @@ returns), and reports:
 * MRR — mean of 1 / rank of the first gold file (0 when missed)
 * average context tokens
 * two reductions: vs the tokens of the gold files (what a perfect retriever
-  would load) and vs the tokens of every indexed file (the measured baseline,
-  see :mod:`neuralmind.baseline`)
+  would load) and vs the tokens of all the code the index covers (the measured
+  baseline, see :mod:`neuralmind.baseline`)
 
 Each run appends one row to ``.neuralmind/eval_history.jsonl`` (date, git sha,
 NeuralMind version, node count, metrics), so ``eval --report`` can print the
@@ -288,7 +288,7 @@ def render_summary(report: EvalReport, show_questions: bool = False) -> str:
         (
             f"  avg context {report.avg_context_tokens:,.0f} tokens · "
             f"{report.ratio_vs_gold:.1f}× vs gold files · "
-            f"{report.ratio_vs_indexed:,.1f}× vs all indexed files "
+            f"{report.ratio_vs_indexed:,.1f}× vs all indexed code "
             f"({report.baseline_tokens:,} tokens, {report.baseline_source})"
         ),
     ]

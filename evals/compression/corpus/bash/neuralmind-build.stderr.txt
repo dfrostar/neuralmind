@@ -1,0 +1,11 @@
+Embedding 1/547 (0%) · 0.0s elapsed, ~0.0s left · init_py
+Embedding 55/547 (10%) · 0.0s elapsed, ~0.0s left · adapters_py__httpadapter_cls__add_header
+Embedding 110/547 (20%) · 0.0s elapsed, ~0.0s left · certs_py
+Embedding 165/547 (30%) · 0.0s elapsed, ~0.0s left · cookies_py__requestscookiejar_cls__iterk
+Embedding 219/547 (40%) · 0.0s elapsed, ~0.0s left · exceptions_py__requestexception_cls__rat
+Embedding 274/547 (50%) · 0.0s elapsed, ~0.0s left · help_py
+Embedding 329/547 (60%) · 0.0s elapsed, ~0.0s left · models_py__preparedrequest_cls__prepare_
+Embedding 383/547 (70%) · 0.0s elapsed, ~0.0s left · sessions_py__sessionredirectmixin_cls
+Embedding 438/547 (80%) · 0.0s elapsed, ~0.0s left · structures_py__rationale
+Embedding 493/547 (90%) · 0.0s elapsed, ~0.0s left · utils_py__get_encoding_from_headers_fn
+Embedding 547/547 (100%) · 0.0s total · ext__package_cls

@@ -43,7 +43,11 @@ neuralmind doctor .    # graph, index, hooks, MCP, synapses
 ## Moving off the ChromaDB backend
 
 The ChromaDB backend has been deprecated since v0.46.0, and `turbovec` is the
-default. If the project's `neuralmind-backend.yaml` has `backend: graph` or
+default. turbovec installs on Linux, macOS arm64, and Windows AMD64. On other
+platforms, such as Intel macOS, ChromaDB is still the only on-disk backend,
+so keep `backend: chroma` there.
+
+Elsewhere, if the project's `neuralmind-backend.yaml` has `backend: graph` or
 `backend: chroma`:
 
 1. Delete that line, or change it to `backend: turbovec`.

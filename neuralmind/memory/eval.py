@@ -24,11 +24,21 @@ Usage:
 
 CLI:
     python -m neuralmind.memory.eval [--project PATH] [--format json|markdown]
+    neuralmind decisions eval [--format json|md]
+
+Both run against a scratch store in a temporary directory; the project's
+own decisions are never read or changed.
+
+``QuerySetEval`` scores search against questions with gold decision ids
+(``neuralmind decisions eval --queries FILE``): recall@k and MRR, as mean
+and range, per query kind. The committed set is
+``tests/memory/fixtures/decision_queries.json``.
 """
 
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -387,6 +397,41 @@ def _build_tasks() -> list[MaintenanceTask]:
 
 
 # ---------------------------------------------------------------------------
+# Seeding
+# ---------------------------------------------------------------------------
+
+
+def _scratch_dir() -> tempfile.TemporaryDirectory:
+    """A throwaway project directory for an eval's store."""
+    return tempfile.TemporaryDirectory(prefix="neuralmind-eval-", ignore_cleanup_errors=True)
+
+
+def _seed_store(store: DecisionStore, decisions: list[dict[str, Any]]) -> None:
+    """Record each seed decision under its fixed id."""
+    now = datetime.now(timezone.utc)
+    for d in decisions:
+        # Stagger created_at so ordering is deterministic
+        created = now - timedelta(hours=len(d["title"]))
+        store.record(
+            title=d["title"],
+            rationale=d["rationale"],
+            commit_sha="abc1234" + uuid.uuid4().hex[:4],
+            files_affected=d.get("files_affected", []),
+            decision_type=d.get("decision_type", "ARCHITECTURE"),
+            confidence=d.get("confidence", 1.0),
+            status=d.get("status", "ACTIVE"),
+            author="eval-harness",
+            evidence=[f"Seed evidence for {d['id']}"],
+            rejected_alternatives=[],
+            dependency_constraints=[],
+            tags=d.get("tags", []),
+            id=d["id"],
+            created_at=created,
+            updated_at=created,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Token estimation
 # ---------------------------------------------------------------------------
 
@@ -425,8 +470,9 @@ class MaintenanceEval:
     statuses), then reports the delta.
 
     Args:
-        project_path: Root of the project. The DecisionStore DB lives at
-            ``<project_path>/.neuralmind/memory.db``.
+        project_path: Root of the project, recorded in the report. The
+            harness never reads or writes this project's decisions: it
+            seeds a scratch store in a temporary directory.
         task_count: Number of tasks to run (max 5 for synthetic tasks).
             Defaults to 10 but only 5 synthetic tasks are defined; the
             harness runs min(task_count, available_tasks).
@@ -443,56 +489,23 @@ class MaintenanceEval:
     # ------------------------------------------------------------------
 
     def _get_store(self) -> DecisionStore:
-        """Get or create the DecisionStore for this project."""
+        """The seeded scratch store; ``run()`` creates it."""
         if self._store is None:
-            self._store = DecisionStore(self.project_path)
+            raise RuntimeError("no eval store: call run(), which seeds one")
         return self._store
 
-    def _seed_decisions(self) -> None:
-        """Seed the DecisionStore with all task decisions.
+    def _seed_decisions(self, store_dir: str) -> None:
+        """Seed a fresh DecisionStore in ``store_dir`` with all task decisions.
 
-        Clears existing decisions first to ensure a clean baseline.
-        Uses a fresh store each time to avoid cross-contamination.
+        ``store_dir`` is a scratch directory, never the project: this used
+        to delete ``<project>/.neuralmind/memory.db`` and leave the synthetic
+        decisions behind in its place.
         """
-        store = self._get_store()
-
-        # Clear existing decisions by deleting the DB file
-        db_path = Path(self.project_path) / ".neuralmind" / "memory.db"
-        if db_path.exists():
-            db_path.unlink()
-            # Also clear WAL/SHM sidecars
-            for suffix in ("-wal", "-shm"):
-                sidecar = db_path.with_suffix(db_path.suffix + suffix)
-                if sidecar.exists():
-                    sidecar.unlink()
-
-        # Re-create store after clearing
-        self._store = DecisionStore(self.project_path)
-        store = self._store
-
-        # Seed all decisions from task definitions
-        now = datetime.now(timezone.utc)
-        for _task_id, decisions in _TASK_SEED_DECISIONS.items():
-            for d in decisions:
-                # Stagger created_at so ordering is deterministic
-                created = now - timedelta(hours=len(d["title"]))
-                store.record(
-                    title=d["title"],
-                    rationale=d["rationale"],
-                    commit_sha="abc1234" + uuid.uuid4().hex[:4],
-                    files_affected=d.get("files_affected", []),
-                    decision_type=d.get("decision_type", "ARCHITECTURE"),
-                    confidence=d.get("confidence", 1.0),
-                    status=d.get("status", "ACTIVE"),
-                    author="eval-harness",
-                    evidence=[f"Seed evidence for {d['id']}"],
-                    rejected_alternatives=[],
-                    dependency_constraints=[],
-                    tags=d.get("tags", []),
-                    id=d["id"],
-                    created_at=created,
-                    updated_at=created,
-                )
+        self._store = DecisionStore(store_dir)
+        _seed_store(
+            self._store,
+            [d for decisions in _TASK_SEED_DECISIONS.values() for d in decisions],
+        )
 
     # ------------------------------------------------------------------
     # Query execution
@@ -816,20 +829,22 @@ class MaintenanceEval:
         if output_format not in ("json", "markdown"):
             raise ValueError(f"Unknown output_format: {output_format!r}. Use 'json' or 'markdown'.")
 
-        # Seed decisions
-        self._seed_decisions()
+        with _scratch_dir() as store_dir:
+            # Seed decisions
+            self._seed_decisions(store_dir)
 
-        # Run memory ON arm
-        memory_on_results: list[TaskResult] = []
-        for task in self._tasks:
-            result = self._run_task(task, memory_enabled=True)
-            memory_on_results.append(result)
+            # Run memory ON arm
+            memory_on_results: list[TaskResult] = []
+            for task in self._tasks:
+                result = self._run_task(task, memory_enabled=True)
+                memory_on_results.append(result)
 
-        # Run memory OFF arm
-        memory_off_results: list[TaskResult] = []
-        for task in self._tasks:
-            result = self._run_task(task, memory_enabled=False)
-            memory_off_results.append(result)
+            # Run memory OFF arm
+            memory_off_results: list[TaskResult] = []
+            for task in self._tasks:
+                result = self._run_task(task, memory_enabled=False)
+                memory_off_results.append(result)
+            self._store = None
 
         # Compute aggregates
         agg_on = self._compute_aggregate(memory_on_results)
@@ -878,6 +893,213 @@ class MaintenanceEval:
 
 
 # ---------------------------------------------------------------------------
+# QuerySetEval — questions with gold decision ids
+# ---------------------------------------------------------------------------
+
+# DecisionStore.query's and neuralmind_query_decisions' default limit, so
+# recall@k measures what an agent gets back by default.
+QUERY_SET_LIMIT = 5
+
+# The kind of the generated exact-title queries.
+TITLE_KIND = "title"
+
+
+@dataclass
+class QueryOutcome:
+    """One query's results against its gold decision ids."""
+
+    id: str
+    kind: str
+    query: str
+    gold: list[str]
+    returned: list[str]
+    # Share of gold ids among the results; None when nothing should match.
+    recall: float | None
+    # 1 / rank of the first gold id (0.0 if none returned); None when
+    # nothing should match.
+    reciprocal_rank: float | None
+
+
+def load_query_set(path: str | Path) -> dict[str, Any]:
+    """Read a query-set JSON file (see tests/memory/fixtures/decision_queries.json)."""
+    data: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
+    data.setdefault("source", str(path))
+    return data
+
+
+def _spread(values: list[float]) -> dict[str, float]:
+    """Mean and range, rounded for reporting."""
+    return {
+        "mean": round(sum(values) / len(values), 4),
+        "min": round(min(values), 4),
+        "max": round(max(values), 4),
+    }
+
+
+class QuerySetEval:
+    """Score ``DecisionStore.query`` against questions with gold decision ids.
+
+    The corpus is the maintenance tasks' seed decisions plus the query set's
+    ``extra_decisions``, recorded in a scratch store. Each query runs with
+    the default status filter (ACTIVE) and ``limit``. Besides the set's own
+    queries, every ACTIVE decision's exact title is asked as a ``title``
+    query, whose answer should rank first.
+
+    Per kind the report gives recall@limit and MRR as mean and range, how
+    many queries returned nothing, and every query that missed a gold id.
+    A query with no gold ids (kind ``negative``) should return nothing, so
+    any result it gets is a false positive.
+
+    Args:
+        query_set: Parsed query-set JSON (``load_query_set``).
+        limit: Results per query.
+
+    Raises:
+        ValueError: a gold id names no ACTIVE decision in the corpus.
+    """
+
+    def __init__(self, query_set: dict[str, Any], limit: int = QUERY_SET_LIMIT) -> None:
+        self.source = str(query_set.get("source", "<inline>"))
+        self.limit = limit
+        seed = [d for decisions in _TASK_SEED_DECISIONS.values() for d in decisions]
+        self.corpus: list[dict[str, Any]] = [*seed, *query_set.get("extra_decisions", [])]
+        active = [d for d in self.corpus if d.get("status", "ACTIVE") == "ACTIVE"]
+        active_ids = {d["id"] for d in active}
+        self.queries: list[dict[str, Any]] = list(query_set.get("queries", []))
+        for q in self.queries:
+            unknown = sorted(set(q["gold"]) - active_ids)
+            if unknown:
+                raise ValueError(f"query {q['id']!r}: gold ids {unknown} are not ACTIVE decisions")
+        self.queries += [
+            {"id": f"title:{d['id']}", "kind": TITLE_KIND, "query": d["title"], "gold": [d["id"]]}
+            for d in active
+        ]
+        self.active_count = len(active)
+
+    def outcomes(self) -> list[QueryOutcome]:
+        """Seed a scratch store and run every query against it."""
+        results: list[QueryOutcome] = []
+        with _scratch_dir() as store_dir:
+            store = DecisionStore(store_dir)
+            _seed_store(store, self.corpus)
+            for q in self.queries:
+                returned = [r.id for r in store.query(q["query"], limit=self.limit)]
+                gold = list(q["gold"])
+                recall = rr = None
+                if gold:
+                    recall = len(set(gold) & set(returned)) / len(gold)
+                    rank = next((i for i, rid in enumerate(returned, 1) if rid in gold), None)
+                    rr = 1.0 / rank if rank else 0.0
+                results.append(
+                    QueryOutcome(
+                        id=q["id"],
+                        kind=q["kind"],
+                        query=q["query"],
+                        gold=gold,
+                        returned=returned,
+                        recall=recall,
+                        reciprocal_rank=rr,
+                    )
+                )
+        return results
+
+    @staticmethod
+    def summarize(outcomes: list[QueryOutcome]) -> dict[str, dict[str, Any]]:
+        """Per-kind metrics, in the order kinds first appear."""
+        by_kind: dict[str, list[QueryOutcome]] = {}
+        for o in outcomes:
+            by_kind.setdefault(o.kind, []).append(o)
+        summary: dict[str, dict[str, Any]] = {}
+        for kind, group in by_kind.items():
+            # (id, recall, reciprocal rank) of the queries with gold ids
+            scored = [
+                (o.id, o.recall, o.reciprocal_rank)
+                for o in group
+                if o.recall is not None and o.reciprocal_rank is not None
+            ]
+            entry: dict[str, Any] = {
+                "queries": len(group),
+                "returned_nothing": sum(1 for o in group if not o.returned),
+                "mean_results": round(sum(len(o.returned) for o in group) / len(group), 2),
+            }
+            if scored:
+                entry["recall"] = _spread([recall for _, recall, _ in scored])
+                entry["mrr"] = _spread([rr for _, _, rr in scored])
+                entry["misses"] = [qid for qid, recall, _ in scored if recall < 1.0]
+                entry["not_ranked_first"] = [qid for qid, _, rr in scored if rr < 1.0]
+            else:
+                entry["false_positives"] = [o.id for o in group if o.returned]
+            summary[kind] = entry
+        return summary
+
+    def run(self, output_format: str = "json") -> str:
+        """Run the eval and render it as ``"json"`` or ``"markdown"``."""
+        if output_format not in ("json", "markdown"):
+            raise ValueError(f"Unknown output_format: {output_format!r}. Use 'json' or 'markdown'.")
+        outcomes = self.outcomes()
+        summary = self.summarize(outcomes)
+        if output_format == "json":
+            return json.dumps(
+                {
+                    "query_set": self.source,
+                    "limit": self.limit,
+                    "corpus": {"decisions": len(self.corpus), "active": self.active_count},
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "summary": summary,
+                    "per_query": [o.__dict__ for o in outcomes],
+                },
+                indent=2,
+            )
+        return self._render_markdown(outcomes, summary)
+
+    def _render_markdown(
+        self, outcomes: list[QueryOutcome], summary: dict[str, dict[str, Any]]
+    ) -> str:
+        def spread(s: dict[str, float] | None) -> str:
+            return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})" if s else "—"
+
+        lines = [
+            "# Decision Query Eval",
+            "",
+            f"**Query set**: `{self.source}`",
+            f"**Corpus**: {len(self.corpus)} decisions, {self.active_count} ACTIVE",
+            f"**Limit**: {self.limit} (status ACTIVE)",
+            "",
+            (
+                f"| Kind | Queries | Recall@{self.limit} mean (range) | MRR mean (range) "
+                "| Returned nothing | Missed a gold id |"
+            ),
+            "|------|---------|------|------|------|------|",
+        ]
+        for kind, s in summary.items():
+            missed = (
+                str(len(s["misses"]))
+                if "misses" in s
+                else f"{len(s['false_positives'])} false positives"
+            )
+            lines.append(
+                f"| {kind} | {s['queries']} | {spread(s.get('recall'))} "
+                f"| {spread(s.get('mrr'))} | {s['returned_nothing']} | {missed} |"
+            )
+        lines += ["", "## Misses, false positives, and answers not ranked first", ""]
+        lines += [
+            "| Query | Kind | Gold | First gold at | Returned |",
+            "|-------|------|------|---------------|----------|",
+        ]
+        for o in outcomes:
+            if o.reciprocal_rank is None and not o.returned:
+                continue
+            if o.reciprocal_rank == 1.0 and o.recall == 1.0:
+                continue
+            rank = f"#{round(1 / o.reciprocal_rank)}" if o.reciprocal_rank else "—"
+            lines.append(
+                f"| `{o.query}` | {o.kind} | {', '.join(o.gold) or '—'} | {rank} "
+                f"| {', '.join(o.returned) or '—'} |"
+            )
+        return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
 
@@ -887,6 +1109,7 @@ def main() -> None:
 
     Usage:
         python -m neuralmind.memory.eval [--project PATH] [--format json|markdown]
+            [--queries FILE [--limit N]]
     """
     import argparse
 
@@ -904,8 +1127,22 @@ def main() -> None:
         default="json",
         help="Output format (default: json)",
     )
+    parser.add_argument(
+        "--queries",
+        help="Query-set JSON: score search against its gold decision ids instead",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=QUERY_SET_LIMIT,
+        help=f"Results per query with --queries (default: {QUERY_SET_LIMIT})",
+    )
     args = parser.parse_args()
 
+    if args.queries:
+        harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+        print(harness.run(output_format=args.format))
+        return
     eval = MaintenanceEval(args.project)
     report = eval.run(output_format=args.format)
     print(report)

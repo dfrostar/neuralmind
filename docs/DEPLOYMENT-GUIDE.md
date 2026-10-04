@@ -29,10 +29,10 @@ doesn't do it yet.
 
 | Component | How it runs | Network |
 |---|---|---|
-| `neuralmind` CLI | Builds and queries the index, installs hooks | None, except the embedding-model download on a cold first build ([below](#outbound-network)) |
+| `neuralmind` CLI | Builds and queries the index, installs hooks | None, except the embedding-model download on a cold first build, and tiktoken's vocabulary if tiktoken is installed ([below](#outbound-network)) |
 | `neuralmind-mcp` | MCP server, launched by the agent over stdio | None. Opens no port |
-| `neuralmind serve` (optional) | Local graph-view UI | HTTP on `127.0.0.1:8787` by default, per-session token |
-| `neuralmind daemon start` (optional, experimental) | Keeps project state warm for faster repeat CLI queries | HTTP on `127.0.0.1:8787` by default, bearer token |
+| `neuralmind serve` (optional) | Local graph-view UI | HTTP on `127.0.0.1:8787` by default, access token persisted across restarts |
+| `neuralmind daemon start` (optional, experimental) | Keeps project state warm for faster repeat CLI queries | HTTP on `127.0.0.1:8787` by default, bearer token generated at each start |
 | State | `<project>/.neuralmind/` | n/a |
 
 `neuralmind-mcp` takes no command-line arguments. The agent passes the project
@@ -56,7 +56,7 @@ pip install neuralmind
 cd /path/to/project
 neuralmind build .           # builds .neuralmind/graph.json and the vector index
 neuralmind install-mcp .     # registers neuralmind-mcp with Claude Code (--client or --all for others)
-neuralmind install-hooks .   # Claude Code PostToolUse output compression (optional)
+neuralmind install-hooks .   # Claude Code: session memory, prompt recall, stale-decision guard, Bash output cache (optional)
 neuralmind init-hook .       # git post-commit index rebuild + pre-commit drift guard (optional)
 ```
 
@@ -95,8 +95,9 @@ Constraints to plan around:
   container downloads it on its first build, and `--rm` throws it away again.
   Copy the extracted model from a host that has built once
   (`~/.cache/neuralmind/onnx_models/all-MiniLM-L6-v2/onnx/`), mount it
-  read-only, and point `NEURALMIND_ONNX_MODEL_DIR` at it. That also keeps the
-  container off the network ([below](#outbound-network)).
+  read-only, and point `NEURALMIND_ONNX_MODEL_DIR` at it. The image doesn't
+  include tiktoken, so that keeps the container off the network
+  ([below](#outbound-network)).
 
 Build the index, then run the MCP server over stdio:
 
@@ -159,6 +160,10 @@ An index built in CI stays on that runner. Nothing publishes it to developers.
   bind to `127.0.0.1` by default and require a token. `neuralmind serve --host`
   changes the bind address but keeps the token. `--no-auth` removes it, so use
   `--no-auth` only on a host nobody else can reach.
+- **The graph-view token persists.** It is stored in
+  `~/.neuralmind/server-token.json` (mode `0600`) and reused on every restart,
+  so a URL you shared stays valid. To revoke it, delete that file and restart
+  `neuralmind serve`. The daemon generates a new token each time it starts.
 - **`/healthz` on the graph view is unauthenticated** by design, so container
   health checks work without the token. It returns only `{"status": "ok",
   "version": "…"}`.
@@ -170,8 +175,7 @@ An index built in CI stays on that runner. Nothing publishes it to developers.
 ### Outbound network
 
 By default NeuralMind sends no telemetry and transmits no repository content
-off your machine. In normal use it makes one outbound request, and one more
-if you opt in:
+off your machine. It can make three outbound requests:
 
 1. **Embedding-model download.** On a cold first build, NeuralMind downloads
    the `all-MiniLM-L6-v2` ONNX archive over HTTPS and checks it against a
@@ -179,7 +183,13 @@ if you opt in:
    For air-gapped or egress-restricted hosts, pre-extract the model and set
    `NEURALMIND_ONNX_MODEL_DIR` to its folder. See the
    [air-gapped walkthrough](use-cases/air-gapped.md).
-2. **Opt-in documentation seeding.** With both `NEURALMIND_LLM_SEED=1` and
+2. **Tokenizer vocabulary, only if tiktoken is installed.** NeuralMind
+   doesn't install tiktoken (`requirements-pinned.txt` does pin it), but uses
+   it for exact token counts when present. tiktoken downloads its
+   `cl100k_base` vocabulary on first use. On offline hosts, pre-populate a
+   cache and set `TIKTOKEN_CACHE_DIR`, or leave tiktoken uninstalled. If the
+   download fails, NeuralMind falls back to approximate counts.
+3. **Opt-in documentation seeding.** With both `NEURALMIND_LLM_SEED=1` and
    `ANTHROPIC_API_KEY` set, NeuralMind sends the text of `README.md` and
    `docs/architecture.md` to Anthropic's API. This is off by default. See
    [THIRD_PARTY_LLM_DISCLOSURE.md](compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
@@ -194,27 +204,16 @@ model. That egress belongs to the agent, not to NeuralMind.
 ### Access control
 
 NeuralMind does not authenticate callers. Each MCP tool call declares its own
-`actor` (default `anonymous`) and `role` (default `builder`), and
-`security.roles` in the project's `neuralmind-backend.yaml` decides what each
-role can call:
+`actor` (default `anonymous`) and `role` (default `builder`). The server checks
+the role against its default per-tool policy (`admin`, `builder`, `reader`)
+and rate-limits each declared actor to 60 calls per 60 seconds. Any caller can
+declare `admin`.
 
-```yaml
-# neuralmind-backend.yaml, in the project root
-security:
-  roles:
-    builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
-    reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
-  rate_limit:
-    max_calls: 60
-    window_seconds: 60
-```
-
-A role the policy doesn't list gets no tools, so leaving `admin` out caps what
-any caller can claim. The server loads the policy from the
-`neuralmind-backend.yaml` of whatever `project_path` the call names. A project
-without one gets the default policy, which includes `admin`. Who can reach the
-server, and which directories its OS account can read, is up to the host. See
-[SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
+`neuralmind-backend.yaml` accepts `security.roles` and `security.rate_limit`,
+but the MCP server doesn't apply them today. It always uses the defaults, so
+leaving `admin` out of the YAML caps nothing. The controls that do hold are
+who can reach the MCP server and which directories its OS account can read.
+See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
 ### File permissions
 
@@ -278,8 +277,8 @@ tests/fixtures/
 
 | Backend | How to select | Status |
 |---|---|---|
-| `turbovec` | Default, no configuration | Installed with NeuralMind on Linux, macOS arm64, and Windows AMD64. On other platforms pip installs ChromaDB in its place |
-| `chroma` / `graph` | `backend: chroma` in `neuralmind-backend.yaml`, plus `pip install "neuralmind[chromadb]"` | Deprecated |
+| `turbovec` | Default, no configuration | Installed with NeuralMind on Linux, macOS arm64, and Windows AMD64 |
+| `chroma` / `graph` | `backend: chroma` in `neuralmind-backend.yaml`, plus `pip install "neuralmind[chromadb]"` | Deprecated. Required on other platforms (such as Intel macOS): pip installs ChromaDB there instead of turbovec, but doesn't select it, so without `backend: chroma` the first command fails |
 
 Both backends store the index as local files under `.neuralmind/`. There is no
 server backend. If you build your own image, use a glibc base such as
@@ -324,10 +323,12 @@ curl http://127.0.0.1:8787/healthz
 
 ### Metrics
 
-NeuralMind exposes no metrics endpoint and no Prometheus exporter. The
-per-query record is the audit log below: each `query` event carries the token
-count of the context it returned. `neuralmind savings .` summarizes those
-events.
+There is no Prometheus exporter. The graph view has a token-gated
+`/api/metrics` JSON endpoint, and `neuralmind metrics` reads the same store
+(`.neuralmind/metrics/`), but nothing in the build or query path writes to it,
+so both report nothing today. Use the audit log below instead: each `query`
+event carries the token count of the context it returned, and
+`neuralmind savings .` summarizes those events.
 
 ### Audit log
 
@@ -388,12 +389,24 @@ cp "$P/audit_events.jsonl" "$DEST/"
 The audit log contains query text, and the synapse store names files and
 symbols. Protect backups the way you protect the source tree.
 
-To recover, stop any agents using the project, then:
+To recover, first stop everything that opens the project's stores: agents
+running `neuralmind-mcp`, `neuralmind watch`, `neuralmind serve`, and
+`neuralmind daemon`. Then delete the `-wal` and `-shm` files of each database
+you replace. If you leave them, SQLite replays the old write-ahead log over
+the restored file and silently undoes the restore.
 
 ```bash
 B=/backups/neuralmind-YYYYMMDD_HHMMSS
-cp "$B/synapses.db" "$B/audit_events.jsonl" /path/to/project/.neuralmind/
-if [ -f "$B/memory.db" ]; then cp "$B/memory.db" /path/to/project/.neuralmind/; fi
+N=/path/to/project/.neuralmind
+mkdir -p "$N"
+rm -f "$N/synapses.db-wal" "$N/synapses.db-shm"
+cp "$B/synapses.db" "$N/"
+if [ -f "$B/memory.db" ]; then
+  rm -f "$N/memory.db-wal" "$N/memory.db-shm"
+  cp "$B/memory.db" "$N/"
+fi
+# Restore the audit log only if it's gone: overwriting it discards newer records
+[ -f "$N/audit_events.jsonl" ] || cp "$B/audit_events.jsonl" "$N/"
 neuralmind build /path/to/project                          # regenerates the graph and index
 neuralmind audit verify /path/to/project
 ```
@@ -403,20 +416,17 @@ neuralmind audit verify /path/to/project
 ## Rolling Out to a Team
 
 Each developer builds and queries their own index. There is no shared index
-service, and real-time cross-machine sync is roadmap-only. A team shares two
-things through git:
+service, and real-time cross-machine sync is roadmap-only. Committing
+`neuralmind-backend.yaml` shares backend settings, but not a role policy: the
+MCP server ignores `security.roles` ([above](#access-control)).
 
-- **Policy.** Commit `neuralmind-backend.yaml` so every checkout loads the
-  same `security.roles` and `rate_limit`. It is a guard rail for well-behaved
-  agents. A developer can edit their local copy, and NeuralMind doesn't
-  authenticate callers.
-- **Learned memory (optional).** `neuralmind memory publish` writes
-  `.neuralmind-team-memory.json` (learned weights between files and symbols,
-  no source text). Once it's committed, each teammate's agent merges it into
-  its `shared` namespace on the next session start or build. Set
-  `NEURALMIND_TEAM_MEMORY=0` to turn the import off. Anyone who can commit
-  that file can influence what teammates' agents recall, so review changes to
-  it like code.
+Teams can optionally share learned memory through git.
+`neuralmind memory publish` writes `.neuralmind-team-memory.json` (learned
+weights between files and symbols, no source text). Once it's committed, each
+teammate's agent merges it into its `shared` namespace on the next session
+start or build. Set `NEURALMIND_TEAM_MEMORY=0` to turn the import off. Anyone
+who can commit that file can influence what teammates' agents recall, so
+review changes to it like code.
 
 NeuralMind has no user directory or LDAP integration, and SSO/SAML is
 roadmap-only. Per-person access comes from OS accounts and file permissions.
@@ -436,8 +446,9 @@ neuralmind install-mcp                   # re-register the MCP server with your 
   stderr goes to the agent's MCP log, not to a NeuralMind log file. Check
   the agent's MCP logs first.
 - **A tool call returns `security_denied`.** The declared role isn't allowed
-  that tool by the project's `security.roles`, or the declared actor hit the
-  rate limit. Both cases are recorded: `neuralmind audit recent . --action mcp_call_denied`.
+  that tool by the default policy (for example, `reader` calling
+  `neuralmind_build`), or the declared actor made more than 60 calls in 60
+  seconds. Both cases are recorded: `neuralmind audit recent . --action mcp_call_denied`.
 - **Calls fail in a container.** Check that the project mount is writable and
   sits at the same absolute path the agent sends as `project_path`.
 
@@ -446,13 +457,13 @@ neuralmind install-mcp                   # re-register the MCP server with your 
 ## Deployment Checklist
 
 - [ ] `neuralmind-mcp` runs over stdio. The Streamable HTTP transport is not used
-- [ ] `security.roles` committed in `neuralmind-backend.yaml`, without `admin` unless needed
+- [ ] Only trusted agents can reach the MCP server: any caller can declare `admin`, and the server ignores `security.roles`
 - [ ] The OS account running the agent can read only the projects it should
 - [ ] `.neuralmind/` restricted with file permissions, and the host disk encrypted
 - [ ] `neuralmind scan-for-secrets` passes before the first build
 - [ ] Embedding model pre-seeded with `NEURALMIND_ONNX_MODEL_DIR` on egress-restricted hosts
 - [ ] `NEURALMIND_LLM_SEED` left unset unless approved
-- [ ] Graph view and daemon left on `127.0.0.1` with the token on
+- [ ] Graph view and daemon left on `127.0.0.1` with the token on, and `~/.neuralmind/server-token.json` deleted to revoke a shared graph-view URL
 - [ ] `audit export` shipped to your SIEM, and `audit verify` scheduled
 - [ ] `synapses.db`, `memory.db`, and `audit_events.jsonl` backed up, and a restore tested
 - [ ] Container image pinned to a release tag, not `latest`

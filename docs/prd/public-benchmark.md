@@ -171,7 +171,10 @@ _Checked items shipped in v0.31.0; unchecked are explicit fast-follows (noted)._
 - [x] Deterministic by design (synapse injection off): re-runs match to the
       token, so a single run *is* the reproducible result. _(The `--seeds` flag
       records the seed count; true multi-seed mean ± spread would only matter if
-      a stochastic baseline is added later.)_
+      a stochastic baseline is added later.)_ _Correction 2026-10-03: "to the
+      token" holds on one machine. Across machines, runs matched exactly on
+      recall, found-rate and MRR, but some CI runners differed by up to 1.3% in
+      per-repo mean tokens — see [`docs/benchmarks/public.md`](../benchmarks/public.md#how-exactly-a-re-run-reproduces)._
 - [x] **Every** query in the report, including losses; a "where NeuralMind loses"
       section is present (and the degraded-env case says "not evaluated", never a
       false clean sweep).

@@ -240,3 +240,57 @@ def test_in_memory_store_finds_dependents():
     mem.add(base)
     mem.add(dep)
     assert [d.id for d in mem.find_dependents(base.id)] == [dep.id]
+
+
+# ------------------------------------------------------------------ #
+# Event bus failure is non-blocking (side finding 2: the error path
+# logged ``event.id``, which InvalidationEvent doesn't have, so a failed
+# publish raised AttributeError mid-scan instead of being swallowed)
+# ------------------------------------------------------------------ #
+
+
+def _failing_publish(*_args, **_kwargs):
+    raise RuntimeError("event bus down")
+
+
+def test_invalidate_survives_event_bus_failure(tmp_path, store, monkeypatch, caplog):
+    import logging
+
+    import neuralmind.event_bus
+
+    monkeypatch.setattr(neuralmind.event_bus, "publish", _failing_publish)
+    rec = store.record(title="t", rationale="r", commit_sha="a" * 40, files_affected=["f.py"])
+    engine = InvalidationEngine(str(tmp_path), store)
+
+    with caplog.at_level(logging.DEBUG, logger="neuralmind.memory.invalidate"):
+        engine.invalidate_decision(rec.id, "file changed")
+
+    assert store.get(rec.id).status == "STALE"
+    assert [e.decision_id for e in engine.last_events] == [rec.id]
+    assert any(
+        "event bus publish failed" in r.getMessage() and rec.id in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_scan_finishes_when_event_bus_fails(git_repo, store, monkeypatch):
+    import neuralmind.event_bus
+
+    monkeypatch.setattr(neuralmind.event_bus, "publish", _failing_publish)
+    (git_repo / "other.py").write_text("y = 1\n")
+    _git(git_repo, "add", "-A")
+    _git(git_repo, "commit", "-qm", "add other")
+    head = get_current_commit(git_repo)
+    first = store.record(title="a", rationale="r", commit_sha=head, files_affected=["src.py"])
+    second = store.record(title="b", rationale="r", commit_sha=head, files_affected=["other.py"])
+    (git_repo / "src.py").write_text("x = 2\n")
+    (git_repo / "other.py").write_text("y = 2\n")
+    _git(git_repo, "add", "-A")
+    _git(git_repo, "commit", "-qm", "change both")
+
+    invalidated = InvalidationEngine(str(git_repo), store).scan()
+
+    # Both decisions reference files the last commit changed; one failed
+    # publish must not stop the scan before it reaches the second.
+    assert set(invalidated) == {first.id, second.id}
+    assert {store.get(i).status for i in invalidated} == {"STALE"}
