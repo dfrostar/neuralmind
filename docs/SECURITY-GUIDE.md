@@ -86,15 +86,25 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 A few tools are admin-only by default, including `synaptic_neighbors`,
 `structural_neighbors`, `next_likely`, `impact`, and `review`.
 
-### Configured role policies are not applied
+### Capping what a caller can claim
 
-`neuralmind-backend.yaml` accepts `security.roles` and `security.rate_limit`,
-and `get_security_manager` in `neuralmind/mcp_security.py` parses them. The
-MCP server doesn't call it: `neuralmind-mcp` builds its security manager
-directly (`get_security_manager` in `neuralmind/mcp_server.py`), so every call
-gets `DEFAULT_ROLE_POLICY` and the default limit of 60 calls per 60 seconds,
-whatever the YAML says. A policy that leaves out `admin` doesn't stop a caller
-from declaring `admin`.
+`security.roles` in `neuralmind-backend.yaml` replaces the default policy. A
+role it doesn't list gets no tools, so leaving `admin` out keeps every caller
+away from tools no listed role grants, however it declares itself:
+
+```yaml
+# neuralmind-backend.yaml, in the project root
+security:
+  roles:
+    builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
+    reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
+  rate_limit:
+    max_calls: 60
+    window_seconds: 60
+```
+
+The MCP server in v4.5.1 and earlier built its security manager without
+reading this file, so both settings were ignored there.
 
 The rate limit keys on the declared actor, so it stops a runaway agent, not a
 caller that changes its actor name.
@@ -508,11 +518,10 @@ Status: No known injection path. This comes from code review, not a
 **Scenario 2: Privilege escalation**
 ```
 Attack: A caller declares role "admin" to reach admin-only tools
-Mitigation: None in NeuralMind itself. Roles are caller-declared, and
-            the MCP server always applies the default policy, which
-            includes admin; it ignores security.roles. Limit who can reach
-            the MCP server and what its OS account can read
-Status: ⚠️ Possible for any caller that can reach the MCP server
+Mitigation: Roles are caller-declared. Leave admin out of
+            security.roles so no declared role reaches admin-only
+            tools, and limit who can reach the MCP server
+Status: ⚠️ Possible with the default policy
 ```
 
 **Scenario 3: Data exfiltration**
@@ -533,7 +542,7 @@ Status: ⚠️ Not prevented. Use OS permissions and your DLP controls
 Before deploying NeuralMind to production:
 
 ### Access & Authentication
-- [ ] Only trusted agents can reach the MCP server: any caller can declare `admin`, and the server ignores `security.roles`
+- [ ] `security.roles` set in `neuralmind-backend.yaml`, without `admin` unless you need it
 - [ ] MCP server reachable only by the agent that launched it (stdio), or the HTTP transport kept on localhost
 - [ ] MFA enabled for admin accounts
 - [ ] Service account credentials secured
