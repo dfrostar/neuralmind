@@ -1,0 +1,61 @@
+# flask @ c12a5d87 (src/flask) — 30 pre-registered questions; gold = the file whose code answers it
+- q: "How does the return value of a view (a string, dict, tuple with status and headers, or a generator) get turned into an actual response object?"
+  gold: [app.py]
+- q: "How are async def view functions supported — what runs the coroutine when the server itself is synchronous?"
+  gold: [app.py]
+- q: "Why do I get a special assertion error in debug mode when I POST a form to a URL that is missing its trailing slash, and where is that raised?"
+  gold: [app.py, debughelpers.py]
+- q: "When an exception is raised, in what order are blueprint and app error handlers checked to pick which one runs?"
+  gold: [sansio/app.py]
+- q: "Where does a route automatically get an OPTIONS method added when you register a URL rule?"
+  gold: [sansio/app.py]
+- q: "How does the app work out where its instance folder lives, including when the package is installed into site-packages?"
+  gold: [sansio/app.py, sansio/scaffold.py]
+- q: "Where are the shortcut decorators like app.get and app.post that wrap the general route decorator?"
+  gold: [sansio/scaffold.py]
+- q: "When you register an error handler, how does it figure out whether you passed an HTTP status number or an exception class?"
+  gold: [sansio/scaffold.py]
+- q: "How are a nested blueprint's URL prefix and dotted endpoint names combined with its parent when it gets registered?"
+  gold: [sansio/blueprints.py]
+- q: "Which file serves a blueprint's own static files and works out the cache max-age for them?"
+  gold: [blueprints.py]
+- q: "How does the command line tool find my application if I don't pass --app — which filenames and factory function names does it try?"
+  gold: [cli.py]
+- q: "Where are the dotenv files read so environment variables are set before the app loads?"
+  gold: [cli.py]
+- q: "How can configuration be pulled from environment variables that start with FLASK_, and how are nested keys and non-string values handled?"
+  gold: [config.py]
+- q: "How do attributes like app.testing or app.secret_key read and write straight through to the config dictionary?"
+  gold: [config.py]
+- q: "What happens when the per-request context is pushed — when is the session opened and the URL matched against the routes?"
+  gold: [ctx.py]
+- q: "How can I register a callback that modifies the response for only the current request rather than every request?"
+  gold: [ctx.py]
+- q: "Where are the module-level proxies for the current app, request, session and g defined on top of context variables?"
+  gold: [globals.py]
+- q: "How do you keep the request context alive while a streamed generator response is still producing output?"
+  gold: [helpers.py]
+- q: "How are one-time notification messages stored between requests and then read back out with their categories?"
+  gold: [helpers.py]
+- q: "How is the cookie-based session signed — what salt, hash function and key derivation does it use?"
+  gold: [sessions.py]
+- q: "How do tuples, bytes, datetimes, UUIDs and Markup survive being round-tripped through the session cookie's JSON?"
+  gold: [json/tag.py]
+- q: "Where is the fallback JSON encoder that knows how to serialize dates, Decimals, UUIDs and dataclasses?"
+  gold: [json/provider.py]
+- q: "How does template lookup search the application's templates folder and then every blueprint's templates folder?"
+  gold: [templating.py]
+- q: "Where does the helpful error come from when request.files has no key because the form was submitted without multipart enctype?"
+  gold: [debughelpers.py]
+- q: "How does turning a class-based view into a plain view function work, and when is a new instance created per request?"
+  gold: [views.py]
+- q: "In the test client, how can I modify the session before sending a request and have the change saved back to the cookie?"
+  gold: [testing.py]
+- q: "Where is the app's logger configured and which stream does the default log handler write to?"
+  gold: [logging.py]
+- q: "Where are the built-in hooks for things like request started, template rendered and message flashed declared for subscribers?"
+  gold: [signals.py]
+- q: "Where are the type aliases describing what a view is allowed to return, such as a body with status code and headers?"
+  gold: [typing.py]
+- q: "What happens when the incoming request body is not valid JSON — where is the bad-request error raised, with more detail in debug mode?"
+  gold: [wrappers.py]

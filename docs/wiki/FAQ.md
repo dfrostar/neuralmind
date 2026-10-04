@@ -86,6 +86,17 @@ neuralmind query  . "UserService"      # Full 4-layer context, hybrid L3 search
 
 Set `NEURALMIND_BM25=0` to revert to pure vector search if needed.
 
+**Since v4.6.0** the keyword side of `neuralmind query`'s L3 search covers code
+as well as docs on both backends. The default turbovec backend's BM25 index
+used to hold only document nodes, so docs got a keyword signal code never did;
+`neuralmind build` now writes one BM25 index over every node (doc text, symbol
+names, file paths, docstrings), and queries fuse that instead. Run
+`neuralmind build` once after upgrading — until then queries keep the v4.5
+docs-only list, because a query never builds anything. `NEURALMIND_BM25_UNIFIED=0`
+restores the v4.5.0 behaviour. The change was measured before it became the
+default — see the retrieval eval on the [Benchmarks](Benchmarks#retrieval-eval-v460)
+page.
+
 For raw string grep across files (not structured retrieval):
 ```bash
 grep -r "authenticate" src/
@@ -529,7 +540,7 @@ Coming in v1.0 (Q1 2027):
 |---------|-----------|--------|
 | Works everywhere | ✅ Yes | ❌ Cursor only |
 | Works offline | ✅ Yes, once the first build has cached the embedding model | ❌ Cloud |
-| Token reduction | Measured: 45–261× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
+| Token reduction | Measured: 46–263× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
 | Cost | Free at 1 seat | Paid (Cursor) |
 | Open source | ✅ MIT core | ❌ No |
 

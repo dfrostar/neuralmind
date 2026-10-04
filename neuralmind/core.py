@@ -803,11 +803,14 @@ class NeuralMind:
             "graph": {
                 **self._build_stats["graph"],
                 "fingerprint": graph_fingerprint(graph_info["path"]),
-            }
+            },
+            # Stamps caches derived from this index (the unified BM25 index).
+            "index_generation": self._build_stats["built_at"],
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
         self._record_build_status(status_updates)
+        self._write_unified_bm25()
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -1407,6 +1410,22 @@ class NeuralMind:
         except (OSError, ValueError):
             return {}
         return data if isinstance(data, dict) else {}
+
+    def _write_unified_bm25(self) -> None:
+        """Write the docs + code BM25 index the query path fuses (v4.6.0)."""
+        if getattr(self, "project_kind", "code") == "prose":
+            return
+        try:
+            from . import l3_slots
+
+            if not l3_slots.unified_bm25_enabled():
+                return
+            catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
+            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True)
+            if getattr(self, "selector", None) is not None:
+                self.selector._unified_bm25 = None  # reload on the next query
+        except Exception:  # pragma: no cover - a keyword index never blocks a build
+            logger.debug("unified BM25 index not written", exc_info=True)
 
     def _record_build_status(self, updates: dict) -> None:
         """Merge ``updates`` into ``.neuralmind/build_status.json``."""

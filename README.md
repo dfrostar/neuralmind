@@ -14,7 +14,7 @@
 Your agent learns your codebase the way a senior engineer would — what goes
 together, what you usually touch next — and remembers it across sessions.
 Local-first, no telemetry. Side effect: much cheaper code questions —
-**45–261× fewer tokens than pasting every source file, at 93.75% mean
+**46–263× fewer tokens than pasting every source file, at 95% mean
 gold-file recall**, on a [public 40-query benchmark](https://neuralmind.uk/benchmark/)
 that publishes every miss.
 
@@ -27,7 +27,8 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.5.1:** decision memory answers questions. `neuralmind decisions query` and the MCP decision tools match any word of a question, best match first, where every word used to be required; `neuralmind_memory_search`, `neuralmind_memory_timeline` and `neuralmind_memory_get` work for the default `builder` and `reader` roles instead of returning `security_denied`; and `neuralmind decisions eval` no longer touches your project's decisions ([release notes](docs/releases/RELEASE_NOTES_v4.5.1.md))
+> - **New in v4.6.0:** one keyword index for docs and code, on by default — so on "how does X work" questions the code that does X can win an L3 slot on keywords too, not just the README that mentions it. Measured before it shipped (reproducible on demand, not a CI gate; one of the six repos is private): mean hit@5 72.8% → 79.4% across 30 questions on each of six repos — pre-registered and committed for the five public repos, plus a private 383-file repository — and public-benchmark gold-file recall 93.75% → 95%. Losses published: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target. `query --explain` now shows the query intent L3 ranked with; five more ranking changes were measured, lost, and ship off behind flags. Run `neuralmind build` once after upgrading ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
+> - **v4.5.1:** decision memory answers questions. `neuralmind decisions query` and the MCP decision tools match any word of a question, best match first, where every word used to be required; `neuralmind_memory_search`, `neuralmind_memory_timeline` and `neuralmind_memory_get` work for the default `builder` and `reader` roles instead of returning `security_denied`; and `neuralmind decisions eval` no longer touches your project's decisions ([release notes](docs/releases/RELEASE_NOTES_v4.5.1.md))
 > - **v4.5.0:** numbers measured on your project. `neuralmind eval .` scores retrieval against the questions and gold files in your `.neuralmind.eval.yaml` (hit@1 / hit@5 / MRR, with a history); every reduction ratio divides by the measured size of your code instead of a fixed 50K guess; queries can be read-only (`--no-learn`, MCP `learn: false`, `NEURALMIND_NO_LEARN=1`) so evals never train on their own test; and the index covers what git covers — `.gitignore` is honoured ([release notes](docs/releases/RELEASE_NOTES_v4.5.0.md))
 > - **v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
 >
@@ -100,7 +101,8 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 
 | Evidence | Where it's measured | Result |
 |----------|---------------------|--------|
-| **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **45–261× fewer tokens** than pasting every source file, at **93.75% mean gold-file recall** (85–100% per repo) |
+| **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **46–263× fewer tokens** than pasting every source file, at **95% mean gold-file recall** (85.71–100% per repo) |
+| **Retrieval eval (v4.6.0)** — reproducible on demand, not a CI gate | 30 questions × 5 public repos (`requests`, `click`, `flask`, `rich`, this repo; pre-registered, committed) + 1 private 383-file repo (`pip install -e . tiktoken`, then `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark`; raw output in [`bench/retrieval/`](bench/retrieval/)) | mean hit@5 **72.8% → 79.4%** (75.3% → 80.7% on the five public repos alone) for one BM25 index over docs and code. Losses: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target |
 | **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | the build fails below **4.0×**; measured **5.1×** at v4.3.4 |
 | **Field reports** — `neuralmind benchmark .` | real private repos, before v4.5.0, against the fixed 50K-token estimate the CLI then used (it now divides your measured code) | **12–50×** typical range |
 
@@ -174,7 +176,7 @@ scores it against questions with known answers; the
 
 ### 8. Finds the right code (not just less of it)
 
-**93.75% mean gold-file recall (85–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
+**95% mean gold-file recall (85.71–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
 ### 9. Answer grounding vs. naive truncation (currently a loss)
 
@@ -209,6 +211,7 @@ keeps what the agent needs.
 | Set up Claude Code hooks | [Claude Code walkthrough](docs/use-cases/claude-code.md) |
 | Catch code that drifts from its own patterns before it ships | [Review before push](docs/use-cases/review-before-push.md) |
 | Measure savings on my own repo | [Benchmark your repo](docs/use-cases/benchmark-your-repo.md) |
+| Test a ranking change on my repo before trusting it | [A/B-test a ranking change](docs/use-cases/ab-test-a-ranking-change.md) |
 | Always-on synapse learning (24/7) | [Always-on](docs/use-cases/always-on.md) |
 | Run across multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Deploy in regulated/offline environments | [Air-gapped](docs/use-cases/air-gapped.md) |
@@ -292,6 +295,20 @@ context — and the index covers what git covers. `benchmark` prints the old
 fixed-50K ratio beside it, so older numbers stay comparable. Walkthrough:
 [Measure retrieval on your own repo](docs/use-cases/measure-retrieval-on-your-repo.md).
 
+### Test a ranking change before you trust it *(v4.6.0+)*
+
+```bash
+neuralmind build .                                         # writes the v4.6.0 docs + code keyword index
+NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0 ranking, same questions
+neuralmind eval .                                          # v4.6.0 ranking
+NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default research flag
+```
+
+Every ranking flag is read at query time, so one build serves every variant.
+v4.6.0's own default was chosen this way, across six repos and a keep rule
+fixed in advance — raw output in [`bench/retrieval/`](bench/retrieval/README.md).
+Walkthrough: [A/B-test a ranking change on your own repo](docs/use-cases/ab-test-a-ranking-change.md).
+
 ### Index prose, not just code *(v3.4.0+)*
 
 A book, a docs tree, a research folder — `ingest-content` indexes a corpus of
@@ -364,7 +381,7 @@ The fixture is intentionally tiny (~500 lines) — it runs in CI as a
 regression gate. Before v4.5.0, `neuralmind benchmark` reported **12–50×** on
 real repos against a fixed 50K-token estimate; it now divides your measured
 code, so the ratio grows with the repo. The public benchmark measures
-**45–261×** against every source file
+**46–263×** against every source file
 ([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
 Then get your own number:
@@ -433,7 +450,7 @@ Measured, not marketed. The fixture numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`; the public benchmark reproduces on
 demand with `python -m evals.public.run`, raw per-query data committed:
 
-- **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file on the public benchmark — 4 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
+- **85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting every source file on the public benchmark — 3 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
 - **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the fixed 50K-token estimate the CLI used before v4.5.0
@@ -510,6 +527,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
+| Read the latest release | [v4.6.0 release notes](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 
