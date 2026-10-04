@@ -8,7 +8,7 @@ NeuralMind is designed with **enterprise security as a first-class concern**:
 - **No telemetry** – no usage tracking, no analytics, no hidden data collection, no update checks.
 - **One network event, pinned** – the only outbound network activity is a **one-time, SHA256-pinned** download of the ONNX model archive during install (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that).
 - **Fully auditable** – open-source code, MIT license, complete transparency. Every claim below is verifiable.
-- **Architecture supports major compliance frameworks** (GDPR, SOC 2, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
+- **Architecture supports major compliance frameworks** (GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
 - **Supply-chain discipline** – minimal runtime dependencies, CycloneDX SBOM attached to every release, no cloud lock-in.
 
 ---
@@ -233,19 +233,26 @@ exceptions that policy has accepted.
      so.
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
-   - It runs locally over stdio by default — no network port is opened.
-   - RBAC is enabled by default (`neuralmind/mcp_security.py`) with three roles:
+   - It runs locally over stdio by default — no network port is opened, and only the
+     agent process that launched it can call it.
+   - It does **not authenticate callers**. Each tool call declares its own `actor` and
+     `role` (the role defaults to `builder`), and any caller can declare `admin`. The
+     role policy keeps a well-behaved agent within bounds; it is not a boundary against
+     a hostile caller.
+   - The default policy (`DEFAULT_ROLE_POLICY` in `neuralmind/mcp_security.py`) has three roles:
      - `admin` — all tools.
-     - `builder` — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`.
-     - `reader` — the same retrieval set **minus `build`**.
-     - Everything else is **admin-only by default**: the synapse family
-       (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`,
-       `export_synapse_memory`) plus the learning/feedback tools (`feedback`, `review`).
-   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min) is enforced
-     alongside RBAC.
-   - If you customize the role policy (backend config `security.roles` or
-     `neuralmind/mcp_security.py`), audit it the same way you would any access-control change.
-   - Audit events — actor, role, tool, RBAC decision, rate-limit hits — are written to
+     - `reader` — retrieval and read-only analytics, stats, and decision queries.
+     - `builder` — the `reader` set plus `build`, document ingestion, and decision writes.
+     - A few tools are **admin-only by default**, including `synaptic_neighbors`,
+       `structural_neighbors`, `next_likely`, `impact`, and `review`.
+   - To cap what any caller can claim, set `security.roles` in `neuralmind-backend.yaml`.
+     It replaces the default policy, and a role it doesn't list gets no tools, so a
+     policy without `admin` keeps every caller out of the admin-only tools.
+   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min, `security.rate_limit`)
+     is enforced alongside the role check. It keys on the declared actor, so it stops a
+     runaway agent, not a caller that changes its actor name.
+   - If you customize the role policy, audit it the same way you would any access-control change.
+   - Audit events — actor, role, tool, allow/deny decision, rate-limit hits — are written to
      `<project>/.neuralmind/audit_events.jsonl` on every tool call.
 
 3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.
@@ -324,12 +331,20 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **Audit Logging**: All processing happens locally with no external calls
 - **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
 
-### ✅ SOC 2 Type II
+### ✅ SOC 2 (Trust Services Criteria)
 - **Security**: Local processing, no repository content transmitted, encrypted at rest (your choice)
 - **Availability**: No dependencies on external services for core functionality
 - **Confidentiality**: NeuralMind stores and processes locally; no repository content is transmitted (its only outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
-- **Integrity**: Deterministic, reproducible indexing from your source code
+- **Processing Integrity**: Deterministic, reproducible indexing from your source code
 - **Privacy**: No collection, no analytics, no tracking
+- **No SOC 2 report**: NeuralMind runs inside your environment, so in your audit it is software within your system boundary. Criterion-by-criterion evidence is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
+
+### ✅ CMMC 2.0
+- **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
+- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets applied to the role each MCP call declares. NeuralMind doesn't authenticate callers, so binding identities to roles is the operator's job
+- **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
+- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): Not provided by NeuralMind; use FIPS-validated full-disk encryption on the host
+- **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
 ### ✅ ISO 27001 / 27002
 - **Information Security Management**: Runs entirely within your security perimeter
