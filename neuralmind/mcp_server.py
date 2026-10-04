@@ -44,7 +44,12 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import GraphNotBuiltError, NeuralMind
-from neuralmind.mcp_security import AccessDeniedError, MCPSecurityManager, RateLimitExceededError
+from neuralmind.mcp_security import (
+    AccessDeniedError,
+    MCPSecurityManager,
+    RateLimitExceededError,
+    build_security_manager,
+)
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
 
@@ -78,10 +83,16 @@ def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
 
 
 def get_security_manager(project_path: str) -> MCPSecurityManager:
-    """Get or create security manager for project."""
+    """Get or create the security manager for a project.
+
+    Built from the project's ``neuralmind-backend.yaml``, so ``security.roles``
+    and ``security.rate_limit`` apply. This used to construct a bare
+    ``MCPSecurityManager``, which ignored both and always ran the default
+    policy, although the Security Guide told operators to cap roles there.
+    """
     abs_path = str(Path(project_path).resolve())
     if abs_path not in _security_cache:
-        _security_cache[abs_path] = MCPSecurityManager(abs_path)
+        _security_cache[abs_path] = build_security_manager(abs_path)
     return _security_cache[abs_path]
 
 
