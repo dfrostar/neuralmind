@@ -52,6 +52,7 @@ the same checks that run on every PR.
 | 7 | **Latency / memory / disk** — turbovec vs chroma index size, search p50/p95, RSS | `python benchmark_turbovec.py --out results.json` | none | [`bench/README.md`](../README.md) |
 | 8 | **Your own repo** — reduction ratio, tokens/query, est. monthly savings | `neuralmind benchmark .` | none | — |
 | 9 | **SWE-bench retrieval** — does NeuralMind surface the files a real fix edits? (gold-patch-file recall@k / MRR) | `python -m evals.swe_bench.runner --run` | `pip install datasets` + network | [`bench/swe_bench/`](../bench/swe_bench/REPRODUCE.md) (offline gate: `--selfcheck`) |
+| 10 | **Multi-repo retrieval eval** (v4.6.0) — which ranking changes earn a default: hit@5 / MRR on 30 questions per repo (pre-registered and committed for the five public repos, plus a private 383-file repo), every flag configuration, keep rule applied (reproducible on demand, not a CI gate) | `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark` (`--private PATH` adds your own repo, locally) | `pip install -e . tiktoken` + network (clones repos) | [`bench/retrieval/`](../bench/retrieval/README.md) |
 
 Useful variants of #8:
 
@@ -70,13 +71,13 @@ Useful variants of #8:
 ## What the numbers say (short version)
 
 Full tables on the [Benchmarks](../docs/wiki/Benchmarks.md) page. Headline:
-**85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting
+**85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting
 every source file on real OSS repos, beating `ripgrep` on cost on every repo and
-on recall on 2 of 4 (tying exactly on the other 2); a synapse-layer lift in
+on recall on 3 of 4 (tying exactly on the fourth); a synapse-layer lift in
 top-k hit-rate that CI gates on direction (+3.5 to +14 pts observed across runs,
 budget-neutral). We also report where NeuralMind **doesn't** win — a well-tuned
 vector RAG matches or beats it on pure findability and is cheaper on raw tokens,
-`flask` is the weakest repo in the corpus, at a matched budget naive truncation
+`click` is the weakest repo in the corpus (85.71%, one miss in 7 queries), at a matched budget naive truncation
 currently keeps slightly more gold facts on the reference fixture (−0.054 at
 v4.3.4), and the competitor row is **pure retrieval ranking**, not their
 LLM-agent loop.

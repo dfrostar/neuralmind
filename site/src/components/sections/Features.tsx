@@ -65,8 +65,8 @@ const groups: Group[] = [
             {
                 icon: 'layers',
                 title: 'Progressive L0–L3 disclosure',
-                desc: 'Project map, then relevant clusters, then symbol detail, then search — only as deep as the question needs. 45–261× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
-                badge: '45–261×',
+                desc: 'Project map, then relevant clusters, then symbol detail, then search — only as deep as the question needs. 46–263× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
+                badge: '46–263×',
             },
             {
                 icon: 'layers',

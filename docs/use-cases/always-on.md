@@ -77,8 +77,10 @@ systemctl --user status neuralmind-watch neuralmind-serve
 curl -fsS http://127.0.0.1:8787/healthz
 # {"status": "ok", "version": "0.8.0"}
 
-# The graph view canvas itself requires the per-session token. The
-# tokenized URL prints to journalctl on every startup:
+# The graph view canvas itself requires an access token. It persists in
+# ~/.neuralmind/server-token.json, so the URL stays the same across restarts
+# (delete that file and restart to rotate it). It prints to journalctl on
+# every startup:
 journalctl --user -u neuralmind-serve | grep -F "http://127.0.0.1:8787/"
 # (or pass --no-auth in ExecStart if you understand the implications)
 

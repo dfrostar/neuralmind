@@ -26,7 +26,7 @@ export const metadata: Metadata = pageMetadata({
     ],
     ogTitle: 'The NeuralMind Public Benchmark',
     ogDescription:
-        '40 pre-registered queries on requests, click, flask and rich: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting files — and the four queries NeuralMind misses.',
+        '40 pre-registered queries on requests, click, flask and rich: 95% mean gold-file recall at 46–263× fewer tokens than pasting files — and the three queries NeuralMind misses.',
 });
 
 /**
@@ -37,8 +37,8 @@ export const metadata: Metadata = pageMetadata({
  * ratios are sourced in site/claims.json; the baselines' are not, and quoting
  * a ratio the claims manifest has never seen is the exact defect that guard
  * exists to catch. Mean tokens/query says the same thing without inventing a
- * claim — and it says it in the direction that matters here, since on three of
- * four repos embedding-rag is the cheaper column.
+ * claim — and it says it in the direction that matters here, since on all four
+ * repos embedding-rag is the cheaper column.
  */
 type Row = { backend: string; recall: string; found: string; tokens: string; mrr: string; nm?: boolean };
 type Repo = {
@@ -56,59 +56,58 @@ const REPOS: Repo[] = [
         name: 'requests',
         sha: '0e322af877',
         queries: 14,
-        ratio: '45.0×',
+        ratio: '46.6×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '41,729', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '26,543', mrr: '0.60' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '607', mrr: '0.96' },
-            { backend: 'neuralmind', recall: '0.93', found: '86%', tokens: '928', mrr: '0.92', nm: true },
+            { backend: 'neuralmind', recall: '0.96', found: '93%', tokens: '895', mrr: '0.96', nm: true },
         ],
         misses: [
-            { query: 'xfile-redirect-auth', gold: 'sessions.py, auth.py', got: 'sessions.py' },
-            { query: 'xfile-status-codes', gold: 'models.py, status_codes.py', got: 'models.py, exceptions.py' },
+            { query: 'xfile-status-codes', gold: 'models.py, status_codes.py', got: 'models.py' },
         ],
     },
     {
         name: 'click',
         sha: '874ca2bc1c',
         queries: 7,
-        ratio: '110.4×',
-        note: 'Perfect recall — zero gold-file misses on this run.',
+        ratio: '121.7×',
+        note: 'The weakest repo in the corpus at 85.71% recall. It had no misses in the previous run; echo-util is a new one.',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '78,514', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '45,059', mrr: '0.60' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '636', mrr: '0.60' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '711', mrr: '0.60', nm: true },
+            { backend: 'neuralmind', recall: '0.86', found: '86%', tokens: '645', mrr: '0.69', nm: true },
         ],
-        misses: [],
+        misses: [
+            { query: 'echo-util', gold: 'utils.py', got: 'termui.py, core.py' },
+        ],
     },
     {
         name: 'flask',
         sha: 'c12a5d874c',
         queries: 10,
-        ratio: '81.6×',
-        note: 'The weakest repo in the corpus at 85% recall.',
+        ratio: '78.0×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '59,013', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.85', found: '80%', tokens: '26,891', mrr: '0.65' },
             { backend: 'embedding-rag', recall: '0.95', found: '90%', tokens: '677', mrr: '0.70' },
-            { backend: 'neuralmind', recall: '0.85', found: '80%', tokens: '723', mrr: '0.63', nm: true },
+            { backend: 'neuralmind', recall: '0.95', found: '90%', tokens: '756', mrr: '0.72', nm: true },
         ],
         misses: [
-            { query: 'request-wrapper', gold: 'wrappers.py', got: 'app.py, README.md, helpers.py' },
-            { query: 'xfile-dispatch-context', gold: 'app.py, ctx.py', got: 'README.md, app.py, views.py' },
+            { query: 'xfile-dispatch-context', gold: 'app.py, ctx.py', got: 'views.py, app.py' },
         ],
     },
     {
         name: 'rich',
         sha: '7f580bdcf0',
         queries: 9,
-        ratio: '260.7×',
+        ratio: '262.1×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '232,483', mrr: '1.00' },
             { backend: 'ripgrep', recall: '1.00', found: '100%', tokens: '43,437', mrr: '0.75' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '669', mrr: '0.89' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '892', mrr: '0.78', nm: true },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '887', mrr: '0.70', nm: true },
         ],
         misses: [],
     },
@@ -275,21 +274,21 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         <div className="border-b border-r border-carbon-border p-5">
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Gold-file recall</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">93.75%</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Mean over all 40 queries. Per repo it ranges 0.85–1.00 — <code className="font-mono text-[0.85em] text-slate-300">flask</code> is the floor.</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">95%</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">Mean over all 40 queries. Per repo it ranges 85.71–100% — <code className="font-mono text-[0.85em] text-slate-300">click</code> is the floor.</p>
                             </dd>
                         </div>
                         <div className="border-b border-r border-carbon-border p-5">
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Tokens vs pasting files</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">45–261×</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">46–263×</p>
                                 <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio.</p>
                             </dd>
                         </div>
                         <div className="border-b border-r border-carbon-border p-5">
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Queries missed</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">4 of 40</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">3 of 40</p>
                                 <p className="text-slate-400 text-sm leading-relaxed">Named individually below, with the files it retrieved instead.</p>
                             </dd>
                         </div>
@@ -348,7 +347,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             evidence, it is advertising.
                         </p>
 
-                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">1 — The four gold-file misses</h3>
+                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">1 — The three gold-file misses</h3>
                         <div className="overflow-x-auto -mx-2 px-2 mb-6">
                             <table className="w-full min-w-[32rem] border-collapse text-sm">
                                 <thead>
@@ -375,16 +374,19 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             </table>
                         </div>
                         <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                            Three of the four are cross-file queries where the answer spans two modules
-                            and only one was retrieved. <code className="font-mono text-[0.85em] text-slate-300">flask</code> and <code className="font-mono text-[0.85em] text-slate-300">requests</code> account
-                            for two each, and <code className="font-mono text-[0.85em] text-slate-300">flask</code> is the weakest repo in the corpus at 0.85 recall; <code className="font-mono text-[0.85em] text-slate-300">rich</code> and <code className="font-mono text-[0.85em] text-slate-300">click</code> have none.
+                            Two of the three are cross-file queries where the answer spans two modules
+                            and only one was retrieved, one each in <code className="font-mono text-[0.85em] text-slate-300">requests</code> and <code className="font-mono text-[0.85em] text-slate-300">flask</code>.
+                            The third is new in this run: <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code> misses its
+                            gold file outright, so <code className="font-mono text-[0.85em] text-slate-300">click</code>, which had no misses in the previous run, is
+                            now the weakest repo in the corpus at 0.86 recall. <code className="font-mono text-[0.85em] text-slate-300">rich</code> has none.
                         </p>
 
                         <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">2 — Token cost against a bare vector index</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">
                             On all four repos the <code className="font-mono text-[0.85em] text-slate-300">embedding-rag</code> baseline
-                            matches or beats NeuralMind&rsquo;s recall at fewer tokens: it ties on <code className="font-mono text-[0.85em] text-slate-300">click</code> and <code className="font-mono text-[0.85em] text-slate-300">rich</code>,
-                            and beats it on <code className="font-mono text-[0.85em] text-slate-300">requests</code> (1.00 against 0.93) and <code className="font-mono text-[0.85em] text-slate-300">flask</code> (0.95 against 0.85). Two things are true about that at once,
+                            matches or beats NeuralMind&rsquo;s recall at fewer tokens: it ties on <code className="font-mono text-[0.85em] text-slate-300">flask</code> and <code className="font-mono text-[0.85em] text-slate-300">rich</code>,
+                            and beats it on <code className="font-mono text-[0.85em] text-slate-300">requests</code> (1.00 against 0.96) and <code className="font-mono text-[0.85em] text-slate-300">click</code> (1.00 against 0.86) &mdash;
+                            98.75% mean recall over the 40 queries against NeuralMind&rsquo;s 95%. Two things are true about that at once,
                             and both belong on the page. That baseline <em>is</em> NeuralMind&rsquo;s own
                             encoder doing function-level retrieval, so the gap measures what the
                             progressive-disclosure layer costs on top of raw top-k. And its cheaper

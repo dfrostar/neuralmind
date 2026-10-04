@@ -1,0 +1,61 @@
+# neuralmind (repo root) — 30 pre-registered questions; gold = the file whose content answers it
+- q: How does the synapse store decay edges that haven't been used in a while, and why doesn't running it every session start compound the decay?
+  gold: [neuralmind/synapses.py]
+- q: When recalling associated nodes, how does energy ripple outward hop by hop, and what stops a very high-degree hub node from dominating the result?
+  gold: [neuralmind/synapses.py]
+- q: How does the keyword index break identifiers like UserService or get_auth_token into tokens before scoring?
+  gold: [neuralmind/bm25.py]
+- q: Where do the Claude Code lifecycle hooks get written into settings.json, and how does reinstalling avoid clobbering hooks the user already had?
+  gold: [neuralmind/hooks.py]
+- q: What associative context gets prepended when the user submits a prompt, and how can that injection be switched off?
+  gold: [neuralmind/hooks.py]
+- q: How does a burst of file saves get coalesced into a single co-activation batch, and how are changes detected when watchdog isn't installed?
+  gold: [neuralmind/watcher.py]
+- q: What happens to live activity events when a subscriber like the browser stream is too slow to keep up?
+  gold: [neuralmind/event_bus.py]
+- q: How does the local graph-view web UI authenticate requests, accepting a token in the query string versus a cookie, and how is that token minted and stored on disk?
+  gold: [neuralmind/server.py]
+- q: When learned associations are exported for Claude Code, how is the per-project auto-memory folder path worked out from the project's absolute path?
+  gold: [neuralmind/synapse_memory.py]
+- q: How are the semantic vector hits and the keyword hits fused into one ranked list, and how is the fused score normalized?
+  gold: [neuralmind/context_selector.py]
+- q: When the cached copy of the last shell output is too large, which part of it is kept and which part is elided?
+  gold: [neuralmind/output_cache.py]
+- q: How do we avoid sending the full contents of a file the agent already read earlier in the session, and when does that cache throw entries away?
+  gold: [neuralmind/read_dedup.py]
+- q: How does the credential scrubber avoid flagging generic KEY=value assignments that are just placeholders or env-var references?
+  gold: [neuralmind/secret_scan.py]
+- q: How are MCP tool calls throttled per caller, and how are denied calls recorded?
+  gold: [neuralmind/mcp_security.py]
+- q: When a shell command dumps thousands of lines, how is that output shrunk for the agent and which lines survive?
+  gold: [neuralmind/compressors.py]
+- q: How does NeuralMind keep its per-project state folder from being accidentally committed by a git add -A in a user's repo?
+  gold: [neuralmind/state_dir.py]
+- q: Which config file gets the MCP server entry for Cursor versus VS Code, and how is it merged without disturbing other registered servers?
+  gold: [neuralmind/mcp_install.py]
+- q: How is the replay log of recent queries for the graph view kept from tearing when several processes append at once, and when does it get trimmed?
+  gold: [neuralmind/recent_queries.py]
+- q: How are the changed lines from a git diff turned into post-change line ranges so they can be matched to graph symbols?
+  gold: [neuralmind/drift.py]
+- q: Given a cluster of related nodes, how do we spot the odd one out that skips an association most of its peers share?
+  gold: [neuralmind/cohesion.py]
+- q: How is a per-edge forgetting rate adapted from how frequently and how recently that edge has been reinforced?
+  gold: [neuralmind/learned_decay.py]
+- q: On a rebuild, how do we decide which source files need re-parsing, including files that import something that changed?
+  gold: [neuralmind/incremental_extract.py]
+- q: How does re-embedding the graph skip nodes whose text hasn't changed since the last build?
+  gold: [neuralmind/embedder.py]
+- q: How is the set of everything that transitively depends on a symbol computed, and how is it kept from exploding through heavily-used utilities?
+  gold: [neuralmind/structural.py]
+- q: Which environment variables can I set to change NeuralMind's behavior, and what are their defaults?
+  gold: [docs/wiki/CLI-Reference.md]
+- q: I use memU and Hermes memory across several projects alongside NeuralMind — how should I scope my retrieve queries and entries so results don't mix?
+  gold: [docs/wiki/Multi-Project-Scoping.md, CLAUDE.md]
+- q: How do I set up the watcher and the graph view to run continuously and restart after reboot on Windows?
+  gold: [docs/wiki/Scheduling-Guide.md]
+- q: Which programming languages does the built-in indexer support, and what does it honestly not model for each?
+  gold: [docs/wiki/Limits-and-Failure-Modes.md]
+- q: What are the steps to move a project from the free tier to a Team license, and how do I downgrade again?
+  gold: [docs/wiki/Upgrade-Guide.md]
+- q: How does a Team deal go from an inbound email to a signed license on the customer's machine, given there's no payment processor, and what happens on non-payment?
+  gold: [docs/wiki/Billing-Runbook.md]
