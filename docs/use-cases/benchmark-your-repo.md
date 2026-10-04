@@ -220,7 +220,7 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users: install the PostToolUse compression hooks to shrink `Read`/`Bash`/`Grep` output on top of that (a separate saving this benchmark does not measure):
+Claude Code users: install the hooks for session memory, prompt-time recall, and a stale-decision guard. They don't compress `Read`/`Bash`/`Grep` output ([benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)):
 
 ```bash
 neuralmind install-hooks .
@@ -250,13 +250,12 @@ A few things to check before giving up:
 1. **Is the graph actually built?** `neuralmind stats .` should report a non-zero node count. If it's tiny, `graphify` may have missed your language or the project structure.
 2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress.
 3. **Try a larger query set.** The default 5-query benchmark is representative, not exhaustive. Pass `sample_queries` if you use the Python API.
-4. **Enable PostToolUse hooks** (Claude Code only) — that's the second compression phase. Retrieval-only numbers miss half the story.
-5. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
+4. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
 
 ## Related
 
 - [Use case: Cost optimization](./cost-optimization.md) — baseline → measure → report template for stakeholders
-- [Use case: Claude Code user](./claude-code.md) — full two-phase workflow
+- [Use case: Claude Code user](./claude-code.md) — the full Claude Code workflow: MCP tools, hooks, session memory
 - [Use case: Measure memory across a major refactor](./measure-memory-across-a-refactor.md) — the before/after version of this benchmark, with a real-world field report
 - [Comparisons: vs long context windows](../comparisons/vs-long-context.md) — why 1M-token windows don't solve this
 

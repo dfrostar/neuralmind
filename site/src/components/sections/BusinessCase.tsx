@@ -11,9 +11,9 @@ const cards = [
         title: 'The savings are free',
         accent: 'text-proton',
         points: [
-            'Token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
+            'Token reduction ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
             'Modeled at 30 code questions per developer per day, a 50-developer team saves ~$310/mo on inference alone. The figure barely moves with the exact ratio — 48.8× and 65.6× differ by under 1% of the saving, because both already remove ~98% of the retrieval tokens.',
-            'The bigger line is time. In the business case’s worked scenario — 15 developers each losing 15 minutes a day to context-limit thrashing — that is ~$4,125/mo of engineering time at a $50/hr fully-loaded rate, before any LLM savings.',
+            'Time may be the bigger line, but it is modeled, not measured. The business case’s worked scenario — 15 developers each losing 15 minutes a day to context-limit thrashing — puts it at ~$4,125/mo at a $50/hr fully-loaded rate. How much of that NeuralMind wins back is what the free assessment measures in your team; we don’t claim a figure.',
             'Recall is a local index lookup, not another model call — nothing in the loop between "I need to know X" and "I know X" waits on an API.',
         ],
     },

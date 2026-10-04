@@ -1,0 +1,80 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: <scratch>
+plugins: platformdirs-4.12.0, mock-3.16.0, asyncio-1.4.0, anyio-4.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 15 items
+
+test_inventory.py ....FFF.F......                                                                                [100%]
+
+======================================================= FAILURES =======================================================
+______________________________________ test_remove_unknown_sku_raises_value_error ______________________________________
+
+inv = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)})
+
+    def test_remove_unknown_sku_raises_value_error(inv):
+        with pytest.raises(ValueError):
+>           inv.remove("Z-999", 1)
+
+test_inventory.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)})
+sku = 'Z-999', quantity = 1
+
+    def remove(self, sku: str, quantity: int) -> int:
+>       item = self.items[sku]
+               ^^^^^^^^^^^^^^^
+E       KeyError: 'Z-999'
+
+inventory.py:29: KeyError
+___________________________________________________ test_total_value ___________________________________________________
+
+inv = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)})
+
+    def test_total_value(inv):
+>       assert inv.total_value_cents() == 25 * 40 + 1250 * 3 + 480 * 5 + 5600 * 0
+E       AssertionError: assert 10250 == ((((25 * 40) + (1250 * 3)) + (480 * 5)) + (5600 * 0))
+E        +  where 10250 = total_value_cents()
+E        +    where total_value_cents = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)}).total_value_cents
+
+test_inventory.py:39: AssertionError
+_______________________________________________ test_low_stock_boundary ________________________________________________
+
+inv = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)})
+
+    def test_low_stock_boundary(inv):
+>       assert inv.low_stock(threshold=5) == ["B-200", "C-300", "D-400"]
+E       AssertionError: assert ['B-200', 'D-400'] == ['B-200', 'C-300', 'D-400']
+E         
+E         At index 1 diff: 'D-400' != 'C-300'
+E         Right contains one more item: 'D-400'
+E         Use -v to get more diff
+
+test_inventory.py:43: AssertionError
+__________________________________________________ test_report_shape ___________________________________________________
+
+inv = Inventory(items={'A-100': Item(sku='A-100', name='bolt', unit_price_cents=25, quantity=40), 'B-200': Item(sku='B-200',...inge', unit_price_cents=480, quantity=5), 'D-400': Item(sku='D-400', name='panel', unit_price_cents=5600, quantity=0)})
+
+    def test_report_shape(inv):
+>       assert inv.report() == {
+            "A-100": {"qty": 40, "value": 1000},
+            "B-200": {"qty": 3, "value": 3750},
+            "C-300": {"qty": 5, "value": 2400},
+            "D-400": {"qty": 0, "value": 0},
+            "E-500": {"qty": 0, "value": 0},
+        }
+E       AssertionError: assert {'A-100': {'q..., 'value': 0}} == {'A-100': {'q...lue': 0}, ...}
+E         
+E         Omitting 4 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'E-500': {'qty': 0, 'value': 0}}
+E         Use -v to get more diff
+
+test_inventory.py:51: AssertionError
+=============================================== short test summary info ================================================
+FAILED test_inventory.py::test_remove_unknown_sku_raises_value_error - KeyError: 'Z-999'
+FAILED test_inventory.py::test_total_value - AssertionError: assert 10250 == ((((25 * 40) + (1250 * 3)) + (480 * 5)) ...
+FAILED test_inventory.py::test_low_stock_boundary - AssertionError: assert ['B-200', 'D-400'] == ['B-200', 'C-300', '...
+FAILED test_inventory.py::test_report_shape - AssertionError: assert {'A-100': {'q..., 'value': 0}} == {'A-100': {'q....
+============================================= 4 failed, 11 passed in 0.04s =============================================

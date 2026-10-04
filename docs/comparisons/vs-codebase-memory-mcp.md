@@ -1,6 +1,6 @@
 ---
 title: "NeuralMind vs. codebase-memory-mcp — breadth and raw speed, or ranking quality and a graph that learns?"
-description: "Honest comparison of NeuralMind and DeusData's codebase-memory-mcp for AI coding agents, including the scored, reproducible retrieval head-to-head we actually ran: 162-language single-binary structural indexing vs. progressive disclosure, Hebbian usage learning, and tool-output compression."
+description: "Honest comparison of NeuralMind and DeusData's codebase-memory-mcp for AI coding agents, including the scored, reproducible retrieval head-to-head we actually ran: 162-language single-binary structural indexing vs. progressive disclosure, Hebbian usage learning, and git-portable team memory."
 ---
 
 # NeuralMind vs. codebase-memory-mcp
@@ -100,7 +100,7 @@ committed under
 
 ## How NeuralMind differs architecturally
 
-Beyond ranking, three structural differences:
+Beyond ranking, two structural differences:
 
 **1. It learns; codebase-memory-mcp doesn't.** Our
 [synapse layer](../../neuralmind/synapses.py) applies Hebbian
@@ -108,12 +108,7 @@ reinforcement to edges that co-activate during real queries and edits,
 with exponential half-life decay so stale associations fade. The
 competitor's graph is a faithful snapshot of the code and stays one.
 
-**2. Tool-output compression.** NeuralMind's `PostToolUse` hooks
-compress what comes back from the agent's own `Read`/`Bash`/`Grep`
-calls. codebase-memory-mcp addresses retrieval only — which is why its
-own token comparison is framed against file-by-file grep exploration.
-
-**3. Progressive disclosure vs. query-per-tool.** We serve L0→L3 slices
+**2. Progressive disclosure vs. query-per-tool.** We serve L0→L3 slices
 (~600 tokens at wake-up, ~500–1000 per query) sized to the question.
 It exposes 15 tools the agent chooses among — more expressive for
 structural questions like `trace_path` or `get_architecture`, and more
@@ -129,7 +124,7 @@ dependent on the agent picking well.
 | Query latency | Sub-ms Cypher traversal | Slower — vector + graph, Python |
 | Tool surface | 15 MCP tools incl. Cypher traversal, ADR management | MCP tools + Claude Code lifecycle hooks |
 | Learns from usage | No | Yes — Hebbian reinforcement with half-life decay |
-| Tool-output compression | No | Yes — `PostToolUse` on `Read`/`Bash`/`Grep` |
+| Tool-output compression | No | No (its `PostToolUse` hooks on `Read`/`Bash`/`Grep` used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Team memory | Per-machine cache | Git-portable `.neuralmind-team-memory.json` |
 | Retrieval ranking (our eval) | MRR 0.23 / 0.50 | MRR 0.96 / 0.60 |
 | License | MIT | MIT (core); source-available commercial modules for the Team tier |
@@ -159,8 +154,6 @@ dependent on the agent picking well.
   magnitude more tokens to read.
 - You want the layer to **improve on this repo with use**, and to carry
   that memory between machines and agents via git.
-- You want **both** levers — less context retrieved *and* compressed
-  tool output.
 - You're on Python/TypeScript/Go and want compiler-accurate edges via
   the SCIP precision mode.
 

@@ -151,6 +151,26 @@ Full table, interpretation, and a step-by-step recipe for the same
 before/after measurement on your own refactor:
 [Measure memory across a major refactor](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
 
+## Tool-output compression (measured, and withdrawn)
+
+Through v4.4.0, `install-hooks` registered PostToolUse hooks that handed Claude
+compressed copies of `Read`, `Bash` and `Grep` output. The
+[compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md) drives the real hook with Claude Code-shaped
+payloads and applies each response the way Claude Code's documented hook
+protocol does.
+
+| Tool call | Tokens, no hook | v4.3.4 hooks | Hooks now |
+|---|---:|---:|---:|
+| Bash (16 real commands) | 32,581 | 38,296 (+17.5%) | +0.0% |
+| Grep, content mode (48 searches) | 55,800 | 68,113 (+22.1%) | +0.0% |
+| Read (136 whole files) | 597,002 | +0.0% (never fired) | +0.0% |
+
+Claude Code adds a hook's `additionalContext` next to the tool result rather
+than replacing it, so the copies cost tokens. The hooks now inject nothing. The
+compressors themselves would cut 66–87% if they replaced a result, but they
+keep 0% of a file's source lines and 0% of a diff's changed lines. CI
+recomputes the Bash results on every PR (`tests/test_compression_benchmark.py`).
+
 ## What we *don't* claim
 
 - The CI numbers come from a **deliberately tiny fixture** — they prove the

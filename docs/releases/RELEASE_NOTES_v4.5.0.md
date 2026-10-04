@@ -12,6 +12,10 @@ about a project mean something, and keeps them comparable from run to run:
    answers you write for your repo, keeps a history, and every reduction ratio
    now divides by the measured size of your code instead of a fixed 50K guess.
 
+It also stops a cost a new benchmark turned up: through v4.4.0, the Read, Bash
+and Grep hooks sold as tool-output compression added tokens instead of saving
+them (section 5).
+
 ## 1. `.gitignore` is honoured by default
 
 On a real repository, gitignored `projects/` copies of `examples/` were indexed:
@@ -143,11 +147,78 @@ unchanged symbol stays in the sample across rebuilds (two runs either side of
 a 5% index change share ≥ 90% of their sample), and `--baseline` compares only
 the symbols both runs sampled, reporting how many were added or dropped.
 
+## 5. The Read, Bash and Grep hooks stop adding tokens
+
+The Read, Bash and Grep PostToolUse hooks were described as compressing tool
+output "before the agent sees it". A new benchmark that follows Claude Code's
+documented hook protocol shows they never did: Claude Code **adds** a hook's
+`additionalContext` next to the tool result rather than replacing it, so Claude
+got the full output *plus* NeuralMind's compressed copy.
+
+| Tool call | Calls | Tokens, no hook | Tokens, v4.3.4 hooks | Change |
+|---|---:|---:|---:|---:|
+| Read (whole file) | 136 | 597,002 | 597,002 | +0.0% |
+| Bash | 16 | 32,581 | 38,296 | +17.5% |
+| Grep, content mode | 48 | 55,800 | 68,113 | +22.1% |
+| Grep, files_with_matches (default) | 48 | 2,062 | 2,062 | +0.0% |
+
+Measured on v4.3.4; v4.3.5 and v4.4.0 shipped the same hooks.
+
+- **Bash:** every successful command got a second copy. It was the whole output
+  again when nothing was compressed (`pip list`, a short `pytest -q`: +100%), and
+  errors plus the tail when it was.
+- **Read:** the hook never fired. Claude Code's Read payload nests the text
+  under `file.content`, which the hook didn't read.
+- **Failed commands** fire `PostToolUseFailure`, not `PostToolUse`, so the Bash
+  hook never saw a failing test run, lint error or crash. Those are the outputs
+  its "errors + summary" design was built for.
+
+Method, per-command results and raw data:
+[docs/benchmarks/compression.md](../benchmarks/compression.md) ·
+`bench/compression/results-v4.3.4.json`.
+
+### What changed
+
+- `neuralmind _hook compress-read`, `compress-bash`, `cap-search` and `offload`
+  return nothing. Claude sees exactly the tool result.
+- The Bash hook still writes the latest successful command's output,
+  credentials redacted, to `.neuralmind/last_output.json`, so `neuralmind last`
+  works as before. A failing command fires `PostToolUseFailure`, so its output
+  never reached this hook, then or now.
+- Every other hook is unchanged: session memory (SessionStart), prompt-time
+  recall (UserPromptSubmit), the stale-decision guard (PreToolUse), reuse
+  feedback (PostToolUse on Edit/Write), and the session digest (Stop,
+  SessionEnd).
+
+### Not changed
+
+- The compressor functions (`compress_bash`, `compress_read`,
+  `cap_search_results`, `offload_if_large`) stay in the Python API. The
+  benchmark measures them too: they would cut 66–87% of tokens if they replaced
+  a result, but keep 0% of a file's source lines and 0% of a diff's changed
+  lines. That is why nothing replaces tool output until a design keeps what the
+  agent needs, measured by the same benchmark.
+- `NEURALMIND_BASH_TAIL`, `NEURALMIND_BASH_MAX_CHARS` and `NEURALMIND_BASH_SMALL`
+  now only tune those Python functions. `NEURALMIND_BYPASS=1` still switches off
+  every NeuralMind hook action.
+
+### New in the repo
+
+- `evals/compression/`: the benchmark. It drives the real hook with payloads
+  shaped like Claude Code's (Agent SDK `sdk-tools.d.ts`) and applies each
+  response per the documented protocol. The Bash corpus is 16 real command
+  outputs with pre-registered must-keep lines.
+- `tests/test_compression_benchmark.py`: recomputes the Bash results on every
+  CI run and fails if the hooks stop doing what `bench/compression/results.json`
+  records, or if the benchmark page stops quoting it.
+- Docs, README, site and `llms.txt` no longer describe tool-output compression
+  as a feature.
+
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
 |---|---|---|
-| **Claude Code** (MCP + hooks) | Indexed gitignored copies; every query and hook taught the synapse layer, including eval scripts | Index covers what git covers; `learn: false` and `NEURALMIND_NO_LEARN=1` give read-only queries; hooks skip learning under the env switch |
+| **Claude Code** (MCP + hooks) | Indexed gitignored copies; every query and hook taught the synapse layer, including eval scripts; Bash and content-mode Grep results were followed by a system reminder holding NeuralMind's copy of the same output | Index covers what git covers; `learn: false` and `NEURALMIND_NO_LEARN=1` give read-only queries; hooks skip learning under the env switch; the Read/Bash/Grep hooks add nothing to a tool result |
 | **Cursor / Cline / Continue** (MCP) | Same indexing; no way to query without training | Same indexing fix; `learn: false` on `neuralmind_query` / `neuralmind_search` |
 | **Generic MCP client** | `neuralmind_query` always wrote | Read-only on request; the tool schema documents `learn` |
 | **CI** | `benchmark` numbers against a fixed 50K; evals trained on themselves | `neuralmind eval .` read-only with history; `NEURALMIND_NO_LEARN=1` for the whole job |
@@ -163,8 +234,11 @@ the symbols both runs sampled, reporting how many were added or dropped.
   old numbers.
 - **`neuralmind eval <path>`** now runs the project eval; the old suites are
   under `--suite`.
+- **The hook change needs no reinstall.** The registered hooks are the same;
+  they just stop returning context. `neuralmind last` works as before.
 
 ## Related
 
 - Use case: [Measure retrieval on your own repo](../use-cases/measure-retrieval-on-your-repo.md)
+- Benchmark: [Tool-output compression](../benchmarks/compression.md)
 - CLI reference: [`eval`](../wiki/CLI-Reference.md#eval-v0140-project-eval-v450), [`query`](../wiki/CLI-Reference.md#query), [`benchmark`](../wiki/CLI-Reference.md#benchmark), [`probe`](../wiki/CLI-Reference.md#probe-v0270)
