@@ -273,6 +273,7 @@ class TestRunHook:
         from neuralmind.namespaces import resolve_namespace
         from neuralmind.synapses import SynapseStore, default_db_path
 
+        (tmp_path / ".neuralmind").mkdir()  # a project NeuralMind indexes
         first, second = tmp_path / "a.py", tmp_path / "b.py"
         for path in (first, second):
             self._invoke("compress-read", self._read_payload(path, tmp_path), monkeypatch)
@@ -300,15 +301,18 @@ class TestRunHook:
             assert (exit_code, output) == (0, "")
         assert calls == []
 
-        # The flat shape older callers send still counts.
+        # The flat shape older callers send still counts, in an indexed project.
         legacy = {
             "tool_name": "Read",
             "tool_input": {"file_path": "src/app.py"},
             "tool_response": {"content": "x = 1\n"},
-            "cwd": "/proj",
+            "cwd": str(tmp_path),
         }
         self._invoke("compress-read", legacy, monkeypatch)
-        assert calls == [("/proj", "src/app.py")]
+        assert calls == []  # no .neuralmind/ yet: a global hook leaves the repo alone
+        (tmp_path / ".neuralmind").mkdir(exist_ok=True)
+        self._invoke("compress-read", legacy, monkeypatch)
+        assert calls == [(str(tmp_path), "src/app.py")]
 
     def test_empty_input_noops(self, monkeypatch):
         """Empty stdin should fail-open silently."""

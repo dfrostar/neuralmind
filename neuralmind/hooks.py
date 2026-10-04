@@ -316,8 +316,13 @@ def run_hook(action: str) -> int:
         # Bash output kept under .neuralmind/ is not a step between files.
         if ".neuralmind" in Path(file_path).parts:
             return 0
-        # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
+        # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations.
+        # Only in a project NeuralMind already indexes: a globally installed
+        # hook must not create .neuralmind/ in every repo it sees a Read in
+        # (the same gate as read dedup above).
         cwd = payload.get("cwd") or os.getcwd()
+        if not (Path(cwd) / ".neuralmind").is_dir():
+            return 0
         _record_tool_transition(cwd, file_path)
         return 0
 
