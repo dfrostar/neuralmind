@@ -1,8 +1,8 @@
 # Change Management Policy
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Controls:** CC3.1, CC3.2, CC8.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Control:** CC8.1
 
 ---
 
@@ -83,7 +83,6 @@ Every change is recorded in:
 - Git commit history (immutable)
 - GitHub PR history (if applicable)
 - CI run logs (GitHub Actions artifacts)
-- Vanta evidence collection (quarterly export)
 
 ## 6. Exceptions
 

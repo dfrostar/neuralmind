@@ -141,6 +141,7 @@ for compatibility.
 
 - **Builder role:** all 7 memory tools
 - **Reader role:** `query` + `audit` + the 3 progressive-retrieval tools — write tools verified denied
+- Roles are declared by the MCP caller and not authenticated; see the [Security Guide](../SECURITY-GUIDE.md#access-control)
 
 ## Invalidation Semantics
 
