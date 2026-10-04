@@ -107,10 +107,20 @@ The image is multi-stage: a `builder` stage produces the wheel; the
 `runtime` stage is a slim Python image with `neuralmind` installed
 and a non-root user. The `Dockerfile` lives in the repo root.
 
-**Trade-offs:** the mount has to be writable. NeuralMind keeps its index
-in the project's `.neuralmind/` on the host, so it persists between
-runs, and the MCP server appends to its audit log on every tool call, so
-on a read-only mount every call fails. The image doesn't bundle the
+**Trade-offs:** the mount has to be writable by the container's user.
+NeuralMind keeps its index in the project's `.neuralmind/` on the host,
+so it persists between runs, and the MCP server appends to its audit log
+on every tool call. On a read-only mount every call fails.
+
+The image runs as a fixed non-root user, `neuralmind`, not as you. A
+read-write mount isn't enough if that user can't write to the checkout,
+for example on a multi-user host or in a root-owned CI workspace. Then the
+build fails when it creates `.neuralmind/`, and every MCP call fails on
+the audit write. Check the container's UID with
+`docker run --rm ghcr.io/dfrostar/neuralmind id`, then give that UID write
+access to the project (`chown`, a shared group, or an ACL).
+
+The image doesn't bundle the
 embedding model, so each fresh container downloads it on its first
 build; the [deployment guide](../DEPLOYMENT-GUIDE.md#option-2-container-image-ghcr)
 shows how to mount a pre-extracted one.

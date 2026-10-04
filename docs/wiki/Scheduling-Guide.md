@@ -628,6 +628,8 @@ foreach ($projectPath in $projects) {
         
         neuralmind audit export . --format jsonl -o $auditJsonl 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
         neuralmind audit verify . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        # A native command's non-zero exit doesn't trigger catch, so check it
+        if ($LASTEXITCODE -ne 0) { throw "audit verify failed (exit $LASTEXITCODE)" }
         
         Log "✓ Completed: $projectName"
     } catch {
@@ -699,12 +701,15 @@ for project_path in "${projects[@]}"; do
     
     log "Processing: $project_name"
     
+    # Chain with && so a failing step, such as `audit verify` finding a broken
+    # hash chain, reaches the || below. (`set -e` is ignored inside a subshell
+    # on the left of ||.)
     (
-        cd "$project_path"
-        neuralmind wakeup . >> "$project_log" 2>&1
-        timestamp=$(date +%Y-%m-%d_%H%M%S)
-        neuralmind audit export . --format jsonl -o "$LOG_DIR/audit_${project_name}_$timestamp.jsonl" >> "$project_log" 2>&1
-        neuralmind audit verify . >> "$project_log" 2>&1
+        cd "$project_path" &&
+        neuralmind wakeup . >> "$project_log" 2>&1 &&
+        timestamp=$(date +%Y-%m-%d_%H%M%S) &&
+        neuralmind audit export . --format jsonl -o "$LOG_DIR/audit_${project_name}_$timestamp.jsonl" >> "$project_log" 2>&1 &&
+        neuralmind audit verify . >> "$project_log" 2>&1 &&
         log "✓ Completed: $project_name"
     ) || log "✗ Error on $project_name"
 done

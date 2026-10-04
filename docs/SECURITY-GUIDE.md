@@ -254,9 +254,18 @@ says nothing about it.
 
 ### Managing Secrets Properly
 
-NeuralMind itself needs no credentials: no database password and no service
-account. The one secret it ever reads is `ANTHROPIC_API_KEY`, and only when
-`NEURALMIND_LLM_SEED=1` turns on documentation seeding.
+Indexing, querying, and the MCP server need no credentials: no database
+password and no service account. Three opt-in paths read a secret from the
+environment:
+
+| Secret | Read by | What it's used for |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Documentation seeding, only with `NEURALMIND_LLM_SEED=1` | Sends `README.md` and `docs/architecture.md` text to Anthropic |
+| `ANTHROPIC_API_KEY` | `neuralmind benchmark --public --judge`, from a source checkout | Sends context built from the pinned public benchmark repositories to Anthropic for grading. Your own code isn't part of it |
+| `NEURALMIND_ISSUER_PRIVATE_KEY_HEX` | `neuralmind license issue`, `renew`, and `revoke` | Signs license files locally. Only the license issuer runs these; using a license doesn't need the key |
+
+Provision and rotate these like any other credential, and set them only in the
+environments that run those commands.
 
 The advice below is for the code you index, so the scanner has nothing to
 find.
