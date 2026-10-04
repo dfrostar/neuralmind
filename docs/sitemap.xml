@@ -547,6 +547,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.5.1.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/use-cases/measure-retrieval-on-your-repo.html</loc>
     <lastmod>2026-10-01</lastmod>
     <changefreq>monthly</changefreq>

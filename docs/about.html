@@ -207,11 +207,23 @@
                 <li><strong>Read dedup</strong> &mdash; in Claude Code, a repeat read of an unchanged file in the same session comes back as a short stub (PostToolUse <code>updatedToolOutput</code>), and the read after a stub is always full. Tracked per session and per subagent, reset by compaction, never for reads under 2,000 characters; off with <code>NEURALMIND_READ_DEDUP=0</code>. Not benchmarked yet</li>
                 <li><strong>Decisions go stale on commit</strong> &mdash; <code>neuralmind init-hook .</code> runs <code>neuralmind decisions scan</code> after every commit: a decision whose file the commit changed after the decision was recorded goes STALE (any change counts), while the commit that lands the change a decision describes leaves it ACTIVE. The stale-decision guard now shows why, the id, and <code>decisions restore &lt;id&gt;</code></li>
                 <li><strong>Team governance enforced</strong> &mdash; <code>memory publish</code> honours the publishing scope (<code>personal</code> refuses, <code>shared</code> publishes only the team baseline) and leaves out edges below the weight threshold; <code>team governance remove-edge SOURCE TARGET</code> removes an association and retracts it in the committed bundle so teammates drop it too; <code>list-shared</code> lists shared memory; publishes, imports and reviews are audited</li>
-                <li><strong>Decision search answers questions</strong> &mdash; any word of a query can match (common words such as &ldquo;how&rdquo; are ignored), and decisions matching more of the words rank first, so &ldquo;how do we handle sqlite wal?&rdquo; finds what &ldquo;sqlite wal&rdquo; finds. A missing index now returns <code>index_not_built</code> over MCP instead of <code>security_denied</code>, and <code>decisions eval</code> runs on a scratch store instead of the project&rsquo;s decisions</li>
                 <li><strong>Co-access module removed</strong> &mdash; queries already reinforce what they retrieve together; the unused module would have written duplicate edges nothing reads</li>
                 <li><strong>Cognition loop rebuilt</strong> &mdash; the old pass deleted most learned edges idle for about two days and session summaries older than 30 days. It now runs the store&rsquo;s own half-life decay plus read-dedup cleanup: idempotent, safe for cron, and still on demand, because the hooks and <code>neuralmind watch</code> already decay</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.0.md">v4.6.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/decision-memory-across-commits.md">Keep decision memory honest across commits &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/govern-team-memory.md">Govern what your team&rsquo;s agents share &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v451">
+            <h2>What&rsquo;s New in v4.5.1 &mdash; decision memory answers questions, for every role</h2>
+            <p><strong>Agents ask questions, and decision search required every word of one to match; the progressive-retrieval memory tools turned away every caller that hadn&rsquo;t declared <code>admin</code>.</strong> v4.5.1 fixes both.</p>
+            <ul>
+                <li><strong>Questions find decisions</strong> &mdash; any word of the query can match, common words are ignored, and decisions matching more and rarer words rank first, in <code>neuralmind decisions query</code>, the MCP decision tools and the fallback for SQLite without FTS5</li>
+                <li><strong>Memory retrieval for the default roles</strong> &mdash; <code>neuralmind_memory_search</code>, <code>neuralmind_memory_timeline</code> and <code>neuralmind_memory_get</code> work for <code>builder</code> and <code>reader</code>; writing decisions stays builder-only</li>
+                <li><strong><code>neuralmind decisions eval</code> leaves your decisions alone</strong> &mdash; it runs on a scratch store, and <code>--queries FILE</code> scores search against questions with known answers</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.5.1.md">v4.5.1 release notes</a></p>
         </div>
     </section>
 

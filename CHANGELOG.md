@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.5.1](https://github.com/dfrostar/neuralmind/compare/v4.5.0...v4.5.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **mcp:** grant default roles the progressive-retrieval memory tools ([#568](https://github.com/dfrostar/neuralmind/issues/568)) ([53b9813](https://github.com/dfrostar/neuralmind/commit/53b98133634cdb90856795824d0ab82ba385bf4f))
+* **memory:** decision search matches any query word, so questions find decisions ([#560](https://github.com/dfrostar/neuralmind/issues/560)) ([7dff3fc](https://github.com/dfrostar/neuralmind/commit/7dff3fcfd236680a91d4acd4ffeb356da4306cb0))
+
 ## [4.5.0](https://github.com/dfrostar/neuralmind/compare/v4.4.0...v4.5.0) (2026-10-04)
 
 
