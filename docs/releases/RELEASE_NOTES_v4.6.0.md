@@ -16,6 +16,9 @@ and stays on demand.
 | **Team governance** | Scope and weight threshold stored and audited, never enforced; `remove-edge` only logged; `list-shared` printed `[]` | Enforced by `memory publish`; `remove-edge` removes and retracts; `list-shared` lists; imports and reviews audited |
 | **Cognition loop** | On demand; its own SQL deleted most learned memory | Rebuilt on the store's own decay; still on demand, now safe for cron |
 
+It also fixes decision search, which needed every word of a query to match
+(section 6).
+
 ## 1. Read dedup — a repeat read becomes a stub
 
 When your agent reads a file it already read in this session, and the content
@@ -229,6 +232,37 @@ down on every call, so a frequent schedule would compound it. If you ran the old
 pass, its leftover rows are inert; `neuralmind memory reset --namespace
 traversal` removes them.
 
+## 6. Decision search answers questions
+
+Decision search required every word of the query, so `neuralmind decisions query`
+found a decision for "sqlite wal" but not for "how do we handle sqlite wal?",
+and agents send questions.
+
+- **Any word of the query can match.** Common words such as "how" and "the"
+  are ignored, and decisions matching more of the words, and rarer ones, rank
+  first. This covers `decisions query`, the `neuralmind_query_decisions` and
+  `neuralmind_memory_search` MCP tools, and the LIKE fallback used when SQLite
+  lacks FTS5. A question nothing answers can still return partial matches, so
+  check the titles.
+- **Status filters are case-insensitive**, and `ALL` returns every status
+  (over MCP, the advertised `"all"` used to match nothing). The CLI's
+  `--status` also accepts `INVALIDATED`. An unknown status is an error,
+  `invalid_request` over MCP, instead of an empty result.
+- **`neuralmind decisions eval` leaves your decisions alone.** It used to delete
+  the project's `.neuralmind/memory.db` and leave synthetic decisions with the
+  author `eval-harness` behind; it now runs on a scratch store. The
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness) shows how to retire
+  any it left. `--format md` no longer crashes.
+- **`neuralmind decisions eval --queries FILE`** scores search against
+  questions with known answers: recall@k and MRR as mean and range per query
+  kind, with every miss and false positive listed. The committed query set and
+  its measured results are in the
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness).
+- **MCP errors say what to do.** A missing index is `code: "index_not_built"`
+  with a hint to call `neuralmind_build`, not `security_denied`;
+  `security_denied` carries `reason: "rbac"` or `"rate_limit"`. See
+  [Troubleshooting](../wiki/Troubleshooting.md).
+
 ## What the agent actually sees post-install
 
 | Agent | Before (v4.5) | After (v4.6) |
@@ -238,6 +272,7 @@ traversal` removes them.
 | **Generic MCP client** | Same as above | Same as above |
 | **git** (after `neuralmind init-hook .`) | post-commit rebuilt the index | post-commit first marks stale decisions and prints them, then rebuilds |
 | **Team admins** | Scope, threshold and `remove-edge` recorded only | Enforced on publish; removals retract through the bundle; every team-memory event audited |
+| **Any agent searching decisions** (MCP or CLI) | A question found nothing unless every word appeared in one decision; `status: "all"` matched nothing; a missing index came back as `security_denied` | Any word can match and fuller matches rank first; `ALL` works in any case; a missing index is `index_not_built`, with a hint to build |
 
 ## Upgrade notes
 
@@ -252,10 +287,14 @@ traversal` removes them.
   `skipped` are new. Its `NEURALMIND_COGNITION_*`, `NEURALMIND_DECAY_RATE`,
   `NEURALMIND_PRUNE_DAYS` and `NEURALMIND_SYNTHESIS_MIN_CLUSTER` variables are
   no longer read.
+- **MCP error codes:** a missing index returns `index_not_built` instead of
+  `security_denied`, and `security_denied` now carries `reason` (`rbac` or
+  `rate_limit`). A client that matched `security_denied` to mean "not built"
+  needs updating.
 - **New switches:** `NEURALMIND_READ_DEDUP=0`, `NEURALMIND_DECISION_SCAN=0`.
 - **New file:** `.neuralmind/read_cache.db` (per machine, never committed).
 
 ## Related
 
 - Use cases: [Keep decision memory honest across commits](../use-cases/decision-memory-across-commits.md) · [Govern what your team's agents share](../use-cases/govern-team-memory.md)
-- CLI reference: [`decisions scan`](../wiki/CLI-Reference.md#decisions-scan-v460), [`cognition-loop`](../wiki/CLI-Reference.md#cognition-loop), [`team governance`](../wiki/CLI-Reference.md#team-governance), [hooks](../wiki/CLI-Reference.md#install-hooks)
+- CLI reference: [`decisions scan`](../wiki/CLI-Reference.md#decisions-scan-v460), [`decisions eval`](../wiki/CLI-Reference.md#decisions-eval), [`cognition-loop`](../wiki/CLI-Reference.md#cognition-loop), [`team governance`](../wiki/CLI-Reference.md#team-governance), [hooks](../wiki/CLI-Reference.md#install-hooks)
