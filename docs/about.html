@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v451">
+            <h2>What&rsquo;s New in v4.5.1 &mdash; decision memory answers questions, for every role</h2>
+            <p><strong>Agents ask questions, and decision search required every word of one to match; the progressive-retrieval memory tools turned away every caller that hadn&rsquo;t declared <code>admin</code>.</strong> v4.5.1 fixes both.</p>
+            <ul>
+                <li><strong>Questions find decisions</strong> &mdash; any word of the query can match, common words are ignored, and decisions matching more and rarer words rank first, in <code>neuralmind decisions query</code>, the MCP decision tools and the fallback for SQLite without FTS5</li>
+                <li><strong>Memory retrieval for the default roles</strong> &mdash; <code>neuralmind_memory_search</code>, <code>neuralmind_memory_timeline</code> and <code>neuralmind_memory_get</code> work for <code>builder</code> and <code>reader</code>; writing decisions stays builder-only</li>
+                <li><strong><code>neuralmind decisions eval</code> leaves your decisions alone</strong> &mdash; it runs on a scratch store, and <code>--queries FILE</code> scores search against questions with known answers</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.5.1.md">v4.5.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v450">
             <h2>What&rsquo;s New in v4.5.0 &mdash; numbers measured on your project</h2>
             <p><strong>Three commands printed three unrelated reduction ratios against three baselines, and running an eval weekly trained the synapse layer on its own test.</strong> v4.5.0 makes every number NeuralMind prints about a project measured on that project, and comparable from run to run.</p>
