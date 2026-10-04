@@ -47,7 +47,7 @@ neuralmind eval .
 ```
 NeuralMind eval — myrepo (10 questions, read-only)
   hit@1 40% · hit@5 60% · MRR 0.50
-  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed files (1,299,512 tokens, measured)
+  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed code (1,299,512 tokens, measured)
 ```
 
 *(Illustrative numbers.)*
@@ -55,7 +55,7 @@ NeuralMind eval — myrepo (10 questions, read-only)
 - **hit@1 / hit@5** — the gold file is the top file / in the top five the answer drew on.
 - **MRR** — mean of 1 / rank of the first gold file; a miss scores 0.
 - **× vs gold files** — how close the context is to what a perfect retriever would load.
-- **× vs all indexed files** — the measured baseline: every file the index covers.
+- **× vs all indexed code** — the measured baseline: every code file the index covers (prose such as Markdown is left out).
 
 The eval is **read-only**: it reads the learned synapse layer, so it measures
 what your agent really gets, but writes nothing back. Run it every day and the

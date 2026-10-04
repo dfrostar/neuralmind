@@ -101,7 +101,7 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 |----------|---------------------|--------|
 | **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **45–261× fewer tokens** than pasting every source file, at **93.75% mean gold-file recall** (85–100% per repo) |
 | **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | the build fails below **4.0×**; measured **5.1×** at v4.3.4 |
-| **Field reports** — `neuralmind benchmark .` | real private repos, against the CLI's fixed 50K-token naive estimate | **12–50×** typical range |
+| **Field reports** — `neuralmind benchmark .` | real private repos, before v4.5.0, against the fixed 50K-token estimate the CLI then used (it now divides your measured code) | **12–50×** typical range |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
 
@@ -166,6 +166,10 @@ commit they came from (`neuralmind decisions record`), search them
 `PreToolUse` hook surfaces any decision governing it that has been marked stale
 or invalidated. Invalidation is manual today: the engine that would retire
 decisions automatically on commit exists but is not yet wired into the hooks.
+Search takes keywords or a question: any word can match, and decisions matching
+more of the words rank first (v4.5.0+). `neuralmind decisions eval --queries FILE`
+scores it against questions with known answers; the
+[Memory Layer wiki](docs/wiki/Memory-Layer.md#eval-harness) has the results.
 
 ### 8. Finds the right code (not just less of it)
 
@@ -281,8 +285,10 @@ neuralmind eval . --report            # the run history as a markdown table
 ```
 
 Every reduction ratio (`benchmark`, `savings`, `cost`, `build --dry-run`) now
-divides by the measured token count of the files the index covers, and the
-index covers what git covers. Walkthrough:
+divides by the measured token count of the code the index covers — prose like
+a changelog is left out, and it is counted at the same ~4 chars/token as the
+context — and the index covers what git covers. `benchmark` prints the old
+fixed-50K ratio beside it, so older numbers stay comparable. Walkthrough:
 [Measure retrieval on your own repo](docs/use-cases/measure-retrieval-on-your-repo.md).
 
 ### Index prose, not just code *(v3.4.0+)*
@@ -354,8 +360,9 @@ Output looks like:
 ```
 
 The fixture is intentionally tiny (~500 lines) — it runs in CI as a
-regression gate. On real repos, `neuralmind benchmark` reports **12–50×**
-against its fixed 50K-token naive estimate, and the public benchmark measures
+regression gate. Before v4.5.0, `neuralmind benchmark` reported **12–50×** on
+real repos against a fixed 50K-token estimate; it now divides your measured
+code, so the ratio grows with the repo. The public benchmark measures
 **45–261×** against every source file
 ([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
@@ -428,7 +435,7 @@ demand with `python -m evals.public.run`, raw per-query data committed:
 - **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file on the public benchmark — 4 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
 - **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
-- **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the CLI's 50K-token naive estimate
+- **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the fixed 50K-token estimate the CLI used before v4.5.0
   ([full field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 - **5.1× token reduction** on the CI fixture at v4.3.4 (500-line, deliberately tiny — the floor of a floor; the build fails below 4.0×).
 - **Retrieval quality (N-15):** graded relevance (0-3), nDCG@5, MRR, recall@k, precision@k + RAGAS faithfulness scoring — 8 CI regression gates, per-shape breakdowns.
@@ -447,13 +454,13 @@ Methodology, gold sets, and community submissions:
 [tool-output compression](docs/benchmarks/compression.md).
 
 <!-- COMMUNITY-BENCHMARKS:START -->
-| Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
-|---------|------|------:|-------:|----------:|----------:|-------|-----------|
-| project-alpha | JavaScript | 241 | 341 | 739 | **65.6×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
-| ts-saas-platform (anon) | TypeScript | 9,293 | 455 | 1,033 | **48.8×** | — | [@dfrostar](https://github.com/dfrostar) · 2026-07-20 |
-| project-beta | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+| Project | Lang | Nodes | Wakeup | Avg Query | Reduction (vs fixed 50K) | Reduction (vs measured code) | Model | Submitted |
+|---------|------|------:|-------:|----------:|----------:|----------:|-------|-----------|
+| project-alpha | JavaScript | 241 | 341 | 739 | **65.6×** | — | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+| ts-saas-platform (anon) | TypeScript | 9,293 | 455 | 1,033 | **48.8×** | — | — | [@dfrostar](https://github.com/dfrostar) · 2026-07-20 |
+| project-beta | Python | 1,626 | 412 | 891 | **46.0×** | — | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
 
-_3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://docs.neuralmind.uk/benchmarks/) for scatter + by-language charts._
+_3 submission(s). **vs fixed 50K**: a fixed 50,000-token estimate over tokens per question — the one ratio every row shares, so it tracks context size, not repo size. **vs measured code**: the submitter's measured code over tokens per question (v4.5.0+ submissions). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://docs.neuralmind.uk/benchmarks/) for scatter + by-language charts._
 <!-- COMMUNITY-BENCHMARKS:END -->
 
 ---

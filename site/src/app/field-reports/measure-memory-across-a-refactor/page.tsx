@@ -9,7 +9,7 @@ const PUBLISHED = '2026-07-20';
 export const metadata = {
     title: 'Field Report: 48.8× Fewer Tokens Across a Refactor | NeuralMind',
     description:
-        'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
+        'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction vs the CLI’s pre-v4.5.0 fixed 50K-token estimate, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
     keywords: [
         'AI coding agent memory',
         'token reduction case study',
@@ -32,7 +32,7 @@ export const metadata = {
     openGraph: {
         title: 'Field Report: AI Agent Memory Across a Major Refactor',
         description:
-            'A ~9,300-node TypeScript SaaS platform was rebuilt with NeuralMind watching: 48.8× token reduction, synapse edges 36→135. One repo, honestly measured — with the recipe to run it on yours.',
+            'A ~9,300-node TypeScript SaaS platform was rebuilt with NeuralMind watching: 48.8× token reduction vs the CLI’s pre-v4.5.0 fixed 50K-token estimate, synapse edges 36→135. One repo, honestly measured — with the recipe to run it on yours.',
         url: CANONICAL,
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -54,7 +54,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'Field Report: AI Agent Memory Across a Major Refactor',
         description:
-            '48.8× token reduction and synapse edges 36→135, measured across a real rebuild of a ~9,300-node TypeScript SaaS platform.',
+            '48.8× token reduction (vs the CLI’s pre-v4.5.0 fixed 50K-token estimate) and synapse edges 36→135, measured across a real rebuild of a ~9,300-node TypeScript SaaS platform.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -72,7 +72,7 @@ const numbers = [
     { metric: 'Shared edge weight', before: '2,774.73', after: '2,924.66', change: '+5.4%', highlight: true },
     { metric: 'Wake-up tokens', before: '—', after: '455', change: '' },
     { metric: 'Avg query tokens', before: '—', after: '1,033', change: '' },
-    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: 'vs the CLI’s 50K-token naive estimate', highlight: true },
+    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: 'vs the fixed 50K-token estimate the CLI used before v4.5.0', highlight: true },
     { metric: 'Full --force rebuild', before: '—', after: '326 s (~5.4 min)', change: 'incremental rebuilds ~30 s after' },
 ];
 
@@ -91,9 +91,9 @@ const jsonLd = {
         {
             '@type': 'TechArticle',
             headline: 'Field Report: AI Agent Memory Across a Major Refactor',
-            alternativeHeadline: '48.8× token reduction and synapse growth measured across a real rebuild',
+            alternativeHeadline: '48.8× token reduction (vs the pre-v4.5.0 fixed 50K-token estimate) and synapse growth measured across a real rebuild',
             description:
-                'Real-world case study measuring NeuralMind across a major internal rebuild of a private ~9,300-node TypeScript SaaS platform: 48.8× average token reduction, personal synapse edges 36→135, shared edge weight +5.4%.',
+                'Real-world case study measuring NeuralMind across a major internal rebuild of a private ~9,300-node TypeScript SaaS platform: 48.8× average token reduction against the CLI’s pre-v4.5.0 fixed 50K-token estimate, personal synapse edges 36→135, shared edge weight +5.4%.',
             author: {
                 '@type': 'Person',
                 name: 'Darren Frost',
@@ -176,7 +176,7 @@ export default function FieldReportPage() {
                         <div className="card rounded-2xl p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">48.8×</p>
-                            <p className="text-slate-400 text-sm">~1,033 tokens/query vs a 50K-token naive estimate</p>
+                            <p className="text-slate-400 text-sm">~1,033 tokens/query vs the pre-v4.5.0 fixed 50K-token estimate</p>
                         </div>
                         <div className="card rounded-2xl p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
@@ -242,8 +242,8 @@ export default function FieldReportPage() {
                     <div className="space-y-4 text-slate-300 leading-relaxed">
                         <p>
                             <strong className="text-white">48.8× token reduction.</strong> After the rebuild, an average
-                            code question cost ~1,033 tokens of context, against the CLI&apos;s 50,000-token estimate
-                            of what a naive &quot;load the relevant files&quot; approach spends. That is one repo&apos;s ratio from{' '}
+                            code question cost ~1,033 tokens of context, against the 50,000-token estimate the CLI
+                            then used for what a naive &quot;load the relevant files&quot; approach spends. That is one repo&apos;s ratio from{' '}
                             <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark .</code>,
                             consistent with the 12-50× real-repo range — not a universal guarantee.
                         </p>
@@ -363,13 +363,16 @@ export default function FieldReportPage() {
                             </a>.
                         </p>
                         <p>
-                            <strong className="text-white">The &quot;naive&quot; side of the ratio is an estimate.</strong>{' '}
-                            <code className="font-mono text-[0.85em] text-slate-300">neuralmind benchmark .</code> divides
+                            <strong className="text-white">The &quot;naive&quot; side of this ratio is an estimate.</strong>{' '}
+                            This report predates v4.5.0, when{' '}
+                            <code className="font-mono text-[0.85em] text-slate-300">neuralmind benchmark .</code> divided
                             a fixed 50,000-token estimate of naive context by the measured tokens per question
-                            (~1,033 here); it does not count this repo&apos;s actual size. The measured half is the
-                            tokens per question. The{' '}
+                            (~1,033 here); it did not count this repo&apos;s actual size. The measured half is the
+                            tokens per question. Since v4.5.0 the CLI divides the measured size of the code the index
+                            covers instead; this repo has not been re-run with it, so 48.8× stays the pre-v4.5.0
+                            figure. The{' '}
                             <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
-                            measures against every source file instead.
+                            measures against every source file too.
                         </p>
                         <p>
                             <strong className="text-white">The CI-gated, reproducible numbers</strong> live in{' '}

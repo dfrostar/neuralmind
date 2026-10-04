@@ -5,7 +5,13 @@ import json
 import pytest
 
 from neuralmind.audit import AuditTrail
-from neuralmind.mcp_security import MCPSecurityManager, RateLimiter, RBACPolicy
+from neuralmind.mcp_security import (
+    AccessDeniedError,
+    MCPSecurityManager,
+    RateLimiter,
+    RateLimitExceededError,
+    RBACPolicy,
+)
 
 
 def test_rbac_policy_allows_expected_tools():
@@ -50,6 +56,25 @@ def test_security_manager_audits_success_and_failure(temp_project):
     statuses = {event["status"] for event in events}
     assert "success" in statuses
     assert "denied" in statuses
+
+
+def test_security_refusals_have_their_own_types(temp_project):
+    """MCP tells a security refusal from a tool failure by these types; they
+    subclass the old PermissionError / RuntimeError so existing callers keep
+    working."""
+    assert issubclass(AccessDeniedError, PermissionError)
+    assert issubclass(RateLimitExceededError, RuntimeError)
+    manager = MCPSecurityManager(
+        project_path=str(temp_project),
+        policy=RBACPolicy({"reader": {"neuralmind_query"}}),
+        rate_limiter=RateLimiter(max_calls=1, window_seconds=60),
+        audit_trail=AuditTrail(temp_project),
+    )
+    with pytest.raises(AccessDeniedError):
+        manager.secure_call("alice", "reader", "neuralmind_build", lambda: None)
+    manager.secure_call("bob", "reader", "neuralmind_query", lambda: None)
+    with pytest.raises(RateLimitExceededError):
+        manager.secure_call("bob", "reader", "neuralmind_query", lambda: None)
 
 
 def test_handle_tool_call_rejects_missing_project_path(temp_project):

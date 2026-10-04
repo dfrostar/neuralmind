@@ -31,7 +31,7 @@ def test_unset_keeps_ort_defaults(monkeypatch):
 
 
 def test_pin_to_one_thread(monkeypatch):
-    """The benchmark harness's setting: fully serialized, machine-independent."""
+    """The benchmark harnesses' setting: fully serialized, so core count drops out."""
     so = _opts(monkeypatch, "1")
     assert so.intra_op_num_threads == 1
     assert so.inter_op_num_threads == 1

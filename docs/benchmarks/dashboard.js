@@ -304,27 +304,36 @@ function renderByLanguage(entries) {
 let tableEntries = [];
 const sortState = { key: 'date_submitted', dir: 'desc' };
 
-function compareEntries(a, b, key, numeric) {
+function isBlank(v) {
+    return v === undefined || v === null || v === '';
+}
+
+// Blanks sort last in either direction: only the values are reversed, so a
+// descending sort on a column older rows lack (measured_avg_reduction_ratio)
+// still leads with the rows that have it.
+function compareEntries(a, b, key, numeric, dir) {
     const av = a[key];
     const bv = b[key];
-    if (av === undefined || av === null || av === '') return 1;  // blanks last
-    if (bv === undefined || bv === null || bv === '') return -1;
-    if (numeric) return av - bv;
-    return String(av).localeCompare(String(bv), 'en', { sensitivity: 'base' });
+    const aBlank = isBlank(av);
+    const bBlank = isBlank(bv);
+    if (aBlank || bBlank) return aBlank === bBlank ? 0 : (aBlank ? 1 : -1);
+    const cmp = numeric
+        ? av - bv
+        : String(av).localeCompare(String(bv), 'en', { sensitivity: 'base' });
+    return dir === 'asc' ? cmp : -cmp;
 }
 
 function renderTable() {
     const body = document.getElementById('submissions-body');
     if (tableEntries.length === 0) {
-        body.innerHTML = '<tr><td colspan="10" class="placeholder">No submissions yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="11" class="placeholder">No submissions yet.</td></tr>';
         return;
     }
     const th = document.querySelector(`#submissions-table th[data-key="${sortState.key}"]`);
     const numeric = th && th.dataset.type === 'num';
-    const sorted = [...tableEntries].sort((a, b) => {
-        const cmp = compareEntries(a, b, sortState.key, numeric);
-        return sortState.dir === 'asc' ? cmp : -cmp;
-    });
+    const sorted = [...tableEntries].sort(
+        (a, b) => compareEntries(a, b, sortState.key, numeric, sortState.dir)
+    );
 
     document.querySelectorAll('#submissions-table th').forEach(el => {
         if (el.dataset.key === sortState.key) {
@@ -340,6 +349,7 @@ function renderTable() {
             <td>${escapeHtml(e.language)}</td>
             <td class="num">${fmtNumber(e.nodes)}</td>
             <td class="num"><strong>${fmtRatio(e.avg_reduction_ratio)}</strong></td>
+            <td class="num">${e.measured_avg_reduction_ratio ? fmtRatio(e.measured_avg_reduction_ratio) : '—'}</td>
             <td class="num">${e.avg_wakeup_tokens ? fmtNumber(e.avg_wakeup_tokens) : '—'}</td>
             <td class="num">${e.avg_query_tokens ? fmtNumber(e.avg_query_tokens) : '—'}</td>
             <td>${escapeHtml(e.model || '—')}</td>
@@ -387,7 +397,7 @@ function renderError(err) {
     }
     const body = document.getElementById('submissions-body');
     if (body) {
-        body.innerHTML = `<tr><td colspan="10" class="placeholder">Load failed: ${escapeHtml(err.message)}.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="11" class="placeholder">Load failed: ${escapeHtml(err.message)}.</td></tr>`;
     }
 }
 

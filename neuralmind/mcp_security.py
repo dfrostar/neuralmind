@@ -80,6 +80,23 @@ class RBACPolicy:
         return False
 
 
+class AccessDeniedError(PermissionError):
+    """RBAC refused the call.
+
+    A ``PermissionError`` subclass so existing ``except PermissionError``
+    callers keep working, but distinct from the ``PermissionError`` the OS
+    raises on an unreadable file — only this one is a security denial.
+    """
+
+
+class RateLimitExceededError(RuntimeError):
+    """The actor made more calls than the rate limit allows.
+
+    A ``RuntimeError`` subclass for backward compatibility; callers that
+    need to tell a rate limit from a tool failure catch this class.
+    """
+
+
 class RateLimiter:
     def __init__(self, max_calls: int = 60, window_seconds: int = 60):
         self.max_calls = max_calls
@@ -127,7 +144,7 @@ class MCPSecurityManager:
                 target=tool_name,
                 details={"reason": "rbac", "role": role},
             )
-            raise PermissionError(f"Access denied for role '{role}' on tool '{tool_name}'")
+            raise AccessDeniedError(f"Access denied for role '{role}' on tool '{tool_name}'")
 
         if not self.rate_limiter.allow(actor):
             self.audit.append_event(
@@ -138,7 +155,7 @@ class MCPSecurityManager:
                 target=tool_name,
                 details={"reason": "rate_limit", "role": role},
             )
-            raise RuntimeError(f"Rate limit exceeded for actor '{actor}'")
+            raise RateLimitExceededError(f"Rate limit exceeded for actor '{actor}'")
 
         try:
             result = call()

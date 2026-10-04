@@ -588,11 +588,12 @@ class TestOneBaseline:
 
         result = _mind(tmp_path).benchmark()
         assert result["baseline"]["source"] == "measured"
-        assert result["estimated_full_codebase_tokens"] == expected
-        assert f"{expected:,} tokens in 2 indexed files" in result["summary"]
+        assert result["full_codebase_tokens"] == expected
+        assert result["estimated_full_codebase_tokens"] == 50_000  # the legacy figure
+        assert f"{expected:,} tokens in 2 indexed code files" in result["summary"]
 
         naive = _mind(tmp_path).benchmark(naive_50k=True)
-        assert naive["estimated_full_codebase_tokens"] == 50_000
+        assert naive["full_codebase_tokens"] == 50_000
         assert "--naive-50k" in naive["summary"]
 
     def test_benchmark_uses_the_project_questions(self, tmp_path):
