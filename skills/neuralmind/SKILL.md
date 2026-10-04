@@ -1,7 +1,7 @@
 ---
 name: neuralmind
 description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
-version: 4.4.0 # x-release-please-version
+version: 4.5.0 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:
@@ -204,11 +204,10 @@ not for routine question-answering.
 - **Don't** loop over `neuralmind_skeleton` for every file in a directory.
   Ask one good `neuralmind_query` instead — the L2 layer surfaces the right
   files for you.
-- **Don't** ask the user to set `NEURALMIND_BYPASS=1` unless they've
-  explicitly asked for raw tool output. The bypass disables Claude Code's
-  PostToolUse **compression** of file reads / shell output — it doesn't
-  affect retrieval through the MCP tools. The MCP `query` / `skeleton`
-  paths stay compressed either way.
+- **Don't** ask the user to set `NEURALMIND_BYPASS=1` to get raw tool
+  output. NeuralMind's hooks don't compress tool output, so it's already
+  raw; the bypass would only switch off the hooks' session memory, prompt
+  recall and stale-decision guard. It doesn't affect the MCP tools.
 
 ## Failure modes
 
@@ -273,9 +272,9 @@ never touched. That is the feature, not a stale index. Don't rebuild to
 
 These are set by the user, not by you. They change retrieval behavior:
 
-- `NEURALMIND_BYPASS=1` — skip Claude Code's PostToolUse compression of
-  tool output (raw Read / Bash / Grep results). Does not change MCP-tool
-  behavior.
+- `NEURALMIND_BYPASS=1` — switch off every NeuralMind Claude Code hook
+  action (session memory, prompt recall, stale-decision guard, the
+  `neuralmind last` cache). Does not change MCP-tool behavior.
 - `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time synapse recall.
 - `NEURALMIND_SYNAPSE_EXPORT=0` — disable markdown export of learned
   associations.

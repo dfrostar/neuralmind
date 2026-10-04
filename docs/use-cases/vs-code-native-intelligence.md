@@ -154,4 +154,4 @@ Hover cards spawn a subprocess per file. For large projects, the first call per 
 
 - [Benchmark your repo](./benchmark-your-repo.md) — measure token reduction and recall quality
 - [Cost optimisation](./cost-optimization.md) — how NeuralMind reduces AI coding costs
-- [Claude Code integration](./claude-code.md) — hooks, MCP, and PostToolUse compression
+- [Claude Code integration](./claude-code.md) — hooks, MCP, and session memory

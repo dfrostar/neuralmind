@@ -65,7 +65,7 @@ every run with its commit and version (`eval --report`). Measurement never
 trains: `query --no-learn`, MCP `learn: false` and `NEURALMIND_NO_LEARN=1` read
 the learned layer without writing to it, and `benchmark`, `probe` and `eval` are
 read-only by default. Every reduction ratio now divides by the measured token
-count of the files the index covers instead of a fixed 50K estimate, `probe`
+count of the code the index covers instead of a fixed 50K estimate, `probe`
 samples stably across rebuilds, and the index covers what git covers —
 `.gitignore` is honoured, including tracked files that match an ignore rule.
 Walkthrough: [Measure retrieval on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-retrieval-on-your-repo.md) ·
@@ -355,7 +355,7 @@ sections.
 | Page | For... |
 |------|--------|
 | **[Deployment Guide](../DEPLOYMENT-GUIDE.md)** | DevOps/Infrastructure: Architecture patterns, Docker, Kubernetes, PostgreSQL backend, scaling, monitoring |
-| **[Security Guide](../SECURITY-GUIDE.md)** | Security teams: RBAC, encryption, secrets management, NIST AI RMF, SOC 2, threat models |
+| **[Security Guide](../SECURITY-GUIDE.md)** | Security teams: access control, encryption, secrets management, NIST AI RMF, SOC 2, threat models |
 | **[Upgrading Guide](../UPGRADING.md)** | Everyone: How to upgrade between versions, breaking changes, rollback procedures |
 
 ### Reference
@@ -378,12 +378,14 @@ sections.
 
 ## What is NeuralMind?
 
-A two-phase token optimizer for AI coding agents.
+Token-efficient retrieval plus persistent memory for AI coding agents.
 
-- **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
-- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
+- **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
+- **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt.
 
 Measured effect: **45–261× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 93.75% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+
+NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 
 ### The core problem
 
@@ -423,9 +425,8 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users, install the lifecycle hooks (PostToolUse compression
-plus the v0.4.0 brain-like synapse hooks: SessionStart, UserPromptSubmit,
-PreCompact):
+Claude Code users, install the lifecycle hooks (session memory, prompt-time
+recall, the stale-decision guard, and a Bash output cache for `neuralmind last`):
 
 ```bash
 neuralmind install-hooks .

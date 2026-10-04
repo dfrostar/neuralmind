@@ -1,8 +1,8 @@
 # SDLC Policy
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Controls:** CC3.1, CC8.1, A1.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** CC7.1, CC8.1
 
 ---
 
@@ -51,7 +51,6 @@ All changes must pass:
 ### 2.6 Monitoring
 
 - GitHub Actions dashboard for CI health
-- Vanta for compliance monitoring
 - Dependabot for dependency vulnerabilities
 - Manual review of benchmark trends
 

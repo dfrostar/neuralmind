@@ -12,6 +12,11 @@ about a project mean something, and keeps them comparable from run to run:
    answers you write for your repo, keeps a history, and every reduction ratio
    now divides by the measured size of your code instead of a fixed 50K guess.
 
+It also stops a cost a new benchmark turned up: through v4.4.0, the Read, Bash
+and Grep hooks sold as tool-output compression added tokens instead of saving
+them (section 5). And decision search now answers questions, not only
+exact keyword sets (section 6).
+
 ## 1. `.gitignore` is honoured by default
 
 On a real repository, gitignored `projects/` copies of `examples/` were indexed:
@@ -93,13 +98,13 @@ Example output (illustrative numbers):
 ```
 NeuralMind eval — myrepo (10 questions, read-only)
   hit@1 40% · hit@5 60% · MRR 0.50
-  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed files (1,299,512 tokens, measured)
+  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed code (1,299,512 tokens, measured)
 ```
 
 - **hit@1, hit@5, MRR** rank the files the answer drew on by their best hit
   score — the same relevance sidecar `query --relevance` returns.
 - **Two reductions:** vs the gold files (what a perfect retriever would load)
-  and vs every indexed file (the measured baseline below).
+  and vs all the code the index covers (the measured baseline below).
 - **History:** each run appends date, commit, NeuralMind version, node count
   and the metrics to `.neuralmind/eval_history.jsonl`. `--report` prints
   metrics and the question count only, so questions that name internal code
@@ -119,21 +124,50 @@ guess (on a ~1.3M-token repo), `build --dry-run` used a lines × 25 estimate, an
 `probe` resampled whenever the index changed: three commands, three
 baselines, no two runs comparable.
 
-- `build` measures the **token count of every file the graph covers** (the
-  context-budget tokenizer) and caches it in `.neuralmind/baseline.json`.
+- `build` measures the **token count of the code the graph covers** and
+  caches it in `.neuralmind/baseline.json`:
+  - **Code only.** Markdown, reStructuredText and plain text are left out
+    whenever the index holds code — on `psf/requests` its `HISTORY.md`
+    changelog alone was 15,088 tokens, 14% of an all-files count — so prose
+    can't pad a ratio, and `build --dry-run` (which always counted code only)
+    now agrees with `build`. An index with no code (a book, a docs corpus, a
+    set of SQL, Protobuf or OpenAPI schemas) is measured over its documents.
+  - **In the context's own units.** It is counted at the ~4 chars/token every
+    context layer is counted in, so the ratio is a ratio of characters. With
+    tiktoken installed it used to switch tokenizers and read `psf/requests`'
+    code 8.5% lower than the context's units — one index, two ratios,
+    depending on an optional package.
+  - **Only inside the project.** A graph path that resolves outside it
+    (`../`, an absolute path, a symlink out) is never opened, and images or
+    PDFs a graphify graph names are never read as text.
 - `benchmark`, `savings`, `cost` and `build --dry-run` all divide by it, and
-  say so: `Baseline: measured: 1,117,552 tokens in 341 indexed files`. So do
-  the per-query ratios `query`, `query --explain`, `wakeup` and the MCP tools
-  print.
+  say so: `Baseline: measured: 94,069 tokens in 36 indexed code files` on
+  `psf/requests` v2.32.3. So do the per-query ratios `query`,
+  `query --explain`, `wakeup` and the MCP tools print. An index built before
+  v4.5.0 has nothing cached; `benchmark` measures it on the spot (writing
+  nothing) and the rest use the fixed estimate until the next `build`.
+- `benchmark` prints the old ratio beside the new one —
+  `Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)` —
+  and `--json` carries both: `full_codebase_tokens` (the measured code) and
+  `legacy_avg_reduction_ratio` against `estimated_full_codebase_tokens`
+  (always 50,000).
 - `--naive-50k` on each of them keeps the old fixed estimate, labelled, for
-  comparison with older numbers. `benchmark --contribute` keeps it too, so the
-  community table's rows stay comparable with each other.
+  comparison with older numbers.
+- `benchmark --contribute` writes a **v2** community entry: `avg_reduction_ratio`
+  stays on the fixed estimate every row of the table compares on, and
+  `measured_avg_reduction_ratio` + `full_codebase_tokens` add the ratio against
+  your code. Its `verification_command` now carries `--naive-50k`, so a
+  reviewer re-running it gets the submitted number; and it fills `nodes` and
+  whole-number `avg_query_tokens`, without which no entry it printed had
+  passed the schema.
 - `benchmark` uses the questions in `.neuralmind.eval.yaml` when there is one,
   instead of five generic ones.
 
 **Expect different ratios.** On a large repo the measured baseline is far
 bigger than 50K, so ratios go up; on a small one they go down. Neither is a
-change in retrieval — it's the denominator becoming true.
+change in retrieval — it's the numerator becoming true. On `psf/requests`
+v2.32.3 the same five questions read 41.8× against the fixed estimate and
+78.6× against the 94,069 tokens of code the index covers.
 
 ### Stable probe sampling
 
@@ -143,11 +177,109 @@ unchanged symbol stays in the sample across rebuilds (two runs either side of
 a 5% index change share ≥ 90% of their sample), and `--baseline` compares only
 the symbols both runs sampled, reporting how many were added or dropped.
 
+## 5. The Read, Bash and Grep hooks stop adding tokens
+
+The Read, Bash and Grep PostToolUse hooks were described as compressing tool
+output "before the agent sees it". A new benchmark that follows Claude Code's
+documented hook protocol shows they never did: Claude Code **adds** a hook's
+`additionalContext` next to the tool result rather than replacing it, so Claude
+got the full output *plus* NeuralMind's compressed copy.
+
+| Tool call | Calls | Tokens, no hook | Tokens, v4.3.4 hooks | Change |
+|---|---:|---:|---:|---:|
+| Read (whole file) | 136 | 597,002 | 597,002 | +0.0% |
+| Bash | 16 | 32,581 | 38,296 | +17.5% |
+| Grep, content mode | 48 | 55,800 | 68,113 | +22.1% |
+| Grep, files_with_matches (default) | 48 | 2,062 | 2,062 | +0.0% |
+
+Measured on v4.3.4; v4.3.5 and v4.4.0 shipped the same hooks.
+
+- **Bash:** every successful command got a second copy. It was the whole output
+  again when nothing was compressed (`pip list`, a short `pytest -q`: +100%), and
+  errors plus the tail when it was.
+- **Read:** the hook never fired. Claude Code's Read payload nests the text
+  under `file.content`, which the hook didn't read.
+- **Failed commands** fire `PostToolUseFailure`, not `PostToolUse`, so the Bash
+  hook never saw a failing test run, lint error or crash. Those are the outputs
+  its "errors + summary" design was built for.
+
+Method, per-command results and raw data:
+[docs/benchmarks/compression.md](../benchmarks/compression.md) ·
+`bench/compression/results-v4.3.4.json`.
+
+### What changed
+
+- `neuralmind _hook compress-read`, `compress-bash`, `cap-search` and `offload`
+  return nothing. Claude sees exactly the tool result.
+- The Bash hook still writes the latest successful command's output,
+  credentials redacted, to `.neuralmind/last_output.json`, so `neuralmind last`
+  works as before. A failing command fires `PostToolUseFailure`, so its output
+  never reached this hook, then or now.
+- Every other hook is unchanged: session memory (SessionStart), prompt-time
+  recall (UserPromptSubmit), the stale-decision guard (PreToolUse), reuse
+  feedback (PostToolUse on Edit/Write), and the session digest (Stop,
+  SessionEnd).
+
+### Not changed
+
+- The compressor functions (`compress_bash`, `compress_read`,
+  `cap_search_results`, `offload_if_large`) stay in the Python API. The
+  benchmark measures them too: they would cut 66–87% of tokens if they replaced
+  a result, but keep 0% of a file's source lines and 0% of a diff's changed
+  lines. That is why nothing replaces tool output until a design keeps what the
+  agent needs, measured by the same benchmark.
+- `NEURALMIND_BASH_TAIL`, `NEURALMIND_BASH_MAX_CHARS` and `NEURALMIND_BASH_SMALL`
+  now only tune those Python functions. `NEURALMIND_BYPASS=1` still switches off
+  every NeuralMind hook action.
+
+### New in the repo
+
+- `evals/compression/`: the benchmark. It drives the real hook with payloads
+  shaped like Claude Code's (Agent SDK `sdk-tools.d.ts`) and applies each
+  response per the documented protocol. The Bash corpus is 16 real command
+  outputs with pre-registered must-keep lines.
+- `tests/test_compression_benchmark.py`: recomputes the Bash results on every
+  CI run and fails if the hooks stop doing what `bench/compression/results.json`
+  records, or if the benchmark page stops quoting it.
+- Docs, README, site and `llms.txt` no longer describe tool-output compression
+  as a feature.
+
+## 6. Decision search answers questions
+
+Decision search required every word of the query, so `neuralmind decisions query`
+found a decision for "sqlite wal" but not for "how do we handle sqlite wal?",
+and agents send questions.
+
+- **Any word of the query can match.** Common words such as "how" and "the"
+  are ignored, and decisions matching more of the words, and rarer ones, rank
+  first. This covers `decisions query`, the `neuralmind_query_decisions` and
+  `neuralmind_memory_search` MCP tools, and the LIKE fallback used when SQLite
+  lacks FTS5. A question nothing answers can still return partial matches, so
+  check the titles.
+- **Status filters are case-insensitive**, and `ALL` returns every status
+  (over MCP, the advertised `"all"` used to match nothing). The CLI's
+  `--status` also accepts `INVALIDATED`. An unknown status is an error,
+  `invalid_request` over MCP, instead of an empty result.
+- **`neuralmind decisions eval` leaves your decisions alone.** It used to delete
+  the project's `.neuralmind/memory.db` and leave synthetic decisions with the
+  author `eval-harness` behind; it now runs on a scratch store. The
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness) shows how to retire
+  any it left. `--format md` no longer crashes.
+- **`neuralmind decisions eval --queries FILE`** scores search against
+  questions with known answers: recall@k and MRR as mean and range per query
+  kind, with every miss and false positive listed. The committed query set and
+  its measured results are in the
+  [Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness).
+- **MCP errors say what to do.** A missing index is `code: "index_not_built"`
+  with a hint to call `neuralmind_build`, not `security_denied`;
+  `security_denied` carries `reason: "rbac"` or `"rate_limit"`. See
+  [Troubleshooting](../wiki/Troubleshooting.md).
+
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
 |---|---|---|
-| **Claude Code** (MCP + hooks) | Indexed gitignored copies; every query and hook taught the synapse layer, including eval scripts | Index covers what git covers; `learn: false` and `NEURALMIND_NO_LEARN=1` give read-only queries; hooks skip learning under the env switch |
+| **Claude Code** (MCP + hooks) | Indexed gitignored copies; every query and hook taught the synapse layer, including eval scripts; Bash and content-mode Grep results were followed by a system reminder holding NeuralMind's copy of the same output | Index covers what git covers; `learn: false` and `NEURALMIND_NO_LEARN=1` give read-only queries; hooks skip learning under the env switch; the Read/Bash/Grep hooks add nothing to a tool result |
 | **Cursor / Cline / Continue** (MCP) | Same indexing; no way to query without training | Same indexing fix; `learn: false` on `neuralmind_query` / `neuralmind_search` |
 | **Generic MCP client** | `neuralmind_query` always wrote | Read-only on request; the tool schema documents `learn` |
 | **CI** | `benchmark` numbers against a fixed 50K; evals trained on themselves | `neuralmind eval .` read-only with history; `NEURALMIND_NO_LEARN=1` for the whole job |
@@ -163,8 +295,11 @@ the symbols both runs sampled, reporting how many were added or dropped.
   old numbers.
 - **`neuralmind eval <path>`** now runs the project eval; the old suites are
   under `--suite`.
+- **The hook change needs no reinstall.** The registered hooks are the same;
+  they just stop returning context. `neuralmind last` works as before.
 
 ## Related
 
 - Use case: [Measure retrieval on your own repo](../use-cases/measure-retrieval-on-your-repo.md)
-- CLI reference: [`eval`](../wiki/CLI-Reference.md#eval-v0140-project-eval-v450), [`query`](../wiki/CLI-Reference.md#query), [`benchmark`](../wiki/CLI-Reference.md#benchmark), [`probe`](../wiki/CLI-Reference.md#probe-v0270)
+- Benchmark: [Tool-output compression](../benchmarks/compression.md)
+- CLI reference: [`eval`](../wiki/CLI-Reference.md#eval-v0140-project-eval-v450), [`query`](../wiki/CLI-Reference.md#query), [`benchmark`](../wiki/CLI-Reference.md#benchmark), [`probe`](../wiki/CLI-Reference.md#probe-v0270), [`decisions`](../wiki/CLI-Reference.md#decisions)

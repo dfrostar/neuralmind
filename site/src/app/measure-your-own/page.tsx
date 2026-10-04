@@ -23,7 +23,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 // Every command is real and every sample output below is verbatim CLI output
-// (psf/requests v2.32.3, NeuralMind v4.3.4). This page used to describe
+// on psf/requests v2.32.3 (benchmark: NeuralMind v4.5.0; probe: v4.3.4). This page used to describe
 // `neuralmind benchmark .` as comparing against ripgrep and reporting per-query
 // recall, and showed an output format the CLI has never printed. It reports
 // token reduction; recall on your own code comes from `neuralmind probe .`.
@@ -45,14 +45,17 @@ const steps: Step[] = [
     {
         step: '3',
         title: 'Measure token reduction',
-        body: 'Runs five generic code questions and reports wake-up tokens, average tokens per question, and the reduction against a fixed 50,000-token estimate of naive context. The estimate does not scale with your repo, so read the ratio as directional — tokens per question is the hard number.',
+        body: 'Runs five generic code questions (or the ones in your .neuralmind.eval.yaml) and reports wake-up tokens, average tokens per question, and the reduction: your code — every code file the index covers, measured at the same ~4 characters per token as the context — over the tokens a question costs. It scales with your repo. The legacy line repeats the run against the fixed 50,000-token estimate releases before v4.5.0 used, so older numbers stay comparable.',
         code: ['neuralmind benchmark .', '# machine-readable:', 'neuralmind benchmark . --json'],
         output: [
             'Project: requests',
+            'Baseline: measured: 94,069 tokens in 36 indexed code files',
+            'Questions: generic',
             'Wake-up tokens: 510',
-            'Avg query tokens: 1185.0',
-            'Avg reduction: 42.3x',
-            'Summary: 42.3x average token reduction',
+            'Avg query tokens: 1200.6',
+            'Avg reduction: 78.6x',
+            'Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)',
+            'Summary: 78.6x average token reduction vs measured: 94,069 tokens in 36 indexed code files',
         ],
     },
     {
@@ -83,7 +86,7 @@ const whatYouGet = [
     },
     {
         metric: 'Reduction',
-        desc: 'Naive context divided by NeuralMind’s, against the fixed 50K-token estimate. Published submissions so far run from 46× to 65.6×; the range we quote for real repos is a more conservative 12–50×.',
+        desc: 'Your code over NeuralMind’s context: the measured size of every code file the index covers, divided by the tokens each question costs and averaged — on psf/requests, 94,069 tokens of code at ~1,200 a question, 78.6×. Docs and changelogs are left out, so prose can’t pad it. (The public benchmark’s 45.0× on the same repo is a different measurement — 14 pre-registered questions against non-test source only — so the two don’t compare directly.) Before v4.5.0 the CLI divided a fixed 50K-token estimate instead (41.8× on the same run); the community submissions so far (46× to 65.6×) and the 12–50× field-report range were measured that way.',
     },
     {
         metric: 'Answerability & recall@k',
@@ -194,7 +197,7 @@ export default function MeasureYourOwnPage() {
                         ))}
                     </dl>
                     <p className="text-slate-400 text-sm mt-4 leading-relaxed">
-                        Want a baseline that scales with the repo? The{' '}
+                        Want correctness scored as well as cost? The{' '}
                         <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
                         measures against every source file and scores gold-file recall on pre-registered
                         queries — it needs a source checkout because the harness ships in the repo.

@@ -86,11 +86,25 @@ body:
   - type: input
     id: avg_reduction_ratio
     attributes:
-      label: Average reduction ratio
-      description: From `neuralmind benchmark .` — ratio, not percentage (e.g. 65.6, not 98.5%)
+      label: Average reduction ratio (vs the fixed 50K estimate)
+      description: "`avg_reduction_ratio` in the --contribute JSON — the ratio every row of the table compares on. A ratio, not a percentage (e.g. 65.6, not 98.5%)."
       placeholder: "65.6"
     validations:
       required: true
+
+  - type: input
+    id: measured_avg_reduction_ratio
+    attributes:
+      label: Average reduction ratio (vs your measured code)
+      description: "`measured_avg_reduction_ratio` in the --contribute JSON (v4.5.0+). Leave blank if it isn't there."
+      placeholder: "78.6"
+
+  - type: input
+    id: full_codebase_tokens
+    attributes:
+      label: Measured code size (tokens)
+      description: "`full_codebase_tokens` in the --contribute JSON (v4.5.0+) — the code the index covers, at ~4 chars/token."
+      placeholder: "94069"
 
   - type: dropdown
     id: model
@@ -123,7 +137,7 @@ body:
     attributes:
       label: Exact command you ran
       description: Reviewers may re-run this. Keep it reproducible.
-      placeholder: "neuralmind benchmark . --json"
+      placeholder: "neuralmind benchmark . --naive-50k --json"
     validations:
       required: true
 

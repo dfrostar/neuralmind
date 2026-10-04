@@ -300,3 +300,41 @@ def test_init_hook_in_a_linked_worktree(repo, tmp_path):
     _init_hook(worktree, no_drift=True)
     post_commit = (repo / ".git" / "hooks" / "post-commit").read_text()
     assert "neuralmind decisions scan . --quiet || true" in post_commit
+
+
+# ------------------------------------------------------------------ #
+# --status filter (side finding 1: "all" and lowercase matched nothing)
+# ------------------------------------------------------------------ #
+
+
+def _record_each_status(store: DecisionStore):
+    active = _record(store, title="Syringe units model active")
+    gone = _record(store, title="Syringe units model retired")
+    store.invalidate(gone.id, reason="superseded")
+    return active, gone
+
+
+@pytest.mark.parametrize("word", ["all", "ALL", "All"])
+def test_query_status_all_any_case(parser, project, capsys, word):
+    active, gone = _record_each_status(DecisionStore(str(project)))
+    out = _run(
+        parser, ["decisions", "query", "Syringe", str(project), "--status", word, "--json"], capsys
+    )
+    assert {d["id"] for d in json.loads(out)} == {active.id, gone.id}
+
+
+def test_query_status_invalidated_lowercase(parser, project, capsys):
+    _, gone = _record_each_status(DecisionStore(str(project)))
+    out = _run(
+        parser,
+        ["decisions", "query", "Syringe", str(project), "--status", "invalidated", "--json"],
+        capsys,
+    )
+    assert [d["id"] for d in json.loads(out)] == [gone.id]
+
+
+def test_query_status_unknown_is_a_usage_error(parser, project, capsys):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["decisions", "query", "Syringe", str(project), "--status", "archived"])
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

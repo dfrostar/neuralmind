@@ -5,14 +5,16 @@ hooks.py — Claude Code PostToolUse hook integration
 Two responsibilities:
 
 1. **install_hooks()** — writes .claude/settings.json (project or global)
-   to register NeuralMind's compressors as PostToolUse hooks.
+   to register NeuralMind's lifecycle and tool hooks.
 
 2. **run_hook()** — the runtime entrypoint invoked by Claude Code for each
-   tool call. Reads the hook payload from stdin (Claude Code hook protocol),
-   transforms the tool output, writes the new payload to stdout.
+   hook event. Reads the hook payload from stdin (Claude Code hook protocol)
+   and, where an action has something to add, writes a JSON response to
+   stdout.
 
-This file is intentionally kept slim. All compression logic lives in
-`compressors.py`; this module only bridges Claude Code's hook contract.
+The Read/Bash/Grep PostToolUse actions no longer return compressed tool
+output; see run_hook() for why. The compressors in `compressors.py` remain,
+measured by `evals/compression/` (docs/benchmarks/compression.md).
 """
 
 from __future__ import annotations
@@ -23,13 +25,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Literal
-
-from .compressors import (
-    cap_search_results,
-    compress_bash,
-    compress_read,
-    offload_if_large,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +49,8 @@ HOOK_VERSION = "4"
 def _hook_block() -> dict:
     """Return the canonical neuralmind hook block.
 
-    PostToolUse: token-saving compressors for Read/Bash/Grep output.
+    PostToolUse: Read/Bash/Grep matchers (Bash caches successful output for
+        `neuralmind last`; none of them injects context — see run_hook).
     SessionStart: warm the synapse store and run a decay tick.
     UserPromptSubmit: inject spreading-activation neighbors as context.
     PreCompact: normalize hubs before context shrinks.
@@ -261,20 +257,17 @@ def _is_neuralmind_block(block: dict) -> bool:
 def run_hook(action: str) -> int:
     """Entry point for `neuralmind _hook <action>`.
 
-    Reads a JSON payload from stdin (Claude Code hook protocol), transforms
-    the tool output, writes new JSON to stdout.
+    Reads a JSON payload from stdin (Claude Code hook protocol) and, for the
+    actions that add context, writes a JSON response to stdout.
 
-    Claude Code hook payload (PostToolUse) contains:
-      - tool_name: "Read" | "Bash" | "Grep" | ...
-      - tool_input: dict of args passed to the tool
-      - tool_response: dict including `output` (stdout) or `content`
+    A PostToolUse payload carries ``tool_name``, ``tool_input`` and
+    ``tool_response`` — the tool's structured output (Read's text sits under
+    ``file.content``; Bash has ``stdout``/``stderr`` and no exit code). It
+    fires only for a tool call that succeeded; failures fire
+    PostToolUseFailure. A response's ``additionalContext`` is *added* next to
+    the tool result; only ``updatedToolOutput`` replaces it.
 
-    Our response schema (per Claude Code docs): we can emit a
-    `stdout_override` or equivalent — exact key may vary by hook version.
-    We implement the safest behavior: print the transformed output to
-    stdout; Claude Code captures it and forwards to the model.
-
-    If compression fails or is not applicable, print nothing (fail open).
+    Anything that goes wrong, or doesn't apply, prints nothing (fail open).
     """
     try:
         raw = sys.stdin.read()
@@ -291,6 +284,15 @@ def run_hook(action: str) -> int:
     if os.environ.get("NEURALMIND_BYPASS") == "1":
         return 0
 
+    # The Read/Bash/Grep actions (and the opt-in offload) used to return their
+    # compressed text as `additionalContext`. Claude Code adds that next to the
+    # tool result instead of replacing it, so the model got the full output
+    # *plus* the compressed copy: Bash calls grew 17.5% and content-mode Grep
+    # 22.1% on the committed benchmark (bench/compression/results-v4.3.4.json),
+    # and the Read action never saw Claude Code's payload at all. They now
+    # inject nothing. Shrinking a result for real takes `updatedToolOutput`,
+    # and a replacement must keep what the agent needs — which the same
+    # benchmark measures before anything ships.
     if action == "compress-read":
         # Read dedup: a repeat read of content this agent already received in
         # this session is replaced (updatedToolOutput) with a short stub; the
@@ -310,9 +312,6 @@ def run_hook(action: str) -> int:
         )
         if not (file_path and content):
             return 0
-        compressed = compress_read(file_path, content)
-        if compressed != content:
-            _emit(compressed)
         # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
         cwd = payload.get("cwd") or os.getcwd()
         _record_tool_transition(cwd, file_path)
@@ -324,9 +323,11 @@ def run_hook(action: str) -> int:
         exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
         if not (stdout or stderr):
             return 0
-        # Stash raw output before compression so `neuralmind last` can
-        # recover the dropped middle without paying re-run cost. Fail
-        # open: a cache write failure must never break the hook.
+        # Stash the output (credential-redacted by write_last_output) so
+        # `neuralmind last` can show it again without re-running the command.
+        # Only successful calls get here: a failing one fires
+        # PostToolUseFailure. Fail open: a cache write failure must never
+        # break the hook.
         try:
             from .output_cache import write_last_output
 
@@ -335,26 +336,9 @@ def run_hook(action: str) -> int:
             write_last_output(cwd, stdout, stderr, exit_code, command=command)
         except Exception:
             pass
-        compressed = compress_bash(stdout, stderr, exit_code)
-        _emit(compressed)
         return 0
 
-    if action == "cap-search":
-        content = tool_response.get("content") or tool_response.get("output") or ""
-        if not content:
-            return 0
-        capped = cap_search_results(content)
-        if capped != content:
-            _emit(capped)
-        return 0
-
-    if action == "offload":
-        content = tool_response.get("content") or tool_response.get("output") or ""
-        if not content:
-            return 0
-        compressed, _ = offload_if_large(content)
-        if compressed != content:
-            _emit(compressed)
+    if action in ("cap-search", "offload"):
         return 0
 
     if action == "stale-guard":
@@ -989,23 +973,6 @@ def _emit_for_event(event_name: str, content: str) -> None:
         "hookSpecificOutput": {
             "hookEventName": event_name,
             "additionalContext": content,
-        },
-    }
-    sys.stdout.write(json.dumps(response))
-    sys.stdout.flush()
-
-
-def _emit(transformed: str) -> None:
-    """Emit a JSON response that tells Claude Code to use our transformed output.
-
-    Claude Code's hook schema supports returning a JSON object with
-    `hookSpecificOutput.additionalContext` on PostToolUse. We include the
-    transformed output there so the model sees it.
-    """
-    response = {
-        "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "additionalContext": transformed,
         },
     }
     sys.stdout.write(json.dumps(response))
