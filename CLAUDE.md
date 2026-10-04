@@ -107,6 +107,17 @@ When a new document is authored, file it in the right repo:
 this public repo. Both repos deploy to `neuralmind.uk`; only this one
 (`neuralmind`) publishes to PyPI and GHCR.
 
+## `docs/` is a public website
+
+GitHub Pages builds https://docs.neuralmind.uk/ from `main:/docs` (legacy
+Jekyll build, domain in `docs/CNAME`) on every push to `main`, without waiting
+for CI. A file committed under `docs/` goes public within minutes, so only
+docs-site file types belong there: Markdown, HTML, site assets, images, and the
+site's own data files. CI enforces the type allowlist
+(`scripts/check_docs_site_allowlist.py`, stdlib-only). Scripts, datasets, and
+other projects' files go in their own repos. To add a new file type, edit the
+allowlist in the same change.
+
 ## Local conventions
 
 - Tests live in `tests/`. The synapse layer's tests are stdlib-only
