@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from .http_util import MAX_BODY_BYTES, RequestError, read_body
+from .http_util import MAX_BODY_BYTES, RequestError, json_type_name, read_json_object
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -335,11 +335,43 @@ class DaemonError(Exception):
         self.message = message
 
 
-def _require(body: dict, key: str):
+def _require(body: dict, key: str) -> str:
     val = body.get(key)
     if val in (None, ""):
         raise DaemonError(400, f"missing required field {key!r}")
+    if not isinstance(val, str):
+        raise DaemonError(400, f"field {key!r} must be a string, got {json_type_name(val)}")
     return val
+
+
+def _int_param(value: Any, key: str, default: int, minimum: int) -> int:
+    """Coerce a body/query-string value to an int, or raise a 400 naming ``key``.
+
+    Accepts ints, integral floats (``3.0``), and decimal strings (query-string
+    values always arrive as strings). A bare ``int()`` here raised ValueError /
+    TypeError on ``"abc"`` or a list and surfaced as a 500.
+    """
+    if value is None or value == "":
+        return default
+    number: int | None = None
+    if isinstance(value, bool):
+        number = None  # bool is an int subclass; True is not a count
+    elif isinstance(value, int):
+        number = value
+    elif isinstance(value, float) and value.is_integer():
+        number = int(value)
+    elif isinstance(value, str):
+        try:
+            number = int(value.strip())
+        except ValueError:
+            number = None
+    if number is None:
+        shown = repr(value)
+        shown = shown if len(shown) <= 60 else shown[:57] + "..."
+        raise DaemonError(400, f"{key!r} must be an integer, got {shown}")
+    if number < minimum:
+        raise DaemonError(400, f"{key!r} must be >= {minimum}, got {number}")
+    return number
 
 
 def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> tuple[int, dict]:
@@ -352,6 +384,8 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
     parsed = urlparse(path)
     route = parsed.path.rstrip("/") or "/"
     qs = parse_qs(parsed.query)
+    if body is not None and not isinstance(body, dict):
+        return 400, {"error": f"request body must be a JSON object, got {json_type_name(body)}"}
     body = body or {}
 
     try:
@@ -376,7 +410,9 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
                 project,
                 (qs.get("cost") or ["0"])[0] in ("1", "true"),
                 (qs.get("model") or [None])[0],
-                int((qs.get("queries_per_day") or ["100"])[0]),
+                _int_param(
+                    (qs.get("queries_per_day") or [None])[0], "queries_per_day", 100, minimum=0
+                ),
             )
         if method == "POST" and route == "/query":
             return 200, _query(
@@ -388,7 +424,10 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
             )
         if method == "POST" and route == "/search":
             return 200, _search(
-                ctx, _require(body, "project"), _require(body, "query"), int(body.get("n", 10))
+                ctx,
+                _require(body, "project"),
+                _require(body, "query"),
+                _int_param(body.get("n"), "n", 10, minimum=1),
             )
         if method == "POST" and route == "/build":
             return _build(
@@ -543,19 +582,13 @@ class _Handler(BaseHTTPRequestHandler):
         body = {}
         if method == "POST":
             try:
-                raw = read_body(self, MAX_BODY_BYTES)
+                body = read_json_object(self, MAX_BODY_BYTES)
             except RequestError as exc:
-                # Answered from the header alone; the body (if any) is unread,
-                # so don't let it be parsed as a follow-up request.
+                # The body may be unread (a bad Content-Length is refused from
+                # the header alone), so don't parse it as a follow-up request.
                 self.close_connection = True
                 self._send(exc.status, {"error": exc.message})
                 return
-            if raw:
-                try:
-                    body = json.loads(raw.decode("utf-8"))
-                except ValueError:
-                    self._send(400, {"error": "invalid JSON body"})
-                    return
         status, payload = dispatch(self._ctx, method, self.path, body)
         self._send(status, payload)
 

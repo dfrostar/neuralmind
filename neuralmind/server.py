@@ -45,7 +45,7 @@ from .event_log import (
     default_log_path,
     event_log_enabled,
 )
-from .http_util import RequestError, read_body
+from .http_util import RequestError, read_json_object
 from .metrics_pipeline import MetricsCollector
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -306,14 +306,12 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_error(401, "missing or invalid token")
 
     def _read_json_body(self) -> dict:
-        """Read the JSON request body; raises RequestError for a bad Content-Length."""
-        raw = read_body(self)
-        if not raw:
-            return {}
-        try:
-            return json.loads(raw.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
-            return {}
+        """Read the request body as a JSON object.
+
+        Raises RequestError (answered as a 4xx) for a bad Content-Length,
+        invalid JSON, or JSON that isn't an object.
+        """
+        return read_json_object(self)
 
     def do_GET(self) -> None:  # noqa: N802 - http.server API
         parsed = urlparse(self.path)
@@ -508,8 +506,9 @@ class _Handler(BaseHTTPRequestHandler):
             try:
                 body = self._read_json_body()
             except RequestError as exc:
-                # The body (if any) is unread; close rather than parse it as
-                # a follow-up request.
+                # The body may be unread (a bad Content-Length is refused from
+                # the header alone); close rather than parse it as a
+                # follow-up request.
                 self.close_connection = True
                 self._send_json(
                     {"ok": False, "error": exc.message},

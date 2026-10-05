@@ -361,3 +361,66 @@ def test_e2e_oversized_content_length_gets_413(running_daemon, length):
     assert status == 413
     assert "too large" in payload["error"]
     assert running_daemon.health()["ok"] is True
+
+
+def _post_json(path, raw: bytes):
+    return _raw_request(
+        "POST",
+        path,
+        headers={"Content-Type": "application/json", "Content-Length": str(len(raw))},
+        body=raw,
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, kind", [(b"[]", "array"), (b'"x"', "string"), (b"3", "number"), (b"null", "null")]
+)
+def test_e2e_non_object_json_body_gets_400(running_daemon, raw, kind):
+    status, payload = _post_json("/search", raw)
+    assert status == 400
+    assert "JSON object" in payload["error"] and kind in payload["error"]
+
+
+def test_e2e_invalid_json_body_gets_400(running_daemon):
+    status, payload = _post_json("/search", b"{not json")
+    assert status == 400 and "invalid JSON" in payload["error"]
+
+
+def test_e2e_non_integer_search_n_gets_400(running_daemon, tmp_path):
+    raw = json.dumps({"project": str(tmp_path), "query": "q", "n": "abc"}).encode()
+    status, payload = _post_json("/search", raw)
+    assert status == 400 and "'n'" in payload["error"]
+
+
+def test_e2e_non_integer_queries_per_day_gets_400(running_daemon, tmp_path):
+    status, payload = _raw_request("GET", f"/savings?project={tmp_path}&queries_per_day=abc")
+    assert status == 400 and "queries_per_day" in payload["error"]
+
+
+def test_dispatch_rejects_non_object_body(registry):
+    status, payload = daemon_mod.dispatch(_ctx(registry), "POST", "/query", ["x"])
+    assert status == 400 and "JSON object" in payload["error"]
+
+
+@pytest.mark.parametrize("n", ["abc", "1.5", True, [3], {"n": 1}, 0, -2])
+def test_dispatch_search_rejects_bad_n(registry, tmp_path, n):
+    status, payload = daemon_mod.dispatch(
+        _ctx(registry), "POST", "/search", {"project": str(tmp_path), "query": "q", "n": n}
+    )
+    assert status == 400 and "'n'" in payload["error"]
+
+
+@pytest.mark.parametrize("n", [3, "3", 3.0])
+def test_dispatch_search_accepts_integer_n(registry, tmp_path, n):
+    status, payload = daemon_mod.dispatch(
+        _ctx(registry), "POST", "/search", {"project": str(tmp_path), "query": "q", "n": n}
+    )
+    assert status == 200 and isinstance(payload["results"], list)
+
+
+@pytest.mark.parametrize("field", ["project", "question"])
+def test_dispatch_rejects_non_string_required_field(registry, tmp_path, field):
+    body = {"project": str(tmp_path), "question": "how?"}
+    body[field] = ["not", "a", "string"]
+    status, payload = daemon_mod.dispatch(_ctx(registry), "POST", "/query", body)
+    assert status == 400 and field in payload["error"]

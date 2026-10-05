@@ -11,6 +11,7 @@ Stdlib-only.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 # Request bodies on these servers are small JSON objects (a project path and a
@@ -63,3 +64,41 @@ def read_body(handler: Any, max_bytes: int = MAX_BODY_BYTES) -> bytes:
     """
     length = content_length(handler.headers, max_bytes)
     return handler.rfile.read(length) if length else b""
+
+
+def json_type_name(value: Any) -> str:
+    """Name a decoded JSON value by its JSON type ("array", "string", ...)."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "array"
+    return "object" if isinstance(value, dict) else type(value).__name__
+
+
+def parse_json_object(raw: bytes) -> dict:
+    """Decode a request body that must be a JSON object (an empty body is ``{}``).
+
+    Raises :class:`RequestError` 400 for invalid JSON or for valid JSON of any
+    other type — handlers call ``body.get(...)``, which on a list, string or
+    number raised ``AttributeError`` and surfaced as a 500 (or no response).
+    """
+    if not raw:
+        return {}
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except ValueError:  # includes UnicodeDecodeError
+        raise RequestError(400, "invalid JSON body") from None
+    if not isinstance(body, dict):
+        raise RequestError(400, f"request body must be a JSON object, got {json_type_name(body)}")
+    return body
+
+
+def read_json_object(handler: Any, max_bytes: int = MAX_BODY_BYTES) -> dict:
+    """:func:`read_body` then :func:`parse_json_object`; raises :class:`RequestError`."""
+    return parse_json_object(read_body(handler, max_bytes))

@@ -505,3 +505,27 @@ def test_open_oversized_content_length_gets_413(tmp_path):
             )
             assert status == 413
             assert "too large" in payload["error"]
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (b"[]", "JSON object"),
+        (b'"x"', "JSON object"),
+        (b"3", "JSON object"),
+        (b"{not json", "invalid JSON"),
+    ],
+)
+def test_open_bad_json_body_gets_400(tmp_path, raw, expected):
+    """A non-object body raised AttributeError in the handler (connection
+    dropped, no response); invalid JSON was silently read as {}."""
+    with _running_server(_open_mind(tmp_path)) as base:
+        status, payload = _raw_request(
+            base,
+            "POST",
+            "/api/open",
+            headers={"Content-Type": "application/json", "Content-Length": str(len(raw))},
+            body=raw,
+        )
+    assert status == 400
+    assert payload["ok"] is False and expected in payload["error"]
