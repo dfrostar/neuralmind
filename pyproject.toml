@@ -76,6 +76,9 @@ keywords = [
     "memory-governance",
     "session-recap",
     "session-continuity",
+    "semantic-decision-search",
+    "decision-memory",
+    "hybrid-search",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

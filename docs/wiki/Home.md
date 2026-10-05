@@ -128,7 +128,10 @@ with `neuralmind decisions invalidate` when the code moves on (since v4.6.0 the
 `init-hook` post-commit hook also retires them automatically). The
 **stale-decision guard** (v4.2.0) is a `PreToolUse` hook that warns your agent
 before it edits a file governed by a decision marked stale or invalidated
-(fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). v4.3.0 adds progressive,
+(fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). Since v4.7.0, decision
+search ranks by meaning as well as by shared words, with the local embedding
+model, so a question finds a decision worded differently from it
+([Memory Layer](Memory-Layer.md#query-decisions)). v4.3.0 adds progressive,
 three-layer decision retrieval over MCP; v4.0.0 shipped the context budget,
 session summaries and the on-demand `neuralmind cognition-loop` (rebuilt in
 v4.6.0, which also wired read dedup into the Read hook and removed the unused

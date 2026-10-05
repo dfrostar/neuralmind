@@ -3111,24 +3111,40 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by keywords or a question (titles and rationales)."""
+    """Search decisions by keywords, a question, or meaning (titles and rationales)."""
+    from neuralmind.memory.semantic import SemanticSearchUnavailableError
+
     store = _get_decisions_store(args.project_path)
-    results = store.query(
-        text=args.query,
-        limit=args.limit,
-        status=args.status,
-    )
+    try:
+        found = store.search(
+            text=args.query,
+            limit=args.limit,
+            status=args.status,
+            mode=args.mode,
+        )
+    except SemanticSearchUnavailableError as e:
+        print(
+            f"Semantic search unavailable: {e}. Use --mode hybrid or --mode keyword.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if found.notice:
+        print(f"[neuralmind] {found.notice}", file=sys.stderr)
+    results = found.records
     if args.json:
         import json
 
         print(json.dumps([r.model_dump() for r in results], indent=2, default=str))
+        # stdout stays the bare array scripts already parse; the mode that
+        # ranked it goes to stderr.
+        print(f"[neuralmind] search mode: {found.mode}", file=sys.stderr)
         return
 
     if not results:
-        print(f"No decisions found for: {args.query}")
+        print(f"No decisions found for: {args.query} ({found.mode} search)")
         return
 
-    print(f'# NeuralMind Decisions Query: "{args.query}"')
+    print(f'# NeuralMind Decisions Query: "{args.query}" ({found.mode})')
     print()
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
@@ -3312,10 +3328,12 @@ def cmd_decisions_scan(args):
 def cmd_decisions_eval(args):
     """Run the maintenance replay benchmark, or score a query set (--queries)."""
     from neuralmind.memory.eval import MaintenanceEval, QuerySetEval, load_query_set
+    from neuralmind.memory.semantic import SEARCH_MODES
 
     output_format = "markdown" if args.format == "md" else args.format
     if args.queries:
-        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+        modes = SEARCH_MODES if args.mode == "all" else (args.mode,)
+        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit, modes=modes)
     else:
         eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
     report = eval_harness.run(output_format=output_format)
@@ -6878,10 +6896,17 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.set_defaults(func=cmd_decisions_record)
 
     d_query = decisions_sub.add_parser(
-        "query", help="Search decisions by keywords or a question (titles and rationales)"
+        "query", help="Search decisions by keywords, a question, or meaning (titles and rationales)"
     )
     d_query.add_argument(
         "query", help="Keywords or a question; any word can match, best matches first"
+    )
+    d_query.add_argument(
+        "--mode",
+        type=str.lower,
+        choices=["keyword", "semantic", "hybrid"],
+        help="keyword: shared words; semantic: meaning (local embedding model); "
+        "hybrid: both, fused. Default: $NEURALMIND_DECISION_SEARCH, else hybrid",
     )
     d_query.add_argument("--limit", "-n", type=int, default=5)
     d_query.add_argument(
@@ -6957,6 +6982,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     d_eval.add_argument(
         "--limit", type=int, default=5, help="Results per query with --queries (default: 5)"
+    )
+    d_eval.add_argument(
+        "--mode",
+        type=str.lower,
+        choices=["keyword", "semantic", "hybrid", "all"],
+        default="all",
+        help="Search mode(s) to score with --queries (default: all, side by side)",
     )
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
     d_eval.add_argument("--output", "-o", help="Output file")

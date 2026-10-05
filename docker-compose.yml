@@ -1,10 +1,16 @@
 version: "3.8"
+# This service sets no `command:`, so the image's default (`neuralmind --help`)
+# runs and exits. See docs/specs/LOCAL-API-SPEC.md, finding A7.
 services:
   neuralmind:
-    image: ghcr.io/dfrostar/neuralmind:1.0.0
+    # Release tags are v-prefixed (vX.Y.Z). Set NEURALMIND_IMAGE_TAG to pin one.
+    image: ghcr.io/dfrostar/neuralmind:${NEURALMIND_IMAGE_TAG:-latest}
     volumes:
       - neuralmind-data:/data
       - ./license.json:/app/license.json:ro
+      # The indexed project, read-write: NeuralMind writes .neuralmind/ into it,
+      # and the MCP server appends to its audit log on every call.
+      - ${NEURALMIND_PROJECT:-.}:/project
     ports:
       - "127.0.0.1:8787:8787"
     environment:
@@ -13,7 +19,9 @@ services:
       - NEURALMIND_DATA_DIR=/data
       - NEURALMIND_ACTOR_EMAIL=admin@localhost
     healthcheck:
-      test: ["CMD", "neuralmind", "doctor"]
+      # `neuralmind doctor` exits 0 even when a check fails, so it can't fail a
+      # probe. `health` exits 0 healthy, 1 stale index, 2 no index.
+      test: ["CMD", "neuralmind", "health", "/project"]
       interval: 30s
       timeout: 10s
       retries: 3
