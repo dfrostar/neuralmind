@@ -90,9 +90,11 @@ def compute_edge_half_life(
     recency_confidence = math.exp(-LN2 * days_since_last / namespace_default)
 
     # Map frequency → half-life. The function is monotonic but saturating:
-    # freq=0 → lo, freq=∞ → hi. At freq=1/day ≈ midpoint.
+    # freq=0 → lo, freq=∞ → hi. At freq=1/day ratio == 1 → exactly midpoint.
+    # (Feeding ``freq * age_days`` here cancelled the age back out, so the
+    # result depended on the raw count alone, not on activations per day.)
     try:
-        ratio = math.log1p(freq * age_days / 10.0)
+        ratio = math.log1p(freq) / LN2
     except ValueError:
         ratio = 0.0
     learned = lo + (hi - lo) * (ratio / (1.0 + ratio))
