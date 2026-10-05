@@ -1707,30 +1707,74 @@ def _emit_class(b: _GraphBuilder, cls_node, src: bytes, rel: str, file_id: str) 
             _emit_assignment(b, member, src, rel, container=cid)
 
 
+def _py_import_base(rel: str, spec: str) -> str | None:
+    """The absolute dotted module that ``from <spec> import …`` in ``rel`` names.
+
+    Leading dots are relative to the importing module's package (``pkg/a.py``
+    → ``pkg``; a package's own ``__init__.py`` is that package), one level up
+    per dot after the first. A relative import that climbs above the project
+    root names a module outside the index → ``None``.
+    """
+    stripped = spec.lstrip(".")
+    dots = len(spec) - len(stripped)
+    if not dots:
+        return stripped
+    package = [p for p in _module_dotted(rel).split(".") if p]
+    if rel.rsplit("/", 1)[-1] != "__init__.py":
+        package = package[:-1]
+    up = dots - 1
+    if up > len(package):
+        return None
+    base = package[: len(package) - up]
+    if stripped:
+        base.append(stripped)
+    return ".".join(base)
+
+
+def _py_module_file(b: _GraphBuilder, dotted: str) -> str | None:
+    """File node id for a dotted module — exact key first, then the src-layout
+    spelling (``lib.core`` → ``src/lib/core.py``, registered as ``src.lib.core``)."""
+    target = b.file_by_module.get(dotted)
+    if target is None and dotted:
+        target = b.file_by_module.get(f"src.{dotted}")
+    return target
+
+
 def _resolve_imports(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
     """`from x.y import ...` / `import x.y` → imports_from edges within project."""
     for child in root_node.named_children:
-        module_dotted = None
+        targets: list[str | None] = []
         if child.type == "import_from_statement":
             mod = child.child_by_field_name("module_name")
-            if mod is not None:
-                module_dotted = _node_text(mod, src).lstrip(".")
+            base = _py_import_base(rel, _node_text(mod, src)) if mod is not None else None
+            if base is None:
+                continue
+            # `from pkg import utils` names the submodule pkg/utils.py when there
+            # is one; any other name comes from the module/package itself.
+            from_base = False
+            for name_node in child.children_by_field_name("name"):
+                if name_node.type == "aliased_import":
+                    name_node = name_node.child_by_field_name("name")
+                name = _node_text(name_node, src) if name_node is not None else ""
+                sub = _py_module_file(b, f"{base}.{name}" if base else name) if name else None
+                if sub:
+                    targets.append(sub)
+                else:
+                    from_base = True
+            if from_base or not targets:
+                targets.append(_py_module_file(b, base))
         elif child.type == "import_statement":
             for n in child.named_children:
                 if n.type in ("dotted_name", "aliased_import"):
-                    base = n.child_by_field_name("name") if n.type == "aliased_import" else n
-                    module_dotted = _node_text(base, src) if base is not None else None
+                    base_node = n.child_by_field_name("name") if n.type == "aliased_import" else n
+                    if base_node is not None:
+                        targets.append(_py_module_file(b, _node_text(base_node, src)))
                     break
-        if not module_dotted:
-            continue
-        target = b.file_by_module.get(module_dotted)
-        if target is None:
-            # try package __init__ match: a.b -> a/b/__init__.py registered as a.b
-            target = b.file_by_module.get(module_dotted.rstrip("."))
-        if target and target != file_id:
-            b.add_edge(
-                "imports_from", file_id, target, rel, child.start_point[0] + 1, context="import"
-            )
+        for target in dict.fromkeys(targets):
+            if target and target != file_id:
+                b.add_edge(
+                    "imports_from", file_id, target, rel, child.start_point[0] + 1, context="import"
+                )
 
 
 def _resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:

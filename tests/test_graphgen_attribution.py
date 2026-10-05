@@ -4,6 +4,10 @@
   function anywhere in the project that happens to share its name (``B.run``'s
   call used to land on ``A.run``; a nested ``wrapper`` inside ``outer()`` gave
   its calls to ``other.py``'s ``wrapper``).
+- A Python relative import resolves against the importing module's package
+  (``from .utils import x`` in ``pkg/a.py`` used to link the top-level
+  ``utils.py``), and a src-layout absolute import (``from lib.core import f``
+  under ``src/``) resolves at all.
 """
 
 from __future__ import annotations
@@ -224,3 +228,77 @@ def test_update_files_attributes_calls_like_a_full_build(tmp_path: Path) -> None
     calls = _edges(graph, "calls")
     assert ("m_py__b_cls__run_fn", "m_py__helper_b_fn") in calls
     assert ("m_py__a_cls__run_fn", "m_py__helper_b_fn") not in calls
+
+
+# --------------------------------------------------------------------------- #
+# Python imports → the right module
+# --------------------------------------------------------------------------- #
+_PKG = {
+    "pkg/__init__.py": "from .utils import helper\n",
+    "pkg/utils.py": "def helper(): pass\n",
+    "pkg/sub/__init__.py": "",
+    "utils.py": "def other(): pass\n",
+}
+
+
+def test_relative_import_resolves_against_the_importers_package(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            **_PKG,
+            "pkg/a.py": "from .utils import helper\n",
+            "pkg/sub/b.py": "from ..utils import helper\n",
+        },
+    )
+    imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
+    assert ("pkg_a_py", "pkg_utils_py") in imports
+    assert ("pkg_sub_b_py", "pkg_utils_py") in imports
+    # A package's own __init__ resolves `.` to itself, not to its parent.
+    assert ("pkg_init_py", "pkg_utils_py") in imports
+    assert not any(target == "utils_py" for _, target in imports)
+
+
+def test_from_dot_import_submodule_links_the_submodule(tmp_path: Path) -> None:
+    _write(tmp_path, {**_PKG, "pkg/a.py": "from . import utils\n"})
+    imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
+    assert ("pkg_a_py", "pkg_utils_py") in imports
+    assert ("pkg_a_py", "utils_py") not in imports
+
+
+def test_relative_import_above_the_project_root_links_nothing(tmp_path: Path) -> None:
+    """``...utils`` from ``pkg/a.py`` names a module outside the indexed tree —
+    it must not fall back to the project's own top-level ``utils.py``."""
+    _write(tmp_path, {**_PKG, "pkg/a.py": "from ...utils import helper\n"})
+    imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
+    assert not any(src == "pkg_a_py" for src, _ in imports)
+
+
+def test_src_layout_absolute_import_resolves(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "src/lib/__init__.py": "",
+            "src/lib/core.py": "def f(): pass\n",
+            "src/lib/api.py": "from lib.core import f\n",
+            "src/lib/cli.py": "import lib.core\n",
+            "src/lib/rel.py": "from .core import f\n",
+        },
+    )
+    imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
+    assert ("src_lib_api_py", "src_lib_core_py") in imports
+    assert ("src_lib_cli_py", "src_lib_core_py") in imports
+    assert ("src_lib_rel_py", "src_lib_core_py") in imports
+
+
+def test_exact_module_wins_over_the_src_layout_fallback(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "lib/core.py": "def f(): pass\n",
+            "src/lib/core.py": "def f(): pass\n",
+            "app.py": "from lib.core import f\n",
+        },
+    )
+    imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
+    assert ("app_py", "lib_core_py") in imports
+    assert ("app_py", "src_lib_core_py") not in imports
