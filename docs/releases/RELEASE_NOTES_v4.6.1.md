@@ -39,6 +39,9 @@ v4.6.0.
   `rate_limit: null` for the limiter. After writing a policy, check that it
   holds: call a tool you left out with `role: "admin"` and expect
   `security_denied`.
+- **The policy is read once per MCP server process.** The server keeps it for
+  each project until it exits, so an edit to `security:` takes effect when the
+  MCP server restarts (a new agent session, or reconnecting the server).
 - **The docs describe it as working.** `SECURITY.md`, the Security Guide, the
   Deployment Guide, the FAQ and risk R-03 had warned that these settings were
   ignored; they now show how to use them. The v4.5.1 release notes said a
@@ -86,10 +89,13 @@ Without one, every agent sees exactly what it saw in v4.6.0.
   calls a minute.
 - **If every MCP call comes back with `reason: "config"`,** the `security:`
   section has a value of the wrong type; the error names the setting to fix.
-  v4.6.0 ignored the section, so a mistake in it went unnoticed until now.
+  Fix it, then restart the MCP server: calls keep failing until it rereads the
+  file. v4.6.0 ignored the section, so a mistake in it went unnoticed until
+  now.
 - **If a tool you left out still answers,** the file didn't parse or the
   `security:` or `roles:` key is empty; both mean the defaults apply.
-- To get v4.6.0's behaviour back, delete the `security:` block.
+- To get v4.6.0's behaviour back, delete the `security:` block and restart the
+  MCP server.
 
 ## Related
 
