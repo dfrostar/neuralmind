@@ -298,6 +298,44 @@ class TestErrorCodes:
         assert data["reason"] == "config"
         assert "Refusing MCP calls" in data["error"]
 
+    @pytest.mark.parametrize(
+        "body",
+        [
+            # Doesn't parse: an unclosed flow list.
+            "security:\n  roles:\n    builder: [neuralmind_stats\n",
+            # Parses, but not to a mapping.
+            "- security\n",
+            # Empty keys, as when every entry under them is commented out.
+            "security:\n",
+            "security:\n  roles:\n  #  builder: [neuralmind_stats]\n",
+        ],
+    )
+    def test_a_policy_that_does_not_parse_or_is_empty_refuses_every_call(self, temp_project, body):
+        """Each of these used to restore the default policy, under which a
+        caller declaring admin reaches every tool."""
+        self._config(temp_project, body)
+        args = {"project_path": str(temp_project), "role": "admin"}
+        data = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "backend: [turbovec\n",
+            # A comment that mentions a setting doesn't make it a policy.
+            "backend: [turbovec\n# security is configured elsewhere\n",
+            "backend: [turbovec  # roles live in another file\n",
+        ],
+    )
+    def test_an_unparseable_file_that_names_no_policy_is_still_ignored(self, temp_project, body):
+        """Only a file that names a security setting fails closed; a typo in
+        backend tuning keeps the general loader's leniency."""
+        self._config(temp_project, body)
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert "error" not in data, data
+
     def test_a_null_rate_limit_means_the_defaults(self, temp_project):
         self._config(temp_project, "security:\n  rate_limit: null\n")
         data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
@@ -447,7 +485,7 @@ class TestToolNextLikely:
 
     def test_dispatcher_allows_builder_role_by_default(self, temp_project):
         """The default 'builder' role reaches neuralmind_next_likely. It was
-        advertised but refused to every default role until v4.8.0."""
+        advertised but refused to every default role until v4.8.1."""
         with patch("neuralmind.mcp_server.tool_next_likely") as mock_tool:
             mock_tool.return_value = {"enabled": True, "from_node": "x", "next": []}
             result = handle_tool_call(
@@ -509,7 +547,7 @@ class TestToolImpact:
             mock_tool.assert_called_once_with(str(temp_project), "x", 2)
 
     def test_dispatcher_allows_builder_role_by_default(self, temp_project):
-        """The default 'builder' role reaches neuralmind_impact (refused until v4.8.0)."""
+        """The default 'builder' role reaches neuralmind_impact (refused until v4.8.1)."""
         with patch("neuralmind.mcp_server.tool_impact") as mock_tool:
             mock_tool.return_value = {"symbol": "x", "resolution": "none", "dependents": []}
             result = handle_tool_call(

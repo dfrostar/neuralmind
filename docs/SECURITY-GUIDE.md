@@ -86,11 +86,11 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 | `builder` | The `reader` set, plus `build`, document ingestion, and recording or invalidating decisions |
 | `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), the read-only structure and recall lookups (`review`, `impact`, `structural_neighbors`, `synaptic_neighbors`, `next_likely`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
 
-No tool is admin-only by default. Through v4.7.0, `synaptic_neighbors`,
+No tool is admin-only by default. Through v4.8.0, `synaptic_neighbors`,
 `structural_neighbors`, `next_likely`, `impact` and `review` were listed to
 agents but refused to `builder` and `reader`, so an agent following the docs
 got `security_denied` from `neuralmind_review`. They only read, like `query`,
-and v4.8.0 grants them to both roles. A `security.roles` policy you wrote is
+and v4.8.1 grants them to both roles. A `security.roles` policy you wrote is
 unaffected: it replaces the defaults, as described below.
 
 ### Capping what a caller can claim
@@ -118,18 +118,28 @@ An empty `roles: {}` grants nothing. If `roles`, `rate_limit`, or the
 second, a value that isn't a whole number), the server refuses every MCP call
 with `reason: config` instead of falling back to defaults that may be looser.
 
-Two mistakes are not caught, and leave the defaults in force, `admin`
-included: a file that doesn't parse (a YAML syntax error reads as no
-configuration), and a `security:` or `roles:` key left empty, which YAML reads
-as `null` and the server as "no policy". After writing a policy, call a tool
-you left out with `role: "admin"` and check that it returns `security_denied`.
+*(v4.8.0+)* Two more mistakes refuse every call with `reason: config` too:
+
+- a policy file that doesn't parse, when its text outside comments names
+  `security`, `roles`, `rate_limit`, `identity` or `require_encrypted_storage`
+  (other unparseable files still read as empty, so a typo in backend tuning
+  doesn't block the server);
+- a `security:` or `roles:` key left empty, which YAML reads as `null` and is
+  what's left when every entry under it is commented out. Write `roles: {}` to
+  grant nothing, or remove the key to use the defaults. An empty
+  `rate_limit:` still means the default limit.
+
+v4.7.0 and earlier read both as "no policy" and applied the defaults, `admin`
+included; v4.7.0 refused an unparseable file only when it named `identity` or
+`require_encrypted_storage`.
+`neuralmind doctor` reports each as a failed *Security policy* check. A
+misspelled key (`role:` for `roles:`) is still read as absent, so after writing
+a policy, call a tool you left out with `role: "admin"` and check that it
+returns `security_denied`.
 
 The server reads the policy once per project and keeps it until it exits, so
 restart the MCP server (a new agent session, or reconnecting the server) after
 editing `security:`.
-
-*(v4.7.0+)* A file that names `identity` or `require_encrypted_storage` but
-doesn't parse is the exception: it is refused rather than read as empty.
 
 The rate limit keys on the actor, so with declared identities it stops a
 runaway agent, not a caller that changes its actor name. Under
@@ -338,12 +348,12 @@ otherwise write a live credential to a plaintext file. Credentials are stripped 
 and the entry records which kinds were removed. Opt out with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 
-Through v4.7.0 this cache missed some common shapes: the
+Through v4.8.0 this cache missed some common shapes: the
 `"SecretAccessKey"` and `"SessionToken"` JSON that `aws sts get-session-token`
 prints, JSON keys such as `{"password": "…"}`, and the part of a bare value
 after a `;` or `,` (`DB_PASSWORD=abc;rest`). If you ran such commands under
-the hook on v4.7.0 or earlier, delete `.neuralmind/last_output.json` and
-rotate what it held. v4.8.0 redacts all three.
+the hook on v4.8.0 or earlier, delete `.neuralmind/last_output.json` and
+rotate what it held. v4.8.1 redacts all three.
 
 `.neuralmind/` also carries its own `.gitignore` containing `*`, written
 when the directory is created, so the state directory cannot be

@@ -124,7 +124,7 @@ def test_handle_tool_call_rejects_empty_project_path(temp_project):
 
 # The default policy grants every tool to a role, or leaves it out on purpose.
 # Admin-only by default, as docs/SECURITY-GUIDE.md ("Default roles") lists:
-# none since v4.8.0, when the five read-only structure and recall lookups
+# none since v4.8.1, when the five read-only structure and recall lookups
 # (review, impact, structural/synaptic neighbors, next_likely) were granted to
 # builder and reader.
 ADMIN_ONLY_TOOLS: set[str] = set()

@@ -1,6 +1,6 @@
-# NeuralMind v4.8.0 — a new session starts with where the last one left off
+# NeuralMind v4.8.0 — a new session starts where the last one left off, decision search by meaning, and policy mistakes refused
 
-**Type:** Minor release | **Theme:** session continuity
+**Type:** Minor release | **Themes:** session continuity · decision memory ([decision search by meaning](#decision-search-by-meaning)) · MCP access control ([policy mistakes refused](#policy-mistakes-that-meant-the-defaults-now-refuse))
 
 A new Claude Code session used to start cold. NeuralMind gave it the code it
 had learned (`SYNAPSE_MEMORY.md`, per-prompt recall), but not the work: what
@@ -122,6 +122,220 @@ most four prompts of 200 characters and twelve file paths, plus a header. The
 example above is 525 characters; four full-length prompts and twelve
 30-character paths come to about 1,500.
 
+## Decision search by meaning
+
+Decision search used to find a decision only when the question shared a word
+with it. An agent asking "where do we verify who is calling an endpoint?"
+never reached "Use per-handler authentication middleware", because the two
+share no word. v4.8.0 ranks decisions by meaning as well, with the same local
+embedding model the code index already uses, and makes the fused ranking the
+default:
+
+- **Three search modes.** `hybrid` (default) fuses a keyword ranking and a
+  meaning ranking; `semantic` ranks by meaning only; `keyword` is the v4.6
+  search.
+- **Local, and never a download.** Vectors are computed on your machine and
+  cached in `.neuralmind/memory.db`. Search uses the model `neuralmind build`
+  already fetched; without it, hybrid search returns keyword results and says
+  so.
+- **Measured before it became the default.** 20 paraphrased questions that
+  share no word with their answers were written and committed, with a keep
+  rule, before semantic search was run on them. Hybrid passed the rule. It
+  finds 9 of the 20 in its top 5, where keyword search finds none, and the
+  misses are listed below.
+
+This is item G1 of the mem0 gap analysis in
+[`docs/specs/LOCAL-API-SPEC.md`](../specs/LOCAL-API-SPEC.md) §4.1. The other
+items (change history, duplicate warnings, filters, expiry dates and the rest)
+are not in this release.
+
+### Three search modes
+
+| Mode | Ranks by | Use it for |
+|------|----------|------------|
+| `hybrid` (default) | Shared words and meaning, fused by reciprocal rank fusion (k = 60) | Everyday questions |
+| `semantic` | Cosine similarity between the question and each decision's title + rationale, embedded with `all-MiniLM-L6-v2`; a decision needs at least 0.30 | Questions you expect to share no word with the decision |
+| `keyword` | Shared words: FTS5, bm25-ranked, any word can match (v4.5.1+) | Exact identifiers, and the v4.6 ranking |
+
+- **CLI:** `neuralmind decisions query "QUESTION" --mode hybrid|semantic|keyword`.
+  Every output names the mode that ran: the header
+  (`# NeuralMind Decisions Query: "…" (hybrid)`), the empty result
+  (`No decisions found for: … (hybrid search)`), and, with `--json`, a
+  `[neuralmind] search mode: hybrid` line on stderr; stdout stays the JSON
+  array of records.
+- **MCP:** `neuralmind_query_decisions` and `neuralmind_memory_search` take an
+  optional `mode` (case-insensitive). Every response carries `mode`, the mode
+  that ranked the results, and `notice` when hybrid fell back to keyword.
+- **Python:** `DecisionStore.query(..., mode=...)` as before, and
+  `DecisionStore.search(...)`, which also returns the mode that ran and any
+  notice.
+- **Default:** `NEURALMIND_DECISION_SEARCH` sets the mode for calls that name
+  none: CLI, MCP tools and Python API. Unset, it is `hybrid`.
+  `NEURALMIND_DECISION_SEARCH=keyword` restores the v4.6 ranking everywhere.
+- All three modes search the same fields, titles and rationales, and honor
+  the same status and confidence filters. Evidence, tags and rejected
+  alternatives are still not searched.
+
+### Local, cached, and never a download
+
+- **What gets embedded:** each decision's title and rationale, the fields
+  keyword search covers. Evidence is left out because invalidating, staling
+  and restoring a decision append lifecycle notes to it.
+- **When:** the first semantic or hybrid search embeds every decision.
+  Vectors are cached in a new `decision_vectors` table in
+  `memory.db`, with a hash of the text and the model id. Later searches embed
+  only the question and any decision recorded or amended since; a status
+  change doesn't re-embed. Deleting a decision deletes its vector. Recording a
+  decision stays as fast as before, because nothing is embedded at write time.
+- **Never a download:** search uses the model only if it is already on disk
+  (`neuralmind build` fetches it once, or ChromaDB's cache has it). Without it:
+  - `hybrid` returns keyword results, with
+    `[neuralmind] semantic ranking unavailable (…); keyword results only` on
+    stderr (CLI) or `"mode": "keyword"` plus a `notice` (MCP);
+  - `semantic` is an error: the CLI exits 1, and MCP returns
+    `code: "semantic_unavailable"` with a hint.
+- Each semantic or hybrid search loads the model, so it takes longer than a
+  keyword search. No outbound request is added.
+
+### Measured before it became the default
+
+**Evidence:** reproducible on demand from a source checkout, not a CI gate for
+every column:
+
+```bash
+NEURALMIND_ORT_THREADS=1 neuralmind decisions eval \
+  --queries tests/memory/fixtures/decision_queries.json --format md
+```
+
+`tests/memory/test_query_eval.py` holds the
+[Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness)'s table to what the
+eval measures: the keyword column on every CI run, the semantic and hybrid
+columns wherever the model is on disk (CI doesn't download it). Repeated runs
+here gave identical numbers, with `NEURALMIND_ORT_THREADS=1` and without it.
+
+**What was frozen first.** Commit
+[`7172855`](https://github.com/dfrostar/neuralmind/commit/7172855) added 20 paraphrased questions,
+each sharing no search word with its answer (a test enforces it), with the
+0.30 similarity floor and this keep rule. Nothing was changed after the run.
+Against keyword search, hybrid becomes the default only if:
+
+- (a) recall on the paraphrases rises;
+- (b) recall on the 20 existing questions doesn't fall, and their MRR falls by
+  no more than 0.05;
+- (c) no fewer exact titles rank first.
+
+Questions nothing answers are reported, not gated. Keyword search already
+returns partial matches for them, and the tools tell the agent to check the
+titles.
+
+Synthetic set: 35 decisions (30 ACTIVE), limit 5, status ACTIVE.
+
+| Measure | Keyword (v4.6) | Semantic | Hybrid (default) |
+|---------|---------|----------|------------------|
+| Recall@5 on 20 questions, mean (range) | 1.00 (1.00–1.00) | 0.95 (0.00–1.00) | 1.00 (1.00–1.00) |
+| MRR on 20 questions, mean (range) | 0.94 (0.33–1.00) | 0.95 (0.00–1.00) | 0.95 (0.50–1.00) |
+| Recall@5 on 20 paraphrases, mean (range) | 0.00 (0.00–0.00) | 0.50 (0.00–1.00) | 0.45 (0.00–1.00) |
+| MRR on 20 paraphrases, mean (range) | 0.00 (0.00–0.00) | 0.44 (0.00–1.00) | 0.28 (0.00–1.00) |
+| Paraphrases that return nothing | 6 of 20 | 7 of 20 | 1 of 20 |
+| Exact titles ranked first | 30 of 30 | 30 of 30 | 30 of 30 |
+| Questions nothing answers that still return decisions | 2 of 4 | 1 of 4 | 2 of 4 |
+
+Hybrid passed all three conditions.
+
+#### The misses, published
+
+- **Half the paraphrases are still missed.** Semantic search finds 10 of 20 in
+  its top 5. For 7 it returns nothing, because no decision reaches the 0.30
+  floor. For 3 it returns only other decisions: "where do we verify who is
+  calling an endpoint?" ranks a logging decision, not the authentication
+  middleware.
+- **Hybrid finds one paraphrase fewer than semantic alone, and ranks them
+  lower** (MRR 0.28 against 0.44): keyword partial matches on other words of
+  the question take slots. In exchange it keeps every keyword hit, and it
+  returns something for 19 of the 20.
+- **Semantic alone misses a question keyword search answers.** "is the graph
+  server reachable from other machines on the network?" ranks the
+  graph-server decision instead of the loopback-binding one. Hybrid ranks the
+  answer second.
+- **Questions nothing answers:** hybrid returns decisions for the same 2 of 4
+  as keyword search; for "what is our gdpr data retention policy?" it fills
+  all 5 slots.
+- **Synthetic, one author.** Every decision and question was written by the
+  same author, in the same session as the keep rule. Real teams word things
+  more differently. Score your own with a query set in the same format.
+
+The smoke test run while building this used one of the 20 paraphrases ("where
+do we verify who is calling an endpoint?"), so that question's semantic result
+was seen before the eval ran. The floor and the keep rule were not changed.
+
+### The eval scores every mode
+
+- `neuralmind decisions eval --queries FILE` runs keyword, semantic and hybrid
+  side by side on one scratch store (`--mode all`, the default), or one of
+  them with `--mode`.
+- A mode that can't run, because the model isn't on disk, is listed under
+  **Not run** with the reason. A hybrid search that fell back to keyword
+  results is never scored as hybrid.
+- The maintenance replay (`decisions eval` without `--queries`) stays on
+  keyword search, so its numbers don't depend on whether the model is cached.
+
+### What the agent sees
+
+| Agent | Before (v4.7) | After (v4.8) |
+|---|---|---|
+| **Claude Code** (MCP + hooks) | `neuralmind_memory_search` and `neuralmind_query_decisions` found a decision only through a shared word; a question in other words got nothing, or partial matches on unrelated words | The same calls also rank by meaning. The response says `"mode": "hybrid"`, or `"mode": "keyword"` with a `notice` when the model isn't on disk. Hooks are unchanged: the stale-decision guard matches by file, not by search |
+| **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
+| **Generic MCP client** | No way to choose the ranking | Optional `mode`: `hybrid`, `semantic` or `keyword`. `semantic` without the model returns `code: "semantic_unavailable"`; an unknown mode is `invalid_request` |
+
+**New variable:** `NEURALMIND_DECISION_SEARCH` sets the decision-search mode
+for calls that name none (`hybrid` by default; `semantic`; `keyword` for the
+v4.6 ranking).
+
+## Policy mistakes that meant the defaults now refuse
+
+[v4.6.1](RELEASE_NOTES_v4.6.1.md) made the MCP server apply `security.roles`
+and `security.rate_limit`, and refuse a `security:` value of the wrong type
+with `reason: config`. Its release notes also listed two mistakes it still read
+as "no policy", which applies the default policy. That policy gives `admin`
+every tool, and any caller can declare `admin` unless
+[`identity: os`](RELEASE_NOTES_v4.7.0.md) is set. v4.8.0 refuses both.
+
+If `neuralmind-backend.yaml` has no `security:` section, nothing changes.
+
+### What changed
+
+- **A policy file that doesn't parse is refused** when its text, outside
+  comments, names a security setting: `security`, `roles`, `rate_limit`,
+  `identity` or `require_encrypted_storage`. Every MCP call returns
+  `code: "security_denied"`, `reason: "config"`, and an error quoting the parse
+  failure. v4.7.0 did this only for files naming `identity` or
+  `require_encrypted_storage`, and counted a mention in a comment. Other
+  unparseable files still read as empty, so a typo in backend tuning doesn't
+  block the server.
+- **A `security:` or `roles:` key left empty is refused.** YAML reads a key
+  with nothing under it as `null`, which is what's left when every entry under
+  it is commented out. The error says what to write instead: `roles: {}` to
+  grant nothing, or no key at all to use the defaults. An empty `rate_limit:`
+  still means the default limit, and a missing key still means the defaults.
+- **`neuralmind doctor` reports it.** The *Security policy* check fails on any
+  role-policy problem that makes the server refuse every call: these two, and
+  the wrong-type values v4.6.1 already refused.
+
+A misspelled key, such as `role:` for `roles:`, is still read as absent. After
+writing a policy, call a tool you left out with `role: "admin"` and check that
+it returns `security_denied`.
+
+### What the agent sees
+
+Only in a project whose `neuralmind-backend.yaml` has one of these mistakes.
+Every other project sees what it saw in v4.7.0.
+
+| Agent | Before | After |
+|---|---|---|
+| **Claude Code** (MCP + hooks) | The default policy: a call declaring `admin` reached every tool | Every MCP tool returns `security_denied` with `reason: "config"` and the setting to fix. Hooks don't go through the MCP role policy and are unaffected |
+| **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
+| **Generic MCP client** | Same as Claude Code | Same as Claude Code |
+
 ## Upgrading
 
 `pip install -U neuralmind`. Nothing to reinstall, and nothing to rebuild in a
@@ -129,331 +343,38 @@ project built with v3.9.0 or later (the recap looks for the
 `.neuralmind/build_status.json` a build leaves). The first recap appears in the
 session after the first one you work in on v4.8.0.
 
+**Decision search:**
+
+- **The first semantic or hybrid search embeds your decisions** and caches
+  the vectors in `memory.db`. On a machine where `neuralmind build` has never
+  run, hybrid search keeps returning keyword results, with a notice, until it
+  does.
+- **Results can differ from v4.7 for the same question.** Hybrid adds
+  decisions related in meaning and reorders the list, and a question nothing
+  answers may return loosely related decisions. Check the titles, as before.
+  `NEURALMIND_DECISION_SEARCH=keyword` restores the v4.6 ranking.
+- **`neuralmind decisions eval --queries` JSON changed shape.** Results are
+  now under `modes`, keyed by mode (`{"summary", "per_query"}` each), with
+  `not_run` beside them. The Markdown table gained a Mode column. A script that
+  read the top-level `summary` should read `modes.keyword.summary` instead.
+
+**MCP security policy:**
+
+- If `neuralmind-backend.yaml` has a `security:` section, run
+  `neuralmind doctor` before upgrading the MCP server. A failed
+  *Security policy* check names the setting to fix.
+- The server reads the policy once per process, so after fixing it, restart
+  the MCP server (a new agent session, or reconnecting the server).
+
 ## Related
 
 - Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md)
 - CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
   [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
-
----
-
-# Fixes in v4.8.0: installers that can't destroy your config, and the bug-hunt fixes
-
-This release fixes the high- and medium-severity bugs found by testing v4.7.0
-end to end. Two of the eight high-severity ones could destroy user
-configuration. A third left credentials in plaintext in the Bash output cache,
-under a header that said they had been redacted.
-
-1. **`install-hooks` and `install-mcp` no longer overwrite a config they
-   can't parse.** One trailing comma in `~/.claude/settings.json` was enough
-   for `install-hooks --global` to replace the file with a bare `hooks` block,
-   losing `permissions`, `model` and `env`. `--uninstall` deleted the file.
-   `install-mcp` did the same to Cursor, Cline and Claude Desktop configs,
-   removing every other MCP server along with the tokens in their `env`.
-2. **The Bash output cache redacts what the AWS CLI prints.** It also redacts
-   JSON password keys and a few other common shapes it used to miss.
-3. **Hooks do nothing in a project you haven't built.** With a global install,
-   the prompt hook used to run a full first-time build in whatever directory a
-   session opened in. That took minutes on a real repository, far past the
-   hook timeout.
-
-The other five: one non-UTF-8 doc no longer fails the build, rebuilds no longer
-duplicate doc edges, `watch --reindex` stops serving deleted symbols, and
-`neuralmind export .` works without `--output`.
-
-The medium-severity fixes are listed under [What changed](#what-changed). The
-ones you're most likely to notice:
-
-- Hooks keep working after the agent runs `cd` into a subdirectory.
-- `neuralmind_review`, `neuralmind_impact` and the three neighbour tools no
-  longer return `security_denied` under the default roles.
-- The graph links calls, Python relative imports and C++ headers to the right
-  nodes, and two files whose names differ only in punctuation or case no longer
-  share one node.
-- `neuralmind savings` stops counting builds and searches as saved queries.
-- Negative feedback weakens the association it targets, and a penalty stays in
-  place.
-
----
-
-## What changed
-
-### Installers refuse a config they can't round-trip
-
-- **`install-hooks` (project or `--global`) and `install-hooks --uninstall`**
-  now refuse when `settings.json` is not valid JSON, has a top level that isn't
-  an object, or has a `hooks` value that isn't an object. The error names the
-  file, says why, and leaves the file untouched. Exit code is 1:
-
-  ```text
-  Error: Refusing to modify ~/.claude/settings.json: it is not valid JSON
-  (Expecting property name enclosed in double quotes: line 5 column 1 (char 94)).
-  Fix the file (often a trailing comma), then re-run.
-  ```
-
-  An empty file still counts as no settings.
-- **`install-mcp`** applies the same rule to every client: Claude Code, Cursor,
-  Cline, Claude Desktop and VS Code. The VS Code path already worked this way.
-  A config with comments or a trailing comma is reported as `skipped-jsonc`,
-  and one whose top level isn't an object as `skipped-not-object`. Either way
-  the file is not modified, and the command prints the entry to add by hand:
-
-  ```text
-  ✗ claude-desktop: skipped-jsonc → …/claude_desktop_config.json is not strict JSON
-  (comments or a trailing comma?); left untouched. Add this entry by hand:
-  { "mcpServers": { "neuralmind": { "command": "neuralmind-mcp", "args": [] } } }
-  ```
-
-  A skipped client no longer prints ✓ or "Restart the client".
-
-### Secret redaction
-
-These apply wherever redaction runs: the automatic Bash output cache behind
-`neuralmind last`, `scan-for-secrets`, and `build --redact-secrets`.
-
-- **AWS CLI JSON.** `aws sts get-session-token` and
-  `aws configure export-credentials` print `"SecretAccessKey": "…"` and
-  `"SessionToken": "…"`. Only the access-key ID used to be redacted. The
-  secret key pattern now accepts quoted keys and the `SecretAccessKey`
-  spelling, and a new `aws-session-token` pattern covers `SessionToken` /
-  `AWS_SESSION_TOKEN`.
-- **Quoted keys in the generic rule.** `{"password": "…"}` and
-  `{'api_key': '…'}` are detected. The placeholder and entropy guards are
-  unchanged, so `{"password": "changeme"}` and `{"api_key": "${API_KEY}"}`
-  still aren't.
-- **No leaked tail on bare values.** `DB_PASSWORD=Ab9xQ2mZpL;TAILSECRET99`, as
-  `env` prints it, used to keep `;TAILSECRET99` after the marker. A bare value
-  now continues through `,` or `;` unless whitespace or a new `key=` follows.
-  `password=…,next=x` and `Server=db;Password=…;Database=app` still stop at
-  the next key.
-- **New high-confidence shapes:** GitLab personal access tokens (`glpat-`),
-  Hugging Face tokens (`hf_`), and passwords in `http(s)://user:password@host`
-  URLs, the form git remotes carry tokens in.
-
-### Hooks act only in a built project
-
-Every hook action now returns at once, writing nothing, unless the project
-already has `.neuralmind/`. That directory exists once `neuralmind build` has
-run. Before, a globally installed hook would:
-
-- build a full index from the prompt hook (graph, IR and vectors) in any
-  directory with source files;
-- create `.neuralmind/` from the session-start, edit, stale-guard, Bash-cache
-  and pre-compact actions.
-
-Read dedup already followed this rule. Prompt-time recall also no longer builds
-an index in a project that has `.neuralmind/` but no index yet (for example,
-one with only decision memory). It loads the existing index or injects nothing.
-
-The project is the nearest directory with `.neuralmind/`, starting from the
-directory in the hook payload and going no higher than `$CLAUDE_PROJECT_DIR`.
-Claude Code sets that variable for hooks, and the payload's directory follows
-the agent's shell. Before, after `cd auth` the hooks treated `auth/` as the
-project: they went silent, or, before the built-project rule, wrote a stray
-`auth/.neuralmind/`. Without `$CLAUDE_PROJECT_DIR` only the payload's own
-directory counts, so an unrelated `.neuralmind/` higher up is never used.
-
-Hooks also fail open as documented. A payload that isn't a JSON object, or a
-field of the wrong type, used to exit 1 with a traceback even under
-`NEURALMIND_BYPASS=1`. The bypass is now checked before the payload is read,
-and any error exits 0. The Read hook now finds the file text where Claude Code
-puts it (`tool_response.file.content`), so Read sequences reach the synapse
-layer.
-
-### Indexing and retrieval
-
-- **A non-UTF-8 Markdown, SQL, OpenAPI or proto file no longer fails the
-  build.** It used to abort the whole build and wrongly tell you to install
-  tree-sitter. These files are now decoded like code files: undecodable bytes
-  become U+FFFD and the file is still indexed. A UTF-8 BOM no longer hides the
-  first heading.
-- **Incremental rebuilds no longer duplicate doc and schema edges.** Each
-  no-change `neuralmind build` used to append another copy of every edge from
-  Markdown and schema files (links 18 → 20 → 22 on a four-file project), and a
-  renamed heading kept its old node. Doc and schema files are rebuilt from
-  scratch on each build, so repeated builds produce the same graph. Rebuild
-  once (`neuralmind build`) to drop duplicates already in your graph.
-- **`watch --reindex` no longer serves deleted symbols.** An incremental
-  `update_files` removed deleted symbols from the vector store but left the
-  keyword (BM25) index and its generation stamp alone. A removed function kept
-  coming back at the top of results, in every process, and each load printed a
-  false "Index out of step… Run: neuralmind build". It now rewrites the keyword
-  index and records the updated graph, as a full build does.
-- **`neuralmind export .` works without `--output`.** The default invocation,
-  and `--format pdf` without `--output`, crashed with `TypeError`. They now
-  write `neuralmind_export.csv` / `.pdf` in the current directory, as
-  documented.
-
-### Hooks, installers and the dashboard
-
-- **Default MCP roles can call the read-only lookup tools.**
-  `neuralmind_review`, `neuralmind_impact`, `neuralmind_structural_neighbors`,
-  `neuralmind_synaptic_neighbors` and `neuralmind_next_likely` were listed by
-  `tools/list` but missing from every default role, so they returned
-  `security_denied`. The `builder` and `reader` roles now include them. They
-  only read, like `neuralmind_query`. A project that defines its own
-  `security.roles` keeps exactly the policy it wrote.
-- **`install-mcp` keeps a customised entry.** Re-running it used to reset a
-  `neuralmind` entry with an absolute venv command (often needed, since MCP
-  clients launch servers with a minimal `PATH`) to bare `neuralmind-mcp`, and
-  dropped its `env`. An entry that already launches NeuralMind's server is now
-  left as written. A stale one is replaced, keeping your other keys. For VS
-  Code, settings that already nest `"mcp": {"servers": …}` no longer get a
-  second, dotted `"mcp.servers"` key.
-- **The dashboard escapes every value it renders.** A file or symbol name from
-  an untrusted repository, such as `x" onmouseover="alert(1)" y="`, rendered
-  as a live attribute, because quotes weren't escaped. Community ids, synapse
-  weights and counts weren't escaped at all.
-
-### Graph building
-
-Run `neuralmind build` once after upgrading to pick these up.
-
-- **Calls belong to the definition they're in.** A call inside `B.run` was
-  attributed to `A.run`, the first function with that name. A nested
-  function's calls could land on a same-named function in another file.
-- **Python imports resolve like Python does.** `from .utils import x` in
-  `pkg/a.py` linked the top-level `utils.py`, `from . import utils` linked
-  nothing, and src-layout imports never resolved. Relative imports now resolve
-  against the importer's package, and an import that climbs above the project
-  links nothing.
-- **Colliding names get their own nodes.** Ids fold case and punctuation, so
-  `api/v1.py` and `api_v1.py` shared one node, as did `docs/安装.md` and
-  `docs/使用.md`, and `Foo` / `foo`. Only colliding entities get new ids.
-  Every other id is unchanged, so learned associations keep their keys.
-- **`.h` headers parse as C++ in a C++ project** (or when the header itself
-  uses C++ syntax). They used to go to the C grammar, which lost classes and
-  namespaces.
-- **The directory walk stays inside the project.** Outside git, it followed
-  symlinks to directories elsewhere and recursed on a link like
-  `src/loop -> ..`.
-- **`.neuralmind.yaml` include/exclude globs apply to schema files** (`.sql`,
-  `.proto`, OpenAPI), and to `watch --reindex`, as they already did to code
-  and Markdown in a full build.
-- **A malformed OpenAPI spec no longer aborts the build.** `title: 2024`, or
-  `paths:` written as a list, failed the whole build. The spec now indexes
-  what it can, and a file that still can't be read is skipped. The debug log
-  names the file and the error type, not the parser's message, which can
-  quote the spec's text.
-- **A graph node with `"community": null` no longer fails the build.**
-  graphify and hand-written graphs can carry it.
-- **`.neuralmindignore` matches the way `.gitignore` does in git.** `[Oo]bj/`
-  and `*.py[co]` never matched, `/**/gen` matched only at the root, `build/`
-  also matched files named `build`, `!logs/keep.py` re-included a file under
-  an ignored `logs/`, and escapes such as `\#` and `foo\ ` weren't read. A
-  test checks the matcher against `git check-ignore`. The same matcher handles
-  `.gitignore` outside a git repository.
-- **Incremental builds notice more changes.** A file whose modification time
-  went backwards (`mv backup.py a.py`, `cp -p`, a restore) or whose size
-  changed is re-checked by content hash. When a new file defines a module or
-  symbol that an unchanged file already referenced, that file is re-extracted,
-  so its import and call edges appear without a full rebuild.
-
-### Retrieval
-
-- **`query --type code|docs` changes what's returned.** It used to re-boost
-  the hits after the context was already built, so the output didn't change.
-  It now replaces the detected intent before ranking.
-- **`context_budget` trims whole lines from L3, then L2, then L1.** It used to
-  cut the context at a character count, mid-word and starting with L0, while
-  reporting the untrimmed size. L0 is never trimmed, so a budget smaller than
-  L0 returns L0 whole. Hybrid-context highlights now count against the budget
-  too.
-- **A `--scope` build keeps its own keyword index.** After `build --scope
-  docs`, a default query lost its code keyword hits, and `build --scope code`
-  deleted the docs index. A non-default scope now writes
-  `bm25_unified_index.<scope>.json` and its siblings. The default scope keeps
-  its file names, so existing indexes stay valid.
-- **A relative `db_path` in `neuralmind-backend.yaml` resolves against the
-  project**, not the directory the command runs from. A query from another
-  directory used to build a second index there.
-
-### Numbers the CLI reports
-
-- **`neuralmind savings` counts only queries and wakeups.** Builds, searches,
-  MCP calls and ingestion each counted as a saved query charged a full
-  baseline. An MCP query counted twice. Expect lower totals after upgrading.
-  They are the correct ones.
-- **`review`, `drift` and `ci-check` work in a monorepo subdirectory.** For a
-  project at `services/billing`, git's repo-relative paths were joined onto
-  the project path, so `review` said "Looks complete", `drift` checked 0
-  symbols and `ci-check` skipped every file.
-- **`neuralmind stats` through the daemon reports a built project as built.**
-  It said `Built: False` for every project, because the daemon never loaded
-  the index before answering.
-
-### Synapse learning
-
-- **Negative feedback works.** `neuralmind_feedback` with `negative`
-  decayed the target's edges by their idle time, and those edges had just been
-  used, so nothing changed (0.3 became 0.29999998 after ten calls). Each call
-  now halves every edge touching the node, and its transitions. Long-term
-  edges stop at the 0.20 floor.
-- **Penalties stick.** The next decay used to lift a penalized long-term edge
-  straight back to the 0.20 floor. The floor now holds only edges at or above
-  it.
-- **Ephemeral edges decay on the documented 1-day half-life.** They decayed on
-  3 days.
-- **Learned half-lives follow how often an edge is used per day.** They
-  depended only on the lifetime activation count, so 10 uses in 2 days and 10
-  in 1,000 days decayed alike.
-- **PreCompact no longer erodes hubs.** Hub normalization shrank the same
-  edges again on every compaction (1.0 → 0.5 → 0.25 …). It now caps a hub's
-  total weight and leaves a hub within the cap alone. A hub above roughly 110
-  edges can have long-term edges trimmed below the floor, and those then decay
-  like other edges.
-- **Rebuilds no longer promote call edges.** Each build counted as another
-  activation, so after five builds of an unchanged graph its call paths became
-  protected long-term edges. Removed calls kept being re-seeded. Structural
-  edges now mirror the current build.
-- **Concurrent writers wait instead of failing.** Decay, document seeding, hub
-  normalization and synaptic tagging read before writing. When another process
-  wrote in between, they failed at once with "database is locked", and tagging
-  dropped its update. They now take the write lock first.
-- **Edits close together form one batch.** The watcher flushed each file once
-  that file alone had been quiet for the debounce window, so edits 0.5 s apart
-  arrived one at a time and formed no cross-file associations. The batch now
-  flushes once all edits go quiet. A file saved non-stop forces a flush after
-  ten windows.
-
-## What the agent actually sees post-install
-
-| Agent | Before | After |
-|-------|--------|-------|
-| **Claude Code** (MCP + hooks) | With global hooks, the first prompt in an unbuilt repo could block on a full index build until the hook timed out, and `.neuralmind/` appeared in every directory a session ran in. After `cd` into a subdirectory the hooks went silent. `neuralmind_review` after an edit returned `security_denied`. `neuralmind last` could replay AWS session credentials | In an unbuilt repo the hooks do nothing and add no context. In a built one, recall never triggers a build, and the hooks keep working from any subdirectory. `neuralmind_review` and `neuralmind_impact` answer. AWS CLI credentials are redacted in the cache |
-| **Cursor / Cline / Claude Desktop** (MCP) | `install-mcp` on a config with a trailing comma removed every other server | The config is left untouched, and the command prints the entry to paste |
-| **VS Code** (MCP) | JSONC was already left untouched. A config whose top level wasn't an object was overwritten | Both are left untouched |
-| **Generic MCP client** | `neuralmind_review`, `neuralmind_impact` and the neighbour tools returned `security_denied` under the default roles | They answer under `builder` and `reader` |
-
-## Environment variables
-
-None added or changed.
-
-## Upgrade notes
-
-- **If you rely on hooks in a project you never built,** run `neuralmind build`
-  there once. Hooks now treat `.neuralmind/` as the opt-in.
-- **To clear doc-edge duplicates** left by earlier incremental builds, run
-  `neuralmind build` once after upgrading.
-- **If `install-hooks` or `install-mcp` now refuses a file,** it has a syntax
-  error (usually a trailing comma). Fix the file and re-run, or paste the
-  printed entry by hand.
-- **Run `neuralmind build` once** to pick up the graph fixes (calls, imports,
-  headers, colliding names). Entities whose names collided get new node ids,
-  so associations learned for the merged node don't carry over to them.
-- **`neuralmind savings` totals drop.** The old totals counted builds,
-  searches and MCP calls as saved queries.
-- **Check `.neuralmindignore` re-includes.** As in git, `!logs/keep.py` no
-  longer brings a file back from under an ignored `logs/`. Write `logs/*`
-  instead. Leading spaces in a pattern now count, as they do in git.
-- **To keep the old MCP denials,** define `security.roles` for the project.
-  The five read-only lookup tools are now in the default `builder` and
-  `reader` roles.
-
-## Related
-
-- [CLI reference: install-hooks](../wiki/CLI-Reference.md#install-hooks) ·
-  [install-mcp](../wiki/CLI-Reference.md#install-mcp-v0190) ·
-  [scan-for-secrets](../wiki/CLI-Reference.md#scan-for-secrets)
-- [Security Guide: Secret Management](../SECURITY-GUIDE.md#secret-management)
-- [v4.7.0 release notes](RELEASE_NOTES_v4.7.0.md)
+- [Memory Layer wiki: search modes and the eval](../wiki/Memory-Layer.md#query-decisions)
+- [CLI reference: `decisions`](../wiki/CLI-Reference.md#decisions-v410) and
+  the `NEURALMIND_DECISION_SEARCH` variable
+- Use case: [Find the decision behind the code when you don't know its words](../use-cases/find-decisions-by-meaning.md)
+- Comparison: [NeuralMind vs. Mem0 and Zep](../comparisons/vs-mem0-zep.md)
+- [Security Guide: capping what a caller can claim](../SECURITY-GUIDE.md#capping-what-a-caller-can-claim)
+- Previous release: [v4.7.0](RELEASE_NOTES_v4.7.0.md)

@@ -12,12 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from .audit import AuditTrail, get_audit_trail
-from .backend_manager import load_backend_config
+from .backend_manager import backend_config_path, read_backend_config_file
 from .identity import os_identity
 from .security_config import (
     IDENTITY_DECLARED,
     IDENTITY_INVALID,
     SecuritySettings,
+    config_mentions,
     load_security_settings,
 )
 
@@ -330,16 +331,54 @@ def build_security_manager(project_path: str) -> MCPSecurityManager:
     ``security.rate_limit`` sets the limiter. Uncached: callers keep their own.
     """
     key = str(Path(project_path).resolve())
-    config = load_backend_config(key)
-    security = config.get("security") if isinstance(config, dict) else None
+    security, read_problem = _read_security_section(key)
     roles, max_calls, window_seconds, problem = _parse_policy(security)
     return MCPSecurityManager(
         project_path=key,
         policy=RBACPolicy(roles),
         rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
         settings=load_security_settings(key),
-        config_problem=problem,
+        config_problem=read_problem or problem,
     )
+
+
+def role_policy_problem(project_path: str | Path) -> str | None:
+    """Why the MCP server would refuse every call over ``security.roles`` or
+    ``security.rate_limit``, or None. The reading ``build_security_manager``
+    does, without building a manager (``neuralmind doctor`` reports it)."""
+    security, problem = _read_security_section(str(Path(project_path).resolve()))
+    return problem or _parse_policy(security)[3]
+
+
+# The ``security`` key is absent from the config file, as opposed to present
+# with an empty value, which YAML reads as None.
+_NOT_SET: Any = object()
+
+# Raw text that suggests an unparseable file was meant to carry a role policy.
+_POLICY_KEYS = ("security", "roles", "rate_limit")
+
+
+def _read_security_section(project_path: str) -> tuple[Any, str | None]:
+    """The ``security`` value as written (or ``_NOT_SET``), plus a problem.
+
+    The general config loader reads a file that doesn't parse as empty, which
+    here would restore the default policy, admin included. When such a file
+    names a policy setting, that is reported as a problem to refuse on.
+    """
+    path = backend_config_path(project_path)
+    if path is None:
+        return _NOT_SET, None
+    try:
+        config = read_backend_config_file(path)
+    except Exception as exc:
+        if not config_mentions(path, _POLICY_KEYS):
+            return _NOT_SET, None
+        detail = " ".join(str(exc).split())
+        return (
+            _NOT_SET,
+            f"{path.name} does not parse ({detail}); refusing rather than guessing its role policy",
+        )
+    return config.get("security", _NOT_SET), None
 
 
 def _parse_policy(
@@ -352,16 +391,37 @@ def _parse_policy(
     nothing. A role whose value is neither a list nor ``"*"`` gets no tools.
     ``problem`` names a malformed setting, which makes the manager refuse
     every call rather than fall back to defaults that may be looser.
+
+    ``security`` is ``_NOT_SET`` when the file has no such key. Present but
+    empty, it is a problem, as is an empty ``roles``: a section whose entries
+    were all commented out would otherwise mean the defaults, admin included.
     """
     max_calls, window_seconds = 60, 60
-    if security is None:
+    if security is _NOT_SET:
         return None, max_calls, window_seconds, None
+    if security is None:
+        return (
+            None,
+            max_calls,
+            window_seconds,
+            "`security` is empty; give it settings, or remove the key to use the defaults",
+        )
     if not isinstance(security, dict):
         return None, max_calls, window_seconds, "`security` must be a mapping"
 
     roles: dict[str, set[str] | str] | None = None
-    raw_roles = security.get("roles")
-    if raw_roles is not None:
+    if "roles" in security:
+        raw_roles = security["roles"]
+        if raw_roles is None:
+            return (
+                None,
+                max_calls,
+                window_seconds,
+                (
+                    "security.roles is empty; list the roles, write `roles: {}` to grant "
+                    "nothing, or remove the key to use the defaults"
+                ),
+            )
         if not isinstance(raw_roles, dict):
             return (
                 None,

@@ -280,13 +280,13 @@ NeuralMind secret scan — /home/dev/myproject
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
 key IDs, secret keys and session tokens (including the
-`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.8.0),
+`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.8.1),
 GitHub tokens and fine-grained PATs, GitLab PATs and Hugging Face tokens
-*(v4.8.0)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
+*(v4.8.1)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
 tokens, PEM private-key blocks, JWTs, `Authorization: Bearer`/`Basic`
 headers, and passwords embedded in database or `http(s)://user:password@host`
 URLs. `maybe` matches a generic `SECRET=value` assignment, including a quoted
-JSON or dict key such as `{"password": "…"}` *(v4.8.0)*, that cleared a
+JSON or dict key such as `{"password": "…"}` *(v4.8.1)*, that cleared a
 Shannon-entropy threshold and a placeholder denylist — so
 `password = "changeme"`, `api_key = os.environ["X"]`, and `KEY=${VAR}` are
 not reported.
@@ -340,8 +340,8 @@ Filter results by node type:
 | `--type docs` | Restrict to documentation only |
 | `--type auto` | Auto-detect intent (default) |
 
-*(v4.8.0+)* `code` and `docs` replace the detected intent before L3 is ranked.
-Before v4.8.0 they re-boosted the hits after the context was built, so the
+*(v4.8.1+)* `code` and `docs` replace the detected intent before L3 is ranked.
+Before v4.8.1 they re-boosted the hits after the context was built, so the
 returned context didn't change.
 
 #### Cross-Project Search *(v3.1.4+)*
@@ -1261,7 +1261,8 @@ per-environment default is never a silent mystery.
 **Security policy** and **Storage encryption** *(v4.7.0+)* report the
 [security settings](#security-settings-security-in-neuralmind-backendyaml):
 which identity mode MCP calls use and the role the current OS account gets,
-whether the policy file is group- or world-writable, and whether the project's
+*(v4.8.0+)* whether a malformed, empty or unparseable role policy makes the
+server refuse every call, whether the policy file is group- or world-writable, and whether the project's
 volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
 mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
@@ -2165,20 +2166,20 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
-**Built projects only** *(v4.8.0)*: every hook action does nothing in a
+**Built projects only** *(v4.8.1)*: every hook action does nothing in a
 directory without `.neuralmind/`, so a `--global` install leaves repos you
 haven't run `neuralmind build` in untouched. Prompt-time recall reads an
-existing index and never builds one; before v4.8.0 the `UserPromptSubmit`
+existing index and never builds one; before v4.8.1 the `UserPromptSubmit`
 hook could run a full first-time build, far past the hook timeout.
 
-**Subdirectories** *(v4.8.0)*: the project is the nearest directory with
+**Subdirectories** *(v4.8.1)*: the project is the nearest directory with
 `.neuralmind/`, starting from the payload's `cwd` (which follows the agent's
 shell) and going no higher than `$CLAUDE_PROJECT_DIR`, so the hooks keep
 working after the agent runs `cd src/auth`. Without `$CLAUDE_PROJECT_DIR`,
 only `cwd` itself counts. A payload the hooks can't use exits 0, never 1 with
 a traceback.
 
-**A `settings.json` that isn't valid JSON is refused** *(v4.8.0)*: install
+**A `settings.json` that isn't valid JSON is refused** *(v4.8.1)*: install
 and `--uninstall` exit 1 with an error naming the file and leave it
 untouched. A trailing comma used to make the command replace the file with
 just the hooks block (or delete it on `--uninstall`), losing `permissions`,
@@ -2238,9 +2239,9 @@ client's `mcpServers` config **without clobbering** your other servers
 (idempotent — re-running is a no-op).
 
 A config file that isn't strict JSON (comments, a trailing comma) or whose top
-level isn't an object is never rewritten, for any client *(v4.8.0; VS Code
+level isn't an object is never rewritten, for any client *(v4.8.1; VS Code
 already behaved this way)*. The command prints `✗ <client>: skipped-jsonc` (or
-`skipped-not-object`) with the entry to add by hand. Before v4.8.0 such a file
+`skipped-not-object`) with the entry to add by hand. Before v4.8.1 such a file
 was read as empty, and every other server in it was lost.
 
 ```bash
@@ -2356,7 +2357,7 @@ neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [-
 ```
 
 `query` takes keywords or a question, matched against decision titles and
-rationales. `--mode` *(v4.7.0+)* picks the ranking:
+rationales. `--mode` *(v4.8.0+)* picks the ranking:
 
 - `hybrid` (default): shared words and meaning, fused by reciprocal rank fusion.
 - `semantic`: meaning only: cosine similarity with each decision's embedded
@@ -2430,7 +2431,7 @@ directory and never read or change the project's decisions.
 | `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
 | `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
 | `--limit N` | Results per query with `--queries` (default 5) |
-| `--mode all\|keyword\|semantic\|hybrid` | *(v4.7.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
+| `--mode all\|keyword\|semantic\|hybrid` | *(v4.8.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
 | `--format json\|md` | Report format (default `json`) |
 | `--output FILE`, `-o` | Write the report to a file instead of stdout |
 
@@ -2896,7 +2897,7 @@ count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
 
-Since v4.8.0 only `query` and `wakeup` events count. Earlier versions also
+Since v4.8.1 only `query` and `wakeup` events count. Earlier versions also
 counted builds, searches, MCP calls and ingestion as saved queries, and an MCP
 query twice, so totals drop after upgrading.
 
@@ -3514,7 +3515,7 @@ renewed — issue a new one.
 | `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
-| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.7.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
+| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
@@ -3628,9 +3629,11 @@ security:
 With `identity: os`, NeuralMind refuses every MCP call when it can't establish
 the caller: the HTTP transport is in use, the OS account can't be read, the
 account has no role, or the policy file is world-writable (POSIX). A policy file
-that names `identity` or `require_encrypted_storage` but doesn't parse is
-refused too, rather than silently ignored, and a malformed `security`,
-`roles` or `rate_limit` value refuses every call. Each refusal is written to
+that doesn't parse but names a security setting (`security`, `roles`,
+`rate_limit`, `identity` or `require_encrypted_storage`) is refused too,
+rather than silently ignored (v4.7.0 checked only `identity` and
+`require_encrypted_storage`), and so is a malformed `security`, `roles` or
+`rate_limit` value, or *(v4.8.0+)* a `security:` or `roles:` key left empty. Each refusal is written to
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
