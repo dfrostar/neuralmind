@@ -336,3 +336,67 @@ def test_malformed_rotation_marker_fails_without_raising(tmp_path, change):
     assert result["ok"] is False
     assert result["first_bad_line"] == 1
     assert "rotation marker" in result["reason"]
+
+
+@pytest.mark.parametrize(
+    ("bad_line", "reason", "still_searchable"),
+    [
+        (b"not json at all\n", "isn't valid JSON", True),
+        (b"[1, 2, 3]\n", "isn't a JSON object", True),
+        # read_events() gives up on the whole file here, so the old verify()
+        # saw no records at all and reported ok.
+        (b"\xff\xfe broken\n", "isn't valid UTF-8", False),
+    ],
+)
+def test_verify_rejects_a_line_it_cannot_read(tmp_path, bad_line, reason, still_searchable):
+    """verify() used to read through read_events(), which skips such lines."""
+    trail, _ = _chained_trail(tmp_path, n=3)
+    with trail.events_file.open("ab") as f:
+        f.write(bad_line)
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 4
+    assert reason in result["reason"]
+    if still_searchable:
+        assert len(trail.read_events()) == 3  # search and export stay tolerant
+
+
+def test_verify_rejects_an_oversized_line(tmp_path):
+    trail, _ = _chained_trail(tmp_path, n=2)
+    with trail.events_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"pad": "x" * (AuditTrail.MAX_AUDIT_LINE_BYTES + 1)}) + "\n")
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 3
+    assert "1 MB" in result["reason"]
+
+
+def test_verify_reports_physical_line_numbers(tmp_path):
+    trail, records = _chained_trail(tmp_path, n=3)
+    lines = [json.dumps(r, sort_keys=True) for r in records]
+    lines[2] = json.dumps(_forge(records[2], strip_hash=False), sort_keys=True)
+    trail.events_file.write_text(lines[0] + "\n\n" + lines[1] + "\n" + lines[2] + "\n")
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 4  # the blank line counts
+    assert result["total"] == 3
+
+
+@pytest.mark.parametrize("change", ["altered", "removed"])
+def test_verify_checks_the_stored_prev_sha256(tmp_path, change):
+    """The hash excludes prev_sha256, so the stored link was never compared."""
+    trail, records = _chained_trail(tmp_path, n=3)
+    record = dict(records[1])
+    if change == "altered":
+        record["prev_sha256"] = "f" * 64
+    else:
+        record.pop("prev_sha256")
+    _write_lines(trail, [records[0], record, records[2]])
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 2
+    assert "prev_sha256" in result["reason"]

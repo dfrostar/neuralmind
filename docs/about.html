@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v480">
+            <h2>What&rsquo;s New in v4.8.0 &mdash; <code>audit verify</code> checks the whole log</h2>
+            <p><strong>In v4.7.0 and earlier, <code>neuralmind audit verify</code> passed logs it should have failed.</strong> v4.8.0 closes three gaps.</p>
+            <ul>
+                <li><strong>Records without a hash at the end of the log fail</strong> once the chain has started, so the last records can&rsquo;t be edited or forged by dropping their <code>sha256</code></li>
+                <li><strong>Every line must be a JSON object</strong> &mdash; a line it can&rsquo;t read fails instead of being skipped; search and export still skip it</li>
+                <li><strong>Each record&rsquo;s <code>prev_sha256</code> must match</strong> the hash of the record before it; a rotated log is checked against its archive</li>
+            </ul>
+            <p>It still can&rsquo;t detect records deleted from the end, or a chain recomputed by someone who can write the file. Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md">v4.8.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v470">
             <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, a check for encrypted storage, and decision search by meaning</h2>
             <h3>MCP roles bound to OS accounts, and a check for encrypted storage</h3>
@@ -207,7 +220,6 @@
                 <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
                 <li><strong><code>security.require_encrypted_storage: true</code></strong> &mdash; NeuralMind checks for FileVault, BitLocker or dm-crypt/LUKS on every volume that holds its state, including a custom index path, and refuses to build, query, serve MCP tools or run hooks until the check passes. It doesn&rsquo;t encrypt anything itself: in-process crypto from a pip wheel isn&rsquo;t FIPS-validated</li>
                 <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
-                <li><strong><code>audit verify</code> catches records without a hash</strong> once the chain has started, so records edited or appended at the end of the log with their hash removed fail; it reports records from before the chain, checks a rotated log against its archive, and still can&rsquo;t detect records deleted from the end</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
             <h3>Decision search finds a decision worded differently from the question</h3>

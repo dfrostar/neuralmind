@@ -474,9 +474,12 @@ bare date means the start of that day. `--until 2026-04-01` takes in all of
 March 31, and `--until 2026-03-31` would leave March 31 out.
 
 `audit verify` catches an edited record, a record deleted from the middle of
-the log, and, once the chain has started, any record without a `sha256`. So
-records edited or appended with their hash removed fail too. v4.6.1 and
-earlier accepted a record without a hash anywhere as a legacy line, so those
+the log, and, once the chain has started, any record without a `sha256` or
+with a `prev_sha256` that doesn't match the record before it. So records
+edited or appended with their hash removed fail too. It also fails on any
+line that isn't a JSON object, where search and export skip it. v4.7.0 and
+earlier accepted a record without a hash anywhere as a legacy line, skipped
+lines they couldn't parse, and never compared `prev_sha256`, so all of those
 passed.
 
 Records from before the hash chain existed (written by versions before
@@ -564,8 +567,9 @@ AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
-   changed record mid-log and a record without a hash after the chain
-   starts, not records removed from the end or a recomputed chain
+   changed record mid-log, a record without a hash after the chain starts,
+   and an unreadable line, not records removed from the end or a
+   recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
    Evidence: require_encrypted_storage verifies full-disk encryption and

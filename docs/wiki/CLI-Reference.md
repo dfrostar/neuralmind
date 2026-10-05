@@ -138,7 +138,7 @@ neuralmind audit verify [project_path] [--json]
 | Code | Meaning |
 |------|---------|
 | `0` | Every hashed record checks out |
-| `1` | A record fails: its hash doesn't match, or it has no hash after the chain started |
+| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started |
 
 #### Output
 
@@ -146,12 +146,15 @@ neuralmind audit verify [project_path] [--json]
 before the hash chain (written by versions before v0.46.2, so the chain doesn't
 cover them), and which rotated archive the log continues, if any, and whether
 its link to that archive was checked (it can't be once the archive is pruned).
-On failure, the line number and the reason go to stderr. `--json` prints `ok`,
-`first_bad_line`, `total`, `unchained`, `continues_from`, `archive_checked` and
-`reason`.
+On failure, the line number in the file and the reason go to stderr. `--json`
+prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
+`archive_checked` and `reason`. `first_bad_line` is `null` when the file can't
+be read at all.
 
-v4.6.1 and earlier accepted a record without a hash anywhere in the log, so
-records edited or appended at the end with their hash removed passed.
+v4.7.0 and earlier accepted a record without a hash anywhere in the log,
+skipped lines they couldn't parse, and never compared `prev_sha256`. So records
+edited or appended at the end with their hash removed, and garbage appended to
+the log, passed.
 
 #### What it can't detect
 

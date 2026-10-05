@@ -209,13 +209,20 @@ class AuditTrail:
         """Walk the hash chain, return status.
 
         Returns ``{ok, first_bad_line, total, unchained, continues_from,
-        archive_checked, reason}``.
+        archive_checked, reason}``. ``first_bad_line`` is the line number in
+        the file, and ``total`` counts its non-empty lines.
+
+        Unlike :meth:`read_events`, which skips what it can't parse so search
+        and export keep working, verification reads the file strictly: a
+        non-empty line that isn't a JSON object (bad UTF-8, bad JSON, a
+        non-object value, or over 1 MB) fails.
 
         Records before the first hashed record were written before the hash
         chain existed. They are accepted trust-on-first-use and counted in
         ``unchained``. Once the chain has started, every record must carry a
-        valid ``sha256``: a record without one fails, so records edited or
-        appended at the end of the log can't pass by dropping their hashes.
+        ``sha256`` and a ``prev_sha256`` that match the record before it: a
+        record without a hash fails, so records edited or appended at the end
+        of the log can't pass by dropping their hashes.
 
         A file that begins with a ``rotation_continuation`` marker (written by
         :meth:`rotate`) continues the archive named in ``continues_from``, so
@@ -227,38 +234,53 @@ class AuditTrail:
         Records deleted from the end still leave a valid chain. The file alone
         can't show that; a copy exported off the host can.
         """
-        events = self.read_events()
+        lines, read_error = self._read_lines_strict()
         result: dict[str, Any] = {
             "ok": True,
             "first_bad_line": None,
-            "total": len(events),
+            "total": len(lines),
             "unchained": 0,
             "continues_from": None,
             "archive_checked": None,
             "reason": None,
         }
+        if read_error:
+            result.update(ok=False, reason=read_error)
+            return result
 
         prev_sha = "0" * 64
         chained = False
-        for i, evt in enumerate(events, start=1):
+        for index, (line_no, evt, problem) in enumerate(lines):
+            if problem:
+                result.update(ok=False, first_bad_line=line_no, reason=problem)
+                return result
             sha = evt.get("sha256", "")
             if not sha:
                 if chained:
                     result.update(
                         ok=False,
-                        first_bad_line=i,
+                        first_bad_line=line_no,
                         reason="record has no sha256 after the hash chain started",
                     )
                     return result
                 result["unchained"] += 1
                 continue
-            if i == 1 and evt.get("action") == "rotation_continuation":
+            if index == 0 and evt.get("action") == "rotation_continuation":
                 problem = self._check_rotation_marker(evt, result)
                 if problem:
-                    result.update(ok=False, first_bad_line=1, reason=problem)
+                    result.update(ok=False, first_bad_line=line_no, reason=problem)
                     return result
                 prev_sha = evt["prev_sha256"]
             chained = True
+            # The hash covers the record without its hash fields, so check the
+            # stored link separately: otherwise it could be altered freely.
+            if evt.get("prev_sha256") != prev_sha:
+                result.update(
+                    ok=False,
+                    first_bad_line=line_no,
+                    reason="prev_sha256 doesn't match the hash of the record before it",
+                )
+                return result
             # Reconstruct what was hashed
             payload_str = prev_sha + json.dumps(
                 {k: v for k, v in evt.items() if k not in ("sha256", "prev_sha256")},
@@ -269,12 +291,49 @@ class AuditTrail:
             if sha != expected:
                 result.update(
                     ok=False,
-                    first_bad_line=i,
+                    first_bad_line=line_no,
                     reason="sha256 doesn't match the record and the hash before it",
                 )
                 return result
             prev_sha = sha
         return result
+
+    def _read_lines_strict(
+        self,
+    ) -> tuple[list[tuple[int, dict[str, Any], str | None]], str | None]:
+        """Every non-empty line as ``(line number, record, problem)``.
+
+        ``problem`` names why a line isn't a usable record, and the record is
+        then empty. The second value is set when the file can't be read at all.
+        """
+        lines: list[tuple[int, dict[str, Any], str | None]] = []
+        if not self.events_file.exists():
+            return lines, None
+        try:
+            with self.events_file.open("rb") as f:
+                for line_no, raw in enumerate(f, start=1):
+                    if len(raw) > self.MAX_AUDIT_LINE_BYTES:
+                        lines.append((line_no, {}, "line is longer than the 1 MB limit"))
+                        continue
+                    try:
+                        text = raw.decode("utf-8").strip()
+                    except UnicodeDecodeError:
+                        lines.append((line_no, {}, "line isn't valid UTF-8"))
+                        continue
+                    if not text:
+                        continue
+                    try:
+                        obj = json.loads(text)
+                    except json.JSONDecodeError:
+                        lines.append((line_no, {}, "line isn't valid JSON"))
+                        continue
+                    if not isinstance(obj, dict):
+                        lines.append((line_no, {}, "line isn't a JSON object"))
+                        continue
+                    lines.append((line_no, obj, None))
+        except OSError as exc:
+            return lines, f"can't read the audit log: {exc}"
+        return lines, None
 
     def _check_rotation_marker(self, marker: dict[str, Any], result: dict[str, Any]) -> str | None:
         """Validate a rotation marker and its link to the archive it continues.

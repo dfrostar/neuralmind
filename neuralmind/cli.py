@@ -2776,11 +2776,14 @@ def cmd_audit_verify(args):
             )
             print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
     else:
-        print(
-            f"✗ Audit trail tampered at line {result['first_bad_line']} "
-            f"({result['total']} events total): {result.get('reason')}",
-            file=sys.stderr,
-        )
+        if result["first_bad_line"] is None:
+            print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
+        else:
+            print(
+                f"✗ Audit trail tampered at line {result['first_bad_line']} "
+                f"({result['total']} events total): {result.get('reason')}",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
 

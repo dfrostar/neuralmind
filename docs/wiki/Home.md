@@ -36,16 +36,21 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.8.0 — `audit verify` checks the whole log (October 2026)
+
+`neuralmind audit verify` now fails on a record without a hash once the chain
+has started, on any line that isn't a JSON object, and on a `prev_sha256` that
+doesn't match the record before it. v4.7.0 and earlier passed all three. It
+still can't detect records deleted from the end. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
+
 ### v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage (October 2026)
 
 `security.identity: os` takes each MCP caller's identity from the OS account
 the server runs as, and its role from `security.users`, instead of trusting
 what a call declares. `security.require_encrypted_storage: true` makes
 NeuralMind refuse to run until it sees FileVault, BitLocker or dm-crypt/LUKS on
-every volume that holds its state. `neuralmind audit verify` now fails on a
-record without a hash once the chain has started, so records edited or
-appended at the end of the log with their hash removed no longer pass; it
-still can't detect records deleted from the end. See the
+every volume that holds its state. See the
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md).
 
 ### v4.6.1 — The MCP server applies your security settings (October 2026)
