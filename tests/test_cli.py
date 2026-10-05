@@ -1,6 +1,7 @@
 """Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -1585,6 +1586,67 @@ class TestCLIDemo:
         assert (bundle / ".neuralmind" / "graph.json").is_file()
         assert (bundle / "auth" / "handlers.py").is_file()
         assert (bundle / "billing" / "invoices.py").is_file()
+
+    @staticmethod
+    def _aged_bundle(tmp_path):
+        """A copy of the bundled fixture whose graph.json predates its sources.
+
+        That's the shape an installed wheel can have: each file keeps its own
+        mtime, and nothing orders the graph after the code it describes.
+        """
+        import shutil
+        from importlib import resources
+
+        with resources.as_file(
+            resources.files("neuralmind") / "demo_data" / "sample_project"
+        ) as src:
+            bundle = tmp_path / "pkg" / "neuralmind" / "demo_data" / "sample_project"
+            shutil.copytree(src, bundle)
+        for path in bundle.rglob("*"):
+            if path.is_file():
+                os.utime(path, (1_600_000_000, 1_600_000_000))  # 2020-09
+        graph = bundle / ".neuralmind" / "graph.json"
+        os.utime(graph, (1_500_000_000, 1_500_000_000))  # 2017-07: older than the code
+        return bundle
+
+    def test_demo_copy_is_not_stale(self, tmp_path):
+        """`neuralmind demo` reported "N files changed since the graph was
+        built" on every run: copytree kept the bundle's mtimes, and the
+        freshness check compares source mtimes with graph.json's."""
+        from neuralmind.cli import _copy_demo_fixture
+        from neuralmind.freshness import OK, graph_freshness
+
+        bundle = self._aged_bundle(tmp_path)
+        work = tmp_path / "work" / "sample_project"
+        _copy_demo_fixture(bundle, work)
+
+        report = graph_freshness(work)
+        assert report is not None
+        assert report.changed_since_graph == []
+        assert report.status == OK, report.render(str(work))
+        # The copy is a byte-for-byte working copy of the bundle.
+        assert (work / ".neuralmind" / "graph.json").read_bytes() == (
+            bundle / ".neuralmind" / "graph.json"
+        ).read_bytes()
+
+    def test_cmd_demo_does_not_report_stale_files(self, tmp_path, monkeypatch, capsys):
+        """End to end: a bundle with an old graph mtime still demos clean."""
+        from importlib import resources
+
+        from neuralmind.cli import cmd_demo
+
+        bundle = self._aged_bundle(tmp_path)
+        pkg_root = bundle.parent.parent  # .../pkg/neuralmind
+        monkeypatch.setattr(resources, "files", lambda _pkg: pkg_root)
+
+        args = MagicMock()
+        args.keep = False
+        args.quiet = False
+        cmd_demo(args)
+
+        captured = capsys.readouterr()
+        assert "NeuralMind 30-second demo" in captured.out
+        assert "changed since the graph" not in captured.out + captured.err
 
     def test_cmd_demo_runs_end_to_end(self, capsys):
         """Smoke test: demo subcommand copies the bundled fixture, builds

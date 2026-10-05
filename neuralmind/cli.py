@@ -4728,6 +4728,25 @@ def cmd_serve(args):
         sys.exit(1)
 
 
+def _copy_demo_fixture(src: Path, dst: Path) -> None:
+    """Copy the bundled demo project to ``dst`` with its graph marked current.
+
+    ``copytree`` keeps each file's mtime from the package, and nothing orders
+    graph.json's after the sources' — in an installed wheel it can predate
+    them. For a graph outside git the freshness check compares source mtimes
+    with graph.json's, so every demo run reported "N files changed since the
+    graph was built → regenerate". The bundled graph was generated from these
+    exact sources, so stamp it no older than anything copied.
+    """
+    import shutil
+    import time
+
+    shutil.copytree(src, dst)
+    newest = max((p.stat().st_mtime for p in dst.rglob("*") if p.is_file()), default=0.0)
+    stamp = max(time.time(), newest)
+    os.utime(dst / ".neuralmind" / "graph.json", (stamp, stamp))
+
+
 def cmd_demo(args):
     """Run the bundled 30-second demo.
 
@@ -4768,10 +4787,10 @@ def cmd_demo(args):
 
     try:
         # importlib.resources.as_file gives us a real path even if the
-        # package was installed from a zip. shutil.copytree then makes a
+        # package was installed from a zip. _copy_demo_fixture then makes a
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
-            shutil.copytree(src, fixture_dir)
+            _copy_demo_fixture(Path(src), fixture_dir)
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
