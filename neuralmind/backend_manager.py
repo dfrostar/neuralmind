@@ -144,6 +144,22 @@ def create_backend(
     raise ValueError(f"Unsupported backend: {backend}")
 
 
+def _require_storage(project_path: str, location: str | Path | None) -> None:
+    """Apply security.require_encrypted_storage to the vector index's location.
+
+    Checked before the backend is created (a configured db_path may be on
+    another volume) and again after, against the path it actually chose, which
+    may sit behind a symlink. The backend creates an empty directory at most;
+    nothing is indexed until build. Imported lazily: storage_guard reads the
+    security config through this module.
+    """
+    from .storage_guard import enforce_storage_policy
+
+    if location == ":memory:":  # the in-memory backend writes no file
+        location = None
+    enforce_storage_policy(project_path, location)
+
+
 class BackendManager:
     """Coordinates backend selection and runtime backend switching."""
 
@@ -161,9 +177,11 @@ class BackendManager:
         selected_backend = resolve_backend(backend or self.config.get("backend"))
         selected_db_path = db_path or self.config.get("db_path")
         self.backend_name = selected_backend
+        _require_storage(self.project_path, selected_db_path)
         self.backend = create_backend(
             selected_backend, self.project_path, selected_db_path, scope=scope
         )
+        _require_storage(self.project_path, getattr(self.backend, "db_path", None))
 
     def switch_backend(self, backend: str, db_path: str | None = None) -> EmbeddingBackend:
         if hasattr(self.backend, "close"):
@@ -173,6 +191,8 @@ class BackendManager:
                 pass
         selected_db_path = db_path or self.config.get("db_path")
         resolved = resolve_backend(backend)
+        _require_storage(self.project_path, selected_db_path)
         self.backend_name = resolved
         self.backend = create_backend(resolved, self.project_path, selected_db_path)
+        _require_storage(self.project_path, getattr(self.backend, "db_path", None))
         return self.backend

@@ -56,6 +56,14 @@ def _config(project: Path, text: str) -> Path:
     return path
 
 
+@pytest.fixture(autouse=True)
+def no_running_transport(monkeypatch):
+    """No server has started in tests; fall back to the requested transport."""
+    from neuralmind import mcp_security
+
+    monkeypatch.setattr(mcp_security, "_active_transport", None)
+
+
 @pytest.fixture
 def as_alice(monkeypatch):
     """Make the OS report the server's account as 'alice'."""
@@ -139,6 +147,24 @@ def test_require_encrypted_storage_errs_toward_on(temp_project, value, expected)
     assert load_security_settings(temp_project).require_encrypted_storage is expected
 
 
+@pytest.mark.parametrize(
+    "line, expected",
+    [
+        ("  require_encrypted_storage:\n", True),
+        ("  require_encrypted_storage: []\n", True),
+        ("  require_encrypted_storage: {}\n", True),
+        ("  require_encrypted_storage: ''\n", True),
+        ("  require_encrypted_storage: false\n", False),
+        ("  require_encrypted_storage: 0\n", False),
+        ("  identity: declared\n", False),
+    ],
+)
+def test_only_an_explicit_off_disables_encrypted_storage(temp_project, line, expected):
+    """A blank value parses as None and used to read as off."""
+    _config(temp_project, "security:\n" + line)
+    assert load_security_settings(temp_project).require_encrypted_storage is expected
+
+
 # --- the security manager -----------------------------------------------------
 
 
@@ -190,6 +216,23 @@ def test_unmapped_account_gets_the_default_role(temp_project, monkeypatch):
 def test_os_identity_refuses_the_http_transport(temp_project, as_alice, monkeypatch):
     _config(temp_project, OS_POLICY)
     monkeypatch.setenv("NEURALMIND_MCP_TRANSPORT", "streamable_http")
+    with pytest.raises(IdentityDeniedError, match="stdio"):
+        _manager(temp_project).resolve_caller(None, None)
+
+
+def test_os_identity_follows_the_transport_actually_running(temp_project, as_alice, monkeypatch):
+    """mcp_server.main() falls back to stdio when the HTTP dependencies are
+    missing, leaving NEURALMIND_MCP_TRANSPORT set. Refusing then would block
+    every call on a server that is in fact running stdio."""
+    from neuralmind import mcp_security
+
+    _config(temp_project, OS_POLICY)
+    monkeypatch.setenv("NEURALMIND_MCP_TRANSPORT", "streamable_http")
+    monkeypatch.setattr(mcp_security, "_active_transport", "stdio")
+    assert _manager(temp_project).resolve_caller(None, None)[:2] == ("alice", "reader")
+
+    monkeypatch.delenv("NEURALMIND_MCP_TRANSPORT")
+    monkeypatch.setattr(mcp_security, "_active_transport", "streamable_http")
     with pytest.raises(IdentityDeniedError, match="stdio"):
         _manager(temp_project).resolve_caller(None, None)
 

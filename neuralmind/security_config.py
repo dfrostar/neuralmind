@@ -39,7 +39,7 @@ IDENTITY_OS = "os"
 IDENTITY_INVALID = "invalid"
 
 _ENFORCEMENT_KEYS = ("identity", "require_encrypted_storage")
-_FALSE_WORDS = {"false", "no", "off", "0", ""}
+_FALSE_WORDS = {"false", "no", "off", "0"}
 
 
 @dataclass(frozen=True)
@@ -81,7 +81,7 @@ def load_security_settings(project_path: str | Path) -> SecuritySettings:
 
 
 def _parse(security: dict[str, Any], path: Path) -> SecuritySettings:
-    require = _truthy(security.get("require_encrypted_storage", False))
+    require = _required(security)
     raw_identity = security.get("identity", IDENTITY_DECLARED)
     identity = str(raw_identity).strip().lower() if raw_identity is not None else ""
     users_raw = security.get("users", {}) or {}
@@ -112,14 +112,24 @@ def _parse(security: dict[str, Any], path: Path) -> SecuritySettings:
     )
 
 
-def _truthy(value: Any) -> bool:
-    # Anything that isn't plainly "off" counts as on: a misspelled value
-    # should make NeuralMind stricter, never quietly looser.
-    if value is None or value is False:
+def _required(security: dict[str, Any]) -> bool:
+    """Read ``require_encrypted_storage``. Absent means off.
+
+    Present, only an explicit "off" turns it off: ``false``, ``0``, or the
+    words false/no/off/0. A blank value (``require_encrypted_storage:``
+    parses as None), an empty list or mapping, or a misspelling counts as on —
+    a malformed setting should make NeuralMind stricter, never quietly looser.
+    """
+    if "require_encrypted_storage" not in security:
         return False
-    if isinstance(value, str):
-        return value.strip().lower() not in _FALSE_WORDS
-    return bool(value)
+    value = security["require_encrypted_storage"]
+    if value is False:
+        return False
+    if isinstance(value, int) and not isinstance(value, bool) and value == 0:
+        return False
+    if isinstance(value, str) and value.strip().lower() in _FALSE_WORDS:
+        return False
+    return True
 
 
 def _mentions_enforcement(path: Path) -> bool:

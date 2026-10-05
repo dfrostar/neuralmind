@@ -83,8 +83,13 @@ NeuralMind now verifies it:
 | Linux | `lsblk` shows a `crypt` layer under the filesystem holding the project | `/proc/sys/crypto/fips_enabled` |
 | Windows | BitLocker protection on for the drive | The `FipsAlgorithmPolicy` registry value |
 
-Anything short of a positive answer — a check that times out, an overlay
-filesystem in a container, BitLocker suspended — counts as not verified. The
+The check covers every place NeuralMind's state can land: the project root,
+`.neuralmind/` (following a symlink to wherever it points), and a custom vector
+index location from `db_path`, whether passed in, configured, or set by a
+backend switch. Anything short of a positive answer — a check that times out,
+an overlay filesystem in a container, BitLocker suspended — counts as not
+verified. Only an explicit `false` (or `0`, `no`, `off`) turns the setting off;
+a blank `require_encrypted_storage:` counts as on. The
 verdict is written to the audit log once per process as a `storage_check`
 event, which gives an assessor a dated record.
 
@@ -103,6 +108,11 @@ leaving `admin` out of `security.roles`. The MCP server constructed its
 security manager without reading the config, so through v4.5.1 that advice had
 no effect and a caller declaring `admin` still got every tool. Both factories
 now read the project's `neuralmind-backend.yaml`.
+
+An empty `roles: {}` grants nothing. A malformed `security`, `roles` or
+`rate_limit` value (not a mapping, a window under one second, a value that
+isn't a whole number) refuses every MCP call with `reason: config` rather than
+falling back to defaults that may be looser.
 
 **Check after upgrading:** if your `security.roles` was written for a policy
 that never applied, calls it doesn't grant will now be denied.

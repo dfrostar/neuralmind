@@ -3481,12 +3481,12 @@ process, so restart the MCP server after changing it.
 
 | Key | Default | Effect |
 |-----|---------|--------|
-| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools. The MCP server in v4.5.1 and earlier ignored this setting |
-| `rate_limit` | `max_calls: 60`, `window_seconds: 60` | Calls allowed per actor per window |
+| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools, and an empty mapping grants nothing. The MCP server in v4.5.1 and earlier ignored this setting |
+| `rate_limit` | `max_calls: 60`, `window_seconds: 60` | Calls allowed per actor per window. Whole numbers; `window_seconds` at least 1 |
 | `identity` *(v4.7.0+)* | `declared` | `declared`: each MCP call names its own `actor` and `role`, unauthenticated. `os`: the actor is the OS account the server runs as, read from the OS rather than environment variables, and the role comes from `users`. Stdio transport only |
 | `users` *(v4.7.0+)* | `{}` | OS account name → role, used with `identity: os` |
 | `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
-| `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless the project's volume is verified encrypted |
+| `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless every volume holding state (the project, `.neuralmind/`, a custom `db_path`) is verified encrypted. Only `false`, `0`, `no` or `off` turns it off; a blank value counts as on |
 
 ```yaml
 security:
@@ -3504,8 +3504,9 @@ With `identity: os`, NeuralMind refuses every MCP call when it can't establish
 the caller: the HTTP transport is in use, the OS account can't be read, the
 account has no role, or the policy file is world-writable (POSIX). A policy file
 that names `identity` or `require_encrypted_storage` but doesn't parse is
-refused too, rather than silently ignored. Each refusal is written to
-`.neuralmind/audit_events.jsonl` with `reason: identity` or `reason: storage`,
+refused too, rather than silently ignored, and a malformed `security`,
+`roles` or `rate_limit` value refuses every call. Each refusal is written to
+`.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
 

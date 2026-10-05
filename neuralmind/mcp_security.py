@@ -76,6 +76,22 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
 
 _SECURITY_MANAGERS: dict[str, MCPSecurityManager] = {}
 
+# The transport the server is actually serving, set by mcp_server.main().
+# NEURALMIND_MCP_TRANSPORT only says what was requested: main() falls back to
+# stdio when the HTTP dependencies are missing, and identity checks must follow
+# what is running, not what was asked for.
+_active_transport: str | None = None
+
+
+def set_active_transport(name: str) -> None:
+    global _active_transport
+    _active_transport = name
+
+
+def active_transport() -> str:
+    """The running transport, or the requested one when no server set it."""
+    return _active_transport or os.environ.get("NEURALMIND_MCP_TRANSPORT") or "stdio"
+
 
 class RBACPolicy:
     def __init__(self, role_permissions: dict[str, set[str] | str] | None = None):
@@ -176,7 +192,7 @@ class MCPSecurityManager:
         if self.settings.identity == IDENTITY_INVALID:
             raise IdentityDeniedError(f"Refusing MCP calls: {self.settings.problem}")
 
-        if os.environ.get("NEURALMIND_MCP_TRANSPORT") == "streamable_http":
+        if active_transport() == "streamable_http":
             raise IdentityDeniedError(
                 "security.identity: os needs the stdio transport; over HTTP the "
                 "server's OS account is not the caller's"

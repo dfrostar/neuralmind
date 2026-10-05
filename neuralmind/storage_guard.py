@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .security_config import load_security_settings
+from .state_dir import STATE_DIR_NAME
 
 _TIMEOUT_SECONDS = 10
 
@@ -204,38 +205,60 @@ def check_storage(path: str | Path) -> StorageStatus:
 
 # --- enforcement ------------------------------------------------------------
 
-# One verdict per project per process: encryption doesn't change between two
+# One verdict per location per process: encryption doesn't change between two
 # tool calls, and the audit log should get one record, not one per call.
 _VERDICTS: dict[str, StorageStatus] = {}
 
 
-def enforce_storage_policy(project_path: str | Path) -> StorageStatus | None:
+def enforce_storage_policy(
+    project_path: str | Path, *also: str | Path | None
+) -> StorageStatus | None:
     """Refuse to go on when the project requires encrypted storage and lacks it.
 
-    Returns None when the project doesn't require it, the status when it does
-    and the volume is verified. Raises ``StorageNotVerifiedError`` otherwise.
+    Checks every place state can land: the project root, ``.neuralmind/``
+    (following a symlink to wherever it points), and each path in ``also`` —
+    callers pass a custom vector-index location there, which may sit on
+    another volume entirely. Returns None when the project doesn't require
+    encryption, the project root's status when every location is verified,
+    and raises ``StorageNotVerifiedError`` naming the first that isn't.
     """
     project = Path(project_path).resolve()
     settings = load_security_settings(project)
     if not settings.require_encrypted_storage:
         return None
 
-    key = str(project)
-    status = _VERDICTS.get(key)
-    if status is None:
-        status = check_storage(project)
-        _VERDICTS[key] = status
-        _audit(project, status)
-    if status.encrypted is True:
-        return status
-    reason = status.detail + (f" ({settings.problem})" if settings.problem else "")
-    raise StorageNotVerifiedError(
-        "security.require_encrypted_storage is on and this project's volume is not "
-        f"verified as encrypted: {reason}"
-    )
+    targets = [project, project / STATE_DIR_NAME, *(Path(p) for p in also if p)]
+    first: StorageStatus | None = None
+    for target in targets:
+        location = _nearest_existing(target.resolve())
+        key = str(location)
+        status = _VERDICTS.get(key)
+        if status is None:
+            status = check_storage(location)
+            _VERDICTS[key] = status
+            _audit(project, location, status)
+        if status.encrypted is not True:
+            reason = f"{location}: {status.detail}"
+            if settings.problem:
+                reason += f" ({settings.problem})"
+            raise StorageNotVerifiedError(
+                "security.require_encrypted_storage is on and this project's state "
+                f"location is not verified as encrypted: {reason}"
+            )
+        first = first or status
+    return first
 
 
-def _audit(project: Path, status: StorageStatus) -> None:
+def _nearest_existing(path: Path) -> Path:
+    """The path itself, or its closest ancestor that exists, so a not-yet-
+    created directory is checked on the volume it will be created on."""
+    for candidate in (path, *path.parents):
+        if candidate.exists():
+            return candidate
+    return path
+
+
+def _audit(project: Path, location: Path, status: StorageStatus) -> None:
     try:
         from .audit import get_audit_trail
 
@@ -243,7 +266,7 @@ def _audit(project: Path, status: StorageStatus) -> None:
             category="security",
             action="storage_check",
             status="success" if status.encrypted is True else "denied",
-            target=str(project),
+            target=str(location),
             details=status.to_dict(),
         )
     except Exception:

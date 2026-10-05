@@ -107,12 +107,18 @@ def test_required_and_encrypted_passes_and_is_audited_once(temp_project, monkeyp
     _require(temp_project)
     calls = _volume(monkeypatch, ENCRYPTED)
     assert enforce_storage_policy(temp_project) == ENCRYPTED
+    first_round = len(calls)  # the project root, and .neuralmind/ once it exists
     assert enforce_storage_policy(temp_project) == ENCRYPTED
-    assert len(calls) == 1
+    assert enforce_storage_policy(temp_project) == ENCRYPTED
+    assert len(calls) <= first_round + 1
     checks = [e for e in AuditTrail(temp_project).read_events() if e["action"] == "storage_check"]
-    assert len(checks) == 1
-    assert checks[0]["status"] == "success"
+    assert len(checks) == len(calls)
+    assert {c["status"] for c in checks} == {"success"}
     assert checks[0]["details"]["method"] == "FileVault"
+    # A further call checks nothing new: every location has a verdict now.
+    settled = len(calls)
+    enforce_storage_policy(temp_project)
+    assert len(calls) == settled
 
 
 @pytest.mark.parametrize("status", [PLAIN, UNKNOWN])
@@ -251,3 +257,58 @@ def test_doctor_still_runs_on_an_unverified_volume(unverified):
 
     names = {check.name: check.status for check in run_diagnostics(str(unverified))}
     assert names["Storage encryption"] == "fail"
+
+
+# --- every location state can land, not just the project root -------------------
+
+
+@pytest.fixture
+def only_project_encrypted(temp_project, monkeypatch):
+    """The project's volume is encrypted; anywhere else is not."""
+    _require(temp_project)
+    root = str(Path(temp_project).resolve())
+
+    def fake(path):
+        return ENCRYPTED if str(path).startswith(root) else PLAIN
+
+    monkeypatch.setattr(storage_guard, "check_storage", fake)
+    return temp_project
+
+
+def test_a_custom_index_path_on_another_volume_is_refused(only_project_encrypted, tmp_path):
+    from neuralmind.core import NeuralMind
+
+    with pytest.raises(StorageNotVerifiedError, match=str(tmp_path.resolve())):
+        NeuralMind(str(only_project_encrypted), db_path=str(tmp_path / "index"))
+
+
+def test_a_configured_index_path_on_another_volume_is_refused(only_project_encrypted, tmp_path):
+    from neuralmind.core import NeuralMind
+
+    config = Path(only_project_encrypted) / "neuralmind-backend.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8") + f"db_path: {tmp_path / 'index'}\n", encoding="utf-8"
+    )
+    with pytest.raises(StorageNotVerifiedError):
+        NeuralMind(str(only_project_encrypted))
+
+
+def test_switching_backend_to_another_volume_is_refused(only_project_encrypted, tmp_path):
+    from neuralmind.backend_manager import BackendManager
+
+    manager = BackendManager(str(only_project_encrypted), backend="in_memory")
+    with pytest.raises(StorageNotVerifiedError):
+        manager.switch_backend("in_memory", db_path=str(tmp_path / "index"))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_a_symlinked_state_dir_is_checked_where_it_points(only_project_encrypted, tmp_path):
+    elsewhere = tmp_path / "state"
+    elsewhere.mkdir()
+    (Path(only_project_encrypted) / ".neuralmind").symlink_to(elsewhere)
+    with pytest.raises(StorageNotVerifiedError, match=str(elsewhere.resolve())):
+        enforce_storage_policy(only_project_encrypted)
+
+
+def test_the_project_volume_alone_passes(only_project_encrypted):
+    assert enforce_storage_policy(only_project_encrypted) == ENCRYPTED

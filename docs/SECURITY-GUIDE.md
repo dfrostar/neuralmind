@@ -171,8 +171,10 @@ security:
   require_encrypted_storage: true
 ```
 
-With this set, NeuralMind checks the project's volume for FileVault (macOS),
-dm-crypt/LUKS (Linux), or BitLocker (Windows). Until the check passes, it
+With this set, NeuralMind checks for FileVault (macOS), dm-crypt/LUKS (Linux),
+or BitLocker (Windows) on every volume that holds its state: the project root,
+`.neuralmind/` (following a symlink), and a custom vector-index `db_path`. Only
+an explicit `false` turns the setting off; a blank value counts as on. Until the check passes, it
 refuses to build or query, MCP tools return `reason: storage`, hooks write
 nothing, and the decision store won't open. A check that can't tell (a
 container's overlay filesystem, BitLocker suspended, a timeout) counts as not

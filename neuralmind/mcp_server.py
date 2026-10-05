@@ -51,6 +51,7 @@ from neuralmind.mcp_security import (
     PolicyConfigError,
     RateLimitExceededError,
     build_security_manager,
+    set_active_transport,
 )
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
@@ -1527,8 +1528,11 @@ def main():
             if app is not None:
                 import uvicorn
 
+                set_active_transport("streamable_http")
                 uvicorn.run(app, host="127.0.0.1", port=8765)
                 return
+    # Requested HTTP or not, this is stdio now; identity checks follow it.
+    set_active_transport("stdio")
     asyncio.run(run_mcp_server())
 
 
