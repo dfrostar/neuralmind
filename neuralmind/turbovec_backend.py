@@ -1179,8 +1179,17 @@ class TurboVecEmbedder(EmbeddingBackend):
     # BM25 keyword index — hybrid search
     # ------------------------------------------------------------------
 
+    @property
+    def scope(self) -> str:
+        """The index scope: 'all', 'code', 'content' or 'docs'."""
+        return self._scope
+
     @cached_property
     def _bm25_path(self) -> Path:
+        # Per scope, like the store and index files: a `build --scope code`
+        # (no document nodes) must not delete the default docs index.
+        if self._scope != "all":
+            return self._dir / f"bm25_index.{self._scope}.json"
         return self._dir / "bm25_index.json"
 
     def _load_bm25(self):

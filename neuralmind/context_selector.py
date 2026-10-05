@@ -1615,14 +1615,24 @@ class ContextSelector:
         """Symbol-name BM25 (``NEURALMIND_BM25_CODE=1``); [] when unavailable."""
         if getattr(self, "_code_bm25", None) is None:
             self._code_bm25 = (
-                l3_slots.code_bm25_index(self.project_path, self._node_catalog()) or False
+                l3_slots.code_bm25_index(
+                    self.project_path,
+                    self._node_catalog(),
+                    scope=l3_slots.index_scope(self.embedder),
+                )
+                or False
             )
         return self._bm25_hits(self._code_bm25, query, n)
 
     def _unified_index(self):
         """The build's docs + code BM25 index, loaded once; False when absent."""
         if getattr(self, "_unified_bm25", None) is None:
-            self._unified_bm25 = l3_slots.unified_bm25_index(self.project_path, None) or False
+            self._unified_bm25 = (
+                l3_slots.unified_bm25_index(
+                    self.project_path, None, scope=l3_slots.index_scope(self.embedder)
+                )
+                or False
+            )
         return self._unified_bm25
 
     def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:

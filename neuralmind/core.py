@@ -177,6 +177,7 @@ class NeuralMind:
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
         self.project_path = Path(project_path).resolve()
+        self.scope = scope
         # Before anything can write index or synapse state: a project that
         # sets security.require_encrypted_storage refuses an unverified volume.
         enforce_storage_policy(self.project_path)
@@ -801,6 +802,7 @@ class NeuralMind:
             self._build_stats["freshness"] = freshness.to_dict()
         # The graph this index was embedded from, so read paths can tell when
         # it has been regenerated since (graphify update, a pull) without a build.
+        from . import l3_slots
         from .freshness import graph_fingerprint
 
         status_updates: dict = {
@@ -808,8 +810,9 @@ class NeuralMind:
                 **self._build_stats["graph"],
                 "fingerprint": graph_fingerprint(graph_info["path"]),
             },
-            # Stamps caches derived from this index (the unified BM25 index).
-            "index_generation": self._build_stats["built_at"],
+            # Stamps caches derived from this index (the unified BM25 index),
+            # one key per scope so a scoped build can't stale the default one.
+            l3_slots.generation_key(self.scope): self._build_stats["built_at"],
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
@@ -1425,7 +1428,7 @@ class NeuralMind:
             if not l3_slots.unified_bm25_enabled():
                 return
             catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
-            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True)
+            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True, scope=self.scope)
             if getattr(self, "selector", None) is not None:
                 self.selector._unified_bm25 = None  # reload on the next query
         except Exception:  # pragma: no cover - a keyword index never blocks a build
@@ -1797,6 +1800,7 @@ class NeuralMind:
         # index generation, which invalidates the caches stamped with the old
         # one; then rewrite the unified BM25 index so removed symbols stop
         # matching keywords and added ones start.
+        from . import l3_slots
         from .freshness import graph_fingerprint
 
         self._record_build_status(
@@ -1809,7 +1813,7 @@ class NeuralMind:
                     "nodes": stats.nodes_after,
                     "fingerprint": graph_fingerprint(graph_path),
                 },
-                "index_generation": datetime.now().isoformat(),
+                l3_slots.generation_key(self.scope): datetime.now().isoformat(),
             }
         )
         self._write_unified_bm25()
