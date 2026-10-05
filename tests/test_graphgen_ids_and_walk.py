@@ -311,3 +311,33 @@ def test_link_to_an_unwalked_directory_inside_the_project_is_followed(tmp_path: 
     _symlink(root / "vendored", root / "node_modules" / "pkg")
     files = _rels(root, graphgen._walk_files(root, graphgen._DEFAULT_IGNORES, {".py"}, ()))
     assert files == ["app.py", "vendored/mod.py"]
+
+
+# --------------------------------------------------------------------------- #
+# .neuralmind.yaml globs cover schema files too
+# --------------------------------------------------------------------------- #
+def test_exclude_glob_applies_to_schema_files(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {
+            ".neuralmind.yaml": "exclude:\n  - 'vendor/**'\n",
+            "app.py": "def f(): pass\n",
+            "db/schema.sql": "CREATE TABLE users (id int);\n",
+            "vendor/lib.py": "def vendored(): pass\n",
+            "vendor/schema.sql": "CREATE TABLE vendored_table (id int);\n",
+            "vendor/api.proto": "message VendoredMsg {}\n",
+            "vendor/openapi.yaml": "openapi: 3.0.0\ninfo: {title: V}\npaths: {}\n",
+        },
+    )
+    graph = graphgen.build_graph(root)
+    assert {n["source_file"] for n in graph["nodes"]} == {"app.py", "db/schema.sql"}
+
+
+def test_newly_excluded_schema_file_leaves_an_incremental_build(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        {"app.py": "def f(): pass\n", "vendor/schema.sql": "CREATE TABLE t (id int);\n"},
+    )
+    assert "vendor/schema.sql" in {n["source_file"] for n in _build(root)["nodes"]}
+    (root / ".neuralmind.yaml").write_text("exclude:\n  - 'vendor/**'\n")
+    assert "vendor/schema.sql" not in {n["source_file"] for n in _build(root)["nodes"]}

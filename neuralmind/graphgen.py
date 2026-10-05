@@ -1610,7 +1610,9 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     md_files = config.apply_globs(
         root, _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES, fileset=fileset)
     )
-    schema_files = _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES, fileset=fileset)
+    schema_files = config.apply_globs(
+        root, _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES, fileset=fileset)
+    )
     # Every file this build indexes. A node from the previous graph is reused
     # only if its file is still in this set — so a file that was deleted, or
     # is now excluded (.gitignore, .neuralmindignore, globs), leaves the graph.
