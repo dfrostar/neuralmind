@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.8.1](https://github.com/dfrostar/neuralmind/compare/v4.8.0...v4.8.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **audit:** reject records without a hash once the chain has started ([#581](https://github.com/dfrostar/neuralmind/issues/581)) ([454904f](https://github.com/dfrostar/neuralmind/commit/454904f4bbf62bdab4692942d2642ea7c9eced28))
+* **audit:** report the events `audit export -o` wrote, not the whole log ([#585](https://github.com/dfrostar/neuralmind/issues/585)) ([65ad0b9](https://github.com/dfrostar/neuralmind/commit/65ad0b9e3a0efae6b40549352137de2249f0d78e))
+* bug-hunt fixes (high + medium): installers, redaction, hooks, graph, retrieval, synapse learning ([#587](https://github.com/dfrostar/neuralmind/issues/587)) ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
+
+### Documentation
+
+* RELEASE_NOTES_v4.8.1.md (with [#581](https://github.com/dfrostar/neuralmind/issues/581)'s and [#585](https://github.com/dfrostar/neuralmind/issues/585)'s audit fixes), README, about.html, the docs hub, CLI reference and Security Guide. ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
 ## [4.8.0](https://github.com/dfrostar/neuralmind/compare/v4.7.0...v4.8.0) (2026-10-05)
 
 
