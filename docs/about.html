@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v461">
+            <h2>What&rsquo;s New in v4.6.1 &mdash; the MCP server applies your security settings</h2>
+            <p><strong>The Security Guide told operators to cap what a caller can claim with <code>security.roles</code> in <code>neuralmind-backend.yaml</code>, and the MCP server never read it.</strong> Through v4.6.0 every call got the default role policy and a limit of 60 calls a minute, so a caller that declared <code>admin</code> reached every tool even where the policy left <code>admin</code> out. v4.6.1 applies both settings.</p>
+            <ul>
+                <li><strong><code>security.roles</code> replaces the default policy</strong> &mdash; a role gets exactly the tools listed for it, a role the policy doesn&rsquo;t list gets none, and leaving <code>admin</code> out caps what any caller can reach; a refused call returns <code>security_denied</code> with <code>reason: "rbac"</code></li>
+                <li><strong><code>security.rate_limit</code> sets the limiter</strong> &mdash; <code>max_calls</code> per <code>window_seconds</code>, counted per declared actor</li>
+                <li><strong>No <code>security:</code> block, no change</strong> &mdash; nothing writes one for you. If you wrote one, check it before upgrading: an agent that names no role is <code>builder</code>, and a policy without <code>builder</code> gives it no tools</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v460">
             <h2>What&rsquo;s New in v4.6.0 &mdash; one keyword index for docs and code, and the documented features wired in</h2>
             <h3>Retrieval ranking, measured</h3>

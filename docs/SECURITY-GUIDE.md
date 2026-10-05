@@ -103,7 +103,7 @@ security:
     window_seconds: 60
 ```
 
-The MCP server in v4.5.1 and earlier built its security manager without
+The MCP server in v4.6.0 and earlier built its security manager without
 reading this file, so both settings were ignored there.
 
 The rate limit keys on the declared actor, so it stops a runaway agent, not a
