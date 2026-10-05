@@ -1642,11 +1642,14 @@ class ContextSelector:
             )
         return out
 
-    def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
+    def get_l3_search(self, query: str, n: int = 4, query_type: str = "auto") -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
         Applies live synapse co-activation boosts when the graph is warm.
         Applies type-aware re-ranking based on query intent.
+
+        ``query_type`` 'code' or 'docs' replaces the detected intent; 'auto'
+        (the default) detects it from the query.
 
         Returns:
             Tuple of (search_results_text, number of hits)
@@ -1672,7 +1675,13 @@ class ContextSelector:
         # Type-aware re-ranking. Resolved once and applied once: the v3.9.0
         # pipeline boosted with the keyword intent, then boosted the same
         # results again with the corrected one, compounding both multipliers.
-        intent = self._resolve_intent(query)
+        # A requested type (``--type code|docs``) stands in for the detected
+        # intent here, before anything is ranked or rendered.
+        if query_type in ("code", "docs"):
+            intent = query_type
+            self._last_intent_source = "query_type"
+        else:
+            intent = self._resolve_intent(query)
         self._last_intent = intent
         results = self._apply_intent_boost(results, intent)
 
@@ -2076,6 +2085,7 @@ class ContextSelector:
         include_l2: bool = True,
         include_l3: bool = True,
         full_codebase_tokens: int | None = None,
+        query_type: str = "auto",
     ) -> ContextResult:
         """
         Get optimized context for a query with massive token reduction.
@@ -2090,6 +2100,8 @@ class ContextSelector:
                 ratio's numerator. Defaults to :attr:`baseline_tokens` (the
                 measured size of the code the index covers, see
                 ``neuralmind.baseline``), else the fixed 50,000-token estimate.
+            query_type: 'code' or 'docs' ranks L3 with that intent instead of
+                the one detected from the query; 'auto' (default) detects it.
 
         Returns:
             ContextResult with optimized context and token budget
@@ -2179,7 +2191,7 @@ class ContextSelector:
 
         # L3: Deep search (requires query)
         if include_l3 and query:
-            l3, hits = self.get_l3_search(query)
+            l3, hits = self.get_l3_search(query, query_type=query_type)
             if l3:
                 budget.l3_search = self._estimate_tokens(l3)
                 context_parts.append(l3)
@@ -2250,7 +2262,9 @@ class ContextSelector:
             query: Natural language query
             trace: If True, attach a per-layer retrieval trace
             trace_verbose: If True (with trace), keep full candidate/hit lists
-            query_type: Filter results — 'code', 'docs', or 'auto' (default)
+            query_type: 'code' or 'docs' ranks the search results with that
+                intent instead of the one detected from the query; 'auto'
+                (default) detects it
             context_budget: Optional token budget override. If provided, the
                 assembled context is trimmed to fit within this budget by
                 removing lower-priority layers (L3 → L2 → L1). L0 identity
@@ -2270,11 +2284,8 @@ class ContextSelector:
                 include_l1=True,
                 include_l2=True,
                 include_l3=True,
+                query_type=query_type,
             )
-            # Apply type-aware re-ranking based on query intent
-            if query_type != "auto":
-                intent = self._detect_intent(query)
-                result.top_search_hits = self._apply_intent_boost(result.top_search_hits, intent)
 
             # Context budget enforcement: trim if over budget
             if context_budget is not None and context_budget > 0:

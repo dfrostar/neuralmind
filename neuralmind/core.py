@@ -2002,8 +2002,9 @@ class NeuralMind:
             trace: If True, attach a per-layer retrieval trace (PRD 3) to
                 ``result.trace`` for explainability/debugging.
             trace_verbose: If True (with trace), keep full candidate/hit lists.
-            query_type: Filter results — 'code' restricts to source code, 'docs'
-                to documentation, 'auto' detects intent (default).
+            query_type: 'code' ranks source code first, 'docs' documentation
+                first, in place of the intent detected from the question;
+                'auto' detects it (default).
             context_budget: Optional token budget. If provided, the assembled
                 context is trimmed to fit within this budget by removing
                 lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
