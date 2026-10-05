@@ -342,10 +342,11 @@ class TestRunHook:
         monkeypatch.setattr(sys, "stdout", captured)
         assert run_hook("nonsense-action") == 0
 
-    def test_edit_activity_invokes_feedback(self, monkeypatch):
+    def test_edit_activity_invokes_feedback(self, monkeypatch, tmp_path):
         """Edit/Write route to record_edit_activity and emit nothing."""
         import neuralmind.hooks as hooks_mod
 
+        (tmp_path / ".neuralmind").mkdir()  # hooks act only in a built project
         calls = []
         monkeypatch.setattr(
             hooks_mod,
@@ -356,17 +357,20 @@ class TestRunHook:
             "tool_name": "Edit",
             "tool_input": {"file_path": "api/routes.py", "new_string": "authenticate_user()"},
             "tool_response": {},
-            "cwd": "/proj",
+            "cwd": str(tmp_path),
         }
         exit_code, output = self._invoke("edit-activity", payload, monkeypatch)
         assert exit_code == 0
         assert output == ""  # pure side effect, emits nothing
-        assert calls == [("/proj", "api/routes.py", "authenticate_user()")]
+        assert calls == [(str(tmp_path), "api/routes.py", "authenticate_user()")]
 
-    def test_edit_activity_opt_out(self, monkeypatch):
+    def test_edit_activity_opt_out(self, monkeypatch, tmp_path):
         """NEURALMIND_REUSE_FEEDBACK=0 makes the branch a no-op."""
         import neuralmind.hooks as hooks_mod
 
+        # A built project, so it's the env var — not the built-project gate —
+        # that turns feedback off.
+        (tmp_path / ".neuralmind").mkdir()
         monkeypatch.setenv("NEURALMIND_REUSE_FEEDBACK", "0")
         calls = []
         monkeypatch.setattr(hooks_mod, "_record_edit_activity", lambda *a: calls.append(a))
@@ -374,7 +378,7 @@ class TestRunHook:
             "tool_name": "Write",
             "tool_input": {"file_path": "x.py", "content": "def f(): pass"},
             "tool_response": {},
-            "cwd": "/proj",
+            "cwd": str(tmp_path),
         }
         exit_code, output = self._invoke("edit-activity", payload, monkeypatch)
         assert exit_code == 0
