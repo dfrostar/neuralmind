@@ -893,7 +893,12 @@ class SynapseStore:
         ephemeral_lambda = 0.6931471805599453 / EPHEMERAL_HALF_LIFE_DAYS
 
         with self._connect() as conn:
-            conn.execute("BEGIN")
+            # IMMEDIATE, not deferred: the first statement is a read, and under
+            # WAL a deferred read->write upgrade fails at once with "database
+            # is locked" (SQLITE_BUSY_SNAPSHOT) if another connection commits
+            # in between — the busy timeout never applies. Taking the write
+            # lock up front makes concurrent writers wait their turn instead.
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 row = conn.execute("SELECT value FROM meta WHERE key = 'last_decay'").fetchone()
                 try:
@@ -1932,7 +1937,8 @@ class SynapseStore:
             return 0
 
         with self._connect() as conn:
-            conn.execute("BEGIN")
+            # IMMEDIATE: reads before it writes (see decay()).
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 # Count existing edges before insert (H3 fix)
                 before = conn.execute(

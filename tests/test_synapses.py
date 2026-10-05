@@ -1266,3 +1266,104 @@ def test_empty_graph_does_not_wipe_structural_edges(tmp_path):
     s.persist_structural_edges([{"source": "a", "target": "b", "relation": "calls"}])
     assert s.persist_structural_edges([]) == 0
     assert _structural_rows(s) == [("a", "b", "call", 1)]
+
+
+# --------------------------------------------------------------------------- #
+# Read-then-write transactions take the write lock up front (BEGIN IMMEDIATE)
+# --------------------------------------------------------------------------- #
+
+
+class _CommitAfterFirstRead:
+    """Connection proxy: after the first SELECT inside a transaction, let a
+    concurrent writer (another thread, another connection) commit.
+
+    A deferred ``BEGIN`` whose first statement is a read pins a WAL snapshot;
+    when another connection commits before the first write, SQLite fails the
+    read->write upgrade at once with "database is locked" (SQLITE_BUSY_SNAPSHOT)
+    instead of waiting out the busy timeout.
+    """
+
+    def __init__(self, conn, writer_go, writer_done):
+        self._c = conn
+        self._in_txn = False
+        self._fired = False
+        self._go = writer_go
+        self._done = writer_done
+
+    def execute(self, sql, *args):
+        cur = self._c.execute(sql, *args)
+        head = sql.lstrip().upper()
+        if head.startswith("BEGIN"):
+            self._in_txn = True
+        elif self._in_txn and not self._fired and head.startswith("SELECT"):
+            self._fired = True
+            self._go.set()
+            # With BEGIN IMMEDIATE the writer blocks on our lock, so don't
+            # wait for it forever — it finishes after we commit.
+            self._done.wait(timeout=0.5)
+        return cur
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+
+def _run_with_concurrent_writer(monkeypatch, tmp_path, store, op):
+    from contextlib import contextmanager
+
+    other = SynapseStore(store.db_path)
+    go, done = threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+
+    def writer():
+        go.wait(timeout=10)
+        try:
+            other.reinforce(["concurrent_c", "concurrent_d"])
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            errors.append(exc)
+        finally:
+            done.set()
+
+    original = SynapseStore._connect
+
+    @contextmanager
+    def patched(self):
+        with original(self) as conn:
+            yield _CommitAfterFirstRead(conn, go, done) if self is store else conn
+
+    monkeypatch.setattr(SynapseStore, "_connect", patched)
+    t = threading.Thread(target=writer)
+    t.start()
+    try:
+        op()
+    finally:
+        go.set()
+        t.join(timeout=30)
+        monkeypatch.setattr(SynapseStore, "_connect", original)
+    assert not errors, errors
+    assert other.neighbors("concurrent_c", namespaces=["personal"])  # writer landed
+
+
+def test_decay_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["a", "b"])
+    _run_with_concurrent_writer(monkeypatch, tmp_path, s, s.decay)
+
+
+def test_seed_from_documents_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node("decision:exact.20260801", "The audit_log_data function needs updating."),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+    ]
+    result: list[int] = []
+    _run_with_concurrent_writer(
+        monkeypatch, tmp_path, s, lambda: result.append(s.seed_from_documents(nodes))
+    )
+    assert result == [1]
+
+
+def test_normalize_hubs_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    for i in range(60):
+        s.reinforce(["hub", f"spoke_{i}"], strength=2.0)
+    _run_with_concurrent_writer(monkeypatch, tmp_path, s, s.normalize_hubs)
