@@ -8,7 +8,7 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | **[Does it work on your code? (5-minute benchmark)](./benchmark-your-repo.md)** | **Evaluating whether to install at all** | **Measured before/after on YOUR codebase** |
 | [Claude Code user](./claude-code.md) | You use Claude Code daily | Retrieval, session memory and lifecycle hooks in every session |
 | [Pick up where you left off](./pick-up-where-you-left-off.md) | Claude Code users who start a new session or `/clear` mid-task, and Hermes-Agent users with the plugin (v4.8.0+) | A new session starts with a short recap of the last one's prompts and edited files; `neuralmind recap` shows it |
-| [Hermes-Agent with code memory in every turn](./hermes-agent.md) | Hermes-Agent users, in the terminal or through the gateway (v4.8.0+) | Related files, decisions and the last session's recap added to each turn by a plugin, with no tool call; `neuralmind install-hermes-plugin` sets it up |
+| [Hermes-Agent with code memory in every turn](./hermes-agent.md) | Hermes-Agent users, in the terminal or through the gateway (v4.8.0+) | Related files and decisions added to every turn by a plugin, and the last session's recap to a session's first, with no tool call; `neuralmind install-hermes-plugin` sets it up |
 | [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings — `neuralmind savings --cost` prices them in dollars (v0.45.0+) |
 | [Any LLM (ChatGPT / Gemini / local)](./any-llm.md) | You use non-MCP chats or a model-agnostic workflow | Get NeuralMind context into any chat window |
 | [Offline / regulated work](./offline-regulated.md) | Regulated industries, air-gapped machines | Local retrieval, no telemetry |

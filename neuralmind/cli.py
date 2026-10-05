@@ -5190,8 +5190,9 @@ def cmd_install_hermes_plugin(args):
             )
     else:
         print(
-            "  Project: the directory Hermes runs in (TERMINAL_CWD, else its current "
-            "directory). Pass a path to pin one — a gateway session has no project directory."
+            "  Project: the directory Hermes works in (TERMINAL_CWD, else its current "
+            "directory), if it's built. Pass a path to pin one; a pin applies to every "
+            "Hermes session in this Hermes home."
         )
     if not result["initialised"]:
         print(

@@ -27,9 +27,10 @@ neuralmind build /path/to/project
 neuralmind install-hermes-plugin /path/to/project
 ```
 
-`install-hermes-plugin` writes three files to `~/.hermes/plugins/neuralmind/`
-(under `$HERMES_HOME` instead when that's set, or under the directory
-`--hermes-home` names):
+`install-hermes-plugin` writes three files to the Hermes home's
+`plugins/neuralmind/`. The home is `$HERMES_HOME`, else Hermes's default,
+`~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). A Hermes profile has a home
+of its own; pass it with `--hermes-home`.
 
 - `__init__.py`: the plugin, a small stdlib-only file
 - `plugin.yaml`: the manifest Hermes discovers it by
@@ -37,9 +38,16 @@ neuralmind install-hermes-plugin /path/to/project
   path, if you gave one
 
 Then it runs `hermes plugins enable neuralmind`, because Hermes loads a user
-plugin only once it's enabled. If `hermes` isn't on your `PATH`, or you passed
-`--no-enable`, run that step yourself. Re-running the install updates the
-plugin in place.
+plugin only once it's on the `plugins.enabled` list. It does that only in a
+home Hermes has already set up (one with a `config.yaml`, `.env` or
+`state.db`); anywhere else it tells you to enable the plugin once Hermes is
+set up. If `hermes` isn't on your `PATH`, or you passed `--no-enable`, run
+that step yourself.
+
+The installed plugin is a copy: `pip install -U neuralmind` doesn't update it,
+so re-run `neuralmind install-hermes-plugin` after upgrading. Re-running
+updates the plugin in place and keeps an earlier pin unless you pass a new
+path or `--unpin` (see [section 5](#5-which-project-a-session-belongs-to)).
 
 Start a new Hermes session, or restart the gateway if it's running, to load it.
 
@@ -122,43 +130,53 @@ Not recorded:
 
 - a failed edit;
 - a file changed through Hermes's `terminal` tool, such as a `sed` run;
-- anything a subagent does. A subagent's message is written by its parent
-  agent, so the plugin neither records it nor answers it with recall.
+- anything a subagent does, its edits included. A subagent's message is
+  written by its parent agent, so the plugin neither records it nor answers it
+  with recall.
 
 ## 5. Which project a session belongs to
 
 1. `NEURALMIND_PROJECT`, if set;
 2. else the path given to `install-hermes-plugin`;
 3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else the directory Hermes runs in.
+4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
 
 The first of these that has been built wins; if none has, the plugin does
-nothing for that turn. Install without a path and the plugin follows wherever
-you run Hermes, so one install serves every built project you work in. Install
-with a path and Hermes serves that project wherever it runs, unless
-`NEURALMIND_PROJECT` names another.
+nothing for that turn. Install without a path and the plugin follows the
+directory Hermes works in, so one install serves every built project you work
+in and does nothing in a repository NeuralMind hasn't built.
+
+Install with a path and you pin that project. A pin applies to every Hermes
+session that uses that Hermes home, whatever directory it runs in: each one
+gets the pinned project's context, and its prompts are recorded in that
+project, unless `NEURALMIND_PROJECT` names another built project. If you use
+Hermes across several projects, install without a path (or with `--unpin`, if
+you pinned one before). Re-running the
+install without a path keeps an earlier pin; `--unpin` clears it.
 
 ### Gateway sessions: one repository from your phone
 
-A gateway session (Telegram, Discord …) has no project directory, so pin one
-at install:
+A gateway session (Telegram, Discord …) uses the gateway's working directory,
+which is rarely the project you mean, so pin one at install, or set
+`NEURALMIND_PROJECT` in the gateway's environment:
 
 ```bash
 neuralmind install-hermes-plugin /path/to/project
 ```
 
-Pinned, a gateway chat gets the same context a terminal session does: ask
-about the repository from your phone, and the turn arrives with the related
-files, the recorded decisions and, on a session's first turn, where the last
-session stopped.
+Then a gateway chat gets the same context a terminal session does: ask about
+the repository from your phone, and the turn arrives with the related files,
+the recorded decisions and, on a session's first turn, where the last session
+stopped.
 
-Every message in a pinned gateway session is then treated as being about that
-project, including messages that have nothing to do with the code. Each one is
-answered with recall and recorded for the recap, passing through NeuralMind's
-credential patterns before it's written, like any other prompt. Set
-`NEURALMIND_SESSION_RECAP=0` in the gateway's environment to stop the recording
-and the recap (recall still works), and run
-`neuralmind recap /path/to/project --clear` to delete what's already stored.
+Whenever a gateway session resolves to a built project, pinned or not, every
+message in it is treated as being about that project, including messages that
+have nothing to do with the code. Each one is answered with recall and
+recorded for the recap, passing through NeuralMind's credential patterns
+before it's written, like any other prompt. Set `NEURALMIND_SESSION_RECAP=0`
+in the gateway's environment to stop the recording and the recap (recall
+still works), and run `neuralmind recap /path/to/project --clear` to delete
+what's already stored.
 
 ## 6. Alongside the MCP tools and a memory provider
 
@@ -172,11 +190,9 @@ starts each turn knowing where to look, whether or not it calls them.
 mem0 and others) remember conversations and the person: what was said,
 preferences, facts. NeuralMind remembers the code: which parts of it are used
 together, the decisions recorded against it, and what the last session asked
-and edited. They answer different questions, so they don't compete. The
-NeuralMind plugin isn't a memory provider and doesn't take Hermes's
-`memory.provider` setting, which selects one provider at a time, so you keep
-the one you use. We haven't tested the plugin alongside any particular
-provider.
+and edited. The plugin is enabled through Hermes's `plugins.enabled` list, not
+`memory.provider`, so it doesn't replace your provider. Both add text to the
+same turn's user message, and we haven't tested them together.
 
 ## 7. Switch between Claude Code and Hermes
 
@@ -201,14 +217,14 @@ first turn has where the Claude Code session stopped.
 | The first turn of a resumed session | Recall and decisions only: the conversation is already there |
 | A subagent's turn | Nothing |
 | No built project found | Nothing |
-| NeuralMind errors, or doesn't answer within the timeout | Nothing; the turn goes ahead |
+| A NeuralMind call errors, or doesn't answer within the timeout | Not that call's part; the turn goes ahead with whatever the others returned |
 
 ## Settings
 
 | Variable | Default | Effect |
 |---|---|---|
 | `NEURALMIND_PROJECT` | unset | The project to serve, ahead of the one given at install |
-| `NEURALMIND_HERMES_TIMEOUT` | `8` | Seconds to wait for NeuralMind before a turn goes ahead without it |
+| `NEURALMIND_HERMES_TIMEOUT` | `8` | Seconds each call to NeuralMind may wait (a session's first turn makes two); a call that times out is left out and the turn goes ahead. Keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30), or Hermes drops the whole block |
 | `NEURALMIND_SESSION_RECAP` | on | `0` stops recording and stops the recap |
 | `NEURALMIND_SYNAPSE_INJECT` | on | `0` drops the associative recall |
 | `NEURALMIND_PROVENANCE_INJECT` | on | `0` drops the decision provenance |
@@ -221,14 +237,23 @@ from, or the gateway's service environment.
 
 ## Limits
 
-- **One subprocess per turn** (two on a session's first turn), plus one per
-  recorded edit. Each starts Python and loads NeuralMind. If NeuralMind doesn't
-  answer within `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds), the turn goes
-  ahead without its context, and any error does the same. We haven't measured
-  how much time it adds to a Hermes turn.
-- **Tested with Hermes v0.21.5**, through Hermes's own plugin loader and hook
-  dispatch. It relies on `pre_llm_call` accepting `{"context": ...}`, which
-  that version documents.
+- **One subprocess per turn** (two on a session's first turn: the recap, then
+  recall), plus one per edited file. Each starts Python and loads NeuralMind,
+  and waits at most `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds), so a
+  first turn can wait up to twice that; one that times out or fails is left
+  out, and the turn goes ahead with whatever context the others returned. We
+  haven't measured how much time it adds to a Hermes turn.
+- **On a session's first turn the plugin runs NeuralMind's whole
+  `SessionStart` action**, the same as Claude Code: a synapse decay tick, the
+  team-memory import, and the `SYNAPSE_MEMORY.md` export (copied into Claude
+  Code's auto-memory directory when that exists;
+  `NEURALMIND_SYNAPSE_EXPORT=0` turns the export off).
+- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
+  calling its plugin loader and hook dispatch directly, not yet in a live
+  Hermes conversation. It relies on `pre_llm_call` accepting
+  `{"context": ...}`, which that version documents.
+- **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
+  re-run `neuralmind install-hermes-plugin` after upgrading.
 - **Not measured.** We haven't measured what the context changes in Hermes's
   answers.
 - **The interpreter is recorded at install.** The plugin runs NeuralMind with
@@ -237,8 +262,11 @@ from, or the gateway's service environment.
   environment, re-run the install; until you do, the plugin may add nothing.
 - **An edit made just before Hermes exits can be missed.** Recording runs on a
   background thread, which doesn't keep Hermes open.
-- **It goes to your model provider.** The context is part of the turn's user
-  message, so it's sent along with it.
+- **It goes to your model provider, and stays in Hermes's session history.**
+  The context is part of the turn's user message, so it's sent along with it.
+  Hermes stores that message with NeuralMind's block in it, so the block,
+  recap included, is sent to your model provider again with that session's
+  later turns.
 - **Redaction catches common credential formats, not every secret.** A secret
   in an unusual format can still be written to `.neuralmind/recaps/`.
 

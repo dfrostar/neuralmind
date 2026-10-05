@@ -132,7 +132,8 @@ def uninstall(home: Path | None = None) -> dict:
     """Disable the plugin in Hermes and remove its directory."""
     home = home or hermes_home()
     target = plugin_dir(home)
-    disabled = _hermes("disable", home) if target.exists() else None
+    # As with enable: never run `hermes` against a home Hermes hasn't set up.
+    disabled = _hermes("disable", home) if target.exists() and is_hermes_home(home) else None
     removed = False
     if target.is_dir() and not target.is_symlink():
         shutil.rmtree(target)

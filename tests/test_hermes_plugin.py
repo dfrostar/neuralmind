@@ -33,6 +33,7 @@ def _isolate(monkeypatch, tmp_path):
     # No installed config.json next to the plugin module.
     monkeypatch.setattr(plugin, "_config", dict)
     monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", set())
+    monkeypatch.setattr(plugin, "_SUBAGENT_TASKS", set())
     monkeypatch.chdir(tmp_path)
 
 
@@ -426,3 +427,59 @@ def test_cli_install_and_uninstall(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(hermes_install.shutil, "which", lambda name: None)
     main()
     assert "Removed the NeuralMind plugin" in capsys.readouterr().out
+
+
+def test_unbuilt_terminal_cwd_means_no_project(tmp_path, monkeypatch, calls):
+    # Hermes works in TERMINAL_CWD; the directory the process started in
+    # (built or not) must not stand in for it.
+    built = _built(tmp_path / "started-here")
+    unbuilt = tmp_path / "autopilot"
+    unbuilt.mkdir()
+    monkeypatch.chdir(built)
+    monkeypatch.setenv("TERMINAL_CWD", str(unbuilt))
+    assert plugin._project() is None
+    assert plugin.on_pre_llm_call(session_id="s", user_message="x", is_first_turn=True) is None
+    assert calls == []
+
+
+def test_subagent_edits_skipped_after_session_rotation(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    plugin.on_pre_llm_call(
+        session_id="child-1",
+        user_message="do X",
+        is_first_turn=True,
+        parent_session_id="s1",
+        task_id="task-9",
+    )
+    # Hermes rotated the subagent's session id (context compression); task_id stays.
+    plugin.on_post_tool_call(
+        tool_name="write_file", args={"path": "a.py"}, session_id="child-2", task_id="task-9"
+    )
+    assert calls == []
+
+
+def test_paths_hermes_reports_are_used(tmp_path, monkeypatch, calls, sync_threads):
+    _built(tmp_path)
+    monkeypatch.setenv("TERMINAL_CWD", str(tmp_path))
+    written = str(tmp_path / "src" / "util.py")  # the agent had `cd src`'d
+    plugin.on_post_tool_call(
+        tool_name="write_file",
+        args={"path": "util.py", "content": "x"},
+        result=json.dumps({"bytes_written": 1, "files_modified": [written]}),
+        session_id="s1",
+    )
+    assert [p["tool_input"]["file_path"] for _, p in calls] == [written]
+
+
+def test_uninstall_never_runs_hermes_in_an_uninitialised_home(tmp_path, monkeypatch):
+    home = tmp_path / "hermes"
+    home.mkdir()
+    hermes_install.install(None, home=home, enable=False)
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("hermes must not run against an uninitialised home")
+
+    monkeypatch.setattr(hermes_install.subprocess, "run", boom)
+    result = hermes_install.uninstall(home)
+    assert result["removed"] is True and result["disabled"] is None

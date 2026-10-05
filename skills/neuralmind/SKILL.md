@@ -237,7 +237,8 @@ case drive the `neuralmind` CLI through `terminal` instead. See
 (`neuralmind install-hermes-plugin`), each turn's user message already
 carries NeuralMind's related files and decisions for it, and a session's
 first turn also the recap of the previous session. Don't re-query for what
-that block already gives you; call the tools for what it doesn't cover.
+that block already gives you; call the tools for what it doesn't cover. A
+subagent's messages carry no block; if you're a subagent, call the tools.
 
 **OpenClaw.** Registered once with:
 

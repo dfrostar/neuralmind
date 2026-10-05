@@ -85,7 +85,10 @@ neuralmind install-hermes-plugin /path/to/project   # v4.8.0+
 With the plugin, Hermes gets NeuralMind's recall and recorded decisions on
 every turn, and the session recap on a session's first turn, without calling a
 tool *(v4.8.0+)*. Its edits are recorded in the same `.neuralmind/` as Claude
-Code's, so the recap crosses between the two. See
+Code's, so the recap crosses between the two. The path pins that project for
+every Hermes session using that Hermes home, in any directory; if you use
+Hermes across several projects, install without a path (or with `--unpin`, if
+you pinned one before). See
 [Hermes-Agent with code memory in every turn](./hermes-agent.md).
 
 **OpenClaw:**

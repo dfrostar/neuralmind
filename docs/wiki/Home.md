@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.8.0 — A new session starts with where the last one left off; Hermes gets context without asking (October 2026)
+### v4.8.0 — A new session starts where the last one left off; Hermes gets context without asking (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the
 previous one in the project: its first prompt, its last three, and the files it
@@ -57,9 +57,19 @@ Claude Code's `UserPromptSubmit` hook adds, and on a session's first turn the
 recap. Hermes appends it to that turn's user message, not the system prompt.
 Files changed with `write_file` and `patch` are recorded, and Hermes and Claude
 Code share `.neuralmind/recaps/`, so the recap carries over between the two
-agents. Tested with Hermes v0.21.5; if NeuralMind doesn't answer within
-`NEURALMIND_HERMES_TIMEOUT` (default 8 seconds) the turn goes ahead without it,
-and what the context changes in Hermes's answers isn't measured. Walkthrough:
+agents. A gateway session (Telegram, Discord …) uses the gateway's working
+directory unless a project is pinned at install or `NEURALMIND_PROJECT` is set;
+whenever it resolves to a built project, pinned or not, every message in it is
+recorded for the recap, credential-redacted, and `NEURALMIND_SESSION_RECAP=0`
+turns that off. A pin applies to every Hermes session using that Hermes home,
+in any directory (each gets the pinned project's context, and its prompts are
+recorded in that project), so if you use Hermes across several projects,
+install without a path. Each call the plugin makes to NeuralMind waits at most
+`NEURALMIND_HERMES_TIMEOUT` (default 8 seconds; a session's first turn makes
+two), and one that times out or fails is left out while the turn goes ahead.
+Tested against a Hermes v0.21.5 main-branch build by calling its plugin loader
+and hook dispatch directly, not yet in a live Hermes conversation; what the
+context changes in Hermes's answers isn't measured. Walkthrough:
 [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md) ·
 [`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v480) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
@@ -488,6 +498,9 @@ turn, and the recap on a session's first turn):
 ```bash
 neuralmind install-hermes-plugin .
 ```
+
+The path pins that project for every Hermes session in that Hermes home; if
+you use Hermes across several projects, install without a path.
 
 ## Compare to alternatives
 

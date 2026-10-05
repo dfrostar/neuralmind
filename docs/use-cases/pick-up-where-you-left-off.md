@@ -38,8 +38,13 @@ built. A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused
 too: a cloned repository could point either one outside the project.
 
 On Hermes-Agent, `neuralmind install-hermes-plugin .` takes the place of
-`install-hooks`: the plugin records the same prompts and edits and adds the
-recap to a session's first turn. See
+`install-hooks`: the plugin records the same prompts and edits (a subagent's
+aren't recorded) and adds the recap to a session's first turn. The path pins
+that project for every Hermes session using that Hermes home, in any
+directory; if you use Hermes across several projects, install without a path
+(or with `--unpin`, if you pinned one before).
+The installed plugin is a copy, so re-run the install after upgrading
+NeuralMind. See
 [Hermes-Agent with code memory in every turn](./hermes-agent.md).
 
 ## 2. Work as usual
@@ -157,7 +162,8 @@ recap is hidden, not deleted: `neuralmind recap --clear` removes them.
   `neuralmind recap --clear` deletes the records.
 - **It goes to your model provider.** The recap is part of the agent's context,
   so it's sent along with the rest of the session, as the original prompts
-  were.
+  were. On Hermes, it's stored in the session's history with your first
+  message, so it's sent again with that session's later turns.
 - **A concurrent session counts as "previous".** With two sessions running in
   the same project, in either agent, a new one gets whichever was active last,
   which may not be the one you meant to continue.

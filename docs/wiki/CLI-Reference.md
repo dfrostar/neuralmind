@@ -2209,12 +2209,18 @@ NEURALMIND_BYPASS=1 claude   # hooks inherit Claude Code's environment
 
 ### install-hermes-plugin *(v4.8.0+)*
 
-Install or uninstall NeuralMind's plugin for Hermes-Agent. It puts the context
-the Claude Code hooks add into every Hermes turn before the model runs, so the
-agent doesn't have to decide to call an MCP tool or a skill. The command writes
-the plugin to `~/.hermes/plugins/neuralmind/` (or under `$HERMES_HOME`), then
-runs `hermes plugins enable neuralmind`, since Hermes loads a user plugin only
-once it's enabled. Re-running updates the plugin in place.
+Install or uninstall NeuralMind's plugin for Hermes-Agent. Before the model
+runs, it adds NeuralMind's related files and decisions to every Hermes turn,
+and the last session's recap to a session's first turn, so the agent doesn't
+have to decide to call an MCP tool or a skill. The command writes the plugin
+into the Hermes home's `plugins/neuralmind/`: `$HERMES_HOME`, else Hermes's
+default, `~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). A Hermes profile
+has a home of its own; pass it with `--hermes-home`. The command then runs
+`hermes plugins enable neuralmind`, since Hermes loads a user plugin only once
+it's enabled, but only in a home Hermes has already set up (one with a
+`config.yaml`, `.env` or `state.db`); anywhere else it tells you to enable the
+plugin once Hermes is set up. Re-running updates the plugin in place and keeps
+the project pinned earlier unless you pass a new path or `--unpin`.
 
 | File | Contents |
 |------|----------|
@@ -2230,22 +2236,23 @@ It registers two Hermes hooks:
 | `post_tool_call` on `write_file` and `patch` | Edited-path record, on a background thread (V4A patches included) | Note the edited file for the next session's recap and the synapse layer. A failed edit isn't recorded, and neither is a file changed through the terminal |
 
 ```bash
-neuralmind install-hermes-plugin [project_path] [--uninstall] [--no-enable] [--hermes-home PATH]
+neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-enable] [--hermes-home HERMES_HOME]
 ```
 
 #### Arguments
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `project_path` | No | Project the plugin serves (default: the directory Hermes runs in). Pin one for a gateway session (Telegram, Discord …), which has no project directory |
+| `project_path` | No | Project the plugin serves (default: the one pinned by an earlier install, else the directory Hermes works in: `TERMINAL_CWD`, or its current directory when that's unset). Pin one for a gateway session (Telegram, Discord …), which otherwise uses the gateway's working directory |
 
 #### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
 | `--uninstall` | False | Run `hermes plugins disable neuralmind` and remove the plugin directory |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
-| `--hermes-home` | `$HERMES_HOME`, else `~/.hermes` | Hermes home directory to install into |
+| `--hermes-home` | `$HERMES_HOME`, else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
 #### Examples
 
@@ -2258,9 +2265,15 @@ neuralmind install-hermes-plugin /path/to/project
 # →   Enabled in Hermes.
 # →   Each Hermes turn now gets NeuralMind's related files and decisions, and a session's first turn gets the recap of the previous one. Start a new Hermes session (restart the gateway if it's running) to load it.
 
-# Serve whichever built project Hermes runs in
+# After upgrading NeuralMind: re-run, since the installed plugin is a copy.
+# Without a path, a re-run keeps the project pinned earlier
+pip install -U neuralmind
 neuralmind install-hermes-plugin
-# →   Project: the directory Hermes runs in (TERMINAL_CWD, else its current directory). Pass a path to pin one — a gateway session has no project directory.
+# →   Project: /path/to/project (kept from the earlier install; --unpin clears it)
+
+# Serve whichever built project Hermes runs in (Hermes across several projects)
+neuralmind install-hermes-plugin --unpin
+# →   Project: the directory Hermes works in (TERMINAL_CWD, else its current directory), if it's built. Pass a path to pin one; a pin applies to every Hermes session in this Hermes home.
 
 # Write the files only, and enable the plugin yourself
 neuralmind install-hermes-plugin /path/to/project --no-enable
@@ -2276,9 +2289,13 @@ neuralmind install-hermes-plugin --uninstall
 
 Start a new Hermes session, or restart the gateway, to load the plugin. If the
 pinned project hasn't been built, the install warns that the plugin does
-nothing until it is and prints the `neuralmind build` command to run. If
-`hermes` isn't on `PATH`, or `hermes plugins enable neuralmind` fails, it says
-so and asks you to run that command yourself. With no Hermes home it prints
+nothing until it is and prints the `neuralmind build` command to run. In a
+home Hermes hasn't set up yet (no `config.yaml`, `.env` or `state.db`), it
+writes the plugin but doesn't enable it: it prints
+`⚠ … has no Hermes config yet, so the plugin isn't enabled` and asks you to
+run `hermes plugins enable neuralmind` once Hermes is set up. If `hermes`
+isn't on `PATH`, or `hermes plugins enable neuralmind` fails, it says so and
+asks you to run that command yourself. With no Hermes home it prints
 `✗ No Hermes home at …` and exits `1`.
 
 #### Which project a session uses
@@ -2286,13 +2303,23 @@ so and asks you to run that command yourself. With no Hermes home it prints
 1. `NEURALMIND_PROJECT`, if set;
 2. else the `project_path` given at install;
 3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else the directory Hermes runs in.
+4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
 
 The first of these that has been built (it has the
 `.neuralmind/build_status.json` a build leaves) wins; if none has, the plugin
-does nothing. Every message in a pinned gateway session is recorded for the
-recap, credential-redacted like any other prompt; `NEURALMIND_SESSION_RECAP=0`
-turns that off.
+does nothing. A gateway session (Telegram, Discord …) uses the gateway's
+working directory, which is rarely the project you mean, so pin one at install
+or set `NEURALMIND_PROJECT`. Whenever a gateway session resolves to a built
+project, pinned or not, every message in it is recorded for the recap,
+credential-redacted like any other prompt; `NEURALMIND_SESSION_RECAP=0` turns
+that off.
+
+A pin applies to every Hermes session that uses that Hermes home, whatever
+directory it runs in: each one gets the pinned project's context, and its
+prompts are recorded in that project. If you use Hermes across several
+projects, install without a path, so the plugin follows the directory Hermes
+works in and does nothing in a repository NeuralMind hasn't built. Re-running
+the install without a path keeps an earlier pin; `--unpin` clears it.
 
 #### Notes
 
@@ -2304,20 +2331,28 @@ turns that off.
   `NEURALMIND_BYPASS`, `NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP`
   and the rest apply as they do under Claude Code, set in the environment
   Hermes runs in.
-- **Fails open.** One subprocess per turn, plus one per recorded edit. If
-  NeuralMind doesn't answer within `NEURALMIND_HERMES_TIMEOUT` seconds
-  (default 8), or any error occurs, the turn goes ahead without its context.
+- **Fails open.** One subprocess per turn (two on a session's first turn: the
+  recap, then recall), plus one per edited file. Each waits at most
+  `NEURALMIND_HERMES_TIMEOUT` seconds (default 8), so a first turn can wait up
+  to twice that; one that times out or fails is left out, and the turn goes
+  ahead with whatever context the others returned.
 - **Subagents are skipped.** A subagent's message is written by its parent
-  agent, so it's neither recorded nor answered with recall.
+  agent, so it's neither recorded nor answered with recall, and the
+  subagent's edits aren't recorded either.
 - **One record for both agents.** Hermes and Claude Code write to the same
   `.neuralmind/recaps/`, so a Hermes session can start with what the last
   Claude Code session in the project did, and the other way round.
-- **Tested with Hermes v0.21.5**, through Hermes's own plugin loader and hook
-  dispatch. It relies on `pre_llm_call` accepting `{"context": ...}`, which
-  that version documents. What the context changes in Hermes's answers isn't
-  measured.
+- **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
+  re-run `neuralmind install-hermes-plugin` after upgrading.
+- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
+  calling its plugin loader and hook dispatch directly, not yet in a live
+  Hermes conversation. It relies on `pre_llm_call` accepting
+  `{"context": ...}`, which that version documents. What the context changes
+  in Hermes's answers isn't measured.
 - The MCP server and the Hermes skill, which the agent calls itself, are
   covered in [Integration Guide: Hermes-Agent](Integration-Guide.md#hermes-agent).
+
+Walkthrough: [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md).
 
 ---
 
@@ -3578,8 +3613,8 @@ renewed — issue a new one.
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
 | `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
-| `NEURALMIND_PROJECT` | unset | *(v4.8.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
-| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.8.0+)* Hermes plugin: seconds to wait for NeuralMind before a turn goes ahead without its context (each recorded edit gets the same limit). See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
+| `NEURALMIND_PROJECT` | unset | *(v4.8.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. Without it or a pinned project, a gateway session uses the gateway's working directory. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
+| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.8.0+)* Hermes plugin: seconds each call to NeuralMind may wait before the turn goes ahead without that call's context. A session's first turn makes two (the recap, then recall), so it can wait up to twice this; each recorded edit gets the same limit. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |

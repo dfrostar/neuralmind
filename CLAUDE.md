@@ -157,6 +157,7 @@ When working on the NeuralMind codebase alongside other projects (cmmc20, lingog
 - **Hermes memory does NOT isolate** — tag every entry with `[project]` prefix.
 - **session_search does NOT isolate** — include project name in every query.
 - **Autopilot is NEVER indexed** (contains secrets). NeuralMind + autopilot don't mix.
+- **The Hermes plugin with a pinned project does NOT isolate** — a pin given at install (`neuralmind install-hermes-plugin <path>`) applies to every Hermes session on that Hermes home, in any directory, and `NEURALMIND_PROJECT` to every Hermes process started with it in its environment: each gets the pinned project's context and has its prompts recorded in that project's `.neuralmind/recaps/`, autopilot sessions included. For several projects, install without a path (a re-run without a path keeps an old pin; `--unpin` clears it), so the plugin follows the directory Hermes works in and does nothing in an unbuilt repo like autopilot. Pin only for a single-project setup or the gateway.
 
 End users running NeuralMind on a single project need no scoping — `.neuralmind/` isolation is built-in. For operators, see `docs/wiki/Multi-Project-Scoping.md`.
 

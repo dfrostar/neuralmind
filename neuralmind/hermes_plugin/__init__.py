@@ -19,8 +19,9 @@ same behavior, toggles (``NEURALMIND_BYPASS``, ``NEURALMIND_SYNAPSE_INJECT``,
 not need to be installed in Hermes's own environment.
 
 Which project: ``NEURALMIND_PROJECT``, else the ``project`` saved at install,
-else Hermes's ``TERMINAL_CWD``, else the current directory — and only one where
-``neuralmind build`` has run. Anything else, and the plugin does nothing.
+else Hermes's ``TERMINAL_CWD`` (or, only when that's unset, the current
+directory) — and only one where ``neuralmind build`` has run. Anything else,
+and the plugin does nothing.
 Everything fails open: an error or a timeout (``NEURALMIND_HERMES_TIMEOUT``,
 default 8 seconds) means no context, never a broken turn.
 """
@@ -47,8 +48,10 @@ _V4A_PATH = re.compile(r"^\*\*\* (?:Update|Add) File: (.+)$", re.MULTILINE)
 _HERE = Path(__file__).resolve().parent
 
 # Hermes's post_tool_call carries no parent_session_id, so a subagent's edits are
-# recognised by the session id its pre_llm_call (which runs first) reported.
+# recognised by what its pre_llm_call (which runs first) reported: its session id
+# and its task id, which survives Hermes rotating the session id mid-run.
 _SUBAGENT_SESSIONS: set[str] = set()
+_SUBAGENT_TASKS: set[str] = set()
 _SUBAGENT_SESSIONS_MAX = 4096
 
 
@@ -70,11 +73,14 @@ def _python() -> str:
 
 def _project() -> Path | None:
     """The NeuralMind project for this Hermes process, if it has been built."""
+    terminal_cwd = os.environ.get("TERMINAL_CWD")
     candidates = (
         os.environ.get("NEURALMIND_PROJECT"),
         _config().get("project"),
-        os.environ.get("TERMINAL_CWD"),
-        os.getcwd(),
+        terminal_cwd,
+        # Hermes works in TERMINAL_CWD when it's set, so an unbuilt TERMINAL_CWD
+        # means no project — not the directory the process happened to start in.
+        None if terminal_cwd else os.getcwd(),
     )
     for candidate in candidates:
         if not candidate or not isinstance(candidate, str):
@@ -145,6 +151,7 @@ def on_pre_llm_call(
     user_message=None,
     is_first_turn: bool = False,
     parent_session_id: str = "",
+    task_id: str = "",
     **_: object,
 ):
     """Return this turn's NeuralMind context for Hermes to append, or None."""
@@ -152,8 +159,11 @@ def on_pre_llm_call(
         # A subagent's "user message" was written by its parent agent; neither
         # recording it nor recalling for it is about the user's work.
         if parent_session_id:
-            if session_id and len(_SUBAGENT_SESSIONS) < _SUBAGENT_SESSIONS_MAX:
-                _SUBAGENT_SESSIONS.add(session_id)
+            if len(_SUBAGENT_SESSIONS) < _SUBAGENT_SESSIONS_MAX:
+                if session_id:
+                    _SUBAGENT_SESSIONS.add(session_id)
+                if task_id:
+                    _SUBAGENT_TASKS.add(task_id)
             return None
         if not session_id:
             return None
@@ -181,6 +191,15 @@ def on_pre_llm_call(
         return None
 
 
+def _result_dict(result) -> dict:
+    if isinstance(result, str):
+        try:
+            result = json.loads(result)
+        except ValueError:
+            return {}
+    return result if isinstance(result, dict) else {}
+
+
 def _edited_paths(tool_name: str, args: dict) -> list[str]:
     path = args.get("path")
     if isinstance(path, str) and path:
@@ -193,14 +212,7 @@ def _edited_paths(tool_name: str, args: dict) -> list[str]:
 
 def _failed(result, status=None) -> bool:
     """Whether the tool call failed (only successful edits count)."""
-    if status == "error":
-        return True
-    if isinstance(result, str):
-        try:
-            result = json.loads(result)
-        except ValueError:
-            return False
-    return isinstance(result, dict) and bool(result.get("error"))
+    return status == "error" or bool(_result_dict(result).get("error"))
 
 
 def on_post_tool_call(
@@ -210,23 +222,32 @@ def on_post_tool_call(
     session_id: str = "",
     status=None,
     parent_session_id: str = "",
+    task_id: str = "",
     **_: object,
 ) -> None:
     """Record a successful file edit, in the background so the turn isn't held."""
     try:
         if tool_name not in EDIT_TOOLS or not isinstance(args, dict) or not session_id:
             return
-        if parent_session_id or session_id in _SUBAGENT_SESSIONS or _failed(result, status):
+        if parent_session_id or session_id in _SUBAGENT_SESSIONS:
+            return
+        if (task_id and task_id in _SUBAGENT_TASKS) or _failed(result, status):
             return
         project = _project()
         if project is None:
             return
         code = args.get("content") or args.get("new_string") or args.get("patch") or ""
-        # Hermes resolves a relative path against its workspace (TERMINAL_CWD),
-        # else its own working directory — not against a pinned project.
+        # Hermes reports the absolute paths it wrote (files_modified). Without
+        # them, resolve as Hermes does: against TERMINAL_CWD, else its own
+        # working directory — not against a pinned project.
+        written = _result_dict(result).get("files_modified")
+        if isinstance(written, list) and written and all(isinstance(p, str) for p in written):
+            paths = written
+        else:
+            paths = _edited_paths(tool_name, args)
         base = Path(os.environ.get("TERMINAL_CWD") or os.getcwd())
         payloads = []
-        for path in _edited_paths(tool_name, args):
+        for path in paths:
             file_path = Path(path).expanduser()
             if not file_path.is_absolute():
                 file_path = base / file_path
