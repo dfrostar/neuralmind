@@ -8,6 +8,9 @@
   (``from .utils import x`` in ``pkg/a.py`` used to link the top-level
   ``utils.py``), and a src-layout absolute import (``from lib.core import f``
   under ``src/``) resolves at all.
+- A ``.h`` header is parsed as C++ in a C++ project (or when it uses C++-only
+  syntax): its classes/namespaces used to be lost and ``namespace ui {``
+  became a bogus function ``ui()``.
 """
 
 from __future__ import annotations
@@ -302,3 +305,136 @@ def test_exact_module_wins_over_the_src_layout_fallback(tmp_path: Path) -> None:
     imports = _edges(graphgen.build_graph(tmp_path), "imports_from")
     assert ("app_py", "lib_core_py") in imports
     assert ("app_py", "src_lib_core_py") not in imports
+
+
+# --------------------------------------------------------------------------- #
+# .h headers → C or C++
+# --------------------------------------------------------------------------- #
+_needs_c_cpp = pytest.mark.skipif(
+    not (graphgen.language_available("c") and graphgen.language_available("cpp")),
+    reason="tree-sitter-c / tree-sitter-cpp not installed",
+)
+_WIDGET_H = (
+    "#pragma once\n"
+    "namespace ui {\n"
+    "class Widget : public Base {\n"
+    "public:\n"
+    "  void draw();\n"
+    "  int size() const;\n"
+    "};\n"
+    "}\n"
+)
+
+
+@_needs_c_cpp
+def test_header_in_a_cpp_project_is_parsed_as_cpp(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {
+            "src/widget.h": _WIDGET_H,
+            "src/widget.cpp": (
+                '#include "widget.h"\n'
+                "namespace ui {\n"
+                "void Widget::draw() { size(); }\n"
+                "int Widget::size() const { return 1; }\n"
+                "}\n"
+            ),
+        },
+    )
+    graph = graphgen.build_graph(tmp_path)
+    ids = {n["id"] for n in graph["nodes"]}
+    assert "src_widget_h__ui_fn" not in ids  # the C grammar's bogus `ui()`
+    assert {
+        "src_widget_h__widget_cls",
+        "src_widget_h__widget_cls__draw_fn",
+        "src_widget_h__widget_cls__size_fn",
+    } <= ids
+    assert ("src_widget_h__widget_cls", "ext__base_cls") in _edges(graph, "inherits")
+    assert ("src_widget_cpp", "src_widget_h") in _edges(graph, "imports_from")
+
+
+@_needs_c_cpp
+def test_header_with_cpp_only_syntax_is_parsed_as_cpp(tmp_path: Path) -> None:
+    """A header-only C++ library (no .cpp at all) still gets its classes."""
+    _write(tmp_path, {"include/widget.h": _WIDGET_H})
+    ids = {n["id"] for n in graphgen.build_graph(tmp_path)["nodes"]}
+    assert "include_widget_h__widget_cls" in ids
+    assert "include_widget_h__ui_fn" not in ids
+
+
+@_needs_c_cpp
+def test_header_in_a_c_project_stays_c(tmp_path: Path) -> None:
+    _write(tmp_path, {"include/db.h": "int db_connect(void);\n", "src/db.c": "int x;\n"})
+    assert graphgen._parse_language(tmp_path / "include" / "db.h", False) == "c"
+    assert graphgen._parse_language(tmp_path / "include" / "db.h", True) == "cpp"
+
+
+@_needs_c_cpp
+def test_c_file_still_links_a_header_parsed_as_cpp(tmp_path: Path) -> None:
+    """In a mixed C/C++ project the header joins the C++ group; the C file that
+    includes it (and calls what it declares) must still resolve against it."""
+    _write(
+        tmp_path,
+        {
+            "include/api.h": "int compute(int x);\nint helper(int x);\n",
+            "src/api.c": (
+                '#include "api.h"\n'
+                "int compute(int x) { return helper(x); }\n"
+                "int helper(int x) { return x; }\n"
+            ),
+            "src/main.cpp": '#include "api.h"\nint main() { return compute(1); }\n',
+        },
+    )
+    graph = graphgen.build_graph(tmp_path)
+    imports = _edges(graph, "imports_from")
+    assert ("src_api_c", "include_api_h") in imports
+    assert ("src_main_cpp", "include_api_h") in imports
+
+
+# An inline member function: C++ the header's own sniffing doesn't flag, which
+# only the C++ grammar parses (the C grammar turns the body into an ERROR, so
+# the call inside it is lost).
+_INLINE_H = "int helper(void);\nstruct Widget {\n  int size() { return helper(); }\n};\n"
+_INLINE_CALL = ("lib_widget_h__widget_cls__size_fn", "lib_widget_h__helper_fn")
+
+
+@_needs_c_cpp
+def test_headers_reparse_when_the_first_cpp_file_arrives(tmp_path: Path) -> None:
+    """Whether a .h is C++ depends on the project; an incremental build must
+    notice when that flips even though the header itself didn't change."""
+    import json
+
+    root = _write(tmp_path / "p", {"lib/widget.h": _INLINE_H, "lib/a.c": "int a;\n"})
+    graph = json.loads(graphgen.write_graph(root).read_text(encoding="utf-8"))
+    assert _INLINE_CALL not in _edges(graph, "calls")  # C project: parsed as C
+
+    _write(root, {"lib/b.cpp": "int b;\n"})
+    graph = json.loads(graphgen.write_graph(root).read_text(encoding="utf-8"))
+    assert _INLINE_CALL in _edges(graph, "calls")
+
+    (root / "lib" / "b.cpp").unlink()
+    graph = json.loads(graphgen.write_graph(root).read_text(encoding="utf-8"))
+    assert _INLINE_CALL not in _edges(graph, "calls")
+
+
+@_needs_c_cpp
+def test_update_files_reparses_headers_when_the_first_cpp_file_arrives(tmp_path: Path) -> None:
+    _write(tmp_path, {"lib/widget.h": _INLINE_H, "lib/a.c": "int a;\n"})
+    graph = graphgen.build_graph(tmp_path)
+    assert _INLINE_CALL not in _edges(graph, "calls")
+    _write(tmp_path, {"lib/b.cpp": "int b;\n"})
+    graph, _ = graphgen.update_files(tmp_path, graph, ["lib/b.cpp"])
+    assert _INLINE_CALL in _edges(graph, "calls")
+
+
+@_needs_c_cpp
+def test_update_files_parses_a_header_like_a_full_build(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        {"src/widget.h": _WIDGET_H, "src/widget.cpp": '#include "widget.h"\n'},
+    )
+    graph = graphgen.build_graph(tmp_path)
+    graph, _ = graphgen.update_files(tmp_path, graph, ["src/widget.h"])
+    ids = {n["id"] for n in graph["nodes"]}
+    assert "src_widget_h__widget_cls" in ids
+    assert "src_widget_h__ui_fn" not in ids

@@ -1437,6 +1437,65 @@ def _code_language(path: Path) -> str | None:
     return lang
 
 
+# Suffixes only C++ uses; a project with any of them parses its .h as C++.
+_CPP_SUFFIXES: tuple[str, ...] = tuple(
+    sorted(s for s, lang in _SUFFIX_LANG.items() if lang == "cpp")
+)
+
+
+def _has_cpp_sources(names) -> bool:
+    """True if any of ``names`` (file names or paths) is a C++-only source."""
+    return any(name.endswith(_CPP_SUFFIXES) for name in names)
+
+
+# C++-only syntax at the start of a line: template/namespace/class definitions,
+# access specifiers, `using namespace`, and extension-less std headers.
+_CPP_SYNTAX_RE = re.compile(
+    rb"^[ \t]*(?:template\s*<|namespace(?:\s+[\w:]+)?\s*\{|class\s+\w+"
+    rb"|(?:public|protected|private)\s*:|using\s+namespace\b|#\s*include\s*<\w+>)",
+    re.MULTILINE,
+)
+
+
+def _has_cpp_syntax(path: Path) -> bool:
+    try:
+        return _CPP_SYNTAX_RE.search(path.read_bytes()) is not None
+    except OSError:
+        return False
+
+
+def _parse_language(path: Path, cpp_project: bool) -> str | None:
+    """``_code_language``, deciding whether a ``.h`` header is C or C++.
+
+    The suffix is shared, and the C grammar loses a C++ header's classes and
+    namespaces (``namespace ui {`` parses as a function ``ui()``). A header is
+    C++ when the project has C++ sources (``cpp_project``) or it uses C++-only
+    syntax itself (a header-only library).
+    """
+    lang = _code_language(path)
+    if (
+        lang == "c"
+        and path.suffix == ".h"
+        and language_available("cpp")
+        and (cpp_project or _has_cpp_syntax(path))
+    ):
+        return "cpp"
+    return lang
+
+
+def _lang_batches(langs) -> list[list[str]]:
+    """Languages grouped for the two extraction passes, in a stable order.
+
+    C and C++ share one batch — a ``.c`` file can include a header parsed as
+    C++ — so both run pass 1 (symbols, module keys) before either runs pass 2
+    (includes, calls). Every other language is its own batch, as before.
+    """
+    batches: dict[str, list[str]] = {}
+    for lang in sorted(langs):
+        batches.setdefault("c" if lang == "cpp" else lang, []).append(lang)
+    return [batches[k] for k in sorted(batches)]
+
+
 def _file_ids_moved(b: _GraphBuilder, graph: dict[str, Any], files: set[str]) -> set[str]:
     """Files in ``files`` that have nodes in ``graph`` but no file node under the
     id ``b`` gives them now: their id moved (a file sharing their natural id
@@ -1544,6 +1603,14 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     reuse = bool(existing_graph and extractor._cache) and not _file_ids_moved(
         b, existing_graph or {}, indexed
     )
+    # A .h parses as C++ in a project with C++ sources. If that flipped since
+    # the last build (the first C++ file arrived, or the last one left), every
+    # header must be re-parsed: re-extract everything.
+    cpp_project = _has_cpp_sources(f.name for f in files)
+    if reuse and any(f.suffix == ".h" for f in files):
+        old_nodes = (existing_graph or {}).get("nodes", [])
+        was_cpp = _has_cpp_sources(n.get("source_file", "") for n in old_nodes)
+        reuse = was_cpp == cpp_project
 
     # If we have an existing graph + cache, reuse unchanged nodes/edges
     unchanged_nodes: list[dict] = []
@@ -1598,7 +1665,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             rel = fpath.relative_to(root).as_posix()
             if rel not in re_extract_set:
                 continue
-            lang = _SUFFIX_LANG.get(fpath.suffix)
+            lang = _parse_language(fpath, cpp_project)
             if lang:
                 by_lang.setdefault(lang, []).append(fpath)
 
@@ -1610,30 +1677,27 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         for edge in unchanged_edges:
             b.edges.append(edge)
 
-        for lang in sorted(by_lang):
-            spec = _EXTRACTORS.get(lang)
-            if spec is None or not language_available(lang):
-                continue
-            extract_symbols, resolve_edges = spec
-            parser = _make_parser(lang)
-
-            parsed: list[tuple[str, bytes, Any]] = []
-            for fpath in by_lang[lang]:
-                rel = fpath.relative_to(root).as_posix()
-                try:
-                    src = fpath.read_bytes()
-                except OSError:
-                    continue
-                tree = parser.parse(src)
-                file_id = b.file_id(rel)
-                b.add_node(file_id, fpath.name, "code", rel, 1)
-                parsed.append((rel, src, tree))
-                # pass 1: file-level + symbol nodes (+ module-key registration).
-                extract_symbols(b, tree.root_node, src, rel, file_id)
+        for batch in _lang_batches(by_lang):
+            parsed: list[tuple[Any, str, bytes, Any]] = []
+            for lang in batch:
+                extract_symbols, resolve_edges = _EXTRACTORS[lang]
+                parser = _make_parser(lang)
+                for fpath in by_lang[lang]:
+                    rel = fpath.relative_to(root).as_posix()
+                    try:
+                        src = fpath.read_bytes()
+                    except OSError:
+                        continue
+                    tree = parser.parse(src)
+                    file_id = b.file_id(rel)
+                    b.add_node(file_id, fpath.name, "code", rel, 1)
+                    parsed.append((resolve_edges, rel, src, tree))
+                    # pass 1: file-level + symbol nodes (+ module-key registration).
+                    extract_symbols(b, tree.root_node, src, rel, file_id)
 
             # pass 2: cross-symbol edges (imports/inherits/calls), once every
             # file's symbols + module keys are registered.
-            for rel, src, tree in parsed:
+            for resolve_edges, rel, src, tree in parsed:
                 resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
     else:
         # Prose project: no tree-sitter extraction, but still pre-seed
@@ -4448,17 +4512,22 @@ def update_files(
     }
     b.file_ids = _file_id_overrides(root, kept | arriving)
     # A file whose id moved (a collider arrived or left) is re-parsed under its
-    # new id, along with every code file holding an edge into it.
-    moved = _file_ids_moved(b, graph, kept | arriving)
-    if moved:
+    # new id, along with every code file holding an edge into it. So is every
+    # .h when the project gained its first / lost its last C++ source (that
+    # decides whether a header parses as C or C++).
+    stale = _file_ids_moved(b, graph, kept | arriving)
+    cpp_project = _has_cpp_sources(kept | arriving)
+    if cpp_project != _has_cpp_sources(n.get("source_file", "") for n in original_nodes):
+        stale |= {rel for rel in kept if rel.endswith(".h")}
+    if stale:
         file_of = {n["id"]: n["source_file"] for n in original_nodes}
         dependents = {
             e.get("source_file", "")
             for e in graph.get("links", [])
-            if file_of.get(e.get("target")) in moved
+            if file_of.get(e.get("target")) in stale
             and Path(e.get("source_file", "")).suffix in _SUFFIX_LANG
         }
-        reparse = {rel for rel in moved | dependents if rel in kept and (root / rel).exists()}
+        reparse = {rel for rel in stale | dependents if rel in kept and (root / rel).exists()}
         changed_set |= reparse
         touched |= reparse
 
@@ -4489,26 +4558,27 @@ def update_files(
                 extractor(b, fpath, rel)
             stats.files_reparsed += 1
             continue
-        lang = _SUFFIX_LANG.get(fpath.suffix)
-        if lang and lang in _EXTRACTORS and language_available(lang):
+        lang = _parse_language(fpath, cpp_project)
+        if lang:
             code_by_lang.setdefault(lang, []).append(rel)
 
-    for lang, rels in code_by_lang.items():
-        extract_symbols, resolve_edges = _EXTRACTORS[lang]
-        parser = _make_parser(lang)
-        parsed: list[tuple[str, bytes, Any]] = []
-        for rel in rels:
-            try:
-                src = (root / rel).read_bytes()
-            except OSError:
-                continue
-            tree = parser.parse(src)
-            file_id = b.file_id(rel)
-            b.add_node(file_id, (root / rel).name, "code", rel, 1)
-            extract_symbols(b, tree.root_node, src, rel, file_id)
-            parsed.append((rel, src, tree))
-            stats.files_reparsed += 1
-        for rel, src, tree in parsed:
+    for batch in _lang_batches(code_by_lang):
+        parsed: list[tuple[Any, str, bytes, Any]] = []
+        for lang in batch:
+            extract_symbols, resolve_edges = _EXTRACTORS[lang]
+            parser = _make_parser(lang)
+            for rel in code_by_lang[lang]:
+                try:
+                    src = (root / rel).read_bytes()
+                except OSError:
+                    continue
+                tree = parser.parse(src)
+                file_id = b.file_id(rel)
+                b.add_node(file_id, (root / rel).name, "code", rel, 1)
+                extract_symbols(b, tree.root_node, src, rel, file_id)
+                parsed.append((resolve_edges, rel, src, tree))
+                stats.files_reparsed += 1
+        for resolve_edges, rel, src, tree in parsed:
             resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
 
     stats.files_removed = len(removed)
