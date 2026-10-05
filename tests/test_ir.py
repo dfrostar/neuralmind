@@ -311,6 +311,60 @@ def test_validate_flags_stale_synapse_as_warning():
     assert any(i.code == "stale_synapse" for i in issues)
 
 
+def _stale_issues(issues):
+    return [i for i in issues if i.code == "stale_synapse"]
+
+
+def test_validate_does_not_flag_community_pseudo_node_synapses():
+    # reinforce_from_query records the communities a query loaded as
+    # community_<id> pseudo-nodes, so a fresh index's very first query wrote
+    # synapses that validate then reported as stale.
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [
+        ir_mod.IRSynapse(source="app_py_handle", target="community_0", weight=0.3),
+        ir_mod.IRSynapse(source="community_0", target="community_1", weight=0.3),
+        ir_mod.IRSynapse(source="community_1", target="readme_md", weight=0.3),
+    ]
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
+def test_validate_does_not_flag_compliance_control_synapses():
+    # compliance:<framework>:<control> keys link code to a control on purpose.
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [
+        ir_mod.IRSynapse(source="app_py", target="compliance:CMMC:AC.L2-3.1.1", weight=0.24),
+    ]
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
+def test_validate_still_flags_real_stale_synapses_beside_pseudo_nodes():
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [
+        ir_mod.IRSynapse(source="app_py", target="community_0", weight=0.3),  # fine
+        ir_mod.IRSynapse(source="community_0", target="ghost", weight=0.3),  # deleted node
+        ir_mod.IRSynapse(source="app_py", target="community_7", weight=0.3),  # no cluster 7
+        ir_mod.IRSynapse(source="community_x", target="app_py", weight=0.3),  # not an id
+    ]
+    stale = _stale_issues(ir_mod.validate_ir(ir))
+    assert len(stale) == 1
+    assert stale[0].message.startswith("3 learned synapse(s)")
+
+
+def test_validate_fresh_store_written_like_a_query_has_no_stale_synapses(tmp_path):
+    """End-to-end on a real store: the edges one query's reinforcement writes
+    (search hits + the communities it loaded) validate clean."""
+    from neuralmind.synapses import SynapseStore
+
+    db = tmp_path / ".neuralmind" / "synapses.db"
+    db.parent.mkdir(parents=True)
+    SynapseStore(db).reinforce(["app_py_handle", "readme_md", "community_0", "community_1"])
+
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = ir_mod.load_synapses_for_project(tmp_path)
+    assert len(ir.synapses) == 6
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
 def test_validate_flags_synapse_missing_endpoint():
     ir = ir_mod.from_graph_json(_synthetic_graph())
     ir.synapses = [ir_mod.IRSynapse(source="app_py", target="", weight=0.5)]
