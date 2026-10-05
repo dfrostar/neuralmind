@@ -26,14 +26,19 @@ v4.6.0.
   it stops a runaway agent, not a caller that changes its actor name. A call
   over the limit returns `reason: "rate_limit"`. Every denial is written to
   `.neuralmind/audit_events.jsonl`, with its reason.
-- **A policy that is empty or malformed fails closed.** `roles: {}` grants
+- **A policy that parses but is wrong fails closed.** `roles: {}` grants
   nothing, instead of falling back to the defaults. If the `security:`
-  section, `roles` or `rate_limit` isn't a mapping, or a limit isn't a whole
-  number (or `window_seconds` is under 1), the server refuses every MCP call
-  with `code: "security_denied"`, `reason: "config"`, and an error naming the
-  setting, instead of guessing at a looser policy. A role whose value is
-  neither a list nor `"*"` gets no tools. `rate_limit: null` means the
-  defaults.
+  section, `roles` or `rate_limit` has a value that isn't a mapping, or a
+  limit isn't a whole number (or `window_seconds` is under 1), the server
+  refuses every MCP call with `code: "security_denied"`, `reason: "config"`,
+  and an error naming the setting, instead of guessing at a looser policy. A
+  role whose value is neither a list nor `"*"` gets no tools.
+- **Two mistakes still fall back to the defaults, `admin` included.** A file
+  that doesn't parse (a YAML syntax error) is read as no configuration, and a
+  `security:` or `roles:` key left empty (`null`) is read as no policy, as is
+  `rate_limit: null` for the limiter. After writing a policy, check that it
+  holds: call a tool you left out with `role: "admin"` and expect
+  `security_denied`.
 - **The docs describe it as working.** `SECURITY.md`, the Security Guide, the
   Deployment Guide, the FAQ and risk R-03 had warned that these settings were
   ignored; they now show how to use them. The v4.5.1 release notes said a
@@ -60,7 +65,7 @@ Without one, every agent sees exactly what it saw in v4.6.0.
 
 | Agent | Before | After |
 |---|---|---|
-| **Claude Code** (MCP + hooks) | Every MCP tool the default policy grants, whatever `security.roles` said; 60 calls a minute | Only the tools `security.roles` grants the role it calls with (`builder` when it names none); a tool outside that returns `security_denied` with `reason: "rbac"`, and every tool returns `reason: "config"` while the `security:` section is malformed. Hooks don't go through the MCP server and are unaffected |
+| **Claude Code** (MCP + hooks) | Every MCP tool the default policy grants, whatever `security.roles` said; 60 calls a minute | Only the tools `security.roles` grants the role it calls with (`builder` when it names none); a tool outside that returns `security_denied` with `reason: "rbac"`, and every tool returns `reason: "config"` while the `security:` section has a value of the wrong type. Hooks don't go through the MCP server and are unaffected |
 | **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
 | **Generic MCP client** | `role: "admin"` reached every tool | `role: "admin"` reaches only what the policy grants `admin`; nothing, if the policy doesn't list it |
 
@@ -80,8 +85,10 @@ Without one, every agent sees exactly what it saw in v4.6.0.
 - **If it sets `security.rate_limit`,** that limit now applies instead of 60
   calls a minute.
 - **If every MCP call comes back with `reason: "config"`,** the `security:`
-  section is malformed; the error names the setting to fix. v4.6.0 ignored the
-  section, so a mistake in it went unnoticed until now.
+  section has a value of the wrong type; the error names the setting to fix.
+  v4.6.0 ignored the section, so a mistake in it went unnoticed until now.
+- **If a tool you left out still answers,** the file didn't parse or the
+  `security:` or `roles:` key is empty; both mean the defaults apply.
 - To get v4.6.0's behaviour back, delete the `security:` block.
 
 ## Related
