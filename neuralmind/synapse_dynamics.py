@@ -483,7 +483,10 @@ class SynapseDynamics:
         """Set or increment tags, and capture if above threshold."""
         try:
             with self.store._connect() as conn:
-                conn.execute("BEGIN")
+                # IMMEDIATE: this reads before it writes. A deferred BEGIN
+                # fails the read->write upgrade at once ("database is locked")
+                # when another writer commits in between, and the tags were lost.
+                conn.execute("BEGIN IMMEDIATE")
                 try:
                     for a, b in pairs:
                         # Check existing tag
