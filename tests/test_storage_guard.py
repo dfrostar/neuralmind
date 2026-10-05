@@ -312,3 +312,19 @@ def test_a_symlinked_state_dir_is_checked_where_it_points(only_project_encrypted
 
 def test_the_project_volume_alone_passes(only_project_encrypted):
     assert enforce_storage_policy(only_project_encrypted) == ENCRYPTED
+
+
+def test_a_malformed_policy_is_reported_before_storage(temp_project, monkeypatch):
+    """`security: open` is malformed, which also turns the storage check on.
+    On an unencrypted machine (a CI runner) the refusal used to say "storage"
+    and on an encrypted one "config"; the broken policy is the cause either way."""
+    from neuralmind.mcp_server import _security_cache, handle_tool_call
+
+    _security_cache.clear()
+    _volume(monkeypatch, PLAIN)
+    (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+        "security: open\n", encoding="utf-8"
+    )
+    data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+    assert data["code"] == "security_denied"
+    assert data["reason"] == "config"

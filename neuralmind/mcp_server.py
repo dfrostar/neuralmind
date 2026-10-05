@@ -1431,8 +1431,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": problem, "code": "invalid_request"})
 
     try:
-        enforce_storage_policy(project_path)
         security = get_security_manager(project_path)
+        # A malformed policy also turns the storage check on (fail closed), so
+        # check it first: the broken policy is the cause worth reporting.
+        security.refuse_if_misconfigured(actor, name)
+        enforce_storage_policy(project_path)
         result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
     # Only the security manager's own refusals are security denials. A tool

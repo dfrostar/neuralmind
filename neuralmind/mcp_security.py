@@ -219,6 +219,25 @@ class MCPSecurityManager:
             details["claimed_role"] = role
         return name, resolved, details
 
+    def refuse_if_misconfigured(self, actor: str | None, tool_name: str) -> None:
+        """Raise ``PolicyConfigError`` when the ``security`` section is malformed.
+
+        Called first, by ``secure_call`` and by the MCP dispatcher before its
+        storage check, so a broken policy is reported as the cause rather than
+        whichever refusal it also triggers.
+        """
+        if not self.config_problem:
+            return
+        self.audit.append_event(
+            category="security",
+            action="mcp_call_denied",
+            actor=actor,
+            status="denied",
+            target=tool_name,
+            details={"reason": "config", "error": self.config_problem},
+        )
+        raise PolicyConfigError(f"Refusing MCP calls: {self.config_problem}")
+
     def secure_call(
         self,
         actor: str | None,
@@ -226,16 +245,7 @@ class MCPSecurityManager:
         tool_name: str,
         call: Callable[[], Any],
     ) -> Any:
-        if self.config_problem:
-            self.audit.append_event(
-                category="security",
-                action="mcp_call_denied",
-                actor=actor,
-                status="denied",
-                target=tool_name,
-                details={"reason": "config", "error": self.config_problem},
-            )
-            raise PolicyConfigError(f"Refusing MCP calls: {self.config_problem}")
+        self.refuse_if_misconfigured(actor, tool_name)
 
         try:
             actor, role, identity = self.resolve_caller(actor, role)
