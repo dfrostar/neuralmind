@@ -311,6 +311,14 @@ def run_hook(action: str) -> int:
     if os.environ.get("NEURALMIND_BYPASS") == "1":
         return 0
 
+    # Only act in a project that already has a NeuralMind directory. Hooks
+    # are often installed globally, and every action below writes under
+    # <cwd>/.neuralmind/ — prompt-submit used to run a full first-time build
+    # (minutes on a real repo, far past the hook timeout) in any directory a
+    # session was opened in. `neuralmind build` is how a project opts in.
+    if not (Path(payload.get("cwd") or os.getcwd()) / ".neuralmind").is_dir():
+        return 0
+
     # A project with security.require_encrypted_storage gets no hook writes
     # (transitions, output cache, synapses) until its volume is verified.
     # The agent's own tool call is unaffected: hooks fail open.
@@ -606,6 +614,10 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
 
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             mind = NeuralMind(project_path)
+            # Recall reads an existing index; it never builds one. Without
+            # this, synaptic_neighbors() falls through to a first-run build.
+            if not mind._load_existing_index():
+                return ""
             ranked = mind.synaptic_neighbors(prompt, depth=2, top_k=top_k)
     except Exception:
         return ""

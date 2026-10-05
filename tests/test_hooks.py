@@ -389,6 +389,7 @@ class TestRunHook:
         """
         from neuralmind.output_cache import read_last_output
 
+        (tmp_path / ".neuralmind").mkdir()  # an opted-in (built) project
         verbose_line = "tests/test_module.py::test_function PASSED"
         payload = {
             "tool_name": "Bash",
@@ -408,3 +409,72 @@ class TestRunHook:
         assert cached["command"] == "pytest -v"
         assert cached["exit_code"] == 0
 
+
+class TestHooksStayOutOfUnindexedProjects:
+    """A hook never builds an index or creates `.neuralmind/` on its own.
+
+    Hooks are often installed globally. prompt-submit used to fall through to
+    a full first-time build (graph, IR, vectors) in whatever directory the
+    session was opened in — minutes on a real repo, far past the hook
+    timeout — and the other actions created `.neuralmind/` there as a side
+    effect. `neuralmind build` is how a project opts in.
+    """
+
+    PAYLOADS = {
+        "prompt-submit": {"prompt": "how does auth work?"},
+        "session-start": {},
+        "pre-compact": {},
+        "stop": {},
+        "session-end": {},
+        "compress-bash": {
+            "tool_input": {"command": "ls"},
+            "tool_response": {"stdout": "a.py\n", "stderr": ""},
+        },
+        "compress-read": {
+            "tool_input": {"file_path": "a.py"},
+            "tool_response": {"content": "def f():\n    return 1\n"},
+        },
+        "edit-activity": {
+            "tool_input": {"file_path": "a.py", "new_string": "def g():\n    return 2\n"},
+        },
+        "stale-guard": {"tool_input": {"file_path": "a.py"}},
+    }
+
+    def _run(self, action, payload, monkeypatch):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        captured = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", captured)
+        return run_hook(action), captured.getvalue()
+
+    @pytest.mark.parametrize("action", sorted(PAYLOADS))
+    def test_unindexed_project_is_left_untouched(self, action, tmp_path, monkeypatch):
+        (tmp_path / "a.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+        payload = {**self.PAYLOADS[action], "cwd": str(tmp_path)}
+
+        code, out = self._run(action, payload, monkeypatch)
+
+        assert code == 0
+        assert out == ""
+        assert not (tmp_path / ".neuralmind").exists()
+
+    def test_prompt_submit_never_builds_in_an_opted_in_project(self, tmp_path, monkeypatch):
+        """`.neuralmind/` alone (e.g. decisions only) is not an index to build."""
+        (tmp_path / "a.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+        (tmp_path / ".neuralmind").mkdir()
+        payload = {**self.PAYLOADS["prompt-submit"], "cwd": str(tmp_path)}
+
+        builds = []
+
+        def _no_build(self, *args, **kwargs):
+            # Recorded, not raised: the hook fails open and would swallow it.
+            builds.append(args)
+            raise RuntimeError("a hook must never run a build")
+
+        monkeypatch.setattr("neuralmind.core.NeuralMind.build", _no_build)
+        code, out = self._run("prompt-submit", payload, monkeypatch)
+
+        assert builds == []
+        assert code == 0
+        assert out == ""
+        assert not (tmp_path / ".neuralmind" / "graph.json").exists()
+        assert not (tmp_path / ".neuralmind" / "index_ir.json").exists()
