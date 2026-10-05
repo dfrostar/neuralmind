@@ -521,6 +521,24 @@ class _GraphBuilder:
         # file_id → {name → literal_value}: module-level string constants for
         # dynamic-import variable resolution (G1).
         self.file_constants: dict[str, dict[str, str]] = {}
+        # (rel, start_byte, end_byte, node type) of a definition → the node id
+        # pass 1 emitted for it, so pass 2 attributes a call to the definition
+        # that encloses it rather than to whichever same-named function it finds.
+        self.def_at: dict[tuple[str, int, int, str], str] = {}
+
+    # -- definition positions ---------------------------------------------- #
+    def mark_def(self, rel: str, ts_node, node_id: str) -> None:
+        """Record that ``ts_node`` (a function/method definition) became ``node_id``."""
+        self.def_at[(rel, ts_node.start_byte, ts_node.end_byte, ts_node.type)] = node_id
+
+    def def_id(self, rel: str, ts_node, enclosing: str | None) -> str | None:
+        """The node id pass 1 emitted for the definition ``ts_node``.
+
+        A definition that got no node of its own (a function nested in another
+        function, a method of a local class) falls back to ``enclosing`` — its
+        calls belong to the nearest definition that does have a node.
+        """
+        return self.def_at.get((rel, ts_node.start_byte, ts_node.end_byte, ts_node.type), enclosing)
 
     # -- node/edge helpers ------------------------------------------------- #
     def add_node(
@@ -1651,6 +1669,7 @@ def _emit_function(
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     doc = _docstring(fn_node.child_by_field_name("body"), src)
     if doc:
@@ -1752,23 +1771,15 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
     No scope/type resolution — a callee name that uniquely (or first) matches a
     project function node yields one ``calls`` edge. Imperfect by design; the
     eval measures whether this is good enough vs graphify's resolved calls.
+    The *caller* is exact: the definition enclosing the call (``b.def_id``).
     """
-    file_id = _slug(rel)
-
-    def enclosing_fn_id(name: str | None, container: str) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(container)), cands[0] if cands else None)
 
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_definition":
-                fname = _name_of(child, src)
-                fid = enclosing_fn_id(fname, file_id)
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2043,6 +2054,7 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
         fid = f"{file_id}__{_slug(name)}_fn"
         b.add_node(fid, f"{name}()", "code", rel, line)
         b.func_by_name.setdefault(name, []).append(fid)
+        b.mark_def(rel, decl, fid)
         b.add_edge("contains", file_id, fid, rel, line)
         _attach_comment_rationale(b, outer, src, rel, fid)
     elif decl.type in ("class_declaration", "abstract_class_declaration", "interface_declaration"):
@@ -2065,6 +2077,7 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
                     mid = f"{cid}__{_slug(mname)}_fn"
                     b.add_node(mid, f"{mname}()", "code", rel, mline)
                     b.func_by_name.setdefault(mname, []).append(mid)
+                    b.mark_def(rel, member, mid)
                     b.add_edge("contains", cid, mid, rel, mline)
                     _attach_comment_rationale(b, member, src, rel, mid)
     elif decl.type == "lexical_declaration":
@@ -2257,19 +2270,12 @@ def _ts_iter_type_names(node, src: bytes):
 
 
 def _ts_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("function_declaration", "method_definition"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2306,6 +2312,7 @@ def _go_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
             fid = f"{file_id}__{_slug(name)}_fn"
             b.add_node(fid, f"{name}()", "code", rel, line)
             b.func_by_name.setdefault(name, []).append(fid)
+            b.mark_def(rel, child, fid)
             b.add_edge("contains", file_id, fid, rel, line)
             _attach_comment_rationale(b, child, src, rel, fid)
         elif child.type == "type_declaration":
@@ -2400,19 +2407,12 @@ def _go_iter_import_specs(import_decl):
 
 
 def _go_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("function_declaration", "method_declaration"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2505,6 +2505,7 @@ def _rust_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _rust_attach_doc(b, fn_node, src, rel, fid)
 
@@ -2683,19 +2684,12 @@ def _rust_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id
 
 
 def _rust_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_item":
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2781,6 +2775,7 @@ def _java_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _java_attach_doc(b, fn_node, src, rel, fid)
 
@@ -2935,12 +2930,6 @@ def _java_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
 
 
 def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in (
@@ -2948,10 +2937,9 @@ def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
                 "constructor_declaration",
                 "compact_constructor_declaration",
             ):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "method_invocation" and current_fn is not None:
                 nm = child.child_by_field_name("name")
@@ -3095,6 +3083,7 @@ def _c_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) 
     b.add_node(fid, f"{name}()", "code", rel, line)
     if is_new:
         b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _c_attach_doc(b, fn_node, src, rel, fid)
     return fid
@@ -3181,6 +3170,7 @@ def _c_emit_method(b: _GraphBuilder, fn_node, src: bytes, rel: str, cid: str) ->
     b.add_node(fid, f"{name}()", "code", rel, line)
     if is_new:
         b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", cid, fid, rel, line)
     _c_attach_doc(b, fn_node, src, rel, fid)
 
@@ -3359,20 +3349,12 @@ def _cpp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id:
 
 
 def _c_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_definition":
-                decl = child.child_by_field_name("declarator")
-                name, _n = _c_decl_name(decl, src)
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, enclosing_fn_id(name))
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -3479,6 +3461,7 @@ def _csharp_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: 
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
@@ -3651,19 +3634,12 @@ def _csharp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_
 
 
 def _csharp_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in _CSHARP_FN_DECLS:
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "invocation_expression" and current_fn is not None:
                 fn = child.child_by_field_name("function")
@@ -3733,6 +3709,7 @@ def _ruby_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
@@ -3846,19 +3823,12 @@ def _ruby_call_method_name(call_node, src: bytes) -> str | None:
 
 
 def _ruby_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("method", "singleton_method"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = _ruby_body_of(child) or child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call" and current_fn is not None:
                 callee = _ruby_call_method_name(child, src)
@@ -3983,6 +3953,7 @@ def _php_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str
     fid = f"{container}__{_slug(name)}_fn"
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
@@ -4119,19 +4090,12 @@ def _php_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id:
 
 
 def _php_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("method_declaration", "function_definition"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if current_fn is not None and child.type in (
                 "scoped_call_expression",
