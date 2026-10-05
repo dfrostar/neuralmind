@@ -2328,6 +2328,16 @@ class ContextSelector:
     # The section name fit_to_budget gives a prefix placed above the layers.
     _PREFIX_SECTION = "prefix"
 
+    def count_prefix(self, result: ContextResult, prefix: str) -> None:
+        """Count a prefix placed above the layers (the hybrid highlights) in
+        ``result.budget``, which feeds the MCP response, the query log and the
+        savings figures. The highlights are drawn from L3's search hits, so
+        their tokens go with L3, and the reduction ratio follows."""
+        result.budget.l3_search += self._estimate_tokens(prefix)
+        full_codebase_tokens = self.baseline_tokens or 50000
+        total = result.budget.total
+        result.reduction_ratio = full_codebase_tokens / total if total > 0 else 0
+
     def fit_to_budget(
         self, result: ContextResult, budget_tokens: int, prefix: str = ""
     ) -> list[str]:
@@ -2363,7 +2373,10 @@ class ContextSelector:
 
         kept, trimmed = fit_layers(sections, budget_tokens, order=(*TRIM_ORDER, pre), render=render)
         result.context = render(kept)
+        kept_prefix = "".join(text for name, text in kept if name == pre)
         if not trimmed:
+            if kept_prefix:
+                self.count_prefix(result, kept_prefix)
             return trimmed
 
         layers = [(name, text) for name, text in kept if name != pre]
@@ -2377,6 +2390,6 @@ class ContextSelector:
         result.layers_used = [
             label for label in result.layers_used if label.split(":", 1)[0] in texts
         ]
-        full_codebase_tokens = self.baseline_tokens or 50000
-        result.reduction_ratio = full_codebase_tokens / budget.total if budget.total > 0 else 0
+        # Recomputes the reduction ratio too, with the kept highlights counted.
+        self.count_prefix(result, kept_prefix)
         return trimmed

@@ -2074,6 +2074,7 @@ class NeuralMind:
                 self.selector.fit_to_budget(result, context_budget, prefix=highlights)
             elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
+                self.selector.count_prefix(result, highlights)
         if learn:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)

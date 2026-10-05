@@ -266,3 +266,28 @@ def test_hybrid_budget_that_fits_keeps_every_highlight(hybrid_mind):
     full = hybrid_mind.query(_QUESTION, learn=False)
     res = hybrid_mind.query(_QUESTION, context_budget=count_tokens(full.context), learn=False)
     assert res.context == full.context
+
+
+def test_hybrid_highlights_count_in_the_reported_tokens(mind, hybrid_mind):
+    """result.budget feeds the MCP response, the query log and the savings
+    figures, so it has to describe the context returned, highlights included.
+    They used to be left out: with no budget, and whenever a budget kept them."""
+    base = mind.query(_QUESTION, learn=False)
+    full = hybrid_mind.query(_QUESTION, learn=False)
+    est = hybrid_mind.selector._estimate_tokens  # the selector loads on first query
+    highlights, layered = full.context.split("\n\n", 1)
+    assert highlights.startswith("## Hybrid Highlights")  # precondition
+    assert layered == base.context  # precondition: same layers
+    assert full.budget.total == base.budget.total + est(highlights)
+    assert full.reduction_ratio < base.reduction_ratio
+
+    fits = hybrid_mind.query(_QUESTION, context_budget=count_tokens(full.context), learn=False)
+    assert fits.budget.total == full.budget.total
+
+    for budget in (100, count_tokens(full.context) - 25):
+        res = hybrid_mind.query(_QUESTION, context_budget=budget, learn=False)
+        head = ""
+        if res.context.startswith("## Hybrid Highlights"):
+            head = res.context.split("\n\n", 1)[0]
+        layer_tokens = sum(est(text) for _, text in res.layer_texts)
+        assert res.budget.total == layer_tokens + est(head), budget
