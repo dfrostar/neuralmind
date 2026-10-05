@@ -128,3 +128,40 @@ class TestAuditTamperDetection:
         corrupted = AuditLog(tmp_path / "audit.jsonl")
         result = corrupted.verify()
         assert result["ok"] is False
+
+
+class TestAuditLogConcurrentWriters:
+    """Hooks and CLI processes append to one log: the chain must survive it."""
+
+    def test_separate_writers_keep_one_valid_chain(self, tmp_path: Path) -> None:
+        import threading
+
+        path = tmp_path / "audit.jsonl"
+        writers, per_writer = 8, 25
+        # Each writer is its own AuditLog, loaded before any of them appends —
+        # the shape of separate processes, each with a stale view of the tail.
+        logs = [AuditLog(path) for _ in range(writers)]
+        start = threading.Barrier(writers)
+
+        def _append(log: AuditLog, n: int) -> None:
+            start.wait()
+            for i in range(per_writer):
+                log.log(actor=f"writer-{n}", action="import", target=f"event-{i}")
+
+        threads = [threading.Thread(target=_append, args=(log, n)) for n, log in enumerate(logs)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        result = AuditLog(path).verify()
+        assert result["ok"] is True, result
+        assert result["total"] == writers * per_writer
+
+    def test_an_instance_chains_onto_entries_written_since_it_loaded(self, tmp_path: Path) -> None:
+        path = tmp_path / "audit.jsonl"
+        early = AuditLog(path)  # loaded while the log is empty
+        AuditLog(path).log(actor="other-process", action="publish")
+        entry = early.log(actor="me", action="remove")
+        assert entry.prev_hash == AuditLog(path).export()[0].sha256
+        assert AuditLog(path).verify()["ok"] is True

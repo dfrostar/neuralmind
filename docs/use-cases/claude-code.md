@@ -158,6 +158,25 @@ outlier elsewhere in the graph never gets blamed on your commit.
 `neuralmind init-hook .` installs this as a `pre-commit` hook automatically
 (warn-only; pass `--strict` to `init-hook` to make it block instead).
 
+## Repeat reads and stale decisions *(v4.6.0+)*
+
+Two things the hooks now do without being asked:
+
+- **A repeat read becomes a stub.** When Claude reads a file it already read
+  this session and nothing changed, the `Read` hook replaces the repeat with a
+  two-sentence note: the earlier result is still current. If Claude needs the
+  content again (say, after a long detour), it reads once more and gets the
+  whole file: a stub is never followed by another stub. Compaction and
+  `/clear` reset it, subagents are tracked separately, and reads under 2,000
+  characters always come through. Off with `NEURALMIND_READ_DEDUP=0`.
+- **Decisions retire themselves on commit.** With `neuralmind init-hook .`
+  installed (re-run it on an older checkout), every commit that changes a file
+  named in a recorded decision, after that decision was recorded, marks it
+  STALE and prints it. The next time Claude edits that file, the
+  `PreToolUse` guard says which commit moved it and how to restore it if it
+  still holds. See
+  [Keep decision memory honest across commits](./decision-memory-across-commits.md).
+
 ## Track cumulative savings *(v0.39.0+, requires NEURALMIND_MEMORY=1)*
 
 ```bash

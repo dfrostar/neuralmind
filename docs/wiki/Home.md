@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.6.0 — One keyword index for docs and code, measured before it shipped (October 2026)
+### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 
 The default backend's BM25 keyword index held only documents, so on "how does X
 work" questions a doc kept taking the L3 slot the implementation should have
@@ -54,7 +54,25 @@ gains a public-benchmark miss, and a private 383-file repository reaches
 ship off by default behind flags, and `neuralmind query --explain` now prints
 the query intent L3 ranked with. Run `neuralmind build` once after upgrading.
 Walkthrough: [A/B-test a ranking change on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md) ·
-[eval results](Benchmarks#retrieval-eval-v460) ·
+[eval results](Benchmarks#retrieval-eval-v460)
+
+Five features the docs had relabelled "not yet wired in" are settled. In Claude
+Code, a **repeat read of an unchanged file** comes back as a short stub instead
+of the whole file again (PostToolUse `updatedToolOutput`); the read after a
+stub is always full, reads are tracked per session and subagent, and compaction
+resets them (`NEURALMIND_READ_DEDUP=0` turns it off). **Decisions go stale on
+commit**: `neuralmind init-hook .` runs `neuralmind decisions scan` after every
+commit, marking STALE any decision whose file the commit changed after it was
+recorded, and the stale-decision guard now shows why and how to restore one.
+**Team governance is enforced**: `memory publish` honours the publishing scope
+and weight threshold, `team governance remove-edge` retracts an association for
+the whole team through the committed bundle, `list-shared` lists shared memory,
+and publishes, imports and reviews are audited. The unused **co-access module
+was removed**, and **`cognition-loop` was rebuilt** on the store's own decay
+after its original pass turned out to delete learned memory; it stays on
+demand. Walkthroughs:
+[Keep decision memory honest across commits](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/decision-memory-across-commits.md) ·
+[Govern what your team's agents share](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/govern-team-memory.md) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.0.md).
 
 ### v4.5.0 — Numbers measured on your project (October 2026)
@@ -92,14 +110,15 @@ NeuralMind now remembers *why* code is the way it is, not just where it lives.
 **Decision memory** (v4.1.0) stores architecture decisions with rationale,
 evidence, commit SHA and rejected alternatives — `neuralmind decisions record`,
 `neuralmind decisions query`, `neuralmind decisions audit` — and you retire one
-with `neuralmind decisions invalidate` when the code moves on (automatic
-invalidation on commit is built but not yet wired into the hooks). The
+with `neuralmind decisions invalidate` when the code moves on (since v4.6.0 the
+`init-hook` post-commit hook also retires them automatically). The
 **stale-decision guard** (v4.2.0) is a `PreToolUse` hook that warns your agent
 before it edits a file governed by a decision marked stale or invalidated
 (fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). v4.3.0 adds progressive,
 three-layer decision retrieval over MCP; v4.0.0 shipped the context budget,
-session summaries and the on-demand `neuralmind cognition-loop` (its co-access
-and read-dedup modules are in the tree but not yet wired in). The public benchmark was
+session summaries and the on-demand `neuralmind cognition-loop` (rebuilt in
+v4.6.0, which also wired read dedup into the Read hook and removed the unused
+co-access module). The public benchmark was
 regenerated at v4.3.4 with raw data committed: **93.75% mean gold-file recall
 (85–100% per repo) at 45–261× fewer tokens** than pasting every source file
 (superseded at v4.6.0: 95%, 46–263×).

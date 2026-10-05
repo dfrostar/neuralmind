@@ -304,6 +304,15 @@ def run_hook(action: str) -> int:
     # and a replacement must keep what the agent needs — which the same
     # benchmark measures before anything ships.
     if action == "compress-read":
+        # Read dedup: a repeat read of content this agent already received in
+        # this session is replaced (updatedToolOutput) with a short stub; the
+        # read after a stub always goes through in full. See read_dedup.py.
+        # Opt-out via NEURALMIND_READ_DEDUP=0. Fail-open.
+        if os.environ.get("NEURALMIND_READ_DEDUP") != "0":
+            replacement = _dedup_read(payload)
+            if replacement is not None:
+                _emit_updated_output(replacement)
+                return 0
         file_path = tool_input.get("file_path") or tool_input.get("path") or ""
         content = (
             tool_response.get("content")
@@ -363,8 +372,8 @@ def run_hook(action: str) -> int:
         # SessionEnd: write a session-boundary digest from the durable
         # event log (.neuralmind/events.jsonl). Hooks run one-per-process,
         # so in-memory trackers are empty here — the event log is the
-        # durable record. (Decision invalidation signaling is not part of
-        # v4.3; the staleness-scan command covers that audit today.)
+        # durable record. (Decisions go stale at commit time instead: the
+        # init-hook post-commit hook runs `neuralmind decisions scan`.)
         # Opt-out via NEURALMIND_SESSION_END=0. Fail-open on every error.
         if os.environ.get("NEURALMIND_SESSION_END") == "0":
             return 0
@@ -433,6 +442,9 @@ def run_hook(action: str) -> int:
                 except Exception:
                     pass
             return 0
+        # A new, resumed, cleared or compacted session holds none of the
+        # earlier reads read-dedup recorded for it.
+        _reset_read_dedup(cwd, payload)
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -517,6 +529,9 @@ def run_hook(action: str) -> int:
         cwd = payload.get("cwd") or os.getcwd()
         if _learning_disabled():
             return 0
+        # Compaction drops earlier tool results from the context, so the
+        # reads read-dedup recorded for this session no longer count.
+        _reset_read_dedup(cwd, payload)
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -628,6 +643,70 @@ def _learning_disabled() -> bool:
     return learning_disabled()
 
 
+def _dedup_read(payload: dict) -> dict | None:
+    """Replacement Read output for a repeat read, or None to leave it alone.
+
+    Only acts in a project that already has a ``.neuralmind/`` directory (a
+    globally installed hook must not create one in every repo it sees) and
+    never under NEURALMIND_NO_LEARN=1, which promises the hooks write nothing.
+    Fail-open: any error means the read goes through untouched.
+    """
+    try:
+        session_id = str(payload.get("session_id") or "")
+        tool_input = payload.get("tool_input")
+        if not session_id or not isinstance(tool_input, dict) or _learning_disabled():
+            return None
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        cwd = payload.get("cwd") or os.getcwd()
+        if not file_path or not (Path(cwd) / ".neuralmind").is_dir():
+            return None
+        from .read_dedup import (
+            MIN_CHARS,
+            ReadCache,
+            content_hash,
+            dedup_stub,
+            find_read_text,
+            read_view,
+            replace_read_text,
+        )
+
+        response = payload.get("tool_response")
+        text = find_read_text(response)
+        if not isinstance(response, dict) or text is None or len(text) < MIN_CHARS:
+            return None
+        repeat = ReadCache(cwd).observe(
+            session_id,
+            str(payload.get("agent_id") or ""),
+            str(file_path),
+            read_view(tool_input),
+            content_hash(text),
+        )
+        if repeat is None:
+            return None
+        return replace_read_text(response, dedup_stub(str(file_path), repeat, cwd))
+    except Exception:
+        return None
+
+
+def _reset_read_dedup(project_path: str, payload: dict) -> None:
+    """Forget the session's recorded reads; prune old rows. Fail-open.
+
+    Never creates the database: a project read-dedup hasn't touched has
+    nothing to reset.
+    """
+    session_id = str(payload.get("session_id") or "")
+    try:
+        from .read_dedup import ReadCache, read_cache_path
+
+        if not session_id or not read_cache_path(project_path).exists():
+            return
+        cache = ReadCache(project_path)
+        cache.clear_session(session_id)
+        cache.prune()
+    except Exception:
+        return
+
+
 def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> None:
     """Run reuse-vs-rewrite feedback for an Edit/Write, fail-open.
 
@@ -723,12 +802,30 @@ def _stale_decision_context(project_path: str, file_path: str) -> str:
             )
         ]
         for r in records[:5]:
-            lines.append(
-                f"- [{r.status}] {r.title} (confidence {r.confidence:.2f}, "
+            line = (
+                f"- [{r.status}] {r.title} (id {r.id}, confidence {r.confidence:.2f}, "
                 f"updated {r.updated_at.date().isoformat()}): {r.rationale[:160]}"
             )
+            # Why it left ACTIVE — the note mark_stale()/invalidate() appended,
+            # e.g. "commit 1a2b3c4 changed db.py since this decision was recorded".
+            why = next(
+                (
+                    e.split(":", 1)[1].strip()
+                    for e in reversed(r.evidence)
+                    if e.startswith(("Marked STALE:", "Invalidated:"))
+                ),
+                "",
+            )
+            if why:
+                line += f" — {why[:160]}"
+            lines.append(line)
         if len(records) > 5:
             lines.append(f"- …and {len(records) - 5} more (neuralmind decisions audit)")
+        if any(r.status == "STALE" for r in records):
+            lines.append(
+                "If a STALE decision still holds after you check the code, "
+                "`neuralmind decisions restore <id>` re-anchors it to HEAD."
+            )
         return "\n".join(lines)
     except Exception:
         # Fail-open: a guard failure must never block an edit.
@@ -793,11 +890,11 @@ def _write_session_end_digest(project_path: str) -> None:
     """SessionEnd: aggregate the durable event log into a final digest.
 
     Writes a summary via SessionTracker (which handles dedup + pruning).
-    Note: v4.3 does NOT flag decisions whose evidence files changed — the
-    summary records files touched, but decision invalidation signaling is
-    future work (the InvalidationEngine's staleness-scan covers the audit
-    side today). Called only from the ``session-end`` hook; every failure
-    is caught by the caller (fail-open).
+    The summary records files touched; it does not flag decisions. Decisions
+    go stale when a commit changes their files — the post-commit hook from
+    ``neuralmind init-hook`` runs ``neuralmind decisions scan`` (the
+    InvalidationEngine). Called only from the ``session-end`` hook; every
+    failure is caught by the caller (fail-open).
     """
     from .session_summaries import SessionTracker
 
@@ -861,6 +958,23 @@ def _tick_stop_summary(project_path: str) -> None:
     tracker.tool_call_count = len(fresh)
     summary = tracker.generate_summary(title=f"Turn boundary — {len(fresh)} events")
     tracker.write_summary(summary)
+
+
+def _emit_updated_output(updated: dict) -> None:
+    """Emit a PostToolUse response that replaces the tool's output.
+
+    ``updatedToolOutput`` replaces the result before the model sees it (unlike
+    ``additionalContext``, which is added next to it). Claude Code ignores a
+    value that doesn't match the tool's output shape and keeps the original.
+    """
+    response = {
+        "hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "updatedToolOutput": updated,
+        },
+    }
+    sys.stdout.write(json.dumps(response))
+    sys.stdout.flush()
 
 
 def _emit_for_event(event_name: str, content: str) -> None:

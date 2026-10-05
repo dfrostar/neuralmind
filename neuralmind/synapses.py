@@ -2317,6 +2317,36 @@ class SynapseStore:
             "activations": int(activations),
         }
 
+    def delete_edge(self, node_a: str, node_b: str, namespace: str) -> dict:
+        """Delete one association from one namespace, leaving all others intact.
+
+        Removes the undirected edge between the two nodes and the transitions
+        between them in either direction. The removal behind
+        ``neuralmind team governance remove-edge``. Returns deletion counts.
+        """
+        ns = normalize_namespace(namespace)
+        a, b = str(node_a), str(node_b)
+        pair = _canonical(a, b)
+        if pair is None:
+            return {"namespace": ns, "edges": 0, "transitions": 0}
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                edges = conn.execute(
+                    "DELETE FROM synapses WHERE node_a = ? AND node_b = ? AND namespace = ?",
+                    (*pair, ns),
+                ).rowcount
+                transitions = conn.execute(
+                    "DELETE FROM synapse_transitions WHERE namespace = ? AND "
+                    "((from_node = ? AND to_node = ?) OR (from_node = ? AND to_node = ?))",
+                    (ns, a, b, b, a),
+                ).rowcount
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return {"namespace": ns, "edges": int(edges), "transitions": int(transitions)}
+
     def prune_stale(self, age_days: int | None = None) -> int:
         """Remove synapses older than N days.
 

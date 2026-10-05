@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/team',
     title: 'Team Memory for AI Coding Agents — NeuralMind for Teams',
     description:
-        'Shared codebase memory for Claude Code and MCP agents: it travels with git, imports pass a review queue, admin changes are hash-chain audited. Free at 1 seat.',
+        'Shared codebase memory for Claude Code and MCP agents: it travels with git, follows your admin’s publish policy, and every change is hash-chain audited. Free at 1 seat.',
     keywords: [
         'team memory for AI coding agents',
         'shared Claude Code memory',
@@ -44,12 +44,20 @@ const steps = [
     },
 ];
 
-// What governance does today, stated precisely. The review queue gates what an
-// import brings into shared memory. Scope and weight threshold are admin-only,
-// audited policy settings, but `memory publish` does not read them yet, and
-// `team governance remove-edge` records the request without deleting the edge —
-// so this page must not describe either as enforced.
+// What governance does today, stated precisely. Every item below runs in
+// neuralmind/team_memory.py + neuralmind/tier2/: `memory publish` reads the
+// scope and weight threshold (scope `personal` refuses to publish), and
+// `team governance remove-edge` deletes the association from shared memory and
+// retracts it in the committed bundle, which teammates' imports apply. Until
+// v4.6.0 both were recorded without being enforced; if either regresses, this
+// page must say so again.
 const governance = [
+    {
+        title: 'Publishing follows your policy',
+        status: 'Live',
+        body: 'Admins choose whether memory publish shares nothing (personal), only the team baseline (shared) or personal plus shared (both), and the minimum weight an association needs. Publish enforces both and records the policy in the bundle.',
+        cmd: 'neuralmind team governance set-scope shared --admin you@yourco.com',
+    },
     {
         title: 'Review queue for imported memory',
         status: 'Live',
@@ -57,16 +65,10 @@ const governance = [
         cmd: 'neuralmind memory review-list',
     },
     {
-        title: 'Admin-only, audited settings',
+        title: 'Retract an association',
         status: 'Live',
-        body: 'Governance commands require an admin — non-admins get a permission error — and every change is written to the hash-chained audit log with the acting user.',
-        cmd: 'neuralmind team governance status',
-    },
-    {
-        title: 'Publishing scope and weight threshold',
-        status: 'Roadmap',
-        body: 'Admins can record whether associations should publish as personal, shared or both, and the minimum weight for sharing. Today these are audited policy settings; memory publish does not enforce them yet.',
-        cmd: 'neuralmind team governance set-scope shared --admin you@yourco.com',
+        body: 'Removing an association deletes it from shared memory and retracts it in the committed bundle, so each teammate’s next session drops it and no later publish re-adds it. Admin-only, and on the audit record like every publish, import and review.',
+        cmd: 'neuralmind team governance remove-edge api/auth.py legacy/session.py --admin you@yourco.com',
     },
 ];
 
@@ -80,7 +82,7 @@ const seatCommands = [
 type Cell = string | boolean;
 const comparison: { feature: string; free: Cell; team: Cell; enterprise: Cell }[] = [
     { feature: 'Team memory through git (memory publish)', free: true, team: true, enterprise: true },
-    { feature: 'Import review queue + audited governance settings', free: true, team: true, enterprise: true },
+    { feature: 'Governance: publish policy, retraction, review queue', free: true, team: true, enterprise: true },
     { feature: 'Hash-chained audit log, verify and export', free: true, team: true, enterprise: true },
     { feature: 'Self-hosted deployment', free: true, team: 'With deployment support', enterprise: true },
     { feature: 'Seats', free: '1', team: '5–50', enterprise: 'Custom' },
@@ -154,8 +156,8 @@ export default async function TeamPage() {
                     </h2>
                     <p className="text-slate-400 mb-8 max-w-3xl leading-relaxed">
                         Shared memory steers every teammate&apos;s agent, so what enters it is
-                        screened and every admin action is on the record. Here is exactly what
-                        runs now and what is still on the roadmap.
+                        screened, what leaves a machine follows the admin&apos;s policy, and every
+                        change is on the record. Here is exactly what runs today.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {governance.map((g) => (
@@ -182,9 +184,10 @@ export default async function TeamPage() {
                                 An audit trail you can verify
                             </h2>
                             <p className="text-slate-400 text-sm leading-relaxed mb-3">
-                                Every governance change and admin action is recorded with the acting
-                                user in an append-only log where each entry carries the SHA-256 of the
-                                one before it — so an edited or deleted entry breaks the chain.
+                                Every governance change and admin action — and every team-memory
+                                publish, import, review decision and retraction — is recorded with the
+                                acting user in an append-only log where each entry carries the SHA-256
+                                of the one before it, so an edited or deleted entry breaks the chain.
                             </p>
                             <p className="text-slate-400 text-sm leading-relaxed">
                                 Query-level events export as JSONL or CEF for your SIEM with{' '}

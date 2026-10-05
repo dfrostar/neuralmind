@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.6.0](https://github.com/dfrostar/neuralmind/compare/v4.5.1...v4.6.0) (2026-10-04)
+
+
+### Features
+
+* one BM25 index for docs and code — spec 7 retrieval items, measured across 6 repos (v4.6.0) ([#550](https://github.com/dfrostar/neuralmind/issues/550)) ([516a5f4](https://github.com/dfrostar/neuralmind/commit/516a5f443b1cb0e5bfaaeb7b12c3f751ca9b91ce))
+* wire in read dedup, commit-time decision invalidation and team governance; remove dead co-access module; rebuild cognition loop ([#558](https://github.com/dfrostar/neuralmind/issues/558)) ([36a55fa](https://github.com/dfrostar/neuralmind/commit/36a55fa2a7bd9ad007d6fdbe5bcbef0007ae3458))
+
+
+### Documentation
+
+* align deployment guide and threat model with the code ([#567](https://github.com/dfrostar/neuralmind/issues/567)) ([5569d09](https://github.com/dfrostar/neuralmind/commit/5569d09d511212e5d80127815d441184f30c99cd))
+
 ## [4.5.1](https://github.com/dfrostar/neuralmind/compare/v4.5.0...v4.5.1) (2026-10-04)
 
 

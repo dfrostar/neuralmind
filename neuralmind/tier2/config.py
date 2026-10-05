@@ -130,15 +130,24 @@ class Tier2Config:
             return False
 
 
-def load_config(path: Path | None = None) -> Tier2Config:
+def load_config(path: Path | None = None, *, strict: bool = False) -> Tier2Config:
     """Load Tier 2 config from YAML.
 
     Args:
         path: Optional path to YAML file. Defaults to ``DEFAULT_CONFIG_PATH``.
+        strict: Raise when the file exists but can't be read or parsed
+            instead of falling back to defaults. Enforcement paths (the
+            ``memory publish`` policy) use this so a broken config fails
+            closed rather than silently reverting to the permissive defaults.
 
     Returns:
         A ``Tier2Config`` instance populated from the file, or defaults
-        if the file is missing or unreadable.
+        if the file is missing (or, unless ``strict``, unreadable).
+
+    Raises:
+        OSError, yaml.YAMLError, ValueError: only with ``strict=True`` — the
+            file can't be read, isn't valid YAML, isn't a mapping, or holds
+            an invalid value.
 
     Example:
         >>> cfg = load_config()
@@ -154,7 +163,11 @@ def load_config(path: Path | None = None) -> Tier2Config:
         with p.open(encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
     except (OSError, yaml.YAMLError):
+        if strict:
+            raise
         return Tier2Config()
+    if strict and not isinstance(raw, dict):
+        raise ValueError(f"{p}: expected a mapping at the top level, got {type(raw).__name__}")
     return _from_dict(raw)
 
 

@@ -9,7 +9,9 @@ Key facts, each backed by a runnable eval with its data committed:
 - Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (a separate, off-by-default eval on `requests`/`click` only; pure retrieval ranking, reproducible).
 - Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate, budget-neutral (reference fixture A/B). CI gates the direction (recall-on >= recall-off), not a magnitude; +3.5 to +14 points observed across runs. Reproduce with `python -m tests.benchmark.run`.
 - Answer grounding (a published loss): at a matched token budget, naive truncation currently keeps slightly more gold facts than NeuralMind's context on the prose-heavy reference fixture — delta -0.054 at v4.3.4; CI fails below -0.10; earlier releases measured +0.013 to +0.143.
-- Team memory: `neuralmind memory publish` writes learned weights (no source code) to a file you commit; teammates' agents import it on their next session, with each association quality-scored and borderline ones held in a review queue. Admin actions land in a hash-chained audit log; publish-time scope/threshold enforcement is on the roadmap.
+- Team memory: `neuralmind memory publish` writes learned weights (no source code) to a file you commit; teammates' agents import it on their next session, with each association quality-scored and borderline ones held in a review queue. Once an admin sets up governance, publish enforces the publishing scope and weight threshold, `neuralmind team governance remove-edge` retracts an association for every teammate through the committed file, and publishes, imports, reviews and admin changes land in a hash-chained audit log.
+- Decision memory: architecture decisions with rationale and affected files go STALE when a commit changes one of those files after the decision was recorded (post-commit hook from `neuralmind init-hook`), and a PreToolUse hook warns Claude Code before it edits a file governed by a stale decision.
+- Read dedup (Claude Code): a repeat read of an unchanged file in the same session is replaced with a short stub; the next read is always full. Not benchmarked yet.
 - Local-first: by default the engine transmits no repository content and sends no telemetry; its one default outbound request is a public embedding-model download on first build, pre-seedable via NEURALMIND_ONNX_MODEL_DIR (an opt-in, off-by-default feature sends README/architecture prose to Anthropic; the agent still sends its selected slice to its own model); ChromaDB-free default install on Linux, Apple Silicon (macOS arm64), and Windows x64 (ChromaDB is the automatic fallback on other platforms); NIST AI RMF mapped.
 - Indexes ten languages out of the box via bundled tree-sitter (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) plus OpenAPI, SQL DDL, and Protocol Buffers schema artifacts.
 - Pricing: MIT core plus source-available Team modules; every feature runs free at 1 seat with no signup and no expiry. NeuralMind Team is $29/user/mo (5–50 seats, annual) for more seats and priority support.
@@ -66,6 +68,8 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Team memory across a squad of agents](https://docs.neuralmind.uk/use-cases/multi-agent.html)
 - [Benchmark your own repo](https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html)
 - [Measure memory across a refactor](https://docs.neuralmind.uk/use-cases/measure-memory-across-a-refactor.html)
+- [Keep decision memory honest across commits](https://docs.neuralmind.uk/use-cases/decision-memory-across-commits.html)
+- [Govern what your team's agents share](https://docs.neuralmind.uk/use-cases/govern-team-memory.html)
 
 ## Get it
 
