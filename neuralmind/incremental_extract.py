@@ -9,8 +9,8 @@ Part of Wave 5 — wired into build_graph() so `neuralmind build` skips
 unchanged files.
 
 Skip-path: if no cache exists (first run, corrupted), does a full
-extraction. If a file's mtime and hash are unchanged from the last
-build, it's skipped.
+extraction. A file whose mtime and size match the cache is skipped; any
+difference (older mtimes included) is confirmed with the content hash.
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ class FileCache:
     mtime: float
     content_hash: str
     extracted_at: float = 0.0
+    size: int = -1  # -1: unknown (a cache written before sizes were kept)
 
     def to_dict(self) -> dict:
         return {
@@ -43,6 +44,7 @@ class FileCache:
             "mtime": self.mtime,
             "content_hash": self.content_hash,
             "extracted_at": self.extracted_at,
+            "size": self.size,
         }
 
     @classmethod
@@ -52,6 +54,7 @@ class FileCache:
             mtime=d["mtime"],
             content_hash=d["content_hash"],
             extracted_at=d.get("extracted_at", 0.0),
+            size=d.get("size", -1),
         )
 
 
@@ -63,7 +66,7 @@ class IncrementalExtractor:
     dependency changes.
 
     Skip-path: if no cache exists (first run, corrupted), does
-    a full extraction. If a file's mtime and hash are unchanged
+    a full extraction. If a file's mtime and size are unchanged
     from the last build, it's skipped.
     """
 
@@ -115,7 +118,7 @@ class IncrementalExtractor:
 
         Returns: (added, modified, deleted) file path lists
         """
-        current_files: dict[str, float] = {}
+        current_files: dict[str, tuple[float, int]] = {}
         for f in sorted(root.rglob("*")):
             if f.is_file() and f.suffix in suffixes:
                 try:
@@ -125,7 +128,7 @@ class IncrementalExtractor:
                     if any(p.startswith((".", "__")) or p in _GG_IGNORES for p in parts):
                         continue
                     stat = f.stat()
-                    current_files[rel] = stat.st_mtime
+                    current_files[rel] = (stat.st_mtime, stat.st_size)
                 except (OSError, ValueError):
                     continue
 
@@ -136,15 +139,22 @@ class IncrementalExtractor:
         deleted = sorted(cached_paths - current_paths)
         modified = []
 
-        # Check mtime + content hash for potentially-modified files
+        # Any mtime or size difference -- an older mtime too, as after `mv` of
+        # a backup or a checkout -- may be a change; the content hash decides.
+        refreshed = False
         for rel in sorted(current_paths & cached_paths):
             cached = self._cache[rel]
-            if current_files.get(rel, 0) > cached.mtime:
-                # mtime changed; verify with content hash
-                full_path = root / rel
-                new_hash = self._content_hash(full_path)
-                if new_hash != cached.content_hash:
-                    modified.append(rel)
+            mtime, size = current_files[rel]
+            if mtime == cached.mtime and (size == cached.size or cached.size < 0):
+                continue
+            if self._content_hash(root / rel) != cached.content_hash:
+                modified.append(rel)
+            else:
+                # Same content: remember the new stat so it isn't hashed again.
+                cached.mtime, cached.size = mtime, size
+                refreshed = True
+        if refreshed:
+            self._save_cache()
 
         return added, modified, deleted
 
@@ -196,6 +206,7 @@ class IncrementalExtractor:
                     mtime=stat.st_mtime,
                     content_hash=self._content_hash(full_path),
                     extracted_at=now,
+                    size=stat.st_size,
                 )
             except (OSError, ValueError):
                 continue
