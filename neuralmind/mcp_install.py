@@ -158,47 +158,44 @@ def merge_server_vscode(config: dict, command: str = SERVER_COMMAND) -> tuple[di
     return config, action
 
 
-def _read_config(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
+def _read_config(path: Path) -> tuple[dict, str, str]:
+    """Read a client's JSON config.  Returns ``(config, skip_action, why)``.
 
-
-def _read_vscode_config(path: Path) -> tuple[dict, bool]:
-    """Read VS Code settings.json.  Returns ``(config, is_strict_json)``.
-
-    ``is_strict_json`` is False when the file exists, is non-empty, but fails
-    JSON parsing — i.e. it is JSONC (comments/trailing commas).  In that case
-    we must NOT overwrite it: Python's ``json`` module cannot round-trip JSONC
-    and we would destroy the user's settings.
+    ``skip_action`` is empty when the file is absent, blank, or a JSON object we
+    can round-trip. Otherwise the file must NOT be rewritten — it is JSONC
+    (comments / trailing commas, common in Cursor, Cline and VS Code configs),
+    has a non-object top level, or can't be read — and treating it as ``{}``
+    would delete every other server the user configured.
     """
     if not path.exists():
-        return {}, True
+        return {}, "", ""
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
-        return {}, True
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, "skipped-unreadable", f"could not be read ({exc})"
     if not text.strip():
-        return {}, True
+        return {}, "", ""
     try:
         data = json.loads(text)
-        return (data if isinstance(data, dict) else {}), True
     except ValueError:
-        return {}, False
+        return {}, "skipped-jsonc", "is not strict JSON (comments or a trailing comma?)"
+    if not isinstance(data, dict):
+        return {}, "skipped-not-object", "does not hold a JSON object at the top level"
+    return data, "", ""
 
 
 @dataclass
 class InstallResult:
     client: str
     path: Path
-    action: str  # installed | updated | already-present | skipped
+    action: str  # installed | updated | already-present | skipped-<reason>
+    detail: str = ""  # for a skip: why, and the entry to add by hand
 
     def to_dict(self) -> dict:
-        return {"client": self.client, "path": str(self.path), "action": self.action}
+        out = {"client": self.client, "path": str(self.path), "action": self.action}
+        if self.detail:
+            out["detail"] = self.detail
+        return out
 
 
 def install(
@@ -210,23 +207,19 @@ def install(
 ) -> InstallResult:
     """Merge NeuralMind into ``client``'s config, writing the file."""
     path = config_path(client, project_dir)
+    config, skip_action, why = _read_config(path)
+    if skip_action:
+        key = "mcp.servers" if client == "vscode" else "mcpServers"
+        entry = json.dumps({key: {SERVER_NAME: server_entry(command)}}, indent=2)
+        return InstallResult(
+            client=client,
+            path=path,
+            action=skip_action,
+            detail=f"{path} {why}; left untouched. Add this entry by hand:\n{entry}",
+        )
     if client == "vscode":
-        config, is_json = _read_vscode_config(path)
-        if not is_json:
-            # settings.json uses JSONC (comments/trailing commas) — Python's json
-            # module cannot round-trip it, so we refuse rather than clobber the file.
-            import warnings
-
-            warnings.warn(
-                f"NeuralMind: {path} appears to be JSONC (comments or trailing commas). "
-                "Add the MCP entry manually:\n"
-                '  "mcp.servers": {"neuralmind": {"command": "neuralmind-mcp", "args": []}}',
-                stacklevel=2,
-            )
-            return InstallResult(client=client, path=path, action="skipped-jsonc")
         config, action = merge_server_vscode(config, command)
     else:
-        config = _read_config(path)
         config, action = merge_server(config, command)
     if action != "already-present":
         if create_parents:

@@ -5182,6 +5182,9 @@ def cmd_install_mcp(args):
         except ValueError as exc:
             print(f"Error: {exc}")
             sys.exit(1)
+        if result.action.startswith("skipped"):
+            print(f"✗ {client}: {result.action} → {result.detail}")
+            continue
         symbol = "✓" if result.action != "already-present" else "•"
         print(f"{symbol} {client}: {result.action} → {result.path}")
         any_change = any_change or result.action != "already-present"
