@@ -48,6 +48,7 @@ from neuralmind.mcp_security import (
     AccessDeniedError,
     IdentityDeniedError,
     MCPSecurityManager,
+    PolicyConfigError,
     RateLimitExceededError,
     build_security_manager,
 )
@@ -1448,6 +1449,8 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": str(e), "code": "security_denied", "reason": "storage"})
     except IdentityDeniedError as e:
         return json.dumps({"error": str(e), "code": "security_denied", "reason": "identity"})
+    except PolicyConfigError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "config"})
     except AccessDeniedError as e:
         return json.dumps({"error": str(e), "code": "security_denied", "reason": "rbac"})
     except RateLimitExceededError as e:

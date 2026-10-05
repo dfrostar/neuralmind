@@ -79,7 +79,11 @@ _SECURITY_MANAGERS: dict[str, MCPSecurityManager] = {}
 
 class RBACPolicy:
     def __init__(self, role_permissions: dict[str, set[str] | str] | None = None):
-        self.role_permissions = role_permissions or DEFAULT_ROLE_POLICY
+        # None means no policy was configured. An empty mapping is a policy
+        # that grants nothing, and must not turn back into the defaults.
+        self.role_permissions = (
+            DEFAULT_ROLE_POLICY if role_permissions is None else role_permissions
+        )
 
     def is_allowed(self, role: str, tool_name: str) -> bool:
         permissions = self.role_permissions.get(role, set())
@@ -104,6 +108,14 @@ class IdentityDeniedError(AccessDeniedError):
 
     Raised before the role check, so a caller the server can't identify never
     reaches the policy at all.
+    """
+
+
+class PolicyConfigError(AccessDeniedError):
+    """The ``security`` section is malformed, so every call is refused.
+
+    Guessing what a broken policy meant would mean guessing in the caller's
+    favour; refusing makes the mistake visible instead.
     """
 
 
@@ -141,12 +153,14 @@ class MCPSecurityManager:
         rate_limiter: RateLimiter | None = None,
         audit_trail: AuditTrail | None = None,
         settings: SecuritySettings | None = None,
+        config_problem: str | None = None,
     ):
         self.project_path = str(Path(project_path).resolve())
         self.policy = policy or RBACPolicy()
         self.rate_limiter = rate_limiter or RateLimiter()
         self.audit = audit_trail or get_audit_trail(self.project_path)
         self.settings = settings or SecuritySettings()
+        self.config_problem = config_problem
 
     def resolve_caller(self, actor: str | None, role: str | None) -> tuple[str, str, dict]:
         """Decide who is calling and with which role.
@@ -196,6 +210,17 @@ class MCPSecurityManager:
         tool_name: str,
         call: Callable[[], Any],
     ) -> Any:
+        if self.config_problem:
+            self.audit.append_event(
+                category="security",
+                action="mcp_call_denied",
+                actor=actor,
+                status="denied",
+                target=tool_name,
+                details={"reason": "config", "error": self.config_problem},
+            )
+            raise PolicyConfigError(f"Refusing MCP calls: {self.config_problem}")
+
         try:
             actor, role, identity = self.resolve_caller(actor, role)
         except IdentityDeniedError as exc:
@@ -266,25 +291,77 @@ def build_security_manager(project_path: str) -> MCPSecurityManager:
     """
     key = str(Path(project_path).resolve())
     config = load_backend_config(key)
-    security = config.get("security", {}) if isinstance(config, dict) else {}
-    role_permissions = security.get("roles") if isinstance(security, dict) else None
-    parsed_roles: dict[str, set[str] | str] | None = None
-    if isinstance(role_permissions, dict):
-        parsed_roles = {}
-        for role, permissions in role_permissions.items():
-            if permissions == "*":
-                parsed_roles[str(role)] = "*"
-            elif isinstance(permissions, list):
-                parsed_roles[str(role)] = {str(name) for name in permissions}
-    rate_cfg = security.get("rate_limit", {}) if isinstance(security, dict) else {}
-    max_calls = int(rate_cfg.get("max_calls", 60))
-    window_seconds = int(rate_cfg.get("window_seconds", 60))
+    security = config.get("security") if isinstance(config, dict) else None
+    roles, max_calls, window_seconds, problem = _parse_policy(security)
     return MCPSecurityManager(
         project_path=key,
-        policy=RBACPolicy(parsed_roles) if parsed_roles else RBACPolicy(),
+        policy=RBACPolicy(roles),
         rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
         settings=load_security_settings(key),
+        config_problem=problem,
     )
+
+
+def _parse_policy(
+    security: Any,
+) -> tuple[dict[str, set[str] | str] | None, int, int, str | None]:
+    """Read ``security.roles`` and ``security.rate_limit``.
+
+    Returns ``(roles, max_calls, window_seconds, problem)``. ``roles`` is None
+    when no policy is configured; an empty mapping is kept, and grants
+    nothing. A role whose value is neither a list nor ``"*"`` gets no tools.
+    ``problem`` names a malformed setting, which makes the manager refuse
+    every call rather than fall back to defaults that may be looser.
+    """
+    max_calls, window_seconds = 60, 60
+    if security is None:
+        return None, max_calls, window_seconds, None
+    if not isinstance(security, dict):
+        return None, max_calls, window_seconds, "`security` must be a mapping"
+
+    roles: dict[str, set[str] | str] | None = None
+    raw_roles = security.get("roles")
+    if raw_roles is not None:
+        if not isinstance(raw_roles, dict):
+            return (
+                None,
+                max_calls,
+                window_seconds,
+                "security.roles must map role names to tool lists",
+            )
+        roles = {}
+        for role, permissions in raw_roles.items():
+            if permissions == "*":
+                roles[str(role)] = "*"
+            elif isinstance(permissions, list):
+                roles[str(role)] = {str(name) for name in permissions}
+
+    raw_rate = security.get("rate_limit")
+    if raw_rate is not None:
+        if not isinstance(raw_rate, dict):
+            return roles, max_calls, window_seconds, "security.rate_limit must be a mapping"
+        try:
+            max_calls = _whole_number(raw_rate.get("max_calls", max_calls), "max_calls", minimum=0)
+            window_seconds = _whole_number(
+                raw_rate.get("window_seconds", window_seconds), "window_seconds", minimum=1
+            )
+        except ValueError as exc:
+            return roles, 60, 60, f"security.rate_limit.{exc}"
+    return roles, max_calls, window_seconds, None
+
+
+def _whole_number(value: Any, name: str, minimum: int) -> int:
+    # A window of 0 or less would drop every timestamp at once and switch the
+    # limit off, so the floor is part of the check, not a nicety.
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise ValueError(f"{name} must be a whole number, not {value!r}")
+    try:
+        number = int(value)
+    except ValueError:
+        raise ValueError(f"{name} must be a whole number, not {value!r}") from None
+    if number < minimum:
+        raise ValueError(f"{name} must be at least {minimum}, not {number}")
+    return number
 
 
 def get_security_manager(project_path: str) -> MCPSecurityManager:
