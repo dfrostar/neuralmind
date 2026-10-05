@@ -84,10 +84,14 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 |---|---|
 | `admin` | All tools |
 | `builder` | The `reader` set, plus `build`, document ingestion, and recording or invalidating decisions |
-| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
+| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), the read-only structure and recall lookups (`review`, `impact`, `structural_neighbors`, `synaptic_neighbors`, `next_likely`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
 
-A few tools are admin-only by default, including `synaptic_neighbors`,
-`structural_neighbors`, `next_likely`, `impact`, and `review`.
+No tool is admin-only by default. Through v4.7.0, `synaptic_neighbors`,
+`structural_neighbors`, `next_likely`, `impact` and `review` were listed to
+agents but refused to `builder` and `reader`, so an agent following the docs
+got `security_denied` from `neuralmind_review`. They only read, like `query`,
+and v4.7.1 grants them to both roles. A `security.roles` policy you wrote is
+unaffected: it replaces the defaults, as described below.
 
 ### Capping what a caller can claim
 
@@ -606,7 +610,9 @@ Status: No known injection path. This comes from code review, not a
 
 **Scenario 2: Privilege escalation**
 ```
-Attack: A caller declares role "admin" to reach admin-only tools
+Attack: A caller declares role "admin" to reach tools its own role
+        lacks (no tool is admin-only by default; a security.roles
+        policy can make some)
 Mitigation: Set security.identity: os so the role comes from the OS
             account, not the call. Otherwise leave admin out of
             security.roles, and limit who can reach the MCP server
