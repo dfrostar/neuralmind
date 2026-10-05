@@ -2058,7 +2058,12 @@ class NeuralMind:
             )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
-            if highlights:
+            if highlights and context_budget and context_budget > 0 and result.layer_texts:
+                # The highlights count against the budget too: the layers
+                # make room for them (L3, then L2, then L1), then the
+                # highlights themselves are cut; L0 is never trimmed.
+                self.selector.fit_to_budget(result, context_budget, prefix=highlights)
+            elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
         if learn:
             log_query_event(self.project_path, question, result)

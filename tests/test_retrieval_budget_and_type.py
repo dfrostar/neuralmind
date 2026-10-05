@@ -8,6 +8,8 @@
   L0. It looked for layer labels ("L3:Search(") that never appear in the
   context, so it always fell through to a raw character cut that truncated L0
   mid-word, and left the token budget describing the untrimmed context.
+* With ``hybrid_context`` on, the highlights count against that budget; they
+  used to be prepended after trimming (budget 100 -> 171 tokens).
 
 Embeddings use a deterministic hashing function injected into the turbovec
 backend, so nothing here needs the ONNX model.
@@ -232,3 +234,35 @@ def test_trim_context_to_budget_with_explicit_markers():
     out, trimmed = trim_context_to_budget(context, budget, layer_markers=dict(_HEADERS))
     assert out == "\n".join(parts[:3])
     assert trimmed == ["L3"]
+
+
+# --------------------------------------------------------------------------- #
+# hybrid_context + context_budget
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def hybrid_mind(project):
+    m = _new_mind(project, hybrid_context=True)
+    yield m
+    m.close()
+
+
+def test_hybrid_highlights_count_against_the_budget(hybrid_mind):
+    full = hybrid_mind.query(_QUESTION, learn=False)
+    highlights, layered = full.context.split("\n\n", 1)
+    assert highlights.startswith("## Hybrid Highlights")  # precondition
+    l0 = _sections(layered)["L0"]
+    highlight_lines = set(highlights.split("\n"))
+
+    for budget in (100, count_tokens(full.context) - 25):
+        res = hybrid_mind.query(_QUESTION, context_budget=budget, learn=False)
+        assert count_tokens(res.context) <= budget
+        assert l0 in res.context
+        if res.context.startswith("## Hybrid Highlights"):
+            head, _ = res.context.split("\n\n", 1)
+            assert set(head.split("\n")) <= highlight_lines
+
+
+def test_hybrid_budget_that_fits_keeps_every_highlight(hybrid_mind):
+    full = hybrid_mind.query(_QUESTION, learn=False)
+    res = hybrid_mind.query(_QUESTION, context_budget=count_tokens(full.context), learn=False)
+    assert res.context == full.context
