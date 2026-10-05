@@ -45,20 +45,23 @@ Files edited (4, most recent first): src/uploader.py, src/config.py, tests/test_
   at 200 characters. The first prompt is usually the session's goal; the last
   ones are where it stopped.
 - **Up to twelve edited files**, most recent first, relative to the project
-  root (a file outside the project shows as `~/…` or its full path). Only
+  root (a file outside the project shows as `~/…` or its full path). Control
+  characters are removed from prompts and paths, and a path longer than 160
+  characters keeps its last 160. Only
   Edit and Write are recorded, so a file changed through a shell command isn't
   listed.
 - **"Not instructions."** The block says so, so the agent doesn't pick an old
   task back up on its own. Ask "where were we?" or "carry on" and it has what
   it needs to answer.
-- **The most recently active other session.** If two sessions run in the same
-  project, whichever was active most recently counts as "where we left off".
+- **The most recently active other session**, by the times recorded in each
+  record. If two sessions run in the same project, whichever was active most
+  recently counts as "where we left off".
 
 ## Per-agent expectations
 
 | Agent | What changes |
 |---|---|
-| **Claude Code** (with `neuralmind install-hooks`) | A fresh or cleared session starts with the recap above. Resumed and compacted sessions don't get it. |
+| **Claude Code** (a built project, with `neuralmind install-hooks`) | A fresh or cleared session starts with the recap above. Resumed and compacted sessions don't get it. |
 | **Cursor / Cline / generic MCP clients** | Nothing. These hosts don't run Claude Code hooks, so nothing is recorded and nothing is injected. |
 | **Hermes-Agent and other agents with a shell** | Nothing automatic. An agent that can run commands can call `neuralmind recap` to read what the last Claude Code session in the project did. |
 
@@ -68,6 +71,10 @@ Files edited (4, most recent first): src/uploader.py, src/config.py, tests/test_
   leaves `.neuralmind/build_status.json`, which no hook creates). Hooks
   installed globally fire in every repository, but they record no prompts in
   the ones NeuralMind hasn't built.
+- A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused, and
+  symlinked record files are skipped: nothing is written, read or deleted
+  through them, since a cloned repository could point either outside the
+  project.
 - Each session appends to `.neuralmind/recaps/<session_id>.jsonl`, one short
   line per prompt or edit. Appending means hooks running in parallel can't
   corrupt a record. The ten most recently active records are kept; older ones
@@ -117,8 +124,10 @@ example above is 525 characters; four full-length prompts and twelve
 
 ## Upgrading
 
-`pip install -U neuralmind`. Nothing to rebuild or reinstall. The first recap
-appears in the session after the first one you work in on v4.7.0.
+`pip install -U neuralmind`. Nothing to reinstall, and nothing to rebuild in a
+project built with v3.9.0 or later (the recap looks for the
+`.neuralmind/build_status.json` a build leaves). The first recap appears in the
+session after the first one you work in on v4.7.0.
 
 ## Related
 

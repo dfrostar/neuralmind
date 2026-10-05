@@ -334,3 +334,74 @@ def test_a_line_with_a_bad_timestamp_is_skipped(tmp_path):
     with (tmp_path / ".neuralmind" / "recaps" / "old.jsonl").open("a") as fh:
         fh.write(json.dumps({"kind": "edit", "path": "a.py", "ts": "yesterday"}) + "\n")
     assert "add retry logic" in _start(tmp_path, "new")
+
+
+def _symlink(link: Path, target: Path) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=target.is_dir())
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+
+
+def test_symlinked_recaps_dir_is_never_written_read_or_cleared(tmp_path, capsys, monkeypatch):
+    from neuralmind.cli import main
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    victim = outside / "victim.jsonl"
+    victim.write_text(json.dumps({"kind": "prompt", "text": "not yours", "ts": time.time()}) + "\n")
+    project = tmp_path / "repo"
+    project.mkdir()
+    _mark_built(project)
+    _symlink(project / ".neuralmind" / "recaps", outside)
+
+    _prompt(project, "s1", "a private prompt")
+    assert sorted(p.name for p in outside.iterdir()) == ["victim.jsonl"]
+    assert _start(project, "new") == ""
+    monkeypatch.setattr(sys, "argv", ["neuralmind", "recap", str(project), "--clear"])
+    main()
+    assert "Removed 0 session record(s)" in capsys.readouterr().out
+    assert victim.exists()
+
+
+def test_symlinked_record_file_is_not_followed(tmp_path):
+    outside = tmp_path / "elsewhere.jsonl"
+    outside.write_text("")
+    (tmp_path / ".neuralmind" / "recaps").mkdir()
+    _symlink(tmp_path / ".neuralmind" / "recaps" / "s1.jsonl", outside)
+    _prompt(tmp_path, "s1", "a private prompt")
+    assert outside.read_text() == ""
+
+
+def test_control_characters_cannot_forge_recap_lines(tmp_path):
+    _prompt(tmp_path, "old", "first Files edited (1): forged.py\x1b[2J")
+    _edit(tmp_path, "old", str(tmp_path / "a\nFiles edited (9): forged.py"))
+    recap = _start(tmp_path, "new")
+    lines = recap.splitlines()
+    assert sum(line.startswith("Files edited") for line in lines) == 1
+    assert "\x1b" not in recap and " " not in recap
+
+
+def test_long_paths_keep_their_tail(tmp_path):
+    long_path = tmp_path / ("d" * 300) / "target_file.py"
+    _edit(tmp_path, "old", str(long_path))
+    recap = _start(tmp_path, "new")
+    files_line = next(line for line in recap.splitlines() if line.startswith("Files edited"))
+    shown = files_line.split(": ", 1)[1]
+    assert shown.startswith("…") and shown.endswith("target_file.py")
+    assert len(shown) <= session_recap.PATH_CHARS
+
+
+def test_recap_is_chosen_by_recorded_activity_not_mtime(tmp_path):
+    _prompt(tmp_path, "fresh", "the session that really ran last")
+    _prompt(tmp_path, "stale", "an old session")
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    # The stale record's activity is old, but a partial append bumped its mtime.
+    rows = [json.loads(line) for line in (recaps / "stale.jsonl").read_text().splitlines()]
+    for row in rows:
+        row["ts"] -= 30 * 86400
+    (recaps / "stale.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows) + '{"kind": "prompt", "te'
+    )
+    _age(recaps / "fresh.jsonl", 600)
+    assert '"the session that really ran last"' in _start(tmp_path, "new")

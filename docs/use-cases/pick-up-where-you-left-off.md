@@ -20,17 +20,21 @@ to go and work it out from `git status` and the log.
 
 ```bash
 pip install -U neuralmind
+neuralmind build .
 neuralmind install-hooks .
 ```
 
-If the hooks are already installed, upgrading is enough. Recording rides on the
+The build matters: recording happens only in a project where `neuralmind build`
+has run. If the project is built and the hooks are already installed, upgrading
+is enough. Recording rides on the
 `UserPromptSubmit` and Edit/Write hooks NeuralMind already registers, the recap
 arrives through the existing `SessionStart` hook, and the hook block's version
 is unchanged. The first recap appears in the session after the first one you
 work in on v4.7.0.
 
-Recording happens only in a project where `neuralmind build` has run, so hooks
-installed globally record no prompts in repositories NeuralMind hasn't built.
+Hooks installed globally record no prompts in repositories NeuralMind hasn't
+built. A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused
+too: a cloned repository could point either one outside the project.
 
 ## 2. Work as usual
 

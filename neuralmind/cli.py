@@ -5085,7 +5085,8 @@ def cmd_recap(args):
         )
         return
     if not recap_enabled():
-        stored = len(list((Path(project_path) / ".neuralmind" / "recaps").glob("*.jsonl")))
+        recaps_dir = Path(project_path) / ".neuralmind" / "recaps"
+        stored = 0 if recaps_dir.is_symlink() else len(list(recaps_dir.glob("*.jsonl")))
         print(f"Session recap is off ({RECAP_ENV}=0): nothing is recorded or injected.")
         if stored:
             print(

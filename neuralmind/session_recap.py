@@ -51,6 +51,7 @@ PRUNE_GRACE_SECONDS = 24 * 3600
 # What a recap shows. The whole block stays well under a kilobyte or two so a
 # session start never pays much for it.
 PROMPT_CHARS = 200  # each prompt, after whitespace is collapsed
+PATH_CHARS = 160  # each edited path; a longer one keeps its tail
 RECENT_PROMPTS = 3  # shown after the first prompt
 MAX_FILES = 12  # most recently edited first
 
@@ -58,6 +59,9 @@ MAX_FILES = 12  # most recently edited first
 INJECT_SOURCES = ("startup", "clear")
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+# Control characters, including line and paragraph separators: a prompt or a
+# path containing one could otherwise forge extra lines in the recap.
+_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 
 
 def recap_enabled() -> bool:
@@ -72,8 +76,34 @@ def _recording_enabled() -> bool:
     return not learning_disabled()
 
 
-def _recaps_dir(project_path: str | Path) -> Path:
-    return Path(project_path) / ".neuralmind" / "recaps"
+def _recaps_dir(project_path: str | Path, create: bool = False) -> Path | None:
+    """The recaps directory, or None when it's missing or not safe to use.
+
+    A symlinked ``.neuralmind/`` or ``recaps/`` is refused: a cloned repository
+    can contain either, pointing outside the project, and prompts must not be
+    written there, nor ``--clear`` delete files there.
+    """
+    state = Path(project_path) / ".neuralmind"
+    directory = state / "recaps"
+    if state.is_symlink() or directory.is_symlink():
+        return None
+    if create:
+        directory.mkdir(parents=True, exist_ok=True)
+        if directory.is_symlink():  # swapped in since the check above
+            return None
+    return directory if directory.is_dir() else None
+
+
+def _records(directory: Path) -> list[Path]:
+    """The session records in ``directory``: regular files, never symlinks."""
+    found = []
+    for path in directory.glob("*.jsonl"):
+        try:
+            if not path.is_symlink() and path.is_file():
+                found.append(path)
+        except OSError:
+            continue
+    return found
 
 
 def _file_stem(session_id: str) -> str:
@@ -83,9 +113,18 @@ def _file_stem(session_id: str) -> str:
     return "s-" + hashlib.sha256(session_id.encode()).hexdigest()[:32]
 
 
+def _one_line(text: str) -> str:
+    return " ".join(_CONTROL.sub(" ", text).split())
+
+
 def _clip(text: str, limit: int = PROMPT_CHARS) -> str:
-    text = " ".join(text.split())
+    text = _one_line(text)
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _clip_path(path: str, limit: int = PATH_CHARS) -> str:
+    path = _one_line(path)
+    return path if len(path) <= limit else "…" + path[-(limit - 1) :]
 
 
 def _display_path(project_path: str | Path, file_path: str) -> str:
@@ -123,25 +162,32 @@ def _mtime(path: Path) -> float | None:
         return None
 
 
-def _by_mtime(paths, newest_first: bool = False) -> list[tuple[float, Path]]:
+def _by_mtime(paths) -> list[tuple[float, Path]]:
     stamped = [(m, p) for p in paths if (m := _mtime(p)) is not None]
-    return sorted(stamped, key=lambda mp: mp[0], reverse=newest_first)
+    return sorted(stamped, key=lambda mp: mp[0])
 
 
 def _append(project_path: str | Path, session_id: str, entry: dict) -> None:
     # Only in a project that uses NeuralMind: globally installed hooks fire in
     # every repository, and must not record prompts in the others.
-    if not _project_built(project_path):
+    if not _project_built(project_path) or (Path(project_path) / ".neuralmind").is_symlink():
         return
     from .state_dir import ensure_state_dir
 
     # The self-ignoring .gitignore keeps the prompt records out of `git add -A`.
     ensure_state_dir(project_path)
-    directory = _recaps_dir(project_path)
-    directory.mkdir(parents=True, exist_ok=True)
+    directory = _recaps_dir(project_path, create=True)
+    if directory is None:
+        return
+    target = directory / f"{_file_stem(session_id)}.jsonl"
+    if target.is_symlink():
+        return
     entry["ts"] = time.time()
     line = json.dumps(entry, ensure_ascii=False) + "\n"
-    with open(directory / f"{_file_stem(session_id)}.jsonl", "a", encoding="utf-8") as fh:
+    # O_NOFOLLOW (where the OS has it) closes the gap between the check above
+    # and the open: a symlink swapped in meanwhile fails the open.
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(target, flags, 0o600), "a", encoding="utf-8") as fh:
         fh.write(line)
 
 
@@ -167,7 +213,7 @@ def record_edit(project_path: str | Path, session_id: str, file_path: str) -> No
         _append(
             project_path,
             session_id,
-            {"kind": "edit", "path": _display_path(project_path, file_path)},
+            {"kind": "edit", "path": _clip_path(_display_path(project_path, file_path))},
         )
     except Exception:
         pass
@@ -205,7 +251,7 @@ def _load(path: Path) -> dict | None:
 
 def _prune(directory: Path, now: float | None = None) -> None:
     now = time.time() if now is None else now
-    records = _by_mtime(directory.glob("*.jsonl"))
+    records = _by_mtime(_records(directory))
     for mtime, old in records[: max(0, len(records) - MAX_KEPT)]:
         if now - mtime < PRUNE_GRACE_SECONDS:
             continue  # possibly a session that's still open
@@ -237,8 +283,9 @@ def _ago(seconds: float) -> str:
 
 def render_recap(record: dict, now: float | None = None) -> str:
     now = time.time() if now is None else now
-    prompts: list[str] = record["prompts"]
-    files: list[str] = record["files"]
+    # Clipped again here: a record may not have been written by this module.
+    prompts = [_clip(p) for p in record["prompts"]]
+    files = [_clip_path(f) for f in record["files"]]
     lines = [
         (
             f"NeuralMind session recap — the previous session in this project "
@@ -277,27 +324,26 @@ def latest_recap(
 ) -> str:
     """The recap a new session would get now, or "" when there's nothing to say.
 
-    Picks the most recently active session's record other than
-    ``exclude_session``, so a concurrent session in the same project counts as
-    "where we left off" too. Read-only.
+    Picks the record with the latest recorded activity other than
+    ``exclude_session``'s, so a concurrent session in the same project counts
+    as "where we left off" too. Ranked by the timestamps inside the records,
+    not file mtimes: a partial append can refresh an old record's mtime without
+    adding activity. Read-only.
     """
     try:
         directory = _recaps_dir(project_path)
-        if not directory.is_dir():
+        if directory is None:
             return ""
         own = _file_stem(exclude_session) if exclude_session else None
-        candidates = _by_mtime(
-            (p for p in directory.glob("*.jsonl") if p.stem != own), newest_first=True
-        )
+        loaded = [_load(p) for p in _records(directory) if p.stem != own]
+        usable = [r for r in loaded if r is not None]
+        if not usable:
+            return ""
+        record = max(usable, key=lambda r: r["last_ts"])
         now = time.time() if now is None else now
-        for _, path in candidates:
-            record = _load(path)
-            if record is None:
-                continue
-            if now - record["last_ts"] > _max_age_seconds():
-                return ""  # the newest usable record is too old; older ones are too
-            return render_recap(record, now=now)
-        return ""
+        if now - record["last_ts"] > _max_age_seconds():
+            return ""
+        return render_recap(record, now=now)
     except Exception:
         return ""
 
@@ -313,7 +359,7 @@ def recap_for_session_start(
         if not recap_enabled() or source not in INJECT_SOURCES:
             return ""
         directory = _recaps_dir(project_path)
-        if not directory.is_dir():
+        if directory is None:
             return ""
         if _recording_enabled():
             _prune(directory, now=now)
@@ -323,12 +369,16 @@ def recap_for_session_start(
 
 
 def clear_recaps(project_path: str | Path) -> int:
-    """Delete every stored session record; returns how many were removed."""
+    """Delete every stored session record; returns how many were removed.
+
+    Never follows a symlinked ``.neuralmind/`` or ``recaps/`` directory, and
+    deletes only regular files.
+    """
     directory = _recaps_dir(project_path)
-    if not directory.is_dir():
+    if directory is None:
         return 0
     removed = 0
-    for path in directory.glob("*.jsonl"):
+    for path in _records(directory):
         try:
             path.unlink()
             removed += 1
