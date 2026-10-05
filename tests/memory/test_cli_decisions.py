@@ -368,6 +368,27 @@ def test_restore_known_id_still_reanchors(parser, project, capsys):
     assert got.commit_sha == "b" * 40
 
 
+def test_restore_db_error_is_an_error(parser, project, capsys, monkeypatch):
+    # The store raises on a failed update (tests/memory/test_store.py drives
+    # a real one); here, the CLI must report it rather than print "Restored".
+    import sqlite3
+
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+
+    def locked(self, decision_id, new_commit_sha):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(DecisionStore, "restore", locked)
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "restore", rec.id, str(project), "--commit", "b" * 40], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Could not restore decision {rec.id}" in captured.err
+    assert "Restored decision" not in captured.out
+
+
 # ------------------------------------------------------------------ #
 # invalidate reports failure (an unknown id or a DB error said "Invalidated")
 # ------------------------------------------------------------------ #

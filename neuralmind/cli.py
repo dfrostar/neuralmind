@@ -3264,10 +3264,15 @@ def cmd_decisions_restore(args):
         except Exception as e:
             print(f"Error resolving commit: {e}")
             sys.exit(1)
+    import sqlite3
+
     try:
         decision = store.restore(args.decision_id, new_commit_sha=commit)
     except KeyError:  # removed between the check above and the update
         print(not_found, file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not restore decision {args.decision_id}: {e}", file=sys.stderr)
         sys.exit(1)
     print(f"Restored decision: {decision.id}")
     print(f"  Status: {decision.status}")

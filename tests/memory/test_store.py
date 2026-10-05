@@ -112,6 +112,25 @@ def test_invalidate_db_error_raises_and_leaves_status(store):
     assert status == ("ACTIVE",)
 
 
+def test_restore_db_error_raises_and_leaves_the_decision(store):
+    """A failed restore used to be swallowed, and the CLI printed "Restored"."""
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    _corrupt_evidence(store, rec.id)
+    with pytest.raises(sqlite3.Error):
+        store.restore(rec.id, new_commit_sha="b" * 40)
+    with sqlite3.connect(store.db_path) as conn:
+        row = conn.execute(
+            "SELECT status, commit_sha FROM decisions WHERE id = ?", (rec.id,)
+        ).fetchone()
+    assert row[0] == "STALE" and row[1] != "b" * 40
+
+
+def test_restore_unknown_id_raises_key_error(store):
+    with pytest.raises(KeyError):
+        store.restore("no-such-id", new_commit_sha="b" * 40)
+
+
 def test_update_status_invalid_is_noop(store):
     rec = _record(store)
     store.update_status(rec.id, "NOT_A_STATUS")

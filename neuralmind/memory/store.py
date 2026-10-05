@@ -723,12 +723,23 @@ class DecisionStore:
 
         Useful after a cherry-pick / rebase where the original commit no
         longer exists in the current history but the decision still applies.
-        Returns the updated record, or raises KeyError if not found.
+
+        Like ``invalidate``, this is an explicit user action, so it reports
+        failure: a failed update used to be logged and swallowed, and the CLI
+        then printed "Restored" beside the unchanged status.
+
+        Returns:
+            The updated record.
+
+        Raises:
+            KeyError: no decision has this id.
+            sqlite3.Error: the update failed (also logged); the decision is
+                unchanged.
         """
         now = _now_iso()
         try:
             with self._connect() as conn:
-                conn.execute(
+                cur = conn.execute(
                     """UPDATE decisions
                        SET commit_sha = ?,
                            status = 'ACTIVE',
@@ -742,9 +753,11 @@ class DecisionStore:
                         decision_id,
                     ),
                 )
-        except Exception:
+                updated = cur.rowcount > 0
+        except sqlite3.Error:
             logger.exception("[memory] restore(%s) failed — decision not re-anchored", decision_id)
-        restored = self.get(decision_id)
+            raise
+        restored = self.get(decision_id) if updated else None
         if restored is None:
             raise KeyError(f"Decision not found: {decision_id}")
         # Restoring says "this still holds for the code as it is now".
