@@ -336,15 +336,6 @@ Every other project sees what it saw in v4.7.0.
 | **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
 | **Generic MCP client** | Same as Claude Code | Same as Claude Code |
 
-## Other fixes
-
-- **`neuralmind audit export -o` reports what it wrote.** In v4.7.0 and
-  earlier it printed the size of the whole audit log, whatever `--since`,
-  `--until`, `--category`, `--action` or `--actor` kept, so a filtered export
-  over an empty file said "Exported 7 events". It now counts the records it
-  writes, and says so when none matched the filters. Export to stdout is
-  unchanged.
-
 ## Upgrading
 
 `pip install -U neuralmind`. Nothing to reinstall, and nothing to rebuild in a
