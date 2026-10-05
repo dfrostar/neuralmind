@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, session recap, session continuity">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification, session recap, session continuity">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -199,9 +199,9 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v470">
-            <h2>What&rsquo;s New in v4.7.0 &mdash; a new session starts with where the last one left off</h2>
-            <p><strong>A new Claude Code session started cold: NeuralMind gave it the code it had learned, but not the work &mdash; what you were doing, which files you edited, what you asked last.</strong> v4.7.0 records each session&rsquo;s prompts and edited files as you work, and a fresh or cleared session starts with a short recap of the most recent one. No new hooks and no model call: it rides on the hooks NeuralMind already installs, so an existing <code>neuralmind install-hooks</code> setup picks it up on upgrade.</p>
+        <div class="container" id="whats-new-v480">
+            <h2>What&rsquo;s New in v4.8.0 &mdash; a new session starts with where the last one left off</h2>
+            <p><strong>A new Claude Code session started cold: NeuralMind gave it the code it had learned, but not the work &mdash; what you were doing, which files you edited, what you asked last.</strong> v4.8.0 records each session&rsquo;s prompts and edited files as you work, and a fresh or cleared session starts with a short recap of the most recent one. No new hooks and no model call: it rides on the hooks NeuralMind already installs, so an existing <code>neuralmind install-hooks</code> setup picks it up on upgrade.</p>
             <ul>
                 <li><strong>What the agent sees</strong> &mdash; before your first message, a block that says how long ago the previous session was last active and that it is context, not instructions, then that session&rsquo;s first prompt, its last three (each one line, cut at 200 characters) and up to twelve edited files, most recent first. Its size is bounded by count: four prompts of 200 characters and twelve paths at most (the release notes&rsquo; example is 525 characters); whether it shortens the start of a session isn&rsquo;t measured</li>
                 <li><strong>Only on a fresh start or after <code>/clear</code></strong> &mdash; a resumed session already has its conversation and a compacted one has Claude Code&rsquo;s own summary, so neither gets it. The most recently active other session in the project counts as the previous one, even if it is still running alongside</li>
@@ -209,7 +209,20 @@
                 <li><strong><code>neuralmind recap</code></strong> &mdash; prints what the next session will see; <code>--clear</code> deletes the records. <code>NEURALMIND_SESSION_RECAP=0</code> stops recording and the recap, <code>NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS</code> (default 14) hides an older one, <code>NEURALMIND_NO_LEARN=1</code> stops recording but still shows an existing recap, and <code>NEURALMIND_BYPASS=1</code> switches off every hook action, this one included</li>
                 <li><strong>Claude Code only, automatically</strong> &mdash; Cursor, Cline and generic MCP clients don&rsquo;t run Claude Code hooks, so nothing is recorded or injected; Hermes-Agent or any agent with a shell can run <code>neuralmind recap</code></li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md">v4.8.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v470">
+            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
+            <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
+            <ul>
+                <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
+                <li><strong><code>security.require_encrypted_storage: true</code></strong> &mdash; NeuralMind checks for FileVault, BitLocker or dm-crypt/LUKS on every volume that holds its state, including a custom index path, and refuses to build, query, serve MCP tools or run hooks until the check passes. It doesn&rsquo;t encrypt anything itself: in-process crypto from a pip wheel isn&rsquo;t FIPS-validated</li>
+                <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
         </div>
     </section>
 

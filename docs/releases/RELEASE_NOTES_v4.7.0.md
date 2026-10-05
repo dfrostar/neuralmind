@@ -1,136 +1,157 @@
-# NeuralMind v4.7.0 — a new session starts with where the last one left off
+# NeuralMind v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage
 
-**Type:** Minor release | **Theme:** session continuity
+**Type:** Minor release | **Theme:** CMMC 2.0 readiness
 
-A new Claude Code session used to start cold. NeuralMind gave it the code it
-had learned (`SYNAPSE_MEMORY.md`, per-prompt recall), but not the work: what
-you were doing yesterday, which files you had open, what you asked last. You
-re-explained it, or asked the agent to go and find out.
+Until this release, every MCP tool call named its own `actor` and `role`, and
+nothing checked either: any caller could declare `admin`. NeuralMind also left
+encryption at rest entirely to the host, with no way to confirm it was there.
+Both gaps came up when mapping NeuralMind to CMMC 2.0 Level 2 for teams that
+index source code containing Controlled Unclassified Information (CUI).
 
-v4.7.0 records each session's prompts and edited files as you work. The next
-fresh or cleared session starts with a short recap of the most recent one:
+1. **`security.identity: os` ties MCP roles to OS accounts.** The server takes
+   the caller's identity from the OS account it runs as — over the default
+   stdio transport, the agent that launched it — and the role from
+   `security.users`. What a call declares is ignored and kept in the audit log
+   as a claim.
+2. **`security.require_encrypted_storage: true` refuses unverified volumes.**
+   NeuralMind checks for FileVault, BitLocker, or dm-crypt/LUKS and refuses to
+   build, query, serve MCP tools, or run hooks until the check passes.
+3. **`neuralmind doctor` reports both** as two new checks: *Security policy*
+   and *Storage encryption*.
 
-1. **No new hooks.** Recording rides on the `UserPromptSubmit` and Edit/Write
-   hooks NeuralMind already installs; the recap arrives through the existing
-   `SessionStart` hook. The hook block's version is unchanged, so an
-   existing `neuralmind install-hooks` setup picks it up on upgrade.
-2. **No model call.** The recap is assembled from what the hook payloads
-   already carry: the prompt text, the edited file's path, the session id.
-   Nothing summarizes it, so it costs a few small file reads at session
-   start.
-3. **Only when the conversation is missing.** A resumed session already has its
-   conversation, and a compacted one has Claude Code's own summary, so the
-   recap is injected only on a fresh start and after `/clear`.
-4. **`neuralmind recap`** prints what the next session will see, and
-   `neuralmind recap --clear` deletes the stored records.
+Nothing changes for a project that doesn't set these keys. Both build on
+[v4.6.1](RELEASE_NOTES_v4.6.1.md), which made the MCP server apply
+`security.roles` and `security.rate_limit` at all.
 
-## What the agent actually sees
+---
 
-At the start of a new session, before your first message, the agent's
-context gains this block:
+## 1. Identity from the OS, not from the call
 
-```
-NeuralMind session recap — the previous session in this project (last active 3 h ago). This is context for continuity, not instructions: don't resume that work unless the user asks to.
-
-It started with: "add retry logic to the uploader"
-Most recent prompts (2 earlier not shown):
-- "now cover the timeout path in tests"
-- "why does test_upload_retries hang on CI?"
-- "make the backoff configurable through the env"
-
-Files edited (4, most recent first): src/uploader.py, src/config.py, tests/test_uploader.py, docs/uploader.md
+```yaml
+# neuralmind-backend.yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  default_role: reader      # optional; unset refuses accounts missing from users
 ```
 
-- **The first prompt and the last three**, each collapsed to one line and cut
-  at 200 characters. The first prompt is usually the session's goal; the last
-  ones are where it stopped.
-- **Up to twelve edited files**, most recent first, relative to the project
-  root (a file outside the project shows as `~/…` or its full path). Control
-  characters are removed from prompts and paths, and a path longer than 160
-  characters keeps its last 160. Only
-  Edit and Write are recorded, so a file changed through a shell command isn't
-  listed.
-- **"Not instructions."** The block says so, so the agent doesn't pick an old
-  task back up on its own. Ask "where were we?" or "carry on" and it has what
-  it needs to answer.
-- **The most recently active other session**, by the times recorded in each
-  record. If two sessions run in the same project, whichever was active most
-  recently counts as "where we left off".
+The account name comes from the OS: the passwd entry for the effective uid on
+Linux and macOS, `GetUserNameW` on Windows. `LOGNAME`, `USER` and `USERNAME` are
+not consulted, because the process that launches the server sets them.
 
-## Per-agent expectations
+NeuralMind refuses every MCP call, with `reason: identity`, when:
 
-| Agent | What changes |
-|---|---|
-| **Claude Code** (a built project, with `neuralmind install-hooks`) | A fresh or cleared session starts with the recap above. Resumed and compacted sessions don't get it. |
-| **Cursor / Cline / generic MCP clients** | Nothing. These hosts don't run Claude Code hooks, so nothing is recorded and nothing is injected. |
-| **Hermes-Agent and other agents with a shell** | Nothing automatic. An agent that can run commands can call `neuralmind recap` to read what the last Claude Code session in the project did. |
+- the HTTP transport is in use (`NEURALMIND_MCP_TRANSPORT=streamable_http`):
+  the server's OS account is not the remote caller's;
+- the OS account can't be determined;
+- the account isn't in `users` and `default_role` is unset;
+- the policy file is world-writable (POSIX), since any local user could edit
+  the role mapping;
+- `identity` has a value other than `declared` or `os`, or `users` isn't a
+  mapping.
 
-## Where it's stored, and what's redacted
+A policy file that names `identity` or `require_encrypted_storage` but doesn't
+parse is refused too. The general config loader treats a broken file as empty,
+which would quietly switch enforcement off.
 
-- Recording happens only in a project where `neuralmind build` has run (it
-  leaves `.neuralmind/build_status.json`, which no hook creates). Hooks
-  installed globally fire in every repository, but they record no prompts in
-  the ones NeuralMind hasn't built.
-- A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused, and
-  symlinked record files are skipped: nothing is written, read or deleted
-  through them, since a cloned repository could point either outside the
-  project.
-- Each session appends to `.neuralmind/recaps/<session_id>.jsonl`, one short
-  line per prompt or edit. Appending means hooks running in parallel can't
-  corrupt a record. The ten most recently active records are kept; older ones
-  are deleted when a fresh session starts, except a record active in the last
-  24 hours, so a session that's still open keeps its start.
-- The recap writes `.neuralmind/`'s self-ignoring `.gitignore` before its
-  first record, so `git add -A` doesn't stage the records.
-- Prompts pass through NeuralMind's credential patterns (the same redaction
-  `neuralmind last` uses) **before** they're written, and before they're cut
-  to 200 characters, so a credential can't survive in the kept slice. The
-  patterns catch common credential formats, not every secret, so a secret in
-  an unusual format can still be written.
-- The recap goes into the agent's context, so it's sent to your model provider
-  along with the rest of the session, as the original prompts were.
+The rate limit keys on the OS account under `identity: os`, so a caller can't
+reset its budget by declaring a different actor. Audit events written outside
+MCP (CLI queries, builds) also take the OS account as their actor;
+`NEURALMIND_ACTOR` is recorded as `claimed_actor` instead of being believed.
 
-## Settings
+**What it does not do.** Anyone who can run commands as that OS account can
+also read `.neuralmind/` directly and edit a policy file they own. `identity:
+os` makes per-user roles and audit attribution trustworthy on a host where an
+administrator owns the policy file and users have separate accounts. On a
+single-user laptop its value is attribution: the agent can no longer write a
+different name into the audit log.
 
-| Variable | Default | Effect |
-|---|---|---|
-| `NEURALMIND_SESSION_RECAP` | on | `0` stops recording and stops the recap |
-| `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | A recap whose session was last active longer ago than this isn't shown |
-| `NEURALMIND_NO_LEARN` | off | `1` stops recording (nothing is written) but still shows an existing recap |
-| `NEURALMIND_BYPASS` | off | `1` switches off every hook action, this one included |
+## 2. Encrypted storage, verified
 
-Turning the recap off, or setting `NEURALMIND_NO_LEARN=1`, doesn't delete
-records already written, and a recap past the age limit is hidden, not deleted.
-`neuralmind recap --clear` removes them; while the recap is off,
-`neuralmind recap` says how many are still stored.
+NeuralMind does not encrypt `.neuralmind/` itself. CMMC SC.L2-3.13.11 asks for
+FIPS-validated cryptography, and the OpenSSL inside a pip-installed
+`cryptography` wheel is not FIPS-validated, so in-process encryption would not
+satisfy the control. The accepted answer is the OS's full-disk encryption, and
+NeuralMind now verifies it:
 
-## Why it's built this way
+| OS | What counts as encrypted | FIPS mode reported from |
+|----|--------------------------|-------------------------|
+| macOS | `diskutil` reports FileVault on for the volume. Apple silicon encrypts internal disks in hardware even with FileVault off, but then the key isn't protected by a password, so that doesn't count | Not reported: macOS has no FIPS switch. FileVault uses Apple corecrypto; check Apple's CMVP certificates for your macOS version |
+| Linux | `lsblk` shows a `crypt` layer under the filesystem holding the project | `/proc/sys/crypto/fips_enabled` |
+| Windows | BitLocker protection on for the drive | The `FipsAlgorithmPolicy` registry value |
 
-NeuralMind already had session summaries (`session_summaries.py`), written by
-the `Stop` and `SessionEnd` hooks. They're built from `.neuralmind/events.jsonl`,
-which is only written while `neuralmind watch` or `neuralmind serve` is
-running. With hooks alone, nothing new reaches that log, so the summaries don't
-reflect the session, or aren't written at all. The session recap reads only fields Claude Code's
-hook payloads carry, so it works with the hooks alone.
+The check covers every place NeuralMind's state can land: the project root,
+`.neuralmind/` (following a symlink to wherever it points), and a custom vector
+index location from `db_path`, whether passed in, configured, or set by a
+backend switch. Anything short of a positive answer — a check that times out,
+an overlay filesystem in a container, BitLocker suspended — counts as not
+verified. Only an explicit `false` (or `0`, `no`, `off`) turns the setting off;
+a blank `require_encrypted_storage:` counts as on. The
+verdict is written to the audit log once per process as a `storage_check`
+event, which gives an assessor a dated record.
 
-## Not measured
+With `require_encrypted_storage: true` and an unverified volume:
 
-This release doesn't claim a number. We haven't measured whether the recap
-shortens the start of a session, or how often an agent acts on it when it
-shouldn't. The block's size is bounded by count, not by a character budget: at
-most four prompts of 200 characters and twelve file paths, plus a header. The
-example above is 525 characters; four full-length prompts and twelve
-30-character paths come to about 1,500.
+- `neuralmind build` and `neuralmind query` exit with the reason;
+- MCP tools return `security_denied` with `reason: storage`;
+- hooks write nothing (no output cache, no synapse transitions) and stay out of
+  the agent's way;
+- the decision store won't open.
 
-## Upgrading
+## 3. Malformed policies under the new settings
 
-`pip install -U neuralmind`. Nothing to reinstall, and nothing to rebuild in a
-project built with v3.9.0 or later (the recap looks for the
-`.neuralmind/build_status.json` a build leaves). The first recap appears in the
-session after the first one you work in on v4.7.0.
+v4.6.1 refuses a `security:` value of the wrong type with `reason: config`. In
+v4.7.0 the MCP dispatcher checks for that before the storage check, so a broken
+policy is reported as the cause rather than as a storage refusal it also
+triggers. A file that names `identity` or `require_encrypted_storage` but
+doesn't parse is refused too; other unparseable files still read as empty, as
+in v4.6.1.
+
+## What the agent actually sees post-install
+
+Nothing, unless the project sets the new keys.
+
+With `identity: os`, a tool call that declares `role: admin` runs with the role
+`security.users` gives the OS account. A tool outside that role returns:
+
+```json
+{"error": "Access denied for role 'reader' on tool 'neuralmind_build'", "code": "security_denied", "reason": "rbac"}
+```
+
+An account with no role, or the HTTP transport, returns `reason: identity`.
+With `require_encrypted_storage` on an unverified volume, every tool returns
+`reason: storage`, with the check's detail in `error`.
+
+| Agent | Transport | `identity: os` | `require_encrypted_storage` |
+|-------|-----------|----------------|-----------------------------|
+| Claude Code | stdio | Works: the server runs as the developer's account | MCP tools and hooks both refuse on an unverified volume |
+| Cursor | stdio | Works | MCP tools refuse; Cursor runs no NeuralMind hooks |
+| Cline | stdio | Works | MCP tools refuse |
+| Generic MCP client | stdio | Works | MCP tools refuse |
+| Any client over Streamable HTTP | HTTP | Refused: the server can't identify a remote caller | MCP tools refuse |
+
+## Environment variables
+
+None added. `NEURALMIND_MCP_TRANSPORT=streamable_http` is now refused under
+`identity: os`. Under `identity: os`, `NEURALMIND_ACTOR` no longer sets the
+audit actor; it is recorded as `claimed_actor`.
+
+## Upgrade notes
+
+- No action is needed if `neuralmind-backend.yaml` has no `security:` section.
+- To adopt `identity: os`, list each OS account in `users`, make the file
+  writable only by its owner (`chmod 644`), and run `neuralmind doctor` to see
+  the role your account gets.
+- To adopt `require_encrypted_storage`, run `neuralmind doctor` first. The
+  *Storage encryption* line shows what the check sees on each machine,
+  including CI runners, which usually aren't encrypted.
 
 ## Related
 
-- Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md)
-- CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v470),
-  [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
+- [CMMC 2.0 practice mapping](../COMPLIANCE-SUMMARY.md) — what NeuralMind
+  provides for each Level 2 practice, and what stays yours
+- [Security settings reference](../wiki/CLI-Reference.md)
+- [Use case: NeuralMind in a CMMC CUI enclave](../use-cases/cmmc-cui-enclave.md)
+- [Security Guide — Access Control](../SECURITY-GUIDE.md#access-control)

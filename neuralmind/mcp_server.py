@@ -46,13 +46,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from neuralmind.core import GraphNotBuiltError, NeuralMind
 from neuralmind.mcp_security import (
     AccessDeniedError,
+    IdentityDeniedError,
     MCPSecurityManager,
     PolicyConfigError,
     RateLimitExceededError,
     build_security_manager,
+    set_active_transport,
 )
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
+from neuralmind.storage_guard import StorageNotVerifiedError, enforce_storage_policy
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -1415,8 +1418,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     project_path_raw = arguments.get("project_path")
     project_path = str(project_path_raw) if project_path_raw else None
-    actor = str(arguments.get("actor", "anonymous"))
-    role = str(arguments.get("role", "builder"))
+    # Passed through as declared (None when absent): the security manager
+    # applies the defaults, or ignores both under security.identity: os.
+    actor = None if arguments.get("actor") is None else str(arguments["actor"])
+    role = None if arguments.get("role") is None else str(arguments["role"])
 
     if not project_path:
         return json.dumps({"error": "project_path is required", "code": "invalid_request"})
@@ -1427,6 +1432,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     try:
         security = get_security_manager(project_path)
+        # A malformed policy also turns the storage check on (fail closed), so
+        # check it first: the broken policy is the cause worth reporting.
+        security.refuse_if_misconfigured(actor, name)
+        enforce_storage_policy(project_path)
         result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
     # Only the security manager's own refusals are security denials. A tool
@@ -1440,6 +1449,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
                 "hint": "Call neuralmind_build with this project_path, then retry.",
             }
         )
+    except StorageNotVerifiedError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "storage"})
+    except IdentityDeniedError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "identity"})
     except PolicyConfigError as e:
         return json.dumps({"error": str(e), "code": "security_denied", "reason": "config"})
     except AccessDeniedError as e:
@@ -1518,8 +1531,11 @@ def main():
             if app is not None:
                 import uvicorn
 
+                set_active_transport("streamable_http")
                 uvicorn.run(app, host="127.0.0.1", port=8765)
                 return
+    # Requested HTTP or not, this is stdio now; identity checks follow it.
+    set_active_transport("stdio")
     asyncio.run(run_mcp_server())
 
 

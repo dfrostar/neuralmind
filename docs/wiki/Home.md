@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.7.0 — A new session starts with where the last one left off (October 2026)
+### v4.8.0 — A new session starts with where the last one left off (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the
 previous one in the project: its first prompt, its last three, and the files it
@@ -48,7 +48,7 @@ see, `neuralmind recap --clear` deletes the records, and
 `NEURALMIND_SESSION_RECAP=0` turns it off. Nothing about its effect is measured
 yet. Walkthrough:
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
-[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md).
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
 
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 

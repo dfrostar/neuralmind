@@ -82,7 +82,7 @@ hermes mcp add  # or edit ~/.hermes/config.yaml
 ```
 
 Hermes doesn't run Claude Code hooks, so it gets no session recap
-automatically *(v4.7.0+)*. Like any agent with a shell, it can run
+automatically *(v4.8.0+)*. Like any agent with a shell, it can run
 `neuralmind recap /path/to/project` to read what the last Claude Code session in the
 project asked and edited.
 

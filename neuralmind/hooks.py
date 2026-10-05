@@ -285,6 +285,16 @@ def run_hook(action: str) -> int:
     if os.environ.get("NEURALMIND_BYPASS") == "1":
         return 0
 
+    # A project with security.require_encrypted_storage gets no hook writes
+    # (transitions, output cache, synapses) until its volume is verified.
+    # The agent's own tool call is unaffected: hooks fail open.
+    try:
+        from .storage_guard import enforce_storage_policy
+
+        enforce_storage_policy(payload.get("cwd") or os.getcwd())
+    except Exception:
+        return 0
+
     # The Read/Bash/Grep actions (and the opt-in offload) used to return their
     # compressed text as `additionalContext`. Claude Code adds that next to the
     # tool result instead of replacing it, so the model got the full output

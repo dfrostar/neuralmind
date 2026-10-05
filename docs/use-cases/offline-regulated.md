@@ -66,7 +66,8 @@ first time you run them, same as installing any package.
 | Account / login | None |
 | Network required for install | Only to fetch the Python package — mirror it internally if needed |
 | License | MIT (auditable) |
-| Data at rest | `graphify-out/` and `.neuralmind/` inside your project |
+| Data at rest | `graphify-out/` and `.neuralmind/` inside your project. With `security.require_encrypted_storage: true` *(v4.7.0+)*, NeuralMind refuses to run unless the volume is verified encrypted |
+| MCP roles | Declared by each call by default; with `security.identity: os` *(v4.7.0+)*, bound to the caller's OS account. See [CMMC CUI enclave](cmmc-cui-enclave.md) |
 | Data in transit | N/A under default configuration (no outbound calls) |
 
 ## Air-gapped install
