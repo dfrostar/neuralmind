@@ -15,7 +15,7 @@ under a header that said they had been redacted.
    removing every other MCP server along with the tokens in their `env`.
 2. **The Bash output cache redacts what the AWS CLI prints.** It also redacts
    JSON password keys and a few other common shapes it used to miss.
-3. **Hooks do nothing in a project you haven't built.** With a global install,
+3. **Hooks do nothing in a project without `.neuralmind/`.** With a global install,
    the prompt hook used to run a full first-time build in whatever directory a
    session opened in. That took minutes on a real repository, far past the
    hook timeout.
@@ -98,11 +98,12 @@ These apply wherever redaction runs: the automatic Bash output cache behind
   Hugging Face tokens (`hf_`), and passwords in `http(s)://user:password@host`
   URLs, the form git remotes carry tokens in.
 
-### Hooks act only in a built project
+### Hooks act only in a project that has `.neuralmind/`
 
 Every hook action now returns at once, writing nothing, unless the project
-already has `.neuralmind/`. That directory exists once `neuralmind build` has
-run. Before, a globally installed hook would:
+already has `.neuralmind/`. `neuralmind build` creates that directory, and so
+does any other command that stores state there, such as recording a
+decision. Before, a globally installed hook would:
 
 - build a full index from the prompt hook (graph, IR and vectors) in any
   directory with source files;

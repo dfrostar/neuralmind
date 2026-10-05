@@ -58,7 +58,19 @@ def _graph() -> dict:
 
 
 @pytest.mark.parametrize(
-    "value, expected", [(None, -1), (3, 3), ("2", 2), (1.0, 1), ("x", -1), ([], -1)]
+    "value, expected",
+    [
+        (None, -1),
+        (3, 3),
+        ("2", 2),
+        (1.0, 1),
+        ("x", -1),
+        ([], -1),
+        # json.loads parses 1e400 as infinity; int() raises OverflowError on it.
+        (float("inf"), -1),
+        (float("-inf"), -1),
+        (float("nan"), -1),
+    ],
 )
 def test_node_community(value, expected):
     assert ir.node_community({"community": value}) == expected

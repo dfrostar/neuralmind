@@ -332,12 +332,13 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 
 #### Type Filter *(v3.1.4+)*
 
-Filter results by node type:
+Steer the ranking toward a node type (results are ranked, not filtered, so
+other types can still appear):
 
 | Flag | Description |
 |------|-------------|
-| `--type code` | Restrict to source code only |
-| `--type docs` | Restrict to documentation only |
+| `--type code` | Rank source code first |
+| `--type docs` | Rank documentation first |
 | `--type auto` | Auto-detect intent (default) |
 
 *(v4.8.1+)* `code` and `docs` replace the detected intent before L3 is ranked.
@@ -2166,9 +2167,11 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
-**Built projects only** *(v4.8.1)*: every hook action does nothing in a
-directory without `.neuralmind/`, so a `--global` install leaves repos you
-haven't run `neuralmind build` in untouched. Prompt-time recall reads an
+**Projects with `.neuralmind/` only** *(v4.8.1)*: every hook action does
+nothing in a directory without `.neuralmind/`, so a `--global` install leaves
+repos NeuralMind has never written to untouched. `neuralmind build` creates the
+directory; other commands that store state there, such as recording a
+decision, do too. Prompt-time recall reads an
 existing index and never builds one; before v4.8.1 the `UserPromptSubmit`
 hook could run a full first-time build, far past the hook timeout.
 
