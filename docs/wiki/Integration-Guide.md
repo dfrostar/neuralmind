@@ -351,18 +351,22 @@ neuralmind install-hermes-plugin /absolute/path/to/repo
 ```
 
 The command writes the plugin into the Hermes home's `plugins/neuralmind/`:
-`$HERMES_HOME`, else Hermes's default, `~/.hermes` (on Windows,
-`%LOCALAPPDATA%\hermes`). A Hermes profile has a home of its own; pass it with
-`--hermes-home`. The files are `__init__.py`, the `plugin.yaml` manifest Hermes
-discovers it by, and a `config.json` holding the project and the Python
-interpreter that ran the install. The command then runs `hermes plugins enable
-neuralmind`, since Hermes loads a user plugin only once it's enabled, but only
+the one plain `hermes` uses: the active Hermes profile's home, if
+`hermes profile use` selected one (`<root>/profiles/<name>`), else
+`$HERMES_HOME`, else Hermes's root home, `~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). The output names the
+profile when it installs into one; pass any other home with `--hermes-home`.
+The files are `__init__.py`, the `plugin.yaml` manifest Hermes discovers it by,
+and a `config.json` holding the project and the Python interpreter that ran the
+install. The command then runs `hermes plugins enable neuralmind` against that
+same home, since Hermes loads a user plugin only once it's enabled, but only
 in a home Hermes has already set up (one with a `config.yaml`, `.env` or
 `state.db`); anywhere else it tells you to enable the plugin once Hermes is set
 up. Start a new Hermes session, or restart the gateway, to load it.
 
 The installed plugin is a copy: `pip install -U neuralmind` doesn't update it,
-so re-run `neuralmind install-hermes-plugin` after upgrading NeuralMind.
+so re-run `neuralmind install-hermes-plugin` after upgrading NeuralMind. A
+re-run doesn't re-enable a plugin you turned off with
+`hermes plugins disable neuralmind`: it says so and leaves it disabled.
 
 What it does:
 
@@ -370,11 +374,12 @@ What it does:
 |---|---|
 | Every turn, before the model runs (`pre_llm_call`) | The files and recorded decisions related to the user's message, the same block Claude Code's `UserPromptSubmit` hook adds. Hermes appends it to that turn's user message, not to the system prompt, so the prompt cache isn't invalidated. |
 | A session's first turn (same hook) | The [session recap](CLI-Reference.md#recap-v480) of the previous session in the project, ahead of the block above. Hermes counts a turn as first only when the session has no earlier messages, so a resumed session doesn't get it. |
-| After `write_file` or `patch` (`post_tool_call`) | The edited file is recorded, on a background thread, for the next session's recap and the synapse layer. A V4A patch records each file it touches. A failed edit isn't recorded, and neither is a file changed through the `terminal` tool. |
+| After `write_file` or `patch` (`post_tool_call`) | The edited file is recorded, by the absolute path Hermes reports (`files_modified`), on a background thread, for the next session's recap and the synapse layer. A V4A patch records each file it touches, except a file it deletes, which isn't listed as edited. Only an edit that landed (Hermes's status `ok`) is recorded: a cancelled, timed-out, blocked or failed one isn't, and neither is a file changed through the `terminal` tool. |
 
-- **Subagents are skipped.** A subagent's message is written by its parent
-  agent, so it's neither recorded nor answered with recall, and the subagent's
-  edits aren't recorded either.
+- **Subagents and cron jobs are skipped.** A subagent's message is written by
+  its parent agent, and a cron job (Hermes's `cron` platform) runs on a
+  schedule. For both, the prompt is neither recorded nor answered with recall,
+  the `SessionStart` action doesn't run, and their edits aren't recorded.
 - **One record for both agents.** Hermes and Claude Code write to the same
   `.neuralmind/recaps/`, so a Hermes session can start with what the last
   Claude Code session in the project did, and the other way round.
@@ -399,14 +404,23 @@ The first of these where `neuralmind build` has run wins; if none has, the
 plugin does nothing. Install with a path and the command warns if that project
 isn't built yet.
 
+The plugin reads `TERMINAL_CWD` from the Hermes process's environment, which
+matches where the terminal CLI and a standalone gateway work. Hermes Desktop,
+ACP editor sessions and per-session workspaces keep each session's directory
+elsewhere, so there, pin a project or set `NEURALMIND_PROJECT`.
+
 A pin applies to every Hermes session that uses that Hermes home, whatever
 directory it runs in: each one gets the pinned project's context, and its
-prompts are recorded in that project. If you use Hermes across several
+prompts are recorded in that project. Sessions in other repositories also put
+their edited files' paths into the pinned project's synapse store, from where
+[`neuralmind memory publish`](CLI-Reference.md#memory-v0240) can carry them
+into the committed team-memory bundle. If you use Hermes across several
 projects, install without a path, so the plugin follows the directory Hermes
 works in and does nothing in a repository NeuralMind hasn't built. Re-running
 the install without a path keeps an earlier pin; `--unpin` clears it.
 
-A gateway session (Telegram, Discord …) uses the gateway's working directory,
+A gateway session (Telegram, Discord …) uses the gateway's terminal working
+directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory),
 which is rarely the project you mean, so pin one at install or set
 `NEURALMIND_PROJECT`. Whenever a gateway session resolves to a built project,
 pinned or not, every message in it is recorded for the recap. Messages pass
@@ -420,14 +434,18 @@ turns the recording off.
   recall), plus one per edited file. Each waits at most
   `NEURALMIND_HERMES_TIMEOUT` seconds (default `8`), so a first turn can wait
   up to twice that. One that times out or fails is left out, and the turn goes
-  ahead with whatever context the others returned.
+  ahead with whatever context the others returned. Keep twice
+  `NEURALMIND_HERMES_TIMEOUT` below Hermes's `plugins.hook_callback_timeout`
+  (default 30 s): if the plugin runs past it, Hermes drops the whole block and
+  skips the plugin's per-turn hook for the next 60 seconds.
 - **The context stays in Hermes's session history.** Hermes stores the turn's
   message with NeuralMind's block in it, so the block, recap included, is sent
   to your model provider again with that session's later turns.
 - **On a session's first turn the plugin runs NeuralMind's whole
   `SessionStart` action**, the same as Claude Code: a synapse decay tick, the
-  team-memory import, and the `SYNAPSE_MEMORY.md` export (copied into Claude
-  Code's auto-memory directory only when that exists;
+  team-memory import, clearing the session-scoped (ephemeral) associations,
+  and the `SYNAPSE_MEMORY.md` export (copied into Claude Code's auto-memory
+  directory only when that exists;
   `NEURALMIND_SYNAPSE_EXPORT=0` turns the export off).
 - **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
   calling its plugin loader and hook dispatch directly, not yet in a live
@@ -442,12 +460,14 @@ turns the recording off.
 neuralmind install-hermes-plugin                         # no path: follow the directory Hermes works in (a re-run keeps an earlier pin)
 neuralmind install-hermes-plugin --unpin                 # clear an earlier pin
 neuralmind install-hermes-plugin PATH --no-enable        # write the files; enable it yourself
-neuralmind install-hermes-plugin PATH --hermes-home DIR  # a Hermes home other than $HERMES_HOME / ~/.hermes, e.g. a profile's
+neuralmind install-hermes-plugin PATH --hermes-home DIR  # a Hermes home other than the default (the active profile's, else $HERMES_HOME, else ~/.hermes)
 neuralmind install-hermes-plugin --uninstall             # disable and remove it
 ```
 
 If `hermes` isn't on `PATH`, the command says so, and you run
-`hermes plugins enable neuralmind` (or `disable`) yourself. Full flag list:
+`hermes plugins enable neuralmind` (or `disable`) yourself. If
+`plugins/neuralmind` is a symlink, the install refuses to write through it,
+and `--uninstall` removes the link, never its target. Full flag list:
 [CLI Reference: `install-hermes-plugin`](CLI-Reference.md#install-hermes-plugin-v480).
 Walkthrough: [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md).
 Release notes: [NeuralMind for Hermes-Agent](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md#neuralmind-for-hermes-agent).

@@ -32,8 +32,8 @@ def _isolate(monkeypatch, tmp_path):
         monkeypatch.delenv(var, raising=False)
     # No installed config.json next to the plugin module.
     monkeypatch.setattr(plugin, "_config", dict)
-    monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", set())
-    monkeypatch.setattr(plugin, "_SUBAGENT_TASKS", set())
+    monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", {})
+    monkeypatch.setattr(plugin, "_SUBAGENT_TASKS", {})
     monkeypatch.chdir(tmp_path)
 
 
@@ -267,7 +267,12 @@ def test_real_round_trip_recap_reaches_hermes(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_SYNAPSE_INJECT", "0")
     monkeypatch.setenv("NEURALMIND_SYNAPSE_EXPORT", "0")
     monkeypatch.setenv("NEURALMIND_PROVENANCE_INJECT", "0")
-    monkeypatch.setenv("PYTHONPATH", "/somewhere/hermes/site-packages")
+    # Like Hermes's launcher: a PYTHONPATH whose packages break NeuralMind's
+    # interpreter. The child only works if _run strips it.
+    poison = tmp_path / "hermes-site-packages" / "neuralmind"
+    poison.mkdir(parents=True)
+    (poison / "__init__.py").write_text("raise ImportError('Hermes site-packages leaked')\n")
+    monkeypatch.setenv("PYTHONPATH", str(poison.parent))
     monkeypatch.setenv(plugin.TIMEOUT_ENV, "60")
     first = plugin.on_pre_llm_call(
         session_id="h1", user_message="add retry logic to the uploader", is_first_turn=True
@@ -331,6 +336,8 @@ def test_enable_runs_hermes_with_the_home(tmp_path, monkeypatch):
     assert hermes_install.install(None, home=home)["enabled"] is True
     assert seen["command"] == [
         "/bin/hermes",
+        "-p",
+        "default",
         "plugins",
         "enable",
         "neuralmind",
@@ -483,3 +490,205 @@ def test_uninstall_never_runs_hermes_in_an_uninitialised_home(tmp_path, monkeypa
     monkeypatch.setattr(hermes_install.subprocess, "run", boom)
     result = hermes_install.uninstall(home)
     assert result["removed"] is True and result["disabled"] is None
+
+
+@pytest.mark.parametrize("status", ["cancelled", "timeout", "blocked"])
+def test_edits_that_did_not_land_are_not_recorded(tmp_path, calls, sync_threads, status):
+    _built(tmp_path)
+    plugin.on_post_tool_call(
+        tool_name="write_file",
+        args={"path": "never_written.py", "content": "x"},
+        result="[Tool execution cancelled — write_file was skipped due to user interrupt]",
+        status=status,
+        session_id="s1",
+    )
+    assert calls == []
+
+
+def test_cron_turns_are_not_the_users(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    out = plugin.on_pre_llm_call(
+        session_id="cron-1",
+        user_message="Summarise today's front page",
+        is_first_turn=True,
+        platform="cron",
+        task_id="cron-task",
+    )
+    assert out is None
+    plugin.on_post_tool_call(
+        tool_name="write_file", args={"path": "a.py"}, session_id="cron-1", task_id="cron-task"
+    )
+    assert calls == []
+
+
+def test_deleted_files_are_not_listed_as_edited(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    kept, gone = str(tmp_path / "a.py"), str(tmp_path / "old.py")
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={"mode": "patch", "patch": "..."},
+        result=json.dumps(
+            {"success": True, "files_modified": [kept, gone], "files_deleted": [gone]}
+        ),
+        status="ok",
+        session_id="s1",
+    )
+    assert [p["tool_input"]["file_path"] for _, p in calls] == [kept]
+
+
+def test_skip_lists_evict_oldest(monkeypatch):
+    monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS_MAX", 3)
+    ids: dict = {}
+    for key in ("a", "b", "c", "d"):
+        plugin._remember(ids, key)
+    assert list(ids) == ["b", "c", "d"]
+
+
+def test_install_targets_the_active_profile(tmp_path, monkeypatch):
+    monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.delenv("HERMES_DATA_DIR_SUFFIX", raising=False)
+    monkeypatch.setattr(hermes_install.sys, "platform", "darwin")
+    monkeypatch.setattr(hermes_install.Path, "home", lambda: tmp_path)
+    root = tmp_path / ".hermes"
+    (root / "profiles" / "work").mkdir(parents=True)
+    assert hermes_install.hermes_home() == root
+    (root / "active_profile").write_text("work\n")
+    assert hermes_install.hermes_home() == root / "profiles" / "work"
+    (root / "active_profile").write_text("default\n")
+    assert hermes_install.hermes_home() == root
+
+
+def test_profile_home_is_passed_without_p_default(tmp_path, monkeypatch):
+    home = tmp_path / "profiles" / "work"
+    home.mkdir(parents=True)
+    (home / "config.yaml").write_text("model: x\n")
+    seen = {}
+
+    class Done:
+        returncode = 0
+
+    def fake_run(command, env, **kwargs):
+        seen["command"] = command
+        return Done()
+
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+    monkeypatch.setattr(hermes_install.subprocess, "run", fake_run)
+    hermes_install.install(None, home=home)
+    assert "-p" not in seen["command"]
+
+
+def test_rerun_does_not_re_enable_a_disabled_plugin(tmp_path, monkeypatch):
+    home = tmp_path / "hermes"
+    home.mkdir()
+    (home / "config.yaml").write_text("plugins:\n  enabled: []\n  disabled:\n    - neuralmind\n")
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("must not re-enable a plugin the user disabled")
+
+    monkeypatch.setattr(hermes_install.subprocess, "run", boom)
+    result = hermes_install.install(None, home=home)
+    assert result["enabled"] is None and result["disabled_by_user"] is True
+
+
+def test_install_refuses_a_symlinked_plugin_dir_and_uninstall_unlinks_it(tmp_path):
+    home = tmp_path / "hermes"
+    (home / "plugins").mkdir(parents=True)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "keep.txt").write_text("x")
+    try:
+        (home / "plugins" / "neuralmind").symlink_to(elsewhere, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    with pytest.raises(FileExistsError):
+        hermes_install.install(None, home=home, enable=False)
+    result = hermes_install.uninstall(home)
+    assert result["removed"] is True
+    assert not (home / "plugins" / "neuralmind").exists()
+    assert (elsewhere / "keep.txt").exists()
+
+
+def test_cli_uninstall_of_an_uninitialised_home_gives_no_path_hint(tmp_path, capsys, monkeypatch):
+    from neuralmind.cli import main
+
+    home = tmp_path / "hermes"
+    home.mkdir()
+    hermes_install.install(None, home=home, enable=False)
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["neuralmind", "install-hermes-plugin", "--uninstall", "--hermes-home", str(home)],
+    )
+    main()
+    out = capsys.readouterr().out
+    assert "Removed the NeuralMind plugin" in out and "isn't on PATH" not in out
+
+
+def test_a_patch_that_changed_nothing_is_not_recorded(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={"path": "a.py", "old_string": "x", "new_string": "x"},
+        result=json.dumps(
+            {"success": True, "no_change": True, "files_modified": [str(tmp_path / "a.py")]}
+        ),
+        status="ok",
+        session_id="s1",
+    )
+    assert calls == []
+
+
+def test_v4a_deletes_and_move_sources_are_not_listed(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    patch = (
+        "*** Begin Patch\n*** Update File: src/a.py\n@@\n-x\n+y\n"
+        "*** Delete File: src/old.py\n*** Move File: src/from.py -> src/to.py\n*** End Patch\n"
+    )
+    written = [str(tmp_path / "src" / n) for n in ("a.py", "old.py", "from.py", "to.py")]
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={"mode": "patch", "patch": patch},
+        # files_deleted spelled as the raw header, files_modified resolved
+        result=json.dumps(
+            {"success": True, "files_modified": written, "files_deleted": ["src/old.py"]}
+        ),
+        status="ok",
+        session_id="s1",
+    )
+    assert [p["tool_input"]["file_path"] for _, p in calls] == [written[0], written[3]]
+
+
+def test_a_hermes_home_root_still_follows_the_active_profile(tmp_path, monkeypatch):
+    root = tmp_path / "custom-root"
+    (root / "profiles" / "work").mkdir(parents=True)
+    (root / "active_profile").write_text("work\n")
+    monkeypatch.setenv("HERMES_HOME", str(root))
+    assert hermes_install.hermes_home() == root / "profiles" / "work"
+    monkeypatch.setenv("HERMES_HOME", str(root / "profiles" / "work"))
+    assert hermes_install.hermes_home() == root / "profiles" / "work"
+
+
+@pytest.mark.parametrize(
+    ("deleted", "kept_name"), [("a.py", "data.py"), (".env", "env"), ("./src/x.py", "src/ax.py")]
+)
+def test_deleted_file_does_not_hide_a_similar_name(
+    tmp_path, calls, sync_threads, deleted, kept_name
+):
+    _built(tmp_path)
+    kept = str(tmp_path / kept_name)
+    gone = str(tmp_path / deleted.lstrip("./") if deleted.startswith("./") else tmp_path / deleted)
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={
+            "mode": "patch",
+            "patch": f"*** Begin Patch\n*** Delete File: {deleted}\n*** End Patch\n",
+        },
+        result=json.dumps(
+            {"success": True, "files_modified": [kept, gone], "files_deleted": [deleted]}
+        ),
+        status="ok",
+        session_id="s1",
+    )
+    assert [p["tool_input"]["file_path"] for _, p in calls] == [kept]

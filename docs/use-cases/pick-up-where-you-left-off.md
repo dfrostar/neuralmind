@@ -39,10 +39,16 @@ too: a cloned repository could point either one outside the project.
 
 On Hermes-Agent, `neuralmind install-hermes-plugin .` takes the place of
 `install-hooks`: the plugin records the same prompts and edits (a subagent's
-aren't recorded) and adds the recap to a session's first turn. The path pins
-that project for every Hermes session using that Hermes home, in any
-directory; if you use Hermes across several projects, install without a path
-(or with `--unpin`, if you pinned one before).
+and a cron job's aren't recorded) and adds the recap to a session's first
+turn. The path pins that project for every Hermes session using that Hermes
+home, in any directory: sessions in other repositories record their prompts
+there, and put their edited files' paths into its synapse store, from where
+`neuralmind memory publish` can carry them into the committed team-memory
+bundle. If you use Hermes across several projects, install without a path (or
+with `--unpin`, if you pinned one before), and the plugin follows the
+directory Hermes works in: the terminal CLI's, or a standalone gateway's.
+Under Hermes Desktop, ACP editor sessions and per-session workspaces, pin a
+project or set `NEURALMIND_PROJECT`.
 The installed plugin is a copy, so re-run the install after upgrading
 NeuralMind. See
 [Hermes-Agent with code memory in every turn](./hermes-agent.md).
@@ -56,8 +62,10 @@ file to `.neuralmind/recaps/<session_id>.jsonl`:
   `neuralmind last` uses) before they're written, then are collapsed to one
   line and cut at 200 characters.
 - **Edited files** are the paths Claude Code's Edit and Write tools changed
-  (on Hermes, its `write_file` and `patch` tools). A file changed another way,
-  such as a `sed` run through Bash or Hermes's terminal, isn't listed.
+  (on Hermes, its `write_file` and `patch` tools, when Hermes reports the edit
+  landed: a cancelled, timed-out, blocked or failed one isn't listed, and
+  neither is a file a V4A patch deletes or moves away). A file changed another way, such as
+  a `sed` run through Bash or Hermes's terminal, isn't listed.
 
 The recap writes `.neuralmind/`'s self-ignoring `.gitignore` before its first
 record, so `git add -A` doesn't stage the records. The ten most recently active
@@ -125,7 +133,8 @@ last session covered.
 | No earlier session recorded in this project | No |
 
 On Hermes, a session gets the recap on its first turn when it has no earlier
-messages, so a resumed Hermes session doesn't get it.
+messages, so a resumed Hermes session doesn't get it. Neither does a subagent
+or a cron job.
 
 "The previous session" is the most recently active session in the project
 other than the new one, whichever agent ran it. Claude Code and Hermes write

@@ -55,18 +55,34 @@ installs a Hermes plugin that adds context to every turn before the model runs:
 the files and recorded decisions related to the user's message, the same block
 Claude Code's `UserPromptSubmit` hook adds, and on a session's first turn the
 recap. Hermes appends it to that turn's user message, not the system prompt.
-Files changed with `write_file` and `patch` are recorded, and Hermes and Claude
-Code share `.neuralmind/recaps/`, so the recap carries over between the two
-agents. A gateway session (Telegram, Discord …) uses the gateway's working
-directory unless a project is pinned at install or `NEURALMIND_PROJECT` is set;
+Subagent and cron-job turns are skipped: they aren't recorded or answered with
+recall, they don't run the `SessionStart` action, and their edits aren't
+recorded. Files changed with `write_file` and `patch` are recorded at the
+absolute paths Hermes reports, but only edits that landed: Hermes's status for
+the call must be `ok`, so a cancelled, timed-out, blocked or failed edit isn't
+recorded, and files a V4A patch deletes or moves away aren't listed as edited. Hermes and
+Claude Code share `.neuralmind/recaps/`, so the recap carries over between the
+two agents. A gateway session (Telegram, Discord …) uses the gateway's terminal
+working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home
+directory) unless a project is pinned at install or `NEURALMIND_PROJECT` is set;
 whenever it resolves to a built project, pinned or not, every message in it is
 recorded for the recap, credential-redacted, and `NEURALMIND_SESSION_RECAP=0`
 turns that off. A pin applies to every Hermes session using that Hermes home,
-in any directory (each gets the pinned project's context, and its prompts are
-recorded in that project), so if you use Hermes across several projects,
-install without a path. Each call the plugin makes to NeuralMind waits at most
-`NEURALMIND_HERMES_TIMEOUT` (default 8 seconds; a session's first turn makes
-two), and one that times out or fails is left out while the turn goes ahead.
+in any directory (each gets the pinned project's context, its prompts are
+recorded in that project, and a session in another repository also puts its
+edited files' paths into the pinned project's synapse store, from where
+`neuralmind memory publish` can carry them into the committed team-memory
+bundle), so if you use Hermes across several projects, install without a path.
+Unpinned, the plugin follows the directory Hermes works in, which it reads from
+`TERMINAL_CWD` in the Hermes process's environment: that matches the terminal
+CLI and a standalone gateway, but Hermes Desktop, ACP editor sessions and
+per-session workspaces keep each session's directory elsewhere, so there, pin a
+project or set `NEURALMIND_PROJECT`. Each call the plugin makes to NeuralMind
+waits at most `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds; a session's first
+turn makes two), and one that times out or fails is left out while the turn
+goes ahead. If the plugin runs past Hermes's `plugins.hook_callback_timeout`
+(default 30 s), Hermes drops the whole block and skips the plugin for the next
+60 seconds, so keep twice `NEURALMIND_HERMES_TIMEOUT` below it.
 Tested against a Hermes v0.21.5 main-branch build by calling its plugin loader
 and hook dispatch directly, not yet in a live Hermes conversation; what the
 context changes in Hermes's answers isn't measured. Walkthrough:
@@ -502,8 +518,16 @@ turn, and the recap on a session's first turn):
 neuralmind install-hermes-plugin .
 ```
 
-The path pins that project for every Hermes session in that Hermes home; if
-you use Hermes across several projects, install without a path.
+The plugin goes into a Hermes home: `--hermes-home`, else the one plain `hermes`
+uses (the active Hermes profile, if `hermes profile use` selected one, else
+`$HERMES_HOME`, else `~/.hermes`; `%LOCALAPPDATA%\hermes` on Windows). The path pins that project for
+every Hermes session in that home, and sessions in other repositories then also
+put their edited files' paths into its synapse store, from where
+`neuralmind memory publish` can carry them into the committed team-memory
+bundle. If you use Hermes across several projects, install without a path, and
+the plugin follows the directory Hermes works in (the terminal CLI's, or a
+standalone gateway's); in Hermes Desktop, ACP editor sessions and per-session
+workspaces, pin a project or set `NEURALMIND_PROJECT`.
 
 ## Compare to alternatives
 

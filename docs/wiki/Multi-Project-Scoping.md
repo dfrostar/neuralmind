@@ -16,7 +16,7 @@
 | **memU** (single store) | Flat across projects | `memu-hermes retrieve` searches everything. **You must scope manually.** |
 | **Hermes memory** | Flat across projects | All entries visible to every session. **You must prefix with `[project]`.** |
 | **session_search** | Flat across projects | Searches all past conversations. **You must include project name in query.** |
-| **NeuralMind Hermes plugin, pinned** *(v4.8.0+)* | Every session on that Hermes home | A pinned project serves every Hermes session, in any directory. **For several projects, install without a path** ([below](#hermes-plugin-dont-pin-across-projects-v480)). |
+| **NeuralMind Hermes plugin, pinned** *(v4.8.0+)* | Every session on that Hermes home | A pinned project serves every Hermes session, in any directory, and records their prompts and edited paths. **For several projects, install without a path** ([below](#hermes-plugin-dont-pin-across-projects-v480)). |
 
 ---
 
@@ -40,7 +40,7 @@ When you have separate NeuralMind indexes for multiple codebases (e.g., `cmmc20`
 
 ### Hermes plugin: don't pin across projects *(v4.8.0+)*
 
-A project pinned with `neuralmind install-hermes-plugin <path>` does **not** isolate per repository. The pin applies to every Hermes session that uses that Hermes home, whatever directory it runs in: each one gets the pinned project's context, and its prompts (and the paths of files it edits) are recorded in the pinned project's `.neuralmind/recaps/`. That includes a session in a repository that must never be indexed, such as `autopilot`. Prompts are redacted before they're written, but the patterns catch common credential formats, not every secret, and the next session in the pinned project, Hermes or Claude Code, can start with them in its recap. `NEURALMIND_PROJECT` set in Hermes's environment does the same.
+A project pinned with `neuralmind install-hermes-plugin <path>` does **not** isolate per repository. The pin applies to every Hermes session that uses that Hermes home, whatever directory it runs in: each one gets the pinned project's context, and its prompts (and the paths of files it edits) are recorded in the pinned project's `.neuralmind/recaps/`. That includes a session in a repository that must never be indexed, such as `autopilot`. Prompts are redacted before they're written, but the patterns catch common credential formats, not every secret, and the next session in the pinned project, Hermes or Claude Code, can start with them in its recap. The paths of files edited in other repositories also go into the pinned project's synapse store, from where `neuralmind memory publish` can carry them into the project's committed team-memory bundle (`.neuralmind-team-memory.json`). `NEURALMIND_PROJECT` set in Hermes's environment does the same.
 
 For several projects, install without a path, so the plugin follows the directory Hermes works in and does nothing in a repository NeuralMind hasn't built, such as `autopilot`:
 
@@ -49,11 +49,13 @@ For several projects, install without a path, so the plugin follows the director
 neuralmind install-hermes-plugin           # first install
 neuralmind install-hermes-plugin --unpin   # already pinned: a re-run without a path keeps the pin, so clear it
 
-# ❌ Several projects — every Hermes session, autopilot included, is recorded in neuralmind's recaps
+# ❌ Several projects — every Hermes session, autopilot included, is recorded in neuralmind's recaps and synapse store
 neuralmind install-hermes-plugin /path/to/neuralmind
 ```
 
-Pin only for a single-project setup, or for the gateway (Telegram, Discord …), whose working directory is rarely the project you mean.
+The plugin follows the directory by reading `TERMINAL_CWD` from the Hermes process's environment. That matches where Hermes works in the terminal CLI and a standalone gateway (Telegram, Discord …), but the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory) is rarely the project you mean. Hermes Desktop, ACP editor sessions and per-session workspaces keep each session's directory elsewhere, so the plugin can't follow it there. Unpinned there, every session uses the Hermes process's own `TERMINAL_CWD` (or its working directory), so if that is a built project, all those sessions are served and recorded as that project.
+
+Pin only for a single-project setup or for the gateway. In Hermes Desktop, ACP editor sessions and per-session workspaces, pin a project or set `NEURALMIND_PROJECT`, and everything above about a pin applies.
 
 ### memU queries
 
@@ -115,7 +117,7 @@ The isolation is physical (separate `.neuralmind/` dirs) but only works if the *
 ## Checklist for multi-project operators
 
 - [ ] Each project has its own `.neuralmind/` (automatic with `build .`)
-- [ ] The Hermes plugin isn't pinned (installed without a path, or with `--unpin`), unless Hermes serves a single project or the gateway
+- [ ] The Hermes plugin isn't pinned (installed without a path, or with `--unpin`), unless Hermes serves a single project or the gateway; in Hermes Desktop, ACP editor sessions and per-session workspaces it can't follow the directory, so pin or set `NEURALMIND_PROJECT` there
 - [ ] memU retrieve queries always start with `[project]`
 - [ ] Hermes memory entries always carry `[project]` prefix
 - [ ] session_search queries always include project name

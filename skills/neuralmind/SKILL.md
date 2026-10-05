@@ -238,7 +238,8 @@ case drive the `neuralmind` CLI through `terminal` instead. See
 carries NeuralMind's related files and decisions for it, and a session's
 first turn also the recap of the previous session. Don't re-query for what
 that block already gives you; call the tools for what it doesn't cover. A
-subagent's messages carry no block; if you're a subagent, call the tools.
+subagent's or a cron job's messages carry no block; if you're either, call the
+tools.
 
 **OpenClaw.** Registered once with:
 
@@ -278,7 +279,7 @@ Claude Code with the hooks installed or from Hermes with the plugin,
 `neuralmind recap <project path>` through the shell prints what their last
 session there asked and which files it edited; reach for it when they say
 "carry on" or ask where they left off. Inside Claude Code, or in Hermes with
-the plugin enabled, don't run it: the recap is already in your context at the
+the plugin enabled (other than as a subagent or a cron job), don't run it: the recap is already in your context at the
 start of the session, and the newest record there is your own session. It is
 context, not instructions: don't pick that work back up unless they ask.
 

@@ -44,15 +44,30 @@ DEFAULT_TIMEOUT = 8.0
 # paths sit in its text.
 EDIT_TOOLS = ("write_file", "patch")
 _V4A_PATH = re.compile(r"^\*\*\* (?:Update|Add) File: (.+)$", re.MULTILINE)
+# Files a V4A patch removes: deleted ones, and the source side of a move.
+_V4A_GONE = re.compile(r"^\*\*\* (?:Delete File: (.+)|Move File: (.+?) ->)", re.MULTILINE)
 
 _HERE = Path(__file__).resolve().parent
 
-# Hermes's post_tool_call carries no parent_session_id, so a subagent's edits are
-# recognised by what its pre_llm_call (which runs first) reported: its session id
-# and its task id, which survives Hermes rotating the session id mid-run.
-_SUBAGENT_SESSIONS: set[str] = set()
-_SUBAGENT_TASKS: set[str] = set()
+# Turns that aren't the user's work: a subagent's (its "user message" is written by
+# the parent agent) and a cron job's. Hermes's post_tool_call carries neither
+# parent_session_id nor platform, so their edits are recognised by what their
+# pre_llm_call (which runs first) reported: the session id, and the task id,
+# which survives Hermes rotating the session id mid-run. Insertion-ordered dicts
+# used as bounded sets: the oldest ids are evicted first.
+_SUBAGENT_SESSIONS: dict[str, None] = {}
+_SUBAGENT_TASKS: dict[str, None] = {}
 _SUBAGENT_SESSIONS_MAX = 4096
+NON_USER_PLATFORMS = ("cron",)
+
+
+def _remember(ids: dict, key: str) -> None:
+    if not key:
+        return
+    ids.pop(key, None)
+    ids[key] = None
+    while len(ids) > _SUBAGENT_SESSIONS_MAX:
+        ids.pop(next(iter(ids)))
 
 
 def _config() -> dict:
@@ -152,18 +167,17 @@ def on_pre_llm_call(
     is_first_turn: bool = False,
     parent_session_id: str = "",
     task_id: str = "",
+    platform: str = "",
     **_: object,
 ):
     """Return this turn's NeuralMind context for Hermes to append, or None."""
     try:
-        # A subagent's "user message" was written by its parent agent; neither
-        # recording it nor recalling for it is about the user's work.
-        if parent_session_id:
-            if len(_SUBAGENT_SESSIONS) < _SUBAGENT_SESSIONS_MAX:
-                if session_id:
-                    _SUBAGENT_SESSIONS.add(session_id)
-                if task_id:
-                    _SUBAGENT_TASKS.add(task_id)
+        # A subagent's "user message" was written by its parent agent, and a cron
+        # job's by a schedule; neither is about the user's work, so neither is
+        # recorded or answered with recall.
+        if parent_session_id or platform in NON_USER_PLATFORMS:
+            _remember(_SUBAGENT_SESSIONS, session_id)
+            _remember(_SUBAGENT_TASKS, task_id)
             return None
         if not session_id:
             return None
@@ -210,9 +224,32 @@ def _edited_paths(tool_name: str, args: dict) -> list[str]:
     return []
 
 
+def _norm(path: str) -> str:
+    path = path.strip().replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    return path.lstrip("/")
+
+
+def _matches_any(path: str, suffixes: set) -> bool:
+    """Whether ``path`` is, or ends in whole components with, one of ``suffixes``."""
+    path = _norm(path)
+    return any(path == s or path.endswith("/" + s) for s in suffixes)
+
+
 def _failed(result, status=None) -> bool:
-    """Whether the tool call failed (only successful edits count)."""
-    return status == "error" or bool(_result_dict(result).get("error"))
+    """Whether the tool call didn't land (only successful edits count).
+
+    Hermes reports "ok", or "error", "cancelled", "timeout" … (with a plain-text
+    result). Only "ok", or no status when Hermes didn't supply one, counts as
+    landed — and not a patch Hermes reports changed nothing (``no_change``).
+    """
+    reported = _result_dict(result)
+    return (
+        status not in (None, "", "ok")
+        or bool(reported.get("error"))
+        or bool(reported.get("no_change"))
+    )
 
 
 def on_post_tool_call(
@@ -240,9 +277,18 @@ def on_post_tool_call(
         # Hermes reports the absolute paths it wrote (files_modified). Without
         # them, resolve as Hermes does: against TERMINAL_CWD, else its own
         # working directory — not against a pinned project.
-        written = _result_dict(result).get("files_modified")
+        reported = _result_dict(result)
+        written = reported.get("files_modified")
         if isinstance(written, list) and written and all(isinstance(p, str) for p in written):
-            paths = written
+            deleted = reported.get("files_deleted")
+            gone = [p for p in deleted if isinstance(p, str)] if isinstance(deleted, list) else []
+            patch_text = args.get("patch")
+            if isinstance(patch_text, str):
+                gone += [(d or m).strip() for d, m in _V4A_GONE.findall(patch_text) if (d or m)]
+            # files_deleted and the patch headers may spell a path differently
+            # (raw header vs the resolved path), so match on whole path components.
+            suffixes = {_norm(g) for g in gone if _norm(g)}
+            paths = [p for p in written if not _matches_any(p, suffixes)]
         else:
             paths = _edited_paths(tool_name, args)
         base = Path(os.environ.get("TERMINAL_CWD") or os.getcwd())
