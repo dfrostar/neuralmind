@@ -180,5 +180,53 @@ class UnparsableConfigTests(unittest.TestCase):
             self.assertEqual(result.to_dict()["detail"], result.detail)
 
 
+class CustomisedEntryTests(unittest.TestCase):
+    """Re-running install keeps what the user customised in our own entry.
+
+    It used to reset any entry that wasn't byte-for-byte the default, so an
+    absolute venv command (MCP clients often launch with a minimal PATH) and
+    the entry's `env` were lost on every re-run.
+    """
+
+    def test_absolute_venv_command_and_env_are_kept(self) -> None:
+        mine = {
+            "command": "/opt/venv/bin/neuralmind-mcp",
+            "args": [],
+            "env": {"NEURALMIND_NO_LEARN": "1"},
+        }
+        cfg, action = mcp_install.merge_server({"mcpServers": {"neuralmind": dict(mine)}})
+        self.assertEqual(action, "already-present")
+        self.assertEqual(cfg["mcpServers"]["neuralmind"], mine)
+
+    def test_python_module_launch_is_kept(self) -> None:
+        mine = {"command": "python3", "args": ["-m", "neuralmind.mcp_server"]}
+        cfg, action = mcp_install.merge_server({"mcpServers": {"neuralmind": dict(mine)}})
+        self.assertEqual(action, "already-present")
+        self.assertEqual(cfg["mcpServers"]["neuralmind"], mine)
+
+    def test_stale_command_is_updated_but_env_survives(self) -> None:
+        cfg = {"mcpServers": {"neuralmind": {"command": "old", "args": ["x"], "env": {"A": "1"}}}}
+        cfg, action = mcp_install.merge_server(cfg)
+        self.assertEqual(action, "updated")
+        entry = cfg["mcpServers"]["neuralmind"]
+        self.assertEqual(entry["command"], "neuralmind-mcp")
+        self.assertEqual(entry["args"], [])
+        self.assertEqual(entry["env"], {"A": "1"})
+
+    def test_vscode_nested_servers_get_the_entry(self) -> None:
+        cfg = {"mcp": {"servers": {"other": {"command": "x"}}}, "editor.fontSize": 14}
+        cfg, action = mcp_install.merge_server_vscode(cfg)
+        self.assertEqual(action, "installed")
+        self.assertNotIn("mcp.servers", cfg)
+        self.assertIn("neuralmind", cfg["mcp"]["servers"])
+        self.assertIn("other", cfg["mcp"]["servers"])
+
+    def test_vscode_nested_entry_is_already_present(self) -> None:
+        cfg = {"mcp": {"servers": {"neuralmind": mcp_install.server_entry()}}}
+        cfg, action = mcp_install.merge_server_vscode(cfg)
+        self.assertEqual(action, "already-present")
+        self.assertNotIn("mcp.servers", cfg)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

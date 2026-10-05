@@ -119,6 +119,40 @@ def is_detected(client: str, project_dir: Path) -> bool:
 # --------------------------------------------------------------------------- #
 # Merge logic (pure)
 # --------------------------------------------------------------------------- #
+def _launches_neuralmind(entry: dict) -> bool:
+    """True when an existing entry already starts NeuralMind's MCP server —
+    an absolute venv path to ``neuralmind-mcp`` or ``python -m
+    neuralmind.mcp_server`` — however it differs from the default."""
+    command = entry.get("command")
+    args = entry.get("args") if isinstance(entry.get("args"), list) else []
+    if isinstance(command, str) and Path(command.replace("\\", "/")).name in (
+        SERVER_COMMAND,
+        f"{SERVER_COMMAND}.exe",
+    ):
+        return True
+    return any(arg in ("neuralmind.mcp_server", SERVER_COMMAND) for arg in args)
+
+
+def _merge_entry(servers: dict, command: str) -> str:
+    """Add/update NeuralMind's entry in a ``servers`` mapping in place.
+
+    An entry that already launches NeuralMind is kept as the user wrote it
+    (MCP clients often start servers with a minimal PATH, so an absolute
+    command can be load-bearing); otherwise the launch spec is replaced. Any
+    other keys the user added (``env``, ``cwd``, …) are kept either way.
+    Returns ``installed``, ``updated`` or ``already-present``.
+    """
+    existing = servers.get(SERVER_NAME)
+    if not isinstance(existing, dict):
+        action = "updated" if SERVER_NAME in servers else "installed"
+        servers[SERVER_NAME] = server_entry(command)
+        return action
+    if _launches_neuralmind(existing):
+        return "already-present"
+    servers[SERVER_NAME] = {**existing, **server_entry(command)}
+    return "updated"
+
+
 def merge_server(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str]:
     """Add/update NeuralMind's entry in a config dict's ``mcpServers``.
 
@@ -130,32 +164,28 @@ def merge_server(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str
     if not isinstance(servers, dict):
         servers = {}
         config["mcpServers"] = servers
-    entry = server_entry(command)
-    existing = servers.get(SERVER_NAME)
-    if existing == entry:
-        return config, "already-present"
-    action = "updated" if SERVER_NAME in servers else "installed"
-    servers[SERVER_NAME] = entry
-    return config, action
+    return config, _merge_entry(servers, command)
 
 
 def merge_server_vscode(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str]:
     """Add/update NeuralMind's entry in a VS Code settings.json dict.
 
-    VS Code 1.99+ uses the ``"mcp.servers"`` top-level key (not ``"mcpServers"``).
-    Other settings in the file are preserved untouched.
+    VS Code 1.99+ reads ``"mcp.servers"``, or the same mapping nested as
+    ``"mcp": {"servers": …}``; an existing nested one is used rather than
+    adding a second, dotted key beside it. Other settings are preserved.
     """
+    nested = config.get("mcp")
+    if (
+        "mcp.servers" not in config
+        and isinstance(nested, dict)
+        and isinstance(nested.get("servers"), dict)
+    ):
+        return config, _merge_entry(nested["servers"], command)
     servers = config.get("mcp.servers")
     if not isinstance(servers, dict):
         servers = {}
         config["mcp.servers"] = servers
-    entry = server_entry(command)
-    existing = servers.get(SERVER_NAME)
-    if existing == entry:
-        return config, "already-present"
-    action = "updated" if SERVER_NAME in servers else "installed"
-    servers[SERVER_NAME] = entry
-    return config, action
+    return config, _merge_entry(servers, command)
 
 
 def _read_config(path: Path) -> tuple[dict, str, str]:
