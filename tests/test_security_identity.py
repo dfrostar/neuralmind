@@ -131,8 +131,12 @@ def test_an_unparseable_policy_that_names_enforcement_fails_closed(temp_project)
     assert "does not parse" in settings.problem
 
 
-def test_an_unparseable_config_without_enforcement_keeps_defaults(temp_project):
-    _config(temp_project, "backend: [turbovec\n")
+@pytest.mark.parametrize(
+    "body",
+    ["backend: [turbovec\n", "backend: [turbovec\n# identity: os is set on the server\n"],
+)
+def test_an_unparseable_config_without_enforcement_keeps_defaults(temp_project, body):
+    _config(temp_project, body)
     settings = load_security_settings(temp_project)
     assert settings.identity == IDENTITY_DECLARED
     assert settings.require_encrypted_storage is False
@@ -346,6 +350,21 @@ def test_doctor_warns_about_an_account_without_a_role(temp_project, monkeypatch)
 def test_doctor_checks_policy_file_permissions(temp_project, as_alice, mode, status):
     _config(temp_project, OS_POLICY).chmod(mode)
     assert _policy_check(temp_project).status == status
+
+
+@pytest.mark.parametrize(
+    "body, fragment",
+    [
+        ("security:\n  roles:\n", "security.roles is empty"),
+        ("security:\n  roles: [admin]\n", "security.roles must map"),
+        ("security:\n  roles:\n    builder: [neuralmind_stats\n", "does not parse"),
+    ],
+)
+def test_doctor_reports_a_role_policy_the_server_refuses(temp_project, body, fragment):
+    _config(temp_project, body)
+    check = _policy_check(temp_project)
+    assert check.status == "fail"
+    assert fragment in check.detail
 
 
 def test_doctor_fails_on_an_unparseable_config(temp_project):

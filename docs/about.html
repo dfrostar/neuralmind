@@ -200,7 +200,8 @@
 
     <section>
         <div class="container" id="whats-new-v480">
-            <h2>What&rsquo;s New in v4.8.0 &mdash; a new session starts with where the last one left off</h2>
+            <h2>What&rsquo;s New in v4.8.0 &mdash; a new session starts where the last one left off, decision search by meaning, and policy mistakes refused</h2>
+            <h3>A new session starts with where the last one left off</h3>
             <p><strong>A new Claude Code session started cold: NeuralMind gave it the code it had learned, but not the work &mdash; what you were doing, which files you edited, what you asked last.</strong> v4.8.0 records each session&rsquo;s prompts and edited files as you work, and a fresh or cleared session starts with a short recap of the most recent one. No new hooks and no model call: it rides on the hooks NeuralMind already installs, so an existing <code>neuralmind install-hooks</code> setup picks it up on upgrade.</p>
             <ul>
                 <li><strong>What the agent sees</strong> &mdash; before your first message, a block that says how long ago the previous session was last active and that it is context, not instructions, then that session&rsquo;s first prompt, its last three (each one line, cut at 200 characters) and up to twelve edited files, most recent first. Its size is bounded by count: four prompts of 200 characters and twelve paths at most (the release notes&rsquo; example is 525 characters); whether it shortens the start of a session isn&rsquo;t measured</li>
@@ -218,22 +219,8 @@
             </ul>
             <p>It still can&rsquo;t detect records deleted from the end, or a chain recomputed by someone who can write the file.</p>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md">v4.8.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
-        </div>
-    </section>
-
-    <section>
-        <div class="container" id="whats-new-v470">
-            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, a check for encrypted storage, and decision search by meaning</h2>
-            <h3>MCP roles bound to OS accounts, and a check for encrypted storage</h3>
-            <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
-            <ul>
-                <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
-                <li><strong><code>security.require_encrypted_storage: true</code></strong> &mdash; NeuralMind checks for FileVault, BitLocker or dm-crypt/LUKS on every volume that holds its state, including a custom index path, and refuses to build, query, serve MCP tools or run hooks until the check passes. It doesn&rsquo;t encrypt anything itself: in-process crypto from a pip wheel isn&rsquo;t FIPS-validated</li>
-                <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
-            </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
             <h3>Decision search finds a decision worded differently from the question</h3>
-            <p><strong>Decision search found a decision only when the question shared a word with it, so &ldquo;what happens if someone steals a copy of our db?&rdquo; never reached &ldquo;Hash API tokens before storing them&rdquo;.</strong> v4.7.0 ranks decisions by meaning as well, with the embedding model the code index already runs locally, and makes the fused ranking the default. It became the default only after passing a keep rule committed, with 20 paraphrased questions, before semantic search was run on them. Evidence level: reproducible on demand from a source checkout (<code>neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json</code>); the wiki&rsquo;s keyword column is CI-gated, the semantic and hybrid columns are checked wherever the model is on disk.</p>
+            <p><strong>Decision search found a decision only when the question shared a word with it, so &ldquo;what happens if someone steals a copy of our db?&rdquo; never reached &ldquo;Hash API tokens before storing them&rdquo;.</strong> v4.8.0 ranks decisions by meaning as well, with the embedding model the code index already runs locally, and makes the fused ranking the default. It became the default only after passing a keep rule committed, with 20 paraphrased questions, before semantic search was run on them. Evidence level: reproducible on demand from a source checkout (<code>neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json</code>); the wiki&rsquo;s keyword column is CI-gated, the semantic and hybrid columns are checked wherever the model is on disk.</p>
             <ul>
                 <li><strong>Three search modes</strong> &mdash; <code>hybrid</code> (default) fuses shared-word and meaning rankings by reciprocal rank fusion; <code>semantic</code> ranks by cosine similarity with each decision&rsquo;s embedded title and rationale (nothing under 0.30); <code>keyword</code> is the v4.6 search. <code>neuralmind decisions query --mode</code>, a <code>mode</code> argument on <code>neuralmind_query_decisions</code> and <code>neuralmind_memory_search</code>, and <code>NEURALMIND_DECISION_SEARCH</code> for the default</li>
                 <li><strong>Local, and never a download</strong> &mdash; vectors are cached in <code>memory.db</code> and recomputed only when a decision&rsquo;s text or the model changes. Search uses the model <code>neuralmind build</code> already fetched; without it, hybrid returns keyword results with a notice and every response names the mode that ran</li>
@@ -241,7 +228,28 @@
                 <li><strong>Misses, published</strong> &mdash; half the paraphrases are still missed (7 fall under the similarity floor); hybrid ranks the paraphrases it finds lower than semantic alone (MRR 0.28 against 0.44); semantic alone misses one question keyword search answers; unanswerable questions return decisions in 2 of 4 cases, as with keyword search. One author wrote every decision and question</li>
                 <li><strong>The eval scores every mode side by side</strong> &mdash; <code>decisions eval --queries FILE --mode all</code>; a mode that can&rsquo;t run is reported as not run, never scored as another</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/find-decisions-by-meaning.md">Find the decision behind the code when you don&rsquo;t know its words &rarr;</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md#decision-search-by-meaning">v4.8.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/find-decisions-by-meaning.md">Find the decision behind the code when you don&rsquo;t know its words &rarr;</a></p>
+            <h3>Policy mistakes that meant the defaults now refuse</h3>
+            <p><strong>v4.6.1 listed two mistakes in <code>neuralmind-backend.yaml</code> that it still read as &ldquo;no policy&rdquo;, so the default policy applied, and under it any caller can declare <code>admin</code> and reach every tool.</strong> v4.8.0 refuses both.</p>
+            <ul>
+                <li><strong>A policy file that doesn&rsquo;t parse</strong> &mdash; refused when its text, outside comments, names a security setting (<code>security</code>, <code>roles</code>, <code>rate_limit</code>, <code>identity</code> or <code>require_encrypted_storage</code>); other unparseable files still read as empty, so a typo in backend tuning doesn&rsquo;t block the server</li>
+                <li><strong>A <code>security:</code> or <code>roles:</code> key left empty</strong> &mdash; what&rsquo;s left when every entry under it is commented out; write <code>roles: {}</code> to grant nothing, or remove the key to use the defaults</li>
+                <li><strong><code>neuralmind doctor</code> says which</strong> &mdash; its <em>Security policy</em> check fails on any role-policy problem that makes the server refuse every call</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md#policy-mistakes-that-meant-the-defaults-now-refuse">v4.8.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v470">
+            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
+            <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
+            <ul>
+                <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
+                <li><strong><code>security.require_encrypted_storage: true</code></strong> &mdash; NeuralMind checks for FileVault, BitLocker or dm-crypt/LUKS on every volume that holds its state, including a custom index path, and refuses to build, query, serve MCP tools or run hooks until the check passes. It doesn&rsquo;t encrypt anything itself: in-process crypto from a pip wheel isn&rsquo;t FIPS-validated</li>
+                <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
         </div>
     </section>
 
@@ -252,7 +260,7 @@
             <ul>
                 <li><strong><code>security.roles</code> replaces the default policy</strong> &mdash; a role gets exactly the tools listed for it, a role the policy doesn&rsquo;t list gets none, and leaving <code>admin</code> out caps what any caller can reach; a refused call returns <code>security_denied</code> with <code>reason: "rbac"</code></li>
                 <li><strong><code>security.rate_limit</code> sets the limiter</strong> &mdash; <code>max_calls</code> per <code>window_seconds</code>, counted per declared actor</li>
-                <li><strong>A policy that parses but is wrong fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a <code>security:</code> value of the wrong type refuses every MCP call with <code>reason: "config"</code> and names the setting to fix. A file that doesn&rsquo;t parse, or a <code>security:</code> or <code>roles:</code> key left empty, still means the defaults, <code>admin</code> included &mdash; check a left-out tool is denied after writing a policy</li>
+                <li><strong>A policy that parses but is wrong fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a <code>security:</code> value of the wrong type refuses every MCP call with <code>reason: "config"</code> and names the setting to fix. A file that doesn&rsquo;t parse, or a <code>security:</code> or <code>roles:</code> key left empty, still means the defaults, <code>admin</code> included (v4.8.0 refuses both) &mdash; check a left-out tool is denied after writing a policy</li>
                 <li><strong>No <code>security:</code> block, no change</strong> &mdash; nothing writes one for you. If you wrote one, check it before upgrading: an agent that names no role is <code>builder</code>, and a policy without <code>builder</code> gives it no tools</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>
