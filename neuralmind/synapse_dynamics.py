@@ -570,9 +570,15 @@ class SynapseDynamics:
         """Apply retrieval-induced forgetting to competitors of a retrieved node.
 
         When node A is retrieved, its competitors (nodes that share edges with
-        A's neighbors but were not themselves retrieved) get weakened. This
+        A's neighbors but were not themselves retrieved) get weakened: for a
+        competitor C reached through A's neighbor N (the shared cue), the N-C
+        edge loses ``SAMPL_DEPRESSION_SCALE`` times the A-N-C path strength. This
         sharpens the association landscape and prevents the "everything is
         vaguely associated" problem.
+
+        Writes land in ``namespaces`` when given (the namespaces the
+        competitors were found in), else in the store's active namespace.
+        Returns the number of synapse rows weakened.
         """
         if not self.enable_sampl or not self._ensure_schema():
             return 0
@@ -585,8 +591,11 @@ class SynapseDynamics:
 
             neighbor_ids = [n for n, _ in neighbors]
 
-            # Find competitors: nodes connected to A's neighbors but not A itself
-            competitors: dict[str, float] = {}
+            # Find competitors: nodes connected to A's neighbors but not to A.
+            # Keyed by the cue->competitor edge, the one that exists: a
+            # competitor is by construction not A's neighbor, so there is no
+            # A-competitor edge to weaken.
+            competitors: dict[tuple[str, str], float] = {}
             for neighbor_id, neighbor_weight in neighbors:
                 if depth <= 0:
                     break
@@ -599,30 +608,32 @@ class SynapseDynamics:
                         continue
                     # Competitor strength = product of edge weights
                     strength = neighbor_weight * comp_weight
-                    if strength > SAMPL_MIN_ACTIVATION_FOR_FORGETTING:
-                        competitors[comp_id] = max(competitors.get(comp_id, 0.0), strength)
+                    pair = _canonical(neighbor_id, comp_id)
+                    if pair is not None and strength > SAMPL_MIN_ACTIVATION_FOR_FORGETTING:
+                        competitors[pair] = max(competitors.get(pair, 0.0), strength)
 
             if not competitors:
                 return 0
+
+            write_namespaces = [ns for ns in dict.fromkeys(namespaces or ()) if ns] or [
+                self.store.namespace
+            ]
+            marks = ",".join("?" for _ in write_namespaces)
 
             # Apply depression
             depressed = 0
             with self.store._connect() as conn:
                 conn.execute("BEGIN")
                 try:
-                    for comp_id, strength in competitors.items():
-                        # Find the edge between retrieved_node and comp_id
-                        pair = _canonical(retrieved_node, comp_id)
-                        if pair is None:
-                            continue
+                    for (node_a, node_b), strength in competitors.items():
                         depression = SAMPL_DEPRESSION_SCALE * strength
-                        conn.execute(
-                            """UPDATE synapses
+                        cur = conn.execute(
+                            f"""UPDATE synapses
                                SET weight = MAX(0.0, weight - ?)
-                               WHERE node_a = ? AND node_b = ? AND namespace = ?""",
-                            (depression, pair[0], pair[1], self.store.namespace),
+                               WHERE node_a = ? AND node_b = ? AND namespace IN ({marks})""",
+                            (depression, node_a, node_b, *write_namespaces),
                         )
-                        depressed += 1
+                        depressed += cur.rowcount
                     conn.execute("COMMIT")
                 except Exception:
                     conn.execute("ROLLBACK")

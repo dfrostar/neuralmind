@@ -8,6 +8,7 @@ import time
 from neuralmind.synapse_dynamics import (
     RESOURCE_CONSUMPTION,
     RESOURCE_INITIAL,
+    SAMPL_DEPRESSION_SCALE,
     STC_TAG_INITIAL,
     SynapseDynamics,
 )
@@ -175,6 +176,32 @@ class TestSAMPL:
         # D should have weakened
         after = dict(d.store.neighbors("A")).get("D", 0.0)
         assert after <= before + 1e-9  # should not increase
+
+    def test_retrieval_depresses_the_competitor_edge_that_exists(self, tmp_path):
+        # D competes with A for the shared cue B. Depression used to target
+        # the A-D edge, which by construction doesn't exist (D is not A's
+        # neighbor), so nothing changed while the call reported a count.
+        d = _dynamics(tmp_path, enable_fok=False)
+        for _ in range(5):
+            d.store.reinforce(["A", "B"])
+            d.store.reinforce(["B", "D"])
+        assert dict(d.store.neighbors("B")) == {"A": 1.0, "D": 1.0}
+
+        assert d.apply_sampl_depression("A") == 1
+
+        weights = dict(d.store.neighbors("B"))
+        assert weights["A"] == 1.0  # the retrieved association is untouched
+        assert abs(weights["D"] - (1.0 - SAMPL_DEPRESSION_SCALE)) < 1e-9
+
+    def test_depression_lands_in_the_namespaces_it_read(self, tmp_path):
+        d = _dynamics(tmp_path, enable_fok=False)
+        for _ in range(5):
+            d.store.reinforce(["A", "B"], namespace="branch:x")
+            d.store.reinforce(["B", "D"], namespace="branch:x")
+
+        assert d.apply_sampl_depression("A", namespaces=["branch:x"]) == 1
+        weights = dict(d.store.neighbors("B", namespaces=["branch:x"]))
+        assert abs(weights["D"] - (1.0 - SAMPL_DEPRESSION_SCALE)) < 1e-9
 
     def test_no_depression_without_competitors(self, tmp_path):
         d = _dynamics(tmp_path)
