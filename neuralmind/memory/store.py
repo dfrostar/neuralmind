@@ -56,6 +56,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from neuralmind.state_dir import ensure_parent_dir
+from neuralmind.storage_guard import enforce_storage_policy
 
 from . import semantic
 
@@ -385,6 +386,7 @@ class DecisionStore:
         self, project_path: str, *, embedder: semantic.DecisionEmbedder | None = None
     ) -> None:
         self.project_path = Path(project_path).resolve()
+        enforce_storage_policy(self.project_path)
         db_path = self.project_path / ".neuralmind" / "memory.db"
         self.db_path: Path = db_path
         self._embedder = embedder

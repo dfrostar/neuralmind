@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from neuralmind.state_dir import ensure_parent_dir
+from neuralmind.storage_guard import enforce_storage_policy
 
 from . import ir as ir_mod
 from . import namespaces as ns_mod
@@ -176,6 +177,9 @@ class NeuralMind:
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
         self.project_path = Path(project_path).resolve()
+        # Before anything can write index or synapse state: a project that
+        # sets security.require_encrypted_storage refuses an unverified volume.
+        enforce_storage_policy(self.project_path)
         self.db_path = db_path
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type, scope=scope
