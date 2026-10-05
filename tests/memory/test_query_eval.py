@@ -10,6 +10,7 @@ page does.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from neuralmind.memory.eval import (
     QuerySetEval,
     load_query_set,
 )
-from neuralmind.memory.store import DecisionStore
+from neuralmind.memory.store import DecisionStore, _search_terms
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decision_queries.json"
 WIKI = Path(__file__).resolve().parents[2] / "docs" / "wiki" / "Memory-Layer.md"
@@ -62,6 +63,34 @@ def summary():
 
 def test_every_gold_id_is_an_active_decision():
     QuerySetEval(load_query_set(FIXTURE))  # raises ValueError otherwise
+
+
+def test_paraphrases_share_no_search_word_with_their_answer():
+    """A paraphrase is only a paraphrase if keyword search can't reach it.
+
+    Keyword search prefix-matches each query term against the words of a
+    decision's title and rationale, so no term of a paraphrase query may
+    begin any of those words in a gold decision.
+    """
+    harness = QuerySetEval(load_query_set(FIXTURE))
+    by_id = {d["id"]: d for d in harness.corpus}
+    paraphrases = [q for q in harness.queries if q["kind"] == "paraphrase"]
+    assert paraphrases
+    shared = {}
+    for q in paraphrases:
+        for gold in q["gold"]:
+            words = re.findall(
+                r"[a-z0-9]+", f"{by_id[gold]['title']} {by_id[gold]['rationale']}".lower()
+            )
+            hits = [
+                term
+                for term in _search_terms(q["query"])
+                for part in re.findall(r"[a-z0-9]+", term)
+                if any(word.startswith(part) for word in words)
+            ]
+            if hits:
+                shared[q["id"]] = hits
+    assert not shared, f"paraphrase queries share search words with their answers: {shared}"
 
 
 def test_unknown_gold_id_is_rejected():
