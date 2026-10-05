@@ -412,7 +412,23 @@ def test_a_skipped_schema_file_logs_no_file_text(
     root = _write(tmp_path, {"app.py": "def f(): pass\n", "a.sql": "CREATE TABLE t (id int);\n"})
     with caplog.at_level(logging.DEBUG, logger=graphgen.logger.name):
         graphgen.build_graph(root)
-    skipped = [r for r in caplog.records if "skipped schema file" in r.getMessage()]
-    assert [r.getMessage() for r in skipped] == ["skipped schema file a.sql (ValueError)"]
+    skipped = [r for r in caplog.records if "skipped a schema file" in r.getMessage()]
+    assert [r.getMessage() for r in skipped] == [
+        "skipped a schema file its extractor couldn't read (1 this build)"
+    ]
     assert all(r.exc_info is None for r in skipped)
     assert "hunter2" not in caplog.text
+    assert "a.sql" not in caplog.text
+
+
+def test_a_skipped_schema_file_is_recorded_on_the_builder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(b, path, rel):
+        raise ValueError("unexpected spec shape")
+
+    monkeypatch.setitem(graphgen._SCHEMA_EXTRACTORS, ".sql", boom)
+    (tmp_path / "a.sql").write_text("CREATE TABLE t (id int);\n")
+    b = graphgen._GraphBuilder()
+    graphgen._extract_schema_file(b, tmp_path / "a.sql", "a.sql")
+    assert b.skipped_schema_files == ["a.sql"]

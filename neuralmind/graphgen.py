@@ -652,6 +652,8 @@ class _GraphBuilder:
         self.file_ids: dict[str, str] = {}
         # symbol id → the raw name that claimed it this build (``sym_id``).
         self._claims: dict[str, str] = {}
+        # Schema/spec files whose extractor raised; skipped, not fatal.
+        self.skipped_schema_files: list[str] = []
 
     # -- ids --------------------------------------------------------------- #
     def file_id(self, rel: str) -> str:
@@ -1382,19 +1384,25 @@ _SCHEMA_EXTRACTORS: dict[str, Any] = {
 
 
 def _extract_schema_file(b: _GraphBuilder, path: Path, rel: str) -> None:
-    """Run ``path``'s schema extractor. A spec it can't handle is skipped
-    (logged at debug), never fatal — one odd file must not abort the build.
+    """Run ``path``'s schema extractor. A spec it can't handle is skipped and
+    recorded on ``b.skipped_schema_files``, never fatal — one odd file must not
+    abort the build.
 
-    Only the exception type is logged: a parser's message (and so its
-    traceback) can quote the file's text, which may hold a secret.
+    The log line carries only a count. A parser's message, and so its
+    traceback, can quote the file's text, which may hold a secret. Its path
+    can be just as revealing.
     """
     extractor = _SCHEMA_EXTRACTORS.get(path.suffix)
     if extractor is None:
         return
     try:
         extractor(b, path, rel)
-    except Exception as exc:
-        logger.debug("skipped schema file %s (%s)", rel, type(exc).__name__)
+    except Exception:
+        b.skipped_schema_files.append(rel)
+        logger.debug(
+            "skipped a schema file its extractor couldn't read (%d this build)",
+            len(b.skipped_schema_files),
+        )
 
 
 def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None = None) -> None:
