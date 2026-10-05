@@ -42,6 +42,11 @@ hunt: `neuralmind audit verify` now checks the whole log, and
 `neuralmind audit export -o` reports the events it wrote. See
 [Audit log](#audit-log).
 
+The low-severity bugs from the same hunt are fixed too. A mistyped project
+path is an error instead of a new empty project, and the daemon and
+`neuralmind serve` answer malformed requests with a 4xx. The rest are listed
+under [Smaller fixes](#smaller-fixes).
+
 ---
 
 ## What changed
@@ -336,6 +341,83 @@ so when none matched the filters. Export to stdout is unchanged.
 
 Both are CLI changes, so agents see no difference from them.
 
+### Smaller fixes
+
+**Project paths and decisions**
+
+- **A project path that doesn't exist is an error.** `query`, `search`,
+  `wakeup`, `stats`, the `decisions` subcommands that open a store (`record`,
+  `query`, `amend`, `audit`, `export`, `restore`, `invalidate`) and every MCP
+  tool used to create `<path>/.neuralmind/` for a mistyped path and run
+  against an empty index or decision store. The CLI now exits 2 with `project path does not
+  exist: <path>`. MCP tools return `code: "project_not_found"`, with a hint to
+  pass an absolute path when the path was relative, and the daemon answers 404.
+  Nothing is created. `build` in an existing directory works as before.
+- **`decisions restore` and `decisions invalidate` report failures.** An
+  unknown id made `restore` print a traceback and `invalidate` print success.
+  A database error was logged and then reported as success. Both now print
+  `Decision not found: <id>` or `Could not … decision <id>: …` and exit 1. The
+  MCP invalidate tool returns `not_found` or `storage_error`.
+- **`decisions record --confidence` must be between 0 and 1.** `7` was
+  accepted and stored as 1.0, and so was `nan`. The CLI and the MCP record
+  tool now reject the value.
+- **`search --n` must be at least 1.** `--n 0` and `--n -3` returned one
+  result. The MCP tools now enforce the numeric bounds their schemas declare.
+- **`stats .` names the project.** It printed `Project: ` with nothing after
+  it, in the CLI and in the MCP `neuralmind_stats` tool.
+
+**Memory and learning**
+
+- **`feedback` and `doctor` say how to turn query memory on.** With memory
+  off, `feedback good|bad` said "run a query first", and the next query wasn't
+  recorded either. `doctor` advised `NEURALMIND_MEMORY=1`, which changes
+  nothing: the variable is on by default, and logging also needs a yes in
+  `~/.neuralmind/memory_consent.json`. Both now name what's off and what
+  turns it on.
+- **`validate` stops warning about stale synapses on a fresh index.** Every
+  edge it flagged pointed at a `community_<id>` node or a compliance-control
+  key, which NeuralMind writes on purpose. Synapses to deleted nodes, or to
+  communities a rebuild dropped, are still reported.
+- **The synapse memory export reports what each association earned.**
+  `.neuralmind/SYNAPSE_MEMORY.md` added a pair's weight and activation count
+  across namespaces, so a weight could read 2.00, and it tagged edges
+  "(long-term)" by count alone. A pair now shows its strongest namespace, and
+  "long-term" means protected from decay: at least five activations, weight at
+  or above 0.20, and not ephemeral. Expect fewer long-term tags.
+- **The `SynapseDynamics` API does what its docstrings say.** Resource
+  limiting can trigger (ten potentiations per node until replenished),
+  retrieval-induced forgetting weakens competitor edges that exist, and
+  lateral inhibition keeps the strongest results instead of sometimes
+  returning none. Nothing in the CLI, hooks or MCP tools calls this API.
+
+**Servers, demo and ingest**
+
+- **The daemon and `neuralmind serve` answer malformed requests with a 4xx.**
+  A non-numeric `Content-Length` dropped the connection with no response. A
+  non-object JSON body or a non-integer `n` was a 500. A non-ASCII token
+  raised inside the handler. They now get a 400 with a JSON error naming the
+  problem: 413 for a body over 1 MiB, 401 for the token. The daemon reads
+  flags such as `force` strictly; `"false"` used to count as true. Both
+  servers close a request that stalls for 30 seconds, and the graph view's
+  session-cookie check is constant-time.
+- **`neuralmind demo` stops reporting stale files.** It copied the bundled
+  project with the bundle's timestamps, so when the bundled graph was older
+  than its sources, every run printed "N files changed since the graph was
+  built".
+- **Ingesting a Markdown file that's already in the project stores it once.**
+  The built-in graph already holds a Markdown file's text, heading by
+  heading. `neuralmind ingest docs/guide.md` and the
+  `neuralmind_ingest_document` MCP tool stored a second copy under the
+  absolute path, so the text came back twice in query context. Both now skip
+  such a file and list it under `already_indexed`. Any other file inside the
+  project is stored under its project-relative path.
+
+**For contributors**
+
+- **`pytest` leaves the checkout clean.** The graph tests built the committed
+  fixture projects in place, and each build rewrote their extraction caches.
+  They now build throwaway copies, and the cache files are no longer tracked.
+
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
@@ -343,7 +425,7 @@ Both are CLI changes, so agents see no difference from them.
 | **Claude Code** (MCP + hooks) | With global hooks, the first prompt in an unbuilt repo could block on a full index build until the hook timed out, and `.neuralmind/` appeared in every directory a session ran in. After `cd` into a subdirectory the hooks went silent. `neuralmind_review` after an edit returned `security_denied`. `neuralmind last` could replay AWS session credentials | In an unbuilt repo the hooks do nothing and add no context. In a built one, recall never triggers a build, and the hooks keep working from any subdirectory. `neuralmind_review` and `neuralmind_impact` answer. AWS CLI credentials are redacted in the cache |
 | **Cursor / Cline / Claude Desktop** (MCP) | `install-mcp` on a config with a trailing comma removed every other server | The config is left untouched, and the command prints the entry to paste |
 | **VS Code** (MCP) | JSONC was already left untouched. A config whose top level wasn't an object was overwritten | Both are left untouched |
-| **Generic MCP client** | `neuralmind_review`, `neuralmind_impact` and the neighbour tools returned `security_denied` under the default roles | They answer under `builder` and `reader` |
+| **Generic MCP client** | `neuralmind_review`, `neuralmind_impact` and the neighbour tools returned `security_denied` under the default roles. A mistyped `project_path` created an empty project there | They answer under `builder` and `reader`. A path that doesn't exist returns `code: "project_not_found"` and creates nothing |
 
 ## Environment variables
 
@@ -369,6 +451,11 @@ None added or changed.
 - **To keep the old MCP denials,** define `security.roles` for the project.
   The five read-only lookup tools are now in the default `builder` and
   `reader` roles.
+- **A project path that doesn't exist now fails.** A script that relied on a
+  command creating `<path>/.neuralmind/` should create the directory, or run
+  `neuralmind build`, first.
+- **Daemon clients:** flags must be booleans (or `"true"`, `"false"`, `1`,
+  `0`), request bodies are capped at 1 MiB, and a missing project is a 404.
 - **Run `neuralmind audit verify .`.** A log that passed before can fail now.
   NeuralMind always hashes and links what it writes, and writes one JSON
   object per line, so treat a failure as a record changed, added or damaged
