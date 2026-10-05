@@ -78,23 +78,25 @@ class TestQueryRelevanceSidecar:
         mind.embedder.get_file_nodes.return_value = []  # no line spans
         return mind
 
-    def test_include_relevance_attaches_sidecar(self):
+    def test_include_relevance_attaches_sidecar(self, tmp_path):
         from neuralmind.mcp_server import tool_query
 
+        # An absolute path on every OS: "/proj" is drive-relative on Windows,
+        # where it passed only because another test's hook left C:\proj\.neuralmind.
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q", include_relevance=True)
+            out = tool_query(str(tmp_path), "q", include_relevance=True)
         assert "relevance" in out
         assert out["relevance"]["version"] == 1
         node = out["relevance"]["files"]["a.py"]["nodes"][0]
         assert node["label"] == "f"
         assert node["score"] == 0.8
 
-    def test_default_omits_sidecar(self):
+    def test_default_omits_sidecar(self, tmp_path):
         """Backward-compatible: no relevance key unless requested."""
         from neuralmind.mcp_server import tool_query
 
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q")
+            out = tool_query(str(tmp_path), "q")
         assert "relevance" not in out
 
     def test_dispatch_threads_include_relevance(self, temp_project):
