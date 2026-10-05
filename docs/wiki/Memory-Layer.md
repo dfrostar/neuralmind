@@ -51,7 +51,9 @@ The query text comes **first**; the project path is optional and comes second.
   the copy `neuralmind build` downloads once. Without it, `hybrid` returns
   keyword results and prints why (`[neuralmind] semantic ranking unavailable
   (…); keyword results only`, on stderr), and `--mode semantic` exits 1.
-- **The header says which mode ran:** `# NeuralMind Decisions Query: "…" (hybrid)`.
+- **Every output names the mode that ran:** the header (`# NeuralMind Decisions Query: "…" (hybrid)`),
+  the empty result (`No decisions found for: … (hybrid search)`), and, with `--json`,
+  a `[neuralmind] search mode: hybrid` line on stderr. Stdout stays the JSON array of records.
 - Each semantic or hybrid search loads the model, so it takes longer than a
   keyword search. Set `NEURALMIND_DECISION_SEARCH=keyword` to keep v4.6
   behavior everywhere: CLI, MCP tools, Python API.

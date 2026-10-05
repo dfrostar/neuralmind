@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import struct
 
 import pytest
 
@@ -280,6 +281,54 @@ def test_semantic_honours_status_and_confidence_filters(store):
     assert _ids(store.query(QUESTION, mode="semantic", status="ALL", min_score=0.5)) == ["auth"]
 
 
+def _set_cached(store: DecisionStore, decision_id: str, blob: bytes, dim: int) -> None:
+    with store._connect() as conn:
+        conn.execute(
+            "UPDATE decision_vectors SET vector = ?, dim = ? WHERE decision_id = ?",
+            (blob, dim, decision_id),
+        )
+
+
+@pytest.mark.parametrize(
+    "blob, dim",
+    [
+        (b"\x01\x02\x03", 3),  # not a whole number of float32s
+        (struct.pack("<3f", 1.0, 0.0, 0.0), 5),  # stored dim disagrees with the bytes
+        (struct.pack("<3f", float("nan"), 0.0, 0.0), 3),  # decodes, but not finite
+    ],
+    ids=["truncated", "dim-mismatch", "nan"],
+)
+def test_a_damaged_cached_vector_is_reembedded(store, fake, blob, dim):
+    """It used to raise ValueError outside the guarded block, failing even the
+    default hybrid search, or to rank a vector that can't be trusted."""
+    store.search(QUESTION, mode="semantic")
+    _set_cached(store, "auth", blob, dim)
+    found = store.search(QUESTION, mode="hybrid")
+    assert (found.mode, _ids(found.records)) == ("hybrid", ["auth"])
+    assert fake.calls[-1] == [
+        store.get("auth").title + "\n" + store.get("auth").rationale,
+        QUESTION,
+    ]
+    with store._connect() as conn:
+        assert conn.execute(
+            "SELECT dim FROM decision_vectors WHERE decision_id = 'auth'"
+        ).fetchone() == (3,)
+
+
+def test_a_cached_vector_of_the_wrong_size_is_reembedded_not_dropped(store, fake):
+    """A readable vector whose length isn't the model's used to be filtered out
+    of the ranking for good: its text and model id still matched."""
+    store.search(QUESTION, mode="semantic")
+    _set_cached(store, "auth", struct.pack("<2f", 1.0, 0.0), 2)
+    assert _ids(store.query(QUESTION, mode="semantic")) == ["auth"]
+    assert fake.calls[-2:] == [
+        [QUESTION],
+        [store.get("auth").title + "\n" + store.get("auth").rationale],
+    ]
+    store.search(QUESTION, mode="semantic")
+    assert fake.calls[-1] == [QUESTION]  # repaired in the cache
+
+
 # ------------------------------------------------------------------ #
 # Reciprocal rank fusion
 # ------------------------------------------------------------------ #
@@ -389,6 +438,22 @@ def test_cli_hybrid_fallback_notice_goes_to_stderr(tmp_path, monkeypatch, capsys
     captured = _cli(argv, capsys)
     assert [d["id"] for d in json.loads(captured.out)] == ["auth"]
     assert "keyword results only" in captured.err
+
+
+def test_cli_json_keeps_the_array_and_names_the_mode_on_stderr(tmp_path, monkeypatch, fake, capsys):
+    monkeypatch.setattr(semantic, "load_default_embedder", lambda: fake.embedder)
+    _seed(DecisionStore(str(tmp_path)))
+    argv = ["decisions", "query", QUESTION, str(tmp_path), "--mode", "semantic", "--json"]
+    captured = _cli(argv, capsys)
+    assert [d["id"] for d in json.loads(captured.out)] == ["auth"]
+    assert "[neuralmind] search mode: semantic" in captured.err
+
+
+def test_cli_empty_result_names_the_mode(tmp_path, monkeypatch, fake, capsys):
+    monkeypatch.setattr(semantic, "load_default_embedder", lambda: fake.embedder)
+    _seed(DecisionStore(str(tmp_path)))
+    out = _cli(["decisions", "query", QUESTION, str(tmp_path), "--mode", "keyword"], capsys).out
+    assert f"No decisions found for: {QUESTION} (keyword search)" in out
 
 
 def test_cli_semantic_unavailable_exits_nonzero(tmp_path, monkeypatch, capsys):

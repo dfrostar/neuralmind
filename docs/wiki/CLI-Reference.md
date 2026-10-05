@@ -2264,8 +2264,10 @@ rationales. `--mode` *(v4.7.0+)* picks the ranking:
   and "the" are ignored), and decisions matching more of the words rank first
   (v4.5.1+; before, every word had to match).
 
-Without `--mode`, `NEURALMIND_DECISION_SEARCH` decides, then `hybrid`. The
-header names the mode that ran. Search never downloads the model; it uses the
+Without `--mode`, `NEURALMIND_DECISION_SEARCH` decides, then `hybrid`. Every
+output names the mode that ran: the header, the empty result, and with `--json`
+a `[neuralmind] search mode: …` line on stderr (stdout stays the JSON array).
+Search never downloads the model; it uses the
 copy `neuralmind build` fetched. Without it, `hybrid` prints keyword results and
 a notice on stderr, and `--mode semantic` exits 1. `--status` is
 case-insensitive. Measured recall per mode:

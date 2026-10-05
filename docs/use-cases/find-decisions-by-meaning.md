@@ -35,7 +35,7 @@ tokens, a per-client rate limit, and a loopback-only server.
 
 ```
 $ neuralmind decisions query "what happens if someone steals a copy of our db?" --mode keyword
-No decisions found for: what happens if someone steals a copy of our db?
+No decisions found for: what happens if someone steals a copy of our db? (keyword search)
 
 $ neuralmind decisions query "what happens if someone steals a copy of our db?"
 # NeuralMind Decisions Query: "what happens if someone steals a copy of our db?" (hybrid)
@@ -76,7 +76,7 @@ Meaning ranking misses too. In the same project:
 
 ```
 $ neuralmind decisions query "what stops a buggy assistant from overwhelming us?" --mode semantic
-No decisions found for: what stops a buggy assistant from overwhelming us?
+No decisions found for: what stops a buggy assistant from overwhelming us? (semantic search)
 ```
 
 The rate-limit decision ("A runaway agent loop can issue thousands of calls…")

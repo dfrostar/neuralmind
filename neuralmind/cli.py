@@ -3135,10 +3135,13 @@ def cmd_decisions_query(args):
         import json
 
         print(json.dumps([r.model_dump() for r in results], indent=2, default=str))
+        # stdout stays the bare array scripts already parse; the mode that
+        # ranked it goes to stderr.
+        print(f"[neuralmind] search mode: {found.mode}", file=sys.stderr)
         return
 
     if not results:
-        print(f"No decisions found for: {args.query}")
+        print(f"No decisions found for: {args.query} ({found.mode} search)")
         return
 
     print(f'# NeuralMind Decisions Query: "{args.query}" ({found.mode})')

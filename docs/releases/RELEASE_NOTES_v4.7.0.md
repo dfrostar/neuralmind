@@ -147,8 +147,11 @@ in v4.6.1.
 | `keyword` | Shared words: FTS5, bm25-ranked, any word can match (v4.5.1+) | Exact identifiers, and the v4.6 ranking |
 
 - **CLI:** `neuralmind decisions query "QUESTION" --mode hybrid|semantic|keyword`.
-  The header names the mode that ran:
-  `# NeuralMind Decisions Query: "…" (hybrid)`.
+  Every output names the mode that ran: the header
+  (`# NeuralMind Decisions Query: "…" (hybrid)`), the empty result
+  (`No decisions found for: … (hybrid search)`), and, with `--json`, a
+  `[neuralmind] search mode: hybrid` line on stderr; stdout stays the JSON
+  array of records.
 - **MCP:** `neuralmind_query_decisions` and `neuralmind_memory_search` take an
   optional `mode` (case-insensitive). Every response carries `mode`, the mode
   that ranked the results, and `notice` when hybrid fell back to keyword.

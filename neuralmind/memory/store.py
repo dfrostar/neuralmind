@@ -347,6 +347,23 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _decode_vector(blob: Any, dim: Any) -> Any | None:
+    """A cached decision vector as float32, or None when the row can't be trusted.
+
+    None for a missing or non-bytes value, a byte length that isn't ``dim``
+    float32s, or a non-finite value; the caller re-embeds instead of failing
+    the search or ranking a damaged vector.
+    """
+    import numpy as np
+
+    if not isinstance(blob, (bytes, bytearray, memoryview)) or not isinstance(dim, int):
+        return None
+    if dim <= 0 or len(blob) != dim * np.dtype(np.float32).itemsize:
+        return None
+    vector = np.frombuffer(blob, dtype=np.float32)
+    return vector if bool(np.isfinite(vector).all()) else None
+
+
 @dataclass
 class DecisionSearch:
     """What a search returned, and which mode produced it.
@@ -992,17 +1009,17 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """Decisions ranked by cosine similarity to ``text``.
 
-        Embeds, in one pass, the question and any decision whose
-        cached vector is missing or out of date, then caches the new
-        vectors. [] on a database error, like keyword search.
+        Embeds, in one pass, the question and any decision whose cached
+        vector is missing, out of date or unreadable, then caches the new
+        vectors. A cached vector whose length doesn't match the model's is
+        re-embedded in a second pass. [] on a database error, like keyword
+        search.
 
         Raises:
             semantic.SemanticSearchUnavailableError: no embedder, or embedding
                 failed.
         """
-        embedder = self._get_embedder()  # checks numpy is installed
-        import numpy as np
-
+        embedder = self._get_embedder()
         clauses: list[str] = []
         params: list[Any] = []
         if status is not None:
@@ -1019,7 +1036,7 @@ class DecisionStore:
                                d.decision_type, d.confidence, d.status, d.author,
                                d.created_at, d.updated_at, d.evidence,
                                d.rejected_alternatives, d.dependency_constraints, d.tags,
-                               v.model_id, v.content_sha, v.vector
+                               v.model_id, v.content_sha, v.dim, v.vector
                         FROM decisions d
                         LEFT JOIN decision_vectors v ON v.decision_id = d.id
                         {where}
@@ -1033,34 +1050,45 @@ class DecisionStore:
             return []
 
         records = [_row_to_record(row[:15]) for row in rows]
-        shas = [semantic.content_sha(semantic.decision_text(r.title, r.rationale)) for r in records]
-        vectors: dict[str, Any] = {}
+        texts = [semantic.decision_text(r.title, r.rationale) for r in records]
+        shas = [semantic.content_sha(t) for t in texts]
+        vectors: dict[int, Any] = {}
         to_embed: list[int] = []
         for i, row in enumerate(rows):
-            model_id, sha, blob = row[15], row[16], row[17]
-            if blob is not None and model_id == embedder.model_id and sha == shas[i]:
-                vectors[records[i].id] = np.frombuffer(blob, dtype=np.float32)
-            else:
+            model_id, sha, dim, blob = row[15], row[16], row[17], row[18]
+            cached = None
+            if model_id == embedder.model_id and sha == shas[i]:
+                cached = _decode_vector(blob, dim)
+            if cached is None:
                 to_embed.append(i)
+            else:
+                vectors[i] = cached
 
-        texts = [semantic.decision_text(records[i].title, records[i].rationale) for i in to_embed]
-        try:
-            matrix = semantic.embed_texts(embedder, [*texts, text])
-        except Exception as e:
-            logger.exception("[memory] embedding failed during decision search")
-            raise semantic.SemanticSearchUnavailableError(f"embedding failed: {e}") from e
+        def embed(indices: list[int], question: str | None = None) -> Any:
+            batch = [texts[i] for i in indices] + ([question] if question is not None else [])
+            try:
+                return semantic.embed_texts(embedder, batch)
+            except Exception as e:
+                logger.exception("[memory] embedding failed during decision search")
+                raise semantic.SemanticSearchUnavailableError(f"embedding failed: {e}") from e
+
+        matrix = embed(to_embed, text)
         question = matrix[-1]
-        for row_index, vector in zip(to_embed, matrix[:-1], strict=True):
-            vectors[records[row_index].id] = vector
-        if to_embed:
+        fresh = dict(zip(to_embed, matrix[:-1], strict=True))
+        # A cached vector that decodes but doesn't match the model's length
+        # (written by another embedder under the same id, or a damaged row
+        # whose dim was damaged with it) is a miss too.
+        wrong_size = [i for i, vector in vectors.items() if vector.shape != question.shape]
+        if wrong_size:
+            fresh.update(zip(wrong_size, embed(wrong_size), strict=True))
+        vectors.update(fresh)
+        if fresh:
             self._cache_vectors(
                 embedder.model_id,
-                [(records[i].id, shas[i], matrix[n]) for n, i in enumerate(to_embed)],
+                [(records[i].id, shas[i], vector) for i, vector in fresh.items()],
             )
 
-        candidates = [
-            (r.id, vectors[r.id]) for r in records if vectors[r.id].shape == question.shape
-        ]
+        candidates = [(records[i].id, vectors[i]) for i in range(len(records))]
         by_id = {r.id: r for r in records}
         ranked = semantic.rank_by_similarity(question, candidates)
         return [by_id[decision_id] for decision_id, _ in ranked[:limit]]
