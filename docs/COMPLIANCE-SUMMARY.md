@@ -31,7 +31,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 - **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). By default callers declare their own role, unauthenticated; with `security.identity: os` *(v4.7.0+)* the role is bound to the OS account — see `SECURITY-GUIDE.md` §Access Control
 - **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login)
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
-- **Auto-generated NIST AI RMF report:** `neuralmind audit-report . --compliance nist-ai-rmf --output report.md`
+- **Audit export for your assessor:** `neuralmind audit export . --format jsonl` (or `--format cef`). NeuralMind has no report generator, so build the report from the export
 
 ### MAP — impact assessment, context
 
@@ -43,13 +43,13 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 - **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark`); CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
-- **Query latency** logged for every retrieval — performance regressions visible in `audit-report` output
+- **Context tokens** recorded for every query in the audit log
 
 ### MANAGE — risk controls
 
-- **Secret detection** runs before any retrieval result is returned (configurable scanners)
+- **Secret scanning** before indexing: `neuralmind scan-for-secrets` is a separate step, and `build --redact-secrets` scrubs indexed text as a backstop. Neither runs at query time
 - **Rate limiting** enforceable at the MCP server boundary
-- **Anomaly alerts** — `events.jsonl` + the live activity feed surface unexpected access patterns in real time
+- **No anomaly detection or alerting.** Denied calls are in the audit log; feed `neuralmind audit export` to your SIEM to alert on them
 
 ---
 
@@ -86,7 +86,7 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 | **AC.L2-3.1.20** | Control connections to external systems | By default, no telemetry and no repository content sent off the machine. The opt-in `NEURALMIND_LLM_SEED=1` sends `README.md` and `docs/architecture.md` to Anthropic; it is off by default | Keeping `NEURALMIND_LLM_SEED` off in a CUI enclave; pre-seeding the model with `NEURALMIND_ONNX_MODEL_DIR` |
 | **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
 | **AU.L2-3.3.2** | Trace actions to individual users | Every event records an actor. With `security.identity: os`, it is the OS account, read from the OS, for MCP calls and CLI events alike; a declared actor or `NEURALMIND_ACTOR` is kept as `claimed_actor` | Without `identity: os`, the actor is whatever the caller or environment says; tie events to OS login records |
-| **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log. It cannot detect removal of the newest records, or a rewrite that recomputes the chain | Write protection and forwarding to your SIEM, so a local rewrite can't go unseen |
+| **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log. It cannot detect changes at the end of the log (the newest records removed, or edited or appended there without a hash), or a rewrite that recomputes the chain | Write protection and forwarding to your SIEM, so a local rewrite can't go unseen |
 | **CM.L2-3.4.1** | Baseline configurations and inventories | CycloneDX SBOM on every tagged release | Recording the pinned version in your baseline |
 | **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to `127.0.0.1` by default (`neuralmind serve --host` can change it); [air-gapped install](use-cases/air-gapped.md) | Not exposing the HTTP transport beyond the enclave |
 | **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | NeuralMind doesn't encrypt data itself. `doctor` reports the OS FIPS mode on Linux and Windows | FIPS-validated full-disk encryption on the host, with the OS FIPS mode on |

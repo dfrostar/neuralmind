@@ -42,18 +42,23 @@ graphify update .    # New (v1.2+)
 ### "neuralmind build takes forever on large codebase"
 
 **Solutions:**
-```bash
-# 1. First build is slow (one-time)
-#    Subsequent builds are incremental and fast
 
-# 2. Exclude unnecessary files
-#    Add to neuralmind.toml:
-# [build]
-# exclude_patterns = ["*.test.js", "node_modules/", "dist/"]
+1. **Only the first build pays the full cost.** Later builds re-embed only the
+   nodes whose content changed.
+2. **Keep out what you don't need.** `build` already skips what `.gitignore`
+   ignores. For anything else, such as generated or vendored code, add a
+   `.neuralmindignore` to the project root (gitignore syntax):
+   ```gitignore
+   # .neuralmindignore
+   dist/
+   vendor/
+   **/*.min.js
+   ```
+3. **In a CPU-limited container**, set `NEURALMIND_ORT_THREADS` to the CPU
+   limit. ONNX Runtime otherwise sizes its thread pool to the host's cores.
 
-# 3. Use faster backend
-neuralmind build . --backend lancedb  # Faster than ChromaDB
-```
+There is no faster backend to switch to. `turbovec` is the default, and the
+only other on-disk backend is the deprecated ChromaDB one.
 
 ---
 
@@ -138,16 +143,25 @@ neuralmind build . --force
 
 ### "Is NeuralMind slow for large codebases?"
 
-**No!** 
-- Initial build is 1-2 min per 10K nodes
-- Queries are <100ms
-- Works for 1M+ LOC codebases
+**The first build is the expensive step.** After that, builds are incremental,
+and a query is a local index lookup, not another model call.
 
-**For large projects:**
+Build time and end-to-end query latency on large repos aren't benchmarked
+yet, so measure your own:
+
 ```bash
-# Use PostgreSQL backend (scales to 10M+ nodes)
-neuralmind build . --backend postgres --db-url postgresql://...
+time neuralmind build .
+neuralmind stats .       # node count of the built index
+neuralmind benchmark .   # token reduction on sample queries
 ```
+
+The synapse layer's recall latency is benchmarked: run
+`python -m tests.benchmark.latency` from a source checkout. Planning estimates
+for big repos, labeled as estimates, are on
+[Limits & Failure Modes](Limits-and-Failure-Modes#2-repo-size-index-time-memory--disk-envelope).
+
+There is no server or database backend for large projects. Every backend
+keeps its index in local files under `.neuralmind/`.
 
 ---
 
@@ -162,14 +176,14 @@ neuralmind build . --backend postgres --db-url postgresql://...
 > Full size / index-time / memory envelope — with the honest "not yet measured at
 > scale" caveats — is on the [Limits & Failure Modes](Limits-and-Failure-Modes#2-repo-size-index-time-memory--disk-envelope) page.
 
-**Compress if needed:**
-```bash
-# Delete old indexes
-rm -rf neuralmind.db
-
-# Rebuild with optimization
-neuralmind build . --optimize
-```
+**Reclaiming space:** each build removes vectors for code that is no longer in
+the graph. When those are more than half the store, the build keeps them as a
+safety check and tells you, and `neuralmind build . --prune` removes them.
+`.neuralmindignore` keeps paths out of the next build. Don't delete all of
+`.neuralmind/` to save space. It also holds learned synapses
+(`synapses.db`), recorded decisions (`memory.db`), and the audit log, and a
+build can't recreate those. See
+[Backup & Recovery](../DEPLOYMENT-GUIDE.md#backup--recovery).
 
 ---
 
@@ -209,7 +223,7 @@ it with per-branch isolation.
 - Plus schema/doc artifacts: Markdown, OpenAPI/AsyncAPI (YAML), SQL DDL, Protocol Buffers
 
 **Partial support:**
-- Other languages can be indexed as plaintext (less precise)
+- Other languages can be ingested as plain text (less precise)
 
 > The per-language [support matrix](Limits-and-Failure-Modes#3-language-support-matrix)
 > spells out exactly what's indexed *and what's explicitly not modeled* per language
@@ -218,26 +232,29 @@ it with per-branch isolation.
 
 **If not supported:**
 ```bash
-# Use `--format any` to treat as plaintext
-neuralmind build . --format any
-
-# Still works, just less precise
+# Ingest each source file as a plain text document (Kotlin here)
+find src -name '*.kt' -exec neuralmind ingest {} --project-path . \;
 ```
+
+Pass the files one at a time. Given a directory, `neuralmind ingest` only
+picks up document types (`.md`, `.txt`, `.rst`, `.pdf`, and similar), so it
+would skip the source files.
+
+Retrieval then works on the text, but the graph has no symbols, calls, or
+imports for those files.
 
 ---
 
 ### "Can NeuralMind read test files?"
 
-**Yes, but consider excluding them:**
-```toml
-# neuralmind.toml
-[build]
-exclude_patterns = [
-    "*.test.js",
-    "*.spec.py",
-    "test/",
-    "tests/"
-]
+**Yes, but consider excluding them** with a `.neuralmindignore` in the project
+root (gitignore syntax):
+```gitignore
+# .neuralmindignore
+*.test.js
+*.spec.py
+test/
+tests/
 ```
 
 **Why?** Test code clutters the index without adding understanding.
@@ -262,23 +279,25 @@ exclude_patterns = [
 
 ### "How do team members share a NeuralMind index?"
 
-**Option 1: Local per-developer (simplest)**
+**They don't share the index.** Each developer builds their own:
+
 ```bash
 # Each developer on their machine
 neuralmind build .
 neuralmind install-hooks .
 ```
-Pros: Simple, fully private  
-Cons: Index duplication
 
-**Option 2: Shared PostgreSQL backend (enterprise)**
-```bash
-# Setup: Central PostgreSQL database
-# Each developer points to it:
-neuralmind build . --backend postgres --db-url postgresql://...
-```
-Pros: Single source of truth, auditable  
-Cons: Requires infrastructure
+There is no shared index server or database backend, and real-time
+cross-machine sync is roadmap-only. What a team can share is through git:
+
+- **Policy:** commit `neuralmind-backend.yaml` so every checkout uses the
+  same backend settings, role policy (`security.roles`), and rate limit. The
+  MCP server in v4.6.0 and earlier ignored the role and rate-limit settings.
+- **Learned memory (optional):** `neuralmind memory publish` writes
+  `.neuralmind-team-memory.json`. Once it's committed, teammates' agents merge
+  it on their next session start or build.
+
+See [Rolling Out to a Team](../DEPLOYMENT-GUIDE.md#rolling-out-to-a-team).
 
 ---
 
@@ -365,11 +384,13 @@ Two protections need no flag:
 
 ### "NeuralMind build fails with 'No module named chromadb'"
 
-```bash
-pip install --upgrade neuralmind
+The project selects the deprecated ChromaDB backend (`backend: graph` or
+`backend: chroma` in `neuralmind-backend.yaml`), and ChromaDB isn't installed
+by default. Either remove that line to use the default `turbovec` backend, or
+install the extra:
 
-# Or install with dev extras (testing/linting tools)
-pip install "neuralmind[dev]"
+```bash
+pip install "neuralmind[chromadb]"
 ```
 
 ---
@@ -472,31 +493,23 @@ description of what you tried.
 
 ### "MCP server won't start"
 
-```bash
-# Check port is free
-lsof -i :8000
-
-# Run with debug output
-NEURALMIND_DEBUG=1 neuralmind-mcp . --port 8000
-
-# Check configuration
-neuralmind backend-check
-```
-
----
-
-### "Can't connect to PostgreSQL backend"
+`neuralmind-mcp` talks to your agent over stdio. It opens no port and takes
+no command-line arguments, so there is no port to free and no flag to set.
+Each tool call names the project it wants.
 
 ```bash
-# Test connection
-psql -h db.company.com -U neuralmind -d neuralmind -c "SELECT 1;"
+# Is the MCP SDK importable, and are the graph and index in place?
+neuralmind doctor .
 
-# Check URL format
-# postgresql://username:password@hostname:port/database
+# Is the server registered with your agent? --print shows the config snippet
+neuralmind install-mcp . --print
 
-# Set connection timeout
-neuralmind build . --backend postgres --db-timeout 30
+# Start it by hand to see any import error. It waits for input on stdin;
+# Ctrl+C to stop.
+neuralmind-mcp
 ```
+
+`doctor` always exits 0, so read its output rather than its exit code.
 
 ---
 
@@ -584,7 +597,8 @@ Use both together for maximum productivity.
 
 - 📖 [GitHub Discussions](https://github.com/dfrostar/neuralmind/discussions)
 - 🐛 [Report Issues](https://github.com/dfrostar/neuralmind/issues)
-- 📧 Email: contact@company.com
+- 📧 Email: hello@neuralmind.uk
+- 🔒 Security issues: report privately, as described in [SECURITY.md](https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md#reporting-a-vulnerability)
 
 ### "How do I report a bug?"
 

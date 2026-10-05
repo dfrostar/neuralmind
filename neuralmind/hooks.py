@@ -51,7 +51,8 @@ def _hook_block() -> dict:
 
     PostToolUse: Read/Bash/Grep matchers (Bash caches successful output for
         `neuralmind last`; none of them injects context — see run_hook).
-    SessionStart: warm the synapse store and run a decay tick.
+    SessionStart: warm the synapse store and run a decay tick; on a fresh
+        or cleared session, inject a recap of the previous one.
     UserPromptSubmit: inject spreading-activation neighbors as context.
     PreCompact: normalize hubs before context shrinks.
     Stop: tick the session-summary cadence from the event log.
@@ -407,9 +408,17 @@ def run_hook(action: str) -> int:
         # into the synapse layer (v0.38.0). Pure side effect — we emit nothing
         # and swallow every error so a feedback miss never disrupts the agent.
         # Opt-out via NEURALMIND_REUSE_FEEDBACK=0.
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        # Session recap: the next session's "where we left off" lists the
+        # files edited here. Independent of the reuse-feedback opt-out.
+        if file_path:
+            from .session_recap import record_edit
+
+            record_edit(
+                payload.get("cwd") or os.getcwd(), payload.get("session_id") or "", file_path
+            )
         if os.environ.get("NEURALMIND_REUSE_FEEDBACK") == "0":
             return 0
-        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
         new_code = (
             tool_input.get("new_string")
             or tool_input.get("content")
@@ -431,6 +440,15 @@ def run_hook(action: str) -> int:
         # learned associations as a markdown memory file so Claude Code's
         # auto-memory system picks it up on this very session.
         cwd = payload.get("cwd") or os.getcwd()
+        # Session recap: on a fresh or cleared session, say where the
+        # previous one left off. Emitted first; nothing below writes stdout.
+        from .session_recap import recap_for_session_start
+
+        recap = recap_for_session_start(
+            cwd, payload.get("session_id") or "", payload.get("source") or ""
+        )
+        if recap:
+            _emit_for_event("SessionStart", recap)
         if _learning_disabled():
             # NEURALMIND_NO_LEARN=1: no decay, no imports, no namespace
             # clears — only the read-only memory export.
@@ -507,6 +525,9 @@ def run_hook(action: str) -> int:
         prompt = (payload.get("prompt") or "").strip()
         if not prompt:
             return 0
+        from .session_recap import record_prompt
+
+        record_prompt(cwd, payload.get("session_id") or "", prompt)
         blocks: list[str] = []
         if os.environ.get("NEURALMIND_SYNAPSE_INJECT") != "0":
             spread = _spread_for_prompt(cwd, prompt)

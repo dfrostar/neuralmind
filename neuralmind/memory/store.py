@@ -10,16 +10,21 @@ Storage:
 - SQLite at ``<project>/.neuralmind/memory.db``
 - ``decisions`` table mirrors the ``DecisionRecord`` model
 - FTS5 virtual table over ``title + rationale`` for full-text search
+- ``decision_vectors`` caches an embedding of ``title + rationale`` per
+  decision for semantic search (``semantic.py``), filled on first search
 - Indexes on ``commit_sha``, ``status``, ``decision_type`` for fast filtering
 - WAL mode + synchronous=NORMAL for concurrent-read safety (matches the
   SynapseStore / TraceStore pattern in this codebase)
 
-Query strategy:
-- The query's words, minus stopwords, are the search terms; any term can
-  match, so a question finds what its keywords would
-- FTS5 MATCH for text search (relevance-ranked via ``bm25()``, so decisions
-  matching more of the terms rank first)
-- Fallback to LIKE-based scan when FTS5 is unavailable (old SQLite builds)
+Query strategy (``search()``; ``query()`` returns just the records):
+- ``mode="keyword"``: the query's words, minus stopwords, are the search
+  terms; any term can match, so a question finds what its keywords would.
+  FTS5 MATCH ranks by ``bm25()`` (decisions matching more of the terms rank
+  first); a LIKE scan stands in when FTS5 is unavailable (old SQLite builds)
+- ``mode="semantic"``: cosine similarity between the question and each
+  decision's embedded title + rationale, local MiniLM model (``semantic.py``)
+- ``mode="hybrid"`` (default): both rankings fused by reciprocal rank
+  fusion; keyword results alone, with a notice, when the model isn't on disk
 - Default filter excludes STALE and INVALIDATED decisions
 
 Lifecycle:
@@ -43,6 +48,7 @@ import re
 import sqlite3
 import uuid
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -51,6 +57,8 @@ from pydantic import BaseModel, Field
 
 from neuralmind.state_dir import ensure_parent_dir
 from neuralmind.storage_guard import enforce_storage_policy
+
+from . import semantic
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +221,24 @@ CREATE TABLE IF NOT EXISTS decision_fingerprints (
 );
 """
 
+# One embedding per decision for semantic search: the title + rationale as of
+# ``content_sha``, by ``model_id``. A vector whose text or model no longer
+# matches is recomputed on the next search, so amending a decision or
+# switching models never compares stale vectors. Additive, like the
+# fingerprints table; the trigger drops a decision's vector with it.
+VECTORS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS decision_vectors (
+    decision_id TEXT PRIMARY KEY,
+    model_id TEXT NOT NULL,
+    content_sha TEXT NOT NULL,
+    dim INTEGER NOT NULL,
+    vector BLOB NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS decisions_vectors_ad AFTER DELETE ON decisions BEGIN
+    DELETE FROM decision_vectors WHERE decision_id = old.id;
+END;
+"""
+
 # Meta table row for schema version tracking (shared with other .neuralmind modules).
 META_SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -321,6 +347,38 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _decode_vector(blob: Any, dim: Any) -> Any | None:
+    """A cached decision vector as float32, or None when the row can't be trusted.
+
+    None for a missing or non-bytes value, a byte length that isn't ``dim``
+    float32s, or a non-finite value; the caller re-embeds instead of failing
+    the search or ranking a damaged vector.
+    """
+    import numpy as np
+
+    if not isinstance(blob, (bytes, bytearray, memoryview)) or not isinstance(dim, int):
+        return None
+    if dim <= 0 or len(blob) != dim * np.dtype(np.float32).itemsize:
+        return None
+    vector = np.frombuffer(blob, dtype=np.float32)
+    return vector if bool(np.isfinite(vector).all()) else None
+
+
+@dataclass
+class DecisionSearch:
+    """What a search returned, and which mode produced it.
+
+    ``mode`` is the mode that ranked ``records``; it differs from
+    ``requested`` only when hybrid search fell back to keyword results, and
+    then ``notice`` says why.
+    """
+
+    records: list[DecisionRecord]
+    mode: str
+    requested: str
+    notice: str | None = None
+
+
 # --------------------------------------------------------------------------- #
 # DecisionStore
 # --------------------------------------------------------------------------- #
@@ -337,13 +395,18 @@ class DecisionStore:
     Args:
         project_path: Root of the project. The DB lives at
             ``<project_path>/.neuralmind/memory.db``.
+        embedder: What semantic and hybrid search embed with. Defaults to
+            the local MiniLM model, loaded on the first such search.
     """
 
-    def __init__(self, project_path: str) -> None:
+    def __init__(
+        self, project_path: str, *, embedder: semantic.DecisionEmbedder | None = None
+    ) -> None:
         self.project_path = Path(project_path).resolve()
         enforce_storage_policy(self.project_path)
         db_path = self.project_path / ".neuralmind" / "memory.db"
         self.db_path: Path = db_path
+        self._embedder = embedder
         ensure_parent_dir(self.db_path)
         self._init_schema()
 
@@ -380,6 +443,7 @@ class DecisionStore:
             conn.executescript(META_SCHEMA)
             conn.executescript(DECISIONS_SCHEMA)
             conn.executescript(FINGERPRINTS_SCHEMA)
+            conn.executescript(VECTORS_SCHEMA)
             # FTS5 may not be available in all SQLite builds (some minimal
             # Docker / Alpine images ship without it). Fail open: skip FTS
             # if the CREATE VIRTUAL TABLE raises, and the query() method
@@ -828,14 +892,40 @@ class DecisionStore:
         limit: int = 5,
         status: str | None = "ACTIVE",
         min_score: float = 0.0,
+        mode: str | None = None,
     ) -> list[DecisionRecord]:
-        """Search decisions by full-text query.
+        """Search decisions by keywords, a question, or meaning.
 
-        The query's words, minus stopwords ("how", "do", "the", …), are
-        matched against title and rationale, and a decision needs only one
-        of them, so a question works as well as keywords. Uses FTS5 when
-        available (relevance-ranked via bm25(), so decisions matching more
-        of the words rank first), falling back to a LIKE scan otherwise.
+        ``search()`` without the report of which mode ran; see it for the
+        modes, arguments and errors.
+        """
+        return self.search(text, limit=limit, status=status, min_score=min_score, mode=mode).records
+
+    def search(
+        self,
+        text: str,
+        limit: int = 5,
+        status: str | None = "ACTIVE",
+        min_score: float = 0.0,
+        mode: str | None = None,
+    ) -> DecisionSearch:
+        """Search decisions' titles and rationales; say which mode ranked them.
+
+        Modes:
+
+        - ``keyword``: the query's words, minus stopwords ("how", "do",
+          "the", …), are matched against title and rationale, and a
+          decision needs only one of them, so a question works as well as
+          keywords. FTS5 ranks by bm25() (decisions matching more of the
+          words rank first); a LIKE scan stands in without FTS5.
+        - ``semantic``: decisions ranked by cosine similarity between the
+          question and their embedded title + rationale (local MiniLM
+          model); those below ``semantic.MIN_SIMILARITY`` are left out, so
+          a question can find a decision that shares none of its words.
+        - ``hybrid``: both rankings fused by reciprocal rank fusion. When
+          semantic ranking can't run (the model isn't on disk), keyword
+          results alone, and ``notice`` says why.
+
         By default only ACTIVE decisions are returned; pass ``status=None``
         (or ``"ALL"``) to include all statuses.
 
@@ -846,23 +936,56 @@ class DecisionStore:
                 case-insensitive), or None / "ALL" to include all.
             min_score: Minimum confidence threshold (0.0–1.0). Records below
                 this confidence are excluded.
+            mode: "keyword", "semantic" or "hybrid", case-insensitive. None
+                means ``$NEURALMIND_DECISION_SEARCH``, else
+                ``semantic.DEFAULT_MODE``.
 
         Raises:
-            ValueError: ``status`` is not a known status or "ALL".
+            ValueError: ``status`` or ``mode`` is not a known value.
+            semantic.SemanticSearchUnavailableError: ``mode`` is "semantic" and
+                semantic ranking can't run.
         """
         status = normalize_status_filter(status)
+        requested = semantic.resolve_mode(mode)
         if not text or not text.strip():
-            return []
-
+            return DecisionSearch([], requested, requested)
         text = text.strip()
-        records: list[DecisionRecord] = []
 
+        if requested == "keyword":
+            return DecisionSearch(
+                self._keyword_search(text, limit, status, min_score), "keyword", requested
+            )
+        if requested == "semantic":
+            return DecisionSearch(
+                self._semantic_search(text, limit, status, min_score), "semantic", requested
+            )
+
+        # Hybrid: fuse deeper lists than the caller asked for, so a decision
+        # ranked moderately by both signals can rise into the top `limit`.
+        pool = max(limit * 4, 20)
+        by_words = self._keyword_search(text, pool, status, min_score)
+        try:
+            by_meaning = self._semantic_search(text, pool, status, min_score)
+        except semantic.SemanticSearchUnavailableError as e:
+            return DecisionSearch(
+                by_words[:limit],
+                "keyword",
+                requested,
+                notice=f"semantic ranking unavailable ({e}); keyword results only",
+            )
+        records = {r.id: r for r in [*by_words, *by_meaning]}
+        fused = semantic.rrf([[r.id for r in by_words], [r.id for r in by_meaning]])
+        return DecisionSearch([records[i] for i in fused[:limit]], "hybrid", requested)
+
+    def _keyword_search(
+        self, text: str, limit: int, status: str | None, min_score: float
+    ) -> list[DecisionRecord]:
+        """FTS5 search, or the LIKE scan without FTS5. [] on a database error."""
         try:
             with self._connect() as conn:
                 if _fts_available(conn):
-                    records = self._query_fts(conn, text, limit, status, min_score)
-                else:
-                    records = self._query_like(conn, text, limit, status, min_score)
+                    return self._query_fts(conn, text, limit, status, min_score)
+                return self._query_like(conn, text, limit, status, min_score)
         except Exception:
             logger.exception(
                 "[memory] query(%r) failed — returning [] (agent will not see "
@@ -870,7 +993,137 @@ class DecisionStore:
                 text,
             )
             return []
-        return records
+
+    def _get_embedder(self) -> semantic.DecisionEmbedder:
+        """The embedder for semantic ranking, loaded on first use.
+
+        Raises:
+            semantic.SemanticSearchUnavailableError: it can't be loaded.
+        """
+        if self._embedder is None:
+            self._embedder = semantic.load_default_embedder()
+        return self._embedder
+
+    def _semantic_search(
+        self, text: str, limit: int, status: str | None, min_score: float
+    ) -> list[DecisionRecord]:
+        """Decisions ranked by cosine similarity to ``text``.
+
+        Embeds, in one pass, the question and any decision whose cached
+        vector is missing, out of date or unreadable, then caches the new
+        vectors. A cached vector whose length doesn't match the model's is
+        re-embedded in a second pass. [] on a database error, like keyword
+        search.
+
+        Raises:
+            semantic.SemanticSearchUnavailableError: no embedder, or embedding
+                failed.
+        """
+        embedder = self._get_embedder()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if status is not None:
+            clauses.append("d.status = ?")
+            params.append(status)
+        if min_score > 0.0:
+            clauses.append("d.confidence >= ?")
+            params.append(min_score)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        try:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    f"""SELECT d.id, d.title, d.rationale, d.commit_sha, d.files_affected,
+                               d.decision_type, d.confidence, d.status, d.author,
+                               d.created_at, d.updated_at, d.evidence,
+                               d.rejected_alternatives, d.dependency_constraints, d.tags,
+                               v.model_id, v.content_sha, v.dim, v.vector
+                        FROM decisions d
+                        LEFT JOIN decision_vectors v ON v.decision_id = d.id
+                        {where}
+                        ORDER BY d.created_at DESC""",
+                    params,
+                ).fetchall()
+        except Exception:
+            logger.exception("[memory] semantic search(%r) failed — returning []", text)
+            return []
+        if not rows:
+            return []
+
+        records = [_row_to_record(row[:15]) for row in rows]
+        texts = [semantic.decision_text(r.title, r.rationale) for r in records]
+        shas = [semantic.content_sha(t) for t in texts]
+        vectors: dict[int, Any] = {}
+        to_embed: list[int] = []
+        for i, row in enumerate(rows):
+            model_id, sha, dim, blob = row[15], row[16], row[17], row[18]
+            cached = None
+            if model_id == embedder.model_id and sha == shas[i]:
+                cached = _decode_vector(blob, dim)
+            if cached is None:
+                to_embed.append(i)
+            else:
+                vectors[i] = cached
+
+        def embed(indices: list[int], question: str | None = None) -> Any:
+            batch = [texts[i] for i in indices] + ([question] if question is not None else [])
+            try:
+                return semantic.embed_texts(embedder, batch)
+            except Exception as e:
+                logger.exception("[memory] embedding failed during decision search")
+                raise semantic.SemanticSearchUnavailableError(f"embedding failed: {e}") from e
+
+        matrix = embed(to_embed, text)
+        question = matrix[-1]
+        fresh = dict(zip(to_embed, matrix[:-1], strict=True))
+        # A cached vector that decodes but doesn't match the model's length
+        # (written by another embedder under the same id, or a damaged row
+        # whose dim was damaged with it) is a miss too.
+        wrong_size = [i for i, vector in vectors.items() if vector.shape != question.shape]
+        if wrong_size:
+            fresh.update(zip(wrong_size, embed(wrong_size), strict=True))
+        vectors.update(fresh)
+        if fresh:
+            self._cache_vectors(
+                embedder.model_id,
+                [(records[i].id, shas[i], vector) for i, vector in fresh.items()],
+            )
+
+        candidates = [(records[i].id, vectors[i]) for i in range(len(records))]
+        by_id = {r.id: r for r in records}
+        ranked = semantic.rank_by_similarity(question, candidates)
+        return [by_id[decision_id] for decision_id, _ in ranked[:limit]]
+
+    def _cache_vectors(self, model_id: str, entries: list[tuple[str, str, Any]]) -> None:
+        """Store freshly computed vectors. Best-effort: a failure costs a re-embed."""
+        try:
+            with self._connect() as conn:
+                conn.execute("BEGIN")
+                # The EXISTS guard skips a decision deleted since it was read,
+                # whose vector the delete trigger could no longer remove.
+                conn.executemany(
+                    """INSERT OR REPLACE INTO decision_vectors
+                           (decision_id, model_id, content_sha, dim, vector)
+                       SELECT ?, ?, ?, ?, ?
+                       WHERE EXISTS (SELECT 1 FROM decisions WHERE id = ?)""",
+                    [
+                        (
+                            did,
+                            model_id,
+                            sha,
+                            int(vec.shape[0]),
+                            vec.astype("float32").tobytes(),
+                            did,
+                        )
+                        for did, sha, vec in entries
+                    ],
+                )
+                conn.execute("COMMIT")
+        except Exception:
+            logger.warning(
+                "[memory] could not cache %d decision vector(s) — the next search embeds "
+                "them again",
+                len(entries),
+            )
 
     def _query_fts(
         self,

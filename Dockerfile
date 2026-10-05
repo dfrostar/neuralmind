@@ -7,15 +7,24 @@
 # Build locally:
 #   docker build -t neuralmind:dev .
 #
-# Run the MCP server against a host project (read-only mount):
-#   docker run --rm -i \
-#     -v "$PWD:/project:ro" \
-#     neuralmind:dev neuralmind-mcp /project
+# Mount the project read-write, at the same absolute path the agent uses.
+# NeuralMind writes .neuralmind/ into the project, and the MCP server appends
+# to its audit log on every tool call, so on a read-only mount every call
+# fails. `neuralmind-mcp` takes no arguments: each tool call names its own
+# project_path, which the container has to be able to resolve.
 #
-# Run the graph view, exposed on the host:
-#   docker run --rm -p 8787:8787 \
-#     -v "$PWD:/project:ro" \
-#     neuralmind:dev neuralmind serve /project --host 0.0.0.0 --no-auth
+# Build the index, then run the MCP server over stdio:
+#   docker run --rm -v "$PWD:$PWD" neuralmind:dev neuralmind build "$PWD"
+#   docker run --rm -i -v "$PWD:$PWD" neuralmind:dev neuralmind-mcp
+#
+# Run the graph view, published on the host's loopback only, token on:
+#   docker run --rm -p 127.0.0.1:8787:8787 \
+#     -v "$PWD:$PWD" \
+#     neuralmind:dev neuralmind serve "$PWD" --host 0.0.0.0 --no-browser
+#
+# The image doesn't bundle the embedding model, so each fresh container
+# downloads it on its first build. See docs/DEPLOYMENT-GUIDE.md for mounting
+# a pre-extracted model with NEURALMIND_ONNX_MODEL_DIR.
 
 ARG PYTHON_VERSION=3.12
 
@@ -35,17 +44,18 @@ COPY pyproject.toml README.md LICENSE ./
 COPY neuralmind ./neuralmind
 
 # Build the project wheel, then pre-download every transitive runtime
-# dep as a wheel (including graphifyy, which users need for `neuralmind
-# build`). Doing it here means the runtime stage installs from /wheels
-# only and never reaches PyPI — so no sdist can sneak in and need a
-# compiler we don't ship in the runtime image.
+# dep as a wheel (including graphifyy, the optional external graph
+# builder; `neuralmind build` has its own). Doing it here means the
+# runtime stage installs from /wheels only and never reaches PyPI — so no
+# sdist can sneak in and need a compiler we don't ship in the runtime image.
 RUN python -m build --wheel --outdir /wheels
 RUN pip wheel --no-cache-dir --wheel-dir /wheels /wheels/*.whl graphifyy
 
 FROM python:${PYTHON_VERSION}-slim AS runtime
 
-# Drop root for runtime. Mounted project dirs stay read-only by default;
-# .neuralmind/ state belongs in the host filesystem, not the image.
+# Drop root for runtime. .neuralmind/ state belongs in the host filesystem,
+# not the image, so the `neuralmind` user needs write access to the mounted
+# project.
 RUN useradd --create-home --shell /bin/bash neuralmind
 
 WORKDIR /home/neuralmind
