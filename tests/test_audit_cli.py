@@ -67,6 +67,26 @@ def test_cmd_audit_export_to_file(audit_trail, tmp_path):
     assert len(lines) == 3
 
 
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        ({"actor": "alice"}, 1),
+        ({"since": "2999-01-01"}, 0),
+        ({}, 3),
+    ],
+)
+def test_cmd_audit_export_to_file_reports_what_it_wrote(
+    audit_trail, tmp_path, capsys, filters, expected
+):
+    """The count used to be the whole log's size, whatever the filters kept."""
+    out = tmp_path / "out.jsonl"
+    cmd_audit_export(AuditExportArgs(tmp_path, output=out, **filters))
+
+    written = [ln for ln in out.read_text().splitlines() if ln.strip()]
+    assert len(written) == expected
+    assert f"Exported {expected} event" in capsys.readouterr().out
+
+
 def test_cmd_audit_verify_ok(audit_trail, tmp_path):
     args = AuditVerifyArgs(tmp_path)
     with patch("builtins.print") as mock_print:

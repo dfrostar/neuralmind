@@ -109,6 +109,14 @@ triggers. A file that names `identity` or `require_encrypted_storage` but
 doesn't parse is refused too; other unparseable files still read as empty, as
 in v4.6.1.
 
+## Other fixes
+
+- **`neuralmind audit export -o` reports what it wrote.** It printed the size
+  of the whole audit log, whatever `--since`, `--until`, `--category`,
+  `--action` or `--actor` kept, so a filtered export over an empty file said
+  "Exported 7 events". It now counts the records it writes, and says so when
+  none matched the filters. Export to stdout is unchanged.
+
 ## What the agent actually sees post-install
 
 Nothing, unless the project sets the new keys.
