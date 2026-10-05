@@ -88,7 +88,7 @@ NeuralMind's own [Memory Layer](../wiki/Memory-Layer.md) (v4.1+) is the
 one part of NeuralMind that's shaped like Mem0/Graphiti: a persistent
 store of discrete records (architectural decisions, not code) with
 rationale, evidence, and a confidence score, searchable by keywords or a
-question. Since v4.7.0 its default search fuses FTS5 keyword ranking with
+question. Since v4.8.0 its default search fuses FTS5 keyword ranking with
 meaning ranking from a local embedding model, by reciprocal rank fusion,
 much as mem0 combines semantic search with BM25. It finds a decision worded
 differently from the question, though on the committed synthetic eval only 9
@@ -133,7 +133,7 @@ same questions.
 | Extraction mechanism | LLM-driven (single-pass ADD extraction) | LLM-driven entity/edge extraction + dedup | Explicit — caller records decisions directly; no LLM required |
 | Invalidation | LLM re-evaluates on new input | Bi-temporal validity windows (LLM-assessed) | Deterministic rules: file-touch, commit mismatch, age, cascade |
 | Storage | Vector store + BM25 index (pluggable) | Graph DB (Neo4j/FalkorDB/Neptune) | SQLite (local file, `.neuralmind/`), decision vectors included |
-| Memory search | Semantic + BM25 + entity linking | Graph traversal + semantic + BM25 | Decisions: FTS5 keyword + local-embedding semantic, fused (v4.7.0+; keyword-only before) |
+| Memory search | Semantic + BM25 + entity linking | Graph traversal + semantic + BM25 | Decisions: FTS5 keyword + local-embedding semantic, fused (v4.8.0+; keyword-only before) |
 | Requires LLM to operate | Yes (extraction + default embeddings) | Yes (extraction/dedup) | No — indexing/embedding is local ONNX; decision memory needs no LLM at all |
 | Self-hostable, fully offline | Yes (Docker server) | Yes (Graphiti + self-hosted graph DB); Zep Cloud itself is not | Yes — everything under `.neuralmind/`, air-gap installable |
 | Team/cross-agent portability | Per-deployment store | Per-deployment graph | Git-portable: `.neuralmind-team-memory.json`, markdown export |

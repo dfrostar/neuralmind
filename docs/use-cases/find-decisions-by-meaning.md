@@ -6,12 +6,12 @@ where whoever asks "why is it like this?" isn't whoever wrote the answer down.
 
 **Primary goal:** a question finds the decision that answers it even when the
 two share no word, and you can check how often that holds on your own
-decisions (v4.7.0+).
+decisions (v4.8.0+).
 
 Decisions are written by one person, on one day, in that person's words.
 Months later an agent asks in its own: "what happens if someone steals a copy
 of our db?". The answer is on record as "Hash API tokens before storing them".
-Keyword search can't connect the two, because they share no word. From v4.7.0,
+Keyword search can't connect the two, because they share no word. From v4.8.0,
 decision search also ranks by meaning, with the embedding model NeuralMind
 already runs locally for the code index.
 
@@ -130,4 +130,4 @@ and keep the ones that miss.
   decisions go STALE when their code changes
 - [Memory Layer wiki](../wiki/Memory-Layer.md#query-decisions): every mode, flag
   and MCP argument
-- [v4.7.0 release notes](../releases/RELEASE_NOTES_v4.7.0.md)
+- [v4.8.0 release notes](../releases/RELEASE_NOTES_v4.8.0.md#decision-search-by-meaning)
