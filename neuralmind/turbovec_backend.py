@@ -131,6 +131,10 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         if db_path is None:
             db_path = str(vector_db_path(self._project_path, "turbovec"))
+        else:
+            # Relative to the project, not the CWD, so every command finds the
+            # same index (an absolute path replaces the project path here).
+            db_path = str(self._project_path / Path(db_path).expanduser())
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)
