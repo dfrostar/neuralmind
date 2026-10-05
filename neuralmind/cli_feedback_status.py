@@ -36,24 +36,9 @@ def _memory_off_message() -> str:
     """
     from . import memory
 
-    if memory.is_memory_logging_enabled():
+    reasons, steps = memory.memory_off_reasons_and_steps()
+    if not reasons:
         return ""
-    consent_path = memory.consent_file()
-    consent = memory.read_consent_sentinel()
-    reasons: list[str] = []
-    steps: list[str] = []
-    if memory.is_memory_disabled():
-        reasons.append("NEURALMIND_MEMORY=0")
-        steps.append("unset NEURALMIND_MEMORY")
-    if consent is False:
-        reasons.append(f"memory logging was declined in {consent_path}")
-        steps.append(f'set "memory_logging_enabled" to true in {consent_path}')
-    elif consent is None:
-        reasons.append("memory logging hasn't been enabled")
-        steps.append(
-            "answer yes when an interactive `neuralmind query` asks to enable memory "
-            f'logging (or write {{"memory_logging_enabled": true}} to {consent_path})'
-        )
     return (
         "No queries are recorded for feedback to adjust: query memory is off "
         f"({'; '.join(reasons)}). To turn it on, {' and '.join(steps)}; then run a query."

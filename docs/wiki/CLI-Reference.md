@@ -2945,7 +2945,7 @@ those figures are marked `(est)` in the human output. The JSON `dollar_savings`
 block makes this machine-readable too: `estimated: true`, a `basis` string, and
 `baseline_tokens_per_query`.
 
-Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
+Memory logging must be enabled: answer yes when an interactive `neuralmind query` first asks, or write `{"memory_logging_enabled": true}` to `~/.neuralmind/memory_consent.json`. `NEURALMIND_MEMORY` is on by default and only `0` changes anything, so setting it to `1` doesn't enable logging. *(v4.8.1)* With memory off, `feedback` says so and names the fix instead of "run a query first".
 
 ---
 
