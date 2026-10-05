@@ -494,17 +494,23 @@ neuralmind audit export . --format cef -o audit.cef    # for SIEM ingest
 bare date means the start of that day. `--until 2026-04-01` takes in all of
 March 31, and `--until 2026-03-31` would leave March 31 out.
 
-`audit verify` catches an edited record, or one deleted from the middle of the
-log. It passes a log that was changed at the end, because it accepts any
-record with no `sha256` as a legacy, pre-chain line:
+`audit verify` catches an edited record, a record deleted from the middle of
+the log, and, once the chain has started, any record without a `sha256` or
+with a `prev_sha256` that doesn't match the record before it. So records
+edited or appended with their hash removed fail too. It also fails on any
+line that isn't a JSON object, where search and export skip it. v4.8.0 and
+earlier accepted a record without a hash anywhere as a legacy line, skipped
+lines they couldn't parse, and never compared `prev_sha256`, so all of those
+passed.
 
-- records deleted from the end
-- the last records edited, with their `sha256` removed
-- forged records appended with no `sha256`
+Records from before the hash chain existed (written by versions before
+v0.46.2) carry no hash. `verify` accepts them only ahead of the first hashed
+record and reports how many there are; the chain doesn't cover them.
 
-It also can't detect a chain recomputed by anyone who can write the file. A
-passing check is therefore weak evidence on its own. Ship `audit export`
-output off the host, and compare against that copy.
+It can't detect records deleted from the end, or a chain recomputed by
+anyone who can write the file: the hash has no secret key. A passing check is
+therefore weak evidence on its own. Ship `audit export` output off the host,
+and compare against that copy.
 
 NeuralMind doesn't rotate or expire the log, and it has no report command:
 build compliance reports from the export.
@@ -582,8 +588,9 @@ AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
-   changed record mid-log, not changes at the end (records removed, or
-   edited or appended there without a hash) or a recomputed chain
+   changed record mid-log, a record without a hash after the chain starts,
+   and an unreadable line, not records removed from the end or a
+   recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
    Evidence: require_encrypted_storage verifies full-disk encryption and
@@ -607,7 +614,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
 | **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
-| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
 | **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios

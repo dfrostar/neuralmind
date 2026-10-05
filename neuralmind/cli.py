@@ -2748,6 +2748,7 @@ def cmd_audit_export(args):
     trail = AuditTrail(args.project_path)
 
     if args.output:
+        written = 0
         with open(args.output, "w", encoding="utf-8") as f:
             for line in trail.export(
                 format=args.format,
@@ -2758,7 +2759,12 @@ def cmd_audit_export(args):
                 until=args.until,
             ):
                 f.write(line + "\n")
-        print(f"Exported {len(trail.read_events())} events → {args.output}")
+                written += 1
+        # Count what was written, not the whole log: with filters these differ.
+        noun = "event" if written == 1 else "events"
+        print(f"Exported {written} {noun} → {args.output}")
+        if written == 0 and trail.read_events():
+            print("  No events matched the filters.")
     else:
         for line in trail.export(
             format=args.format,
@@ -2780,12 +2786,27 @@ def cmd_audit_verify(args):
         sys.exit(0 if result["ok"] else 1)
     if result["ok"]:
         print(f"✓ Audit trail integrity OK ({result['total']} events)")
+        if result.get("unchained"):
+            print(
+                f"  {result['unchained']} record(s) before the hash chain have no "
+                "sha256, so the chain doesn't cover them"
+            )
+        if result.get("continues_from"):
+            link = (
+                "its last hash matches"
+                if result.get("archive_checked")
+                else "archive not found, so the link wasn't checked"
+            )
+            print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
     else:
-        print(
-            f"✗ Audit trail tampered at line {result['first_bad_line']} "
-            f"({result['total']} events total)",
-            file=sys.stderr,
-        )
+        if result["first_bad_line"] is None:
+            print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
+        else:
+            print(
+                f"✗ Audit trail tampered at line {result['first_bad_line']} "
+                f"({result['total']} events total): {result.get('reason')}",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
 

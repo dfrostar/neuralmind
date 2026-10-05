@@ -145,17 +145,19 @@ class IRError(Exception):
 
 
 def node_community(node: dict) -> int:
-    """A graph node's community id; -1 ("no community") when absent or not a number.
+    """A graph node's community id; -1 ("no community") when absent or not a
+    finite number.
 
     graphify and hand-written graphs can carry ``"community": null``, which
-    ``node.get("community", -1)`` returns as None.
+    ``node.get("community", -1)`` returns as None. JSON parses ``1e400`` as
+    infinity, which ``int()`` rejects with OverflowError.
     """
     value = node.get("community")
     if value is None or isinstance(value, bool):
         return -1
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return -1
 
 

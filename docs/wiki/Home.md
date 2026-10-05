@@ -40,8 +40,8 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 The high- and medium-severity bugs from an end-to-end bug hunt. `install-hooks`
 and `install-mcp` no longer overwrite a config they can't parse; the Bash
-output cache redacts what the AWS CLI prints; hooks act only in a built project
-and follow the agent into subdirectories; and graph building, retrieval, the
+output cache redacts what the AWS CLI prints; hooks act only in a project that
+has `.neuralmind/` and follow the agent into subdirectories; and graph building, retrieval, the
 CLI's numbers and synapse learning get their fixes. `neuralmind audit verify`
 now fails on a record without a hash once the chain has started, on a line
 that isn't a JSON object, and on a mismatched `prev_sha256`; v4.8.0 and

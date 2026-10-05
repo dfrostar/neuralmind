@@ -119,6 +119,51 @@ neuralmind audit recent --category backend --action build
 
 Requires an initialized project with audit trail.
 
+### audit verify
+
+Check the hash chain of `.neuralmind/audit_events.jsonl`.
+
+```bash
+neuralmind audit verify [project_path] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print the result as JSON |
+
+#### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every hashed record checks out |
+| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started |
+
+#### Output
+
+`✓ Audit trail integrity OK (N events)`. Extra lines say how many records come
+before the hash chain (written by versions before v0.46.2, so the chain doesn't
+cover them), and which rotated archive the log continues, if any, and whether
+its link to that archive was checked (it can't be once the archive is pruned).
+On failure, the line number in the file and the reason go to stderr. `--json`
+prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
+`archive_checked` and `reason`. `first_bad_line` is `null` when the file can't
+be read at all.
+
+v4.8.0 and earlier accepted a record without a hash anywhere in the log,
+skipped lines they couldn't parse, and never compared `prev_sha256`. So records
+edited or appended at the end with their hash removed, and garbage appended to
+the log, passed.
+
+#### What it can't detect
+
+Records deleted from the end, or a chain recomputed by anyone who can write the
+file (the hash has no secret key). Keep an exported copy off the host with
+`neuralmind audit export . -o audit.jsonl`. See the
+[Security Guide](../SECURITY-GUIDE.md#audit-trail).
+
 ### build
 
 Build or rebuild the neural index from a knowledge graph.
@@ -332,12 +377,13 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 
 #### Type Filter *(v3.1.4+)*
 
-Filter results by node type:
+Steer the ranking toward a node type (results are ranked, not filtered, so
+other types can still appear):
 
 | Flag | Description |
 |------|-------------|
-| `--type code` | Restrict to source code only |
-| `--type docs` | Restrict to documentation only |
+| `--type code` | Rank source code first |
+| `--type docs` | Rank documentation first |
 | `--type auto` | Auto-detect intent (default) |
 
 *(v4.8.1+)* `code` and `docs` replace the detected intent before L3 is ranked.
@@ -603,7 +649,7 @@ neuralmind search <project_path> "<query>" [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--n` | 10 | Maximum number of results. *(v4.8.1+)* Must be at least 1; `0` or a negative value is a usage error (it used to return one result) |
+| `--n` | 10 | Maximum number of results. *(v4.8.2+)* Must be at least 1; `0` or a negative value is a usage error (it used to return one result) |
 | `--json`, `-j` | False | Output results as JSON |
 
 #### Output
@@ -1626,7 +1672,7 @@ neuralmind learn --json report.md      # output stats as JSON
 - Ingested documents appear in `neuralmind query` results alongside code
 - Learning from usage (synapses) still happens automatically via the synapse layer
 - For compliance/tagged ingestion, use `neuralmind learn --type cmmc`
-- *(v4.8.1+)* `neuralmind ingest` (and the `neuralmind_ingest_document` MCP
+- *(v4.8.2+)* `neuralmind ingest` (and the `neuralmind_ingest_document` MCP
   tool) skips a file inside the project whose text the code graph already
   holds, such as a Markdown file `build` indexed heading by heading, and
   reports it as already indexed (`already_indexed` in `--json`). Ingesting it
@@ -2172,9 +2218,11 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
-**Built projects only** *(v4.8.1)*: every hook action does nothing in a
-directory without `.neuralmind/`, so a `--global` install leaves repos you
-haven't run `neuralmind build` in untouched. Prompt-time recall reads an
+**Projects with `.neuralmind/` only** *(v4.8.1)*: every hook action does
+nothing in a directory without `.neuralmind/`, so a `--global` install leaves
+repos NeuralMind has never written to untouched. `neuralmind build` creates the
+directory; other commands that store state there, such as recording a
+decision, do too. Prompt-time recall reads an
 existing index and never builds one; before v4.8.1 the `UserPromptSubmit`
 hook could run a full first-time build, far past the hook timeout.
 
@@ -2362,7 +2410,7 @@ neuralmind decisions eval [--tasks 10] [--format json|md] [--output FILE] [proje
 neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [--limit 5] [--format json|md] [--output FILE]
 ```
 
-*(v4.8.1+)* `record --confidence` must be between 0 and 1 (`7` and `nan` used
+*(v4.8.2+)* `record --confidence` must be between 0 and 1 (`7` and `nan` used
 to be stored as 1.0). `restore` and `invalidate` exit 1 on an unknown id or a
 database error, where they printed a traceback or success. A `project_path`
 that doesn't exist exits 2 instead of creating an empty decision store.
@@ -2956,7 +3004,7 @@ those figures are marked `(est)` in the human output. The JSON `dollar_savings`
 block makes this machine-readable too: `estimated: true`, a `basis` string, and
 `baseline_tokens_per_query`.
 
-Memory logging must be enabled: answer yes when an interactive `neuralmind query` first asks, or write `{"memory_logging_enabled": true}` to `~/.neuralmind/memory_consent.json`. `NEURALMIND_MEMORY` is on by default and only `0` changes anything, so setting it to `1` doesn't enable logging. *(v4.8.1)* With memory off, `feedback` says so and names the fix instead of "run a query first".
+Memory logging must be enabled: answer yes when an interactive `neuralmind query` first asks, or write `{"memory_logging_enabled": true}` to `~/.neuralmind/memory_consent.json`. `NEURALMIND_MEMORY` is on by default and only `0` changes anything, so setting it to `1` doesn't enable logging. *(v4.8.2)* With memory off, `feedback` says so and names the fix instead of "run a query first".
 
 ---
 
@@ -3497,7 +3545,7 @@ renewed — issue a new one.
 |------|----------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Invalid arguments, including *(v4.8.1+)* a project path that doesn't exist |
+| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist |
 | 3 | graph.json not found |
 | 4 | Index not built (run `build` first) |
 | 5 | Database error |
