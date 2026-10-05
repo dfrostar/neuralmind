@@ -29,9 +29,9 @@ Complete command-line interface documentation for NeuralMind.
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
-  - [recap](#recap-v470)
+  - [recap](#recap-v480)
   - [install-hooks](#install-hooks)
-  - [install-hermes-plugin](#install-hermes-plugin-v470)
+  - [install-hermes-plugin](#install-hermes-plugin-v480)
   - [init-hook](#init-hook)
   - [decisions](#decisions-v410)
   - [drift](#drift-v320)
@@ -1251,6 +1251,15 @@ memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
 to (`turbovec` or `chroma`), and whether the turbovec stack is installed — so the
 per-environment default is never a silent mystery.
 
+**Security policy** and **Storage encryption** *(v4.7.0+)* report the
+[security settings](#security-settings-security-in-neuralmind-backendyaml):
+which identity mode MCP calls use and the role the current OS account gets,
+whether the policy file is group- or world-writable, and whether the project's
+volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
+mode where the OS has one. Storage encryption only fails when the project sets
+`require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
+"not required".
+
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any
 check **failed** — so you can gate a CI step or an agent's provisioning on
 `neuralmind doctor`.
@@ -2052,7 +2061,7 @@ Re-run the command yourself if you need the real value. Disable with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended — the cache lives in a plaintext
 file inside your project).
 
-### recap *(v4.7.0+)*
+### recap *(v4.8.0+)*
 
 Print the recap the next new Claude Code session in this project will start
 with, or delete the records it is built from.
@@ -2114,8 +2123,8 @@ git-ignored, so the records aren't committed; the recap itself goes into the
 agent's context, and so to your model provider with the rest of the session.
 If two sessions run in the same project, the more recently active other one
 counts as the previous session. Claude Code runs these hooks, and
-*(v4.7.0+)* Hermes-Agent records and gets the recap through
-[`install-hermes-plugin`](#install-hermes-plugin-v470), writing to the same
+*(v4.8.0+)* Hermes-Agent records and gets the recap through
+[`install-hermes-plugin`](#install-hermes-plugin-v480), writing to the same
 `.neuralmind/recaps/`, so the recap carries over between the two. Cursor,
 Cline and other MCP clients record nothing, and an agent with a shell can run
 `neuralmind recap` itself. Off-switch `NEURALMIND_SESSION_RECAP=0`; see
@@ -2132,9 +2141,9 @@ NeuralMind block, leaving any user hooks untouched):
 | Event | What runs | Purpose |
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
-| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.7.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v470) |
-| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.7.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v470) of the previous one |
-| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.7.0)* | Inject ranked synapse neighbors as `additionalContext`; record the prompt (credentials redacted) for the next session's [recap](#recap-v470) |
+| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
+| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one |
+| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
@@ -2198,7 +2207,7 @@ NEURALMIND_BYPASS=1 claude   # hooks inherit Claude Code's environment
 
 ---
 
-### install-hermes-plugin *(v4.7.0+)*
+### install-hermes-plugin *(v4.8.0+)*
 
 Install or uninstall NeuralMind's plugin for Hermes-Agent. It puts the context
 the Claude Code hooks add into every Hermes turn before the model runs, so the
@@ -2217,7 +2226,7 @@ It registers two Hermes hooks:
 
 | Hermes hook | What runs | Purpose |
 |-------------|-----------|---------|
-| `pre_llm_call` (once per turn) | Session recap on a session's first turn; spreading activation and decision context from the user's message | Returned as `{"context": ...}`, which Hermes appends to that turn's user message, not to the system prompt, so the prompt cache isn't invalidated. The same blocks Claude Code's `SessionStart` [recap](#recap-v470) and `UserPromptSubmit` recall add. Hermes counts a turn as first only when the session has no earlier messages, so a resumed session doesn't get the recap |
+| `pre_llm_call` (once per turn) | Session recap on a session's first turn; spreading activation and decision context from the user's message | Returned as `{"context": ...}`, which Hermes appends to that turn's user message, not to the system prompt, so the prompt cache isn't invalidated. The same blocks Claude Code's `SessionStart` [recap](#recap-v480) and `UserPromptSubmit` recall add. Hermes counts a turn as first only when the session has no earlier messages, so a resumed session doesn't get the recap |
 | `post_tool_call` on `write_file` and `patch` | Edited-path record, on a background thread (V4A patches included) | Note the edited file for the next session's recap and the synapse layer. A failed edit isn't recorded, and neither is a file changed through the terminal |
 
 ```bash
@@ -3556,7 +3565,7 @@ renewed — issue a new one.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
-| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.7.0+)* the Hermes plugin's |
+| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.8.0+)* the Hermes plugin's |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
@@ -3567,10 +3576,10 @@ renewed — issue a new one.
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
-| `NEURALMIND_SESSION_RECAP` | `1` | *(v4.7.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v470). |
-| `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.7.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
-| `NEURALMIND_PROJECT` | unset | *(v4.7.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. See [`install-hermes-plugin`](#install-hermes-plugin-v470). |
-| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.7.0+)* Hermes plugin: seconds to wait for NeuralMind before a turn goes ahead without its context (each recorded edit gets the same limit). See [`install-hermes-plugin`](#install-hermes-plugin-v470). |
+| `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
+| `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
+| `NEURALMIND_PROJECT` | unset | *(v4.8.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
+| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.8.0+)* Hermes plugin: seconds to wait for NeuralMind before a turn goes ahead without its context (each recorded edit gets the same limit). See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
@@ -3604,7 +3613,7 @@ renewed — issue a new one.
 | `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
 | `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
 | `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
-| `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning, decay and *(v4.7.0+)* session-recap recording, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
+| `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning, decay and *(v4.8.0+)* session-recap recording, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
 | `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`), `build` included. Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one for `ingest-content` — so this is for golden-output tests and log-sensitive CI jobs. Since v4.4.0 the `build` embedding bar shows only on a terminal, and read commands (`query`, `search`, `wakeup`, the MCP tools) print nothing on success. |
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
@@ -3655,6 +3664,42 @@ is left in place as a fallback — nothing is deleted.
 
 Run `neuralmind doctor` to see which backend the current environment resolves to
 (see the **Backend** line).
+
+### Security settings (`security:` in neuralmind-backend.yaml)
+
+The same file carries the MCP security policy. The file is read once per
+process, so restart the MCP server after changing it.
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools, and an empty mapping grants nothing. The MCP server in v4.6.0 and earlier ignored this setting |
+| `rate_limit` | `max_calls: 60`, `window_seconds: 60` | Calls allowed per actor per window. Whole numbers; `window_seconds` at least 1 |
+| `identity` *(v4.7.0+)* | `declared` | `declared`: each MCP call names its own `actor` and `role`, unauthenticated. `os`: the actor is the OS account the server runs as, read from the OS rather than environment variables, and the role comes from `users`. Stdio transport only |
+| `users` *(v4.7.0+)* | `{}` | OS account name → role, used with `identity: os` |
+| `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
+| `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless every volume holding state (the project, `.neuralmind/`, a custom `db_path`) is verified encrypted. Only `false`, `0`, `no` or `off` turns it off; a blank value counts as on |
+
+```yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  roles:
+    builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
+    reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
+  require_encrypted_storage: true
+```
+
+With `identity: os`, NeuralMind refuses every MCP call when it can't establish
+the caller: the HTTP transport is in use, the OS account can't be read, the
+account has no role, or the policy file is world-writable (POSIX). A policy file
+that names `identity` or `require_encrypted_storage` but doesn't parse is
+refused too, rather than silently ignored, and a malformed `security`,
+`roles` or `rate_limit` value refuses every call. Each refusal is written to
+`.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
+and the actor and role a call claimed are kept as `claimed_actor` and
+`claimed_role`.
 
 ---
 

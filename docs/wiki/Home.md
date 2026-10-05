@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.7.0 — A new session starts with where the last one left off; Hermes gets context without asking (October 2026)
+### v4.8.0 — A new session starts with where the last one left off; Hermes gets context without asking (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the
 previous one in the project: its first prompt, its last three, and the files it
@@ -61,8 +61,8 @@ agents. Tested with Hermes v0.21.5; if NeuralMind doesn't answer within
 `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds) the turn goes ahead without it,
 and what the context changes in Hermes's answers isn't measured. Walkthrough:
 [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md) ·
-[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v470) ·
-[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md).
+[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v480) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
 
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 
@@ -428,7 +428,7 @@ sections.
 Token-efficient retrieval plus persistent memory for AI coding agents.
 
 - **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
-- **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt; since v4.7.0, Hermes-Agent gets it with each turn too, through `neuralmind install-hermes-plugin`.
+- **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt; since v4.8.0, Hermes-Agent gets it with each turn too, through `neuralmind install-hermes-plugin`.
 
 Measured effect: **46–263× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 95% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 

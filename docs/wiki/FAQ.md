@@ -284,14 +284,16 @@ Cons: Requires infrastructure
 
 ### "Can I restrict who can use NeuralMind?"
 
-**Partly.** NeuralMind doesn't authenticate users. Who can use it is decided by
-who can run the agent that launches its MCP server (stdio, the default) and who
-can read the project's `.neuralmind/` directory.
+**Yes, by OS account.** NeuralMind has no logins of its own. Who can use it
+is decided by who can run the agent that launches its MCP server (stdio, the
+default) and who can read the project's `.neuralmind/` directory.
 
 Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
-each role can call. Callers declare their own role, so leave `admin` out of the
-policy to cap what any caller can reach. (The MCP server in v4.6.0 and earlier
-ignored `security.roles`.) See the
+each role can call. By default callers declare their own role, so leave `admin`
+out of the policy to cap what any caller can reach. Since v4.7.0,
+`security.identity: os` with a `security.users` map gives each OS account its
+own role and ignores what a call declares. (The MCP server in v4.6.0 and
+earlier ignored `security.roles`.) See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 
 ---

@@ -25,7 +25,7 @@ Covers:
 | Synapse store | `.neuralmind/synapses.db` | Indefinite (until deleted) | User-controlled, local |
 | Audit events | `.neuralmind/audit_events.jsonl` | Indefinite (until deleted) | User-controlled, local |
 | Query cache | `.neuralmind/last_output.json` | Single slot (overwritten) | 2 MB cap, atomic |
-| Session recaps (v4.7+) | `.neuralmind/recaps/*.jsonl` | Ten most recently active sessions, plus any active in the last 24 hours (older ones deleted when a fresh session starts) | Prompts credential-redacted and cut to 200 characters; `neuralmind recap --clear` deletes them |
+| Session recaps (v4.8+) | `.neuralmind/recaps/*.jsonl` | Ten most recently active sessions, plus any active in the last 24 hours (older ones deleted when a fresh session starts) | Prompts credential-redacted and cut to 200 characters; `neuralmind recap --clear` deletes them |
 | Vector index | `graphify-out/neuralmind_db/` | Indefinite (until deleted) | User-controlled, local |
 | Team memory | `.neuralmind-team-memory.json` | Indefinite (committed) | Git history preserves |
 | CI artifacts | GitHub Actions | 90 days | GitHub default |

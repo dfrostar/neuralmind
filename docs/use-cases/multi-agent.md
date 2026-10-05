@@ -79,12 +79,12 @@ for `neuralmind last`. Auto-active in every session.
 
 ```bash
 hermes mcp add  # or edit ~/.hermes/config.yaml
-neuralmind install-hermes-plugin /path/to/project   # v4.7.0+
+neuralmind install-hermes-plugin /path/to/project   # v4.8.0+
 ```
 
 With the plugin, Hermes gets NeuralMind's recall and recorded decisions on
 every turn, and the session recap on a session's first turn, without calling a
-tool *(v4.7.0+)*. Its edits are recorded in the same `.neuralmind/` as Claude
+tool *(v4.8.0+)*. Its edits are recorded in the same `.neuralmind/` as Claude
 Code's, so the recap crosses between the two. See
 [Hermes-Agent with code memory in every turn](./hermes-agent.md).
 

@@ -7,7 +7,7 @@ NeuralMind's Hermes plugin.
 
 **Primary goal:** a fresh or cleared session starts with a short recap of the
 previous one in the same project (how it started, where it stopped, which
-files it edited), so "where were we?" has an answer (v4.7.0+).
+files it edited), so "where were we?" has an answer (v4.8.0+).
 
 A new Claude Code session starts cold. NeuralMind already gave it the code it
 had learned (`SYNAPSE_MEMORY.md`, per-prompt recall), but not the work: what
@@ -31,7 +31,7 @@ is enough. Recording rides on the
 `UserPromptSubmit` and Edit/Write hooks NeuralMind already registers, the recap
 arrives through the existing `SessionStart` hook, and the hook block's version
 is unchanged. The first recap appears in the session after the first one you
-work in on v4.7.0.
+work in on v4.8.0.
 
 Hooks installed globally record no prompts in repositories NeuralMind hasn't
 built. A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused
@@ -168,8 +168,8 @@ recap is hidden, not deleted: `neuralmind recap --clear` removes them.
 
 ## Related
 
-- [Release notes v4.7.0](../releases/RELEASE_NOTES_v4.7.0.md)
-- CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v470)
+- [Release notes v4.8.0](../releases/RELEASE_NOTES_v4.8.0.md)
+- CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480)
 - [Claude Code user](./claude-code.md) — what else the hooks do in each session
 - [Hermes-Agent with code memory in every turn](./hermes-agent.md) — the recap
   and per-turn recall on Hermes

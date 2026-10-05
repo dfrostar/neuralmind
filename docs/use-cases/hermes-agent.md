@@ -7,7 +7,7 @@ skill set up and still see the agent answer without it.
 **Primary goal:** every Hermes turn arrives with the files and recorded
 decisions related to the message, and a session's first turn with a recap of
 the previous session in the project, without the agent calling a tool
-(v4.7.0+).
+(v4.8.0+).
 
 On Hermes, NeuralMind used to be something the agent had to decide to use: the
 MCP server (`neuralmind_query`, `neuralmind_wakeup` …) or the skill that runs
@@ -255,9 +255,9 @@ project's session records stay in `.neuralmind/recaps/`;
 
 ## Related
 
-- [Release notes v4.7.0](../releases/RELEASE_NOTES_v4.7.0.md#neuralmind-for-hermes-agent)
-- CLI reference: [`install-hermes-plugin`](../wiki/CLI-Reference.md#install-hermes-plugin-v470),
-  [`recap`](../wiki/CLI-Reference.md#recap-v470),
+- [Release notes v4.8.0](../releases/RELEASE_NOTES_v4.8.0.md#neuralmind-for-hermes-agent)
+- CLI reference: [`install-hermes-plugin`](../wiki/CLI-Reference.md#install-hermes-plugin-v480),
+  [`recap`](../wiki/CLI-Reference.md#recap-v480),
   [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
 - Integration guide: [Hermes-Agent](../wiki/Integration-Guide.md#hermes-agent),
   for the MCP server and the skill
