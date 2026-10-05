@@ -5085,6 +5085,46 @@ def cmd_ci_check(args):
         sys.exit(1)
 
 
+def cmd_recap(args):
+    """Print the session recap the next new Claude Code session will start with.
+
+    NeuralMind's UserPromptSubmit and Edit/Write hooks record each session's
+    prompts (credentials redacted) and edited files under
+    ``.neuralmind/recaps/``; the SessionStart hook of the next fresh or cleared
+    session injects a short recap of the most recent one. This command shows
+    that recap, or deletes the stored records with ``--clear``.
+    """
+    from .session_recap import RECAP_ENV, clear_recaps, latest_recap, recap_enabled
+
+    project_path = args.project_path or "."
+    if args.clear:
+        removed = clear_recaps(project_path)
+        print(
+            f"Removed {removed} session record(s) from {Path(project_path) / '.neuralmind' / 'recaps'}."
+        )
+        return
+    if not recap_enabled():
+        recaps_dir = Path(project_path) / ".neuralmind" / "recaps"
+        stored = 0 if recaps_dir.is_symlink() else len(list(recaps_dir.glob("*.jsonl")))
+        print(f"Session recap is off ({RECAP_ENV}=0): nothing is recorded or injected.")
+        if stored:
+            print(
+                f"{stored} session record(s) from before it was switched off are still "
+                "stored; `neuralmind recap --clear` deletes them."
+            )
+        return
+    recap = latest_recap(project_path)
+    if not recap:
+        print(
+            "No session recap to show. The Claude Code hooks record one as you "
+            "work in a project where `neuralmind build` has run (`neuralmind "
+            "install-hooks`); recaps older than NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS "
+            "(default 14) aren't shown."
+        )
+        return
+    print(recap)
+
+
 def cmd_last(args):
     """Print the most recent cached bash output (see it again without re-running).
 
@@ -5158,7 +5198,9 @@ def cmd_install_hooks(args):
                 "  Hooks active: session memory (SessionStart), prompt recall "
                 "(UserPromptSubmit), stale-decision guard (PreToolUse), reuse feedback "
                 "and the `neuralmind last` output cache (PostToolUse), session digest "
-                "(Stop, SessionEnd)"
+                "(Stop, SessionEnd), and the session recap, which records prompts "
+                "(credentials redacted) and edited files in built projects "
+                "(NEURALMIND_SESSION_RECAP=0 turns it off)"
             )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
             print(
@@ -7457,11 +7499,30 @@ def build_parser() -> argparse.ArgumentParser:
     last_p.add_argument("--json", "-j", action="store_true")
     last_p.set_defaults(func=cmd_last)
 
+    # recap command — what the next new session's "where we left off" will say
+    recap_p = subparsers.add_parser(
+        "recap",
+        help="Show the session recap the next new Claude Code session starts "
+        "with, or delete the stored session records",
+    )
+    recap_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root containing .neuralmind/recaps/ (default: current dir)",
+    )
+    recap_p.add_argument(
+        "--clear",
+        action="store_true",
+        help="Delete every stored session record for this project",
+    )
+    recap_p.set_defaults(func=cmd_recap)
+
     # install-hooks command — Claude Code lifecycle integration
     hooks_p = subparsers.add_parser(
         "install-hooks",
         help="Install/uninstall NeuralMind's Claude Code hooks (session memory, "
-        "prompt recall, stale-decision guard, Bash output cache)",
+        "session recap, prompt recall, stale-decision guard, Bash output cache)",
     )
     hooks_p.add_argument(
         "project_path",
