@@ -808,3 +808,11 @@ class TestRelativePathGuard:
     def test_absolute_path_never_hints(self, tmp_path):
         out = tool_stats(str(tmp_path))
         assert "hint" not in out
+
+    def test_stats_dot_reports_the_directory_name(self, temp_project, tmp_path, monkeypatch):
+        """``project`` was "" for ".": Path(".").name is empty."""
+        monkeypatch.chdir(temp_project)
+        assert tool_stats(".")["project"] == temp_project.resolve().name
+        # The unindexed-cwd hint payload names it too.
+        monkeypatch.chdir(tmp_path)
+        assert tool_stats(".")["project"] == tmp_path.resolve().name

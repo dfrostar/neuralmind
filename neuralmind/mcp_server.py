@@ -247,19 +247,21 @@ def tool_build(project_path: str, force: bool = False) -> dict[str, Any]:
 
 def tool_stats(project_path: str) -> dict[str, Any]:
     """Get index statistics for a project."""
+    # The resolved directory's name: Path(".").name is "".
+    project_name = Path(project_path).resolve().name
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         # Keep the documented stats contract (built: false, no exception) so
         # the SKILL.md prerequisite-check flow still works — but say *why*.
-        return {"project": Path(project_path).name, "built": False, "hint": hint}
+        return {"project": project_name, "built": False, "hint": hint}
     mind = get_mind(project_path, auto_build=False)
     try:
         stats = mind.embedder.get_stats()
-        stats["project"] = Path(project_path).name
+        stats["project"] = project_name
         stats["built"] = stats.get("total_nodes", 0) > 0
         return stats
     except Exception as e:
-        return {"project": Path(project_path).name, "built": False, "error": str(e)}
+        return {"project": project_name, "built": False, "error": str(e)}
 
 
 def tool_health(project_path: str) -> dict[str, Any]:

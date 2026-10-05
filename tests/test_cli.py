@@ -414,6 +414,22 @@ class TestCLIStats:
         assert "built" in stats
         assert isinstance(stats["built"], bool)
 
+    def test_cmd_stats_dot_names_the_directory(self, temp_project, capsys, monkeypatch):
+        """`neuralmind stats .` printed "Project: " — Path(".").name is empty."""
+        from neuralmind.cli import cmd_stats
+
+        monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+        monkeypatch.chdir(temp_project)
+        args = MagicMock()
+        args.project_path = "."
+        args.json = False
+        cmd_stats(args)
+        assert f"Project: {temp_project.resolve().name}\n" in capsys.readouterr().out
+
+        args.json = True
+        cmd_stats(args)
+        assert json.loads(capsys.readouterr().out)["project"] == temp_project.resolve().name
+
     def test_cmd_stats_node_count_matches_graph(self, temp_project, capsys):
         """Test cmd_stats reports correct node count for sample graph."""
         from neuralmind.cli import cmd_build, cmd_stats

@@ -2079,13 +2079,15 @@ def cmd_stats(args):
             pass
 
     mind = NeuralMind(args.project_path)
+    # The resolved directory's name: Path(".").name is "".
+    project_name = mind.project_path.name
     try:
         stats = mind.embedder.get_stats()
-        stats["project"] = Path(args.project_path).name
+        stats["project"] = project_name
         stats["built"] = stats.get("total_nodes", 0) > 0
     except Exception as e:
         stats = {
-            "project": Path(args.project_path).name,
+            "project": project_name,
             "built": False,
             "error": str(e),
         }
