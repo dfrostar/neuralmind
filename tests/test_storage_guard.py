@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import json
 import plistlib
+import re
 import sys
 from pathlib import Path
 
@@ -278,7 +279,7 @@ def only_project_encrypted(temp_project, monkeypatch):
 def test_a_custom_index_path_on_another_volume_is_refused(only_project_encrypted, tmp_path):
     from neuralmind.core import NeuralMind
 
-    with pytest.raises(StorageNotVerifiedError, match=str(tmp_path.resolve())):
+    with pytest.raises(StorageNotVerifiedError, match=re.escape(str(tmp_path.resolve()))):
         NeuralMind(str(only_project_encrypted), db_path=str(tmp_path / "index"))
 
 
@@ -306,7 +307,7 @@ def test_a_symlinked_state_dir_is_checked_where_it_points(only_project_encrypted
     elsewhere = tmp_path / "state"
     elsewhere.mkdir()
     (Path(only_project_encrypted) / ".neuralmind").symlink_to(elsewhere)
-    with pytest.raises(StorageNotVerifiedError, match=str(elsewhere.resolve())):
+    with pytest.raises(StorageNotVerifiedError, match=re.escape(str(elsewhere.resolve()))):
         enforce_storage_policy(only_project_encrypted)
 
 
