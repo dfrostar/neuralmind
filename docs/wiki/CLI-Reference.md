@@ -340,6 +340,10 @@ Filter results by node type:
 | `--type docs` | Restrict to documentation only |
 | `--type auto` | Auto-detect intent (default) |
 
+*(v4.8.0+)* `code` and `docs` replace the detected intent before L3 is ranked.
+Before v4.8.0 they re-boosted the hits after the context was built, so the
+returned context didn't change.
+
 #### Cross-Project Search *(v3.1.4+)*
 
 Query across multiple indexed projects:
@@ -2167,6 +2171,13 @@ haven't run `neuralmind build` in untouched. Prompt-time recall reads an
 existing index and never builds one; before v4.8.0 the `UserPromptSubmit`
 hook could run a full first-time build, far past the hook timeout.
 
+**Subdirectories** *(v4.8.0)*: the project is the nearest directory with
+`.neuralmind/`, starting from the payload's `cwd` (which follows the agent's
+shell) and going no higher than `$CLAUDE_PROJECT_DIR`, so the hooks keep
+working after the agent runs `cd src/auth`. Without `$CLAUDE_PROJECT_DIR`,
+only `cwd` itself counts. A payload the hooks can't use exits 0, never 1 with
+a traceback.
+
 **A `settings.json` that isn't valid JSON is refused** *(v4.8.0)*: install
 and `--uninstall` exit 1 with an error naming the file and leave it
 untouched. A trailing comma used to make the command replace the file with
@@ -2884,6 +2895,10 @@ Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
 count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
+
+Since v4.8.0 only `query` and `wakeup` events count. Earlier versions also
+counted builds, searches, MCP calls and ingestion as saved queries, and an MCP
+query twice, so totals drop after upgrading.
 
 #### Examples
 
