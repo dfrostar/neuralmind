@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -397,3 +398,21 @@ def test_a_failing_schema_extractor_skips_only_that_file(
     assert {"app_py__f_fn", "b_proto__msg_m"} <= _ids(graph)
     updated, _ = graphgen.update_files(root, graph, ["a.sql"])
     assert "app_py__f_fn" in _ids(updated)
+
+
+def test_a_skipped_schema_file_logs_no_file_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # A parser's message can quote the file it choked on; that text must not
+    # reach the log, where a secret in the spec would sit in clear text.
+    def boom(b, path, rel):
+        raise ValueError("line 3: password: hunter2-in-the-spec")
+
+    monkeypatch.setitem(graphgen._SCHEMA_EXTRACTORS, ".sql", boom)
+    root = _write(tmp_path, {"app.py": "def f(): pass\n", "a.sql": "CREATE TABLE t (id int);\n"})
+    with caplog.at_level(logging.DEBUG, logger=graphgen.logger.name):
+        graphgen.build_graph(root)
+    skipped = [r for r in caplog.records if "skipped schema file" in r.getMessage()]
+    assert [r.getMessage() for r in skipped] == ["skipped schema file a.sql (ValueError)"]
+    assert all(r.exc_info is None for r in skipped)
+    assert "hunter2" not in caplog.text

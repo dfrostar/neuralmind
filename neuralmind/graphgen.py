@@ -1379,14 +1379,18 @@ _SCHEMA_EXTRACTORS: dict[str, Any] = {
 
 def _extract_schema_file(b: _GraphBuilder, path: Path, rel: str) -> None:
     """Run ``path``'s schema extractor. A spec it can't handle is skipped
-    (logged at debug), never fatal — one odd file must not abort the build."""
+    (logged at debug), never fatal — one odd file must not abort the build.
+
+    Only the exception type is logged: a parser's message (and so its
+    traceback) can quote the file's text, which may hold a secret.
+    """
     extractor = _SCHEMA_EXTRACTORS.get(path.suffix)
     if extractor is None:
         return
     try:
         extractor(b, path, rel)
     except Exception as exc:
-        logger.debug("skipped schema file %s (%s: %s)", rel, type(exc).__name__, exc, exc_info=True)
+        logger.debug("skipped schema file %s (%s)", rel, type(exc).__name__)
 
 
 def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None = None) -> None:
