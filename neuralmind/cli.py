@@ -1487,7 +1487,7 @@ def cmd_review(args):
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
                 seen_files.add(abs_file)
-                rel = str(Path(abs_file).relative_to(project_path))
+                rel = Path(abs_file).relative_to(project_path).as_posix()
                 at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
                 if len(at_risk) >= top_k:
                     break
@@ -1495,13 +1495,13 @@ def cmd_review(args):
             pass
 
     if args.json:
-        changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+        changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
         print(
             json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
         )
         return
 
-    changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+    changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
     print(f"NeuralMind review — {project_path.name}  (diff against: {base})")
     print()
     print(f"Changed files ({len(changed_rel)}):")
