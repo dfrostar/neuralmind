@@ -482,7 +482,7 @@ def _check_security_policy(project: Path) -> Check:
             name,
             FAIL,
             f"MCP calls are refused: {policy_problem}",
-            fix="Correct security.roles or security.rate_limit.",
+            fix="Fix or remove the security setting named above, then restart the MCP server.",
         )
     settings = load_security_settings(project)
     if settings.identity == IDENTITY_INVALID:

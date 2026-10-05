@@ -36,6 +36,29 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.7.1 — Policy mistakes that meant the defaults now refuse (October 2026)
+
+Two mistakes in `neuralmind-backend.yaml` used to leave the default MCP role
+policy in force, under which any caller can declare `admin` and reach every
+tool: a file that doesn't parse, and a `security:` or `roles:` key left empty
+(what's left when every entry under it is commented out). Both now refuse every
+MCP call with `reason: "config"`. An unparseable file is refused only when it
+names a security setting, so a typo in backend tuning doesn't block the server.
+`neuralmind doctor`'s *Security policy* check names the setting to fix. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.1.md)
+and the [Security Guide](https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim).
+
+### v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage (October 2026)
+
+`security.identity: os` takes each MCP caller's identity from the OS account
+the server runs as, and its role from `security.users`, instead of trusting
+the role a call declares. `security.require_encrypted_storage: true` refuses to
+build, query, serve MCP tools or run hooks until FileVault, BitLocker or
+dm-crypt/LUKS is verified. `neuralmind doctor` reports both. Nothing changes
+for a project that doesn't set these keys. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md)
+and the [CMMC CUI enclave walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md).
+
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 
 The default backend's BM25 keyword index held only documents, so on "how does X
