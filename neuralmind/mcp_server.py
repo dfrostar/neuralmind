@@ -861,6 +861,7 @@ TOOLS = [
                 "query": {"type": "string", "description": "Search query"},
                 "n": {
                     "type": "integer",
+                    "minimum": 1,
                     "description": "Number of results to return (default: 10)",
                     "default": 10,
                 },
@@ -1298,9 +1299,10 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
     ``@server.call_tool()``; the 2.x constructor-callback API dropped that, so a
     missing required key reached the handler as a bare ``KeyError`` string.
     This restores the contract for both SDK lines: required keys, top-level
-    JSON types and ``enum`` membership, plus the value checks a schema can't
-    express (``validate_memory_arguments``: the case-insensitive decision
-    ``status`` filter). Returns a human-readable problem, or ``None`` when the
+    JSON types, ``enum`` membership and numeric ``minimum`` / ``maximum``
+    (``neuralmind_search``'s ``n`` must be at least 1), plus the value checks
+    a schema can't express (``validate_memory_arguments``: the case-insensitive
+    decision ``status`` filter). Returns a human-readable problem, or ``None`` when the
     arguments are acceptable. Unknown tools are not this function's concern
     (``handle_tool_call`` reports them).
     """
@@ -1327,6 +1329,12 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
                 return f"argument {key!r} must be of type {spec.get('type')}"
         if "enum" in spec and value not in spec["enum"]:
             return f"argument {key!r} must be one of {spec['enum']!r}"
+        # The type check above has passed, so a numeric spec has a number here.
+        if spec.get("type") in ("integer", "number"):
+            if "minimum" in spec and value < spec["minimum"]:
+                return f"argument {key!r} must be at least {spec['minimum']}"
+            if "maximum" in spec and value > spec["maximum"]:
+                return f"argument {key!r} must be at most {spec['maximum']}"
     return validate_memory_arguments(name, arguments)
 
 

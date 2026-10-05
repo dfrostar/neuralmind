@@ -379,6 +379,22 @@ class TestCLISearch:
         assert isinstance(results, list)
         assert len(results) <= 3
 
+    @pytest.mark.parametrize("bad", ["0", "-3"])
+    def test_search_n_below_one_is_a_usage_error(self, temp_project, capsys, bad):
+        """--n 0 / --n -3 used to return 1 result (the backend floors k at 1)."""
+        from neuralmind.cli import build_parser
+
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(["search", str(temp_project), "auth", f"--n={bad}"])
+        assert exc.value.code == 2
+        assert f"argument --n: must be at least 1, got {bad}" in capsys.readouterr().err
+
+    def test_search_n_one_is_accepted(self, temp_project):
+        from neuralmind.cli import build_parser
+
+        args = build_parser().parse_args(["search", str(temp_project), "auth", "--n", "1"])
+        assert args.n == 1
+
 
 class TestCLIStats:
     """Tests for CLI stats command."""

@@ -6112,6 +6112,17 @@ def _existing_project_dir(value: str) -> str:
     return value
 
 
+def _positive_int(value: str) -> int:
+    """argparse ``type=`` for a result count: an integer of at least 1."""
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from None
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {n}")
+    return n
+
+
 def _confidence_arg(value: str) -> float:
     """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
     from neuralmind.memory.store import validate_confidence
@@ -6488,7 +6499,10 @@ def build_parser() -> argparse.ArgumentParser:
     search_p = subparsers.add_parser("search", help="Direct semantic search")
     search_p.add_argument("project_path", type=_existing_project_dir)
     search_p.add_argument("query")
-    search_p.add_argument("--n", type=int, default=10)
+    # The backend floors k at 1, so --n 0 / --n -3 returned one result.
+    search_p.add_argument(
+        "--n", type=_positive_int, default=10, help="Number of results (default: 10)"
+    )
     search_p.add_argument("--json", "-j", action="store_true")
     search_p.set_defaults(func=cmd_search)
 
