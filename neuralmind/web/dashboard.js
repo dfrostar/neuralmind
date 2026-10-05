@@ -21,8 +21,10 @@
   }
 
   // Format helpers
-  function fmtNumber(n) {
-    if (n === null || n === undefined) return '—';
+  function fmtNumber(value) {
+    // Coerced, so a non-numeric value from the API can't pass through as markup.
+    const n = Number(value);
+    if (value === null || value === undefined || !Number.isFinite(n)) return '—';
     if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
@@ -44,8 +46,9 @@
     }
   }
 
-  function fmtRatio(r) {
-    if (!r) return '—';
+  function fmtRatio(value) {
+    const r = Number(value);
+    if (!r || !Number.isFinite(r)) return '—';
     return r.toFixed(1) + '×';
   }
 
@@ -196,7 +199,7 @@
         .map(e => `
           <div class="list-item">
             <span class="list-label">${escapeHtml(e.a)} → ${escapeHtml(e.b)}</span>
-            <span class="list-meta">weight ${e.weight} · count ${e.count}</span>
+            <span class="list-meta">weight ${escapeHtml(e.weight)} · count ${escapeHtml(e.count)}</span>
           </div>
         `).join('');
     }
@@ -234,7 +237,7 @@
           <div class="list-item">
             <span class="list-label">${escapeHtml(e.source || e.action)}</span>
             <span class="list-meta">
-              ${escapeHtml(e.framework || '—')} · ${e.node_count} nodes · ${fmtTimestamp(e.timestamp)}
+              ${escapeHtml(e.framework || '—')} · ${escapeHtml(e.node_count)} nodes · ${fmtTimestamp(e.timestamp)}
             </span>
           </div>
         `).join('');
@@ -349,11 +352,11 @@
         const labels = (c.top_labels || []).join(', ');
         return `
           <div class="community-row">
-            <span class="community-id">CID ${c.id}</span>
+            <span class="community-id">CID ${escapeHtml(c.id)}</span>
             <div class="community-bar-wrap">
               <div class="community-bar" style="width: ${pct}%"></div>
             </div>
-            <span class="community-size">${c.size}</span>
+            <span class="community-size">${escapeHtml(c.size)}</span>
             <span class="community-labels" title="${escapeHtml(labels)}">${escapeHtml(labels)}</span>
           </div>
         `;
@@ -367,12 +370,13 @@
     if (el) el.textContent = text;
   }
 
-  // Utility: escape HTML
-  function escapeHtml(s) {
-    if (!s) return '';
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
+  // Utility: escape a value for element text *and* quoted attribute values.
+  // The textContent → innerHTML trick left quotes alone, so a label inside
+  // title="..." could close the attribute and add its own (onmouseover=...).
+  const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
   }
 
   // Update timestamp display
