@@ -1397,9 +1397,12 @@ def cmd_review(args):
     base = getattr(args, "base", None) or "HEAD"
     top_k = int(getattr(args, "top_k", 10))
 
-    # Get changed files from git
+    # Get changed files from git. git prints paths relative to the repository
+    # root; ``--relative`` with the ``.`` pathspec limits the diff to the
+    # project and prints paths relative to it, so a project in a subdirectory
+    # of a larger repository joins them correctly and ignores the rest.
     try:
-        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", "--relative", base, "--", "."]
         changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         changed_files = [
             str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1407,7 +1410,17 @@ def cmd_review(args):
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
-            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            cmd = [
+                "git",
+                "-C",
+                str(project_path),
+                "diff",
+                "--cached",
+                "--name-only",
+                "--relative",
+                "--",
+                ".",
+            ]
             changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             changed_files = [
                 str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
