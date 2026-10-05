@@ -950,3 +950,85 @@ def test_T10_exact_label_match_weight(tmp_path):
     with s._connect() as conn:
         weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
     assert weight == 0.40
+
+
+# --------------------------------------------------------------------------- #
+# Decay never raises a weight (LTP floor only holds edges at/above it)
+# --------------------------------------------------------------------------- #
+
+
+def _raw_edge(s, a, b, namespace="personal"):
+    with s._connect() as conn:
+        return conn.execute(
+            "SELECT weight, activation_count FROM synapses "
+            "WHERE node_a = ? AND node_b = ? AND namespace = ?",
+            (a, b, namespace),
+        ).fetchone()
+
+
+@pytest.mark.parametrize("namespace", ["personal", SHARED_NAMESPACE])
+@pytest.mark.parametrize("learned_half_life", [True, False])
+def test_decay_does_not_lift_penalized_ltp_edge_back_to_floor(
+    tmp_path, namespace, learned_half_life
+):
+    """An LTP edge penalized below LTP_FLOOR must stay below it on decay.
+
+    The floor protects an established association from *fading*; it must
+    not undo an explicit penalty. Decay is one-way: it never raises a weight.
+    """
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["a", "b"], now=now, namespace=namespace)
+    if not learned_half_life:
+        with s._connect() as conn:
+            conn.execute("UPDATE synapses SET half_life_days = NULL")
+    s.penalize(["a", "b"], penalty=1.0, namespace=namespace)
+    assert _raw_edge(s, "a", "b", namespace) == (0.0, LTP_THRESHOLD)
+
+    s.decay(now=now)  # zero elapsed time
+    assert _raw_edge(s, "a", "b", namespace)[0] == 0.0
+
+    # Partially penalized (0.15 < floor): decays freely, never lifted to 0.2.
+    s2 = SynapseStore(tmp_path / "second.db")
+    for _ in range(LTP_THRESHOLD):
+        s2.reinforce(["a", "b"], now=now, namespace=namespace)
+    if not learned_half_life:
+        with s2._connect() as conn:
+            conn.execute("UPDATE synapses SET half_life_days = NULL")
+    s2.penalize(["a", "b"], penalty=WEIGHT_CAP - 0.15, namespace=namespace)
+    before = _raw_edge(s2, "a", "b", namespace)[0]
+    assert before == pytest.approx(0.15)
+    s2.decay(now=now + 10 * 86400)
+    after = _raw_edge(s2, "a", "b", namespace)[0]
+    assert after < before < LTP_FLOOR
+
+
+def test_decay_still_floors_ltp_edges_that_were_above_floor(tmp_path):
+    """The fix must keep the floor for edges that sit at or above it."""
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["a", "b"], now=now)
+    s.decay(now=now + 3650 * 86400)  # ten years idle
+    assert _raw_edge(s, "a", "b")[0] == pytest.approx(LTP_FLOOR)
+
+
+def test_decay_never_increases_any_weight(tmp_path):
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD + 1):
+        s.reinforce(["h", "i"], now=now)
+        s.reinforce(["j", "k"], now=now, namespace=SHARED_NAMESPACE)
+    s.reinforce(["l", "m"], now=now)
+    s.penalize(["h", "i"], penalty=0.95)
+    s.penalize(["j", "k"], penalty=0.9, namespace=SHARED_NAMESPACE)
+    sql = "SELECT node_a, node_b, namespace, weight FROM synapses"
+    with s._connect() as conn:
+        before = {(a, b, ns): w for a, b, ns, w in conn.execute(sql)}
+    for days in (0, 1, 30, 400):
+        s.decay(now=now + days * 86400)
+        with s._connect() as conn:
+            for a, b, ns, w in conn.execute(sql):
+                assert w <= before[(a, b, ns)] + 1e-12, (a, b, ns, w, before[(a, b, ns)])
+                before[(a, b, ns)] = w
