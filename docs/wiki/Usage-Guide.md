@@ -24,7 +24,7 @@
 - **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
 - **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt.
 
-Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) retrieval uses **45–261× fewer tokens than pasting every source file**, at 93.75% mean gold-file recall — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
+Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) retrieval uses **46–263× fewer tokens than pasting every source file**, at 95% mean gold-file recall — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
 
 NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 

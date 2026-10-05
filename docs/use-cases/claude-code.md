@@ -111,6 +111,8 @@ Output appended after the normal context block:
 
 The trace is the primary tool for diagnosing a retrieval that felt wrong or incomplete — it shows you exactly which clusters loaded and which search hits scored, so you know where to look.
 
+Since v4.6.0 the trace also prints the query intent L3 ranked with, and how it was decided — by keywords, by the classifier, or, with the off-by-default `NEURALMIND_INTENT_RULES=1`, by question shape (`Query intent     : code (by question shape)`) — and its hit list shows each hit's label and file instead of raw node ids. If a code question comes back with `docs` intent, that explains docs outranking code: docs intent multiplies doc hits ×2.0 and code hits ×0.7.
+
 ## Catch co-breaks before you push *(v0.39.0+)*
 
 Before opening a PR, run:
@@ -156,6 +158,25 @@ outlier elsewhere in the graph never gets blamed on your commit.
 `neuralmind init-hook .` installs this as a `pre-commit` hook automatically
 (warn-only; pass `--strict` to `init-hook` to make it block instead).
 
+## Repeat reads and stale decisions *(v4.6.0+)*
+
+Two things the hooks now do without being asked:
+
+- **A repeat read becomes a stub.** When Claude reads a file it already read
+  this session and nothing changed, the `Read` hook replaces the repeat with a
+  two-sentence note: the earlier result is still current. If Claude needs the
+  content again (say, after a long detour), it reads once more and gets the
+  whole file: a stub is never followed by another stub. Compaction and
+  `/clear` reset it, subagents are tracked separately, and reads under 2,000
+  characters always come through. Off with `NEURALMIND_READ_DEDUP=0`.
+- **Decisions retire themselves on commit.** With `neuralmind init-hook .`
+  installed (re-run it on an older checkout), every commit that changes a file
+  named in a recorded decision, after that decision was recorded, marks it
+  STALE and prints it. The next time Claude edits that file, the
+  `PreToolUse` guard says which commit moved it and how to restore it if it
+  still holds. See
+  [Keep decision memory honest across commits](./decision-memory-across-commits.md).
+
 ## Track cumulative savings *(v0.39.0+, requires NEURALMIND_MEMORY=1)*
 
 ```bash
@@ -180,7 +201,7 @@ Claude Code; prefixing one command inside a session doesn't reach them.
 
 ## Expected savings
 
-NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 45–261× smaller than pasting every source file, at 93.75% mean gold-file recall.
+NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 46–263× smaller than pasting every source file, at 95% mean gold-file recall.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory with a stale-decision guard, progressive context disclosure (93.75% mean gold-file recall at 45–261× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://docs.neuralmind.uk/about.html">
     <meta property="og:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
-    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 95% mean gold-file recall at 46–263× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
+    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 95% mean gold-file recall at 46–263× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta name="twitter:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-09-27",
+      "dateModified": "2026-10-01",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -123,7 +123,7 @@
     <section>
         <div class="container" id="tier-2-team">
             <h2>New in v1.0.0 — Team tier ships</h2>
-            <p><em>Since updated: every capability below now runs free at 1 seat under a license that auto-issues on first run, with no signup and no expiry. The Team license ($29/user/mo, 5–50 seats, annual) buys seats beyond one, priority support and an annual invoice — see <a href="https://neuralmind.uk/pricing/">pricing</a>. The original v1.0.0 announcement follows.</em></p>
+            <p><em>Since updated: every capability below now runs free at 1 seat under a license that auto-issues on first run, with no signup and no expiry. The Team license ($29/user/mo, 5–50 seats, annual) buys seats beyond one, priority support and an annual invoice — see <a href="https://neuralmind.uk/pricing/">pricing</a>. Governance settings are per user rather than per repository, there is no auto-publish, and until v4.6.0 <code>memory publish</code> recorded the scope and weight threshold without enforcing them; it enforces both now. The original v1.0.0 announcement follows.</em></p>
             <p><strong>NeuralMind Team</strong> is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. It adds four capabilities on top of the MIT core (which remains unchanged):</p>
             <ul>
                 <li><strong>Team memory governance.</strong> Per-repo enable/disable, personal/shared/both publishing scope, edge weight threshold for auto-publish. Admin-only — non-admins get <code>PermissionError</code>. Every config change logged.</li>
@@ -199,6 +199,32 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v460">
+            <h2>What&rsquo;s New in v4.6.0 &mdash; one keyword index for docs and code, and the documented features wired in</h2>
+            <h3>Retrieval ranking, measured</h3>
+            <p><strong>The default backend&rsquo;s BM25 keyword index held only documents, so on &ldquo;how does X work&rdquo; questions a doc kept taking the search slot the implementation should have had.</strong> v4.6.0 puts docs and code in one keyword index &mdash; and shipped it only after it passed a keep rule fixed in advance, on 30 questions per repository across six repositories &mdash; pre-registered and committed for the five public repositories, plus a private 383-file repository. Evidence level: reproducible on demand, not a CI gate (<code>python -m evals.retrieval.run --public-benchmark</code>; raw output in <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md"><code>bench/retrieval/</code></a>).</p>
+            <ul>
+                <li><strong>One BM25 index for docs and code, on by default</strong> &mdash; <code>neuralmind build</code> writes <code>.neuralmind/bm25_unified_index.json</code> (doc text, symbol names, file paths, docstrings) and queries fuse it; mean hit@5 <strong>72.8% &rarr; 79.4%</strong>, MRR 0.589 &rarr; 0.654, context tokens +1.1%, and one added BM25 lookup per query. <code>NEURALMIND_BM25_UNIFIED=0</code> restores v4.5.0. Run <code>neuralmind build</code> once after upgrading</li>
+                <li><strong>Public benchmark regenerated</strong> &mdash; 95% mean gold-file recall (was 93.75%), 85.71&ndash;100% per repo, 92.5% found-rate, 3 of 40 queries missed, 46&ndash;263&times; fewer tokens than pasting every source file. A bare vector-RAG baseline still leads on recall</li>
+                <li><strong>Losses, published</strong> &mdash; <code>requests</code> drops one question, <code>rich</code>&rsquo;s MRR falls 0.71 &rarr; 0.60, <code>click</code> gains a public-benchmark miss, and a private 383-file repository reaches 73% / 0.60 against a target of 80% / 0.65 &mdash; not met</li>
+                <li><strong><code>query --explain</code> shows the query intent</strong> L3 ranked with, and how it was decided; its hit list shows labels and files instead of raw ids</li>
+                <li><strong>A multi-repo retrieval eval</strong> &mdash; <code>python -m evals.retrieval.run</code> runs every flag configuration read-only against <code>requests</code>, <code>click</code>, <code>flask</code>, <code>rich</code> and this repository, plus your own with <code>--private</code>, and applies the keep rule; raw output committed in <code>bench/retrieval/</code></li>
+                <li><strong>Five ranking changes measured and not kept</strong> &mdash; per-file caps, doc-to-code hand-off, hub dampening, intent rules (alone and over the whole candidate pool) and a code-only keyword list each lost on the eval, and ship off by default behind flags</li>
+            </ul>
+            <h3>Wired in, or gone</h3>
+            <p><strong>The v4.3.4 copy review found five features that existed as modules but weren&rsquo;t connected to the running product, and relabelled them &ldquo;not yet wired in&rdquo;.</strong> v4.6.0 settles each: three are wired in, one is deleted, and one is rebuilt and stays on demand.</p>
+            <ul>
+                <li><strong>Read dedup</strong> &mdash; in Claude Code, a repeat read of an unchanged file in the same session comes back as a short stub (PostToolUse <code>updatedToolOutput</code>), and the read after a stub is always full. Tracked per session and per subagent, reset by compaction, never for reads under 2,000 characters; off with <code>NEURALMIND_READ_DEDUP=0</code>. Not benchmarked yet</li>
+                <li><strong>Decisions go stale on commit</strong> &mdash; <code>neuralmind init-hook .</code> runs <code>neuralmind decisions scan</code> after every commit: a decision whose file the commit changed after the decision was recorded goes STALE (any change counts), while the commit that lands the change a decision describes leaves it ACTIVE. The stale-decision guard now shows why, the id, and <code>decisions restore &lt;id&gt;</code></li>
+                <li><strong>Team governance enforced</strong> &mdash; <code>memory publish</code> honours the publishing scope (<code>personal</code> refuses, <code>shared</code> publishes only the team baseline) and leaves out edges below the weight threshold; <code>team governance remove-edge SOURCE TARGET</code> removes an association and retracts it in the committed bundle so teammates drop it too; <code>list-shared</code> lists shared memory; publishes, imports and reviews are audited</li>
+                <li><strong>Co-access module removed</strong> &mdash; queries already reinforce what they retrieve together; the unused module would have written duplicate edges nothing reads</li>
+                <li><strong>Cognition loop rebuilt</strong> &mdash; the old pass deleted most learned edges idle for about two days and session summaries older than 30 days. It now runs the store&rsquo;s own half-life decay plus read-dedup cleanup: idempotent, safe for cron, and still on demand, because the hooks and <code>neuralmind watch</code> already decay</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.0.md">v4.6.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/decision-memory-across-commits.md">Keep decision memory honest across commits &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/govern-team-memory.md">Govern what your team&rsquo;s agents share &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v451">
             <h2>What&rsquo;s New in v4.5.1 &mdash; decision memory answers questions, for every role</h2>
             <p><strong>Agents ask questions, and decision search required every word of one to match; the progressive-retrieval memory tools turned away every caller that hadn&rsquo;t declared <code>admin</code>.</strong> v4.5.1 fixes both.</p>
@@ -249,13 +275,13 @@
             <h2>What&rsquo;s New in v4.x &mdash; decision memory, the stale-decision guard, and lean-context modules</h2>
             <p><strong>v4 teaches NeuralMind to remember <em>why</em> code is the way it is, not just where it lives &mdash; and to warn your agent when that memory has gone stale.</strong></p>
             <ul>
-                <li><strong>v4.0.0 &mdash; lean-context memory modules.</strong> A hard per-query context budget (L3 &rarr; L2 &rarr; L1 trimming), periodic session summaries your agent can recall, and an on-demand <code>neuralmind cognition-loop</code> that reinforces, decays, promotes and prunes associations. The co-access-edge and read-dedup modules from the same release are in the source tree but not yet wired into queries or hooks.</li>
-                <li><strong>v4.1.0 &mdash; decision memory.</strong> Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives; full-text searchable. <code>neuralmind decisions record | query | audit | invalidate</code>, plus MCP tools. Invalidation is manual today &mdash; the engine that would retire decisions on commit exists but is not yet wired into the hooks.</li>
+                <li><strong>v4.0.0 &mdash; lean-context memory modules.</strong> A hard per-query context budget (L3 &rarr; L2 &rarr; L1 trimming), periodic session summaries your agent can recall, and an on-demand <code>neuralmind cognition-loop</code>. The co-access-edge and read-dedup modules from the same release weren&rsquo;t wired into queries or hooks. <em>Since updated in v4.6.0: read dedup runs in the Read hook, the co-access module was removed, and <code>cognition-loop</code> was rebuilt because its original pass deleted learned memory.</em></li>
+                <li><strong>v4.1.0 &mdash; decision memory.</strong> Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives; full-text searchable. <code>neuralmind decisions record | query | audit | invalidate</code>, plus MCP tools. Invalidation was manual at the time. <em>Since v4.6.0 the post-commit hook from <code>neuralmind init-hook</code> retires decisions whose files a commit changed.</em></li>
                 <li><strong>v4.2.0 &mdash; the stale-decision guard.</strong> Before your agent edits a file, a <code>PreToolUse</code> hook surfaces any decision governing it that has been marked stale or invalidated. Fail-open, never blocks an edit, opt out with <code>NEURALMIND_STALE_GUARD=0</code>.</li>
                 <li><strong>v4.3.0 &mdash; progressive decision retrieval.</strong> Three MCP tools let an agent scan compact decision rows first and fetch full records only for the ones it needs, plus session-boundary summary hooks.</li>
                 <li><strong>v4.3.1 &ndash; v4.3.4 &mdash; fixes.</strong> Package-layout code repos are no longer misread as book projects; dot-files such as <code>.env</code> are never ingested; <code>.gitignore</code> patterns follow git&rsquo;s semantics; synapse decay no longer compounds on repeated calls.</li>
             </ul>
-            <p>The public benchmark was regenerated at v4.3.4 with its raw data committed: <strong>93.75% mean gold-file recall (85&ndash;100% per repo) at 45&ndash;261&times; fewer tokens</strong> than pasting every source file, 4 of 40 queries missed &mdash; <a href="https://neuralmind.uk/benchmark/">see every result</a>.</p>
+            <p>The public benchmark was regenerated at v4.3.4 with its raw data committed: <strong>93.75% mean gold-file recall (85&ndash;100% per repo) at 45&ndash;261&times; fewer tokens</strong> (superseded at v4.6.0: 95%, 46&ndash;263&times;) than pasting every source file, 4 of 40 queries missed &mdash; <a href="https://neuralmind.uk/benchmark/">see every result</a>.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/tree/main/docs/releases">Release notes &rarr;</a> &middot; <a href="https://docs.neuralmind.uk/wiki/Memory-Layer.html">Memory layer guide &rarr;</a></p>
         </div>
     </section>

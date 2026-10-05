@@ -209,10 +209,11 @@ the role against its default per-tool policy (`admin`, `builder`, `reader`)
 and rate-limits each declared actor to 60 calls per 60 seconds. Any caller can
 declare `admin`.
 
-`neuralmind-backend.yaml` accepts `security.roles` and `security.rate_limit`,
-but the MCP server doesn't apply them today. It always uses the defaults, so
-leaving `admin` out of the YAML caps nothing. The controls that do hold are
-who can reach the MCP server and which directories its OS account can read.
+`security.roles` and `security.rate_limit` in `neuralmind-backend.yaml`
+replace those defaults. A role the policy doesn't list gets no tools, so
+leaving `admin` out caps what any caller can claim. (The MCP server in v4.5.1
+and earlier ignored both settings.) Who can reach the MCP server, and which
+directories its OS account can read, still decide who gets in at all.
 See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
 ### File permissions
@@ -417,8 +418,8 @@ neuralmind audit verify /path/to/project
 
 Each developer builds and queries their own index. There is no shared index
 service, and real-time cross-machine sync is roadmap-only. Committing
-`neuralmind-backend.yaml` shares backend settings, but not a role policy: the
-MCP server ignores `security.roles` ([above](#access-control)).
+`neuralmind-backend.yaml` shares backend settings and the role policy
+([above](#access-control)).
 
 Teams can optionally share learned memory through git.
 `neuralmind memory publish` writes `.neuralmind-team-memory.json` (learned
@@ -457,7 +458,7 @@ neuralmind install-mcp                   # re-register the MCP server with your 
 ## Deployment Checklist
 
 - [ ] `neuralmind-mcp` runs over stdio. The Streamable HTTP transport is not used
-- [ ] Only trusted agents can reach the MCP server: any caller can declare `admin`, and the server ignores `security.roles`
+- [ ] Only trusted agents can reach the MCP server, and `security.roles` leaves out `admin` unless you need it
 - [ ] The OS account running the agent can read only the projects it should
 - [ ] `.neuralmind/` restricted with file permissions, and the host disk encrypted
 - [ ] `neuralmind scan-for-secrets` passes before the first build

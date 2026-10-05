@@ -243,6 +243,242 @@ def test_in_memory_store_finds_dependents():
 
 
 # ------------------------------------------------------------------ #
+# Post-commit semantics (wired in via `neuralmind decisions scan`)
+# ------------------------------------------------------------------ #
+
+
+@pytest.fixture
+def repo_store(git_repo):
+    """A decision store inside the repository, as in real use.
+
+    Fingerprints resolve a decision's files against the store's project root,
+    which must be the root the scan diffs. `.neuralmind/` is excluded so
+    `git add -A` in the helpers never commits the database.
+    """
+    exclude = git_repo / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    with exclude.open("a") as f:
+        f.write(".neuralmind/\n")
+    return DecisionStore(str(git_repo))
+
+
+def test_commit_carrying_the_decision_keeps_it_active(git_repo, repo_store):
+    """Edit, record why, commit — back to back: that commit keeps it ACTIVE.
+
+    No backdating and no waiting: the fingerprint taken when the decision is
+    recorded is the blob the commit stores, however fast the steps follow.
+    """
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
+        title="Bump x",
+        rationale="x must be 22 for the new protocol",
+        commit_sha=get_current_commit(git_repo),  # CLI default: the parent
+        files_affected=["src.py"],
+    )
+    _git(git_repo, "commit", "-qam", "bump x")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
+    assert repo_store.get(rec.id).status == "ACTIVE"
+
+
+def test_edit_between_recording_and_commit_goes_stale(git_repo, repo_store):
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
+        title="Bump x", rationale="r", commit_sha="abc", files_affected=["src.py"]
+    )
+    (git_repo / "src.py").write_text("x = 333\n")  # an edit the decision never saw
+    _git(git_repo, "commit", "-qam", "bump x")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+
+
+def test_edit_after_recording_goes_stale_in_the_next_commit(git_repo, repo_store):
+    (git_repo / "src.py").write_text("x = 22\n")
+    rec = repo_store.record(
+        title="Bump x",
+        rationale="x must be 22",
+        commit_sha=get_current_commit(git_repo),
+        files_affected=["src.py"],
+    )
+    _git(git_repo, "commit", "-qam", "bump x")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
+    # A later edit the decision never saw:
+    _commit_change(git_repo, "src.py", "x = 3\n")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+    assert repo_store.get(rec.id).status == "STALE"
+
+
+def test_restore_refreshes_the_fingerprint(git_repo, repo_store):
+    rec = repo_store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _commit_change(git_repo, "src.py", "x = 3\n")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == [rec.id]
+    # Still holds for the code as it is now: restore, then commit that code.
+    (git_repo / "src.py").write_text("x = 4444\n")
+    repo_store.restore(rec.id, get_current_commit(git_repo))
+    _git(git_repo, "commit", "-qam", "x = 4444")
+    assert InvalidationEngine(str(git_repo), repo_store).scan() == []
+    assert repo_store.get(rec.id).status == "ACTIVE"
+
+
+def test_store_fingerprints_follow_the_decision(git_repo, repo_store):
+    rec = repo_store.record(
+        title="t", rationale="r", commit_sha="abc", files_affected=["src.py", "not-yet.py"]
+    )
+    assert repo_store.fingerprints(rec.id) == {"src.py": _git(git_repo, "rev-parse", "HEAD:src.py")}
+    repo_store.delete(rec.id)
+    assert repo_store.fingerprints(rec.id) == {}
+
+
+def test_blob_helpers_agree_with_git(git_repo):
+    from neuralmind.memory.invalidate import committed_blob_ids, file_blob_ids
+
+    head_blob = _git(git_repo, "rev-parse", "HEAD:src.py")
+    blobs = file_blob_ids(git_repo, ["src.py", str(git_repo / "src.py"), "missing.py"])
+    assert blobs == {"src.py": head_blob}
+    assert committed_blob_ids(git_repo, ["src.py", "gone.py"]) == {"src.py": head_blob}
+
+
+def test_decision_without_commit_anchor_goes_stale(git_repo, store):
+    """MCP-recorded decisions often carry no commit SHA."""
+    rec = store.record(title="t", rationale="r", commit_sha="", files_affected=["src.py"])
+    _commit_change(git_repo)
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_decision_anchored_at_head_is_left_alone(git_repo, store):
+    # No fingerprint here (the store isn't rooted at the repository), so only
+    # the HEAD anchor keeps it ACTIVE.
+    _commit_change(git_repo)
+    rec = store.record(
+        title="Made at HEAD",
+        rationale="r",
+        commit_sha=get_current_commit(git_repo),
+        files_affected=["src.py"],
+    )
+    assert InvalidationEngine(str(git_repo), store).scan() == []
+    assert store.get(rec.id).status == "ACTIVE"
+
+
+def test_a_failed_status_write_is_not_reported(git_repo, store, monkeypatch):
+    """A locked or corrupt store must not make `scan` claim a STALE it didn't write."""
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    monkeypatch.setattr(store, "mark_stale", lambda *_a, **_k: False)
+    _commit_change(git_repo)
+    engine = InvalidationEngine(str(git_repo), store)
+    assert engine.scan() == []
+    assert engine.last_events == []
+    assert store.get(rec.id).status == "ACTIVE"
+
+
+def test_mark_stale_reports_whether_it_wrote(store):
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    assert store.mark_stale(rec.id, "why") is True
+    assert store.mark_stale("no-such-id", "why") is False
+
+
+def test_reason_is_recorded_on_the_decision(git_repo, store):
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _commit_change(git_repo)
+    engine = InvalidationEngine(str(git_repo), store)
+    engine.scan()
+    head = get_current_commit(git_repo)
+    note = store.get(rec.id).evidence[-1]
+    assert (
+        note == f"Marked STALE: commit {head[:7]} changed src.py since this decision was recorded"
+    )
+    assert engine.last_events[0].files == ["src.py"]
+    assert engine.last_events[0].commit_sha == head
+
+
+def test_absolute_paths_in_decisions_match(git_repo, store):
+    rec = store.record(
+        title="t", rationale="r", commit_sha="abc", files_affected=[str(git_repo / "src.py")]
+    )
+    _commit_change(git_repo)
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_deleted_file_goes_stale(git_repo, store):
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _git(git_repo, "rm", "-q", "src.py")
+    _git(git_repo, "commit", "-qm", "remove src")
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_rename_counts_the_old_path(git_repo, store):
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _git(git_repo, "mv", "src.py", "renamed.py")
+    _git(git_repo, "commit", "-qm", "rename")
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_merge_commit_counts_what_it_brought_in(git_repo, store):
+    base = _git(git_repo, "rev-parse", "--abbrev-ref", "HEAD")
+    _git(git_repo, "checkout", "-qb", "feature")
+    _commit_change(git_repo, "src.py", "x = 9\n")
+    _git(git_repo, "checkout", "-q", base)
+    (git_repo / "other.py").write_text("y = 1\n")
+    _git(git_repo, "add", "-A")
+    _git(git_repo, "commit", "-qm", "unrelated")
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _git(git_repo, "merge", "-q", "--no-ff", "--no-edit", "feature")
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_project_in_a_subdirectory_uses_its_own_relative_paths(git_repo):
+    project = git_repo / "pkg"
+    project.mkdir()
+    (project / "mod.py").write_text("a = 1\n")
+    (git_repo / "README.md").write_text("readme\n")
+    _git(git_repo, "add", "-A")
+    _git(git_repo, "commit", "-qm", "add pkg")
+    store = DecisionStore(str(project))
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["mod.py"])
+    unrelated = store.record(
+        title="u", rationale="r", commit_sha="abc", files_affected=["README.md"]
+    )
+    (project / "mod.py").write_text("a = 2\n")
+    (git_repo / "README.md").write_text("changed\n")
+    _git(git_repo, "commit", "-qam", "change both")
+    assert get_changed_files(project) == ["mod.py"]
+    assert InvalidationEngine(str(project), store).scan() == [rec.id]
+    assert store.get(unrelated.id).status == "ACTIVE"
+
+
+def test_event_bus_failure_does_not_break_the_scan(git_repo, store, monkeypatch):
+    import neuralmind.event_bus as event_bus
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("bus down")
+
+    monkeypatch.setattr(event_bus, "publish", _boom)
+    rec = store.record(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    _commit_change(git_repo)
+    assert InvalidationEngine(str(git_repo), store).scan() == [rec.id]
+
+
+def test_store_without_mark_stale_uses_update_status(git_repo):
+    from neuralmind.memory.store import DecisionRecord
+
+    mem = InMemoryDecisionStore()
+    rec = DecisionRecord(title="t", rationale="r", commit_sha="abc", files_affected=["src.py"])
+    mem.add(rec)
+    _commit_change(git_repo)
+    assert InvalidationEngine(str(git_repo), mem).scan() == [rec.id]
+    assert mem.find_stale()[0].id == rec.id
+
+
+def test_root_commit_lists_its_files(tmp_path):
+    repo = tmp_path / "fresh"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    (repo / "a.py").write_text("a = 1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "root")
+    assert get_changed_files(repo) == ["a.py"]
+
+
+# ------------------------------------------------------------------ #
 # Event bus failure is non-blocking (side finding 2: the error path
 # logged ``event.id``, which InvalidationEvent doesn't have, so a failed
 # publish raised AttributeError mid-scan instead of being swallowed)

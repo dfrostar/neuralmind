@@ -75,6 +75,10 @@ so a project that sets one keeps exactly the tools it lists.
 ## Upgrade notes
 
 - No reinstall and no configuration change: `pip install -U neuralmind`.
+- **MCP error codes:** a missing index returns `index_not_built` instead of
+  `security_denied`, and `security_denied` now carries `reason` (`rbac` or
+  `rate_limit`). A client that matched `security_denied` to mean "not built"
+  needs updating.
 - If you passed `role: "admin"` only to reach the memory retrieval tools, you
   can drop it.
 - If `neuralmind decisions eval` ever ran inside one of your projects, look for

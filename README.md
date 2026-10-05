@@ -14,7 +14,7 @@
 Your agent learns your codebase the way a senior engineer would — what goes
 together, what you usually touch next — and remembers it across sessions.
 Local-first, no telemetry. Side effect: much cheaper code questions —
-**45–261× fewer tokens than pasting every source file, at 93.75% mean
+**46–263× fewer tokens than pasting every source file, at 95% mean
 gold-file recall**, on a [public 40-query benchmark](https://neuralmind.uk/benchmark/)
 that publishes every miss.
 
@@ -27,7 +27,9 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.5.1:** decision memory answers questions. `neuralmind decisions query` and the MCP decision tools match any word of a question, best match first, where every word used to be required; `neuralmind_memory_search`, `neuralmind_memory_timeline` and `neuralmind_memory_get` work for the default `builder` and `reader` roles instead of returning `security_denied`; and `neuralmind decisions eval` no longer touches your project's decisions ([release notes](docs/releases/RELEASE_NOTES_v4.5.1.md))
+> - **New in v4.6.0:** one keyword index for docs and code, on by default — so on "how does X work" questions the code that does X can win an L3 slot on keywords too, not just the README that mentions it. Measured before it shipped (reproducible on demand, not a CI gate; one of the six repos is private): mean hit@5 72.8% → 79.4% across 30 questions on each of six repos — pre-registered and committed for the five public repos, plus a private 383-file repository — and public-benchmark gold-file recall 93.75% → 95%. Losses published: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target. `query --explain` now shows the query intent L3 ranked with; five more ranking changes were measured, lost, and ship off behind flags. Run `neuralmind build` once after upgrading ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
+> - **Also new in v4.6.0:** what the docs described, the product now does. A repeat read of an unchanged file in the same Claude Code session comes back as a short stub, and the next read is always full; decisions go STALE when a commit changes their files (`neuralmind init-hook .` runs `decisions scan` after every commit); team governance is enforced on `memory publish`, and `remove-edge` retracts an association for the whole team. The unused co-access module is gone, and `cognition-loop` was rebuilt so it no longer deletes learned memory ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
+> - **v4.5.1:** decision memory answers questions. `neuralmind decisions query` and the MCP decision tools match any word of a question, best match first, where every word used to be required; `neuralmind_memory_search`, `neuralmind_memory_timeline` and `neuralmind_memory_get` work for the default `builder` and `reader` roles instead of returning `security_denied`; and `neuralmind decisions eval` no longer touches your project's decisions ([release notes](docs/releases/RELEASE_NOTES_v4.5.1.md))
 > - **v4.5.0:** numbers measured on your project. `neuralmind eval .` scores retrieval against the questions and gold files in your `.neuralmind.eval.yaml` (hit@1 / hit@5 / MRR, with a history); every reduction ratio divides by the measured size of your code instead of a fixed 50K guess; queries can be read-only (`--no-learn`, MCP `learn: false`, `NEURALMIND_NO_LEARN=1`) so evals never train on their own test; and the index covers what git covers — `.gitignore` is honoured ([release notes](docs/releases/RELEASE_NOTES_v4.5.0.md))
 > - **v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
 >
@@ -100,7 +102,8 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 
 | Evidence | Where it's measured | Result |
 |----------|---------------------|--------|
-| **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **45–261× fewer tokens** than pasting every source file, at **93.75% mean gold-file recall** (85–100% per repo) |
+| **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **46–263× fewer tokens** than pasting every source file, at **95% mean gold-file recall** (85.71–100% per repo) |
+| **Retrieval eval (v4.6.0)** — reproducible on demand, not a CI gate | 30 questions × 5 public repos (`requests`, `click`, `flask`, `rich`, this repo; pre-registered, committed) + 1 private 383-file repo (`pip install -e . tiktoken`, then `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark`; raw output in [`bench/retrieval/`](bench/retrieval/)) | mean hit@5 **72.8% → 79.4%** (75.3% → 80.7% on the five public repos alone) for one BM25 index over docs and code. Losses: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target |
 | **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | the build fails below **4.0×**; measured **5.1×** at v4.3.4 |
 | **Field reports** — `neuralmind benchmark .` | real private repos, before v4.5.0, against the fixed 50K-token estimate the CLI then used (it now divides your measured code) | **12–50×** typical range |
 
@@ -136,45 +139,77 @@ Periodic session digests (every 25 tool calls) capture what was done, key decisi
 neuralmind status .  # shows recent summaries
 ```
 
-### 5. Code graph traversal edges and read dedup (v3.13.0+, not yet wired in)
+### 5. Read dedup for repeat reads (v4.6.0+)
 
-The `graph_traversal` (co-access edges between files read together) and
-`read_dedup` (content-hash stubs for re-reads of unchanged files, plus preloading
-of related files) modules ship in the source tree, but nothing in the query path
-or the hooks calls them yet — so they do not affect what your agent sees today.
-They are listed here so the v3.13.0 release notes don't read as a promise the
-running product keeps.
+When your agent reads a file it already read in this Claude Code session and
+the content hasn't changed, the Read hook replaces the repeat with a short stub
+that says so: the earlier result is still current. The next read of that file
+always goes through in full, so an agent whose earlier copy has left its
+context gets it back by reading again. Reads are tracked per session and per
+subagent, keyed on the exact text and range returned. A new, resumed, cleared
+or compacted session starts fresh. Reads under 2,000 characters are never
+stubbed.
 
-### 6. Cognition loop (v3.13.0+)
+It uses Claude Code's PostToolUse `updatedToolOutput`, keeping the Read tool's
+own output shape. Claude Code ignores a replacement that doesn't match and
+delivers the original read, so a shape change on Claude Code's side means no
+dedup rather than a broken read. MCP-only agents have no PostToolUse hook and
+are unaffected. Off with
+`NEURALMIND_READ_DEDUP=0`. **Not benchmarked yet**, so no savings figure here.
 
-`neuralmind cognition-loop` runs a knowledge-consolidation pass on demand:
-1. Reinforces co-access edges from recent queries
-2. Decays unused edges
-3. Consolidates knowledge (promotes frequently co-activated clusters to LTP)
-4. Prunes stale data (old summaries, dormant synapses)
+The v3.13 co-access module (`graph_traversal`) was removed rather than wired
+in: every query already strengthens the edges between the results it returns
+together, and the module's copies went to a namespace recall never read. The
+"preload related files" idea it described was never built.
+
+### 6. Cognition loop (on demand; rebuilt in v4.6.0)
+
+`neuralmind cognition-loop .` runs one maintenance pass over the learned
+memory: the synapse store's half-life decay (it charges only the time since the
+last decay, so running it often never decays anything twice) and cleanup of
+expired read-dedup rows.
 
 ```bash
-neuralmind cognition-loop .  # run a pass now
-# Nothing schedules it for you — add a cron entry if you want it periodic
+neuralmind cognition-loop .   # run a pass now; safe to put in cron
 ```
 
-### 7. Decision memory + stale-decision guard (v4.1.0+)
+Nothing schedules it, by design: Claude Code's `session-start` hook already
+decays at every session start, and `neuralmind watch` every 10 minutes. Use it
+when you run neither, for example with an MCP-only client.
+
+**A miss, published:** before v4.6.0 this command ran its own SQL that deleted
+most learned edges idle for more than about two days, replayed recent queries
+into edges recall never read, and deleted session summaries older than 30
+days. If you ran it, `neuralmind memory reset --namespace traversal` clears the
+leftover rows.
+
+### 7. Decision memory + stale-decision guard (v4.1.0+; automatic invalidation v4.6.0+)
 
 Store architecture decisions with rationale, evidence, affected files and the
-commit they came from (`neuralmind decisions record`), search them
-(`neuralmind decisions query`), and retire one when the code moves on
-(`neuralmind decisions invalidate`). Before your agent edits a file, a
-`PreToolUse` hook surfaces any decision governing it that has been marked stale
-or invalidated. Invalidation is manual today: the engine that would retire
-decisions automatically on commit exists but is not yet wired into the hooks.
+commit they came from (`neuralmind decisions record`), and search them
+(`neuralmind decisions query`). The commit history retires them for you: the
+post-commit hook from `neuralmind init-hook .` runs `neuralmind decisions scan`,
+which marks a decision STALE when the commit changed one of its files after the
+decision was recorded. Any change counts; there's no diff analysis. The commit
+that lands the change a decision describes leaves it ACTIVE.
+
+Before your agent edits a file, a `PreToolUse` hook surfaces any decision
+governing it that is STALE or INVALIDATED, with the reason, the decision's id,
+and `neuralmind decisions restore <id>` for one that still holds. Re-run
+`neuralmind init-hook .` on an existing checkout to pick up the scan. Pulls and
+rebases don't run post-commit hooks, so a decision whose files changed only in
+pulled commits stays ACTIVE until one of your own commits touches them.
+
 Search takes keywords or a question: any word can match, and decisions matching
 more of the words rank first (v4.5.1+). `neuralmind decisions eval --queries FILE`
 scores it against questions with known answers; the
 [Memory Layer wiki](docs/wiki/Memory-Layer.md#eval-harness) has the results.
 
+Walkthrough: [Keep decision memory honest across commits](docs/use-cases/decision-memory-across-commits.md).
+
 ### 8. Finds the right code (not just less of it)
 
-**93.75% mean gold-file recall (85–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
+**95% mean gold-file recall (85.71–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
 ### 9. Answer grounding vs. naive truncation (currently a loss)
 
@@ -209,6 +244,7 @@ keeps what the agent needs.
 | Set up Claude Code hooks | [Claude Code walkthrough](docs/use-cases/claude-code.md) |
 | Catch code that drifts from its own patterns before it ships | [Review before push](docs/use-cases/review-before-push.md) |
 | Measure savings on my own repo | [Benchmark your repo](docs/use-cases/benchmark-your-repo.md) |
+| Test a ranking change on my repo before trusting it | [A/B-test a ranking change](docs/use-cases/ab-test-a-ranking-change.md) |
 | Always-on synapse learning (24/7) | [Always-on](docs/use-cases/always-on.md) |
 | Run across multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Deploy in regulated/offline environments | [Air-gapped](docs/use-cases/air-gapped.md) |
@@ -292,6 +328,20 @@ context — and the index covers what git covers. `benchmark` prints the old
 fixed-50K ratio beside it, so older numbers stay comparable. Walkthrough:
 [Measure retrieval on your own repo](docs/use-cases/measure-retrieval-on-your-repo.md).
 
+### Test a ranking change before you trust it *(v4.6.0+)*
+
+```bash
+neuralmind build .                                         # writes the v4.6.0 docs + code keyword index
+NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0 ranking, same questions
+neuralmind eval .                                          # v4.6.0 ranking
+NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default research flag
+```
+
+Every ranking flag is read at query time, so one build serves every variant.
+v4.6.0's own default was chosen this way, across six repos and a keep rule
+fixed in advance — raw output in [`bench/retrieval/`](bench/retrieval/README.md).
+Walkthrough: [A/B-test a ranking change on your own repo](docs/use-cases/ab-test-a-ranking-change.md).
+
 ### Index prose, not just code *(v3.4.0+)*
 
 A book, a docs tree, a research folder — `ingest-content` indexes a corpus of
@@ -364,7 +414,7 @@ The fixture is intentionally tiny (~500 lines) — it runs in CI as a
 regression gate. Before v4.5.0, `neuralmind benchmark` reported **12–50×** on
 real repos against a fixed 50K-token estimate; it now divides your measured
 code, so the ratio grows with the repo. The public benchmark measures
-**45–261×** against every source file
+**46–263×** against every source file
 ([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
 Then get your own number:
@@ -388,6 +438,8 @@ neuralmind benchmark .
   you work.
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
+- **Read dedup.** In Claude Code, a repeat read of an unchanged file comes back
+  as a short stub instead of the whole file again; the next read is always full.
 - **`neuralmind last`.** The Bash hook caches the latest successful command's
   output, credentials redacted, so it can be printed again without re-running
   the command. A failing command fires a different hook event and isn't
@@ -395,6 +447,10 @@ neuralmind benchmark .
 - **Team memory.** `neuralmind memory publish` writes a learned-weights
   bundle (no source code); commit it and teammates' agents inherit it on
   their next session — a fresh clone starts with the team's earned intuition.
+  With team governance set up, publish honours the admin's scope and weight
+  threshold, `team governance remove-edge` retracts an association for every
+  teammate, and each publish, import and review is audited
+  ([walkthrough](docs/use-cases/govern-team-memory.md)).
 - **Commit-time drift guard.** `neuralmind drift` reads your staged diff,
   maps changed lines to graph symbols, and flags one that skips a pattern a
   strong majority of its siblings share — before it ships, not after a
@@ -433,7 +489,7 @@ Measured, not marketed. The fixture numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`; the public benchmark reproduces on
 demand with `python -m evals.public.run`, raw per-query data committed:
 
-- **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file on the public benchmark — 4 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
+- **85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting every source file on the public benchmark — 3 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
 - **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the fixed 50K-token estimate the CLI used before v4.5.0
@@ -492,7 +548,9 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 `NEURALMIND_SYNAPSE_INJECT=0` (skip prompt-time recall),
 `NEURALMIND_SYNAPSE_EXPORT=0` (skip memory export),
 `NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import),
-`NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard). All fail-open.
+`NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard),
+`NEURALMIND_READ_DEDUP=0` (never stub a repeat read),
+`NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan). All fail-open.
 
 ---
 
@@ -510,6 +568,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
+| Read the latest release | [v4.6.0 release notes](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 

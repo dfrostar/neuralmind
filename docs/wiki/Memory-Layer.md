@@ -1,12 +1,12 @@
 # Memory Layer
 
-The Memory Layer gives agents persistent, queryable decision memory: every architectural decision is recorded with its rationale, evidence, and the git commit where it was made — and is automatically invalidated when the code it describes changes.
+The Memory Layer gives agents persistent, queryable decision memory: every architectural decision is recorded with its rationale, evidence, and the git commit where it was made — and goes stale when a commit changes the code it describes (v4.6.0+, through the post-commit hook from `neuralmind init-hook`).
 
 ## Overview
 
 - **Storage:** SQLite (`.neuralmind/memory.db` in your project root), created on first use
 - **Search:** FTS5 keyword search over titles and rationales, prefix-matched. Common words (how, do, the…) are dropped, any remaining word can match, and bm25 ranks decisions that match more of the words first, so a question works as well as keywords. Evidence, tags and rejected alternatives are stored and returned with each record, but search doesn't look at them yet.
-- **Invalidation:** file-touch, commit mismatch, and cascade rules — decisions referencing changed files go stale automatically
+- **Invalidation:** file-touch and cascade rules, run after every commit by `neuralmind decisions scan` (the `init-hook` post-commit hook, v4.6.0+) — decisions whose files a commit changed after they were recorded go STALE
 - **Access:** CLI (`neuralmind decisions`), MCP tools (7), and Python API
 
 ## CLI Reference
@@ -62,6 +62,17 @@ neuralmind decisions amend <decision-id> [--rationale TEXT] [--evidence "ref"] [
 neuralmind decisions invalidate <decision-id> --reason "why"
 neuralmind decisions restore <decision-id> [--commit SHA]
 ```
+
+### Scan the last commit *(v4.6.0+)*
+
+```bash
+neuralmind decisions scan [project_path] [--quiet] [--json]
+```
+
+Marks STALE every decision whose files the `HEAD` commit changed after the
+decision was recorded. The post-commit hook installed by `neuralmind init-hook`
+runs it after every commit (re-run `init-hook` on an older checkout). See
+[Invalidation semantics](#invalidation-semantics).
 
 ### Export
 
@@ -146,7 +157,10 @@ for compatibility.
 ## Invalidation Semantics
 
 - `invalidate()` sets status to `INVALIDATED` (not `STALE`) and appends the reason to the decision's evidence
-- Invalidation is **file-scoped**: a commit mismatch only invalidates decisions whose `files_affected` include the changed files — untouched decisions stay active even on commit mismatch
+- **Automatic staleness (v4.6.0+):** `neuralmind decisions scan` (run by the `init-hook` post-commit hook) diffs `HEAD` against its first parent, relative to the project. A decision whose `files_affected` includes a changed file goes **STALE**, with `Marked STALE: commit <sha> changed <files> since this decision was recorded` appended to its evidence; dependents cascade. Any change counts — no diff analysis
+- **The commit that carries a decision keeps it ACTIVE:** a decision anchored to `HEAD` is left alone, and so is one whose fingerprints match the commit. `record`, `amend` and `restore` store each affected file's git blob id (`decision_fingerprints` table); when every changed file the decision names is stored by the commit exactly as fingerprinted, the commit carries the code the decision describes. No fingerprint, no exemption
+- Invalidation is **file-scoped**: untouched decisions stay ACTIVE. Renames count both paths; merge commits count everything they brought in; pulls and rebases don't run post-commit hooks
+- `restore` re-anchors a STALE or INVALIDATED decision to a commit (default `HEAD`) and makes it ACTIVE again
 - `audit` lists all decisions by default; `--stale`/`--orphaned` filter to entries needing attention (age-based 90-day staleness plus orphaned-SHA detection)
 - `DecisionStore` has no `.close()` — connections are managed internally
 
@@ -158,8 +172,12 @@ The runtime counterpart of the eval harness's `stale_influence_rate` metric: ins
 
 ```
 [neuralmind stale-guard] 1 decision(s) governing neuralmind/db.py are no longer ACTIVE. Their rationale may not hold — verify before relying on them:
-- [STALE] Use SQLite WAL (confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers...
+- [STALE] Use SQLite WAL (id 5b1e0c7a-…, confidence 0.90, updated 2026-09-10): WAL mode required for concurrent readers... — commit 3f9c2ab changed neuralmind/db.py since this decision was recorded
+If a STALE decision still holds after you check the code, `neuralmind decisions restore <id>` re-anchors it to HEAD.
 ```
+
+Since v4.6.0 each line carries the full id and the reason the decision left
+ACTIVE (from its evidence).
 
 The agent sees which remembered rationales may no longer hold — before it edits, not after.
 
@@ -191,4 +209,4 @@ results = store.query("database choice")
 
 ## Testing
 
-The tests in `tests/memory/` cover store CRUD/FTS/audit/export, search terms and ranking on both the FTS5 path and the LIKE fallback, invalidation engine (file-touch, commit mismatch, cascade, idempotency), MCP tool dispatch, both eval harnesses and the decision-search eval set, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation).
+The tests in `tests/memory/` cover store CRUD/FTS/audit/export, search terms and ranking on both the FTS5 path and the LIKE fallback, the invalidation engine (file-touch, the carrying-commit exemption, renames, merges, subdirectory projects, cascade, idempotency), `decisions scan`, MCP tool dispatch, both eval harnesses and the decision-search eval set, and integration (lifecycle, export/import roundtrip, 10-thread concurrency, broken-git graceful degradation).

@@ -235,6 +235,32 @@ class TestErrorCodes:
         assert second["code"] == "security_denied"
         assert second["reason"] == "rate_limit"
 
+    def test_security_roles_from_config_replace_the_default_policy(self, temp_project):
+        """The Security Guide tells operators to cap what a caller can claim by
+        leaving admin out of security.roles. The server used to build its
+        security manager without reading the config, so a declared admin still
+        got every tool."""
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  roles:\n    builder: [neuralmind_stats]\n", encoding="utf-8"
+        )
+        base = {"project_path": str(temp_project)}
+        as_admin = json.loads(handle_tool_call("neuralmind_stats", {**base, "role": "admin"}))
+        assert as_admin["code"] == "security_denied"
+        assert as_admin["reason"] == "rbac"
+        as_default = json.loads(handle_tool_call("neuralmind_stats", base))
+        assert as_default.get("code") != "security_denied", as_default
+
+    def test_rate_limit_from_config_applies(self, temp_project):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  rate_limit:\n    max_calls: 1\n    window_seconds: 60\n",
+            encoding="utf-8",
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
     def test_unknown_decision_status_is_invalid_request(self, temp_project):
         """The status filter is case-insensitive, so its schema has no enum; an
         unknown value used to run inside the security manager and come back

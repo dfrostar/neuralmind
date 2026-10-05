@@ -207,10 +207,10 @@ def _cmd_onboarding_governance(args) -> int:
     config = load_config(getattr(args, "config_path", None))
 
     # Scope
-    print("\nPublishing scope controls what memory is shared:")
-    print("  personal — only private edges (default)")
-    print("  shared   — publish to team namespace")
-    print("  both     — personal + shared (recommended for teams)")
+    print("\nPublishing scope controls what `neuralmind memory publish` shares:")
+    print("  personal — nothing is published; memory stays on each machine")
+    print("  shared   — only the team baseline (the shared namespace) is published")
+    print("  both     — your personal memory + the shared baseline (default)")
     scope = _ask(
         args,
         "Scope",
@@ -224,7 +224,7 @@ def _cmd_onboarding_governance(args) -> int:
     # Threshold
     thr_str = _ask(
         args,
-        "Weight threshold (0.0–1.0, edges below are rejected)",
+        "Weight threshold (0.0–1.0, weaker associations are left out of a publish)",
         default=str(config.governance.weight_threshold),
     )
     try:

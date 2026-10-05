@@ -78,7 +78,7 @@ The agent can call this automatically after editing a file, get the co-break can
 Both `review` and `drift` are diff-aware, so both fit naturally into a git hook instead of a manual pre-push habit:
 
 ```bash
-neuralmind init-hook .   # installs post-commit rebuild + pre-commit drift guard
+neuralmind init-hook .   # post-commit decision scan + rebuild, pre-commit drift guard
 ```
 
 `init-hook` wires `neuralmind drift . --staged` into `pre-commit` (warn-only
