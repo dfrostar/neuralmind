@@ -1791,6 +1791,28 @@ class NeuralMind:
         self.embedder.edges = []
         self.embedder.load_graph()
         embed_stats = self.embedder.embed_nodes(force=False)
+
+        # Restamp the index the way build() does: record the updated graph's
+        # fingerprint (else every load reports the index out of step) and a new
+        # index generation, which invalidates the caches stamped with the old
+        # one; then rewrite the unified BM25 index so removed symbols stop
+        # matching keywords and added ones start.
+        from .freshness import graph_fingerprint
+
+        self._record_build_status(
+            {
+                "graph": {
+                    **(self._read_build_status().get("graph") or {}),
+                    "path": self._display_path(graph_path),
+                    "kind": "built-in",
+                    "action": "incremental",
+                    "nodes": stats.nodes_after,
+                    "fingerprint": graph_fingerprint(graph_path),
+                },
+                "index_generation": datetime.now().isoformat(),
+            }
+        )
+        self._write_unified_bm25()
         self._graph_stats_dirty()
 
         return {
@@ -1805,11 +1827,16 @@ class NeuralMind:
 
     def _graph_stats_dirty(self) -> None:
         """Invalidate the selector's cached graph stats after an incremental
-        update so L0/L1 reflect the new node/community counts."""
+        update so L0/L1 reflect the new node/community counts, and the node
+        catalog and keyword indexes derived from the old nodes reload."""
         if self.selector is not None:
             self.selector._graph_stats = None
             self.selector._l0_cache = None
             self.selector._l1_cache = None
+            self.selector._catalog = None
+            self.selector._code_bm25 = None
+            self.selector._unified_bm25 = None
+            self.selector._hub_stats_cache = None
 
     def _ensure_built(self):
         """Make the index ready for a query without rebuilding it.
