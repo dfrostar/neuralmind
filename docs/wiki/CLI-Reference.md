@@ -1253,7 +1253,8 @@ per-environment default is never a silent mystery.
 **Security policy** and **Storage encryption** *(v4.7.0+)* report the
 [security settings](#security-settings-security-in-neuralmind-backendyaml):
 which identity mode MCP calls use and the role the current OS account gets,
-whether the policy file is group- or world-writable, and whether the project's
+*(v4.8.0+)* whether a malformed, empty or unparseable role policy makes the
+server refuse every call, whether the policy file is group- or world-writable, and whether the project's
 volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
 mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
@@ -2323,7 +2324,7 @@ neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [-
 ```
 
 `query` takes keywords or a question, matched against decision titles and
-rationales. `--mode` *(v4.7.0+)* picks the ranking:
+rationales. `--mode` *(v4.8.0+)* picks the ranking:
 
 - `hybrid` (default): shared words and meaning, fused by reciprocal rank fusion.
 - `semantic`: meaning only: cosine similarity with each decision's embedded
@@ -2397,7 +2398,7 @@ directory and never read or change the project's decisions.
 | `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
 | `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
 | `--limit N` | Results per query with `--queries` (default 5) |
-| `--mode all\|keyword\|semantic\|hybrid` | *(v4.7.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
+| `--mode all\|keyword\|semantic\|hybrid` | *(v4.8.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
 | `--format json\|md` | Report format (default `json`) |
 | `--output FILE`, `-o` | Write the report to a file instead of stdout |
 
@@ -3477,7 +3478,7 @@ renewed — issue a new one.
 | `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
-| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.7.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
+| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
@@ -3591,9 +3592,11 @@ security:
 With `identity: os`, NeuralMind refuses every MCP call when it can't establish
 the caller: the HTTP transport is in use, the OS account can't be read, the
 account has no role, or the policy file is world-writable (POSIX). A policy file
-that names `identity` or `require_encrypted_storage` but doesn't parse is
-refused too, rather than silently ignored, and a malformed `security`,
-`roles` or `rate_limit` value refuses every call. Each refusal is written to
+that doesn't parse but names a security setting (`security`, `roles`,
+`rate_limit`, `identity` or `require_encrypted_storage`) is refused too,
+rather than silently ignored (v4.7.0 checked only `identity` and
+`require_encrypted_storage`), and so is a malformed `security`, `roles` or
+`rate_limit` value, or *(v4.8.0+)* a `security:` or `roles:` key left empty. Each refusal is written to
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.

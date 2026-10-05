@@ -38,7 +38,7 @@ neuralmind decisions record \
 
 Agents can do the same over MCP with `neuralmind_record_decision`. Name files
 relative to the project root (absolute paths work too). Later questions find it
-by meaning as well as by its words (v4.7.0+): see
+by meaning as well as by its words (v4.8.0+): see
 [Find the decision behind the code when you don't know its words](./find-decisions-by-meaning.md).
 
 Recording before you commit is fine. Recording fingerprints each file with its

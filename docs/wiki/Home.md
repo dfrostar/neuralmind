@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.8.0 — A new session starts with where the last one left off (October 2026)
+### v4.8.0 — A new session starts where the last one left off; decision search by meaning; policy mistakes refused (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the
 previous one in the project: its first prompt, its last three, and the files it
@@ -49,6 +49,34 @@ see, `neuralmind recap --clear` deletes the records, and
 yet. Walkthrough:
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
+
+Decision search now ranks by meaning as well as by shared words, with the
+local embedding model the code index already uses, so a question finds a
+decision worded differently from it. `hybrid` is the default; `semantic` and
+`keyword` are the other modes, and `NEURALMIND_DECISION_SEARCH=keyword` keeps
+the old ranking. See [Memory Layer](Memory-Layer.md#query-decisions) and
+[Find the decision behind the code when you don't know its words](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/find-decisions-by-meaning.md).
+
+Two mistakes in `neuralmind-backend.yaml` used to leave the default MCP role
+policy in force, under which any caller can declare `admin` and reach every
+tool: a file that doesn't parse, and a `security:` or `roles:` key left empty
+(what's left when every entry under it is commented out). Both now refuse every
+MCP call with `reason: "config"`. An unparseable file is refused only when it
+names a security setting outside a comment, so a typo in backend tuning doesn't
+block the server. `neuralmind doctor`'s *Security policy* check names the
+setting to fix; see the
+[Security Guide](https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim).
+
+### v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage (October 2026)
+
+`security.identity: os` takes each MCP caller's identity from the OS account
+the server runs as, and its role from `security.users`, instead of trusting
+the role a call declares. `security.require_encrypted_storage: true` refuses to
+build, query, serve MCP tools or run hooks until FileVault, BitLocker or
+dm-crypt/LUKS is verified. `neuralmind doctor` reports both. Nothing changes
+for a project that doesn't set these keys. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md)
+and the [CMMC CUI enclave walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md).
 
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 
@@ -128,7 +156,7 @@ with `neuralmind decisions invalidate` when the code moves on (since v4.6.0 the
 `init-hook` post-commit hook also retires them automatically). The
 **stale-decision guard** (v4.2.0) is a `PreToolUse` hook that warns your agent
 before it edits a file governed by a decision marked stale or invalidated
-(fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). Since v4.7.0, decision
+(fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). Since v4.8.0, decision
 search ranks by meaning as well as by shared words, with the local embedding
 model, so a question finds a decision worded differently from it
 ([Memory Layer](Memory-Layer.md#query-decisions)). v4.3.0 adds progressive,

@@ -133,8 +133,30 @@ def _required(security: dict[str, Any]) -> bool:
 
 
 def _mentions_enforcement(path: Path) -> bool:
+    return config_mentions(path, _ENFORCEMENT_KEYS)
+
+
+def config_mentions(path: Path, keys: tuple[str, ...]) -> bool:
+    """Whether a config file's raw text names any of ``keys`` outside a comment.
+
+    For a file that doesn't parse: if it names a security setting, the caller
+    fails closed; if not, the file is left to the lenient general loader. The
+    match is plain text rather than key syntax, so a policy whose key is itself
+    mistyped (``identity os``) still counts; only YAML comments are skipped.
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return True  # can't read it either: assume the worst
-    return any(key in text for key in _ENFORCEMENT_KEYS)
+    if path.suffix in {".yaml", ".yml"}:
+        text = "\n".join(_without_comment(line) for line in text.splitlines())
+    return any(key in text for key in keys)
+
+
+def _without_comment(line: str) -> str:
+    # YAML starts a comment with '#' at the start of a line or after
+    # whitespace; a '#' inside a value such as a URL fragment is kept.
+    if line.lstrip().startswith("#"):
+        return ""
+    cuts = [i for i in (line.find(" #"), line.find("\t#")) if i >= 0]
+    return line[: min(cuts)] if cuts else line
