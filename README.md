@@ -20,14 +20,15 @@ that publishes every miss.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
-> - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook)
+> - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook; on Hermes-Agent, the plugin's `pre_llm_call` hook, v4.7.0+)
 > - Queries your codebase in ~800 tokens instead of ~50,000
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.7.0:** a fresh or cleared Claude Code session starts with a short recap of the previous one: its first prompt, its last three, and the files it edited, marked as context, not instructions. It's built from what the hooks already see, with no model call; resumed and compacted sessions don't get it. Prompts are credential-redacted before they're stored in `.neuralmind/recaps/`; `neuralmind recap` shows what the next session will see, `--clear` deletes the records, and `NEURALMIND_SESSION_RECAP=0` turns it off. Claude Code only — other hosts don't run its hooks ([walkthrough](docs/use-cases/pick-up-where-you-left-off.md) · [release notes](docs/releases/RELEASE_NOTES_v4.7.0.md))
+> - **New in v4.7.0:** a fresh or cleared Claude Code session starts with a short recap of the previous one: its first prompt, its last three, and the files it edited, marked as context, not instructions. It's built from what the hooks already see, with no model call; resumed and compacted sessions don't get it. Prompts are credential-redacted before they're stored in `.neuralmind/recaps/`; `neuralmind recap` shows what the next session will see, `--clear` deletes the records, and `NEURALMIND_SESSION_RECAP=0` turns it off. Claude Code, and Hermes-Agent through the plugin below; MCP-only hosts such as Cursor and Cline don't run Claude Code's hooks, so nothing is recorded or shown there ([walkthrough](docs/use-cases/pick-up-where-you-left-off.md) · [release notes](docs/releases/RELEASE_NOTES_v4.7.0.md))
+> - **Also in v4.7.0:** a Hermes-Agent plugin, so Hermes gets NeuralMind's context in every turn without deciding to call a tool. `neuralmind install-hermes-plugin /path/to/project` writes it to `~/.hermes/plugins/neuralmind/` (or under `$HERMES_HOME`) and enables it. Before the model runs, each turn gets the files and recorded decisions related to the user's message, the same block Claude Code's `UserPromptSubmit` hook adds, and a session's first turn also gets the session recap; Hermes appends it to that turn's user message, not the system prompt. Edits made with `write_file` and `patch` are recorded for the recap and the synapse layer; failed edits, files changed through the terminal, and subagent turns aren't. Hermes and Claude Code share `.neuralmind/recaps/`, so a Hermes session can start with what the last Claude Code session did, and the other way round. It does nothing outside a built project, and a turn goes ahead without its context on any error or after `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds). A gateway session (Telegram, Discord …) needs the project pinned at install, and then every message in it is recorded for the recap, credential-redacted; `NEURALMIND_SESSION_RECAP=0` turns that off. Tested with Hermes v0.21.5 through Hermes's own plugin loader and hook dispatch; what it changes in Hermes's answers isn't measured ([walkthrough](docs/use-cases/hermes-agent.md) · [release notes](docs/releases/RELEASE_NOTES_v4.7.0.md#neuralmind-for-hermes-agent))
 > - **v4.6.1:** the MCP server applies your security settings. `security.roles` and `security.rate_limit` in `neuralmind-backend.yaml` used to be ignored, so a caller could declare `admin` and reach every tool even where the policy left `admin` out; now a role gets only the tools the policy lists, and a policy without `admin` caps what any caller can reach; `roles: {}` grants nothing and a value of the wrong type refuses calls, though a file that doesn't parse still means the defaults. No `security:` block, no change — if you have one, check it before upgrading, because it replaces the defaults ([release notes](docs/releases/RELEASE_NOTES_v4.6.1.md))
 > - **v4.6.0:** one keyword index for docs and code, on by default — so on "how does X work" questions the code that does X can win an L3 slot on keywords too, not just the README that mentions it. Measured before it shipped (reproducible on demand, not a CI gate; one of the six repos is private): mean hit@5 72.8% → 79.4% across 30 questions on each of six repos — pre-registered and committed for the five public repos, plus a private 383-file repository — and public-benchmark gold-file recall 93.75% → 95%. Losses published: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target. `query --explain` now shows the query intent L3 ranked with; five more ranking changes were measured, lost, and ship off behind flags. Run `neuralmind build` once after upgrading ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
 > - **Also in v4.6.0:** what the docs described, the product now does. A repeat read of an unchanged file in the same Claude Code session comes back as a short stub, and the next read is always full; decisions go STALE when a commit changes their files (`neuralmind init-hook .` runs `decisions scan` after every commit); team governance is enforced on `memory publish`, and `remove-edge` retracts an association for the whole team. The unused co-access module is gone, and `cognition-loop` was rebuilt so it no longer deletes learned memory ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
@@ -87,14 +88,14 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | `codex mcp add neuralmind -- neuralmind-mcp`. Config registration and the MCP protocol itself (`initialize`, `tools/list`, real tool calls) are confirmed working against the actual binary; Codex's own agent loop calling a tool mid-conversation has not been observed (needs a live API key). See [the Codex ecosystem comparison](docs/comparisons/vs-codex-cli-memory.md) for what was actually checked. | 🔬 Theoretical |
-| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
+| **Hermes-Agent** | `neuralmind install-hermes-plugin` (v4.7.0+) adds a plugin that puts the related files and decisions into every turn, and the session recap into a session's first, with no tool call ([walkthrough](docs/use-cases/hermes-agent.md)). For tools the agent calls itself, Hermes's native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
 | **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. The portable skill is also listed on ClawHub (community channel): `openclaw skills install @dfrostar/neuralmind`. | 🔬 Theoretical |
 | **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. Listed in Agent Zero's in-app Plugin Hub: the [`a0-plugins` index entry](https://github.com/agent0ai/a0-plugins/tree/main/plugins/neuralmind) merged 2026-08-31 ([agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499)). Installing from the Hub clones this repository as a plugin, which exposes the portable skill — it does not install the package or register the MCP server, so `pip install neuralmind` and the MCP config are still manual. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) mirrors the merged entry. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
 
-Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules, but none has been physically driven end-to-end yet either.
+Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules, but none has been physically driven end-to-end yet either. The Hermes plugin (v4.7.0+) is tested with Hermes v0.21.5 through Hermes's own plugin loader and hook dispatch.
 
 ---
 
@@ -135,7 +136,7 @@ result = mind.query("How does auth work?", context_budget=6000)
 
 ### 4. Session summaries (v3.13.0+)
 
-Periodic session digests (every 25 tool calls) capture what was done, key decisions, files touched, and commands run. Stored as markdown under `.neuralmind/summaries/`, semantically recallable via the vector index. Auto-pruned (max 100 per project). They're built from the event log that `neuralmind watch` and `neuralmind serve` write, so with the hooks alone they don't reflect the session; there, a new Claude Code session gets the lighter [session recap](docs/use-cases/pick-up-where-you-left-off.md) instead (v4.7.0+).
+Periodic session digests (every 25 tool calls) capture what was done, key decisions, files touched, and commands run. Stored as markdown under `.neuralmind/summaries/`, semantically recallable via the vector index. Auto-pruned (max 100 per project). They're built from the event log that `neuralmind watch` and `neuralmind serve` write, so with the hooks alone they don't reflect the session; there, a new Claude Code session, or a Hermes-Agent one through the plugin, gets the lighter [session recap](docs/use-cases/pick-up-where-you-left-off.md) instead (v4.7.0+).
 
 ```bash
 neuralmind status .  # shows recent summaries
@@ -244,6 +245,7 @@ keeps what the agent needs.
 |-----------|------|
 | Cut AI inference costs on code Q&A | [Cost optimization](docs/use-cases/cost-optimization.md) |
 | Set up Claude Code hooks | [Claude Code walkthrough](docs/use-cases/claude-code.md) |
+| Give Hermes-Agent code memory in every turn, without a tool call | [Hermes-Agent walkthrough](docs/use-cases/hermes-agent.md) |
 | Catch code that drifts from its own patterns before it ships | [Review before push](docs/use-cases/review-before-push.md) |
 | Measure savings on my own repo | [Benchmark your repo](docs/use-cases/benchmark-your-repo.md) |
 | Test a ranking change on my repo before trusting it | [A/B-test a ranking change](docs/use-cases/ab-test-a-ranking-change.md) |
@@ -372,6 +374,10 @@ codex mcp add neuralmind -- neuralmind-mcp
 # Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse, PreToolUse, Stop, SessionEnd)
 neuralmind install-hooks .
 
+# Hermes-Agent: a plugin that adds related files and decisions to every turn,
+# and the session recap to a session's first (v4.7.0+); --uninstall removes it
+neuralmind install-hermes-plugin .
+
 # Team memory: commit learned weights (no source code) for teammates
 neuralmind memory publish
 ```
@@ -462,6 +468,11 @@ neuralmind benchmark .
   `pre-commit` automatically (warn by default; `--strict` to block).
 - **MCP server for any agent.** Claude Code, Codex, Cursor, Cline, Continue,
   or anything MCP-compatible: `neuralmind install-mcp --all`.
+- **Context in every Hermes-Agent turn.** `neuralmind install-hermes-plugin`
+  gives Hermes what the hooks give Claude Code: the related files and decisions
+  with each message, and the session recap on a session's first turn, without
+  a tool call. The recap is shared with Claude Code, so it carries across the
+  two agents ([walkthrough](docs/use-cases/hermes-agent.md)).
 - **Graph view.** `neuralmind serve` renders the index as a force-directed,
   community-coloured graph with the synapse overlay — backlinks, semantic
   quick-switcher, clickable neighbours. There's also a
@@ -555,7 +566,11 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 `NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard),
 `NEURALMIND_READ_DEDUP=0` (never stub a repeat read),
 `NEURALMIND_SESSION_RECAP=0` (don't record prompts and edited files, and show no session recap),
-`NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan). All fail-open.
+`NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan),
+`NEURALMIND_PROJECT=<path>` (the project the Hermes plugin serves, ahead of the one given at install),
+`NEURALMIND_HERMES_TIMEOUT=<seconds>` (how long the Hermes plugin waits before a turn goes ahead without its context; default 8).
+The Hermes plugin runs the same hook actions, so the switches for those actions
+(`NEURALMIND_BYPASS`, `NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP` …) apply to it too. All fail-open.
 
 ---
 
@@ -565,7 +580,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 |---|---|
 | Install and set up | [Setup guide](docs/wiki/Setup-Guide.md) · [Installation](docs/wiki/Installation.md) |
 | See every command | [CLI reference](docs/wiki/CLI-Reference.md) |
-| Wire up my agent (MCP) | [Usage](USAGE.md) · [wiki Home](https://docs.neuralmind.uk/wiki/Home) |
+| Wire up my agent (MCP, or the Hermes-Agent plugin) | [Usage](USAGE.md) · [wiki Home](https://docs.neuralmind.uk/wiki/Home) · [Hermes-Agent plugin](docs/use-cases/hermes-agent.md) |
 | Understand the design | [Architecture](docs/wiki/Architecture.md) · [Limits & failure modes](docs/wiki/Limits-and-Failure-Modes.md) |
 | Follow real workflows | [Use-case walkthroughs](docs/use-cases/) (20+) |
 | Compare with alternatives | [Comparisons](docs/comparisons/) |
@@ -573,7 +588,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
-| Read the latest release | [v4.7.0 release notes](docs/releases/RELEASE_NOTES_v4.7.0.md) — a new Claude Code session starts with a recap of the last one · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
+| Read the latest release | [v4.7.0 release notes](docs/releases/RELEASE_NOTES_v4.7.0.md) — a new session starts with a recap of the last one, and a Hermes-Agent plugin puts NeuralMind's context into every turn · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 

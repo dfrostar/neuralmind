@@ -2,7 +2,8 @@
 
 **Best for:** Claude Code users who close a session at the end of the day, or
 `/clear` in the middle of a task, and start the next session by re-explaining
-what they were doing.
+what they were doing. Hermes-Agent users get the same recap through
+NeuralMind's Hermes plugin.
 
 **Primary goal:** a fresh or cleared session starts with a short recap of the
 previous one in the same project (how it started, where it stopped, which
@@ -36,6 +37,11 @@ Hooks installed globally record no prompts in repositories NeuralMind hasn't
 built. A `.neuralmind/` or `.neuralmind/recaps/` that is a symlink is refused
 too: a cloned repository could point either one outside the project.
 
+On Hermes-Agent, `neuralmind install-hermes-plugin .` takes the place of
+`install-hooks`: the plugin records the same prompts and edits and adds the
+recap to a session's first turn. See
+[Hermes-Agent with code memory in every turn](./hermes-agent.md).
+
 ## 2. Work as usual
 
 Nothing to run. Each session appends one short line per prompt and per edited
@@ -44,8 +50,9 @@ file to `.neuralmind/recaps/<session_id>.jsonl`:
 - **Prompts** pass through NeuralMind's credential patterns (the same redaction
   `neuralmind last` uses) before they're written, then are collapsed to one
   line and cut at 200 characters.
-- **Edited files** are the paths Claude Code's Edit and Write tools changed. A
-  file changed another way, such as a `sed` run through Bash, isn't listed.
+- **Edited files** are the paths Claude Code's Edit and Write tools changed
+  (on Hermes, its `write_file` and `patch` tools). A file changed another way,
+  such as a `sed` run through Bash or Hermes's terminal, isn't listed.
 
 The recap writes `.neuralmind/`'s self-ignoring `.gitignore` before its first
 record, so `git add -A` doesn't stage the records. The ten most recently active
@@ -73,6 +80,9 @@ The first prompt is usually the session's goal, and the last three are where it
 stopped. Up to twelve edited files are listed, most recent first, relative to
 the project root (a file outside it shows as `~/…` or its full path). Nothing summarizes it: the block is assembled from the
 recorded lines, with no model call.
+
+On Hermes, the same block arrives with the session's first turn, added to your
+first message.
 
 ## 4. Ask "where were we?"
 
@@ -109,8 +119,13 @@ last session covered.
 | The previous session was last active more than 14 days ago | No (see `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`) |
 | No earlier session recorded in this project | No |
 
+On Hermes, a session gets the recap on its first turn when it has no earlier
+messages, so a resumed Hermes session doesn't get it.
+
 "The previous session" is the most recently active session in the project
-other than the new one.
+other than the new one, whichever agent ran it. Claude Code and Hermes write
+to the same `.neuralmind/recaps/`, so a Hermes session can start with what the
+last Claude Code session in the project did, and the other way round.
 
 ## Settings
 
@@ -122,9 +137,9 @@ other than the new one.
 | `NEURALMIND_BYPASS` | off | `1` switches off every hook action, this one included |
 
 Hooks inherit Claude Code's environment, so set these when you start Claude
-Code. Turning the recap off, or setting `NEURALMIND_NO_LEARN=1`, doesn't delete
-records already written, and an old recap is hidden, not deleted:
-`neuralmind recap --clear` removes them.
+Code; for Hermes, set them where Hermes runs. Turning the recap off, or setting
+`NEURALMIND_NO_LEARN=1`, doesn't delete records already written, and an old
+recap is hidden, not deleted: `neuralmind recap --clear` removes them.
 
 ## Limits
 
@@ -132,10 +147,11 @@ records already written, and an old recap is hidden, not deleted:
   a session, or how often an agent acts on it when it shouldn't. Its size is
   bounded by count: at most four prompts of 200 characters, twelve file paths
   and a header. The example above is 525 characters.
-- **Claude Code only, automatically.** Cursor, Cline and generic MCP clients
-  don't run Claude Code hooks, so nothing is recorded and nothing is injected.
-  Hermes-Agent, or any agent with a shell, can run `neuralmind recap` to read
-  what the last Claude Code session in the project did.
+- **Automatic in Claude Code and Hermes-Agent only.** Hermes needs the
+  NeuralMind plugin (`neuralmind install-hermes-plugin`). Cursor, Cline and
+  generic MCP clients don't run Claude Code hooks, so nothing is recorded and
+  nothing is injected. Any agent with a shell can run `neuralmind recap` to
+  read what the last session in the project did.
 - **Redaction catches common credential formats, not every secret.** A secret
   in an unusual format can still be written to `.neuralmind/recaps/`.
   `neuralmind recap --clear` deletes the records.
@@ -143,8 +159,8 @@ records already written, and an old recap is hidden, not deleted:
   so it's sent along with the rest of the session, as the original prompts
   were.
 - **A concurrent session counts as "previous".** With two sessions running in
-  the same project, a new one gets whichever was active last, which may not be
-  the one you meant to continue.
+  the same project, in either agent, a new one gets whichever was active last,
+  which may not be the one you meant to continue.
 - **Prompts and paths, not answers.** The recap carries what you asked and
   which files changed, not what the agent replied or why. A decision that
   should outlive the session belongs in decision memory
@@ -155,5 +171,7 @@ records already written, and an old recap is hidden, not deleted:
 - [Release notes v4.7.0](../releases/RELEASE_NOTES_v4.7.0.md)
 - CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v470)
 - [Claude Code user](./claude-code.md) — what else the hooks do in each session
+- [Hermes-Agent with code memory in every turn](./hermes-agent.md) — the recap
+  and per-turn recall on Hermes
 - [Multi-agent codebase](./multi-agent.md) — the other agents sharing the
   project

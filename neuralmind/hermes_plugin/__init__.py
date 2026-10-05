@@ -208,11 +208,14 @@ def on_post_tool_call(
         if project is None:
             return
         code = args.get("content") or args.get("new_string") or args.get("patch") or ""
+        # Hermes resolves a relative path against its workspace (TERMINAL_CWD),
+        # else its own working directory — not against a pinned project.
+        base = Path(os.environ.get("TERMINAL_CWD") or os.getcwd())
         payloads = []
         for path in _edited_paths(tool_name, args):
             file_path = Path(path).expanduser()
             if not file_path.is_absolute():
-                file_path = project / file_path
+                file_path = base / file_path
             payloads.append(
                 {
                     "cwd": str(project),

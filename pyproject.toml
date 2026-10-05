@@ -73,6 +73,8 @@ keywords = [
     "memory-governance",
     "session-recap",
     "session-continuity",
+    "hermes-agent",
+    "hermes-plugin",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

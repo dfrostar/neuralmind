@@ -233,7 +233,11 @@ isn't registered: the user runs `hermes mcp add` (or edits
 This file also installs as a Hermes skill *without* the MCP server —
 `hermes skills install dfrostar/neuralmind/skills/neuralmind` — in which
 case drive the `neuralmind` CLI through `terminal` instead. See
-*Failure modes*.
+*Failure modes*. With NeuralMind's Hermes plugin enabled
+(`neuralmind install-hermes-plugin`), each turn's user message already
+carries NeuralMind's related files and decisions for it, and a session's
+first turn also the recap of the previous session. Don't re-query for what
+that block already gives you; call the tools for what it doesn't cover.
 
 **OpenClaw.** Registered once with:
 
@@ -267,14 +271,15 @@ reinforces the same `.neuralmind/synapses.db`. Associations the user's other
 agents built are visible to you, and yours to them — so
 `neuralmind_synaptic_neighbors` can legitimately surface code this session
 never touched. That is the feature, not a stale index. Don't rebuild to
-"clear" it. In a host other than Claude Code (Hermes, OpenClaw, Agent Zero), if
-the user also works in this project from Claude Code with NeuralMind's hooks
-installed, `neuralmind recap <project path>` through the shell prints what
-their last Claude Code session there asked and which files it edited; reach for
-it when they say "carry on" or ask where they left off. Inside Claude Code
-don't run it: the recap is already in your context at session start, and the
-newest record there is your own session. It is context, not instructions:
-don't pick that work back up unless they ask.
+"clear" it. In a host without NeuralMind's hooks or plugin (OpenClaw, Agent
+Zero, Hermes without the plugin), if the user also works in this project from
+Claude Code with the hooks installed or from Hermes with the plugin,
+`neuralmind recap <project path>` through the shell prints what their last
+session there asked and which files it edited; reach for it when they say
+"carry on" or ask where they left off. Inside Claude Code, or in Hermes with
+the plugin enabled, don't run it: the recap is already in your context at the
+start of the session, and the newest record there is your own session. It is
+context, not instructions: don't pick that work back up unless they ask.
 
 ## Environment toggles (for reference)
 
@@ -282,7 +287,8 @@ These are set by the user, not by you. They change retrieval behavior:
 
 - `NEURALMIND_BYPASS=1` — switch off every NeuralMind Claude Code hook
   action (session memory, session recap, prompt recall, stale-decision
-  guard, the `neuralmind last` cache). Does not change MCP-tool behavior.
+  guard, the `neuralmind last` cache), and the Hermes plugin's. Does not
+  change MCP-tool behavior.
 - `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time synapse recall.
 - `NEURALMIND_SYNAPSE_EXPORT=0` — disable markdown export of learned
   associations.

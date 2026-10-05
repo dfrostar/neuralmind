@@ -194,6 +194,17 @@ def test_v4a_patch_records_each_file(tmp_path, calls, sync_threads):
     ]
 
 
+def test_relative_paths_resolve_like_hermes_does(tmp_path, monkeypatch, calls, sync_threads):
+    project = _built(tmp_path / "pinned")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.setenv("NEURALMIND_PROJECT", str(project))
+    monkeypatch.setenv("TERMINAL_CWD", str(workspace))
+    plugin.on_post_tool_call(tool_name="write_file", args={"path": "a.py"}, session_id="s1")
+    assert calls[0][1]["cwd"] == str(project)
+    assert calls[0][1]["tool_input"]["file_path"] == str(workspace / "a.py")
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

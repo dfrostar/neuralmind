@@ -17,6 +17,7 @@ Two cooperating brains:
 
 Communication channels: MCP tools, Claude Code lifecycle hooks
 (`SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostToolUse`),
+the Hermes-Agent plugin's `pre_llm_call` / `post_tool_call` hooks,
 and the file activity watcher.
 
 ## Layout
@@ -30,6 +31,7 @@ and the file activity watcher.
 - `neuralmind/event_bus.py` — process-local pub/sub for live activity events
 - `neuralmind/server.py` — local graph-view HTTP server + `/api/events` SSE
 - `neuralmind/hooks.py` — Claude Code hook registration + runtime
+- `neuralmind/hermes_plugin/` — Hermes-Agent plugin (runs the same `_hook` actions), installed by `neuralmind install-hermes-plugin` via `neuralmind/hermes_install.py`
 - `neuralmind/mcp_server.py` — MCP tools for any agent
 - `neuralmind/cli.py` — `neuralmind {build,query,watch,serve,install-hooks,…}`
 - `editors/vscode/` — VS Code extension: status bar, command palette, graph panel, hover provider
