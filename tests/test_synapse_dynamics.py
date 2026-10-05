@@ -6,6 +6,7 @@ import threading
 import time
 
 from neuralmind.synapse_dynamics import (
+    RESOURCE_CONSUMPTION,
     RESOURCE_INITIAL,
     STC_TAG_INITIAL,
     SynapseDynamics,
@@ -203,6 +204,22 @@ class TestResourceSTDP:
             cur = conn.execute("SELECT resource_pool FROM node_resources WHERE node_id = 'A'")
             pool = float(cur.fetchone()[0])
             assert pool <= 0.1 + 1e-9  # RESOURCE_MIN_FLOOR
+
+    def test_spent_budget_blocks_potentiation_until_replenished(self, tmp_path):
+        # The pool was clamped to RESOURCE_MIN_FLOOR but "depleted" meant
+        # strictly below it, so the limit could never trigger.
+        d = _dynamics(tmp_path)
+        budget = int(RESOURCE_INITIAL / RESOURCE_CONSUMPTION)
+        for _ in range(budget):
+            assert d.reinforce_with_resources(["A", "B"]) == 1
+        # A has spent its budget: no new association forms, nothing is written.
+        assert d.reinforce_with_resources(["A", "C"]) == 0
+        assert "C" not in dict(d.store.neighbors("A"))
+        assert d.reinforce(["A", "C"]) == 0  # the unified path honors it too
+        # Replenishment lets potentiation resume.
+        d.replenish_resources()
+        assert d.reinforce_with_resources(["A", "C"]) == 1
+        assert "C" in dict(d.store.neighbors("A"))
 
     def test_replenish_restores_resources(self, tmp_path):
         d = _dynamics(tmp_path)

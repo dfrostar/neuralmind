@@ -115,7 +115,15 @@ RESOURCE_INITIAL = 10.0  # starting resource pool per node
 RESOURCE_MAX = 10.0  # cap so new nodes don't get unlimited budget
 RESOURCE_CONSUMPTION = 1.0  # resources consumed per potentiation
 RESOURCE_REPLENISH_RATE = 0.01  # resources replenished per decay tick
-RESOURCE_MIN_FLOOR = 0.1  # never fully deplete (allow some association)
+# Consumption bottoms out here instead of 0 so the pool stays positive. A pool
+# at the floor is depleted: no potentiation until replenishment lifts it above.
+RESOURCE_MIN_FLOOR = 0.1
+
+
+def _resource_depleted(pool: float) -> bool:
+    """A pool consumption has driven down to the floor (it never goes below)."""
+    return pool <= RESOURCE_MIN_FLOOR
+
 
 # --------------------------------------------------------------------------- #
 # Feeling-of-Knowing (FOK) gating parameters
@@ -650,7 +658,7 @@ class SynapseDynamics:
     ) -> bool:
         """Consume resource from a node's pool. Returns True if successful."""
         pool = self._get_resource_pool(node_id, namespace, conn)
-        if pool < RESOURCE_MIN_FLOOR:
+        if _resource_depleted(pool):
             return False  # depleted — no potentiation allowed
         new_pool = max(RESOURCE_MIN_FLOOR, pool - amount)
         conn.execute(
@@ -708,7 +716,7 @@ class SynapseDynamics:
             with self.store._connect() as conn:
                 for node_id in ids:
                     pool = self._get_resource_pool(node_id, ns, conn)
-                    if pool < RESOURCE_MIN_FLOOR:
+                    if _resource_depleted(pool):
                         # One node depleted — skip this reinforcement entirely
                         # (all-or-nothing to maintain Hebbian semantics)
                         return 0
