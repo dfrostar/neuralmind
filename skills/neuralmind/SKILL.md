@@ -259,8 +259,10 @@ and the server now says so instead of failing silently: `neuralmind_stats`
 returns `built: false` with a `hint` naming the directory the relative path
 actually resolved to, and `wakeup` / `query` / `search` return that hint as
 an explicit error rather than auto-building an index of the wrong directory.
-When you see it, retry the same call with the absolute project path — do not
-tell the user to build.
+A path that doesn't exist at all gets `code: "project_not_found"` from every
+tool (with the same hint when the path was relative), and nothing is created
+there. When you see either, retry the same call with the absolute project
+path — do not tell the user to build.
 
 **One brain, several hosts.** Every host pointed at the same project path
 reinforces the same `.neuralmind/synapses.db`. Associations the user's other
