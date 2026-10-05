@@ -2731,6 +2731,7 @@ def cmd_audit_export(args):
     trail = AuditTrail(args.project_path)
 
     if args.output:
+        written = 0
         with open(args.output, "w", encoding="utf-8") as f:
             for line in trail.export(
                 format=args.format,
@@ -2741,7 +2742,12 @@ def cmd_audit_export(args):
                 until=args.until,
             ):
                 f.write(line + "\n")
-        print(f"Exported {len(trail.read_events())} events → {args.output}")
+                written += 1
+        # Count what was written, not the whole log: with filters these differ.
+        noun = "event" if written == 1 else "events"
+        print(f"Exported {written} {noun} → {args.output}")
+        if written == 0 and trail.read_events():
+            print("  No events matched the filters.")
     else:
         for line in trail.export(
             format=args.format,

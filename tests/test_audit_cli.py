@@ -67,6 +67,38 @@ def test_cmd_audit_export_to_file(audit_trail, tmp_path):
     assert len(lines) == 3
 
 
+@pytest.mark.parametrize(
+    ("filters", "expected", "status", "notice"),
+    [
+        ({"actor": "alice"}, 1, "Exported 1 event", False),
+        ({"since": "2999-01-01"}, 0, "Exported 0 events", True),
+        ({}, 3, "Exported 3 events", False),
+    ],
+)
+def test_cmd_audit_export_to_file_reports_what_it_wrote(
+    audit_trail, tmp_path, capsys, filters, expected, status, notice
+):
+    """The count used to be the whole log's size, whatever the filters kept."""
+    out = tmp_path / "out.jsonl"
+    cmd_audit_export(AuditExportArgs(tmp_path, output=out, **filters))
+
+    written = [ln for ln in out.read_text().splitlines() if ln.strip()]
+    assert len(written) == expected
+    lines = [f"{status} → {out}"]
+    if notice:
+        lines.append("  No events matched the filters.")
+    assert capsys.readouterr().out.splitlines() == lines
+
+
+def test_cmd_audit_export_empty_log_has_no_filter_notice(tmp_path, capsys):
+    """Nothing to match isn't a filter problem, so no notice."""
+    out = tmp_path / "out.jsonl"
+    cmd_audit_export(AuditExportArgs(tmp_path, output=out))
+
+    assert out.read_text() == ""
+    assert capsys.readouterr().out.splitlines() == [f"Exported 0 events → {out}"]
+
+
 def test_cmd_audit_verify_ok(audit_trail, tmp_path):
     args = AuditVerifyArgs(tmp_path)
     with patch("builtins.print") as mock_print:
