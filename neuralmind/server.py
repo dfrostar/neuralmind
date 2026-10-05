@@ -45,6 +45,7 @@ from .event_log import (
     default_log_path,
     event_log_enabled,
 )
+from .http_util import RequestError, read_body
 from .metrics_pipeline import MetricsCollector
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -305,10 +306,10 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_error(401, "missing or invalid token")
 
     def _read_json_body(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0:
+        """Read the JSON request body; raises RequestError for a bad Content-Length."""
+        raw = read_body(self)
+        if not raw:
             return {}
-        raw = self.rfile.read(length)
         try:
             return json.loads(raw.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -504,7 +505,18 @@ class _Handler(BaseHTTPRequestHandler):
             return
 
         if route == "/api/open":
-            body = self._read_json_body()
+            try:
+                body = self._read_json_body()
+            except RequestError as exc:
+                # The body (if any) is unread; close rather than parse it as
+                # a follow-up request.
+                self.close_connection = True
+                self._send_json(
+                    {"ok": False, "error": exc.message},
+                    status=exc.status,
+                    set_cookie=new_cookie,
+                )
+                return
             node_id = str(body.get("id") or "")
             cls = type(self)
             path, line, label = _resolve_open_target(cls.mind, node_id)

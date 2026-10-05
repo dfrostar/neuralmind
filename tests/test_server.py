@@ -449,3 +449,59 @@ def test_resolve_server_token_rejects_non_string_token(tmp_path):
     token = _resolve_server_token(True, token_file)
     assert isinstance(token, str) and token
     assert json.loads(token_file.read_text())["token"] == token
+
+
+# --------------------------------------------------------------------------- #
+# Malformed requests
+# --------------------------------------------------------------------------- #
+
+
+def _raw_request(base, method, path, *, headers=None, body=None):
+    """Send a hand-built request (headers a well-behaved client never sends).
+
+    Returns ``(status, payload)``; a handler that raises drops the connection
+    with no response, which surfaces here as ``http.client.RemoteDisconnected``.
+    """
+    host, port = base.replace("http://", "").split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=5)
+    try:
+        conn.putrequest(method, path, skip_accept_encoding=True)
+        for key, value in (headers or {}).items():
+            conn.putheader(key, value)
+        conn.endheaders(body)
+        resp = conn.getresponse()
+        raw = resp.read()
+        ctype = resp.getheader("Content-Type", "")
+        return resp.status, json.loads(raw) if ctype.startswith("application/json") else raw
+    finally:
+        conn.close()
+
+
+def _open_mind(tmp_path):
+    return SimpleNamespace(project_path=tmp_path, embedder=SimpleNamespace(nodes=[]))
+
+
+@pytest.mark.parametrize("length", ["abc", "-5", "1.5", "+3", "1_0"])
+def test_open_malformed_content_length_gets_400(tmp_path, length):
+    with _running_server(_open_mind(tmp_path)) as base:
+        status, payload = _raw_request(
+            base, "POST", "/api/open", headers={"Content-Length": length}
+        )
+        assert status == 400
+        assert payload["ok"] is False
+        assert "Content-Length" in payload["error"]
+        # Still serving after the bad request.
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+
+
+def test_open_oversized_content_length_gets_413(tmp_path):
+    from neuralmind.http_util import MAX_BODY_BYTES
+
+    with _running_server(_open_mind(tmp_path)) as base:
+        for length in (str(MAX_BODY_BYTES + 1), "99999999999999999999"):
+            status, payload = _raw_request(
+                base, "POST", "/api/open", headers={"Content-Length": length}
+            )
+            assert status == 413
+            assert "too large" in payload["error"]

@@ -7,6 +7,8 @@ round-trip are all exercised without the embedding backend.
 
 from __future__ import annotations
 
+import http.client
+import json
 import os
 import threading
 import time
@@ -311,3 +313,51 @@ def test_e2e_shutdown_clears_discovery(running_daemon, daemon_home):
             break
         time.sleep(0.05)
     assert daemon_client.connect(ping=True) is None
+
+
+# --------------------------------------------------------------------------- #
+# Malformed requests over real HTTP
+# --------------------------------------------------------------------------- #
+
+
+def _raw_request(method, path, *, headers=None, body=None, auth=True):
+    """Send a hand-built request to the running daemon.
+
+    ``http.client.putrequest`` lets a test send headers no well-behaved client
+    would (a non-numeric Content-Length, a non-ASCII token). Returns
+    ``(status, payload)``; a daemon that drops the connection without a
+    response raises ``http.client.RemoteDisconnected`` here.
+    """
+    info = daemon_mod.read_discovery()
+    conn = http.client.HTTPConnection(info["host"], info["port"], timeout=5)
+    try:
+        conn.putrequest(method, path, skip_accept_encoding=True)
+        if auth:
+            conn.putheader("Authorization", f"Bearer {info['token']}")
+        for key, value in (headers or {}).items():
+            conn.putheader(key, value)
+        conn.endheaders(body)
+        resp = conn.getresponse()
+        return resp.status, json.loads(resp.read() or b"null")
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("length", ["abc", "-5", "1.5", "+3", "1_0"])
+def test_e2e_malformed_content_length_gets_400(running_daemon, length):
+    # No body follows: the daemon must answer from the header alone instead of
+    # raising inside the handler (which dropped the connection unanswered).
+    status, payload = _raw_request("POST", "/query", headers={"Content-Length": length})
+    assert status == 400
+    assert "Content-Length" in payload["error"]
+    assert running_daemon.health()["ok"] is True  # still serving
+
+
+@pytest.mark.parametrize("length", [str(daemon_mod.MAX_BODY_BYTES + 1), "99999999999999999999"])
+def test_e2e_oversized_content_length_gets_413(running_daemon, length):
+    # Answered from the header alone: the daemon neither waits for a body that
+    # never arrives nor tries to allocate one this size.
+    status, payload = _raw_request("POST", "/query", headers={"Content-Length": length})
+    assert status == 413
+    assert "too large" in payload["error"]
+    assert running_daemon.health()["ok"] is True

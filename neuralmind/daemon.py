@@ -43,6 +43,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .http_util import MAX_BODY_BYTES, RequestError, read_body
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 _STARTED_AT = time.time()
@@ -540,10 +542,17 @@ class _Handler(BaseHTTPRequestHandler):
             return
         body = {}
         if method == "POST":
-            length = int(self.headers.get("Content-Length", 0) or 0)
-            if length:
+            try:
+                raw = read_body(self, MAX_BODY_BYTES)
+            except RequestError as exc:
+                # Answered from the header alone; the body (if any) is unread,
+                # so don't let it be parsed as a follow-up request.
+                self.close_connection = True
+                self._send(exc.status, {"error": exc.message})
+                return
+            if raw:
                 try:
-                    body = json.loads(self.rfile.read(length).decode("utf-8"))
+                    body = json.loads(raw.decode("utf-8"))
                 except ValueError:
                     self._send(400, {"error": "invalid JSON body"})
                     return
