@@ -74,8 +74,10 @@ def test_latin1_markdown_does_not_fail_build(tmp_path: Path) -> None:
         ("api.proto", b'// caf\xe9\nsyntax = "proto3";\nmessage Ping {}\n', "message:Ping"),
         (
             "openapi.yaml",
-            b"openapi: 3.0.0\ninfo:\n  title: Caf\xe9 API\n  version: '1'\n"
-            b"paths:\n  /items:\n    get:\n      summary: List items\n",
+            (
+                b"openapi: 3.0.0\ninfo:\n  title: Caf\xe9 API\n  version: '1'\n"
+                b"paths:\n  /items:\n    get:\n      summary: List items\n"
+            ),
             "List items",
         ),
     ],

@@ -1569,7 +1569,8 @@ class ContextSelector:
 
     def _hub_stats(self):
         if getattr(self, "_hub_stats_cache", None) is None:
-            self._hub_stats_cache = l3_slots.HubStats.load(
+            # None means "not loaded"; NeuralMind._graph_stats_dirty resets it.
+            self._hub_stats_cache: l3_slots.HubStats | None = l3_slots.HubStats.load(
                 self.project_path, self.embedder, self._node_catalog()
             )
         return self._hub_stats_cache
