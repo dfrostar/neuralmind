@@ -228,7 +228,7 @@ PR M is independent of server mode. It needs PR 1's `/v1` routing and can land b
   - **Append only; never reorder.** `_row_to_record` maps columns by position (`store.py:190-212`), and every explicit `SELECT` lists them (for example `store.py:750-758`). Each read path gains the three columns at the end.
 - `decision_events(id INTEGER PRIMARY KEY, decision_id TEXT, at TEXT, kind TEXT, actor TEXT, changes TEXT, note TEXT)`. `changes` is JSON `{field: [old, new]}`. Indexed on `(decision_id, at)`.
 - `decision_vectors(decision_id TEXT PRIMARY KEY, model_id TEXT, dim INTEGER, vector BLOB, content_sha TEXT)`. `vector` is float32.
-- **FTS rebuild.** `decisions_fts` and its three triggers (`store.py:147-171`) gain `evidence` and `tags`. The wiki already says evidence is searched (§12 item 7); this makes that true.
+- **FTS rebuild.** `decisions_fts` and its three triggers (`store.py:147-171`) gain `evidence` and `tags`. The wiki and the MCP tool descriptions now say search covers titles and rationales only (§12 item 7). `tests/memory/test_search_scope_docs.py` compares them with the FTS columns, so it fails until this PR updates them to name `evidence` and `tags`.
 - **Safety.** The migration is idempotent and tested from a v1 database fixture. Records written by v1 code keep working, with the new columns NULL.
 
 **History.**
@@ -254,6 +254,7 @@ PR M is independent of server mode. It needs PR 1's `/v1` routing and can land b
 - **Hybrid ranking.** `mode=hybrid`, the default once PR M lands, fuses the FTS and vector rankings with reciprocal rank fusion. `ContextSelector._rrf_merge` (`context_selector.py:378`) is a method, so lift a small shared `rrf()` function rather than importing the selector.
 - **Model changes.** `model_id` is stored with each vector, so changing the model re-embeds rather than mixing vector spaces. This is the same principle as perf finding D6 and its index stamp.
 - **Every surface agrees.** The CLI (`neuralmind decisions query`) and MCP (`neuralmind_memory_search`) gain the same modes through the store.
+- **The keyword half has landed.** `keyword` mode is no longer every-word-required: the query's words, minus stopwords, are ORed and ranked by bm25, so a question finds what its keywords find (`store.py`, `_search_terms` and `_query_fts`; the LIKE fallback ranks by how many words match). Hybrid fuses with that ranking.
 
 **`review_by`.**
 - A date in the past is rejected at write time with 422.
@@ -266,7 +267,7 @@ PR M is independent of server mode. It needs PR 1's `/v1` routing and can land b
 - The v1 → v2 migration from a fixture database.
 - Every write path appends an event, with a correct diff.
 - A delete keeps the record's events.
-- Semantic search finds a paraphrase that keyword search misses (fixture: a "WAL locking" decision found by "sqlite concurrency").
+- Semantic search finds a paraphrase that keyword search misses (fixture: a "WAL locking" decision found by "sqlite concurrency"). Keyword search now matches any word, so the fixture decision must contain neither "sqlite" nor "concurrency".
 - Vectors re-embed when the model or the content changes.
 - `review_by` flips the effective status exactly at the boundary.
 - Feedback stays within its bounds.
@@ -276,7 +277,7 @@ PR M is independent of server mode. It needs PR 1's `/v1` routing and can land b
 - The HTTP API page and the release notes.
 - A use case: "Find the decision behind this code even when you don't know its words."
 
-Publish no "better recall" number unless it has been measured. To claim the paraphrase improvement, first add a small eval set (decision queries with gold ids) and report the mean and range, per `CLAUDE.md`.
+Publish no "better recall" number unless it has been measured. The eval set exists: `tests/memory/fixtures/decision_queries.json` (agent-style questions and unanswerable ones, with gold ids), scored by `neuralmind decisions eval --queries` (`QuerySetEval` in `memory/eval.py`), which reports recall@k and MRR as mean and range per query kind and adds every ACTIVE decision's exact title as a `title` query. Extend it rather than starting another: add `paraphrase` queries that share no word with their answer, give `QuerySetEval` and the CLI a `mode`, and report keyword, semantic and hybrid side by side per kind. `tests/memory/test_query_eval.py` holds the Memory Layer wiki's eval table to the measured numbers, so a new mode's numbers land in the wiki in the same change.
 
 ### 4.3 Considered and not borrowed
 
@@ -527,7 +528,7 @@ A record mirrors `DecisionRecord` (`memory/store.py:79-107`):
 - `list_all()` returns everything, so the handler pages it with `limit` and `cursor` after filtering.
 
 **Search.**
-- `limit` is capped at 25. `status=ALL` maps to `None`; the MCP tool has a bug here, see §12.
+- `limit` is capped at 25. The store's `normalize_status_filter` maps the status: case-insensitive, `ALL` becomes `None`, and an unknown value raises `ValueError`, which the handler returns as 422 `validation_error`.
 - `view=compact` returns the MCP compact row (`mcp_tools.py:176`).
 - **Scores (G4).** PR 1 adds one backward-compatible option to the store: `DecisionStore.query(…, with_scores=False)`. When it is `True`, the method returns `(record, score)` pairs, where `score = -bm25(decisions_fts)`, so higher is better.
   - The LIKE fallback returns `None` for the score.
@@ -777,7 +778,7 @@ Every PR ships with the `CLAUDE.md` docs and SEO checklist in the same PR.
 6. **Public name.** Recommendation: "NeuralMind API (self-hosted)" in public docs, so nothing implies a hosted service; "local API" in engineering docs.
 7. **Hard delete.** Keep it (mem0 parity, and a way to erase a mistaken record), but admin-only in server mode. Invalidate stays the recommended path.
 8. **A "propose decisions" endpoint (§4.3).** It would be the one mem0-style use of a model. Recommendation: not now. Revisit after PR M, once there is evidence of how people use decision memory. If it is built: local model only, opt-in, and it stores nothing.
-9. **Default search mode after PR M.** Recommendation: make `hybrid` the default only if the eval shows it still ranks exact-title matches first. Otherwise keep `keyword` as the default and make `hybrid` opt-in.
+9. **Default search mode after PR M.** Recommendation: make `hybrid` the default only if the eval shows it still ranks exact-title matches first (the eval's `title` kind; `keyword` ranks 30 of 30 first). Otherwise keep `keyword` as the default and make `hybrid` opt-in.
 
 ---
 
@@ -785,13 +786,13 @@ Every PR ships with the `CLAUDE.md` docs and SEO checklist in the same PR.
 
 Found while surveying for this spec; each was verified against `39617aa`.
 
-1. **`neuralmind_memory_search` with `status: "all"` matches nothing.** The schema advertises "all" (`memory/mcp_tools.py:480`), but `tool_memory_search` passes the string straight to `DecisionStore.query`, which treats only `None` as "all statuses" (`:193-226`).
-2. **`InvalidationEngine` raises `AttributeError` in its error path.** The event-bus failure branch logs `event.id` (`memory/invalidate.py:387`), but `InvalidationEvent` has `decision_id`, not `id` (`:195-212`).
-3. **"Not built" is reported as a security denial.** `GraphNotBuiltError` subclasses `RuntimeError` (`core.py:129`), and MCP maps every `RuntimeError` to `code: "security_denied"` (`mcp_server.py:1335-1336`).
+1. **Fixed.** ~~`neuralmind_memory_search` with `status: "all"` matches nothing.~~ The schema advertises "all" (`memory/mcp_tools.py:480`), but `tool_memory_search` passes the string straight to `DecisionStore.query`, which treats only `None` as "all statuses" (`:193-226`). *Fix:* `DecisionStore.query` and `list_all` normalise the filter (case-insensitive, `ALL` → `None`, unknown → `ValueError`), so MCP and the CLI agree; `neuralmind decisions query --status` takes `INVALIDATED` and any case.
+2. **Fixed.** ~~`InvalidationEngine` raises `AttributeError` in its error path.~~ The event-bus failure branch logs `event.id` (`memory/invalidate.py:387`), but `InvalidationEvent` has `decision_id`, not `id` (`:195-212`). A failed publish raised mid-scan, after the store write. *Fix:* logs `event.decision_id`; tested with a failing bus.
+3. **Fixed.** ~~"Not built" is reported as a security denial.~~ `GraphNotBuiltError` subclasses `RuntimeError` (`core.py:129`), and MCP maps every `RuntimeError` to `code: "security_denied"` (`mcp_server.py:1335-1336`). So did every other tool `RuntimeError` and any OS `PermissionError`. *Fix:* MCP returns `index_not_built` with a hint, and `security_denied` only for the security manager's own `AccessDeniedError` and `RateLimitExceededError`, with a `reason` of `rbac` or `rate_limit`. Other failures return the plain error.
 4. **The compose service restart-loops, and the license path is wrong** (A7).
 5. **Fixed.** ~~`neuralmind/memory/cli.py` is dead code.~~ It defines a second decision store at `.neuralmind/memory/decisions.sqlite` with a different schema and lowercase statuses, and its `build_memory_subparsers` is never called. The live path is `neuralmind decisions` → `DecisionStore`. *Fix:* deleted. Nothing imported it, and its `memory` group would have collided with the live `neuralmind memory` commands, so it could not have been wired in as written. No code reads `decisions.sqlite`; a leftover copy can be deleted.
 6. **`docs/use-cases/always-on.md` disagrees with the shipped service templates.** It says `serve` runs on 8787; the systemd and launchd templates use 8765.
-7. **The Memory Layer wiki overstates what search covers.** `docs/wiki/Memory-Layer.md:8` says search covers "titles, rationales, and evidence". The FTS table indexes only `title` and `rationale` (`store.py:147-153`), and so does the LIKE fallback (`store.py:778`). PR M fixes this by indexing `evidence` and `tags` (§4.2). If PR M is far off, correct the wiki sooner.
+7. **Fixed.** ~~The Memory Layer wiki overstates what search covers.~~ `docs/wiki/Memory-Layer.md:8` says search covers "titles, rationales, and evidence". The FTS table indexes only `title` and `rationale` (`store.py:147-153`), and so does the LIKE fallback (`store.py:778`). The MCP tools also called keyword search "natural language", yet every word must match, so a sentence-length query finds nothing. *Fix:* the wiki and the tool descriptions name exactly the indexed fields, and `tests/memory/test_search_scope_docs.py` holds them to the FTS columns. PR M still adds `evidence` and `tags` to search (§4.2). *Follow-up, also fixed:* search now matches any word of the query, so a sentence finds what its keywords find, and the docs say so (§4.2, "The keyword half has landed").
 
 ---
 

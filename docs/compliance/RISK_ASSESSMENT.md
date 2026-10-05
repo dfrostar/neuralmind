@@ -1,8 +1,8 @@
 # Risk Assessment
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Control:** CC2.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** CC3.1, CC3.2
 
 ---
 
@@ -31,12 +31,12 @@ Risks are scored on two dimensions:
 |----|------|------------|--------|-------|-------|------------|-------|
 | R-01 | Vulnerable dependency (Critical CVE) | 3 | 5 | 15 | HIGH | Automated Dependabot alerts, 72h patch SLA for critical | Maintainer |
 | R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Code review required, branch protection, CI gates | Maintainer |
-| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default, RBAC, audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
+| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default (stdio transport), per-tool permission policy (roles are caller-declared; cap them with `security.roles`), audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
 | R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode, `neuralmind build --verify`, local backups | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |
 | R-06 | Key person dependency (solo maintainer) | 3 | 4 | 12 | HIGH | Documented runbooks, bus factor reduction plan, paid support option | Maintainer |
-| R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL, git-backed evidence, Vanta monitoring | Maintainer |
-| R-08 | Compliance failure (SOC 2 audit) | 2 | 3 | 6 | MEDIUM | Vanta engagement, documented controls, operating period | Maintainer |
+| R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects a changed or removed record mid-log, not truncation or a recomputed chain), git-backed evidence | Maintainer |
+| R-08 | Compliance failure (SOC 2 audit) | 2 | 3 | 6 | MEDIUM | Documented controls in `docs/compliance/`; compliance-automation platform planned (vendor not yet selected) | Maintainer |
 | R-09 | Cloudflare Pages outage | 2 | 3 | 6 | MEDIUM | No data loss (static), easy to redeploy, 99.9% SLA | Cloudflare |
 | R-10 | GitHub Actions disruption | 2 | 2 | 4 | LOW | Local fallback (`pytest`, `build`), no hard dependency on CI | GitHub |
 

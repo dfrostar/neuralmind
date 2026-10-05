@@ -13,7 +13,7 @@ Sourcegraph Cody is a code AI assistant backed by Sourcegraph's server-side code
 | Hosting | Requires Sourcegraph infra | Local; works offline after the first build |
 | Data flow | Code may be sent to Sourcegraph or your Sourcegraph instance | No telemetry and no repository content sent by default (your agent still sends the slice it selects to its own model) |
 | Agent coverage | Cody clients (VS Code/JetBrains) | Any MCP-compatible agent or plain CLI |
-| Tool-output compression | No | Yes (PostToolUse hooks) |
+| Tool-output compression | No | No (its PostToolUse hooks used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | License | Proprietary (open-core) | MIT core, source-available Team modules |
 | Best fit | Large orgs with many repos | Individual developers + single-repo teams |
 | Install methods | Sourcegraph server + Cody editor extension | `pip` / `pipx` / `uv` / Docker / source — no server to run |
@@ -21,7 +21,7 @@ Sourcegraph Cody is a code AI assistant backed by Sourcegraph's server-side code
 ## When to pick which
 
 - **Pick Cody** if you need cross-repo awareness, already run Sourcegraph, or have enterprise compliance requirements that favor a managed deployment.
-- **Pick NeuralMind** if you want a zero-infrastructure, local, per-project tool that integrates into any agent and compresses not just retrieval but also tool output.
+- **Pick NeuralMind** if you want a zero-infrastructure, local, per-project tool that integrates into any agent and cuts the tokens spent on retrieval.
 
 They address different scales: Cody for "find something across 500 repos", NeuralMind for "answer this question about this repo using the fewest tokens possible".
 

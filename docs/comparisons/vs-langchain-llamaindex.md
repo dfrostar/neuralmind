@@ -13,7 +13,7 @@ General-purpose frameworks for building RAG pipelines. You choose a loader, spli
 | Context shape | Flat top-k chunks | 4 layers (identity, summary, clusters, search) with token budget |
 | Setup | You assemble the pipeline | `pip install neuralmind && neuralmind build .` |
 | Agent integration | You write the glue | MCP server + CLI + PostToolUse hooks ready to use |
-| Tool-output compression | Not its concern | First-class feature |
+| Tool-output compression | Not its concern | No (its PostToolUse hooks used to compress `Read`/`Bash`/`Grep` output; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Flexibility | Very high | Opinionated for code |
 
 ## When to pick which

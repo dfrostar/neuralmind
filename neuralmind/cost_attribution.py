@@ -100,7 +100,7 @@ def compute_cost_attribution(
         - modeled_cost_savings_usd: modeled dollar savings
         - per_session: breakdown by session_id
         - daily: breakdown by day
-        - baseline_source: "measured" (the indexed files' token count from the
+        - baseline_source: "measured" (the indexed code's token count from the
           last build, see neuralmind.baseline) or "reconstructed" (from each
           event's logged reduction ratio, i.e. the fixed 50K estimate)
     """

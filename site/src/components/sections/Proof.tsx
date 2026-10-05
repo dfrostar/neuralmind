@@ -5,7 +5,7 @@ const evidence = [
     {
         title: 'Reproducible public benchmark',
         kind: 'Reproducible',
-        desc: '40 pre-registered queries on 4 pinned OSS repos: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
+        desc: '40 pre-registered queries on 4 pinned OSS repos: 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
         link: '/benchmark/',
         linkText: 'See the benchmark →',
     },
@@ -19,7 +19,7 @@ const evidence = [
     {
         title: 'Production field report',
         kind: 'Field report',
-        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
+        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
         link: '/field-reports/measure-memory-across-a-refactor/',
         linkText: 'Read the field report →',
     },

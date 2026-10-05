@@ -5,14 +5,16 @@ hooks.py — Claude Code PostToolUse hook integration
 Two responsibilities:
 
 1. **install_hooks()** — writes .claude/settings.json (project or global)
-   to register NeuralMind's compressors as PostToolUse hooks.
+   to register NeuralMind's lifecycle and tool hooks.
 
 2. **run_hook()** — the runtime entrypoint invoked by Claude Code for each
-   tool call. Reads the hook payload from stdin (Claude Code hook protocol),
-   transforms the tool output, writes the new payload to stdout.
+   hook event. Reads the hook payload from stdin (Claude Code hook protocol)
+   and, where an action has something to add, writes a JSON response to
+   stdout.
 
-This file is intentionally kept slim. All compression logic lives in
-`compressors.py`; this module only bridges Claude Code's hook contract.
+The Read/Bash/Grep PostToolUse actions no longer return compressed tool
+output; see run_hook() for why. The compressors in `compressors.py` remain,
+measured by `evals/compression/` (docs/benchmarks/compression.md).
 """
 
 from __future__ import annotations
@@ -23,13 +25,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Literal
-
-from .compressors import (
-    cap_search_results,
-    compress_bash,
-    compress_read,
-    offload_if_large,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +49,8 @@ HOOK_VERSION = "4"
 def _hook_block() -> dict:
     """Return the canonical neuralmind hook block.
 
-    PostToolUse: token-saving compressors for Read/Bash/Grep output.
+    PostToolUse: Read/Bash/Grep matchers (Bash caches successful output for
+        `neuralmind last`; none of them injects context — see run_hook).
     SessionStart: warm the synapse store and run a decay tick.
     UserPromptSubmit: inject spreading-activation neighbors as context.
     PreCompact: normalize hubs before context shrinks.
@@ -261,20 +257,17 @@ def _is_neuralmind_block(block: dict) -> bool:
 def run_hook(action: str) -> int:
     """Entry point for `neuralmind _hook <action>`.
 
-    Reads a JSON payload from stdin (Claude Code hook protocol), transforms
-    the tool output, writes new JSON to stdout.
+    Reads a JSON payload from stdin (Claude Code hook protocol) and, for the
+    actions that add context, writes a JSON response to stdout.
 
-    Claude Code hook payload (PostToolUse) contains:
-      - tool_name: "Read" | "Bash" | "Grep" | ...
-      - tool_input: dict of args passed to the tool
-      - tool_response: dict including `output` (stdout) or `content`
+    A PostToolUse payload carries ``tool_name``, ``tool_input`` and
+    ``tool_response`` — the tool's structured output (Read's text sits under
+    ``file.content``; Bash has ``stdout``/``stderr`` and no exit code). It
+    fires only for a tool call that succeeded; failures fire
+    PostToolUseFailure. A response's ``additionalContext`` is *added* next to
+    the tool result; only ``updatedToolOutput`` replaces it.
 
-    Our response schema (per Claude Code docs): we can emit a
-    `stdout_override` or equivalent — exact key may vary by hook version.
-    We implement the safest behavior: print the transformed output to
-    stdout; Claude Code captures it and forwards to the model.
-
-    If compression fails or is not applicable, print nothing (fail open).
+    Anything that goes wrong, or doesn't apply, prints nothing (fail open).
     """
     try:
         raw = sys.stdin.read()
@@ -291,7 +284,25 @@ def run_hook(action: str) -> int:
     if os.environ.get("NEURALMIND_BYPASS") == "1":
         return 0
 
+    # The Read/Bash/Grep actions (and the opt-in offload) used to return their
+    # compressed text as `additionalContext`. Claude Code adds that next to the
+    # tool result instead of replacing it, so the model got the full output
+    # *plus* the compressed copy: Bash calls grew 17.5% and content-mode Grep
+    # 22.1% on the committed benchmark (bench/compression/results-v4.3.4.json),
+    # and the Read action never saw Claude Code's payload at all. They now
+    # inject nothing. Shrinking a result for real takes `updatedToolOutput`,
+    # and a replacement must keep what the agent needs — which the same
+    # benchmark measures before anything ships.
     if action == "compress-read":
+        # Read dedup: a repeat read of content this agent already received in
+        # this session is replaced (updatedToolOutput) with a short stub; the
+        # read after a stub always goes through in full. See read_dedup.py.
+        # Opt-out via NEURALMIND_READ_DEDUP=0. Fail-open.
+        if os.environ.get("NEURALMIND_READ_DEDUP") != "0":
+            replacement = _dedup_read(payload)
+            if replacement is not None:
+                _emit_updated_output(replacement)
+                return 0
         file_path = tool_input.get("file_path") or tool_input.get("path") or ""
         content = (
             tool_response.get("content")
@@ -301,9 +312,6 @@ def run_hook(action: str) -> int:
         )
         if not (file_path and content):
             return 0
-        compressed = compress_read(file_path, content)
-        if compressed != content:
-            _emit(compressed)
         # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
         cwd = payload.get("cwd") or os.getcwd()
         _record_tool_transition(cwd, file_path)
@@ -315,9 +323,11 @@ def run_hook(action: str) -> int:
         exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
         if not (stdout or stderr):
             return 0
-        # Stash raw output before compression so `neuralmind last` can
-        # recover the dropped middle without paying re-run cost. Fail
-        # open: a cache write failure must never break the hook.
+        # Stash the output (credential-redacted by write_last_output) so
+        # `neuralmind last` can show it again without re-running the command.
+        # Only successful calls get here: a failing one fires
+        # PostToolUseFailure. Fail open: a cache write failure must never
+        # break the hook.
         try:
             from .output_cache import write_last_output
 
@@ -326,26 +336,9 @@ def run_hook(action: str) -> int:
             write_last_output(cwd, stdout, stderr, exit_code, command=command)
         except Exception:
             pass
-        compressed = compress_bash(stdout, stderr, exit_code)
-        _emit(compressed)
         return 0
 
-    if action == "cap-search":
-        content = tool_response.get("content") or tool_response.get("output") or ""
-        if not content:
-            return 0
-        capped = cap_search_results(content)
-        if capped != content:
-            _emit(capped)
-        return 0
-
-    if action == "offload":
-        content = tool_response.get("content") or tool_response.get("output") or ""
-        if not content:
-            return 0
-        compressed, _ = offload_if_large(content)
-        if compressed != content:
-            _emit(compressed)
+    if action in ("cap-search", "offload"):
         return 0
 
     if action == "stale-guard":
@@ -369,8 +362,8 @@ def run_hook(action: str) -> int:
         # SessionEnd: write a session-boundary digest from the durable
         # event log (.neuralmind/events.jsonl). Hooks run one-per-process,
         # so in-memory trackers are empty here — the event log is the
-        # durable record. (Decision invalidation signaling is not part of
-        # v4.3; the staleness-scan command covers that audit today.)
+        # durable record. (Decisions go stale at commit time instead: the
+        # init-hook post-commit hook runs `neuralmind decisions scan`.)
         # Opt-out via NEURALMIND_SESSION_END=0. Fail-open on every error.
         if os.environ.get("NEURALMIND_SESSION_END") == "0":
             return 0
@@ -439,6 +432,9 @@ def run_hook(action: str) -> int:
                 except Exception:
                     pass
             return 0
+        # A new, resumed, cleared or compacted session holds none of the
+        # earlier reads read-dedup recorded for it.
+        _reset_read_dedup(cwd, payload)
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -523,6 +519,9 @@ def run_hook(action: str) -> int:
         cwd = payload.get("cwd") or os.getcwd()
         if _learning_disabled():
             return 0
+        # Compaction drops earlier tool results from the context, so the
+        # reads read-dedup recorded for this session no longer count.
+        _reset_read_dedup(cwd, payload)
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -634,6 +633,70 @@ def _learning_disabled() -> bool:
     return learning_disabled()
 
 
+def _dedup_read(payload: dict) -> dict | None:
+    """Replacement Read output for a repeat read, or None to leave it alone.
+
+    Only acts in a project that already has a ``.neuralmind/`` directory (a
+    globally installed hook must not create one in every repo it sees) and
+    never under NEURALMIND_NO_LEARN=1, which promises the hooks write nothing.
+    Fail-open: any error means the read goes through untouched.
+    """
+    try:
+        session_id = str(payload.get("session_id") or "")
+        tool_input = payload.get("tool_input")
+        if not session_id or not isinstance(tool_input, dict) or _learning_disabled():
+            return None
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        cwd = payload.get("cwd") or os.getcwd()
+        if not file_path or not (Path(cwd) / ".neuralmind").is_dir():
+            return None
+        from .read_dedup import (
+            MIN_CHARS,
+            ReadCache,
+            content_hash,
+            dedup_stub,
+            find_read_text,
+            read_view,
+            replace_read_text,
+        )
+
+        response = payload.get("tool_response")
+        text = find_read_text(response)
+        if not isinstance(response, dict) or text is None or len(text) < MIN_CHARS:
+            return None
+        repeat = ReadCache(cwd).observe(
+            session_id,
+            str(payload.get("agent_id") or ""),
+            str(file_path),
+            read_view(tool_input),
+            content_hash(text),
+        )
+        if repeat is None:
+            return None
+        return replace_read_text(response, dedup_stub(str(file_path), repeat, cwd))
+    except Exception:
+        return None
+
+
+def _reset_read_dedup(project_path: str, payload: dict) -> None:
+    """Forget the session's recorded reads; prune old rows. Fail-open.
+
+    Never creates the database: a project read-dedup hasn't touched has
+    nothing to reset.
+    """
+    session_id = str(payload.get("session_id") or "")
+    try:
+        from .read_dedup import ReadCache, read_cache_path
+
+        if not session_id or not read_cache_path(project_path).exists():
+            return
+        cache = ReadCache(project_path)
+        cache.clear_session(session_id)
+        cache.prune()
+    except Exception:
+        return
+
+
 def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> None:
     """Run reuse-vs-rewrite feedback for an Edit/Write, fail-open.
 
@@ -729,12 +792,30 @@ def _stale_decision_context(project_path: str, file_path: str) -> str:
             )
         ]
         for r in records[:5]:
-            lines.append(
-                f"- [{r.status}] {r.title} (confidence {r.confidence:.2f}, "
+            line = (
+                f"- [{r.status}] {r.title} (id {r.id}, confidence {r.confidence:.2f}, "
                 f"updated {r.updated_at.date().isoformat()}): {r.rationale[:160]}"
             )
+            # Why it left ACTIVE — the note mark_stale()/invalidate() appended,
+            # e.g. "commit 1a2b3c4 changed db.py since this decision was recorded".
+            why = next(
+                (
+                    e.split(":", 1)[1].strip()
+                    for e in reversed(r.evidence)
+                    if e.startswith(("Marked STALE:", "Invalidated:"))
+                ),
+                "",
+            )
+            if why:
+                line += f" — {why[:160]}"
+            lines.append(line)
         if len(records) > 5:
             lines.append(f"- …and {len(records) - 5} more (neuralmind decisions audit)")
+        if any(r.status == "STALE" for r in records):
+            lines.append(
+                "If a STALE decision still holds after you check the code, "
+                "`neuralmind decisions restore <id>` re-anchors it to HEAD."
+            )
         return "\n".join(lines)
     except Exception:
         # Fail-open: a guard failure must never block an edit.
@@ -799,11 +880,11 @@ def _write_session_end_digest(project_path: str) -> None:
     """SessionEnd: aggregate the durable event log into a final digest.
 
     Writes a summary via SessionTracker (which handles dedup + pruning).
-    Note: v4.3 does NOT flag decisions whose evidence files changed — the
-    summary records files touched, but decision invalidation signaling is
-    future work (the InvalidationEngine's staleness-scan covers the audit
-    side today). Called only from the ``session-end`` hook; every failure
-    is caught by the caller (fail-open).
+    The summary records files touched; it does not flag decisions. Decisions
+    go stale when a commit changes their files — the post-commit hook from
+    ``neuralmind init-hook`` runs ``neuralmind decisions scan`` (the
+    InvalidationEngine). Called only from the ``session-end`` hook; every
+    failure is caught by the caller (fail-open).
     """
     from .session_summaries import SessionTracker
 
@@ -869,29 +950,29 @@ def _tick_stop_summary(project_path: str) -> None:
     tracker.write_summary(summary)
 
 
-def _emit_for_event(event_name: str, content: str) -> None:
-    """Emit hookSpecificOutput for a non-PostToolUse event."""
+def _emit_updated_output(updated: dict) -> None:
+    """Emit a PostToolUse response that replaces the tool's output.
+
+    ``updatedToolOutput`` replaces the result before the model sees it (unlike
+    ``additionalContext``, which is added next to it). Claude Code ignores a
+    value that doesn't match the tool's output shape and keeps the original.
+    """
     response = {
         "hookSpecificOutput": {
-            "hookEventName": event_name,
-            "additionalContext": content,
+            "hookEventName": "PostToolUse",
+            "updatedToolOutput": updated,
         },
     }
     sys.stdout.write(json.dumps(response))
     sys.stdout.flush()
 
 
-def _emit(transformed: str) -> None:
-    """Emit a JSON response that tells Claude Code to use our transformed output.
-
-    Claude Code's hook schema supports returning a JSON object with
-    `hookSpecificOutput.additionalContext` on PostToolUse. We include the
-    transformed output there so the model sees it.
-    """
+def _emit_for_event(event_name: str, content: str) -> None:
+    """Emit hookSpecificOutput for a non-PostToolUse event."""
     response = {
         "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "additionalContext": transformed,
+            "hookEventName": event_name,
+            "additionalContext": content,
         },
     }
     sys.stdout.write(json.dumps(response))

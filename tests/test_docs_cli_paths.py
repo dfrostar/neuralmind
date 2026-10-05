@@ -8,9 +8,11 @@ and fails when a current doc references a command or subcommand that does not
 exist. (v4.2.1 remediation R3.)
 
 Rules:
-- Scanned: ``README.md``, ``docs/wiki/**/*.md``, ``docs/*.md``, and the newest
-  ``docs/releases/RELEASE_NOTES_v*.md``. Older release notes are historical
-  records and are intentionally excluded — corrections belong in erratum blocks.
+- Scanned: ``README.md``, every ``docs/**/*.md`` (wiki, use-cases, comparisons,
+  compliance, benchmarks, …), and the newest ``docs/releases/RELEASE_NOTES_v*.md``.
+  Point-in-time records are intentionally excluded (``EXCLUDED_DOC_DIRS``): older
+  release notes — corrections belong in erratum blocks — and the design docs in
+  ``docs/specs/`` and ``docs/prd/``, which propose commands that don't exist yet.
 - Fenced code blocks: a line in command position (optional ``$ `` prefix)
   referencing an unknown command, or a nonexistent subcommand of a known
   command, fails. A block containing ``cli-doc-skip`` is ignored.
@@ -48,10 +50,23 @@ ALLOWED_MISSING_COMMANDS = {
     "revoke-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-status",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-list",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "backend-check",  # docs/wiki/FAQ.md, docs/DEPLOYMENT-GUIDE.md
+    "backend-check",  # docs/wiki/FAQ.md, docs/UPGRADING.md
     "backend-list",  # docs/UPGRADING.md
-    "graphify",  # docs/DEPLOYMENT-GUIDE.md (legacy pre-rename CLI name)
 }
+
+# ---------------------------------------------------------------------------
+# Top-level docs/ directories that are point-in-time records, not current docs.
+#
+# - releases/: history. Only the newest RELEASE_NOTES_v*.md is current, and
+#   _doc_files() adds it back; older notes take erratum blocks, not rewrites.
+# - specs/, prd/: drafts and proposals, most pinned to the commit they were
+#   written against ("**Baseline:** v4.3.5 (`main` @ `39617aa`)"), whose job
+#   is to propose commands before they exist. cli-doc-skip only excuses
+#   fenced blocks, so an inline `neuralmind <group> <planned-verb>` could only
+#   pass by rewording the proposal. They are read as proposals; the pages
+#   people copy commands from (README, wiki, use-cases, …) are all scanned.
+# ---------------------------------------------------------------------------
+EXCLUDED_DOC_DIRS = frozenset({"releases", "specs", "prd"})
 
 _CMD = re.compile(r"^\s*(?:\$\s+)?neuralmind\s+([a-z][a-z0-9-]+)(?:\s+([a-z][a-z0-9-]+))?")
 
@@ -93,13 +108,15 @@ def _finding(line: str, tree: dict[str, set[str]], *, inline: bool = False) -> s
 
 
 def _doc_files() -> list[Path]:
+    docs = REPO / "docs"
     releases = sorted(
-        (REPO / "docs" / "releases").glob("RELEASE_NOTES_v*.md"),
+        (docs / "releases").glob("RELEASE_NOTES_v*.md"),
         key=lambda p: [int(x) for x in re.findall(r"\d+", p.stem)][:4] or [0],
     )
     files = [REPO / "README.md"]
-    files += sorted((REPO / "docs" / "wiki").rglob("*.md"))
-    files += sorted((REPO / "docs").glob("*.md"))
+    files += sorted(
+        p for p in docs.rglob("*.md") if p.relative_to(docs).parts[0] not in EXCLUDED_DOC_DIRS
+    )
     if releases:
         files.append(releases[-1])
     return files
@@ -150,3 +167,17 @@ def test_gate_ignores_prose_and_paths():
     assert _finding("neuralmind is importable", tree, inline=True) is None
     assert _finding("neuralmind review lib/utils/dose_conversion.dart", tree) is None
     assert _finding("cd test-neuralmind", tree) is None
+
+
+def test_scan_scope_is_every_doc_except_point_in_time_records():
+    """Regression: the gate once scanned only wiki/ and top-level docs/, so
+    comparisons/vs-mem0-zep.md documented `neuralmind memory record` unchecked."""
+    docs = REPO / "docs"
+    scanned = set(_doc_files())
+    for page in docs.rglob("*.md"):
+        top = page.relative_to(docs).parts[0]
+        if top not in EXCLUDED_DOC_DIRS:
+            assert page in scanned, f"{page.relative_to(REPO)} is not scanned"
+        elif top != "releases":
+            assert page not in scanned, f"{page.relative_to(REPO)} should be excluded"
+    assert sum(p.parent == docs / "releases" for p in scanned) == 1  # newest notes only

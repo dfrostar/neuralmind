@@ -22,7 +22,7 @@ These are not competing tools. They intervene at different points and compose cl
 ```bash
 pip install neuralmind
 neuralmind build .
-neuralmind install-hooks .     # Claude Code users: PostToolUse compression + wakeup memory
+neuralmind install-hooks .     # Claude Code users: session memory, prompt recall, stale-decision guard
 neuralmind install-mcp --all   # registers with Claude Code / Cursor / Cline / Claude Desktop
 ```
 
@@ -33,9 +33,12 @@ neuralmind doctor
 neuralmind benchmark . --json  # should show ≥4× reduction on your repo
 ```
 
-At this point your agent boots with `SYNAPSE_MEMORY.md` already in context, retrieves
-~800 tokens of structured code context per query instead of whole files, and PostToolUse
-hooks compress Read/Bash/Grep output before the model reads it.
+At this point your agent boots with `SYNAPSE_MEMORY.md` already in context and retrieves
+~800 tokens of structured code context per query instead of whole files. NeuralMind doesn't
+compress Read/Bash/Grep output: its hooks used to, and
+[measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
+that added tokens, so they now inject nothing. Compressing tool output is Headroom's job
+in Step 2.
 
 ## Step 2 — Install Headroom (transport layer)
 
@@ -52,9 +55,9 @@ What it handles that NeuralMind doesn't:
 - CCR reversibility — original payloads are cached locally in SQLite; the model can
   retrieve the full version via `headroom_retrieve` if it needs it.
 
-NeuralMind's PostToolUse hooks and Headroom complement each other: hooks compress
-*before* the agent's context is assembled; Headroom compresses the *assembled payload*
-in transit. Both run; neither interferes with the other. As of **v0.41.0**, NeuralMind
+NeuralMind and Headroom complement each other: NeuralMind decides *what* enters the
+agent's context (retrieval) and leaves tool output as-is; Headroom compresses the
+*assembled payload* in transit. Both run; neither interferes with the other. As of **v0.41.0**, NeuralMind
 also emits a **structured relevance sidecar** Headroom can read so it doesn't compress
 away the exact spans that were the reason for retrieval — see
 [Step 3.5](#step-35--close-the-seams-shared-relevance--reuse-feedback-v0410) below.
@@ -138,7 +141,7 @@ Expected combined outcome on a real codebase:
 
 | Source | Typical reduction |
 |---|---|
-| NeuralMind retrieval | 45–261× vs. pasting every source file on the public benchmark — measure yours with `neuralmind benchmark .` |
+| NeuralMind retrieval | 46–263× vs. pasting every source file on the public benchmark — measure yours with `neuralmind benchmark .` |
 | Headroom transport | 2–5× on structured tool results |
 | Ponytail generation | 42–77% fewer output tokens on task completion |
 

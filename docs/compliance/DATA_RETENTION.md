@@ -1,8 +1,8 @@
 # Data Retention Policy
 
-**Date:** 2026-07-27
-**Version:** 1.0
-**SOC 2 Control:** P2.1
+**Date:** 2026-10-03
+**Version:** 1.1
+**SOC 2 Controls:** C1.1, P4.2
 
 ---
 
@@ -17,7 +17,6 @@ Covers:
 - `graphify-out/` directory (vector index, graph)
 - `.neuralmind-team-memory.json` (committed team memory)
 - GitHub Actions artifacts (CI logs, evidence)
-- Vanta evidence (compliance artifacts)
 
 ## 3. Retention Periods
 
@@ -29,7 +28,6 @@ Covers:
 | Vector index | `graphify-out/neuralmind_db/` | Indefinite (until deleted) | User-controlled, local |
 | Team memory | `.neuralmind-team-memory.json` | Indefinite (committed) | Git history preserves |
 | CI artifacts | GitHub Actions | 90 days | GitHub default |
-| Vanta evidence | Vanta platform | 7 years | Audit standard |
 | Evidence exports | `evidence/` directory | 1 year | Local compliance copies |
 
 ## 4. Deletion Triggers
@@ -38,7 +36,6 @@ Data is deleted when:
 - User runs `rm -rf .neuralmind/` (complete local deletion)
 - User runs `neuralmind clean` (if implemented)
 - GitHub Actions artifacts auto-expire (90 days)
-- Vanta evidence reaches retention limit (7 years)
 
 ## 5. User Rights
 

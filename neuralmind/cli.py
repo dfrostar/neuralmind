@@ -851,7 +851,7 @@ def _print_explain(result) -> None:
     # Token savings
     budget = result.budget
     # The baseline the ratio was computed against: the measured size of the
-    # indexed files (neuralmind.baseline), or the 50K estimate before a build.
+    # code the index covers (neuralmind.baseline), or the 50K estimate before a build.
     est_full = int(round(result.reduction_ratio * budget.total)) if budget.total else 0
     est_full = est_full or 50_000
     saved = est_full - budget.total
@@ -872,6 +872,13 @@ def _print_explain(result) -> None:
     if result.layers_used:
         print(f"  Layers activated : {', '.join(result.layers_used)}")
 
+    # The intent L3 ranked with: code questions boost implementation hits,
+    # docs questions boost markdown (v4.6.0).
+    intent = getattr(result, "intent", "")
+    if intent:
+        how = getattr(result, "intent_source", "")
+        print(f"  Query intent     : {intent}" + (f" (by {how})" if how else ""))
+
     # Communities loaded
     if result.communities_loaded:
         print(f"  Communities loaded: {result.communities_loaded}")
@@ -882,8 +889,9 @@ def _print_explain(result) -> None:
     if hits:
         print(f"  Top search hits (L3, {len(hits)} nodes):")
         for h in hits[:5]:
-            label = h.get("label") or h.get("id", "?")
-            src = h.get("source_file", "")
+            meta = h.get("metadata") or {}
+            label = h.get("label") or meta.get("label") or h.get("id", "?")
+            src = h.get("source_file") or meta.get("source_file", "")
             score = h.get("score", 0.0)
             src_str = f"  ({src})" if src else ""
             print(f"    {score:.3f}  {label}{src_str}")
@@ -1280,7 +1288,7 @@ def cmd_savings(args):
     This lets you verify the savings claim against your own real usage.
 
     Measures your actual logged queries against the measured token count of
-    the project's indexed files (neuralmind.baseline; ``--naive-50k`` or
+    the code the project's index covers (neuralmind.baseline; ``--naive-50k`` or
     ``--global`` use the fixed 50K-token reference instead) — not the same
     thing as the what-if ROI formula in docs/BUSINESS-CASE.md, which uses
     different stated assumptions (8K tok/query, $3/MTok). The two are not meant to
@@ -1341,7 +1349,7 @@ def cmd_savings(args):
     print(
         f"  Est. cost without NM : {report['est_total_full_cost']:>10,}  "
         f"(at {est_full:,} tokens/query — "
-        f"{'measured indexed files' if report.get('baseline_source') == 'measured' else 'fixed 50K estimate'})"
+        f"{'measured indexed code' if report.get('baseline_source') == 'measured' else 'fixed 50K estimate'})"
     )
     print(f"  Tokens saved         : {report['total_tokens_saved']:>10,}")
     if dollar_info:
@@ -1525,9 +1533,11 @@ def cmd_benchmark(args):
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     contribute = getattr(args, "contribute", False) is True
-    # Community submissions keep the fixed 50K baseline the published table
-    # has always used, so its rows stay comparable with each other.
-    naive_50k = getattr(args, "naive_50k", False) is True or contribute
+    # Community submissions still compare on the fixed 50K baseline the
+    # published table has always used; every run reports that ratio alongside
+    # the measured one (legacy_avg_reduction_ratio), so --contribute needs no
+    # second run to submit both.
+    naive_50k = getattr(args, "naive_50k", False) is True
     result = mind.benchmark(naive_50k=True) if naive_50k else mind.benchmark()
 
     # Literal True check — MagicMock-auto-attribute would be truthy but not
@@ -1541,12 +1551,23 @@ def cmd_benchmark(args):
         print(json.dumps(result, indent=2))
     else:
         base = result.get("baseline") or {}
+        measured = base.get("source") == "measured"
         print(f"Project: {result['project']}")
         print(f"Baseline: {base.get('label', 'fixed 50K-token estimate')}")
         print(f"Questions: {result.get('questions', 'generic')}")
         print(f"Wake-up tokens: {result['wakeup_tokens']}")
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
+        if measured and result.get("legacy_avg_reduction_ratio") is not None:
+            print(
+                f"Legacy reduction: {result['legacy_avg_reduction_ratio']}x "
+                "(vs the fixed 50K-token estimate used before v4.5.0)"
+            )
+        if measured and result["avg_reduction_ratio"] < 1:
+            print(
+                "Note: on a repo this small, NeuralMind's context is larger than "
+                "the code it covers."
+            )
         print(f"Summary: {result['summary']}")
 
 
@@ -1851,6 +1872,7 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     prompted interactively (TTY) or left as `null` with a comment
     explaining the omission (non-TTY / scripted use).
     """
+    import shlex
     from datetime import date
 
     project_name = getattr(args, "project_name", None) or _prompt(
@@ -1879,19 +1901,40 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
         stats = mind.get_stats() if hasattr(mind, "get_stats") else {}
     except Exception:
         stats = {}
-    nodes = stats.get("total_nodes") or benchmark_result.get("nodes")
+    # NeuralMind.get_stats() names it "nodes"; embedder stats say "total_nodes".
+    nodes = stats.get("nodes") or stats.get("total_nodes") or benchmark_result.get("nodes")
+
+    base = benchmark_result.get("baseline") or {}
+    measured = base.get("source") == "measured"
+    ratio = float(benchmark_result.get("avg_reduction_ratio", 0))
+    # The table compares every row on the fixed 50K estimate it has always
+    # used; a measured run carries that figure as its legacy ratio.
+    table_ratio = float(benchmark_result.get("legacy_avg_reduction_ratio", ratio))
+    query_tokens = benchmark_result.get("avg_query_tokens")
+    avg_query_tokens = query_tokens or 0
 
     entry = {
+        # v2 adds the ratio against the submitter's measured code. Rows
+        # without schema_version are v1: the fixed-estimate ratio only.
+        "schema_version": 2,
         "project_name": project_name,
         "language": language or "Other",
         "nodes": nodes,
         "avg_wakeup_tokens": benchmark_result.get("wakeup_tokens"),
-        "avg_query_tokens": benchmark_result.get("avg_query_tokens"),
-        "avg_reduction_ratio": round(float(benchmark_result.get("avg_reduction_ratio", 0)), 1),
+        # The schema counts tokens in whole numbers; benchmark averages them.
+        "avg_query_tokens": round(query_tokens) if query_tokens is not None else None,
+        "avg_reduction_ratio": round(table_ratio, 1),
+        "measured_avg_reduction_ratio": round(ratio, 1) if measured else None,
+        "full_codebase_tokens": base.get("tokens") if measured else None,
         "model": model or None,
         "date_submitted": date.today().isoformat(),
         "submitted_by": submitted_by or None,
-        "verification_command": f"neuralmind benchmark {args.project_path} --json",
+        # Reproduces avg_reduction_ratio; the measured fields come from the
+        # same command without --naive-50k. shlex.quote so a path with spaces
+        # or shell metacharacters survives the copy-paste as one argument.
+        "verification_command": (
+            f"neuralmind benchmark {shlex.quote(str(args.project_path))} --naive-50k --json"
+        ),
     }
     if repo_url:
         entry["repo_url"] = repo_url
@@ -1901,15 +1944,14 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     # Drop null fields — schema treats them as missing, not null.
     entry = {k: v for k, v in entry.items() if v is not None and v != ""}
 
-    # Lead with the value, not the JSON.
-    ratio = float(benchmark_result.get("avg_reduction_ratio", 0))
-    avg_query_tokens = benchmark_result.get("avg_query_tokens") or 0
-    naive_tokens_estimate = int(avg_query_tokens * ratio) if avg_query_tokens else 0
+    # Lead with the value, not the JSON. What the agent would load without
+    # NeuralMind: the measured code, or the fixed estimate.
+    naive_tokens = int(base.get("tokens") or avg_query_tokens * ratio)
 
     # Rough per-query dollar cost at Claude 3.5 Sonnet input pricing.
     # The user can adjust if they run against a different model.
     sonnet_per_mtok = 3.0
-    monthly_naive = naive_tokens_estimate / 1_000_000 * sonnet_per_mtok * 100 * 30
+    monthly_naive = naive_tokens / 1_000_000 * sonnet_per_mtok * 100 * 30
     monthly_nm = avg_query_tokens / 1_000_000 * sonnet_per_mtok * 100 * 30
     monthly_saved = monthly_naive - monthly_nm
 
@@ -1917,11 +1959,26 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     print("=" * 68)
     print("What you just proved on your code:")
     print("=" * 68)
-    print(f"  Reduction ratio  :  {ratio:.1f}×  (on YOUR codebase, not a demo fixture)")
-    print(f"  Tokens per query :  {avg_query_tokens:,}  (vs ~{naive_tokens_estimate:,} raw)")
-    print(
-        f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}  (Claude 3.5 Sonnet input, 100 queries/day)"
-    )
+    if measured:
+        print(f"  Reduction ratio  :  {ratio:.1f}×  vs your code ({base.get('label', 'measured')})")
+        print(f"  Tokens per query :  {avg_query_tokens:,}  (vs {naive_tokens:,} to load the code)")
+    else:
+        print(f"  Reduction ratio  :  {ratio:.1f}×  vs the fixed 50K-token estimate, not your code")
+        print(
+            f"  Tokens per query :  {avg_query_tokens:,}  (vs the {naive_tokens:,}-token estimate)"
+        )
+    if monthly_saved >= 0:
+        print(
+            f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}  "
+            "(Claude 3.5 Sonnet input, 100 queries/day)"
+        )
+    else:
+        print("  Est. $ saved/mo  :  none — on a repo this small the context costs more")
+    if measured:
+        print(
+            f"  Table ratio      :  {table_ratio:.1f}×  vs the fixed 50K estimate every "
+            "community row compares on"
+        )
     print("")
     print("  Different model or volume? Scale linearly: GPT-4o ≈ 5× Sonnet cost;")
     print("  Haiku ≈ 1/4. Ratio stays the same.")
@@ -2553,21 +2610,23 @@ def cmd_synapse_prune(args) -> None:
 
 
 def cmd_cognition_loop(args) -> None:
-    """Run background knowledge consolidation."""
+    """Run one on-demand maintenance pass over the learned memory."""
     from neuralmind.cognition_loop import run_cognition_loop
 
     report = run_cognition_loop(args.project_path)
     if args.json:
         print(json.dumps(report.to_dict()))
-    else:
-        print(f"✓ Cognition loop complete in {report.duration_secs:.1f}s")
-        print(f"  Steps: {report.steps_taken}")
-        print(f"  Edges reinforced: {report.edges_reinforced}")
-        print(f"  Edges decayed: {report.edges_decayed}")
-        print(f"  Edges pruned: {report.edges_pruned}")
-        print(f"  Clusters consolidated: {report.clusters_consolidated}")
-        print(f"  Summaries pruned: {report.summaries_pruned}")
-        print(f"  Read cache cleared: {report.read_cache_cleared}")
+        return
+    if report.skipped:
+        print(f"Nothing to do: {report.skipped}.")
+        return
+    print(f"✓ Memory maintenance pass complete in {report.duration_secs:.1f}s")
+    print(
+        f"  Decay: {report.edges_pruned} edge(s) pruned, {report.edges_remaining} remain; "
+        f"{report.transitions_pruned} transition(s) pruned, "
+        f"{report.transitions_remaining} remain"
+    )
+    print(f"  Read-dedup rows pruned: {report.read_cache_pruned}")
 
 
 def cmd_synapse_stats(args) -> None:
@@ -2740,6 +2799,25 @@ def cmd_audit_recent(args):
         print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
 
 
+def _audit_review(action: str, args) -> None:
+    """Write a review approve/reject to the governance audit log.
+
+    A no-op unless team governance is configured; never raises (the review
+    itself has already been applied).
+    """
+    try:
+        from neuralmind.tier2.governance import record_team_event
+
+        record_team_event(
+            action,
+            f"{args.source} -> {args.target}",
+            {"project": str(Path(args.project_path).resolve())},
+            project_path=args.project_path,
+        )
+    except Exception:
+        pass
+
+
 def cmd_memory(args):
     """Namespace-level controls over the learned synapse memory (PRD 4).
 
@@ -2847,9 +2925,18 @@ def cmd_memory(args):
         return
 
     if args.memory_cmd == "publish":
-        from neuralmind.team_memory import publish_team_memory
+        from neuralmind.team_memory import PublishBlockedError, publish_team_memory
 
-        summary = publish_team_memory(args.project_path, store)
+        try:
+            summary = publish_team_memory(args.project_path, store)
+        except PublishBlockedError as exc:
+            print(f"Not published: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if summary.get("audited") is False:
+            print(
+                "Warning: published, but the governance audit entry could not be written.",
+                file=sys.stderr,
+            )
         if args.json:
             print(json.dumps(summary, indent=2))
             return
@@ -2858,6 +2945,20 @@ def cmd_memory(args):
             f"Published team memory → {summary['path']} "
             f"({c['synapses']} synapses, {c['transitions']} transitions)."
         )
+        gov = summary.get("governance")
+        if gov:
+            left = summary.get("left_out", {})
+            audit_note = "audited" if summary.get("audited") else "NOT audited"
+            print(
+                f"Team governance applied: scope={gov['scope']}, weight threshold "
+                f"{gov['weight_threshold']} — {left.get('below_threshold', 0)} edge(s) below "
+                f"the threshold left out; {audit_note}."
+            )
+        if summary.get("left_out", {}).get("retracted"):
+            print(
+                f"{summary['left_out']['retracted']} retracted association(s) left out "
+                "(see `retracted` in the bundle)."
+            )
         print(
             "Commit it so teammates inherit it automatically:\n"
             f"  git add {summary['path']} && git commit -m 'chore: publish neuralmind team memory'"
@@ -2905,6 +3006,7 @@ def cmd_memory(args):
 
         # Promote to shared namespace
         promoted = store.import_edges([(args.source, args.target, 1.0, 1)], namespace="shared")
+        _audit_review("review_approve", args)
         if args.json:
             print(json.dumps({"approved": True, "promoted": promoted}, indent=2))
             return
@@ -2923,6 +3025,7 @@ def cmd_memory(args):
             print(f"Edge {args.source} → {args.target} not found in pending review queue.")
             sys.exit(1)
         _save_pending_review(store, remaining)
+        _audit_review("review_reject", args)
         if args.json:
             print(json.dumps({"rejected": True}, indent=2))
             return
@@ -3007,13 +3110,12 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by natural language."""
+    """Search decisions by keywords or a question (titles and rationales)."""
     store = _get_decisions_store(args.project_path)
-    status = None if args.status == "ALL" else args.status
     results = store.query(
         text=args.query,
         limit=args.limit,
-        status=status,
+        status=args.status,
     )
     if args.json:
         import json
@@ -3137,12 +3239,85 @@ def cmd_decisions_invalidate(args):
     print(f"Invalidated decision: {args.decision_id}")
 
 
-def cmd_decisions_eval(args):
-    """Run the maintenance replay benchmark."""
-    from neuralmind.memory.eval import MaintenanceEval
+def cmd_decisions_scan(args):
+    """Mark decisions STALE when the last commit changed their files.
 
-    eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
-    report = eval_harness.run(output_format=args.format)
+    Runs the InvalidationEngine over the HEAD commit. The post-commit hook
+    installed by ``neuralmind init-hook`` calls ``decisions scan . --quiet``
+    after every commit, so the PreToolUse stale-decision guard sees what went
+    stale without anyone running ``decisions invalidate`` by hand. A project
+    with no decision store is left alone (none is created). Opt-out:
+    NEURALMIND_DECISION_SCAN=0. Always exits 0 — a git hook must never fail
+    the commit it follows.
+    """
+    project = Path(args.project_path).resolve()
+    quiet = bool(getattr(args, "quiet", False))
+    as_json = bool(getattr(args, "json", False))
+    db = project / ".neuralmind" / "memory.db"
+    if os.environ.get("NEURALMIND_DECISION_SCAN") == "0" or not db.exists():
+        if as_json:
+            print(json.dumps({"commit": "", "stale": []}))
+        elif not quiet:
+            why = (
+                "disabled (NEURALMIND_DECISION_SCAN=0)" if db.exists() else "no decisions recorded"
+            )
+            print(f"Decision scan skipped: {why}.")
+        return
+
+    from neuralmind.memory.invalidate import InvalidationEngine, get_current_commit
+
+    store = _get_decisions_store(project)
+    engine = InvalidationEngine(str(project), store)
+    try:
+        stale_ids = engine.scan()
+    except Exception as exc:  # never fail the commit this follows
+        if not quiet:
+            print(f"Decision scan failed: {exc}", file=sys.stderr)
+        return
+    head = get_current_commit(project)
+    if not head:
+        if as_json:
+            print(json.dumps({"commit": "", "stale": []}))
+        elif not quiet:
+            print("Decision scan skipped: not a git repository with commits.")
+        return
+    reasons = {event.decision_id: event.reason for event in engine.last_events}
+    stale = []
+    for decision_id in stale_ids:
+        record = store.get(decision_id)
+        stale.append(
+            {
+                "id": decision_id,
+                "title": record.title if record else "",
+                "reason": reasons.get(decision_id, ""),
+            }
+        )
+    if as_json:
+        print(json.dumps({"commit": head, "stale": stale}, indent=2))
+        return
+    if not stale:
+        if not quiet:
+            print(f"No recorded decisions affected by commit {head[:7]}.")
+        return
+    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by commit {head[:7]}:")
+    for entry in stale:
+        print(f"  - {entry['title']} ({entry['id']}) — {entry['reason']}")
+    print(
+        "  Review: neuralmind decisions audit --stale   "
+        "Still valid? neuralmind decisions restore <id>"
+    )
+
+
+def cmd_decisions_eval(args):
+    """Run the maintenance replay benchmark, or score a query set (--queries)."""
+    from neuralmind.memory.eval import MaintenanceEval, QuerySetEval, load_query_set
+
+    output_format = "markdown" if args.format == "md" else args.format
+    if args.queries:
+        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+    else:
+        eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
+    report = eval_harness.run(output_format=output_format)
 
     if args.output:
         Path(args.output).write_text(report)
@@ -4892,13 +5067,13 @@ def cmd_ci_check(args):
 
 
 def cmd_last(args):
-    """Print the most recent cached bash output (recovery without re-running).
+    """Print the most recent cached bash output (see it again without re-running).
 
-    Whenever NeuralMind's PostToolUse hook compresses a Bash output, it
-    stashes the raw stdout/stderr to ``.neuralmind/last_output.json``.
-    This command surfaces that cache so an agent can fetch the dropped
-    middle on demand instead of re-running an expensive command with
-    NEURALMIND_BYPASS=1.
+    NeuralMind's Bash PostToolUse hook stashes the stdout/stderr of each Bash
+    call Claude Code reports as successful to ``.neuralmind/last_output.json``.
+    A failing call fires PostToolUseFailure instead, so it isn't cached. This
+    command prints that cache, so the last output can be read again without
+    re-running an expensive command.
 
     Credentials are redacted on the way into the cache, so a value shown
     as ``[REDACTED:<kind>]`` here was never written to disk. The header
@@ -4961,11 +5136,15 @@ def cmd_install_hooks(args):
         print(f"✓ NeuralMind hooks {action} at {path}")
         if action == "installed":
             print(
-                "  PostToolUse hooks active: compress-read, compress-bash, "
-                "cap-search, edit-activity (reuse feedback)"
+                "  Hooks active: session memory (SessionStart), prompt recall "
+                "(UserPromptSubmit), stale-decision guard (PreToolUse), reuse feedback "
+                "and the `neuralmind last` output cache (PostToolUse), session digest "
+                "(Stop, SessionEnd)"
             )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
-            print("  Set NEURALMIND_BYPASS=1 env var to disable compression temporarily.")
+            print(
+                "  Set NEURALMIND_BYPASS=1 to switch every NeuralMind hook action off temporarily."
+            )
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -5599,13 +5778,53 @@ def _write_hook(hook_path: str, block: str) -> str:
     return action
 
 
+def _git_hooks_location(project_path: str) -> tuple[str | None, str | None]:
+    """``(hooks directory, repository root)`` for a project, or ``(None, None)``.
+
+    A project at the root of a normal clone has ``.git/hooks`` right there.
+    A project in a subdirectory of its repository, or a linked worktree
+    (where ``.git`` is a file), gets the repository's own hooks directory
+    from git; hooks are shared by every worktree of a repository.
+    """
+    import os
+    import subprocess
+
+    direct = os.path.join(project_path, ".git", "hooks")
+    if os.path.isdir(direct):
+        return direct, project_path
+
+    def _rev_parse(flag: str) -> str | None:
+        try:
+            out = subprocess.run(
+                ["git", "-C", project_path, "rev-parse", flag],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except Exception:
+            return None
+        return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+    top = _rev_parse("--show-toplevel")
+    common = _rev_parse("--git-common-dir")
+    if not top or not common:
+        return None, None
+    if not os.path.isabs(common):
+        common = os.path.join(project_path, common)
+    hooks = os.path.join(os.path.normpath(common), "hooks")
+    os.makedirs(hooks, exist_ok=True)
+    return hooks, top
+
+
 def cmd_init_hook(args):
     """Initialize the Git hooks that keep the index fresh and the code honest.
 
     Installs two hooks, both idempotent and both appended to any existing
     script rather than overwriting it:
 
-    - ``post-commit`` rebuilds the index so it never drifts stale;
+    - ``post-commit`` marks recorded decisions STALE when the commit changed
+      their files (``decisions scan``), then rebuilds the index so it never
+      drifts stale;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
@@ -5613,19 +5832,32 @@ def cmd_init_hook(args):
     The pre-commit guard warns and exits 0 by default — a check that
     blocks commits on a heuristic loses its welcome fast. ``--strict``
     makes it blocking; ``--no-drift`` skips it entirely.
+
+    A project in a subdirectory of its repository works too: the hooks go in
+    the repository's hooks directory and name the project by its path from
+    the repository root (git runs hooks from there). The managed block is
+    one per hook file, so a second project in the same repository replaces
+    the first's.
     """
     import os
+    import shlex
     import sys
 
     project_path = getattr(args, "project_path", ".")
     project_path = os.path.abspath(project_path)
-    git_hooks_dir = os.path.join(project_path, ".git", "hooks")
+    git_hooks_dir, repo_root = _git_hooks_location(project_path)
 
-    if not os.path.exists(git_hooks_dir):
+    if git_hooks_dir is None or repo_root is None:
         print(
             f"Error: .git/hooks directory not found in {project_path}. Are you in a Git repository?"
         )
         sys.exit(1)
+
+    # How the hooks name the project: "." at the repository root, otherwise
+    # its path from the root (git runs hooks there), with forward slashes for
+    # the hook's shell on every platform.
+    rel = os.path.relpath(os.path.realpath(project_path), os.path.realpath(repo_root))
+    target = "." if rel == "." else shlex.quote(rel.replace(os.sep, "/"))
 
     hook_path = os.path.join(git_hooks_dir, "post-commit")
 
@@ -5636,11 +5868,17 @@ def cmd_init_hook(args):
     # Note: `neuralmind build` has no --quiet flag; we redirect output to
     # /dev/null instead. Using --force keeps it fast (skips nothing) but
     # still reuses existing embeddings for unchanged nodes via hash checks.
-    nm_block = """# neuralmind-hook-start
-# Auto-rebuild NeuralMind index after each commit. Managed by `neuralmind init-hook`.
+    #
+    # `decisions scan --quiet` prints only when a recorded decision went
+    # stale, does nothing in a project with no decisions, and always exits 0;
+    # `|| true` keeps a hook that can never fail the commit regardless.
+    nm_block = f"""# neuralmind-hook-start
+# Retire decisions this commit made stale, then rebuild the NeuralMind index.
+# Managed by `neuralmind init-hook`.
 if command -v neuralmind >/dev/null 2>&1; then
+    neuralmind decisions scan {target} --quiet || true
     echo "[neuralmind] Rebuilding neural index..."
-    neuralmind build . >/dev/null 2>&1 && \\
+    neuralmind build {target} >/dev/null 2>&1 && \\
         echo "[neuralmind] OK" || \\
         echo "[neuralmind] Rebuild failed (non-critical)"
 fi
@@ -5650,7 +5888,10 @@ fi
     try:
         action = _write_hook(hook_path, nm_block)
         print(f"✓ NeuralMind post-commit hook {action} at {hook_path}")
-        print("  The index will rebuild automatically after every commit.")
+        if target != ".":
+            print(f"  For the project at {rel} in the repository {repo_root}.")
+        print("  After every commit: decisions whose files it changed are marked STALE,")
+        print("  then the index rebuilds.")
     except Exception as e:
         print(f"Error installing hook: {e}")
         sys.exit(1)
@@ -5664,7 +5905,7 @@ fi
     # exits 0 without --strict, but a hook that can never block a commit by
     # accident is one people leave installed.
     strict = getattr(args, "strict", False)
-    drift_cmd = "neuralmind drift . --staged" + (" --strict" if strict else "")
+    drift_cmd = f"neuralmind drift {target} --staged" + (" --strict" if strict else "")
     tail = "" if strict else " || true"
     drift_block = f"""# neuralmind-hook-start
 # Flag staged changes that drift from a pattern their peers share.
@@ -5718,9 +5959,10 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description=(
-            "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
-            "Local semantic codebase index + MCP server + PostToolUse compression hooks "
-            "for Claude Code, Cursor, Cline, and Continue."
+            "NeuralMind — persistent codebase memory for AI coding agents. A local "
+            "semantic code index and MCP server for Claude Code, Codex, Cursor, Cline and "
+            "Continue, plus Claude Code lifecycle hooks. Measure the token savings on your "
+            "repo with `neuralmind benchmark .`."
         ),
         epilog=(
             "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
@@ -5932,7 +6174,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     savings_p.set_defaults(func=cmd_savings)
 
@@ -5969,7 +6211,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     bench_p.add_argument(
         "--quality",
@@ -6114,7 +6356,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="naive_50k",
         action="store_true",
         help="Divide by the fixed 50,000-token estimate instead of the measured token "
-        "count of the indexed files (for comparison with pre-v4.5.0 numbers).",
+        "count of the code the index covers (for comparison with pre-v4.5.0 numbers).",
     )
     cost_p.set_defaults(func=cmd_cost)
 
@@ -6592,10 +6834,20 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("project_path", nargs="?", default=".")
     d_record.set_defaults(func=cmd_decisions_record)
 
-    d_query = decisions_sub.add_parser("query", help="Search decisions by natural language")
-    d_query.add_argument("query", help="Search query")
+    d_query = decisions_sub.add_parser(
+        "query", help="Search decisions by keywords or a question (titles and rationales)"
+    )
+    d_query.add_argument(
+        "query", help="Keywords or a question; any word can match, best matches first"
+    )
     d_query.add_argument("--limit", "-n", type=int, default=5)
-    d_query.add_argument("--status", default="ACTIVE", help="ACTIVE/STALE/ALL")
+    d_query.add_argument(
+        "--status",
+        default="ACTIVE",
+        type=str.upper,
+        choices=["ACTIVE", "STALE", "INVALIDATED", "ALL"],
+        help="Status filter, case-insensitive (default: ACTIVE)",
+    )
     d_query.add_argument("--json", "-j", action="store_true")
     d_query.add_argument("project_path", nargs="?", default=".")
     d_query.set_defaults(func=cmd_decisions_query)
@@ -6633,8 +6885,36 @@ def build_parser() -> argparse.ArgumentParser:
     d_invalidate.add_argument("project_path", nargs="?", default=".")
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
-    d_eval = decisions_sub.add_parser("eval", help="Run maintenance replay benchmark")
+    d_scan = decisions_sub.add_parser(
+        "scan",
+        help="Mark decisions STALE when the last commit changed their files "
+        "(run by the init-hook post-commit hook)",
+    )
+    d_scan.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Print only when a decision went stale (for git hooks)",
+    )
+    d_scan.add_argument("--json", "-j", action="store_true")
+    d_scan.add_argument("project_path", nargs="?", default=".")
+    d_scan.set_defaults(func=cmd_decisions_scan)
+
+    d_eval = decisions_sub.add_parser(
+        "eval",
+        help="Run the maintenance replay benchmark on a scratch store "
+        "(never the project's decisions)",
+    )
     d_eval.add_argument("--tasks", type=int, default=10, help="Number of tasks")
+    d_eval.add_argument(
+        "--queries",
+        metavar="FILE",
+        help="Score search against a query set with gold decision ids instead "
+        "(e.g. tests/memory/fixtures/decision_queries.json)",
+    )
+    d_eval.add_argument(
+        "--limit", type=int, default=5, help="Results per query with --queries (default: 5)"
+    )
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
     d_eval.add_argument("--output", "-o", help="Output file")
     d_eval.add_argument("project_path", nargs="?", default=".")
@@ -6667,7 +6947,8 @@ def build_parser() -> argparse.ArgumentParser:
     # Cognition loop subcommand
     cognition_p = subparsers.add_parser(
         "cognition-loop",
-        help="Run background knowledge consolidation (decay, coaccess reinforce, cluster promote, prune)",
+        help="Run one memory maintenance pass now (half-life decay + read-dedup cleanup); "
+        "idempotent, safe for cron",
     )
     cognition_p.add_argument("project_path", nargs="?", default=".")
     cognition_p.add_argument("--json", "-j", action="store_true")
@@ -6772,7 +7053,8 @@ def build_parser() -> argparse.ArgumentParser:
     # Init-hook command
     init_parser = subparsers.add_parser(
         "init-hook",
-        help="Install Git hooks: post-commit index rebuild + pre-commit drift guard",
+        help="Install Git hooks: post-commit decision scan + index rebuild, "
+        "pre-commit drift guard",
     )
     init_parser.add_argument(
         "project_path",
@@ -6784,7 +7066,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--no-drift",
         action="store_true",
-        help="Skip the pre-commit drift guard; install the post-commit rebuild only",
+        help="Skip the pre-commit drift guard; install the post-commit hook only",
     )
     init_parser.add_argument(
         "--strict",
@@ -7127,11 +7409,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo_p.set_defaults(func=cmd_demo)
 
-    # last command — recovery cache for the most recent compressed bash output
+    # last command — the cached output of the most recent successful Bash call
     last_p = subparsers.add_parser(
         "last",
         help="Print the last bash output the PostToolUse hook cached "
-        "(recover dropped content without re-running)",
+        "(see it again without re-running)",
     )
     last_p.add_argument(
         "project_path",
@@ -7142,10 +7424,11 @@ def build_parser() -> argparse.ArgumentParser:
     last_p.add_argument("--json", "-j", action="store_true")
     last_p.set_defaults(func=cmd_last)
 
-    # install-hooks command — Claude Code PostToolUse integration
+    # install-hooks command — Claude Code lifecycle integration
     hooks_p = subparsers.add_parser(
         "install-hooks",
-        help="Install/uninstall Claude Code PostToolUse compression hooks",
+        help="Install/uninstall NeuralMind's Claude Code hooks (session memory, "
+        "prompt recall, stale-decision guard, Bash output cache)",
     )
     hooks_p.add_argument(
         "project_path",

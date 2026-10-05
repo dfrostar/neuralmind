@@ -47,7 +47,7 @@ neuralmind eval .
 ```
 NeuralMind eval — myrepo (10 questions, read-only)
   hit@1 40% · hit@5 60% · MRR 0.50
-  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed files (1,299,512 tokens, measured)
+  avg context 1,180 tokens · 6.2× vs gold files · 1,101.3× vs all indexed code (1,299,512 tokens, measured)
 ```
 
 *(Illustrative numbers.)*
@@ -55,7 +55,7 @@ NeuralMind eval — myrepo (10 questions, read-only)
 - **hit@1 / hit@5** — the gold file is the top file / in the top five the answer drew on.
 - **MRR** — mean of 1 / rank of the first gold file; a miss scores 0.
 - **× vs gold files** — how close the context is to what a perfect retriever would load.
-- **× vs all indexed files** — the measured baseline: every file the index covers.
+- **× vs all indexed code** — the measured baseline: every code file the index covers (prose such as Markdown is left out).
 
 The eval is **read-only**: it reads the learned synapse layer, so it measures
 what your agent really gets, but writes nothing back. Run it every day and the
@@ -90,6 +90,30 @@ code you'd rather not publish.
 - `neuralmind probe . --baseline old.json` compares only the symbols both runs
   sampled, so adding files can't pass for a quality change.
 - In CI, `NEURALMIND_NO_LEARN=1` makes the whole job read-only.
+- After upgrading NeuralMind, run `neuralmind build .` before you compare
+  (v4.6.0+). The build writes the keyword index queries rank with; until it
+  runs, the eval still measures the previous version's ranking.
+
+## 5. See what a ranking change does on your questions *(v4.6.0+)*
+
+Every v4.6.0 ranking change sits behind an environment variable read at query
+time, so the same index and the same questions score both sides:
+
+```bash
+neuralmind eval .                                          # the default
+NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0's keyword index
+```
+
+`--no-history` keeps the variant out of the trend — the history records the
+version and commit, not the flags. v4.6.0 chose its own default this way, on 30
+questions per repository across six repositories — pre-registered and committed
+for the five public repos, plus a private 383-file repository: mean hit@5
+72.8% → 79.4% (reproducible on demand, not a CI gate), with the losses
+published: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click`
+public-benchmark miss, and the private 383-file repo at 73% / 0.60 against an
+80% / 0.65 target. To try the research flags, or a
+change of your own, see
+[A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md).
 
 ---
 
@@ -101,6 +125,8 @@ the last run on `main` — the same way a test suite guards behaviour. A refacto
 that renames the module every question points at shows up as a red check, not
 as an agent that quietly starts answering from the wrong file.
 
-Related: [Release notes v4.5.0](../releases/RELEASE_NOTES_v4.5.0.md) ·
+Related: [Release notes v4.6.0](../releases/RELEASE_NOTES_v4.6.0.md) ·
+[Release notes v4.5.0](../releases/RELEASE_NOTES_v4.5.0.md) ·
+[A/B-test a ranking change](./ab-test-a-ranking-change.md) ·
 [Does it work on your codebase?](./benchmark-your-repo.md) ·
 [Recover from a stale code graph](./recover-from-a-stale-graph.md)

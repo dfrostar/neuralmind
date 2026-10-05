@@ -34,9 +34,9 @@ Each page follows the same structure:
 
 ## TL;DR
 
-NeuralMind is specifically a **two-phase token optimizer for AI coding agents**:
+NeuralMind is specifically a **retrieval and memory layer for AI coding agents**:
 
-- **Phase 1 (retrieval):** a 4-layer progressive disclosure index that surfaces ~800 tokens of structured context for a code question.
-- **Phase 2 (consumption):** PostToolUse hooks that compress `Read`, `Bash`, and `Grep` output *before the agent sees it*.
+- **Retrieval:** a 4-layer progressive disclosure index that surfaces ~800 tokens of structured context for a code question.
+- **Memory:** a Hebbian synapse layer that learns which files go together from how you actually use the repo, and carries that into the next session.
 
-Most alternatives cover one or the other, not both. The comparison pages walk through where each tool fits in that split.
+It does not compress tool output. Its PostToolUse hooks on `Read`, `Bash`, and `Grep` used to; [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens instead of saving them, so they now inject nothing. For compressing what flows to the model, see [Headroom](./vs-headroom.md), which composes with NeuralMind. The comparison pages walk through where each tool fits.

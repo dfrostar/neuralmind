@@ -6,11 +6,11 @@ import SectionHeader from '@/components/ui/SectionHeader';
 const faqs = [
     {
         q: 'Does NeuralMind work with Claude Code, Cursor, Codex and other agents?',
-        a: 'NeuralMind runs as a standard MCP server, so any MCP-compatible agent can use it. Claude Code is tested end to end and also gets lifecycle hooks — memory at session start, tool-output compression. Cursor, Cline, Continue and Codex connect through the same protocol; the MCP handshake is verified against Codex, but we have not driven those agents end to end in CI, so the README labels them theoretical. "neuralmind install-mcp" registers the server with Claude Code (add --client for Cursor, Cline, VS Code or Claude Desktop), and other clients point their MCP config at "neuralmind-mcp". There is also a CLI and a Python API.',
+        a: 'NeuralMind runs as a standard MCP server, so any MCP-compatible agent can use it. Claude Code is tested end to end and also gets lifecycle hooks — memory at session start, prompt-time recall and a stale-decision guard. Cursor, Cline, Continue and Codex connect through the same protocol; the MCP handshake is verified against Codex, but we have not driven those agents end to end in CI, so the README labels them theoretical. "neuralmind install-mcp" registers the server with Claude Code (add --client for Cursor, Cline, VS Code or Claude Desktop), and other clients point their MCP config at "neuralmind-mcp". There is also a CLI and a Python API.',
     },
     {
         q: 'How much does NeuralMind reduce Claude Code token usage?',
-        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 45–261× smaller than pasting every source file, at 93.75% mean gold-file recall. On private repos, "neuralmind benchmark ." has reported 12–50× against its fixed 50K-token naive baseline. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly.',
+        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 46–263× smaller than pasting every source file, at 95% mean gold-file recall. On private repos, "neuralmind benchmark ." reported 12–50× before v4.5.0, against a fixed 50K-token estimate; it now divides the measured size of your own code, so run it and read yours. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly. NeuralMind no longer claims savings on tool output: its old compression hooks, measured against how Claude Code actually handles hook output, added tokens instead of saving them, so they were switched off (docs.neuralmind.uk/benchmarks/compression.html).',
     },
     {
         q: 'How is this different from RAG or a vector database?',
@@ -26,7 +26,7 @@ const faqs = [
     },
     {
         q: 'Is NeuralMind free? What does the paid tier buy?',
-        a: 'The core is MIT open source, including all of the token compression. A free 1-seat license auto-issues the first time you run "neuralmind wakeup ." — no signup, no expiry — and it unlocks every feature, including shared-memory governance, the hash-chained audit log and self-hosted deployment. NeuralMind Team ($29/user/mo, annual, 5–50 seats) buys seats beyond one, priority support and an annual invoice. You pay for seats and support, not for features.',
+        a: 'The core is MIT open source, including everything that reduces tokens. A free 1-seat license auto-issues the first time you run "neuralmind wakeup ." — no signup, no expiry — and it unlocks every feature, including shared-memory governance, the hash-chained audit log and self-hosted deployment. NeuralMind Team ($29/user/mo, annual, 5–50 seats) buys seats beyond one, priority support and an annual invoice. You pay for seats and support, not for features.',
     },
     {
         q: 'How does team memory work?',
@@ -34,7 +34,7 @@ const faqs = [
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Four places, all published. It misses 4 of the 40 public-benchmark queries — mostly two-file questions where it retrieves one of the two files — and flask is its weakest repo at 85% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
+        a: 'Four places, all published. It misses 3 of the 40 public-benchmark queries — two are two-file questions where it retrieves one of the two files, and one is a click query it misses outright, which makes click its weakest repo at 85.71% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'Why not just use Cursor, Windsurf or Aider memory?',
@@ -46,7 +46,7 @@ const faqs = [
     },
     {
         q: 'What is the business case for a team?',
-        a: 'Two lines: the measured token reduction (free — verify it on your own repo in about 15 minutes) and modeled productivity recovery, because engineers stop losing time to context-limit thrashing and re-prompting. The full model and its assumptions are published, and the free assessment runs it in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
+        a: 'Two lines: the measured token reduction (free — verify it on your own repo in about 15 minutes) and time lost to context-limit thrashing and re-prompting, which the business case models but does not measure. The full model and its assumptions are published, and the free assessment measures both in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
     },
 ];
 

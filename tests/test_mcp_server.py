@@ -171,6 +171,160 @@ class TestHandleToolCall:
             assert data["indexed"] is True
 
 
+class TestErrorCodes:
+    """Side finding 3: every RuntimeError, including a missing index, was
+    reported as ``security_denied``. Only the security manager's own
+    refusals are security denials now."""
+
+    def test_missing_index_is_index_not_built(self, empty_project):
+        """End to end, no mocks: a read-only query on a project with no index."""
+        result = handle_tool_call(
+            "neuralmind_query",
+            {"project_path": str(empty_project), "question": "what is this?", "learn": False},
+        )
+        data = json.loads(result)
+        assert data["code"] == "index_not_built"
+        assert "neuralmind build" in data["error"]
+        assert "neuralmind_build" in data["hint"]
+
+    def test_graph_not_built_from_any_tool(self, temp_project):
+        from neuralmind.core import GraphNotBuiltError
+
+        with patch("neuralmind.mcp_server.get_mind", side_effect=GraphNotBuiltError("no graph")):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data["code"] == "index_not_built"
+        assert data["error"] == "no graph"
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            RuntimeError("tree-sitter grammar for 'go' is not installed"),
+            PermissionError(13, "Permission denied", "/proj/secret.py"),
+        ],
+        ids=["tool-runtime-error", "os-permission-error"],
+    )
+    def test_tool_failure_is_not_a_security_denial(self, temp_project, exc):
+        with patch("neuralmind.mcp_server.get_mind", side_effect=exc):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data.get("code") != "security_denied"
+        assert str(exc) == data["error"]
+
+    def test_rbac_denial_reason(self, temp_project):
+        data = json.loads(
+            handle_tool_call(
+                "neuralmind_impact", {"project_path": str(temp_project), "symbol": "x"}
+            )
+        )
+        assert data["code"] == "security_denied"
+        assert data["reason"] == "rbac"
+
+    def test_rate_limit_reason(self, temp_project):
+        from neuralmind.mcp_security import MCPSecurityManager, RateLimiter
+
+        _security_cache[str(Path(temp_project).resolve())] = MCPSecurityManager(
+            str(temp_project), rate_limiter=RateLimiter(max_calls=1, window_seconds=60)
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        first = json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert "code" not in first
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
+    def test_security_roles_from_config_replace_the_default_policy(self, temp_project):
+        """The Security Guide tells operators to cap what a caller can claim by
+        leaving admin out of security.roles. The server used to build its
+        security manager without reading the config, so a declared admin still
+        got every tool."""
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  roles:\n    builder: [neuralmind_stats]\n", encoding="utf-8"
+        )
+        base = {"project_path": str(temp_project)}
+        as_admin = json.loads(handle_tool_call("neuralmind_stats", {**base, "role": "admin"}))
+        assert as_admin["code"] == "security_denied"
+        assert as_admin["reason"] == "rbac"
+        as_default = json.loads(handle_tool_call("neuralmind_stats", base))
+        assert as_default.get("code") != "security_denied", as_default
+
+    def test_rate_limit_from_config_applies(self, temp_project):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  rate_limit:\n    max_calls: 1\n    window_seconds: 60\n",
+            encoding="utf-8",
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
+    def _config(self, temp_project, text):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(text, encoding="utf-8")
+
+    def test_an_empty_role_policy_grants_nothing(self, temp_project):
+        """`roles: {}` used to read as "no policy" and restore the defaults,
+        admin included. An explicit empty policy is a policy."""
+        self._config(temp_project, "security:\n  roles: {}\n")
+        base = {"project_path": str(temp_project)}
+        for args in ({**base, "role": "admin"}, base):
+            data = json.loads(handle_tool_call("neuralmind_stats", args))
+            assert data["code"] == "security_denied", args
+            assert data["reason"] == "rbac"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "security:\n  roles: [admin]\n",
+            "security:\n  rate_limit: 60\n",
+            "security:\n  rate_limit:\n    window_seconds: 0\n",
+            "security:\n  rate_limit:\n    window_seconds: -5\n",
+            "security:\n  rate_limit:\n    max_calls: lots\n",
+            "security:\n  rate_limit:\n    max_calls: true\n",
+            "security: open\n",
+        ],
+    )
+    def test_a_malformed_policy_refuses_every_call(self, temp_project, body):
+        """These used to crash every call (`rate_limit: 60`, a non-number),
+        switch the limit off (a window of 0 or less), or fall back to the
+        defaults (`roles` not a mapping)."""
+        self._config(temp_project, body)
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    def test_a_null_rate_limit_means_the_defaults(self, temp_project):
+        self._config(temp_project, "security:\n  rate_limit: null\n")
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        # It used to raise AttributeError inside the dispatcher, which came
+        # back as a bare {"error": ...} on every call.
+        assert "error" not in data, data
+
+    def test_unknown_decision_status_is_invalid_request(self, temp_project):
+        """The status filter is case-insensitive, so its schema has no enum; an
+        unknown value used to run inside the security manager and come back
+        without a code, audited as a successful call. It is rejected up front
+        now, like any other disallowed argument value."""
+        args = {"project_path": str(temp_project), "query": "queue", "role": "admin"}
+        with patch("neuralmind.mcp_server.get_security_manager") as security:
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": "archived"})
+            )
+        security.assert_not_called()
+        assert data["code"] == "invalid_request"
+        assert "'status'" in data["error"]
+        assert "ALL" in data["error"]
+        for word in ("all", "Stale"):
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": word})
+            )
+            assert "code" not in data, word
+            assert data["count"] == 0, word
+
+
 class TestToolBuild:
     """Tests for tool_build()."""
 

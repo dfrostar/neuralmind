@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Benchmarks — CI-verified &amp; community-submitted · NeuralMind</title>
-    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (85–100% gold-file recall per repo, 93.75% mean, at 45–261× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
+    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (85.71–100% gold-file recall per repo, 95% mean, at 46–263× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
     <meta name="keywords" content="neuralmind, benchmark, token reduction, gold-file recall, claude code, mcp, llm cost optimization, real-world numbers, community benchmarks, code retrieval benchmark">
     <link rel="canonical" href="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:title" content="NeuralMind Benchmarks — real numbers from real codebases">
-    <meta property="og:description" content="85–100% gold-file recall per repo (93.75% mean) at 45–261× fewer tokens on pinned real OSS repos, reproducible with one command — plus community-submitted measurements.">
+    <meta property="og:description" content="85.71–100% gold-file recall per repo (95% mean) at 46–263× fewer tokens on pinned real OSS repos, reproducible with one command — plus community-submitted measurements.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="NeuralMind Benchmarks — real numbers from real codebases">
@@ -20,7 +20,7 @@
       "@context": "https://schema.org",
       "@type": "Dataset",
       "name": "NeuralMind community benchmarks",
-      "description": "Community-submitted, schema-validated token-reduction measurements produced by running `neuralmind benchmark . --json` on real repositories and contributed via pull request.",
+      "description": "Community-submitted, schema-validated token-reduction measurements produced by running `neuralmind benchmark . --contribute` on real repositories and contributed via pull request. Every row reports its ratio against the CLI's fixed 50,000-token estimate; v4.5.0+ rows also report it against the repository's measured code.",
       "url": "https://docs.neuralmind.uk/benchmarks/",
       "isAccessibleForFree": true,
       "license": "https://opensource.org/licenses/MIT",
@@ -79,10 +79,10 @@
 
 <div class="stats-band">
     <div class="container band-grid">
-        <div class="band-stat"><b>85–100%</b><span>gold-file recall on pinned real OSS repos</span></div>
-        <div class="band-stat"><b>45–261×</b><span>fewer tokens than pasting whole files</span></div>
+        <div class="band-stat"><b>85.71–100%</b><span>gold-file recall on pinned real OSS repos</span></div>
+        <div class="band-stat"><b>46–263×</b><span>fewer tokens than pasting whole files</span></div>
         <div class="band-stat"><b>40</b><span>pre-registered queries — every one reported</span></div>
-        <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos</span></div>
+        <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos, vs the CLI's fixed 50K-token estimate</span></div>
     </div>
 </div>
 
@@ -106,7 +106,7 @@
             </div>
             <div class="card">
                 <h3>Pre-registered queries</h3>
-                <p>Queries are committed in <code>evals/public/manifest.json</code> before tuning. Every one is reported; re-running yields identical numbers.</p>
+                <p>Queries are committed in <code>evals/public/manifest.json</code> before tuning. Every one is reported. Re-runs have matched recall, found-rate and MRR exactly on every machine compared; token counts can differ slightly between machines (<a href="public.md#how-exactly-a-re-run-reproduces">how much</a>).</p>
             </div>
         </div>
 
@@ -123,11 +123,11 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">41,729</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">26,543</td><td class="num">1.6×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">607</td><td class="num">68.8×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num">0.93</td><td class="num">928</td><td class="num"><span class="win">45.0×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num">0.96</td><td class="num">895</td><td class="num"><span class="win">46.6×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="result-meta">Misses 2 of 14 (both two-file cross-file queries, one of two gold files retrieved).</p>
+                <p class="result-meta">Misses 1 of 14 (a two-file cross-file query, one of two gold files retrieved).</p>
             </div>
             <div class="result-block">
                 <h3><code>click</code> @ <code>874ca2bc1c</code></h3>
@@ -141,11 +141,11 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">78,514</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">45,059</td><td class="num">1.7×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">636</td><td class="num">123.4×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">711</td><td class="num"><span class="win">110.4×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num">0.86</td><td class="num">645</td><td class="num"><span class="win">121.7×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="result-meta">No NeuralMind gold-file misses on this repo.</p>
+                <p class="result-meta">Misses 1 of 7 (<code>echo-util</code>, new in the v4.6.0 run) — the weakest repo in the corpus.</p>
             </div>
             <div class="result-block">
                 <h3><code>flask</code> @ <code>c12a5d874c</code></h3>
@@ -159,11 +159,11 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">59,013</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.85</td><td class="num">26,891</td><td class="num">2.2×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">0.95</td><td class="num">677</td><td class="num">87.2×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num">0.85</td><td class="num">723</td><td class="num"><span class="win">81.6×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num">0.95</td><td class="num">756</td><td class="num"><span class="win">78.0×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="result-meta">Misses 2 of 10 — the weakest repo in the corpus.</p>
+                <p class="result-meta">Misses 1 of 10 (a two-file cross-file query, one of two gold files retrieved).</p>
             </div>
             <div class="result-block">
                 <h3><code>rich</code> @ <code>7f580bdcf0</code></h3>
@@ -177,24 +177,25 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">232,483</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">1.00</td><td class="num">43,437</td><td class="num">5.4×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">669</td><td class="num">347.4×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">892</td><td class="num"><span class="win">260.7×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">887</td><td class="num"><span class="win">262.1×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
                 <p class="result-meta">No NeuralMind gold-file misses on this repo.</p>
             </div>
         </div>
-        <p class="note"><b>Read the losses too:</b> across all 4 repos (40 queries), NeuralMind's mean recall is 93.75% (90% found-rate) — <code>flask</code> is the weakest repo at 0.85 recall (2 misses of 10); <code>requests</code> misses 2 queries (recall 0.93). On every repo <code>embedding-rag</code> matches or beats NeuralMind's recall at fewer tokens — it is NeuralMind's own vector-retrieval core in isolation — the gap is what the progressive-disclosure assembly layer (project map + symbols + call edges) adds on top of raw top-k chunks. Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>.</p>
+        <p class="note"><b>Read the losses too:</b> across all 4 repos (40 queries), NeuralMind's mean recall is 95% (92.5% found-rate, 3 misses) — <code>click</code> is the weakest repo at 0.86 recall (1 miss of 7); <code>requests</code> and <code>flask</code> each miss one two-file query by one file (recall 0.96 and 0.95). On every repo <code>embedding-rag</code> matches or beats NeuralMind's recall at fewer tokens — it is NeuralMind's own vector-retrieval core in isolation — the gap is what the progressive-disclosure assembly layer (project map + symbols + call edges) adds on top of raw top-k chunks. Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>. These tables were regenerated for v4.6.0, whose default keyword index changed to one BM25 index over docs and code — why, and which other ranking changes were measured and not kept, is in the <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md">retrieval eval</a>.</p>
 
         <div class="codeblock">
             <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 pip install -e . tiktoken
-python -m evals.public.run">Copy</button>
-            <pre><span class="cmt"># Reproduce it yourself — no trust required. Deterministic:</span>
-<span class="cmt"># your numbers match the tables above to the token.</span>
+NEURALMIND_ORT_THREADS=1 python -m evals.public.run">Copy</button>
+            <pre><span class="cmt"># Reproduce it yourself — no trust required. Recall, found-rate and MRR</span>
+<span class="cmt"># should match the tables above exactly; token counts can differ slightly between</span>
+<span class="cmt"># machines (up to 1.3% on a per-repo mean in CI so far).</span>
 <span class="kw">git clone</span> https://github.com/dfrostar/neuralmind <span class="kw">&amp;&amp; cd</span> neuralmind
 <span class="kw">pip install</span> -e . tiktoken
-<span class="kw">python</span> -m evals.public.run</pre>
+NEURALMIND_ORT_THREADS=1 <span class="kw">python</span> -m evals.public.run</pre>
         </div>
     </div>
 </section>
@@ -215,7 +216,7 @@ python -m evals.public.run">Copy</button>
 
         <div class="chart-card">
             <h3>Does the ratio hold as repos get bigger?</h3>
-            <p>Each point is one submission — graph node count (a proxy for codebase size) against the average reduction ratio vs loading the whole repo. Hover any point for the project, language, and exact numbers.</p>
+            <p>Each point is one submission — graph node count (a proxy for codebase size) against the average reduction ratio vs the CLI's fixed 50,000-token estimate, the one ratio every row shares. That ratio is 50,000 ÷ tokens per question, so this chart shows how context size moves with repo size, not the ratio against each repo's own code: v4.5.0+ submissions add that, in the table below. Hover any point for the project, language, and exact numbers.</p>
             <div class="chart-wrap"><canvas id="scatter" role="img" aria-label="Scatter chart of reduction ratio by codebase size; the same data is in the submissions table below"></canvas></div>
         </div>
 
@@ -226,7 +227,7 @@ python -m evals.public.run">Copy</button>
         </div>
 
         <h3 style="margin: 2.2rem 0 0.4rem;">All submissions</h3>
-        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 1.2rem; max-width: 52rem;">The dataset behind both charts. The verification command for every row is <code>neuralmind benchmark . --json</code> — run it on your own repo and the numbers should reproduce in the same range.</p>
+        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 1.2rem; max-width: 52rem;">The dataset behind both charts. On v4.5.0+, <code>neuralmind benchmark . --naive-50k --json</code> reproduces a row's fixed-estimate ratio and <code>neuralmind benchmark . --json</code> its ratio against the measured code — run them on your own repo and the numbers should reproduce in the same range.</p>
         <div class="table-wrap">
             <table id="submissions-table">
                 <thead>
@@ -234,7 +235,8 @@ python -m evals.public.run">Copy</button>
                         <th data-key="project_name">Project</th>
                         <th data-key="language">Language</th>
                         <th class="num" data-key="nodes" data-type="num">Nodes</th>
-                        <th class="num" data-key="avg_reduction_ratio" data-type="num">Reduction</th>
+                        <th class="num" data-key="avg_reduction_ratio" data-type="num">vs 50K est.</th>
+                        <th class="num" data-key="measured_avg_reduction_ratio" data-type="num">vs measured code</th>
                         <th class="num" data-key="avg_wakeup_tokens" data-type="num">Wakeup tok</th>
                         <th class="num" data-key="avg_query_tokens" data-type="num">Query tok</th>
                         <th data-key="model">Model</th>
@@ -244,7 +246,7 @@ python -m evals.public.run">Copy</button>
                     </tr>
                 </thead>
                 <tbody id="submissions-body">
-                    <tr><td colspan="10" class="placeholder">Loading submissions…</td></tr>
+                    <tr><td colspan="11" class="placeholder">Loading submissions…</td></tr>
                 </tbody>
             </table>
         </div>

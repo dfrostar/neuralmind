@@ -43,9 +43,16 @@ except ImportError:
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neuralmind.core import NeuralMind
-from neuralmind.mcp_security import MCPSecurityManager
+from neuralmind.core import GraphNotBuiltError, NeuralMind
+from neuralmind.mcp_security import (
+    AccessDeniedError,
+    MCPSecurityManager,
+    PolicyConfigError,
+    RateLimitExceededError,
+    build_security_manager,
+)
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
+from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -77,10 +84,16 @@ def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
 
 
 def get_security_manager(project_path: str) -> MCPSecurityManager:
-    """Get or create security manager for project."""
+    """Get or create the security manager for a project.
+
+    Built from the project's ``neuralmind-backend.yaml``, so ``security.roles``
+    and ``security.rate_limit`` apply. This used to construct a bare
+    ``MCPSecurityManager``, which ignored both and always ran the default
+    policy, although the Security Guide told operators to cap roles there.
+    """
     abs_path = str(Path(project_path).resolve())
     if abs_path not in _security_cache:
-        _security_cache[abs_path] = MCPSecurityManager(abs_path)
+        _security_cache[abs_path] = build_security_manager(abs_path)
     return _security_cache[abs_path]
 
 
@@ -1279,9 +1292,11 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
     ``@server.call_tool()``; the 2.x constructor-callback API dropped that, so a
     missing required key reached the handler as a bare ``KeyError`` string.
     This restores the contract for both SDK lines: required keys, top-level
-    JSON types and ``enum`` membership. Returns a human-readable problem, or
-    ``None`` when the arguments are acceptable. Unknown tools are not this
-    function's concern (``handle_tool_call`` reports them).
+    JSON types and ``enum`` membership, plus the value checks a schema can't
+    express (``validate_memory_arguments``: the case-insensitive decision
+    ``status`` filter). Returns a human-readable problem, or ``None`` when the
+    arguments are acceptable. Unknown tools are not this function's concern
+    (``handle_tool_call`` reports them).
     """
     schema = next((t.get("inputSchema") for t in TOOLS if t.get("name") == name), None)
     if not schema:
@@ -1306,7 +1321,7 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
                 return f"argument {key!r} must be of type {spec.get('type')}"
         if "enum" in spec and value not in spec["enum"]:
             return f"argument {key!r} must be one of {spec['enum']!r}"
-    return None
+    return validate_memory_arguments(name, arguments)
 
 
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
@@ -1414,8 +1429,23 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         security = get_security_manager(project_path)
         result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
-    except (PermissionError, RuntimeError) as e:
-        return json.dumps({"error": str(e), "code": "security_denied"})
+    # Only the security manager's own refusals are security denials. A tool
+    # that fails with a RuntimeError (a missing parser, an unreadable PDF) or
+    # an OS PermissionError is a tool error, not an access decision.
+    except GraphNotBuiltError as e:
+        return json.dumps(
+            {
+                "error": str(e),
+                "code": "index_not_built",
+                "hint": "Call neuralmind_build with this project_path, then retry.",
+            }
+        )
+    except PolicyConfigError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "config"})
+    except AccessDeniedError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "rbac"})
+    except RateLimitExceededError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "rate_limit"})
     except Exception as e:
         return json.dumps({"error": str(e)})
 

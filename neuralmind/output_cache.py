@@ -2,15 +2,13 @@
 output_cache.py — Single-slot cache of the most recent bash output
 ==================================================================
 
-When NeuralMind compresses a Bash tool output, the stdout/stderr is
-stashed to ``<project>/.neuralmind/last_output.json`` so an agent can
-recover the dropped middle without re-running the command. It is
-**credential-scrubbed** on the way in and again on the way out — see
-"Redacted" below; nothing here writes raw command output to disk. This turns
-``NEURALMIND_BYPASS=1`` from a "re-run from scratch" escape hatch into
-a free lookup for the common "wait, I need to see what was elided"
-pattern — which is what costs real time on expensive commands like
-``npm test`` (~28s) or non-deterministic network calls.
+After each successful Bash tool call, NeuralMind's PostToolUse hook stashes
+the stdout/stderr to ``<project>/.neuralmind/last_output.json`` so the output
+can be read again with ``neuralmind last`` without re-running the command.
+It is **credential-scrubbed** on the way in and again on the way out — see
+"Redacted" below; nothing here writes raw command output to disk. Reading it
+back is a free lookup where re-running would cost real time — expensive
+commands like ``npm test`` (~28s) or non-deterministic network calls.
 
 Design:
 - **One slot.** Most recent only. We're not building a journal.

@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 45–261× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 46–263× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 
@@ -30,6 +30,8 @@ neuralmind build .
 
 The first build takes 1–3 minutes depending on repo size. Incremental rebuilds after code changes take seconds.
 
+**Indexed with an earlier version?** Run `neuralmind build .` once after upgrading to v4.6.0. The build writes the keyword index that now covers docs and code together; queries never build, so until then every number below measures the previous version's ranking.
+
 **Sanity check — make sure it worked:**
 
 ```bash
@@ -52,32 +54,55 @@ If `Built: False`, the build step failed — see [Troubleshooting](../wiki/Troub
 neuralmind benchmark .
 ```
 
-Output (your numbers will vary):
+Output on `psf/requests` v2.32.3 (verbatim, v4.5.0 — your numbers will vary):
 
 ```
-Project: your-project
-Baseline: measured: 41,000 tokens in 120 indexed files
+Project: requests
+Baseline: measured: 94,069 tokens in 36 indexed code files
 Questions: generic
-Wake-up tokens: 412
-Avg query tokens: 891
-Avg reduction: 46.0x
-Summary: 46.0x average token reduction vs measured: 41,000 tokens in 120 indexed files
+Wake-up tokens: 510
+Avg query tokens: 1200.6
+Avg reduction: 78.6x
+Legacy reduction: 41.8x (vs the fixed 50K-token estimate used before v4.5.0)
+Summary: 78.6x average token reduction vs measured: 94,069 tokens in 36 indexed code files
 ```
 
-**The baseline line matters (v4.5.0+).** The ratio divides by the measured token
-count of every file the index covers, so it scales with your repo: a large repo
-reports a larger ratio than a small one for the same context size. Before
-v4.5.0 every repo was divided by a fixed 50,000-token guess; pass `--naive-50k`
-to reproduce those numbers. "Questions" reads `project eval` when the repo has
-a `.neuralmind.eval.yaml` — see [Step 3d](#step-3d--score-it-against-your-own-questions-neuralmind-eval).
+To reproduce it: `git clone --depth 1 --branch v2.32.3 https://github.com/psf/requests`,
+then `neuralmind build .` and `neuralmind benchmark .` inside the checkout.
+
+**The baseline line matters (v4.5.0+).** The ratio is the measured token count
+of every code file the index covers over the tokens each question costs, so it
+scales with your repo: a large repo reports a larger ratio than a small one for
+the same context size. Three rules keep it honest:
+
+- **Code only.** Markdown and other prose are left out whenever the index holds
+  code — `requests`' `HISTORY.md` changelog alone is 15,088 tokens, and a
+  changelog isn't what a code question would load. Tests count if your index
+  covers them; leave them out with `.neuralmindignore` and both sides change
+  together.
+- **Same units as the context.** Both sides are counted at ~4 characters per
+  token, so the ratio doesn't move with which tokenizer you have installed.
+- **Measured at build.** `neuralmind build` caches it in
+  `.neuralmind/baseline.json`; an index built before v4.5.0 is measured on the
+  spot.
+
+Before v4.5.0 every repo was divided by a fixed 50,000-token guess. The
+`Legacy reduction` line repeats the run against it, and `--naive-50k` makes it
+the headline. "Questions" reads `project eval` when the repo has a
+`.neuralmind.eval.yaml` — see [Step 3d](#step-3d--score-it-against-your-own-questions-neuralmind-eval).
+
+The public benchmark's 45.0× on `requests` is a different measurement — its
+own 14 questions, against non-test source only — so the two numbers don't
+compare directly.
 
 **What those numbers mean for you:**
 
 | Metric | What it says |
 |---|---|
-| **Wake-up tokens** | Cost of one "orient the agent" call at session start. ~400 tokens = ~$0.0012 on Claude Sonnet. |
-| **Avg query tokens** | Cost of one code question (across NeuralMind's default 5-query sample). ~900 tokens = ~$0.0027 per question. |
-| **Avg reduction** | How many times smaller NeuralMind's context is than every indexed file put together (the measured baseline). 46× means a query costs ~2.2% of pasting the whole codebase. |
+| **Wake-up tokens** | Cost of one "orient the agent" call at session start. ~500 tokens = ~$0.0015 on Claude Sonnet. |
+| **Avg query tokens** | Cost of one code question (across NeuralMind's default 5-query sample). ~1,200 tokens = ~$0.0036 per question. |
+| **Avg reduction** | How many times smaller NeuralMind's context is than all the code the index covers (the measured baseline). 78.6× means a question costs ~1.3% of pasting that code. |
+| **Legacy reduction** | The same questions against the fixed 50K estimate — comparable with numbers from before v4.5.0 and with the community table. |
 
 ## Step 3b — Verify retrieval quality (v0.38.0+)
 
@@ -197,6 +222,12 @@ with its commit and NeuralMind version so you can see a refactor or an upgrade
 move the numbers. Walkthrough:
 [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md).
 
+**Comparing rankings (v4.6.0+).** Ranking changes are environment variables
+read at query time, so the same eval scores the previous version's ranking —
+`NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history` — or an
+off-by-default research flag, without a rebuild. Walkthrough:
+[A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md).
+
 ## Step 4 — Translate to real money
 
 At **100 queries/day** on **Claude 3.5 Sonnet** ($3/MTok input):
@@ -220,7 +251,7 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users: install the PostToolUse compression hooks to shrink `Read`/`Bash`/`Grep` output on top of that (a separate saving this benchmark does not measure):
+Claude Code users: install the hooks for session memory, prompt-time recall, and a stale-decision guard. They don't compress `Read`/`Bash`/`Grep` output ([benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)):
 
 ```bash
 neuralmind install-hooks .
@@ -233,6 +264,13 @@ neuralmind benchmark . --contribute --submitter your-github-handle
 ```
 
 That flag emits a JSON blob with your project name, numbers, and the exact command that produced them. **Nothing is uploaded.** You get a text blob to paste into Slack, a design doc, or a PR.
+
+The blob carries two ratios (v4.5.0+, `schema_version: 2`): `avg_reduction_ratio`
+against the fixed 50K estimate every community row compares on, reproduced by
+the `verification_command` (`neuralmind benchmark . --naive-50k --json`), and
+`measured_avg_reduction_ratio` against `full_codebase_tokens`, your measured
+code (from a plain `neuralmind benchmark . --json`). On `requests` that is 41.8
+and 78.6.
 
 ### Path C — Contribute to the public community benchmarks (optional)
 
@@ -248,16 +286,17 @@ Every submission is auditable — entries include the exact `neuralmind benchmar
 A few things to check before giving up:
 
 1. **Is the graph actually built?** `neuralmind stats .` should report a non-zero node count. If it's tiny, `graphify` may have missed your language or the project structure.
-2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress.
+2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress. On a repo that small the measured ratio can drop below 1×, and `benchmark` says so: the context is larger than the code it covers.
 3. **Try a larger query set.** The default 5-query benchmark is representative, not exhaustive. Pass `sample_queries` if you use the Python API.
-4. **Enable PostToolUse hooks** (Claude Code only) — that's the second compression phase. Retrieval-only numbers miss half the story.
+4. **Check the query intent** (v4.6.0+). `neuralmind query . "your question" --explain` prints the intent L3 ranked with — `Query intent     : docs (by classifier)` on a question about how your code behaves explains why a README ranks above the implementation *within* L3's four hits (a `docs` intent multiplies doc hits by 2.0 and code by 0.7). It can't explain the implementation missing from those four: in v4.6.0's eval, switching intent never changed hit@5. Collect a few of those questions in `.neuralmind.eval.yaml` and [A/B-test the research flags](./ab-test-a-ranking-change.md) on them before turning one on.
 5. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
 
 ## Related
 
 - [Use case: Cost optimization](./cost-optimization.md) — baseline → measure → report template for stakeholders
-- [Use case: Claude Code user](./claude-code.md) — full two-phase workflow
+- [Use case: Claude Code user](./claude-code.md) — the full Claude Code workflow: MCP tools, hooks, session memory
 - [Use case: Measure memory across a major refactor](./measure-memory-across-a-refactor.md) — the before/after version of this benchmark, with a real-world field report
+- [Use case: A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md) — score a research flag, or your own change, before trusting it
 - [Comparisons: vs long context windows](../comparisons/vs-long-context.md) — why 1M-token windows don't solve this
 
 ---

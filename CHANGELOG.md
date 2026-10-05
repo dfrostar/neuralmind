@@ -1,5 +1,45 @@
 # Changelog
 
+## [4.6.0](https://github.com/dfrostar/neuralmind/compare/v4.5.1...v4.6.0) (2026-10-04)
+
+
+### Features
+
+* one BM25 index for docs and code — spec 7 retrieval items, measured across 6 repos (v4.6.0) ([#550](https://github.com/dfrostar/neuralmind/issues/550)) ([516a5f4](https://github.com/dfrostar/neuralmind/commit/516a5f443b1cb0e5bfaaeb7b12c3f751ca9b91ce))
+* wire in read dedup, commit-time decision invalidation and team governance; remove dead co-access module; rebuild cognition loop ([#558](https://github.com/dfrostar/neuralmind/issues/558)) ([36a55fa](https://github.com/dfrostar/neuralmind/commit/36a55fa2a7bd9ad007d6fdbe5bcbef0007ae3458))
+
+
+### Documentation
+
+* align deployment guide and threat model with the code ([#567](https://github.com/dfrostar/neuralmind/issues/567)) ([5569d09](https://github.com/dfrostar/neuralmind/commit/5569d09d511212e5d80127815d441184f30c99cd))
+
+## [4.5.1](https://github.com/dfrostar/neuralmind/compare/v4.5.0...v4.5.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **mcp:** grant default roles the progressive-retrieval memory tools ([#568](https://github.com/dfrostar/neuralmind/issues/568)) ([53b9813](https://github.com/dfrostar/neuralmind/commit/53b98133634cdb90856795824d0ab82ba385bf4f))
+* **memory:** decision search matches any query word, so questions find decisions ([#560](https://github.com/dfrostar/neuralmind/issues/560)) ([7dff3fc](https://github.com/dfrostar/neuralmind/commit/7dff3fcfd236680a91d4acd4ffeb356da4306cb0))
+
+## [4.5.0](https://github.com/dfrostar/neuralmind/compare/v4.4.0...v4.5.0) (2026-10-04)
+
+
+### Features
+
+* benchmark's measured baseline counts code only, in the context's units, with the 50K ratio beside it ([#557](https://github.com/dfrostar/neuralmind/issues/557)) ([bcad5b9](https://github.com/dfrostar/neuralmind/commit/bcad5b9964981789bff34cabac570874ad2e091a))
+* measurement you can trust — gitignore-aware index, read-only queries, project eval (v4.5.0 specs 4, 5, 6) ([#548](https://github.com/dfrostar/neuralmind/issues/548)) ([cacadf4](https://github.com/dfrostar/neuralmind/commit/cacadf4590bc788d0f88f0ee7edd573581c172ff))
+
+
+### Bug Fixes
+
+* **hooks:** stop the PostToolUse compression hooks adding tokens; add a compression benchmark ([#546](https://github.com/dfrostar/neuralmind/issues/546)) ([1806907](https://github.com/dfrostar/neuralmind/commit/18069070232634814e54c9dcfe230e1994a8da11))
+
+
+### Documentation
+
+* **bench:** say what a public-benchmark re-run actually reproduces ([#566](https://github.com/dfrostar/neuralmind/issues/566)) ([b13c3ca](https://github.com/dfrostar/neuralmind/commit/b13c3ca5f27be7e77040acae781ed1be282d0ded))
+* correct SOC 2 criteria, add CMMC 2.0 evidence mapping ([#564](https://github.com/dfrostar/neuralmind/issues/564)) ([4dc1b1b](https://github.com/dfrostar/neuralmind/commit/4dc1b1b3dad82beb84f7dda845e6a43c3bdaa33d))
+
 ## [4.4.0](https://github.com/dfrostar/neuralmind/compare/v4.3.5...v4.4.0) (2026-10-03)
 
 

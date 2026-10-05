@@ -15,7 +15,10 @@ Storage:
   SynapseStore / TraceStore pattern in this codebase)
 
 Query strategy:
-- FTS5 MATCH for text search (relevance-ranked via ``bm25()``)
+- The query's words, minus stopwords, are the search terms; any term can
+  match, so a question finds what its keywords would
+- FTS5 MATCH for text search (relevance-ranked via ``bm25()``, so decisions
+  matching more of the terms rank first)
 - Fallback to LIKE-based scan when FTS5 is unavailable (old SQLite builds)
 - Default filter excludes STALE and INVALIDATED decisions
 
@@ -36,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -74,6 +78,30 @@ VALID_STATUSES: frozenset[str] = frozenset(
 
 DEFAULT_DECISION_TYPE = "ARCHITECTURE"
 DEFAULT_STATUS = "ACTIVE"
+
+# The status-filter word that means "every status". Callers (the CLI's
+# ``--status ALL``, MCP's ``status: "all"``) pass it as a string; the store
+# itself spells "every status" as ``None``.
+STATUS_FILTER_ALL = "ALL"
+
+
+def normalize_status_filter(status: str | None) -> str | None:
+    """Turn a caller's status filter into the store's form.
+
+    Case-insensitive. ``None``, an empty string and ``"all"`` mean every
+    status and return ``None``; a valid status returns its canonical
+    upper-case spelling. Anything else raises ``ValueError`` — an unknown
+    filter used to reach SQL as-is and silently match nothing.
+    """
+    if status is None:
+        return None
+    value = str(status).strip().upper()
+    if not value or value == STATUS_FILTER_ALL:
+        return None
+    if value not in VALID_STATUSES:
+        valid = ", ".join([*sorted(VALID_STATUSES), STATUS_FILTER_ALL])
+        raise ValueError(f"unknown status filter {status!r}; expected one of {valid}")
+    return value
 
 
 class DecisionRecord(BaseModel):
@@ -170,6 +198,20 @@ CREATE TRIGGER IF NOT EXISTS decisions_au AFTER UPDATE ON decisions BEGIN
 END;
 """
 
+# What each decision saw: the git blob id of every affected file, taken when
+# the decision is recorded, amended or restored. `decisions scan` compares it
+# with what a commit contains — an equal blob means the commit carries exactly
+# the code the decision describes, so that commit leaves it ACTIVE. Additive
+# (CREATE IF NOT EXISTS), so existing stores pick it up on open.
+FINGERPRINTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS decision_fingerprints (
+    decision_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    blob TEXT NOT NULL,
+    PRIMARY KEY (decision_id, path)
+);
+"""
+
 # Meta table row for schema version tracking (shared with other .neuralmind modules).
 META_SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -185,6 +227,36 @@ STALE_DAYS = 90
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
+
+# Dropped from a search before matching. Any term can match, so without
+# this "how do we ..." would match nearly every decision ("we" is also a
+# prefix of "weights"). This is NLTK's English stopword list: function words
+# only, so a word that could name what a decision is about stays searchable.
+# It includes contraction fragments ("what's" splits into "what" and "s"),
+# which as prefixes would match every word starting with that letter.
+_QUERY_STOPWORDS: frozenset[str] = frozenset("""
+    i me my myself we our ours ourselves you your yours yourself yourselves
+    he him his himself she her hers herself it its itself they them their
+    theirs themselves what which who whom this that these those am is are was
+    were be been being have has had having do does did doing a an the and but
+    if or because as until while of at by for with about against between into
+    through during before after above below to from up down in out on off
+    over under again further then once here there when where why how all any
+    both each few more most other some such no nor not only own same so than
+    too very can will just should now
+    s t d ll m o re ve y don ain aren couldn didn doesn hadn hasn haven isn
+    ma mightn mustn needn shan shouldn wasn weren won wouldn
+    """.split())
+
+
+def _search_terms(text: str) -> list[str]:
+    """The words a search matches on: lower-cased, de-duplicated, minus stopwords.
+
+    A query made only of stopwords keeps them, so it still searches.
+    """
+    words = list(dict.fromkeys(w.lower() for w in re.findall(r"[A-Za-z0-9_]+", text)))
+    return [w for w in words if w not in _QUERY_STOPWORDS] or words
 
 
 def _row_to_record(row: tuple) -> DecisionRecord:
@@ -305,6 +377,7 @@ class DecisionStore:
         with self._connect() as conn:
             conn.executescript(META_SCHEMA)
             conn.executescript(DECISIONS_SCHEMA)
+            conn.executescript(FINGERPRINTS_SCHEMA)
             # FTS5 may not be available in all SQLite builds (some minimal
             # Docker / Alpine images ship without it). Fail open: skip FTS
             # if the CREATE VIRTUAL TABLE raises, and the query() method
@@ -426,6 +499,8 @@ class DecisionStore:
             # MUST be visible — the update() silent-no-op bug (066a48b) hid
             # here. Log with traceback for diagnosis.
             logger.exception("[memory] record() failed for decision %s — not persisted", rec.id)
+            return rec
+        self._capture_fingerprints(rec.id, rec.files_affected)
         return rec
 
     # ------------------------------------------------------------------ #
@@ -483,6 +558,9 @@ class DecisionStore:
                 )
         except Exception:
             logger.exception("[memory] update(%s) failed — decision not persisted", decision.id)
+            return
+        # An amended decision was re-read against the code as it is now.
+        self._capture_fingerprints(decision.id, decision.files_affected)
 
     def invalidate(self, decision_id: str, reason: str = "") -> None:
         """Mark a decision INVALIDATED.
@@ -505,6 +583,35 @@ class DecisionStore:
                 )
         except Exception:
             logger.exception("[memory] invalidate(%s) failed — decision still active", decision_id)
+
+    def mark_stale(self, decision_id: str, reason: str = "") -> bool:
+        """Mark a decision STALE, keeping why in its evidence list.
+
+        Used by the InvalidationEngine when a commit changes a decision's
+        files: the note (e.g. "commit 1a2b3c4 changed auth.py after this
+        decision was recorded") travels with the record, so ``audit`` and
+        ``restore`` users can see what moved.
+
+        Returns True only when the row was updated. A missing id, or a locked
+        or corrupt store, returns False (logged), so the engine never reports
+        a decision as STALE that the store still holds as ACTIVE.
+        """
+        reason = reason.strip()
+        note = f"Marked STALE: {reason}" if reason else "Marked STALE"
+        try:
+            with self._connect() as conn:
+                cur = conn.execute(
+                    """UPDATE decisions
+                       SET status = 'STALE',
+                           updated_at = ?,
+                           evidence = json_insert(evidence, '$[#]', ?)
+                       WHERE id = ?""",
+                    (_now_iso(), note, decision_id),
+                )
+                return bool(cur.rowcount > 0)
+        except Exception:
+            logger.exception("[memory] mark_stale(%s) failed — status unchanged", decision_id)
+            return False
 
     def restore(self, decision_id: str, new_commit_sha: str) -> DecisionRecord:
         """Re-anchor a decision to a new commit and reset its status to ACTIVE.
@@ -535,6 +642,8 @@ class DecisionStore:
         restored = self.get(decision_id)
         if restored is None:
             raise KeyError(f"Decision not found: {decision_id}")
+        # Restoring says "this still holds for the code as it is now".
+        self._capture_fingerprints(restored.id, restored.files_affected)
         return restored
 
     def delete(self, decision_id: str) -> None:
@@ -542,8 +651,54 @@ class DecisionStore:
         try:
             with self._connect() as conn:
                 conn.execute("DELETE FROM decisions WHERE id = ?", (decision_id,))
+                conn.execute(
+                    "DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,)
+                )
         except Exception:
             logger.exception("[memory] delete(%s) failed — record still present", decision_id)
+
+    # ------------------------------------------------------------------ #
+    # File fingerprints (what a decision saw)
+    # ------------------------------------------------------------------ #
+
+    def _capture_fingerprints(self, decision_id: str, files: list[str]) -> None:
+        """Record the git blob id of each affected file as it is right now.
+
+        Replaces any earlier fingerprints for the decision. Files that don't
+        exist, or a project git can't hash, simply get none — and a decision
+        without a fingerprint for a changed file is never exempt from going
+        STALE. Fail-open: a capture failure never breaks the write it follows.
+        """
+        try:
+            from .invalidate import file_blob_ids
+
+            blobs = file_blob_ids(self.project_path, files)
+            with self._connect() as conn:
+                conn.execute(
+                    "DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,)
+                )
+                conn.executemany(
+                    "INSERT INTO decision_fingerprints(decision_id, path, blob) VALUES (?, ?, ?)",
+                    [(decision_id, path, blob) for path, blob in blobs.items()],
+                )
+        except Exception:
+            logger.warning(
+                "[memory] could not fingerprint files for decision %s — the commit that "
+                "carries it will mark it STALE",
+                decision_id,
+            )
+
+    def fingerprints(self, decision_id: str) -> dict[str, str]:
+        """``{project-relative path: git blob id}`` captured for a decision."""
+        try:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    "SELECT path, blob FROM decision_fingerprints WHERE decision_id = ?",
+                    (decision_id,),
+                ).fetchall()
+        except Exception:
+            return {}
+        return dict(rows)
 
     # ------------------------------------------------------------------ #
     # Reads
@@ -669,23 +824,31 @@ class DecisionStore:
         self,
         text: str,
         limit: int = 5,
-        status: str = "ACTIVE",
+        status: str | None = "ACTIVE",
         min_score: float = 0.0,
     ) -> list[DecisionRecord]:
         """Search decisions by full-text query.
 
-        Uses FTS5 when available (relevance-ranked via bm25()), falling back
-        to a LIKE scan otherwise. By default only ACTIVE decisions are
-        returned; pass ``status=None`` to include all statuses.
+        The query's words, minus stopwords ("how", "do", "the", …), are
+        matched against title and rationale, and a decision needs only one
+        of them, so a question works as well as keywords. Uses FTS5 when
+        available (relevance-ranked via bm25(), so decisions matching more
+        of the words rank first), falling back to a LIKE scan otherwise.
+        By default only ACTIVE decisions are returned; pass ``status=None``
+        (or ``"ALL"``) to include all statuses.
 
         Args:
-            text: Search query (title + rationale are searched).
+            text: Keywords or a question (title + rationale are searched).
             limit: Maximum records to return.
-            status: Filter by status ("ACTIVE", "STALE", "INVALIDATED"),
-                or None to include all.
+            status: Filter by status ("ACTIVE", "STALE", "INVALIDATED",
+                case-insensitive), or None / "ALL" to include all.
             min_score: Minimum confidence threshold (0.0–1.0). Records below
                 this confidence are excluded.
+
+        Raises:
+            ValueError: ``status`` is not a known status or "ALL".
         """
+        status = normalize_status_filter(status)
         if not text or not text.strip():
             return []
 
@@ -717,19 +880,17 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """FTS5-backed relevance-ranked search.
 
-        bm25() returns lower-is-better; we use ASC ordering so the most
-        relevant result comes first. The MATCH query uses prefix matching so
-        partial words work; tokens are double-quoted to escape FTS5 special
-        characters (hyphens, etc.).
+        Any search term can match (OR), so a question works as well as a
+        few keywords. bm25() sums each matched term's weight, so decisions
+        that match more of the terms, and rarer ones, rank first; it returns
+        lower-is-better, hence ASC. Each term is prefix-matched so partial
+        words work, and double-quoted to escape FTS5 special characters
+        (hyphens, etc.).
         """
-        import re
-
-        # Extract alphanumeric tokens (preserve original case for search).
-        tokens = re.findall(r"[A-Za-z0-9_]+", text)
-        if not tokens:
+        terms = _search_terms(text)
+        if not terms:
             return []
-        # Quote each token to escape FTS5 special chars, then add prefix.
-        match_query = " ".join(f'"{t}"*' for t in tokens)
+        match_query = " OR ".join(f'"{t}"*' for t in terms)
 
         clauses: list[str] = ["d.id = f.id"]
         params: list[Any] = []
@@ -772,13 +933,24 @@ class DecisionStore:
     ) -> list[DecisionRecord]:
         """LIKE-based fallback for SQLite builds without FTS5.
 
-        Orders by created_at DESC (most recent first) as a rough proxy for
-        relevance when we can't rank by text match.
+        Same terms as the FTS path, each matched as a substring of the title
+        or rationale; any term can match. Decisions containing more of the
+        terms rank first, then the most recent, as a rough stand-in for
+        bm25.
         """
-        clauses: list[str] = ["(title LIKE ? OR rationale LIKE ?)"]
-        like_pattern = f"%{text}%"
-        params: list[Any] = [like_pattern, like_pattern]
+        terms = _search_terms(text)
+        if not terms:
+            return []
+        # One 0/1 per term: does the title or rationale contain it?
+        hits = " + ".join(
+            "(title LIKE ? ESCAPE '\\' OR rationale LIKE ? ESCAPE '\\')" for _ in terms
+        )
+        params: list[Any] = []
+        for term in terms:
+            pattern = "%" + re.sub(r"([\\%_])", r"\\\1", term) + "%"
+            params += [pattern, pattern]
 
+        clauses: list[str] = ["hits > 0"]
         if status is not None:
             clauses.append("status = ?")
             params.append(status)
@@ -794,9 +966,9 @@ class DecisionStore:
                        decision_type, confidence, status, author,
                        created_at, updated_at, evidence,
                        rejected_alternatives, dependency_constraints, tags
-                FROM decisions
+                FROM (SELECT *, {hits} AS hits FROM decisions)
                 WHERE {where}
-                ORDER BY created_at DESC
+                ORDER BY hits DESC, created_at DESC
                 LIMIT ?""",
             (*params, limit),
         )
@@ -850,12 +1022,17 @@ class DecisionStore:
         Unlike ``audit()``, this returns every decision (including healthy ACTIVE ones).
 
         Args:
-            status: Optional status filter ("ACTIVE", "STALE", "INVALIDATED").
-                If None, returns decisions of all statuses.
+            status: Optional status filter ("ACTIVE", "STALE", "INVALIDATED",
+                case-insensitive). If None or "ALL", returns decisions of all
+                statuses.
 
         Returns:
             All matching decisions ordered by created_at DESC.
+
+        Raises:
+            ValueError: ``status`` is not a known status or "ALL".
         """
+        status = normalize_status_filter(status)
         try:
             with self._connect() as conn:
                 if status is not None:

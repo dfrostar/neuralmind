@@ -11,7 +11,7 @@ actually read. That gap let four different classes of drift ship at once:
   card away from the original,
 - a query-latency number with no measurement behind it anywhere in the repo,
 - a ``100%`` gold-file recall claim the current public benchmark contradicts
-  (93.75% mean; ``flask``, the weakest repo, is 0.85), and the real name of a private client
+  (95% mean; ``click``, the weakest repo, is 0.86), and the real name of a private client
   whose field report every doc deliberately anonymizes.
 
 So this module enforces three rules:
@@ -78,7 +78,7 @@ RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)\s*×")
 SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*×")
 
 # "100% recall" in any word order within a short window. The public
-# benchmark's mean is 93.75% and its per-repo floor is 0.85.
+# benchmark's mean is 95% and its per-repo floor is 85.71% (click).
 PERFECT_RECALL_RE = re.compile(
     r"100\s*%[^.<>{}]{0,40}?recall|recall[^.<>{}]{0,40}?100\s*%", re.IGNORECASE
 )
@@ -210,7 +210,7 @@ def test_site_does_not_claim_perfect_gold_file_recall() -> None:
                 violations.append(f"{rel}:{lineno}: {line.strip()[:110]}")
     assert not violations, (
         "The site claims 100% gold-file recall. The public benchmark reports "
-        "93.75% mean across 40 queries (0.93 requests / 1.00 click / 0.85 flask "
+        "95% mean across 40 queries (0.96 requests / 0.86 click / 0.95 flask "
         "/ 1.00 rich) and publishes every miss — quote the mean and the range:\n  "
         + "\n  ".join(violations)
     )
@@ -389,8 +389,8 @@ def test_attribution_guards_trip_on_the_copy_that_shipped() -> None:
 
 PUBLIC_RESULTS = REPO_ROOT / "bench" / "public" / "results.json"
 
-# Percentages on a line that talks about recall, e.g. "93.75% gold-file recall"
-# or "value: '93.75%'" beside "label: 'Gold-file recall'".
+# Percentages on a line that talks about recall, e.g. "95% gold-file recall"
+# or "value: '95%'" beside "label: 'Gold-file recall'".
 RECALL_LINE_RE = re.compile(r"recall", re.IGNORECASE)
 PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 # "79–100% per repo" states two percentages; only the second touches the sign.
@@ -423,7 +423,7 @@ def _public_benchmark() -> dict:
 
 
 def _pct(value: float) -> str:
-    """0.9375 -> '93.75', 0.85 -> '85', 1.0 -> '100' — how the copy writes them."""
+    """0.95 -> '95', 0.8571 -> '85.71', 1.0 -> '100' — how the copy writes them."""
     return f"{value * 100:.2f}".rstrip("0").rstrip(".")
 
 
@@ -454,7 +454,7 @@ def test_public_benchmark_ratios_are_registered_from_the_committed_run() -> None
     bench = _public_benchmark()
     allowed = _allowed_ratios()
     per_repo = bench["ratios"]
-    # The site quotes the range rounded outward: 45.0x -> "45", 260.7x -> "261".
+    # The site quotes the range rounded outward: 46.6x -> "46", 262.1x -> "263".
     low = float(int(min(per_repo.values())))
     high = float(-int(-max(per_repo.values()) // 1))
     needed = {f"{name} ({r:g}×)": r for name, r in per_repo.items()}

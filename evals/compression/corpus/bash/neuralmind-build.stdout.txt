@@ -1,0 +1,14 @@
+Building NeuralMind index for: src/requests
+Force rebuild: True
+
+[neuralmind] generated code graph via the built-in tree-sitter backend → <work>/requests/src/requests/.neuralmind/graph.json
+Build successful!
+   Project: requests
+   Nodes: 547
+   Communities: 5
+   Delta: +547 new, ~0 updated, =0 skipped
+   IR: v1 (valid)
+   Duration: 21.23s
+
+  💡 Keep the index fresh: neuralmind init-hook .  (auto-rebuild on every commit)
+     Or run: neuralmind watch .  (continuous file watcher + decay)

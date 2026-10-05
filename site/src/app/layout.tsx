@@ -3,7 +3,7 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for Claude Code, Cursor and any MCP agent: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. Free, MIT core.';
+    'Codebase memory for Claude Code, Cursor and any MCP agent: 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file. Free, MIT core.';
 
 export const metadata = {
     title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
@@ -36,7 +36,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Your coding agent forgets your codebase. NeuralMind remembers it.',
         description:
-            '93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file, on a public 40-query benchmark with every miss published. Local-first, no telemetry, MIT core.',
+            '95% mean gold-file recall at 46–263× fewer tokens than pasting every source file, on a public 40-query benchmark with every miss published. Local-first, no telemetry, MIT core.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -94,7 +94,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             applicationSubCategory: 'AI coding agent memory & code intelligence',
             operatingSystem: 'Linux, macOS, Windows',
             description:
-                'Local-first persistent memory for AI coding agents. NeuralMind indexes a codebase into a code graph, learns which files belong together from how you work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue or any MCP client — 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file on a public 40-query benchmark.',
+                'Local-first persistent memory for AI coding agents. NeuralMind indexes a codebase into a code graph, learns which files belong together from how you work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue or any MCP client — 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file on a public 40-query benchmark.',
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
@@ -109,11 +109,11 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             keywords:
                 'AI coding agent memory, Claude Code memory, MCP server, codebase memory, context engineering, token reduction, code knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
-                '45–261× fewer tokens than pasting every source file, at 93.75% mean gold-file recall, across 40 pre-registered queries on four public repos',
+                '46–263× fewer tokens than pasting every source file, at 95% mean gold-file recall, across 40 pre-registered queries on four public repos',
                 'Hebbian synapse layer that learns which files go together from how you use the codebase — budget-neutral recall',
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
                 'MCP server for Claude Code, Codex, Cursor, Cline, Continue and any MCP-compatible agent',
-                'Claude Code lifecycle hooks: session-start memory, tool-output compression and recovery',
+                'Claude Code lifecycle hooks: session-start memory, prompt-time recall, stale-decision guard',
                 'Team memory that travels with git clone, with a quality review queue for imports and a hash-chained audit log',
                 'Bundled tree-sitter code graph indexing ten languages',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',

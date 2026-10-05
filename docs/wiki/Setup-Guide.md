@@ -2,7 +2,7 @@
 
 First-time setup for NeuralMind on any platform in under 5 minutes.
 
-NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and PostToolUse hooks that compress `Read`/`Bash`/`Grep` output before your agent sees it. Token reduction is **12-50× per query on real repos** in field reports (`neuralmind benchmark`); CI gates a conservative floor on a small fixture every commit, and the [public benchmark](https://neuralmind.uk/benchmark/) measures 45–261× against every source file at 93.75% mean gold-file recall.
+NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and Claude Code hooks that hand that memory to your agent at session start and with each prompt. Token reduction was **12-50× per query on real repos** in field reports (`neuralmind benchmark` before v4.5.0, against a fixed 50K-token estimate — it now divides the measured size of your code); CI gates a conservative floor on a small fixture every commit, and the [public benchmark](https://neuralmind.uk/benchmark/) measures 46–263× against every source file at 95% mean gold-file recall.
 
 See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflow, or [Comparisons](Comparisons) for how it differs from Cursor `@codebase`, Copilot, Claude Projects, long context, and others.
 
@@ -78,7 +78,7 @@ You should see a compact project overview. If you do, NeuralMind is ready.
 
 | Your tool | What to set up | Guide |
 |-----------|---------------|-------|
-| **Claude Code** | MCP + PostToolUse hooks | [Claude Code](#claude-code) |
+| **Claude Code** | MCP + lifecycle hooks | [Claude Code](#claude-code) |
 | **Claude Desktop** | MCP server | [Claude Desktop](#claude-desktop) |
 | **Cursor / Cline / Continue** | MCP server | [Cursor / Cline / Continue](#cursor--cline--continue) |
 | **ChatGPT / Gemini / any LLM** | CLI (copy-paste output) | [Any LLM](#any-llm-copy-paste) |
@@ -102,7 +102,7 @@ config if you prefer to edit it yourself.
 ### Claude Code
 
 Claude Code gets the full stack: smart retrieval, learned synapse
-memory on session start, **and** compressed tool outputs.
+memory on session start, **and** prompt-time recall plus a stale-decision guard.
 
 ```bash
 pip install neuralmind
@@ -113,7 +113,7 @@ neuralmind build .
 # Register the MCP server (or use: neuralmind install-mcp --all)
 neuralmind install-mcp --client claude-code
 
-# Install PostToolUse compression hooks (compresses Read/Bash/Grep output)
+# Install the lifecycle hooks (session memory, prompt recall, stale-decision guard)
 neuralmind install-hooks .
 
 # Optional: auto-rebuild index on every git commit

@@ -7,11 +7,11 @@ export const metadata: Metadata = pageMetadata({
     path: '/effectiveness',
     title: 'NeuralMind Results: Before & After on a Production Repo',
     description:
-        'Field report: 48.8× fewer tokens per question on a ~9,300-node TypeScript codebase, synapse edges 36 → 135 across a rebuild — and what we can’t claim yet.',
+        'Field report: 48.8× fewer tokens per question (vs the CLI’s pre-v4.5.0 fixed 50K-token estimate) on a ~9,300-node TypeScript codebase, synapse edges 36 → 135 across a rebuild — and what we can’t claim yet.',
 });
 
 const headlineStats = [
-    { label: 'Token Reduction', value: '48.8×', detail: '1,033 tokens/query vs the CLI’s 50K-token naive baseline', gradient: true },
+    { label: 'Token Reduction', value: '48.8×', detail: '1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0', gradient: true },
     { label: 'Wake-up Tokens', value: '455', detail: 'Per query, measured', gradient: false },
     { label: 'Personal Edges', value: '+275%', detail: '36 → 135 co-activations', gradient: false },
     { label: 'Communities', value: '810', detail: 'Architectural boundaries', gradient: false },
@@ -25,7 +25,7 @@ const beforeAfter = [
     { metric: 'Shared edge weight', before: '2,774.73', after: '2,924.66', change: '+5.4%' },
     { metric: 'Wake-up tokens', before: '—', after: '455', change: '—' },
     { metric: 'Avg query tokens', before: '—', after: '1,033', change: '—' },
-    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: '—' },
+    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: 'vs the pre-v4.5.0 fixed 50K-token estimate' },
 ];
 
 const honestyGate = [

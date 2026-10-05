@@ -73,7 +73,7 @@ Rules that follow from it:
   one-repo field report, and a community submission are not the same strength
   of claim, and the site says which is which.
 - **Quote the mean and the range, publish the misses.** Gold-file recall is
-  93.75% mean / 85–100% per repo, not "100%". The docs already report where
+  95% mean / 85.71–100% per repo, not "100%". The docs already report where
   NeuralMind loses; the site must not round that away.
 - **A headline needs its raw data committed.** The public-benchmark figures
   are recomputed in CI from `bench/public/results.json`; re-running the
@@ -107,14 +107,28 @@ When a new document is authored, file it in the right repo:
 this public repo. Both repos deploy to `neuralmind.uk`; only this one
 (`neuralmind`) publishes to PyPI and GHCR.
 
+## `docs/` is a public website
+
+GitHub Pages builds https://docs.neuralmind.uk/ from `main:/docs` (legacy
+Jekyll build, domain in `docs/CNAME`) on every push to `main`, without waiting
+for CI. A file committed under `docs/` goes public within minutes, so only
+docs-site file types belong there: Markdown, HTML, site assets, images, and the
+site's own data files. CI enforces the type allowlist
+(`scripts/check_docs_site_allowlist.py`, stdlib-only). Scripts, datasets, and
+other projects' files go in their own repos. To add a new file type, edit the
+allowlist in the same change.
+
 ## Local conventions
 
 - Tests live in `tests/`. The synapse layer's tests are stdlib-only
   so they run without the full dep set.
 - Generated state lives in `<project>/.neuralmind/` — never committed.
-- Behavior toggles via env vars: `NEURALMIND_BYPASS=1` skips
-  compression, `NEURALMIND_SYNAPSE_INJECT=0` skips prompt-time
-  recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory export.
+- Behavior toggles via env vars: `NEURALMIND_BYPASS=1` switches
+  off every hook action, `NEURALMIND_SYNAPSE_INJECT=0` skips
+  prompt-time recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory
+  export. The Read/Bash/Grep PostToolUse hooks inject nothing:
+  Claude Code adds `additionalContext` beside a tool result rather
+  than replacing it (see `docs/benchmarks/compression.md`).
 
 ## Commercial terms — single source of truth
 
@@ -160,7 +174,7 @@ agent-visible behavior:
 - [ ] `README.md` — bump the top banner, demote the previous
   version into the history trail, add the new release-notes row
   to the bottom table, and update any in-context sections (e.g.
-  "PostToolUse hooks — what happens automatically") with the new
+  the "After install, your agent:" list) with the new
   behavior. Show what the agent actually sees, not just what the
   code does.
 - [ ] `docs/index.html` — top banner block + earlier-releases trail.

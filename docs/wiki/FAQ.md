@@ -86,6 +86,17 @@ neuralmind query  . "UserService"      # Full 4-layer context, hybrid L3 search
 
 Set `NEURALMIND_BM25=0` to revert to pure vector search if needed.
 
+**Since v4.6.0** the keyword side of `neuralmind query`'s L3 search covers code
+as well as docs on both backends. The default turbovec backend's BM25 index
+used to hold only document nodes, so docs got a keyword signal code never did;
+`neuralmind build` now writes one BM25 index over every node (doc text, symbol
+names, file paths, docstrings), and queries fuse that instead. Run
+`neuralmind build` once after upgrading — until then queries keep the v4.5
+docs-only list, because a query never builds anything. `NEURALMIND_BM25_UNIFIED=0`
+restores the v4.5.0 behaviour. The change was measured before it became the
+default — see the retrieval eval on the [Benchmarks](Benchmarks#retrieval-eval-v460)
+page.
+
 For raw string grep across files (not structured retrieval):
 ```bash
 grep -r "authenticate" src/
@@ -242,7 +253,7 @@ exclude_patterns = [
 # 2. Local node_modules / site-packages (yes)
 # 3. External PyPI/npm packages (no, stays private)
 
-# NeuralMind indexes only local code and makes no calls of its own
+# NeuralMind indexes only local code and sends no telemetry
 ```
 
 ---
@@ -273,14 +284,15 @@ Cons: Requires infrastructure
 
 ### "Can I restrict who can use NeuralMind?"
 
-**Yes, with MCP server + RBAC:**
-```bash
-# Launch MCP with access control
-neuralmind-mcp . --rbac-enabled \
-  --admin-users alice@company.com \
-  --developer-users bob@company.com,charlie@company.com \
-  --viewer-users intern@company.com
-```
+**Partly.** NeuralMind doesn't authenticate users. Who can use it is decided by
+who can run the agent that launches its MCP server (stdio, the default) and who
+can read the project's `.neuralmind/` directory.
+
+Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
+each role can call. Callers declare their own role, so leave `admin` out of the
+policy to cap what any caller can reach. (The MCP server in v4.5.1 and earlier
+ignored `security.roles`.) See the
+[Security Guide](../SECURITY-GUIDE.md#access-control).
 
 ---
 
@@ -528,7 +540,7 @@ Coming in v1.0 (Q1 2027):
 |---------|-----------|--------|
 | Works everywhere | ✅ Yes | ❌ Cursor only |
 | Works offline | ✅ Yes, once the first build has cached the embedding model | ❌ Cloud |
-| Token reduction | Measured: 45–261× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
+| Token reduction | Measured: 46–263× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
 | Cost | Free at 1 seat | Paid (Cursor) |
 | Open source | ✅ MIT core | ❌ No |
 

@@ -3,17 +3,23 @@
 Everything here is **measured and reproducible** — no hand-picked or hardcoded
 numbers. Every figure is produced by code in the repo. The fixture-based
 figures are **gated in CI**, so they can't silently regress; the public
-benchmark on real OSS repos is **reproducible on demand** (deterministic, one
-command, raw data committed) but is not a CI gate. Where a number is an
+benchmark on real OSS repos and the multi-repo
+[retrieval eval](#retrieval-eval-v460) are **reproducible on demand**
+(deterministic, one command, raw data committed) but are not CI gates. Where a number is an
 estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
-in CI.
+in CI. On the public benchmark, "reproducible" means gold-file recall,
+found-rate and MRR have come back identical on every machine compared, while
+per-repo mean tokens have varied by up to 1.3% between machines
+([details](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces)).
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
 > + synapse A/B), `python -m evals.faithfulness.runner --run` (answer quality),
 > `python -m evals.onboarding.runner --run` (onboarding lift),
-> `python -m evals.parity.run` (backend parity).
+> `python -m evals.parity.run` (backend parity),
+> `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark` (multi-repo
+> retrieval eval; needs `pip install -e . tiktoken`).
 
 ## What the data shows, losses included (the short version)
 
@@ -21,10 +27,10 @@ NeuralMind is more than token reduction; the numbers below cover **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
-fixture** (real but smaller-scope): **(1) Cheaper context** — **85–100%
-gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–261×
+fixture** (real but smaller-scope): **(1) Cheaper context** — **85.71–100%
+gold-file recall (95% mean, 92.5% found-rate across 40 queries) at 46–263×
 fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
-on recall on two of four (tying on the other two); **(2) Finds the right code** — 100% gold-file recall, **MRR
+on recall on three of four (tying on the fourth); **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
@@ -35,7 +41,7 @@ budget, truncation keeps slightly more gold facts on the prose-heavy reference
 fixture (delta −0.054 at v4.3.4; earlier releases +0.013 to +0.143; CI fails
 below −0.10). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
-cheaper on raw tokens, two repos have gold-file misses — 4 of 40 queries (see
+cheaper on raw tokens, three repos have gold-file misses — 3 of 40 queries (see
 the public benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
 retrieval ranking*, not their LLM-agent loop. Full tables and reproduction
 commands below.
@@ -92,6 +98,83 @@ rather than adding tokens. The onboarding lift is the answer to "does an agent
 that inherits a committed team memory retrieve better on its *first* queries than
 a cold agent?" — gated in CI at lift ≥ 0.
 
+## Retrieval eval (v4.6.0)
+
+*Evidence level: reproducible on demand — one command, raw output committed in
+[`bench/retrieval/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md);
+not a CI gate.*
+
+v4.6.0 asked which ranking changes earn a default, and answered it with a
+multi-repo eval instead of one repo's anecdote. `python -m evals.retrieval.run`
+asks **30 questions per repository** — pre-registered and committed in
+`evals/retrieval/questions/` (before any ranking change was tried) for the five
+public repositories, plus a private 383-file repository with its own local
+question set that readers can't re-run — under every flag configuration,
+read-only. The repositories: `requests`, `click`, `flask`
+and `rich` at the public benchmark's pinned commits, this repository (with its
+docs indexed), and a private 383-file repository, reported only in aggregate.
+
+**The keep rule**, fixed before the runs:
+
+- mean hit@5 across repos goes up, and it goes up on at least 3 repos;
+- no repo drops by more than one question;
+- average context tokens rise by at most 10%;
+- the public 4-repo benchmark's gold-file recall doesn't drop.
+
+**What was kept: one BM25 index over docs and code.** The default turbovec
+backend's keyword index held only document nodes, so the hybrid fusion gave
+docs a keyword signal code never got. v4.6.0 indexes every node (doc text,
+symbol names, file paths, docstrings) in one BM25 index, on by default
+(`NEURALMIND_BM25_UNIFIED=0` restores v4.5.0). Against v4.5.0
+([`bench/retrieval/vs-v4.5`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.5/report.md)),
+hit@5 / MRR:
+
+| Repo | v4.5.0 | v4.6.0 (unified BM25) |
+|---|---:|---:|
+| `requests` | 90% / 0.76 | 87% / 0.75 |
+| `click` | 93% / 0.69 | 93% / 0.79 |
+| `flask` | 73% / 0.63 | 83% / 0.71 |
+| `rich` | 80% / 0.71 | 80% / 0.60 |
+| `neuralmind` (docs indexed) | 40% / 0.27 | 60% / 0.47 |
+| a private 383-file repository | 60% / 0.47 | 73% / 0.60 |
+| **mean** | **72.8% / 0.589** | **79.4% / 0.654** |
+
+On the five public repositories alone, mean hit@5 / MRR goes from
+75.3% / 0.614 to 80.7% / 0.664. Context tokens rose 1.1%, and the public
+benchmark's gold-file recall went from 93.75% to 95%. The losses, published:
+`requests` drops one question (90% → 87%), `rich`'s MRR falls from 0.71 to
+0.60, and on the public benchmark `click` gains a miss (`echo-util`), falling
+from 100% to 85.71%. The private 383-file repository's 60% baseline is the
+figure the work started from; its target (hit@5 ≥ 80%, MRR ≥ 0.65) is
+**not met** — it reaches 73% / 0.60.
+
+**What was measured and not kept.** Each stays available behind its flag, off
+by default:
+
+| Flag | What it does | Why it wasn't kept |
+|---|---|---|
+| `NEURALMIND_L3_PER_FILE=2` | at most N L3 hits per file | +1.1 pts mean hit@5, 2 repos up, none down on hit@5 — but mean MRR fell 0.654 → 0.629 (`requests` 0.75 → 0.69, `flask` 0.71 → 0.65); public recall 96.25%; the rule needs 3 repos |
+| `NEURALMIND_DOC_HANDOFF=1` | a doc hit that names code pulls that code in | helps only where docs name code (private +3, `neuralmind` +1 question vs v4.5.0); a wash on top of v4.6.0 |
+| `NEURALMIND_HUB_DAMPEN=1` | down-weights files returned far more often than chance | cost `click` 3–4 questions |
+| `NEURALMIND_INTENT_RULES=1` | "how does X… / where is X… / which X is…" → code intent | moves MRR (0.654 → 0.672), never hit@5: it only re-orders the 4 hits L3 already chose |
+| `NEURALMIND_INTENT_POOL=1` (with `INTENT_RULES=1`) | intent ranks all 10 candidates | `click` −8 questions, public recall 83.75% (vs v4.5.0) |
+| `NEURALMIND_BM25_CODE=1` | a separate code-only keyword list | `requests` −3 (vs v4.5.0); `rich` −4, `click` −3 (on v4.6.0) |
+
+One finding worth keeping even though its fix wasn't: the old intent classifier
+(still the default, since the intent rules weren't kept) sends many questions
+about how the project behaves — "how does X…", "where is X…", "which X is…" —
+to **docs** intent, which multiplies doc hits ×2.0 and code ×0.7. Four questions
+of those shapes are now regression tests
+([`tests/test_l3_slots_v460.py`](https://github.com/dfrostar/neuralmind/blob/main/tests/test_l3_slots_v460.py)).
+Run `neuralmind query --explain` to see which intent L3 ranked a query with,
+and why.
+
+```bash
+pip install -e . tiktoken
+NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark --out bench/retrieval/on-v4.6
+python -m evals.retrieval.run --private ~/work/your-repo   # add your own repo, locally
+```
+
 ## v0.21.0 — ChromaDB-free retrieval, at parity
 
 The opt-in `turbovec` backend (Google **TurboQuant**) can embed *and* search with
@@ -142,7 +225,7 @@ codebase, but not a CI-gated claim.
 
 | Headline | Value |
 |---|---|
-| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs 50K+ naive) |
+| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0) |
 | Personal synapse edges across the rebuild | **36 → 135** — the learning layer tracked the new code |
 | Shared edge weight | **+5.4%** (denser cross-links after a new shared layer) |
 | Full `--force` rebuild / incremental after | **326 s** / **~30 s** |
@@ -150,6 +233,26 @@ codebase, but not a CI-gated claim.
 Full table, interpretation, and a step-by-step recipe for the same
 before/after measurement on your own refactor:
 [Measure memory across a major refactor](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
+
+## Tool-output compression (measured, and withdrawn)
+
+Through v4.4.0, `install-hooks` registered PostToolUse hooks that handed Claude
+compressed copies of `Read`, `Bash` and `Grep` output. The
+[compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md) drives the real hook with Claude Code-shaped
+payloads and applies each response the way Claude Code's documented hook
+protocol does.
+
+| Tool call | Tokens, no hook | v4.3.4 hooks | Hooks now |
+|---|---:|---:|---:|
+| Bash (16 real commands) | 32,581 | 38,296 (+17.5%) | +0.0% |
+| Grep, content mode (48 searches) | 55,800 | 68,113 (+22.1%) | +0.0% |
+| Read (136 whole files) | 597,002 | +0.0% (never fired) | +0.0% |
+
+Claude Code adds a hook's `additionalContext` next to the tool result rather
+than replacing it, so the copies cost tokens. The hooks now inject nothing. The
+compressors themselves would cut 66–87% if they replaced a result, but they
+keep 0% of a file's source lines and 0% of a diff's changed lines. CI
+recomputes the Bash results on every PR (`tests/test_compression_benchmark.py`).
 
 ## What we *don't* claim
 

@@ -79,13 +79,33 @@ class TestGovernanceAdminActions:
         audit = AuditLog(tmp_path / "audit.jsonl")
         return TeamGovernance(tmp_path / "gov.json", default_config, audit=audit)
 
-    def test_governance_remove_edge(self, governance: TeamGovernance) -> None:
-        governance.remove_edge_from_shared("edge-123", ADMIN_EMAIL)
-        # Verify audit was logged with action='remove'
+    def test_governance_remove_edge(self, governance: TeamGovernance, tmp_path: Path) -> None:
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        store.import_edges([("a.py", "b.py", 0.9, 3)], namespace="shared")
+        governance.remove_edge_from_shared(
+            "a.py", "b.py", ADMIN_EMAIL, store=store, project_path=tmp_path
+        )
+        # The edge is gone, and the removal was audited with action='remove'
+        assert store.edges(namespaces=["shared"]) == []
         latest = governance.audit.latest()
         assert latest is not None
         assert latest.action == "remove"
-        assert latest.target == "edge-123"
+        assert latest.target == "a.py -> b.py"
+
+    def test_governance_remove_edge_requires_admin(
+        self, governance: TeamGovernance, tmp_path: Path
+    ) -> None:
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        store.import_edges([("a.py", "b.py", 0.9, 3)], namespace="shared")
+        with pytest.raises(PermissionError, match="Not a team admin"):
+            governance.remove_edge_from_shared(
+                "a.py", "b.py", NON_ADMIN_EMAIL, store=store, project_path=tmp_path
+            )
+        assert len(store.edges(namespaces=["shared"])) == 1
 
     def test_governance_idempotent_publish(self, governance: TeamGovernance) -> None:
         edges = [{"source": "a", "target": "b", "weight": 0.5}]

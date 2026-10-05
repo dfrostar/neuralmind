@@ -2,7 +2,7 @@
 
 ## What you're solving for
 
-You use Claude Code daily. Your context fills up fast, `Read` pulls in too much source, long `Bash` outputs blow your budget, and the bill is adding up. You want both **retrieval-side** and **consumption-side** optimization.
+You use Claude Code daily. Your context fills up fast, `Read` pulls in too much source, and the bill is adding up. You want **retrieval-side** optimization — less source pulled in per question — and a codebase memory that carries over between sessions.
 
 ## Setup (one time)
 
@@ -10,7 +10,7 @@ You use Claude Code daily. Your context fills up fast, `Read` pulls in too much 
 pip install neuralmind
 cd your-project
 neuralmind build .             # builds the knowledge graph + vector index
-neuralmind install-hooks .     # PostToolUse compression (Read/Bash/Grep)
+neuralmind install-hooks .     # session memory, prompt recall, stale-decision guard
 neuralmind init-hook .         # auto-rebuild on every git commit
 ```
 
@@ -38,9 +38,9 @@ Returns ~800–1,100 tokens with the right clusters and search hits.
 neuralmind_skeleton(project_path=".", file_path="src/auth/handlers.py")
 ```
 
-Returns the function list, rationales, call graph, and cross-file edges — ~88% cheaper than `Read`.
+Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.8% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
 
-**Everything else** (Read, Bash, Grep you don't route through NeuralMind) is **automatically compressed** by the hooks. You don't have to think about it.
+**Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing.
 
 ## What changes for you
 
@@ -48,8 +48,6 @@ Returns the function list, rationales, call graph, and cross-file edges — ~88%
 |---|---|
 | Session starts with "let me explore the repo" + 20 file reads | `wakeup` loads orientation in one call |
 | Asking about a flow = reading 5 files end-to-end | `query` returns the relevant slice |
-| `npm test` dumps 800 lines into the agent | Hook keeps errors + last 3 lines (~91% smaller) |
-| `grep -r "foo"` floods with 200 matches | Capped at 25 with "N more hidden" pointer |
 | Every commit drifts the index | `post-commit` hook rebuilds incrementally |
 | An eleventh handler quietly skips the auth check the other ten share *(v3.2.0+)* | `pre-commit` drift guard flags it before the commit lands |
 | "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
@@ -113,6 +111,8 @@ Output appended after the normal context block:
 
 The trace is the primary tool for diagnosing a retrieval that felt wrong or incomplete — it shows you exactly which clusters loaded and which search hits scored, so you know where to look.
 
+Since v4.6.0 the trace also prints the query intent L3 ranked with, and how it was decided — by keywords, by the classifier, or, with the off-by-default `NEURALMIND_INTENT_RULES=1`, by question shape (`Query intent     : code (by question shape)`) — and its hit list shows each hit's label and file instead of raw node ids. If a code question comes back with `docs` intent, that explains docs outranking code: docs intent multiplies doc hits ×2.0 and code hits ×0.7.
+
 ## Catch co-breaks before you push *(v0.39.0+)*
 
 Before opening a PR, run:
@@ -158,6 +158,25 @@ outlier elsewhere in the graph never gets blamed on your commit.
 `neuralmind init-hook .` installs this as a `pre-commit` hook automatically
 (warn-only; pass `--strict` to `init-hook` to make it block instead).
 
+## Repeat reads and stale decisions *(v4.6.0+)*
+
+Two things the hooks now do without being asked:
+
+- **A repeat read becomes a stub.** When Claude reads a file it already read
+  this session and nothing changed, the `Read` hook replaces the repeat with a
+  two-sentence note: the earlier result is still current. If Claude needs the
+  content again (say, after a long detour), it reads once more and gets the
+  whole file: a stub is never followed by another stub. Compaction and
+  `/clear` reset it, subagents are tracked separately, and reads under 2,000
+  characters always come through. Off with `NEURALMIND_READ_DEDUP=0`.
+- **Decisions retire themselves on commit.** With `neuralmind init-hook .`
+  installed (re-run it on an older checkout), every commit that changes a file
+  named in a recorded decision, after that decision was recorded, marks it
+  STALE and prints it. The next time Claude edits that file, the
+  `PreToolUse` guard says which commit moved it and how to restore it if it
+  still holds. See
+  [Keep decision memory honest across commits](./decision-memory-across-commits.md).
+
 ## Track cumulative savings *(v0.39.0+, requires NEURALMIND_MEMORY=1)*
 
 ```bash
@@ -170,17 +189,19 @@ Shows total sessions tracked, total tokens saved, average reduction ratio, and a
 
 ## Escape hatches
 
-Need the raw file body for a specific command?
+Want NeuralMind's hooks switched off?
 
 ```bash
-NEURALMIND_BYPASS=1 <your command>
+NEURALMIND_BYPASS=1 claude
 ```
 
-Tune hook thresholds via env vars — see [PostToolUse Compression](../../README.md#-posttooluse-compression).
+Hooks inherit Claude Code's environment, so set the variable when you start
+Claude Code; prefixing one command inside a session doesn't reach them.
+`NEURALMIND_BYPASS=1` switches off every NeuralMind hook action. You don't need it to see raw tool output: Claude already gets exactly what `Read`/`Bash`/`Grep` return.
 
 ## Expected savings
 
-No benchmark measures the combined retrieval + consumption effect yet, so there is no typical multiplier to quote. Run `neuralmind benchmark . --json` on your repo for the retrieval number; on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), retrieval alone uses 45–261× fewer tokens than pasting every source file.
+NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 46–263× smaller than pasting every source file, at 95% mean gold-file recall.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

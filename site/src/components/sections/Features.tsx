@@ -34,8 +34,8 @@ const groups: Group[] = [
             {
                 icon: 'cognition',
                 title: 'Cognition loop',
-                desc: '`neuralmind cognition-loop` consolidates memory on demand: it reinforces co-access patterns, decays unused edges, promotes strong clusters and prunes stale synapses. Schedule it with cron if you want it periodic.',
-                badge: 'Consolidation',
+                desc: '`neuralmind cognition-loop` runs one maintenance pass on demand: the synapse store’s half-life decay plus read-dedup cleanup. It never decays twice, so it’s safe for cron; Claude Code’s hooks already decay at every session start.',
+                badge: 'Maintenance',
             },
             {
                 icon: 'restore',
@@ -46,13 +46,13 @@ const groups: Group[] = [
             {
                 icon: 'recall',
                 title: 'Decision memory',
-                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When the code moves on, `neuralmind decisions invalidate` retires one.',
+                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When a commit changes a decision’s files after it was recorded, the post-commit hook from `neuralmind init-hook` marks it stale.',
                 badge: 'Decisions',
             },
             {
                 icon: 'shield-check',
                 title: 'Stale-decision guard',
-                desc: 'Before your agent edits a file, a PreToolUse hook surfaces any decision governing it that has been marked stale or invalidated, so a retired decision can’t silently steer the edit.',
+                desc: 'Before your agent edits a file, a PreToolUse hook surfaces any decision governing it that has gone stale or been invalidated — with the reason and how to restore one that still holds — so a retired decision can’t silently steer the edit.',
                 badge: 'Guardrail',
             },
         ],
@@ -65,8 +65,8 @@ const groups: Group[] = [
             {
                 icon: 'layers',
                 title: 'Progressive L0–L3 disclosure',
-                desc: 'Project map, then relevant clusters, then symbol detail, then search — only as deep as the question needs. 45–261× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
-                badge: '45–261×',
+                desc: 'Project map, then relevant clusters, then symbol detail, then search — only as deep as the question needs. 46–263× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
+                badge: '46–263×',
             },
             {
                 icon: 'layers',
@@ -75,16 +75,16 @@ const groups: Group[] = [
                 badge: 'Budget',
             },
             {
+                icon: 'restore',
+                title: 'Read dedup for repeat reads',
+                desc: 'In Claude Code, a repeat read of a file your agent already has — same session, unchanged — comes back as a short stub instead of the whole file again. The next read is always full, and compaction resets it.',
+                badge: 'Claude Code',
+            },
+            {
                 icon: 'chip',
                 title: 'Local retrieval, no model call',
                 desc: 'Recall is a local index lookup, not another round trip to a model. The ChromaDB-free TurboVec backend keeps 4-bit vectors 8–16× smaller with fact recall 0.800 vs 0.744 for float32 — parity gated in CI.',
                 badge: 'TurboVec',
-            },
-            {
-                icon: 'restore',
-                title: 'Tool-output compression & recovery',
-                desc: 'PostToolUse hooks compress noisy Read, Bash and Grep output before the model reads it. The full Bash output is cached first, so `neuralmind last` recovers anything the compressor trimmed.',
-                badge: 'Claude Code',
             },
         ],
     },
@@ -151,7 +151,7 @@ const groups: Group[] = [
             {
                 icon: 'key',
                 title: 'Governance & audit log',
-                desc: 'Imported team memory passes a quality review queue, and every admin change lands in an append-only, hash-chained audit log you can verify and export. Publish-time scope and threshold enforcement is on the roadmap.',
+                desc: 'Publishing honours the scope and weight threshold an admin sets, removing an association retracts it for every teammate, imported memory passes a review queue, and each publish, import, review and admin change lands in a hash-chained audit log you can verify and export.',
                 badge: 'Free at 1 seat',
             },
             {

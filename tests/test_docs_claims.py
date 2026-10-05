@@ -75,6 +75,10 @@ PUBLISHED_GLOBS = (
     # GitHub issue forms are public copy too: the community-benchmark form told
     # contributors their "code never leaves your machine".
     ".github/ISSUE_TEMPLATE/*.yml",
+    # The policies COMPLIANCE-SUMMARY.md links auditors to. They described a
+    # compliance platform as running when it had only been planned, and no
+    # guard read them.
+    "docs/compliance/*.md",
 )
 
 # A post may legitimately *quote* a forbidden phrase in order to correct it —
@@ -144,7 +148,9 @@ FORBIDDEN = [
         # for the MiniLM ONNX archive. The fetch is NeuralMind's own code, not
         # a dependency's, which is precisely what "of its own" denies.
         re.compile(
-            r"\b(no|zero)\s+(network|external)\s+calls?\s+of\s+its\s+own\b",
+            # "(network|external)" is optional: "makes no calls of its own" made
+            # the same false claim in a comparison table and a FAQ snippet.
+            r"\b(no|zero)\s+((network|external)\s+)?calls?\s+of\s+its\s+own\b",
             re.IGNORECASE,
         ),
         (
@@ -172,8 +178,32 @@ FORBIDDEN = [
         "Overclaim. 'air-gap installable' is the accurate phrasing.",
     ),
     (
-        re.compile(r"\bsoc[-\s]?2[-\s]*(compliant|certified)\b", re.IGNORECASE),
-        "NeuralMind is not certified. Use 'SOC 2-ready posture / evidence for your review'.",
+        re.compile(
+            r"\b(soc[-\s]?2(\s+type\s+(ii|i|2|1))?|cmmc(\s+2\.0)?(\s+level\s+[123])?)"
+            r"[-\s]*(compliant|certified)\b",
+            re.IGNORECASE,
+        ),
+        (
+            "NeuralMind is not certified, and CMMC assesses a contractor's environment, "
+            "not a tool. Use 'SOC 2-ready posture / evidence for your review'."
+        ),
+    ),
+    (
+        # "NeuralMind satisfies SOC 2 Type II criteria" sat in SECURITY-GUIDE.md
+        # for months beside a summary that said nothing was certified, because
+        # the pattern above only knew "compliant" and "certified".
+        re.compile(
+            r"\b(satisf(y|ies|ied)|meets?|compl(y|ies)\s+with)\s+(all\s+)?(the\s+)?"
+            r"(soc[-\s]?2|cmmc)\b",
+            re.IGNORECASE,
+        ),
+        "Only an audit can say criteria are satisfied. Say what evidence NeuralMind provides.",
+    ),
+    (
+        # A checkmark beside a report type reads as "we hold this report".
+        # SECURITY.md's framework list carried "✅ SOC 2 Type II".
+        re.compile(r"✅\s*soc[-\s]?2\s+type\b", re.IGNORECASE),
+        "NeuralMind holds no SOC 2 report of either type. Drop the type or the checkmark.",
     ),
     (
         re.compile(r"\bzero\s+compliance\s+risk\b", re.IGNORECASE),
@@ -228,7 +258,7 @@ SUPERSEDED_FIGURES = [
     ),
 ]
 
-# The public benchmark's mean is 93.75% and its per-repo floor is 0.85. A bare
+# The public benchmark's mean is 95% and its per-repo floor is 85.71%. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
 PERFECT_RECALL_RE = re.compile(
@@ -249,7 +279,7 @@ _RANGE_RES = (
 
 # "100% gold-file recall" is accurate for the disclosed, off-by-default
 # competitor eval, which runs on `requests`/`click` only. The defect is
-# attaching it to the 4-repo public benchmark, whose mean is 93.75%. Lines that
+# attaching it to the 4-repo public benchmark, whose mean is 95%. Lines that
 # name the competitor comparison within a short window are making the narrower,
 # true claim.
 COMPETITOR_SCOPE_RE = re.compile(r"codebase-memory-mcp|competitor", re.IGNORECASE)
@@ -313,9 +343,27 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search("NeuralMind makes no network calls of its own") for p, _ in FORBIDDEN)
     assert any(p.search("makes zero network calls of its own") for p, _ in FORBIDDEN)
     assert any(p.search("and makes no external calls of its own") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind makes no calls of its own") for p, _ in FORBIDDEN)
+    # The compliance overclaims that shipped, and the CMMC forms of the same.
+    assert any(p.search("NeuralMind satisfies SOC 2 Type II criteria:") for p, _ in FORBIDDEN)
+    assert any(p.search("### ✅ SOC 2 Type II") for p, _ in FORBIDDEN)
+    assert any(p.search("CMMC 2.0 Level 2 certified") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind is SOC 2 Type II certified") for p, _ in FORBIDDEN)
+    assert any(p.search("a SOC 2 Type I compliant deployment") for p, _ in FORBIDDEN)
+    assert any(p.search("a CMMC-compliant code index") for p, _ in FORBIDDEN)
+    assert any(p.search("meets CMMC requirements") for p, _ in FORBIDDEN)
+    assert any(p.search("NeuralMind complies with CMMC 2.0") for p, _ in FORBIDDEN)
+    assert any(p.search("it complies with the SOC 2 criteria") for p, _ in FORBIDDEN)
     # Accurate scoped wording must still pass, or the guard blocks correct copy.
     ok = "No telemetry, and nothing on the wire at query time."
     assert not any(p.search(ok) for p, _ in FORBIDDEN)
+    for ok in (
+        "**SOC 2-ready posture, certification on the roadmap.**",
+        "### ✅ SOC 2 (Trust Services Criteria)",
+        "## CMMC 2.0 — practice evidence",
+        "Next audit target: a SOC 2 Type I report — Q3 2027",
+    ):
+        assert not any(p.search(ok) for p, _ in FORBIDDEN), ok
 
 
 def test_social_copy_is_scanned() -> None:
@@ -379,7 +427,7 @@ def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:
             violations.append(f"{rel}:{index + 1}: {raw.strip()[:110]}")
     assert not violations, (
         "A published surface claims 100% gold-file recall. The public benchmark "
-        "reports 93.75% mean across 40 queries (0.93 / 1.00 / 0.85 / 1.00) and "
+        "reports 95% mean across 40 queries (0.96 / 0.86 / 0.95 / 1.00) and "
         "publishes every miss:\n  " + "\n  ".join(violations)
     )
 
