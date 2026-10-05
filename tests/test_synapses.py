@@ -1032,3 +1032,66 @@ def test_decay_never_increases_any_weight(tmp_path):
             for a, b, ns, w in conn.execute(sql):
                 assert w <= before[(a, b, ns)] + 1e-12, (a, b, ns, w, before[(a, b, ns)])
                 before[(a, b, ns)] = w
+
+
+# --------------------------------------------------------------------------- #
+# decay_node: a fixed multiplicative tick per call (explicit negative signal)
+# --------------------------------------------------------------------------- #
+
+
+def test_decay_node_softens_a_freshly_reinforced_edge(tmp_path):
+    """One negative signal must visibly weaken an edge used seconds ago.
+
+    The old time-based formula decayed by the edge's idle time, so an edge
+    reinforced moments before ``neuralmind_feedback signal=negative`` barely
+    moved (0.3 to 0.29999998 after ten calls).
+    """
+    from neuralmind.synapses import NODE_DECAY_FACTOR
+
+    s = _store(tmp_path)
+    s.reinforce(["x", "y"])
+    s.reinforce(["u", "v"])  # untouched by decay_node("x")
+    s.decay_node("x")
+    assert _raw_edge(s, "x", "y")[0] == pytest.approx(LEARNING_RATE * NODE_DECAY_FACTOR)
+    assert _raw_edge(s, "u", "v")[0] == pytest.approx(LEARNING_RATE)
+
+
+def test_decay_node_prunes_non_ltp_edges_below_threshold(tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["x", "y"])
+    pruned = 0
+    for _ in range(10):
+        pruned = s.decay_node("y")["pruned"]
+        if pruned:
+            break
+    assert pruned == 1
+    assert _raw_edge(s, "x", "y") is None
+
+
+def test_decay_node_keeps_ltp_floor_but_never_raises_a_weight(tmp_path):
+    s = _store(tmp_path)
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["x", "y"])
+        s.reinforce(["x", "z"])
+    for _ in range(20):
+        s.decay_node("x")
+    # Established association: floored, not pruned.
+    assert _raw_edge(s, "x", "y")[0] == pytest.approx(LTP_FLOOR)
+    # An LTP edge already penalized below the floor keeps falling.
+    s.penalize(["x", "z"], penalty=1.0)
+    s.decay_node("x")
+    assert _raw_edge(s, "x", "z")[0] == 0.0
+
+
+def test_decay_node_ticks_outgoing_transitions(tmp_path):
+    from neuralmind.synapses import NODE_DECAY_FACTOR
+
+    s = _store(tmp_path)
+    for _ in range(4):
+        s.record_sequence(["x", "y"])
+    s.decay_node("x")
+    with s._connect() as conn:
+        w = conn.execute(
+            "SELECT weight FROM synapse_transitions WHERE from_node='x' AND to_node='y'"
+        ).fetchone()[0]
+    assert w == pytest.approx(4.0 * NODE_DECAY_FACTOR)

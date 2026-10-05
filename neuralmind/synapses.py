@@ -68,6 +68,10 @@ WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
 LTP_THRESHOLD = 5
 LTP_FLOOR = 0.20
+# Multiplier one ``decay_node()`` call applies to every edge touching the
+# node (explicit negative feedback, deleted-file fast decay). Per call, not
+# time-based: a fresh 0.30 edge drops to 0.15, and ~5 calls prune it.
+NODE_DECAY_FACTOR = 0.5
 HUB_DEGREE = 50
 SPREAD_DECAY = 0.6
 DEFAULT_SPREAD_DEPTH = 2
@@ -1062,43 +1066,58 @@ class SynapseStore:
             return [row[0] for row in cur.fetchall()]
 
     def decay_node(self, node_id: str, now: float | None = None) -> dict:
-        """Apply one targeted time-based decay tick to all edges touching ``node_node``.
+        """Apply one targeted decay tick to all edges touching ``node_id``.
 
         Used by the explicit feedback tool (``neuralmind_feedback signal=negative``)
-        to soften a node that the agent marked as unhelpful. The same time-based
-        half-life model as ``decay()`` applies — LTP-protected edges
-        (activation_count >= LTP_THRESHOLD) are floored at LTP_FLOOR, so
-        long-established associations can't be wiped out by a single negative
-        signal. Non-LTP edges below PRUNE_THRESHOLD after decay are pruned.
-        Transitions from this node are also decayed one tick.
+        to soften a node that the agent marked as unhelpful, and by deleted-file
+        fast decay. Each call multiplies every edge touching the node by
+        NODE_DECAY_FACTOR. The tick is per call, not time-based: decaying by
+        idle time left an edge reinforced moments ago virtually unchanged, so
+        the negative signal did nothing to exactly the edges it targets
+        (``now`` is accepted for compatibility and ignored).
+
+        LTP-protected edges (activation_count >= LTP_THRESHOLD) at or above
+        LTP_FLOOR stop at the floor, so long-established associations can't be
+        wiped out by negative signals; as in ``decay()``, an edge already
+        below the floor keeps falling and ``ephemeral`` has no LTP exemption.
+        Edges below PRUNE_THRESHOLD after the tick are pruned under the same
+        rules as ``decay()``. Transitions from this node get the same tick and
+        are pruned below TRANSITION_PRUNE_THRESHOLD.
         """
-        ts = now if now is not None else time.time()
-        default_lambda = 0.6931471805599453 / HALF_LIFE_DAYS
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
-                # Decay synapse edges where node_id is either endpoint
+                # Decay synapse edges where node_id is either endpoint.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
-                    "WHERE (node_a = ? OR node_b = ?) AND activation_count >= ?",
-                    (LTP_FLOOR, default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
-                )
-                conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE (node_a = ? OR node_b = ?) AND activation_count < ?",
-                    (default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = MAX(weight * ?, "
+                    "CASE WHEN weight >= ? AND activation_count >= ? AND namespace <> ? "
+                    "THEN ? ELSE 0.0 END) "
+                    "WHERE node_a = ? OR node_b = ?",
+                    (
+                        NODE_DECAY_FACTOR,
+                        LTP_FLOOR,
+                        LTP_THRESHOLD,
+                        EPHEMERAL_NAMESPACE,
+                        LTP_FLOOR,
+                        node_id,
+                        node_id,
+                    ),
                 )
                 pruned_cur = conn.execute(
                     "DELETE FROM synapses "
-                    "WHERE (node_a = ? OR node_b = ?) AND weight < ? AND activation_count < ?",
-                    (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD),
+                    "WHERE (node_a = ? OR node_b = ?) AND weight < ? "
+                    "AND (activation_count < ? OR namespace = ?)",
+                    (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD, EPHEMERAL_NAMESPACE),
                 )
                 pruned = pruned_cur.rowcount
                 # Decay outgoing transitions for this node
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE from_node = ?",
-                    (default_lambda, ts, node_id),
+                    "UPDATE synapse_transitions SET weight = weight * ? WHERE from_node = ?",
+                    (NODE_DECAY_FACTOR, node_id),
+                )
+                conn.execute(
+                    "DELETE FROM synapse_transitions WHERE from_node = ? AND weight < ?",
+                    (node_id, TRANSITION_PRUNE_THRESHOLD),
                 )
                 conn.execute("COMMIT")
             except Exception:
