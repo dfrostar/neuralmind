@@ -68,7 +68,17 @@ WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
 LTP_THRESHOLD = 5
 LTP_FLOOR = 0.20
+# Multiplier one ``decay_node()`` call applies to every edge touching the
+# node (explicit negative feedback, deleted-file fast decay). Per call, not
+# time-based: a fresh 0.30 edge drops to 0.15, and ~5 calls prune it.
+NODE_DECAY_FACTOR = 0.5
 HUB_DEGREE = 50
+# normalize_hubs() caps a hub's total incident weight at
+# HUB_EDGE_BUDGET * sqrt(max_degree * degree): what the original one-shot
+# sqrt(max_degree / degree) rescale left a hub whose edges sat at
+# single-observation weight. A cap (not an unconditional multiply) keeps the
+# PreCompact-hook call idempotent.
+HUB_EDGE_BUDGET = LEARNING_RATE
 SPREAD_DECAY = 0.6
 DEFAULT_SPREAD_DEPTH = 2
 DEFAULT_SPREAD_TOP_K = 12
@@ -857,7 +867,10 @@ class SynapseStore:
 
         Default namespaces (personal, branch:*, custom): half-life
         HALF_LIFE_DAYS, LTP edges (activation_count >= LTP_THRESHOLD) are
-        floored at LTP_FLOOR. ``shared`` decays at the sticky
+        floored at LTP_FLOOR. The floor only holds an edge at or above it:
+        an LTP edge that ``penalize()`` pushed below LTP_FLOOR keeps decaying
+        rather than being lifted back up, so decay never raises a weight.
+        ``shared`` decays at the sticky
         SHARED_HALF_LIFE_DAYS. ``ephemeral`` decays at the fast
         EPHEMERAL_HALF_LIFE_DAYS with no LTP exemption. Transitions follow
         the same policy with the same half-lives.
@@ -880,7 +893,12 @@ class SynapseStore:
         ephemeral_lambda = 0.6931471805599453 / EPHEMERAL_HALF_LIFE_DAYS
 
         with self._connect() as conn:
-            conn.execute("BEGIN")
+            # IMMEDIATE, not deferred: the first statement is a read, and under
+            # WAL a deferred read->write upgrade fails at once with "database
+            # is locked" (SQLITE_BUSY_SNAPSHOT) if another connection commits
+            # in between — the busy timeout never applies. Taking the write
+            # lock up front makes concurrent writers wait their turn instead.
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 row = conn.execute("SELECT value FROM meta WHERE key = 'last_decay'").fetchone()
                 try:
@@ -906,10 +924,22 @@ class SynapseStore:
                 pruned += cur.rowcount
 
                 # shared: sticky decay; LTP floor still honored.
+                # The floor only holds an LTP edge that is at/above it: one an
+                # explicit penalty pushed below LTP_FLOOR decays freely instead
+                # of being lifted back up — decay never raises a weight.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
+                    "UPDATE synapses SET weight = MAX(weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                    "CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                     "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NULL",
-                    (LTP_FLOOR, shared_lambda, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (
+                        shared_lambda,
+                        ts,
+                        since,
+                        LTP_FLOOR,
+                        LTP_FLOOR,
+                        SHARED_NAMESPACE,
+                        LTP_THRESHOLD,
+                    ),
                 )
                 conn.execute(
                     "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
@@ -918,9 +948,10 @@ class SynapseStore:
                 )
                 # A3: per-edge learned overrides for shared.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
+                    "UPDATE synapses SET weight = MAX(weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                    "CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                     "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NOT NULL",
-                    (LTP_FLOOR, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (ts, since, LTP_FLOOR, LTP_FLOOR, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
                     "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
@@ -939,9 +970,18 @@ class SynapseStore:
                     ph = ", ".join("?" for _ in chunk)
                     # Namespace default rate (no per-edge override).
                     conn.execute(
-                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
+                        f"UPDATE synapses SET weight = MAX(weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                        f"CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                         f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NULL",
-                        (LTP_FLOOR, default_lambda, ts, since, *chunk, LTP_THRESHOLD),
+                        (
+                            default_lambda,
+                            ts,
+                            since,
+                            LTP_FLOOR,
+                            LTP_FLOOR,
+                            *chunk,
+                            LTP_THRESHOLD,
+                        ),
                     )
                     conn.execute(
                         f"UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
@@ -950,9 +990,10 @@ class SynapseStore:
                     )
                     # A3: per-edge learned half-life overrides for non-ephemeral, non-shared namespaces.
                     conn.execute(
-                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
+                        f"UPDATE synapses SET weight = MAX(weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                        f"CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                         f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NOT NULL",
-                        (LTP_FLOOR, ts, since, *chunk, LTP_THRESHOLD),
+                        (ts, since, LTP_FLOOR, LTP_FLOOR, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
                         f"UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
@@ -1036,43 +1077,58 @@ class SynapseStore:
             return [row[0] for row in cur.fetchall()]
 
     def decay_node(self, node_id: str, now: float | None = None) -> dict:
-        """Apply one targeted time-based decay tick to all edges touching ``node_node``.
+        """Apply one targeted decay tick to all edges touching ``node_id``.
 
         Used by the explicit feedback tool (``neuralmind_feedback signal=negative``)
-        to soften a node that the agent marked as unhelpful. The same time-based
-        half-life model as ``decay()`` applies — LTP-protected edges
-        (activation_count >= LTP_THRESHOLD) are floored at LTP_FLOOR, so
-        long-established associations can't be wiped out by a single negative
-        signal. Non-LTP edges below PRUNE_THRESHOLD after decay are pruned.
-        Transitions from this node are also decayed one tick.
+        to soften a node that the agent marked as unhelpful, and by deleted-file
+        fast decay. Each call multiplies every edge touching the node by
+        NODE_DECAY_FACTOR. The tick is per call, not time-based: decaying by
+        idle time left an edge reinforced moments ago virtually unchanged, so
+        the negative signal did nothing to exactly the edges it targets
+        (``now`` is accepted for compatibility and ignored).
+
+        LTP-protected edges (activation_count >= LTP_THRESHOLD) at or above
+        LTP_FLOOR stop at the floor, so long-established associations can't be
+        wiped out by negative signals; as in ``decay()``, an edge already
+        below the floor keeps falling and ``ephemeral`` has no LTP exemption.
+        Edges below PRUNE_THRESHOLD after the tick are pruned under the same
+        rules as ``decay()``. Transitions from this node get the same tick and
+        are pruned below TRANSITION_PRUNE_THRESHOLD.
         """
-        ts = now if now is not None else time.time()
-        default_lambda = 0.6931471805599453 / HALF_LIFE_DAYS
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
-                # Decay synapse edges where node_id is either endpoint
+                # Decay synapse edges where node_id is either endpoint.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
-                    "WHERE (node_a = ? OR node_b = ?) AND activation_count >= ?",
-                    (LTP_FLOOR, default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
-                )
-                conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE (node_a = ? OR node_b = ?) AND activation_count < ?",
-                    (default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = MAX(weight * ?, "
+                    "CASE WHEN weight >= ? AND activation_count >= ? AND namespace <> ? "
+                    "THEN ? ELSE 0.0 END) "
+                    "WHERE node_a = ? OR node_b = ?",
+                    (
+                        NODE_DECAY_FACTOR,
+                        LTP_FLOOR,
+                        LTP_THRESHOLD,
+                        EPHEMERAL_NAMESPACE,
+                        LTP_FLOOR,
+                        node_id,
+                        node_id,
+                    ),
                 )
                 pruned_cur = conn.execute(
                     "DELETE FROM synapses "
-                    "WHERE (node_a = ? OR node_b = ?) AND weight < ? AND activation_count < ?",
-                    (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD),
+                    "WHERE (node_a = ? OR node_b = ?) AND weight < ? "
+                    "AND (activation_count < ? OR namespace = ?)",
+                    (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD, EPHEMERAL_NAMESPACE),
                 )
                 pruned = pruned_cur.rowcount
                 # Decay outgoing transitions for this node
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE from_node = ?",
-                    (default_lambda, ts, node_id),
+                    "UPDATE synapse_transitions SET weight = weight * ? WHERE from_node = ?",
+                    (NODE_DECAY_FACTOR, node_id),
+                )
+                conn.execute(
+                    "DELETE FROM synapse_transitions WHERE from_node = ? AND weight < ?",
+                    (node_id, TRANSITION_PRUNE_THRESHOLD),
                 )
                 conn.execute("COMMIT")
             except Exception:
@@ -1095,14 +1151,20 @@ class SynapseStore:
         Reads ``edge['source']/edge['target']/edge['relation']`` with
         fallbacks for graphify's ``_src/_tgt`` and ``label/kind``. Only
         edges whose relation maps to a known ``edge_type`` (see
-        ``RELATION_TO_EDGE_TYPE``) are stored. Idempotent: re-running
-        ``build()`` increments ``call_count`` and updates ``last_seen``
-        on conflict.
+        ``RELATION_TO_EDGE_TYPE``) are stored.
 
-        Returns the number of edge rows upserted.
+        The table mirrors the graph of the *current* build: ``call_count``
+        is the number of times the edge occurs in ``edges`` (its call sites
+        in this graph), set rather than accumulated, and rows absent from
+        this build are deleted — so rebuilding an unchanged graph is a
+        no-op, and a call removed from the code stops being re-seeded by
+        :meth:`seed_from_structural`. An empty edge set (e.g. a failed graph
+        load) leaves the previous snapshot untouched.
+
+        Returns the number of distinct edge rows written.
         """
         ts = now if now is not None else time.time()
-        rows: list[tuple[str, str, int, str, float]] = []
+        counts: dict[tuple[str, str, str], int] = {}
         for edge in edges or ():
             src = edge.get("source", edge.get("_src"))
             tgt = edge.get("target", edge.get("_tgt"))
@@ -1118,21 +1180,24 @@ class SynapseStore:
                 confidence = 1.0
             if confidence < 0.0:
                 continue
-            rows.append((str(src), str(tgt), 1, edge_type, ts))
+            key = (str(src), str(tgt), edge_type)
+            counts[key] = counts.get(key, 0) + 1
 
+        rows = [(src, tgt, n, edge_type, ts) for (src, tgt, edge_type), n in counts.items()]
         if not rows:
             return 0
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
+                # Replace the snapshot in one transaction: incrementing on
+                # conflict counted builds, not call sites, and never dropped
+                # an edge that disappeared from the graph.
+                conn.execute("DELETE FROM structural_edges")
                 conn.executemany(
                     """
                     INSERT INTO structural_edges(
                         caller, callee, call_count, edge_type, last_seen
                     ) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(caller, callee, edge_type) DO UPDATE SET
-                        call_count = structural_edges.call_count + 1,
-                        last_seen = excluded.last_seen
                     """,
                     rows,
                 )
@@ -1448,9 +1513,10 @@ class SynapseStore:
         LTP-protected, so a path that disappears from the graph will
         eventually prune after enough builds skip it.
 
-        Idempotent: re-running ``build()`` re-seeds and increments
-        ``activation_count``, but weight is clamped at
-        ``STRUCTURAL_MAX_WEIGHT`` so it doesn't grow unbounded.
+        Idempotent: re-running ``build()`` re-seeds (refreshing
+        ``last_activated``; weight is clamped at ``STRUCTURAL_MAX_WEIGHT``)
+        but leaves ``activation_count`` alone — seeding is not an activation,
+        so rebuilding an unchanged graph never makes its edges LTP-protected.
 
         Returns the number of synapse edges upserted (0 if the structural
         table is empty, e.g. a fresh project with no graph).
@@ -1488,7 +1554,6 @@ class SynapseStore:
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
                         weight = MAX(synapses.weight, excluded.weight),
-                        activation_count = synapses.activation_count + 1,
                         last_activated = excluded.last_activated
                     """,
                     rows,
@@ -1872,7 +1937,8 @@ class SynapseStore:
             return 0
 
         with self._connect() as conn:
-            conn.execute("BEGIN")
+            # IMMEDIATE: reads before it writes (see decay()).
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 # Count existing edges before insert (H3 fix)
                 before = conn.execute(
@@ -2187,7 +2253,12 @@ class SynapseStore:
         """Trim weights on nodes that have grown into runaway hubs.
 
         For every (node, namespace) with degree > max_degree within that
-        namespace, scale its incident edges by sqrt(max_degree / degree).
+        namespace, cap the total weight of its incident edges at
+        ``HUB_EDGE_BUDGET * sqrt(max_degree * degree)``, scaling them down
+        uniformly when the hub is over budget. Idempotent: a hub already
+        within budget is left alone, so the PreCompact hook can run this
+        every compaction without shrinking hub edges call after call (an
+        unconditional ``* sqrt(max_degree / degree)`` compounded to zero).
         Returns the number of (node, namespace) pairs adjusted.
         """
         with self._connect() as conn:
@@ -2206,23 +2277,38 @@ class SynapseStore:
             hubs = cur.fetchall()
             if not hubs:
                 return 0
-            conn.execute("BEGIN")
+            adjusted = 0
+            # IMMEDIATE: the first statement is a read, and a deferred
+            # read->write upgrade fails at once if another writer commits.
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 for node_id, ns, degree in hubs:
-                    factor = math.sqrt(max_degree / degree)
+                    budget = HUB_EDGE_BUDGET * math.sqrt(max_degree * degree)
+                    # Re-read inside the transaction: trimming an earlier hub
+                    # also shrinks the edges it shares with this one.
+                    mass = conn.execute(
+                        "SELECT COALESCE(SUM(weight), 0.0) FROM synapses "
+                        "WHERE (node_a = ? OR node_b = ?) AND namespace = ?",
+                        (node_id, node_id, ns),
+                    ).fetchone()[0]
+                    # Relative tolerance so float rounding in the sum never
+                    # re-triggers a no-op rescale on the next call.
+                    if mass <= budget * (1.0 + 1e-9):
+                        continue
                     conn.execute(
                         """
                         UPDATE synapses
                         SET weight = weight * ?
                         WHERE (node_a = ? OR node_b = ?) AND namespace = ?
                         """,
-                        (factor, node_id, node_id, ns),
+                        (budget / mass, node_id, node_id, ns),
                     )
+                    adjusted += 1
                 conn.execute("COMMIT")
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
-        return len(hubs)
+        return adjusted
 
     # ----------------------------------------------------------------- #
     # Stats / maintenance

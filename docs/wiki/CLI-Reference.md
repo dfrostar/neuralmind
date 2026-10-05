@@ -324,13 +324,17 @@ NeuralMind secret scan — /home/dev/myproject
 
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
-key IDs and secret keys, GitHub tokens and fine-grained PATs, Slack
-tokens, Google API keys, Stripe keys, PyPI and npm tokens, PEM private-key
-blocks, JWTs, `Authorization: Bearer`/`Basic` headers, and passwords
-embedded in database connection strings. `maybe` matches a generic
-`SECRET=value` assignment that cleared a Shannon-entropy threshold and a
-placeholder denylist — so `password = "changeme"`,
-`api_key = os.environ["X"]`, and `KEY=${VAR}` are not reported.
+key IDs, secret keys and session tokens (including the
+`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.8.1),
+GitHub tokens and fine-grained PATs, GitLab PATs and Hugging Face tokens
+*(v4.8.1)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
+tokens, PEM private-key blocks, JWTs, `Authorization: Bearer`/`Basic`
+headers, and passwords embedded in database or `http(s)://user:password@host`
+URLs. `maybe` matches a generic `SECRET=value` assignment, including a quoted
+JSON or dict key such as `{"password": "…"}` *(v4.8.1)*, that cleared a
+Shannon-entropy threshold and a placeholder denylist — so
+`password = "changeme"`, `api_key = os.environ["X"]`, and `KEY=${VAR}` are
+not reported.
 
 **Previews never include the tail of a secret** — only a short prefix and
 a length — so scan output is safe to paste into an issue or a CI log.
@@ -373,13 +377,18 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 
 #### Type Filter *(v3.1.4+)*
 
-Filter results by node type:
+Steer the ranking toward a node type (results are ranked, not filtered, so
+other types can still appear):
 
 | Flag | Description |
 |------|-------------|
-| `--type code` | Restrict to source code only |
-| `--type docs` | Restrict to documentation only |
+| `--type code` | Rank source code first |
+| `--type docs` | Rank documentation first |
 | `--type auto` | Auto-detect intent (default) |
+
+*(v4.8.1+)* `code` and `docs` replace the detected intent before L3 is ranked.
+Before v4.8.1 they re-boosted the hits after the context was built, so the
+returned context didn't change.
 
 #### Cross-Project Search *(v3.1.4+)*
 
@@ -2203,6 +2212,27 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
+**Projects with `.neuralmind/` only** *(v4.8.1)*: every hook action does
+nothing in a directory without `.neuralmind/`, so a `--global` install leaves
+repos NeuralMind has never written to untouched. `neuralmind build` creates the
+directory; other commands that store state there, such as recording a
+decision, do too. Prompt-time recall reads an
+existing index and never builds one; before v4.8.1 the `UserPromptSubmit`
+hook could run a full first-time build, far past the hook timeout.
+
+**Subdirectories** *(v4.8.1)*: the project is the nearest directory with
+`.neuralmind/`, starting from the payload's `cwd` (which follows the agent's
+shell) and going no higher than `$CLAUDE_PROJECT_DIR`, so the hooks keep
+working after the agent runs `cd src/auth`. Without `$CLAUDE_PROJECT_DIR`,
+only `cwd` itself counts. A payload the hooks can't use exits 0, never 1 with
+a traceback.
+
+**A `settings.json` that isn't valid JSON is refused** *(v4.8.1)*: install
+and `--uninstall` exit 1 with an error naming the file and leave it
+untouched. A trailing comma used to make the command replace the file with
+just the hooks block (or delete it on `--uninstall`), losing `permissions`,
+`model` and `env`. An empty file counts as no settings.
+
 **Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
 its full id and the reason it left ACTIVE (for example
 `commit 3f9c2ab changed db.py since this decision was recorded`), plus a
@@ -2255,6 +2285,12 @@ Register the NeuralMind MCP server (`neuralmind-mcp`) with one or more AI coding
 agents. Auto-detects installed clients and merges a `neuralmind` entry into each
 client's `mcpServers` config **without clobbering** your other servers
 (idempotent — re-running is a no-op).
+
+A config file that isn't strict JSON (comments, a trailing comma) or whose top
+level isn't an object is never rewritten, for any client *(v4.8.1; VS Code
+already behaved this way)*. The command prints `✗ <client>: skipped-jsonc` (or
+`skipped-not-object`) with the entry to add by hand. Before v4.8.1 such a file
+was read as empty, and every other server in it was lost.
 
 ```bash
 neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
@@ -2908,6 +2944,10 @@ Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
 count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
+
+Since v4.8.1 only `query` and `wakeup` events count. Earlier versions also
+counted builds, searches, MCP calls and ingestion as saved queries, and an MCP
+query twice, so totals drop after upgrading.
 
 #### Examples
 

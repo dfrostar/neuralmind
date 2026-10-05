@@ -113,5 +113,120 @@ class InstallTests(unittest.TestCase):
                     os.environ.pop("HOME", None)
 
 
+class UnparsableConfigTests(unittest.TestCase):
+    """A config that isn't strict JSON is never rewritten.
+
+    It used to be read as ``{}``, so one trailing comma made install replace
+    every other MCP server (and the tokens in their ``env``) with just ours.
+    """
+
+    USER_CONFIG = (
+        '{"mcpServers": {"filesystem": {"command": "npx"}, '
+        '"github": {"command": "gh-mcp", "env": {"GITHUB_TOKEN": "x"}},}}\n'
+    )
+
+    def _assert_untouched(self, client: str, rel: str, text: str) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d)
+            path = proj / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+            result = mcp_install.install(client, proj)
+            self.assertTrue(result.action.startswith("skipped"), result.action)
+            self.assertTrue(result.detail)
+            self.assertEqual(path.read_text(encoding="utf-8"), text)
+
+    def test_trailing_comma_claude_code(self) -> None:
+        self._assert_untouched("claude-code", ".mcp.json", self.USER_CONFIG)
+
+    def test_trailing_comma_cursor(self) -> None:
+        self._assert_untouched("cursor", ".cursor/mcp.json", self.USER_CONFIG)
+
+    def test_trailing_comma_claude_desktop(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            old_home = os.environ.get("HOME")
+            os.environ["HOME"] = home
+            try:
+                path = mcp_install.config_path("claude-desktop", Path(home))
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(self.USER_CONFIG, encoding="utf-8")
+                result = mcp_install.install("claude-desktop", Path(home))
+                self.assertEqual(result.action, "skipped-jsonc")
+                self.assertEqual(path.read_text(encoding="utf-8"), self.USER_CONFIG)
+            finally:
+                if old_home is not None:
+                    os.environ["HOME"] = old_home
+                else:
+                    os.environ.pop("HOME", None)
+
+    def test_non_object_top_level_is_untouched(self) -> None:
+        self._assert_untouched("claude-code", ".mcp.json", "[1, 2]\n")
+
+    def test_empty_file_is_treated_as_new(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d)
+            (proj / ".mcp.json").write_text("\n", encoding="utf-8")
+            result = mcp_install.install("claude-code", proj)
+            self.assertEqual(result.action, "installed")
+            data = json.loads((proj / ".mcp.json").read_text(encoding="utf-8"))
+            self.assertIn("neuralmind", data["mcpServers"])
+
+    def test_skip_detail_carries_a_pasteable_snippet(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d)
+            (proj / ".mcp.json").write_text(self.USER_CONFIG, encoding="utf-8")
+            result = mcp_install.install("claude-code", proj)
+            self.assertIn('"neuralmind"', result.detail)
+            self.assertEqual(result.to_dict()["detail"], result.detail)
+
+
+class CustomisedEntryTests(unittest.TestCase):
+    """Re-running install keeps what the user customised in our own entry.
+
+    It used to reset any entry that wasn't byte-for-byte the default, so an
+    absolute venv command (MCP clients often launch with a minimal PATH) and
+    the entry's `env` were lost on every re-run.
+    """
+
+    def test_absolute_venv_command_and_env_are_kept(self) -> None:
+        mine = {
+            "command": "/opt/venv/bin/neuralmind-mcp",
+            "args": [],
+            "env": {"NEURALMIND_NO_LEARN": "1"},
+        }
+        cfg, action = mcp_install.merge_server({"mcpServers": {"neuralmind": dict(mine)}})
+        self.assertEqual(action, "already-present")
+        self.assertEqual(cfg["mcpServers"]["neuralmind"], mine)
+
+    def test_python_module_launch_is_kept(self) -> None:
+        mine = {"command": "python3", "args": ["-m", "neuralmind.mcp_server"]}
+        cfg, action = mcp_install.merge_server({"mcpServers": {"neuralmind": dict(mine)}})
+        self.assertEqual(action, "already-present")
+        self.assertEqual(cfg["mcpServers"]["neuralmind"], mine)
+
+    def test_stale_command_is_updated_but_env_survives(self) -> None:
+        cfg = {"mcpServers": {"neuralmind": {"command": "old", "args": ["x"], "env": {"A": "1"}}}}
+        cfg, action = mcp_install.merge_server(cfg)
+        self.assertEqual(action, "updated")
+        entry = cfg["mcpServers"]["neuralmind"]
+        self.assertEqual(entry["command"], "neuralmind-mcp")
+        self.assertEqual(entry["args"], [])
+        self.assertEqual(entry["env"], {"A": "1"})
+
+    def test_vscode_nested_servers_get_the_entry(self) -> None:
+        cfg = {"mcp": {"servers": {"other": {"command": "x"}}}, "editor.fontSize": 14}
+        cfg, action = mcp_install.merge_server_vscode(cfg)
+        self.assertEqual(action, "installed")
+        self.assertNotIn("mcp.servers", cfg)
+        self.assertIn("neuralmind", cfg["mcp"]["servers"])
+        self.assertIn("other", cfg["mcp"]["servers"])
+
+    def test_vscode_nested_entry_is_already_present(self) -> None:
+        cfg = {"mcp": {"servers": {"neuralmind": mcp_install.server_entry()}}}
+        cfg, action = mcp_install.merge_server_vscode(cfg)
+        self.assertEqual(action, "already-present")
+        self.assertNotIn("mcp.servers", cfg)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

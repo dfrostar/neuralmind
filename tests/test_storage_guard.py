@@ -201,6 +201,7 @@ def test_hooks_still_learn_when_storage_is_not_required(temp_project, monkeypatc
     from neuralmind.synapses import default_db_path
 
     monkeypatch.delenv("NEURALMIND_NO_LEARN", raising=False)
+    (temp_project / ".neuralmind").mkdir(exist_ok=True)  # hooks act only in a built project
     read = {"cwd": str(temp_project), "tool_input": {"file_path": "a.py"}}
     _hook(monkeypatch, "compress-read", {**read, "tool_response": {"content": "x"}})
     _hook(

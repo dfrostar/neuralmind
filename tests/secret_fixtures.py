@@ -51,6 +51,11 @@ PEM_BLOCK = _j(
     "-----END RSA PRIVATE KEY-----",
 )
 GENERIC_SECRET = "9f8Kd2mQxZ7pLw3RtY6vNbHj4sA1"
+# STS session tokens are several hundred base64 characters; 160 is enough to
+# clear the pattern's length floor while staying obviously fake.
+AWS_SESSION_TOKEN = _j("FwoGZXIvYXdzE", "JrEXAMPLETOKENabc/def+ghi=" * 6)
+GITLAB_PAT = _j("glp", "at-", "xY9kQ2mZpL7wR4tN8vB3")
+HF_TOKEN = _j("h", "f_", "AbCdEfGhIjKlMnOpQrStUvWxYz01234567")
 # base64 of a fake "user:password123" — split so the literal is not in source.
 BASIC_AUTH_B64 = _j("dXNlcjpw", "YXNzd29yZDEyMw==")
 

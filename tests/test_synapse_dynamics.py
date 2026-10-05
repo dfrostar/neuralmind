@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 
 from neuralmind.synapse_dynamics import (
@@ -317,3 +318,70 @@ class TestFailOpen:
         assert pairs == 1
         results = d.spread([("A", 1.0)], top_k=10)
         assert isinstance(results, list)
+
+
+class TestSynapticTaggingConcurrency:
+    def test_tags_survive_a_concurrent_writer(self, tmp_path, monkeypatch):
+        # A deferred BEGIN that reads first fails its first write at once when
+        # another connection commits in between; the failure was swallowed and
+        # the tag silently lost. BEGIN IMMEDIATE makes the other writer wait.
+        from contextlib import contextmanager
+
+        d = _dynamics(tmp_path)
+        d.store.reinforce(["A", "B"])
+        assert d._ensure_schema()
+        other = SynapseStore(d.store.db_path)
+        go, done = threading.Event(), threading.Event()
+        errors: list[BaseException] = []
+
+        def writer():
+            go.wait(timeout=10)
+            try:
+                other.reinforce(["C", "D"])
+            except BaseException as exc:  # pragma: no cover - surfaced below
+                errors.append(exc)
+            finally:
+                done.set()
+
+        class CommitAfterFirstRead:
+            def __init__(self, conn):
+                self._c, self._in_txn, self._fired = conn, False, False
+
+            def execute(self, sql, *args):
+                cur = self._c.execute(sql, *args)
+                head = sql.lstrip().upper()
+                if head.startswith("BEGIN"):
+                    self._in_txn = True
+                elif self._in_txn and not self._fired and head.startswith("SELECT"):
+                    self._fired = True
+                    go.set()
+                    done.wait(timeout=0.5)  # blocks on our lock under IMMEDIATE
+                return cur
+
+            def __getattr__(self, name):
+                return getattr(self._c, name)
+
+        original = SynapseStore._connect
+
+        @contextmanager
+        def patched(store):
+            with original(store) as conn:
+                yield CommitAfterFirstRead(conn) if store is d.store else conn
+
+        monkeypatch.setattr(SynapseStore, "_connect", patched)
+        t = threading.Thread(target=writer)
+        t.start()
+        try:
+            d._apply_stc_tags([("A", "B")], DEFAULT_NAMESPACE, time.time())
+        finally:
+            go.set()
+            t.join(timeout=30)
+            monkeypatch.setattr(SynapseStore, "_connect", original)
+
+        assert not errors, errors
+        assert other.neighbors("C")  # the concurrent writer landed too
+        with d.store._connect() as conn:
+            rows = conn.execute(
+                "SELECT value FROM synapses_dynamics_meta WHERE key LIKE 'stc_tag:%'"
+            ).fetchall()
+        assert [float(r[0]) for r in rows] == [STC_TAG_INITIAL]

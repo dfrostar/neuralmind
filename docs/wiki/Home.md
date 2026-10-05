@@ -36,6 +36,18 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.8.1 — Installers that can't destroy your config, the bug-hunt fixes, and a stricter `audit verify` (October 2026)
+
+The high- and medium-severity bugs from an end-to-end bug hunt. `install-hooks`
+and `install-mcp` no longer overwrite a config they can't parse; the Bash
+output cache redacts what the AWS CLI prints; hooks act only in a project that
+has `.neuralmind/` and follow the agent into subdirectories; and graph building, retrieval, the
+CLI's numbers and synapse learning get their fixes. `neuralmind audit verify`
+now fails on a record without a hash once the chain has started, on a line
+that isn't a JSON object, and on a mismatched `prev_sha256`; v4.8.0 and
+earlier passed all three. Run `neuralmind build` once after upgrading. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.1.md).
+
 ### v4.8.0 — A new session starts where the last one left off; decision search by meaning; policy mistakes refused (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the

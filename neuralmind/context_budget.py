@@ -184,6 +184,120 @@ def estimate_context_tokens(context: str) -> int:
     return count_tokens(context)
 
 
+# The header each layer of an assembled context starts with. L0 (identity)
+# is whatever precedes the first of them.
+LAYER_HEADERS: dict[str, str] = {
+    "L1": "## Architecture Overview",
+    "L2": "## Relevant Code Areas",
+    "L3": "## Search Results",
+}
+
+# Trimmed first to last. L0 is never trimmed.
+TRIM_ORDER: tuple[str, ...] = ("L3", "L2", "L1")
+
+
+def _find_line_start(text: str, marker: str, start: int) -> int:
+    """Index of the first ``marker`` at or after ``start`` that begins a line."""
+    pos = text.find(marker, start)
+    while pos > 0 and text[pos - 1] != "\n":
+        pos = text.find(marker, pos + 1)
+    return pos
+
+
+def split_layers(
+    context: str, layer_markers: dict[str, str] | None = None
+) -> list[tuple[str, str]]:
+    """Split an assembled context into ``(layer, text)`` sections, in order.
+
+    Each marker (default :data:`LAYER_HEADERS`) begins the first line of its
+    layer; the text before the first marker found is ``L0``. Markers are
+    looked for in the order given, each after the one before it. Joining the
+    texts with a newline gives back ``context``.
+    """
+    markers = LAYER_HEADERS if layer_markers is None else layer_markers
+    cuts: list[tuple[str, int]] = []
+    start = 0
+    for layer, marker in markers.items():
+        pos = _find_line_start(context, marker, start) if marker else -1
+        if pos >= 0:
+            cuts.append((layer, pos))
+            start = pos + len(marker)
+    sections: list[tuple[str, str]] = []
+    layer, begin = "L0", 0
+    for next_layer, pos in cuts:
+        if pos > 0:
+            sections.append((layer, context[begin : pos - 1]))  # drop the joining newline
+        layer, begin = next_layer, pos
+    sections.append((layer, context[begin:]))
+    return sections
+
+
+def _join_layers(sections: list[tuple[str, str]]) -> str:
+    return "\n".join(text for _, text in sections)
+
+
+def _shrink_section(sections: list[tuple[str, str]], i: int, fits) -> list[tuple[str, str]]:
+    """``sections`` with section ``i`` cut to the most whole lines that fit.
+
+    A section cut back to its header line alone is emptied (dropped).
+    """
+    name, text = sections[i]
+    lines = text.split("\n")
+
+    def with_lines(k: int) -> list[tuple[str, str]]:
+        kept = "\n".join(lines[:k]).rstrip("\n")
+        if not any(line.strip() for line in lines[1:k]):
+            kept = ""  # a header with nothing under it says nothing
+        return [*sections[:i], (name, kept), *sections[i + 1 :]]
+
+    lo, hi = 0, len(lines)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if fits(with_lines(mid)):
+            lo = mid
+        else:
+            hi = mid - 1
+    return with_lines(lo)
+
+
+def fit_layers(
+    sections: list[tuple[str, str]],
+    budget_tokens: int,
+    *,
+    order: tuple[str, ...] = TRIM_ORDER,
+    render=None,
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Trim ``(layer, text)`` sections until ``render(sections)`` fits the budget.
+
+    The layers named in ``order`` are trimmed in that order, each from its end
+    and at whole lines, before the next one is touched; a layer cut back to
+    its header line alone is dropped. Any other layer (L0) is never trimmed,
+    so the result can still exceed a budget that L0 alone exceeds.
+    ``render`` joins the sections into the context (default: newline-joined).
+
+    Returns:
+        (kept sections in their original order, layers trimmed in the order
+        they were trimmed).
+    """
+    render = render or _join_layers
+
+    def fits(candidate: list[tuple[str, str]]) -> bool:
+        return count_tokens(render(candidate)) <= budget_tokens
+
+    secs = [(name, text) for name, text in sections if text]
+    trimmed: list[str] = []
+    for layer in order:
+        for i in range(len(secs) - 1, -1, -1):
+            if fits(secs):
+                break
+            if secs[i][0] == layer:
+                secs = _shrink_section(secs, i, fits)
+                if layer not in trimmed:
+                    trimmed.append(layer)
+        secs = [(name, text) for name, text in secs if text]
+    return secs, trimmed
+
+
 def trim_context_to_budget(
     context: str,
     budget_tokens: int,
@@ -197,65 +311,41 @@ def trim_context_to_budget(
     - L2: On-demand modules — trimmed before L1
     - L3: Search results — trimmed first
 
+    Each layer is trimmed from its end at whole lines, and dropped once only
+    its header would be left; what remains is returned in L0 → L3 order. A
+    context whose L0 alone exceeds the budget is returned as L0.
+
     Args:
         context: The assembled context string.
         budget_tokens: Maximum tokens allowed.
-        layer_markers: Optional dict mapping layer names to marker strings
-            that delimit each layer in the context. If provided, layers are
-            split and reassembled in priority order.
+        layer_markers: Optional dict mapping layer names (``L1``/``L2``/``L3``)
+            to the line each layer starts with; the text before the first of
+            them is L0. Defaults to :data:`LAYER_HEADERS`, the headers
+            NeuralMind's own context uses. A context with none of the
+            markers has no layers to drop and is cut at the budget.
 
     Returns:
         (trimmed_context, layers_trimmed) where layers_trimmed lists the
-        layer names that were removed.
+        layers that were cut or removed, in the order they were trimmed.
     """
     current_tokens = count_tokens(context)
     if current_tokens <= budget_tokens:
         return context, []
 
-    layers_trimmed: list[str] = []
+    sections = split_layers(context, layer_markers)
+    if any(name != "L0" for name, _ in sections):
+        kept, layers_trimmed = fit_layers(sections, budget_tokens)
+        return _join_layers(kept), layers_trimmed
 
-    if layer_markers:
-        # Split context by layer markers
-        sections: list[tuple[str, str]] = []  # (layer_name, content)
-        remaining = context
-        for layer_name, marker in layer_markers.items():
-            if marker in remaining:
-                parts = remaining.split(marker, 1)
-                if len(parts) == 2:
-                    sections.append((layer_name, parts[1]))
-                    remaining = parts[0]
-
-        # Priority order: L3 first (trim search results), then L2, then L1
-        priority_order = ["L3", "L2", "L1"]
-
-        for layer in priority_order:
-            if current_tokens <= budget_tokens:
-                break
-            for i, (name, content) in enumerate(sections):
-                if name == layer and content.strip():
-                    # Remove this layer
-                    sections[i] = (name, "")
-                    layers_trimmed.append(layer)
-                    # Reassemble
-                    context = "".join(content for _, content in sections)
-                    current_tokens = count_tokens(context)
-                    break
-
-    # If still over budget, truncate from the end (L3 search results)
-    if current_tokens > budget_tokens:
-        # Binary search for the truncation point
-        low, high = 0, len(context)
-        while low < high:
-            mid = (low + high + 1) // 2
-            if count_tokens(context[:mid]) <= budget_tokens:
-                low = mid
-            else:
-                high = mid - 1
-        context = context[:low]
-        if "L3" not in layers_trimmed:
-            layers_trimmed.append("L3")
-
-    return context, layers_trimmed
+    # No layer structure: truncate from the end.
+    low, high = 0, len(context)
+    while low < high:
+        mid = (low + high + 1) // 2
+        if count_tokens(context[:mid]) <= budget_tokens:
+            low = mid
+        else:
+            high = mid - 1
+    return context[:low], ["L3"]
 
 
 def check_budget_warning(

@@ -42,6 +42,14 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_synapse_decay",
         "neuralmind_export_synapse_memory",
         "neuralmind_feedback",
+        # Read-only structure and recall lookups. They were listed in
+        # tools/list but refused to every default role, so `neuralmind_review`
+        # (documented as callable by Claude Code) returned security_denied.
+        "neuralmind_review",
+        "neuralmind_impact",
+        "neuralmind_structural_neighbors",
+        "neuralmind_synaptic_neighbors",
+        "neuralmind_next_likely",
         # Decision memory (v1.0) — read + write for builders
         "neuralmind_query_decisions",
         "neuralmind_audit_decisions",
@@ -66,6 +74,12 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_synapse_decay",
         "neuralmind_export_synapse_memory",
         "neuralmind_feedback",
+        # Read-only structure and recall lookups (see builder).
+        "neuralmind_review",
+        "neuralmind_impact",
+        "neuralmind_structural_neighbors",
+        "neuralmind_synaptic_neighbors",
+        "neuralmind_next_likely",
         # Decision memory (v1.0) — read-only for readers
         "neuralmind_query_decisions",
         "neuralmind_audit_decisions",

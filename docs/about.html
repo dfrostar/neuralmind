@@ -199,6 +199,30 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v481">
+            <h2>What&rsquo;s New in v4.8.1 &mdash; installers that can&rsquo;t destroy your config, and the bug-hunt fixes</h2>
+            <p><strong>The high- and medium-severity bugs found by testing v4.7.0 end to end, all still present in v4.8.0.</strong> Two could destroy user configuration, and one left credentials in the Bash output cache in plaintext.</p>
+            <ul>
+                <li><strong><code>install-hooks</code> and <code>install-mcp</code> leave a config they can&rsquo;t parse untouched</strong> &mdash; one trailing comma used to make <code>install-hooks --global</code> replace <code>~/.claude/settings.json</code> with a bare <code>hooks</code> block (and <code>--uninstall</code> delete it), and <code>install-mcp</code> drop every other MCP server from Cursor, Cline and Claude Desktop configs. Now the command refuses, or prints the entry to paste</li>
+                <li><strong>Hooks act only in a project that has <code>.neuralmind/</code></strong> &mdash; with a global install, the prompt hook no longer runs a full first-time build in whatever directory a session opens in, and no hook creates <code>.neuralmind/</code> on its own</li>
+                <li><strong>Redaction covers what the AWS CLI prints</strong> &mdash; <code>"SecretAccessKey"</code> and <code>"SessionToken"</code> JSON, <code>{"password": &hellip;}</code>, GitLab and Hugging Face tokens, passwords in <code>https://user:password@host</code> URLs, and the tail of <code>DB_PASSWORD=abc;rest</code></li>
+                <li><strong>Indexing</strong> &mdash; a non-UTF-8 doc no longer fails the build; repeated builds stop duplicating doc edges; <code>watch --reindex</code> stops serving deleted symbols; <code>neuralmind export .</code> works without <code>--output</code></li>
+                <li><strong>Hooks follow the agent into subdirectories</strong> &mdash; the project is the nearest directory with <code>.neuralmind/</code>, up to <code>$CLAUDE_PROJECT_DIR</code>; a malformed payload exits 0 instead of a traceback</li>
+                <li><strong>Default MCP roles can call the read-only lookups</strong> &mdash; <code>neuralmind_review</code>, <code>neuralmind_impact</code> and the three neighbour tools no longer return <code>security_denied</code></li>
+                <li><strong>A more accurate graph</strong> &mdash; calls are attributed to the definition they&rsquo;re in, Python relative imports resolve against the package, <code>.h</code> headers parse as C++ in C++ projects, files whose names differ only in case or punctuation get their own nodes, and <code>.neuralmindignore</code> matches like <code>.gitignore</code></li>
+                <li><strong>Retrieval and numbers</strong> &mdash; <code>query --type</code> changes the output, <code>context_budget</code> trims whole lines and never L0, <code>savings</code> counts only queries and wakeups, and <code>review</code>/<code>drift</code>/<code>ci-check</code> work in monorepo subdirectories</li>
+                <li><strong>Synapse learning</strong> &mdash; negative feedback halves the edges it targets and penalties stick, PreCompact stops eroding hubs, rebuilds stop promoting call edges, and edits close together form one batch</li>
+            </ul>
+            <p><strong>Also in v4.8.1, outside the bug hunt:</strong></p>
+            <ul>
+                <li><strong><code>audit verify</code> checks the whole log</strong> &mdash; it fails on a record without a hash once the chain has started, on a line that isn&rsquo;t a JSON object, and on a <code>prev_sha256</code> that doesn&rsquo;t match the record before it, each with the line number; v4.8.0 and earlier passed all three. Records deleted from the end are still not detected</li>
+                <li><strong><code>audit export -o</code> reports what it wrote</strong> &mdash; the count of exported records, not the size of the whole log</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.1.md">v4.8.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v480">
             <h2>What&rsquo;s New in v4.8.0 &mdash; a new session starts where the last one left off, decision search by meaning, and policy mistakes refused</h2>
             <h3>A new session starts with where the last one left off</h3>

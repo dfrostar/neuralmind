@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embedding_backend import EmbeddingBackend
+from .ir import node_community
 from .paths import graph_json_path
 from .secret_scan import redact_if_enabled
 
@@ -86,7 +87,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
             "label": str(node.get("label", node.get("id", "unknown"))),
             "file_type": str(node.get("file_type", node.get("type", "unknown"))),
             "source_file": str(node.get("source_file", "")),
-            "community": int(node.get("community", -1)),
+            "community": node_community(node),
             "node_id": str(node.get("id", "")),
             "embedded_at": datetime.now().isoformat(),
         }
@@ -195,9 +196,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
                 "nodes": [],
                 "summary": "Empty community",
             }
-        nodes = [node for node in self.nodes if int(node.get("community", -1)) == community_id][
-            :max_nodes
-        ]
+        nodes = [node for node in self.nodes if node_community(node) == community_id][:max_nodes]
         file_types: dict[str, int] = {}
         formatted_nodes: list[dict[str, Any]] = []
         for node in nodes:

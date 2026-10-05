@@ -1397,9 +1397,12 @@ def cmd_review(args):
     base = getattr(args, "base", None) or "HEAD"
     top_k = int(getattr(args, "top_k", 10))
 
-    # Get changed files from git
+    # Get changed files from git. git prints paths relative to the repository
+    # root; ``--relative`` with the ``.`` pathspec limits the diff to the
+    # project and prints paths relative to it, so a project in a subdirectory
+    # of a larger repository joins them correctly and ignores the rest.
     try:
-        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", "--relative", base, "--", "."]
         changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         changed_files = [
             str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1407,7 +1410,17 @@ def cmd_review(args):
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
-            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            cmd = [
+                "git",
+                "-C",
+                str(project_path),
+                "diff",
+                "--cached",
+                "--name-only",
+                "--relative",
+                "--",
+                ".",
+            ]
             changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             changed_files = [
                 str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1474,7 +1487,7 @@ def cmd_review(args):
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
                 seen_files.add(abs_file)
-                rel = str(Path(abs_file).relative_to(project_path))
+                rel = Path(abs_file).relative_to(project_path).as_posix()
                 at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
                 if len(at_risk) >= top_k:
                     break
@@ -1482,13 +1495,13 @@ def cmd_review(args):
             pass
 
     if args.json:
-        changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+        changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
         print(
             json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
         )
         return
 
-    changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+    changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
     print(f"NeuralMind review — {project_path.name}  (diff against: {base})")
     print()
     print(f"Changed files ({len(changed_rel)}):")
@@ -5263,6 +5276,9 @@ def cmd_install_mcp(args):
         except ValueError as exc:
             print(f"Error: {exc}")
             sys.exit(1)
+        if result.action.startswith("skipped"):
+            print(f"✗ {client}: {result.action} → {result.detail}")
+            continue
         symbol = "✓" if result.action != "already-present" else "•"
         print(f"{symbol} {client}: {result.action} → {result.path}")
         any_change = any_change or result.action != "already-present"

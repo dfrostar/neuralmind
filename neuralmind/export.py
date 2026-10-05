@@ -428,7 +428,11 @@ def export_pdf(
 def run_export(args, mind=None):
     """Run export from CLI args. Returns export result dict."""
     fmt = getattr(args, "format", "csv")
-    output_path = getattr(args, "output", f"neuralmind_export.{'csv' if fmt == 'csv' else 'pdf'}")
+    # argparse always sets ``output`` (None when --output is omitted), so the
+    # default has to apply to a None value, not only to a missing attribute.
+    output_path = getattr(args, "output", None) or (
+        f"neuralmind_export.{'csv' if fmt == 'csv' else 'pdf'}"
+    )
     controls = getattr(args, "controls", False)
     nodes = getattr(args, "nodes", False)
     report_type = getattr(args, "report", "ssp")

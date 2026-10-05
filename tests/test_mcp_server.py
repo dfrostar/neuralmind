@@ -78,23 +78,25 @@ class TestQueryRelevanceSidecar:
         mind.embedder.get_file_nodes.return_value = []  # no line spans
         return mind
 
-    def test_include_relevance_attaches_sidecar(self):
+    def test_include_relevance_attaches_sidecar(self, tmp_path):
         from neuralmind.mcp_server import tool_query
 
+        # An absolute path on every OS: "/proj" is drive-relative on Windows,
+        # where it passed only because another test's hook left C:\proj\.neuralmind.
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q", include_relevance=True)
+            out = tool_query(str(tmp_path), "q", include_relevance=True)
         assert "relevance" in out
         assert out["relevance"]["version"] == 1
         node = out["relevance"]["files"]["a.py"]["nodes"][0]
         assert node["label"] == "f"
         assert node["score"] == 0.8
 
-    def test_default_omits_sidecar(self):
+    def test_default_omits_sidecar(self, tmp_path):
         """Backward-compatible: no relevance key unless requested."""
         from neuralmind.mcp_server import tool_query
 
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q")
+            out = tool_query(str(tmp_path), "q")
         assert "relevance" not in out
 
     def test_dispatch_threads_include_relevance(self, temp_project):
@@ -216,7 +218,7 @@ class TestErrorCodes:
     def test_rbac_denial_reason(self, temp_project):
         data = json.loads(
             handle_tool_call(
-                "neuralmind_impact", {"project_path": str(temp_project), "symbol": "x"}
+                "neuralmind_build", {"project_path": str(temp_project), "role": "reader"}
             )
         )
         assert data["code"] == "security_denied"
@@ -481,17 +483,18 @@ class TestToolNextLikely:
             assert data == {"enabled": True, "from_node": "x", "next": []}
             mock_tool.assert_called_once_with(str(temp_project), "x", 3)
 
-    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
-        """Confirm the synapse-family default: 'builder' role can't call
-        neuralmind_next_likely. Matches the pre-existing behavior for
-        neuralmind_synapse_stats/decay/synaptic_neighbors. If you want
-        builders to call this tool, extend the role policy explicitly."""
-        result = handle_tool_call(
-            "neuralmind_next_likely",
-            {"project_path": str(temp_project), "from_node": "x"},
-        )
+    def test_dispatcher_allows_builder_role_by_default(self, temp_project):
+        """The default 'builder' role reaches neuralmind_next_likely. It was
+        advertised but refused to every default role until v4.8.1."""
+        with patch("neuralmind.mcp_server.tool_next_likely") as mock_tool:
+            mock_tool.return_value = {"enabled": True, "from_node": "x", "next": []}
+            result = handle_tool_call(
+                "neuralmind_next_likely",
+                {"project_path": str(temp_project), "from_node": "x"},
+            )
         data = json.loads(result)
-        assert data.get("code") == "security_denied"
+        assert data.get("code") != "security_denied"
+        mock_tool.assert_called_once()
 
 
 class TestToolImpact:
@@ -543,14 +546,17 @@ class TestToolImpact:
             assert data == {"symbol": "x", "resolution": "none", "dependents": []}
             mock_tool.assert_called_once_with(str(temp_project), "x", 2)
 
-    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
-        """'builder' role can't call neuralmind_impact without explicit policy extension."""
-        result = handle_tool_call(
-            "neuralmind_impact",
-            {"project_path": str(temp_project), "symbol": "x"},
-        )
+    def test_dispatcher_allows_builder_role_by_default(self, temp_project):
+        """The default 'builder' role reaches neuralmind_impact (refused until v4.8.1)."""
+        with patch("neuralmind.mcp_server.tool_impact") as mock_tool:
+            mock_tool.return_value = {"symbol": "x", "resolution": "none", "dependents": []}
+            result = handle_tool_call(
+                "neuralmind_impact",
+                {"project_path": str(temp_project), "symbol": "x"},
+            )
         data = json.loads(result)
-        assert data.get("code") == "security_denied"
+        assert data.get("code") != "security_denied"
+        mock_tool.assert_called_once()
 
 
 class TestToolDefinitions:

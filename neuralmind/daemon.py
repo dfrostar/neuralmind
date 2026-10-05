@@ -460,6 +460,12 @@ def _search(ctx: DaemonContext, project: str, query: str, n: int) -> dict:
 def _stats(ctx: DaemonContext, project: str) -> dict:
     mind = ctx.registry.get(project)
     with ctx.registry.lock_for(project):
+        # A fresh registry entry hasn't loaded its index, and get_stats()
+        # reports built: False until something does. Load an existing index
+        # as it stands — read-only, never a build — so stats tell the truth.
+        load = getattr(mind, "_load_existing_index", None)
+        if getattr(mind, "_built", True) is False and callable(load) and load():
+            ctx.registry.mark_built(project)
         return mind.get_stats()
 
 
