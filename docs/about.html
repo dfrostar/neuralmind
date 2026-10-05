@@ -213,6 +213,11 @@
                 <li><strong>Retrieval and numbers</strong> &mdash; <code>query --type</code> changes the output, <code>context_budget</code> trims whole lines and never L0, <code>savings</code> counts only queries and wakeups, and <code>review</code>/<code>drift</code>/<code>ci-check</code> work in monorepo subdirectories</li>
                 <li><strong>Synapse learning</strong> &mdash; negative feedback halves the edges it targets and penalties stick, PreCompact stops eroding hubs, rebuilds stop promoting call edges, and edits close together form one batch</li>
             </ul>
+            <p><strong>Also in v4.8.1, outside the bug hunt:</strong></p>
+            <ul>
+                <li><strong><code>audit verify</code> checks the whole log</strong> &mdash; it fails on a record without a hash once the chain has started, on a line that isn&rsquo;t a JSON object, and on a <code>prev_sha256</code> that doesn&rsquo;t match the record before it, each with the line number; v4.8.0 and earlier passed all three. Records deleted from the end are still not detected</li>
+                <li><strong><code>audit export -o</code> reports what it wrote</strong> &mdash; the count of exported records, not the size of the whole log</li>
+            </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.1.md">v4.8.1 release notes</a></p>
         </div>
     </section>

@@ -37,6 +37,11 @@ ones you're most likely to notice:
 - Negative feedback weakens the association it targets, and a penalty stays in
   place.
 
+This release also carries two audit-log fixes that weren't part of the bug
+hunt: `neuralmind audit verify` now checks the whole log, and
+`neuralmind audit export -o` reports the events it wrote. See
+[Audit log](#audit-log).
+
 ---
 
 ## What changed
@@ -279,6 +284,58 @@ Run `neuralmind build` once after upgrading to pick these up.
   flushes once all edits go quiet. A file saved non-stop forces a flush after
   ten windows.
 
+### Audit log
+
+`neuralmind audit verify` passed logs it should have failed. In v4.8.0 and
+earlier:
+
+1. **A record without a hash passed at the end of the log.** The last records
+   could be edited and their `sha256` removed, or forged records appended
+   with none.
+2. **A line it couldn't read was skipped, not reported.** Garbage, a JSON
+   value that isn't an object, or an oversized line appended to a valid log
+   left it passing. One invalid UTF-8 byte made it read no records at all and
+   report `ok`.
+3. **The stored `prev_sha256` was never compared.** The hash covers each
+   record without its hash fields, so the link field could be changed or
+   deleted freely.
+
+All three now fail, each with the line number and the reason:
+
+- **Once the chain has started, a record without a hash fails.** A legitimate
+  record appended after it doesn't hide it.
+- **Every non-empty line must be a JSON object.** Bad UTF-8, bad JSON, a
+  non-object value, or a line over 1 MB fails verification. Search and export
+  still skip such lines, so a damaged log stays readable.
+- **Each record's `prev_sha256` must match the hash of the record before it.**
+- **Line numbers are lines in the file**, blank lines included, so the number
+  in a failure is where to look.
+- **Records before the chain are reported.** They're still accepted, because
+  versions before v0.46.2 wrote them, but the output says how many there are
+  and that the chain doesn't cover them. A log stripped of every hash still
+  passes, as records outside the chain, so read that count.
+- **A rotated log verifies, and is linked to its archive.** `AuditTrail.rotate()`
+  hashed its continuation marker differently from every other record and
+  chained it to zeros; the marker now links to the archive's last hash, and
+  `verify` checks it against the archive while the archive is still there. No
+  CLI command rotates the log.
+- **`--json` adds `unchained`, `continues_from`, `archive_checked` and
+  `reason`.** The existing keys are unchanged. When the file can't be read at
+  all, `first_bad_line` is `null` and `reason` says why.
+
+Still not detected: records deleted from the end, and a chain recomputed by
+anyone who can write the file, because the hash has no secret key. Keep an
+exported copy off the host (`neuralmind audit export`). Risk
+[R-07](../compliance/RISK_ASSESSMENT.md) stays MEDIUM for that reason.
+
+**`neuralmind audit export -o` reports what it wrote.** In v4.8.0 and earlier
+it printed the size of the whole audit log, whatever `--since`, `--until`,
+`--category`, `--action` or `--actor` kept, so a filtered export over an empty
+file said "Exported 7 events". It now counts the records it writes, and says
+so when none matched the filters. Export to stdout is unchanged.
+
+Both are CLI changes, so agents see no difference from them.
+
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
@@ -312,6 +369,10 @@ None added or changed.
 - **To keep the old MCP denials,** define `security.roles` for the project.
   The five read-only lookup tools are now in the default `builder` and
   `reader` roles.
+- **Run `neuralmind audit verify .`.** A log that passed before can fail now.
+  NeuralMind always hashes and links what it writes, and writes one JSON
+  object per line, so treat a failure as a record changed, added or damaged
+  outside NeuralMind, and look at the line it names.
 
 ## Related
 
@@ -319,5 +380,8 @@ None added or changed.
   [install-mcp](../wiki/CLI-Reference.md#install-mcp-v0190) ·
   [scan-for-secrets](../wiki/CLI-Reference.md#scan-for-secrets)
 - [Security Guide: Secret Management](../SECURITY-GUIDE.md#secret-management)
+- Audit log: [Security Guide — Audit Trail](../SECURITY-GUIDE.md#audit-trail),
+  [CLI Reference — audit verify](../wiki/CLI-Reference.md#audit-verify),
+  [Risk Assessment](../compliance/RISK_ASSESSMENT.md)
 - [v4.8.0 release notes](RELEASE_NOTES_v4.8.0.md) ·
   [v4.7.0 release notes](RELEASE_NOTES_v4.7.0.md)
