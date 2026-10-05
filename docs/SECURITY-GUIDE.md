@@ -103,13 +103,23 @@ security:
     window_seconds: 60
 ```
 
-The MCP server in v4.5.1 and earlier built its security manager without
+The MCP server in v4.6.0 and earlier built its security manager without
 reading this file, so both settings were ignored there.
 
 An empty `roles: {}` grants nothing. If `roles`, `rate_limit`, or the
 `security` section itself is malformed (not a mapping, a window under one
 second, a value that isn't a whole number), the server refuses every MCP call
 with `reason: config` instead of falling back to defaults that may be looser.
+
+Two mistakes are not caught, and leave the defaults in force, `admin`
+included: a file that doesn't parse (a YAML syntax error reads as no
+configuration), and a `security:` or `roles:` key left empty, which YAML reads
+as `null` and the server as "no policy". After writing a policy, call a tool
+you left out with `role: "admin"` and check that it returns `security_denied`.
+
+The server reads the policy once per project and keeps it until it exits, so
+restart the MCP server (a new agent session, or reconnecting the server) after
+editing `security:`.
 
 The rate limit keys on the declared actor, so it stops a runaway agent, not a
 caller that changes its actor name.

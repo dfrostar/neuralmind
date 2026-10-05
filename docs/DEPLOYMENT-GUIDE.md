@@ -211,7 +211,7 @@ declare `admin`.
 
 `security.roles` and `security.rate_limit` in `neuralmind-backend.yaml`
 replace those defaults. A role the policy doesn't list gets no tools, so
-leaving `admin` out caps what any caller can claim. (The MCP server in v4.5.1
+leaving `admin` out caps what any caller can claim. (The MCP server in v4.6.0
 and earlier ignored both settings.) Who can reach the MCP server, and which
 directories its OS account can read, still decide who gets in at all.
 See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.

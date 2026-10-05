@@ -290,7 +290,7 @@ can read the project's `.neuralmind/` directory.
 
 Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
 each role can call. Callers declare their own role, so leave `admin` out of the
-policy to cap what any caller can reach. (The MCP server in v4.5.1 and earlier
+policy to cap what any caller can reach. (The MCP server in v4.6.0 and earlier
 ignored `security.roles`.) See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 
