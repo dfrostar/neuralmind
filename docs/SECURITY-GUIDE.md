@@ -200,7 +200,7 @@ corecrypto, which Apple lists in its CMVP certificates.
 
 ## Data Protection
 
-NeuralMind doesn't encrypt anything. Its state is plain files in the
+NeuralMind doesn't encrypt anything itself. Its state is plain files in the
 project's `.neuralmind/` directory: the vector index (which holds indexed
 source text), the code graph, learned synapses, the audit log (which records
 query text), and the Bash output cache. There is no database server, so there
@@ -216,8 +216,10 @@ is nothing to encrypt separately from the filesystem.
   ```
 
 - **Use full-disk encryption on the host**: FileVault on macOS, LUKS on
-  Linux, BitLocker on Windows. NeuralMind has no encryption setting of its
-  own.
+  Linux, BitLocker on Windows. *(v4.7.0+)*
+  `security.require_encrypted_storage: true` makes NeuralMind refuse to run
+  until it can see that encryption; see
+  [Requiring encrypted storage](#requiring-encrypted-storage).
 
 See [File permissions](DEPLOYMENT-GUIDE.md#file-permissions) in the
 deployment guide.
@@ -446,11 +448,15 @@ And an MCP call the role policy refused (hashes and timestamp omitted):
 
 What the fields do and don't tell you:
 
-- **`actor`** is whatever name the MCP caller declares (default `anonymous`).
-  For CLI commands it is `NEURALMIND_ACTOR` if set, otherwise the OS login.
-  Nothing authenticates it.
-- **The declared role** is in `details.role`. `actor_role` and `ip_address`
-  are in the schema, but nothing fills them in, so they are always empty.
+- **`actor`** is, by default, whatever name the MCP caller declares (default
+  `anonymous`). For CLI commands it is `NEURALMIND_ACTOR` if set, otherwise
+  the OS login. Nothing authenticates it. *(v4.7.0+)* With
+  `security.identity: os`, it is the OS account, read from the OS, for MCP
+  calls and CLI events alike, and declared values are kept as
+  `details.claimed_actor` and `details.claimed_role`.
+- **The role the call ran with** is in `details.role`. `actor_role` and
+  `ip_address` are in the schema, but nothing fills them in, so they are
+  always empty.
 - **No record lists the files a query retrieved.** `search_hits` is a count.
 - **`sha256`** chains each record to the previous one through `prev_sha256`.
 
@@ -488,7 +494,7 @@ build compliance reports from the export.
 Evidence NeuralMind provides for each NIST AI RMF function:
 
 GOVERN (Oversight)
-├─ Per-tool permission policy (caller-declared roles)
+├─ Per-tool permission policy (caller-declared roles, or OS accounts with identity: os)
 ├─ Audit log of MCP calls, builds, and queries
 └─ Query provenance: each result names the code nodes it came from
 
@@ -580,7 +586,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
 | **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
-| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared, so least privilege comes from OS accounts |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
 | **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios
