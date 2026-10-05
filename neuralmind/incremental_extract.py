@@ -17,15 +17,59 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from neuralmind.graphgen import _DEFAULT_IGNORES as _GG_IGNORES
 
 CACHE_FILE = ".neuralmind/extraction_cache.json"
 IMPORTER_INDEX_FILE = ".neuralmind/importer_index.json"
+
+# A package's entry file is imported by its directory's name.
+_ENTRY_STEMS = frozenset({"__init__", "index", "mod"})
+
+
+def _names_defined_by(root: Path, rels: list[str]) -> set[str]:
+    """Names another file would use to reach ``rels``: module names and symbols.
+
+    Module names come from the path (``pkg/d.py`` -> ``d``; a package entry
+    such as ``pkg/__init__.py``, or any Go file, also by its directory).
+    Symbols are what the build's first pass registers for call and
+    inheritance resolution, so a reference by bare name counts too.
+    """
+    names: set[str] = set()
+    for rel in rels:
+        path = PurePosixPath(rel)
+        names.add(path.stem)
+        if (path.stem in _ENTRY_STEMS or path.suffix == ".go") and path.parent.name:
+            names.add(path.parent.name)
+    from neuralmind import graphgen as gg
+
+    b = gg._GraphBuilder()
+    parsers: dict[str, Any] = {}
+    for rel in rels:
+        lang = gg._SUFFIX_LANG.get(PurePosixPath(rel).suffix, "")
+        spec = gg._EXTRACTORS.get(lang)
+        if spec is None:
+            continue
+        try:
+            if lang not in parsers:
+                parsers[lang] = gg._make_parser(lang) if gg.language_available(lang) else None
+            if parsers[lang] is None:
+                continue
+            src = (root / rel).read_bytes()
+            file_id = gg._slug(rel)
+            b.add_node(file_id, PurePosixPath(rel).name, "code", rel, 1)
+            spec[0](b, parsers[lang].parse(src).root_node, src, rel, file_id)
+        except Exception:
+            continue  # fail-open: its module name still catches imports
+    for name in (*b.func_by_name, *b.class_by_name):
+        names.add(name)
+        names.add(re.split(r"::|\.", name)[-1])  # Ns::Foo is written Foo too
+    return {n for n in names if n and not (n.startswith("__") and n.endswith("__"))}
 
 
 @dataclass
@@ -172,6 +216,14 @@ class IncrementalExtractor:
         added, modified, deleted = self.scan_files(root, suffixes)
         changed = set(added + modified + deleted)
 
+        # An added file can satisfy an import or call an unchanged file
+        # couldn't resolve at the last build (`from d import newfn` before d.py
+        # existed). No edge records an unresolved reference, so the importer
+        # index can't name those files: re-extract the ones that mention the
+        # new file's module name or a symbol it defines.
+        if added:
+            changed |= self._files_naming(root, _names_defined_by(root, added), skip=changed)
+
         # Add importers of changed files
         to_check = list(changed)
         checked: set[str] = set()
@@ -193,6 +245,29 @@ class IncrementalExtractor:
         ]
 
         return added_list + modified_list + importer_list
+
+    def _files_naming(self, root: Path, names: set[str], skip: set[str]) -> set[str]:
+        """Cached files, other than ``skip``, whose text contains one of ``names``.
+
+        A plain text match over-approximates (a comment counts), which only
+        costs a re-extraction; it never misses a file that refers to a name.
+        """
+        if not names:
+            return set()
+        alternation = b"|".join(
+            re.escape(n.encode("utf-8")) for n in sorted(names, key=len, reverse=True)
+        )
+        pattern = re.compile(rb"(?<![A-Za-z0-9_])(?:" + alternation + rb")(?![A-Za-z0-9_])")
+        hits: set[str] = set()
+        for rel in self._cache:
+            if rel in skip:
+                continue
+            try:
+                if pattern.search((root / rel).read_bytes()):
+                    hits.add(rel)
+            except OSError:
+                continue
+        return hits
 
     def update_cache(self, file_paths: list[str], root: Path) -> None:
         """Update cache entries for extracted files."""

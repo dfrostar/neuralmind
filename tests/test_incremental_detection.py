@@ -1,8 +1,10 @@
-"""Incremental builds notice every changed file, not just ones with a newer mtime.
+"""Incremental builds notice every change a full rebuild would.
 
 A file comes back with an *older* mtime after ``mv backup.py a.py``, ``cp -p``,
 an archive restore or a checkout of an older revision; the build must still
-re-extract it.
+re-extract it. And a newly added file can satisfy an import or call an
+unchanged file couldn't resolve before, so that file's edges into the new one
+must appear without a full rebuild.
 """
 
 from __future__ import annotations
@@ -98,3 +100,52 @@ def test_build_picks_up_a_file_restored_with_an_older_mtime(tmp_path, graphgen):
 
     assert "new_name()" in _labels(graph, "a.py")
     assert "old_name()" not in _labels(graph, "a.py")
+
+
+class TestNewFileReferences:
+    def _project(self, root: Path) -> IncrementalExtractor:
+        (root / "a.py").write_text("from d import newfn\n\ndef main():\n    newfn()\n")
+        (root / "b.py").write_text("def unrelated():\n    return 1\n")
+        (root / "z.py").write_text("from a import main\n\ndef run():\n    main()\n")
+        extractor = IncrementalExtractor(root)
+        extractor.update_cache(["a.py", "b.py", "z.py"], root)
+        return extractor
+
+    def test_files_that_mention_the_new_module_are_re_extracted(self, tmp_path, graphgen):
+        extractor = self._project(tmp_path)
+        (tmp_path / "d.py").write_text("def newfn():\n    pass\n")
+
+        changed = extractor.get_changed_with_dependents(tmp_path, PY, {"a.py": ["z.py"]})
+
+        # a.py names the new module; z.py imports a.py, whose nodes are rebuilt.
+        assert sorted(changed) == ["a.py", "d.py", "z.py"]
+
+    def test_a_reference_to_a_symbol_the_new_file_defines(self, tmp_path, graphgen):
+        extractor = self._project(tmp_path)
+        (tmp_path / "helpers.py").write_text("def unrelated():\n    pass\n")
+
+        changed = extractor.get_changed_with_dependents(tmp_path, PY, {})
+
+        assert sorted(changed) == ["b.py", "helpers.py"]
+
+
+def _edges(graph: dict) -> list[tuple[str, str, str]]:
+    return sorted((e["relation"], e["source"], e["target"]) for e in graph["links"])
+
+
+def test_build_links_unchanged_files_to_a_new_file(tmp_path, graphgen):
+    (tmp_path / "a.py").write_text("from d import newfn\n\ndef main():\n    newfn()\n")
+    (tmp_path / "z.py").write_text("from a import main\n\ndef run():\n    main()\n")
+    (tmp_path / "c.py").write_text("def other():\n    return 2\n")
+    graphgen.write_graph(tmp_path)
+
+    (tmp_path / "d.py").write_text("def newfn():\n    pass\n")
+    incremental = json.loads(graphgen.write_graph(tmp_path).read_text(encoding="utf-8"))
+    edges = _edges(incremental)
+    assert ("imports_from", "a_py", "d_py") in edges
+    assert ("calls", "a_py__main_fn", "d_py__newfn_fn") in edges
+
+    for state in ("graph.json", "extraction_cache.json", "importer_index.json"):
+        (tmp_path / ".neuralmind" / state).unlink(missing_ok=True)
+    fresh = json.loads(graphgen.write_graph(tmp_path).read_text(encoding="utf-8"))
+    assert edges == _edges(fresh)
