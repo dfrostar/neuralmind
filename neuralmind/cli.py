@@ -4043,7 +4043,11 @@ def cmd_ingest(args):
 
     from neuralmind.content_node import ContentNode
     from neuralmind.core import create_mind
-    from neuralmind.document_ingestion import parse_document
+    from neuralmind.document_ingestion import (
+        graph_prose_files,
+        parse_document,
+        project_relative_path,
+    )
 
     # Parse business context from JSON input
     business_types = {"decision", "meeting", "sop", "policy"}
@@ -4221,12 +4225,26 @@ def cmd_ingest(args):
     total_nodes = 0
     total_embed_time = 0.0
     errors: list[tuple[str, str]] = []
+    # Files inside the project whose prose the code graph already holds (the
+    # built-in graph indexes Markdown headings with the text under them).
+    # Ingesting one again stored a second copy under its absolute path, so
+    # the same text came back twice in query context. Read before the loop:
+    # until this run extends it, the embedder's node list is the graph.
+    graph_files = graph_prose_files(mind.embedder.nodes, project_path)
+    already_indexed: list[str] = []
     wall_start = time.time()
 
     for idx, fpath in enumerate(files_to_ingest, 1):
         if not quiet and len(files_to_ingest) > 1:
             rel = fpath.relative_to(file_path)
             print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        project_rel = project_relative_path(fpath, project_path)
+        if project_rel is not None and project_rel in graph_files:
+            already_indexed.append(project_rel)
+            if not quiet and len(files_to_ingest) > 1:
+                print(" already indexed by the code graph, skipped")
+            continue
 
         try:
             content_nodes = [
@@ -4238,6 +4256,12 @@ def cmd_ingest(args):
                 if not quiet and len(files_to_ingest) > 1:
                     print(" no content")
                 continue
+            if project_rel is not None:
+                # Inside the project: record the project-relative path every
+                # graph node uses, not the absolute one.
+                for cn in content_nodes:
+                    cn["source_file"] = project_rel
+                    cn["metadata"]["source"] = project_rel
 
             # Sync to embedder nodes list (avoid duplicates)
             existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
@@ -4294,6 +4318,7 @@ def cmd_ingest(args):
             "total_nodes": total_nodes,
             "wall_time_seconds": round(wall_time, 2),
             "synapse_doc_edges": synapse_doc_edges,
+            "already_indexed": already_indexed,
             "errors": [{"file": str(f), "error": e} for f, e in errors],
         }
         print(json.dumps(output, indent=2))
@@ -4314,7 +4339,13 @@ def cmd_ingest(args):
         if total_nodes > 0:
             print(
                 f"Ingested {total_nodes} content node(s) from "
-                f"{len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+                f"{len(files_to_ingest) - len(already_indexed)} file(s) in {wall_time:.1f}s"
+            )
+        if already_indexed:
+            shown = ", ".join(already_indexed[:3]) + (", ..." if len(already_indexed) > 3 else "")
+            print(
+                f"Skipped {len(already_indexed)} file(s) the code graph already indexes "
+                f"({shown}); `neuralmind build` keeps them current."
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")

@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import re
 import time
+from collections.abc import Iterable
 from pathlib import Path
 
 from . import ignore as _ignore
@@ -330,6 +331,42 @@ def _extract_heading_hierarchy(text: str, max_lines: int = 50) -> list[dict[str,
             level = f"H{len(match.group(1))}"
             headings.append({"level": level, "text": match.group(2).strip()})
     return headings
+
+
+def project_relative_path(path: Path, root: Path) -> str | None:
+    """``path`` as a POSIX path relative to ``root``, or None when outside it."""
+    try:
+        return Path(path).resolve().relative_to(Path(root).resolve()).as_posix()
+    except (ValueError, OSError):
+        return None
+
+
+def graph_prose_files(nodes: Iterable[dict], root: Path) -> set[str]:
+    """Project-relative paths of files whose prose the code graph already holds.
+
+    The built-in graph turns each Markdown heading into a ``document`` node
+    carrying the text under it (``content_text``), so ingesting that file
+    again stores a second copy and the same text comes back twice in query
+    context. Only nodes with ``content_text`` count: a document layer of bare
+    labels (graphify's) doesn't hold the prose, so ingesting adds what's
+    missing. Nodes a previous ingest added (``metadata.ingested_at``) are not
+    the graph and never count.
+    """
+    from .freshness import normalize_source_path
+
+    resolved_root = Path(root).resolve()
+    files: set[str] = set()
+    for node in nodes:
+        if not isinstance(node, dict) or not node.get("content_text"):
+            continue
+        meta = node.get("metadata")
+        if isinstance(meta, dict) and "ingested_at" in meta:
+            continue
+        raw = node.get("source_file")
+        rel = normalize_source_path(str(raw), resolved_root) if raw else ""
+        if rel:
+            files.add(rel)
+    return files
 
 
 def parse_document(

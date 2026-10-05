@@ -248,3 +248,41 @@ class TestGitignoreSemantics:
 
         assert _matches_ignore("build/out.js", ("build/",))
         assert not _matches_ignore("build.py", ("build/",))
+
+
+class TestInProjectIngestHelpers:
+    """`neuralmind ingest` of a file the graph already indexes must not store it twice."""
+
+    def test_project_relative_path(self, tmp_path):
+        from neuralmind.document_ingestion import project_relative_path
+
+        (tmp_path / "proj" / "docs").mkdir(parents=True)
+        inside = tmp_path / "proj" / "docs" / "guide.md"
+        assert project_relative_path(inside, tmp_path / "proj") == "docs/guide.md"
+        assert project_relative_path(tmp_path / "other.md", tmp_path / "proj") is None
+
+    def test_graph_prose_files_counts_only_graph_nodes_with_text(self, tmp_path):
+        from neuralmind.document_ingestion import graph_prose_files
+
+        nodes = [
+            # Built-in graph heading node: carries the prose.
+            {"id": "docs_guide_md__h1", "source_file": "docs/guide.md", "content_text": "x"},
+            # Absolute and ./-prefixed forms normalize to the same relative path.
+            {"id": "a", "source_file": str(tmp_path / "docs" / "abs.md"), "content_text": "x"},
+            {"id": "b", "source_file": "./docs/dot.md", "content_text": "x"},
+            # A bare label (graphify's document layer) doesn't hold the prose.
+            {"id": "docs_labels_md", "source_file": "docs/labels.md"},
+            # A node a previous ingest added is not the graph.
+            {
+                "id": "doc:notes.txt.abc",
+                "source_file": "docs/notes.txt",
+                "content_text": "x",
+                "metadata": {"ingested_at": 1.0},
+            },
+            {"id": "code", "source_file": "", "content_text": "x"},
+        ]
+        assert graph_prose_files(nodes, tmp_path) == {
+            "docs/guide.md",
+            "docs/abs.md",
+            "docs/dot.md",
+        }
