@@ -147,15 +147,20 @@ class TestHandleToolCall:
             data = json.loads(result)
             assert data.get("success") is True
 
-    def test_tool_exception_returns_error(self):
-        """Exceptions in tool handlers are caught and returned as error."""
+    def test_tool_exception_returns_error(self, temp_project):
+        """Exceptions in tool handlers are caught and returned as error.
+
+        A real project path: a missing one is refused as project_not_found
+        before any handler runs (and, run as root, "/nonexistent" used to be
+        created by the security manager's audit log).
+        """
         with patch("neuralmind.mcp_server.get_mind", side_effect=RuntimeError("test error")):
             result = handle_tool_call(
                 "neuralmind_wakeup",
-                {"project_path": "/nonexistent"},
+                {"project_path": str(temp_project)},
             )
             data = json.loads(result)
-            assert "error" in data
+            assert data["error"] == "test error"
 
     def test_skeleton_tool_dispatches(self, temp_project):
         """neuralmind_skeleton calls tool_skeleton."""

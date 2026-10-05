@@ -23,7 +23,9 @@ from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.paths import (
+    ProjectNotFoundError,
     graph_json_path,
+    require_project_dir,
     vector_db_path,
 )
 from neuralmind.storage_guard import StorageNotVerifiedError
@@ -6078,6 +6080,19 @@ def _version_string() -> str:
     return base
 
 
+def _existing_project_dir(value: str) -> str:
+    """argparse ``type=`` for a project path that must already exist.
+
+    Returns ``value`` unchanged. A missing path is a usage error reported
+    before the command runs, so nothing is created under a mistyped path.
+    """
+    try:
+        require_project_dir(value)
+    except OSError as e:  # ProjectNotFoundError, or a cwd that is gone
+        raise argparse.ArgumentTypeError(str(e)) from None
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the full CLI parser tree.
 
@@ -6195,7 +6210,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
-    query_p.add_argument("project_path")
+    query_p.add_argument("project_path", type=_existing_project_dir)
     query_p.add_argument("question")
     query_p.add_argument("--json", "-j", action="store_true")
     query_p.add_argument(
@@ -6261,7 +6276,7 @@ def build_parser() -> argparse.ArgumentParser:
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
-    wakeup_p.add_argument("project_path")
+    wakeup_p.add_argument("project_path", type=_existing_project_dir)
     wakeup_p.add_argument("--json", "-j", action="store_true")
     wakeup_p.set_defaults(func=cmd_wakeup)
 
@@ -6440,7 +6455,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.set_defaults(func=cmd_probe)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
-    search_p.add_argument("project_path")
+    search_p.add_argument("project_path", type=_existing_project_dir)
     search_p.add_argument("query")
     search_p.add_argument("--n", type=int, default=10)
     search_p.add_argument("--json", "-j", action="store_true")
@@ -6455,7 +6470,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
-    stats_p.add_argument("project_path")
+    stats_p.add_argument("project_path", type=_existing_project_dir)
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
 
@@ -6958,7 +6973,7 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("--evidence", nargs="*", help="Supporting evidence")
     d_record.add_argument("--confidence", type=float, default=1.0, help="Confidence 0-1")
     d_record.add_argument("--tags", nargs="*", help="Tags for categorization")
-    d_record.add_argument("project_path", nargs="?", default=".")
+    d_record.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_record.set_defaults(func=cmd_decisions_record)
 
     d_query = decisions_sub.add_parser(
@@ -6983,7 +6998,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Status filter, case-insensitive (default: ACTIVE)",
     )
     d_query.add_argument("--json", "-j", action="store_true")
-    d_query.add_argument("project_path", nargs="?", default=".")
+    d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
     d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
@@ -6991,32 +7006,32 @@ def build_parser() -> argparse.ArgumentParser:
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
     d_amend.add_argument("--evidence", nargs="*", help="Add evidence")
-    d_amend.add_argument("project_path", nargs="?", default=".")
+    d_amend.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_amend.set_defaults(func=cmd_decisions_amend)
 
     d_audit = decisions_sub.add_parser("audit", help="List all decisions")
     d_audit.add_argument("--stale", action="store_true", help="Only stale entries")
     d_audit.add_argument("--orphaned", action="store_true", help="Only orphaned")
     d_audit.add_argument("--format", choices=["md", "json"], default="md")
-    d_audit.add_argument("project_path", nargs="?", default=".")
+    d_audit.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_audit.set_defaults(func=cmd_decisions_audit)
 
     d_export = decisions_sub.add_parser("export", help="Dump all decisions to file")
     d_export.add_argument("--format", choices=["md", "json"], default="md")
     d_export.add_argument("--output", "-o", help="Output file path")
-    d_export.add_argument("project_path", nargs="?", default=".")
+    d_export.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_export.set_defaults(func=cmd_decisions_export)
 
     d_restore = decisions_sub.add_parser("restore", help="Re-validate a stale entry")
     d_restore.add_argument("decision_id", help="Decision ID to restore")
     d_restore.add_argument("--commit", help="New commit SHA")
-    d_restore.add_argument("project_path", nargs="?", default=".")
+    d_restore.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_restore.set_defaults(func=cmd_decisions_restore)
 
     d_invalidate = decisions_sub.add_parser("invalidate", help="Mark decision as stale")
     d_invalidate.add_argument("decision_id", help="Decision ID to invalidate")
     d_invalidate.add_argument("--reason", default="", help="Reason for invalidation")
-    d_invalidate.add_argument("project_path", nargs="?", default=".")
+    d_invalidate.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
     d_scan = decisions_sub.add_parser(
@@ -7900,6 +7915,11 @@ def main():
         print(f"\n{e}\n", file=sys.stderr)
         print("Run `neuralmind doctor` to see the Storage encryption check.", file=sys.stderr)
         sys.exit(1)
+    except ProjectNotFoundError as e:
+        # A mistyped project path on a command whose parser doesn't check it
+        # up front: NeuralMind / DecisionStore refused it before writing.
+        print(f"neuralmind: error: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

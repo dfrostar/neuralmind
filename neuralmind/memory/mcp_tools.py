@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..paths import ProjectNotFoundError
 from .semantic import SemanticSearchUnavailableError, resolve_mode
 from .store import DecisionSearch, DecisionStore, normalize_status_filter
 
@@ -726,6 +727,8 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     try:
         result = handlers[name](arguments)
         return json.dumps(result, indent=2, default=str)
+    except ProjectNotFoundError as e:
+        return json.dumps({"error": str(e), "code": "project_not_found"})
     except SemanticSearchUnavailableError as e:
         return json.dumps(
             {

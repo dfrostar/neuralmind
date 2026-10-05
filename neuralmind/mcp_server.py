@@ -55,6 +55,7 @@ from neuralmind.mcp_security import (
 )
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
+from neuralmind.paths import ProjectNotFoundError, require_project_dir
 from neuralmind.storage_guard import StorageNotVerifiedError, enforce_storage_policy
 
 # Cache for NeuralMind instances per project
@@ -1327,6 +1328,21 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
     return validate_memory_arguments(name, arguments)
 
 
+def _project_not_found(project_path: str) -> dict[str, str] | None:
+    """The ``project_not_found`` error for a path that isn't a directory, else None."""
+    try:
+        require_project_dir(project_path)
+    except OSError as e:  # ProjectNotFoundError, or a server cwd that is gone
+        error = {"error": str(e), "code": "project_not_found"}
+        if not Path(project_path).is_absolute():
+            error["hint"] = (
+                "A relative project_path resolves against the MCP server process's "
+                "working directory; pass the project's absolute path."
+            )
+        return error
+    return None
+
+
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a tool call and return the result as JSON string."""
     handlers = {
@@ -1430,6 +1446,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     if problem:
         return json.dumps({"error": problem, "code": "invalid_request"})
 
+    # Before the security manager writes its audit log or a tool opens any
+    # state: a project_path that isn't an existing directory used to come
+    # back as a fresh <path>/.neuralmind/ holding an empty index.
+    missing = _project_not_found(project_path)
+    if missing is not None:
+        return json.dumps(missing)
+
     try:
         security = get_security_manager(project_path)
         # A malformed policy also turns the storage check on (fail closed), so
@@ -1441,6 +1464,8 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     # Only the security manager's own refusals are security denials. A tool
     # that fails with a RuntimeError (a missing parser, an unreadable PDF) or
     # an OS PermissionError is a tool error, not an access decision.
+    except ProjectNotFoundError as e:
+        return json.dumps({"error": str(e), "code": "project_not_found"})
     except GraphNotBuiltError as e:
         return json.dumps(
             {

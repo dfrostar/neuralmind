@@ -55,6 +55,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from neuralmind.paths import require_project_dir
 from neuralmind.state_dir import ensure_parent_dir
 from neuralmind.storage_guard import enforce_storage_policy
 
@@ -393,7 +394,8 @@ class DecisionStore:
     error; a write silently no-ops rather than crashing the caller.
 
     Args:
-        project_path: Root of the project. The DB lives at
+        project_path: Root of the project, an existing directory
+            (``ProjectNotFoundError`` otherwise). The DB lives at
             ``<project_path>/.neuralmind/memory.db``.
         embedder: What semantic and hybrid search embed with. Defaults to
             the local MiniLM model, loaded on the first such search.
@@ -402,7 +404,8 @@ class DecisionStore:
     def __init__(
         self, project_path: str, *, embedder: semantic.DecisionEmbedder | None = None
     ) -> None:
-        self.project_path = Path(project_path).resolve()
+        # A mistyped project path is an error, not a new memory.db.
+        self.project_path = require_project_dir(project_path)
         enforce_storage_policy(self.project_path)
         db_path = self.project_path / ".neuralmind" / "memory.db"
         self.db_path: Path = db_path

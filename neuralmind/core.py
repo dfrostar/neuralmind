@@ -167,7 +167,8 @@ class NeuralMind:
         Initialize NeuralMind for a project.
 
         Args:
-            project_path: Path to project root (where .neuralmind/ lives)
+            project_path: Path to project root (where .neuralmind/ lives). It
+                must be an existing directory; otherwise ProjectNotFoundError.
             db_path: Optional custom path for ChromaDB storage
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
@@ -176,7 +177,10 @@ class NeuralMind:
                 ``memory_namespace`` / the current git branch / ``personal``.
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
-        self.project_path = Path(project_path).resolve()
+        # A path that isn't an existing directory is an error, not a new
+        # project: the backend and audit trail below would otherwise create
+        # <path>/.neuralmind/ for a mistyped path.
+        self.project_path = paths_mod.require_project_dir(project_path)
         self.scope = scope
         # Before anything can write index or synapse state: a project that
         # sets security.require_encrypted_storage refuses an unverified volume.
