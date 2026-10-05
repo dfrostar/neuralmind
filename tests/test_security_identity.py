@@ -348,6 +348,21 @@ def test_doctor_checks_policy_file_permissions(temp_project, as_alice, mode, sta
     assert _policy_check(temp_project).status == status
 
 
+@pytest.mark.parametrize(
+    "body, fragment",
+    [
+        ("security:\n  roles:\n", "security.roles is empty"),
+        ("security:\n  roles: [admin]\n", "security.roles must map"),
+        ("security:\n  roles:\n    builder: [neuralmind_stats\n", "does not parse"),
+    ],
+)
+def test_doctor_reports_a_role_policy_the_server_refuses(temp_project, body, fragment):
+    _config(temp_project, body)
+    check = _policy_check(temp_project)
+    assert check.status == "fail"
+    assert fragment in check.detail
+
+
 def test_doctor_fails_on_an_unparseable_config(temp_project):
     _config(temp_project, "security:\n  identity: os\n  users: {alice: reader\n")
     check = _policy_check(temp_project)

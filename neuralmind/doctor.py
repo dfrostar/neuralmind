@@ -457,6 +457,7 @@ def _check_security_policy(project: Path) -> Check:
 
     from neuralmind.backend_manager import backend_config_path, read_backend_config_file
     from neuralmind.identity import os_identity
+    from neuralmind.mcp_security import role_policy_problem
     from neuralmind.security_config import (
         IDENTITY_INVALID,
         IDENTITY_OS,
@@ -472,9 +473,17 @@ def _check_security_policy(project: Path) -> Check:
             return Check(
                 name,
                 FAIL,
-                f"{path.name} does not parse ({e}); its settings are ignored, or refused if they set security enforcement",
+                f"{path.name} does not parse ({e}); its settings are ignored, or refused if it names a security setting",
                 fix=f"Fix the syntax in {path.name}.",
             )
+    policy_problem = role_policy_problem(project)
+    if policy_problem:
+        return Check(
+            name,
+            FAIL,
+            f"MCP calls are refused: {policy_problem}",
+            fix="Correct security.roles or security.rate_limit.",
+        )
     settings = load_security_settings(project)
     if settings.identity == IDENTITY_INVALID:
         return Check(

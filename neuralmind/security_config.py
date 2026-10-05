@@ -133,8 +133,17 @@ def _required(security: dict[str, Any]) -> bool:
 
 
 def _mentions_enforcement(path: Path) -> bool:
+    return config_mentions(path, _ENFORCEMENT_KEYS)
+
+
+def config_mentions(path: Path, keys: tuple[str, ...]) -> bool:
+    """Whether a config file's raw text names any of ``keys``.
+
+    For a file that doesn't parse: if it names a security setting, the caller
+    fails closed; if not, the file is left to the lenient general loader.
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return True  # can't read it either: assume the worst
-    return any(key in text for key in _ENFORCEMENT_KEYS)
+    return any(key in text for key in keys)

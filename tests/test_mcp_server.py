@@ -296,6 +296,35 @@ class TestErrorCodes:
         assert data["reason"] == "config"
         assert "Refusing MCP calls" in data["error"]
 
+    @pytest.mark.parametrize(
+        "body",
+        [
+            # Doesn't parse: an unclosed flow list.
+            "security:\n  roles:\n    builder: [neuralmind_stats\n",
+            # Parses, but not to a mapping.
+            "- security\n",
+            # Empty keys, as when every entry under them is commented out.
+            "security:\n",
+            "security:\n  roles:\n  #  builder: [neuralmind_stats]\n",
+        ],
+    )
+    def test_a_policy_that_does_not_parse_or_is_empty_refuses_every_call(self, temp_project, body):
+        """Each of these used to restore the default policy, under which a
+        caller declaring admin reaches every tool."""
+        self._config(temp_project, body)
+        args = {"project_path": str(temp_project), "role": "admin"}
+        data = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    def test_an_unparseable_file_that_names_no_policy_is_still_ignored(self, temp_project):
+        """Only a file that names a security setting fails closed; a typo in
+        backend tuning keeps the general loader's leniency."""
+        self._config(temp_project, "backend: [turbovec\n")
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert "error" not in data, data
+
     def test_a_null_rate_limit_means_the_defaults(self, temp_project):
         self._config(temp_project, "security:\n  rate_limit: null\n")
         data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))

@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v471">
+            <h2>What&rsquo;s New in v4.7.1 &mdash; policy mistakes that meant the defaults now refuse</h2>
+            <p><strong>v4.6.1 listed two mistakes in <code>neuralmind-backend.yaml</code> that it still read as &ldquo;no policy&rdquo;, so the default policy applied, and under it any caller can declare <code>admin</code> and reach every tool.</strong> v4.7.1 refuses both.</p>
+            <ul>
+                <li><strong>A policy file that doesn&rsquo;t parse</strong> &mdash; refused when its text names a security setting (<code>security</code>, <code>roles</code>, <code>rate_limit</code>, <code>identity</code> or <code>require_encrypted_storage</code>); other unparseable files still read as empty, so a typo in backend tuning doesn&rsquo;t block the server</li>
+                <li><strong>A <code>security:</code> or <code>roles:</code> key left empty</strong> &mdash; what&rsquo;s left when every entry under it is commented out; write <code>roles: {}</code> to grant nothing, or remove the key to use the defaults</li>
+                <li><strong><code>neuralmind doctor</code> says which</strong> &mdash; its <em>Security policy</em> check fails on any role-policy problem that makes the server refuse every call</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.1.md">v4.7.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v470">
             <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
             <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
@@ -218,7 +231,7 @@
             <ul>
                 <li><strong><code>security.roles</code> replaces the default policy</strong> &mdash; a role gets exactly the tools listed for it, a role the policy doesn&rsquo;t list gets none, and leaving <code>admin</code> out caps what any caller can reach; a refused call returns <code>security_denied</code> with <code>reason: "rbac"</code></li>
                 <li><strong><code>security.rate_limit</code> sets the limiter</strong> &mdash; <code>max_calls</code> per <code>window_seconds</code>, counted per declared actor</li>
-                <li><strong>A policy that parses but is wrong fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a <code>security:</code> value of the wrong type refuses every MCP call with <code>reason: "config"</code> and names the setting to fix. A file that doesn&rsquo;t parse, or a <code>security:</code> or <code>roles:</code> key left empty, still means the defaults, <code>admin</code> included &mdash; check a left-out tool is denied after writing a policy</li>
+                <li><strong>A policy that parses but is wrong fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a <code>security:</code> value of the wrong type refuses every MCP call with <code>reason: "config"</code> and names the setting to fix. A file that doesn&rsquo;t parse, or a <code>security:</code> or <code>roles:</code> key left empty, still means the defaults, <code>admin</code> included (v4.7.1 refuses both) &mdash; check a left-out tool is denied after writing a policy</li>
                 <li><strong>No <code>security:</code> block, no change</strong> &mdash; nothing writes one for you. If you wrote one, check it before upgrading: an agent that names no role is <code>builder</code>, and a policy without <code>builder</code> gives it no tools</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>

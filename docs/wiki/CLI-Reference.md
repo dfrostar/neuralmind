@@ -1252,7 +1252,8 @@ per-environment default is never a silent mystery.
 **Security policy** and **Storage encryption** *(v4.7.0+)* report the
 [security settings](#security-settings-security-in-neuralmind-backendyaml):
 which identity mode MCP calls use and the role the current OS account gets,
-whether the policy file is group- or world-writable, and whether the project's
+*(v4.7.1+)* whether a malformed, empty or unparseable role policy makes the
+server refuse every call, whether the policy file is group- or world-writable, and whether the project's
 volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
 mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
@@ -3503,9 +3504,11 @@ security:
 With `identity: os`, NeuralMind refuses every MCP call when it can't establish
 the caller: the HTTP transport is in use, the OS account can't be read, the
 account has no role, or the policy file is world-writable (POSIX). A policy file
-that names `identity` or `require_encrypted_storage` but doesn't parse is
-refused too, rather than silently ignored, and a malformed `security`,
-`roles` or `rate_limit` value refuses every call. Each refusal is written to
+that doesn't parse but names a security setting (`security`, `roles`,
+`rate_limit`, `identity` or `require_encrypted_storage`) is refused too,
+rather than silently ignored (v4.7.0 checked only `identity` and
+`require_encrypted_storage`), and so is a malformed `security`, `roles` or
+`rate_limit` value, or *(v4.7.1+)* a `security:` or `roles:` key left empty. Each refusal is written to
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
