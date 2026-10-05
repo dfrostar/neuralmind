@@ -532,6 +532,31 @@ class TestCLIIngest:
         assert data["total_nodes"] >= 1
         assert str(outside.resolve()) in self._stored_sources(root, "narwhal-teapot spec")
 
+    def test_ingest_document_api_skips_a_file_the_graph_already_indexes(self, tmp_path):
+        """The MCP tool's path (NeuralMind.ingest_document) had the same
+        double-indexing bug as `neuralmind ingest`."""
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        result = NeuralMind(str(root)).ingest_document(root / "docs" / "guide.md")
+
+        assert result["success"] is True and result["node_count"] == 0
+        assert result["already_indexed"] == ["docs/guide.md"]
+        context = NeuralMind(str(root)).query("zebra-unicorn deployment rollouts").context
+        assert context.count("zebra-unicorn") == 1, context
+
+    def test_ingest_document_api_stores_an_in_project_file_under_its_relative_path(self, tmp_path):
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        notes = root / "docs" / "notes.txt"
+        notes.write_text("The quokka-lighthouse runbook covers paging.\n", encoding="utf-8")
+        result = NeuralMind(str(root)).ingest_document(notes)
+
+        assert result["node_count"] >= 1 and result["already_indexed"] == []
+        sources = self._stored_sources(root, "quokka-lighthouse runbook")
+        assert "docs/notes.txt" in sources and str(notes) not in sources
+
     def test_ingest_single_markdown(self, temp_project, capsys):
         """Ingest a single markdown file and verify node count."""
         from neuralmind.cli import cmd_ingest

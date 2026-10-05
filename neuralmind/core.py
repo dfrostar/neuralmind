@@ -1153,6 +1153,41 @@ class NeuralMind:
         if not content_nodes:
             return {"error": "No content extracted from file", "node_count": 0}
 
+        # Same rule as `neuralmind ingest`: a file inside the project whose
+        # prose the code graph already holds is skipped (ingesting it stored a
+        # second copy under its absolute path, so the text came back twice in
+        # query context), and any other file inside the project is stored
+        # under the project-relative path every graph node uses.
+        from neuralmind.document_ingestion import graph_prose_files, project_relative_path
+
+        graph_files = graph_prose_files(self.embedder.nodes, self.project_path)
+        already_indexed: set[str] = set()
+        kept: list[dict] = []
+        for cn in content_nodes:
+            meta = cn.get("metadata") if isinstance(cn.get("metadata"), dict) else {}
+            source = cn.get("source_file") or meta.get("source") or ""
+            rel = project_relative_path(Path(source), self.project_path) if source else None
+            if rel is not None:
+                if rel in graph_files:
+                    already_indexed.add(rel)
+                    continue
+                cn["source_file"] = rel
+                if meta:
+                    meta["source"] = rel
+            kept.append(cn)
+        content_nodes = kept
+        if not content_nodes:
+            return {
+                "success": True,
+                "node_count": 0,
+                "file_path": str(file_path),
+                "already_indexed": sorted(already_indexed),
+                "message": (
+                    "The code graph already indexes this file's text; "
+                    "`neuralmind build` keeps it current."
+                ),
+            }
+
         # Sync content nodes into the embedder's node list so BM25 sees them
         existing_ids = {n.get("id", "") for n in self.embedder.nodes}
         for cn in content_nodes:
@@ -1220,6 +1255,7 @@ class NeuralMind:
             "file_path": str(file_path),
             "embed_stats": stats,
             "synapse_doc_edges": synapse_doc_edges,
+            "already_indexed": sorted(already_indexed),
         }
 
     def ingest_cmmc(self, registry_path: str | Path) -> dict:
