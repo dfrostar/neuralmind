@@ -71,6 +71,8 @@ keywords = [
     "read-deduplication",
     "decision-invalidation",
     "memory-governance",
+    "session-recap",
+    "session-continuity",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

@@ -24,6 +24,8 @@ neuralmind_wakeup(project_path=".")
 
 That gives the agent ~400 tokens of architecture/cluster context instead of 50K tokens of file reads.
 
+With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.7.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
+
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 
 ```

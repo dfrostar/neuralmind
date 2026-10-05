@@ -38,6 +38,9 @@ rm -f .neuralmind/synapses.db
 # Remove only audit logs
 rm -f .neuralmind/audit_events.jsonl
 
+# Remove only the session recap records (stored prompts and edited paths)
+neuralmind recap --clear
+
 # Remove only team memory bundle
 rm -f .neuralmind-team-memory.json
 

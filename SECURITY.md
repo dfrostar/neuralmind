@@ -102,8 +102,9 @@ NeuralMind processes code from your projects. Here's what you should know:
    - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes, **credential-redacted** — see note 5)
    - Event log for the graph-view stream (v0.6+): `<project>/.neuralmind/events.jsonl`
    - MCP audit trail (v0.41): `<project>/.neuralmind/audit_events.jsonl`
+   - Session recap records (v4.7+): `<project>/.neuralmind/recaps/<session_id>.jsonl` — each Claude Code prompt (**credential-redacted**, cut to 200 characters) and each Edit/Write path; the ten most recently active sessions kept (plus any active in the last 24 hours); written only in a project where `neuralmind build` has run
    - **Committed** team-memory bundle (v0.30+, opt-in): `<project>/.neuralmind-team-memory.json` — travels with `git clone` (learned weights only, no source)
-4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped and redacted), and MCP audit events. Source code itself is **not** duplicated into these files — only references (node ids, file paths). The committed team-memory bundle holds learned associations, not code.
+4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped and redacted), MCP audit events, and (v4.7+) the text of your Claude Code prompts for the session recap (redacted, clipped). Source code itself is **not** duplicated into these files — only references (node ids, file paths) — except where a prompt or a command's output contains it. The committed team-memory bundle holds learned associations, not code.
 5. **Credential hygiene on persisted output.** The Bash recovery cache records whatever a command printed, which can include credentials (`printenv`, `aws configure list`, a `curl -H "Authorization: Bearer …"`). Detected secrets are replaced with `[REDACTED:<kind>]` **before** the payload is written, and the cache entry lists which kinds were removed. Redaction runs before truncation, so a secret cannot survive inside a kept head/tail slice. Opt out with `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 6. **The state directory cannot be committed.** `<project>/.neuralmind/` is created with its own `.gitignore` containing `*`, so it stays out of `git add -A` regardless of what the host project's `.gitignore` says. This matters because the directory is per-machine state, and the recovery cache within it reflects command output. Files committed by an **older version** remain tracked — the ignore rule does not apply retroactively. Check with `git ls-files .neuralmind/` and untrack with `git rm -r --cached .neuralmind/`; `neuralmind build` warns when it detects already-tracked state. Rotate any credential that reached a commit.
 7. **Pre-index scanning.** `neuralmind scan-for-secrets .` reports credentials in the working tree (including files the indexer skips, such as `.env`) and exits non-zero on high-confidence findings so it can gate CI. `neuralmind build . --redact-secrets` scrubs detected credentials from indexed text as a backstop — it is not a substitute for removing and rotating the credential. Detection is pattern-based and boundary-anchored (so it does not fire inside hex/base64 blobs); a bespoke token format with no distinctive prefix, or two credentials concatenated with no delimiter, will not be caught. A clean scan is evidence, not proof.
@@ -258,7 +259,8 @@ exceptions that policy has accepted.
 3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.
    - Hooks are installed by explicit user action (`neuralmind install-hooks`) — never silently.
    - The Bash compression hook reads stdout/stderr and writes a single-slot recovery cache locally. It does not exfiltrate; it does not modify the agent's command.
-   - `NEURALMIND_BYPASS=1` disables compression for a single command; `NEURALMIND_OUTPUT_CACHE=0` disables the cache entirely.
+   - `NEURALMIND_BYPASS=1` switches off every NeuralMind hook action; `NEURALMIND_OUTPUT_CACHE=0` disables the cache entirely.
+   - The session recap (v4.7+) writes the text of each prompt (credential-redacted, cut to 200 characters) and each Edit/Write path to `<project>/.neuralmind/recaps/`, in projects where `neuralmind build` has run, and injects a recap of the previous session at a fresh or cleared `SessionStart`. Disable via `NEURALMIND_SESSION_RECAP=0`; `neuralmind recap --clear` deletes the records.
    - The synapse memory export (v0.4+) writes the per-project `SYNAPSE_MEMORY.md` and, when present, mirrors it into Claude Code's auto-memory directory at `~/.claude/projects/<slug>/memory/`. Disable via `NEURALMIND_SYNAPSE_EXPORT=0`.
 
 4. **File watcher (`neuralmind watch`).** Watches the project tree and records file co-edits as synapse activations.
@@ -297,8 +299,9 @@ air-gapped deployment, these are the knobs a security reviewer cares about
 | `NEURALMIND_TEAM_MEMORY=0` | Don't import the committed team-memory bundle | on |
 | `NEURALMIND_REUSE_FEEDBACK=0` | Disable the Edit/Write reuse-feedback signal | on |
 | `NEURALMIND_OUTPUT_CACHE=0` | Disable the Bash recovery cache (`last_output.json`) | on |
+| `NEURALMIND_SESSION_RECAP=0` | Don't record prompts and edited paths in `.neuralmind/recaps/`, and don't inject the session recap (existing records stay until `neuralmind recap --clear`) | on |
 | `NEURALMIND_EVENT_LOG=0` | Disable the `events.jsonl` graph-view bridge | on |
-| `NEURALMIND_BYPASS=1` | Skip output compression for a single command | off |
+| `NEURALMIND_BYPASS=1` | Switch off every NeuralMind hook action (including session-recap recording and injection) | off |
 | `NEURALMIND_SELECTOR_AUTOTUNE=1` | Opt **in** to selector auto-tuning (local query signals only) | off |
 | `NEURALMIND_PRECISION=1` | Opt **in** to SCIP compiler-accurate call edges | off |
 | `NEURALMIND_BM25=0` | Disable BM25 hybrid keyword search | on |
