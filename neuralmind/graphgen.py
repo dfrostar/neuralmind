@@ -350,17 +350,19 @@ def _parse_ignore_file(project_path: Path) -> tuple[str, ...]:
     return load_patterns(project_path, ".neuralmindignore")
 
 
-def _is_ignored(rel_path: str, patterns) -> bool:
+def _is_ignored(rel_path: str, patterns, is_dir: bool | None = None) -> bool:
     """Check if a project-relative path matches the ignore patterns.
 
     gitignore semantics: ``docs/`` matches a directory named docs at any
-    depth, ``/docs/`` only at the root, ``!keep.py`` re-includes.
+    depth, ``/docs/`` only at the root, ``!keep.py`` re-includes. Pass
+    ``is_dir`` when the caller knows it, for git's exact answer (see
+    :func:`neuralmind.ignore.matches`).
     """
     if not patterns:
         return False
     from neuralmind.ignore import matches
 
-    return matches(rel_path, tuple(patterns))
+    return matches(rel_path, tuple(patterns), is_dir=is_dir)
 
 
 # Code file suffixes considered "code" (vs prose). Used by detect_project_kind
@@ -418,15 +420,17 @@ def _walk_files(
             if p.is_dir():
                 if (
                     p.name not in ignores
-                    and not _is_ignored(rel, extra_ignores)
-                    and not _is_ignored(rel, git_patterns)
+                    and not _is_ignored(rel, extra_ignores, is_dir=True)
+                    and not _is_ignored(rel, git_patterns, is_dir=True)
                 ):
                     if p.is_symlink():
                         links.append(p)
                     else:
                         walk(p, real / p.name)
             elif p.suffix in suffixes:
-                if not _is_ignored(rel, extra_ignores) and not _is_ignored(rel, git_patterns):
+                if not _is_ignored(rel, extra_ignores, is_dir=False) and not _is_ignored(
+                    rel, git_patterns, is_dir=False
+                ):
                     out.append(p)
 
     walk(root, real_root)
@@ -468,7 +472,7 @@ def _listing_to_paths(
             continue
         # Directory-level .neuralmindignore patterns (``docs/``) match the
         # file's path too, so one check per file is enough.
-        if _is_ignored(rel, extra_ignores):
+        if _is_ignored(rel, extra_ignores, is_dir=False):
             continue
         out.append((tuple(rel.split("/")), parent.joinpath(name)))
     # Same order as the directory walk: per-level name order.

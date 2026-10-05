@@ -305,8 +305,11 @@ def test_unknown_type_never_prunes_a_directory_git_would_enter():
             + ["out/keep.py", "out/x.py", "logs/keep.py", "logs/y.py"],
         ),
         ("/*\n!/src/\n", ["a.py", "src/b.py", "src/deep/c.py", "lib/d.py"]),
+        # `!*/` re-includes directories only; the files under them stay
+        # ignored unless a pattern of their own re-includes them.
+        ("*\n!*/\n!keep.py\n", ["keep.py", "drop.py", "sub/keep.py", "sub/drop.py"]),
     ],
-    ids=["classes-and-excluded-parents", "anchored-whitelist"],
+    ids=["classes-and-excluded-parents", "anchored-whitelist", "directory-whitelist"],
 )
 def test_directory_walk_outside_git_indexes_what_git_would(tmp_path, gitignore, files):
     from neuralmind import graphgen
@@ -330,3 +333,21 @@ def test_pattern_regex_still_matches_paths_under_a_named_directory():
     assert rx.match("obj/Debug/a.cs") and rx.match("src/Obj/b.cs")
     assert not rx.match("obj") and not rx.match("objx/a.cs")
     assert pattern_regex("# comment") is None
+
+
+def test_neuralmindignore_in_a_repository_treats_listed_paths_as_files(tmp_path):
+    # git lists files, so a directory-only `!*/` must not re-include them.
+    from neuralmind import graphgen
+
+    for rel in ["keep.py", "drop.py", "sub/keep.py", "sub/drop.py"]:
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / ".neuralmindignore").write_text("*\n!*/\n!keep.py\n", encoding="utf-8")
+
+    def indexed() -> list[str]:
+        found = graphgen._iter_source_files(tmp_path, graphgen._DEFAULT_IGNORES)
+        return [f.relative_to(tmp_path).as_posix() for f in found]
+
+    assert indexed() == ["keep.py", "sub/keep.py"]  # the walk, outside a repository
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    assert indexed() == ["keep.py", "sub/keep.py"]  # the git listing
