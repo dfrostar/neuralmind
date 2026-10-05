@@ -81,16 +81,26 @@ def compute_savings(
                 # 1. audit_events.jsonl: {category, action, details: {tokens, ...}}
                 # 2. query_events.jsonl: {event_type, retrieval_summary: {...}, ...}
                 if "details" in rec and "action" in rec:
+                    # The audit log records every action (build, search,
+                    # mcp_call, probe, ingestion, ...). Only a query or a
+                    # wakeup stands in for a turn that would otherwise load
+                    # the codebase; an MCP query also logs an mcp_call, so
+                    # counting anything else inflates the savings.
+                    action = rec.get("action")
+                    if action not in ("query", "wakeup"):
+                        continue
                     details = rec.get("details", {})
+                    if not isinstance(details, dict):
+                        details = {}
                     # Read-only queries (evals, benchmarks) measure; they
                     # aren't usage, so they don't count as savings.
-                    if isinstance(details, dict) and details.get("learn") is False:
+                    if details.get("learn") is False:
                         continue
                     tokens = details.get("tokens", 0)
                     search_hits = details.get("search_hits", 0)
                     # Audit log doesn't store reduction_ratio; estimate from tokens
                     ratio = est_full / tokens if tokens > 0 else 0.0
-                    if rec.get("action") == "wakeup":
+                    if action == "wakeup":
                         wakeups.append({"tokens": tokens, "ratio": ratio})
                     else:
                         queries.append(
@@ -103,10 +113,13 @@ def compute_savings(
                             }
                         )
                 else:
+                    event_type = rec.get("event_type")
+                    if event_type not in ("query", "wakeup"):
+                        continue
                     rs = rec.get("retrieval_summary", {})
                     tokens = rs.get("tokens", 0)
                     ratio = est_full / tokens if tokens > 0 else rs.get("reduction_ratio", 0.0)
-                    if rec.get("event_type") == "wakeup":
+                    if event_type == "wakeup":
                         wakeups.append({"tokens": tokens, "ratio": ratio})
                     else:
                         queries.append(
@@ -127,7 +140,10 @@ def compute_savings(
     total_tokens_used = sum(e["tokens"] for e in queries + wakeups)
     total_full_cost = total_events * est_full
     total_saved = total_full_cost - total_tokens_used
-    avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
+    # A query logged without a token count has no ratio; averaging its 0.0 in
+    # would understate the reduction the measured queries achieved.
+    measured = [e["ratio"] for e in queries if e["tokens"] > 0]
+    avg_ratio = sum(measured) / len(measured) if measured else 0.0
 
     out: dict[str, Any] = {
         "project": project_path.name,
