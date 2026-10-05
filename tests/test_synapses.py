@@ -1122,3 +1122,67 @@ def test_ephemeral_edges_use_documented_half_life(tmp_path):
     s.decay(now=t0 + EPHEMERAL_HALF_LIFE_DAYS * 86400)
     weight = _raw_edge(s, "p", "q", EPHEMERAL_NAMESPACE)[0]
     assert weight == pytest.approx(2 * LEARNING_RATE / 2)
+
+
+# --------------------------------------------------------------------------- #
+# normalize_hubs is idempotent (runs on every PreCompact hook)
+# --------------------------------------------------------------------------- #
+
+
+def _all_weights(s):
+    with s._connect() as conn:
+        return {
+            (a, b, ns): w
+            for a, b, ns, w in conn.execute(
+                "SELECT node_a, node_b, namespace, weight FROM synapses"
+            )
+        }
+
+
+@pytest.mark.parametrize("strength", [1.0, 2.0])
+def test_normalize_hubs_is_idempotent(tmp_path, strength):
+    """Repeated calls on an unchanged graph must leave weights unchanged.
+
+    Each call used to multiply hub edges by sqrt(max_degree/degree) again,
+    so a saturated hub fell 1.0 -> 0.5 -> 0.25 -> ... one PreCompact at a
+    time until its edges were pruned.
+    """
+    s = _store(tmp_path)
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=strength)
+        s.reinforce(["utils", f"n{i}"], strength=strength)
+    before = _all_weights(s)
+    assert s.normalize_hubs() == 1
+    once = _all_weights(s)
+    assert all(once[k] < before[k] for k in before)  # still trims a runaway hub
+    for _ in range(6):
+        assert s.normalize_hubs() == 0
+    assert _all_weights(s) == pytest.approx(once, rel=1e-12)
+
+
+def test_normalize_hubs_idempotent_with_adjacent_hubs(tmp_path):
+    """Two hubs sharing an edge settle in one pass; later passes are no-ops."""
+    s = _store(tmp_path)
+    for i in range(120):
+        s.reinforce(["hub_a", f"a{i}"], strength=2.0)
+        s.reinforce(["hub_b", f"b{i}"], strength=2.0)
+    for _ in range(4):
+        s.reinforce(["hub_a", "hub_b"], strength=2.0)
+    assert s.normalize_hubs() == 2
+    once = _all_weights(s)
+    assert s.normalize_hubs() == 0
+    assert _all_weights(s) == pytest.approx(once, rel=1e-12)
+
+
+def test_normalize_hubs_retrims_after_new_reinforcement(tmp_path):
+    """Learning after a trim is trimmed back to the same budget, not below."""
+    s = _store(tmp_path)
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=2.0)
+    s.normalize_hubs()
+    budget = sum(_all_weights(s).values())
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=2.0)
+    assert sum(_all_weights(s).values()) > budget
+    assert s.normalize_hubs() == 1
+    assert sum(_all_weights(s).values()) == pytest.approx(budget, rel=1e-9)

@@ -73,6 +73,12 @@ LTP_FLOOR = 0.20
 # time-based: a fresh 0.30 edge drops to 0.15, and ~5 calls prune it.
 NODE_DECAY_FACTOR = 0.5
 HUB_DEGREE = 50
+# normalize_hubs() caps a hub's total incident weight at
+# HUB_EDGE_BUDGET * sqrt(max_degree * degree): what the original one-shot
+# sqrt(max_degree / degree) rescale left a hub whose edges sat at
+# single-observation weight. A cap (not an unconditional multiply) keeps the
+# PreCompact-hook call idempotent.
+HUB_EDGE_BUDGET = LEARNING_RATE
 SPREAD_DECAY = 0.6
 DEFAULT_SPREAD_DEPTH = 2
 DEFAULT_SPREAD_TOP_K = 12
@@ -2232,7 +2238,12 @@ class SynapseStore:
         """Trim weights on nodes that have grown into runaway hubs.
 
         For every (node, namespace) with degree > max_degree within that
-        namespace, scale its incident edges by sqrt(max_degree / degree).
+        namespace, cap the total weight of its incident edges at
+        ``HUB_EDGE_BUDGET * sqrt(max_degree * degree)``, scaling them down
+        uniformly when the hub is over budget. Idempotent: a hub already
+        within budget is left alone, so the PreCompact hook can run this
+        every compaction without shrinking hub edges call after call (an
+        unconditional ``* sqrt(max_degree / degree)`` compounded to zero).
         Returns the number of (node, namespace) pairs adjusted.
         """
         with self._connect() as conn:
@@ -2251,23 +2262,38 @@ class SynapseStore:
             hubs = cur.fetchall()
             if not hubs:
                 return 0
-            conn.execute("BEGIN")
+            adjusted = 0
+            # IMMEDIATE: the first statement is a read, and a deferred
+            # read->write upgrade fails at once if another writer commits.
+            conn.execute("BEGIN IMMEDIATE")
             try:
                 for node_id, ns, degree in hubs:
-                    factor = math.sqrt(max_degree / degree)
+                    budget = HUB_EDGE_BUDGET * math.sqrt(max_degree * degree)
+                    # Re-read inside the transaction: trimming an earlier hub
+                    # also shrinks the edges it shares with this one.
+                    mass = conn.execute(
+                        "SELECT COALESCE(SUM(weight), 0.0) FROM synapses "
+                        "WHERE (node_a = ? OR node_b = ?) AND namespace = ?",
+                        (node_id, node_id, ns),
+                    ).fetchone()[0]
+                    # Relative tolerance so float rounding in the sum never
+                    # re-triggers a no-op rescale on the next call.
+                    if mass <= budget * (1.0 + 1e-9):
+                        continue
                     conn.execute(
                         """
                         UPDATE synapses
                         SET weight = weight * ?
                         WHERE (node_a = ? OR node_b = ?) AND namespace = ?
                         """,
-                        (factor, node_id, node_id, ns),
+                        (budget / mass, node_id, node_id, ns),
                     )
+                    adjusted += 1
                 conn.execute("COMMIT")
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
-        return len(hubs)
+        return adjusted
 
     # ----------------------------------------------------------------- #
     # Stats / maintenance
