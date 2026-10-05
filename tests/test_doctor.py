@@ -183,6 +183,8 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Query memory",
         "Doc-code alignment",
         "Turbovec compatibility",
+        "Security policy",
+        "Storage encryption",
     }
 
 

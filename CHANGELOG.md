@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.6.1](https://github.com/dfrostar/neuralmind/compare/v4.6.0...v4.6.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **mcp:** an empty security.roles grants nothing; refuse malformed policies ([#576](https://github.com/dfrostar/neuralmind/issues/576)) ([c7490d7](https://github.com/dfrostar/neuralmind/commit/c7490d79b57c5b3def441df2eb86a9eddd87caba))
+* **mcp:** apply security.roles and security.rate_limit from neuralmind-backend.yaml ([#573](https://github.com/dfrostar/neuralmind/issues/573)) ([b4c9886](https://github.com/dfrostar/neuralmind/commit/b4c98860214d196e39aeb15c1f5d1ea11685432d))
+
+
+### Documentation
+
+* v4.6.1 release notes; date the security.roles fix to v4.6.1 ([#580](https://github.com/dfrostar/neuralmind/issues/580)) ([0cdd745](https://github.com/dfrostar/neuralmind/commit/0cdd74563bb133abca74b7ff4fcc5ba6687bebd6))
+
 ## [4.6.0](https://github.com/dfrostar/neuralmind/compare/v4.5.1...v4.6.0) (2026-10-04)
 
 
