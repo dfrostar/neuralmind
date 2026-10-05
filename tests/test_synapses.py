@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 
@@ -611,14 +612,18 @@ def test_seed_from_structural_weight_capped(tmp_path):
 
 
 def test_seed_from_structural_idempotent(tmp_path):
-    """Re-seeding should increment activation_count, not add rows."""
+    """Re-seeding must neither add rows nor inflate activation_count.
+
+    Seeding is not an activation: bumping the count on every build made an
+    unchanged call path LTP-protected after LTP_THRESHOLD rebuilds.
+    """
     s = _store(tmp_path)
     edges = [{"source": "A", "target": "B", "relation": "calls"}]
     s.persist_structural_edges(edges)
     s.seed_from_structural()
     s.seed_from_structural()
     assert len(s.edges()) == 1  # still one edge
-    assert s.edges()[0][3] == 2  # activation_count incremented
+    assert s.edges()[0][3] == 1  # activation_count not inflated by re-seeding
 
 
 def test_seed_from_structural_uses_shared_namespace(tmp_path):
@@ -1186,3 +1191,78 @@ def test_normalize_hubs_retrims_after_new_reinforcement(tmp_path):
     assert sum(_all_weights(s).values()) > budget
     assert s.normalize_hubs() == 1
     assert sum(_all_weights(s).values()) == pytest.approx(budget, rel=1e-9)
+
+
+# --------------------------------------------------------------------------- #
+# Structural seeding mirrors the current build, not the build history
+# --------------------------------------------------------------------------- #
+
+
+def _structural_rows(s):
+    with s._connect() as conn:
+        return conn.execute(
+            "SELECT caller, callee, edge_type, call_count FROM structural_edges ORDER BY caller"
+        ).fetchall()
+
+
+def test_rebuilds_do_not_make_structural_edges_ltp(tmp_path):
+    """Rebuilding the same graph must not inflate call_count or LTP-protect.
+
+    Every build used to add 1 to both ``call_count`` and the seeded edge's
+    ``activation_count``, so after LTP_THRESHOLD builds an unchanged call
+    path became LTP-protected (contradicting the docstring) and its weight
+    crept up as if it had more call sites.
+    """
+    from neuralmind.synapses import STRUCTURAL_BASE_WEIGHT, STRUCTURAL_LOG_SCALE
+
+    s = _store(tmp_path)
+    edge = [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}]
+    for _ in range(LTP_THRESHOLD + 1):
+        s.persist_structural_edges(edge)
+        s.seed_from_structural()
+    assert _structural_rows(s) == [("billing.charge", "stripe.call", "call", 1)]
+    with s._connect() as conn:
+        weight, count = conn.execute(
+            "SELECT weight, activation_count FROM synapses WHERE namespace = ?",
+            (SHARED_NAMESPACE,),
+        ).fetchone()
+    assert count == 1 < LTP_THRESHOLD
+    assert weight == pytest.approx(STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(2))
+
+
+def test_call_count_counts_call_sites_within_one_build(tmp_path):
+    s = _store(tmp_path)
+    edge = {"source": "a", "target": "b", "relation": "calls"}
+    assert s.persist_structural_edges([edge, edge, edge]) == 1
+    assert _structural_rows(s) == [("a", "b", "call", 3)]
+    s.persist_structural_edges([edge, edge, edge])
+    assert _structural_rows(s) == [("a", "b", "call", 3)]
+
+
+def test_removed_call_path_is_not_reseeded(tmp_path):
+    """A call deleted from the code drops out of structural_edges on rebuild."""
+    s = _store(tmp_path)
+    t0 = time.time() - 86400
+    s.persist_structural_edges(
+        [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}], now=t0
+    )
+    s.seed_from_structural(now=t0)
+
+    s.persist_structural_edges([{"source": "other.a", "target": "other.b", "relation": "calls"}])
+    s.seed_from_structural()
+
+    assert _structural_rows(s) == [("other.a", "other.b", "call", 1)]
+    with s._connect() as conn:
+        last = conn.execute(
+            "SELECT last_activated FROM synapses WHERE node_a = 'billing.charge'"
+        ).fetchone()[0]
+    # The stale seeded synapse is left to decay and prune; it is not refreshed.
+    assert last == pytest.approx(t0)
+
+
+def test_empty_graph_does_not_wipe_structural_edges(tmp_path):
+    """A failed/empty graph load must not erase the last good snapshot."""
+    s = _store(tmp_path)
+    s.persist_structural_edges([{"source": "a", "target": "b", "relation": "calls"}])
+    assert s.persist_structural_edges([]) == 0
+    assert _structural_rows(s) == [("a", "b", "call", 1)]

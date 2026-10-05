@@ -1146,14 +1146,20 @@ class SynapseStore:
         Reads ``edge['source']/edge['target']/edge['relation']`` with
         fallbacks for graphify's ``_src/_tgt`` and ``label/kind``. Only
         edges whose relation maps to a known ``edge_type`` (see
-        ``RELATION_TO_EDGE_TYPE``) are stored. Idempotent: re-running
-        ``build()`` increments ``call_count`` and updates ``last_seen``
-        on conflict.
+        ``RELATION_TO_EDGE_TYPE``) are stored.
 
-        Returns the number of edge rows upserted.
+        The table mirrors the graph of the *current* build: ``call_count``
+        is the number of times the edge occurs in ``edges`` (its call sites
+        in this graph), set rather than accumulated, and rows absent from
+        this build are deleted — so rebuilding an unchanged graph is a
+        no-op, and a call removed from the code stops being re-seeded by
+        :meth:`seed_from_structural`. An empty edge set (e.g. a failed graph
+        load) leaves the previous snapshot untouched.
+
+        Returns the number of distinct edge rows written.
         """
         ts = now if now is not None else time.time()
-        rows: list[tuple[str, str, int, str, float]] = []
+        counts: dict[tuple[str, str, str], int] = {}
         for edge in edges or ():
             src = edge.get("source", edge.get("_src"))
             tgt = edge.get("target", edge.get("_tgt"))
@@ -1169,21 +1175,24 @@ class SynapseStore:
                 confidence = 1.0
             if confidence < 0.0:
                 continue
-            rows.append((str(src), str(tgt), 1, edge_type, ts))
+            key = (str(src), str(tgt), edge_type)
+            counts[key] = counts.get(key, 0) + 1
 
+        rows = [(src, tgt, n, edge_type, ts) for (src, tgt, edge_type), n in counts.items()]
         if not rows:
             return 0
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
+                # Replace the snapshot in one transaction: incrementing on
+                # conflict counted builds, not call sites, and never dropped
+                # an edge that disappeared from the graph.
+                conn.execute("DELETE FROM structural_edges")
                 conn.executemany(
                     """
                     INSERT INTO structural_edges(
                         caller, callee, call_count, edge_type, last_seen
                     ) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(caller, callee, edge_type) DO UPDATE SET
-                        call_count = structural_edges.call_count + 1,
-                        last_seen = excluded.last_seen
                     """,
                     rows,
                 )
@@ -1499,9 +1508,10 @@ class SynapseStore:
         LTP-protected, so a path that disappears from the graph will
         eventually prune after enough builds skip it.
 
-        Idempotent: re-running ``build()`` re-seeds and increments
-        ``activation_count``, but weight is clamped at
-        ``STRUCTURAL_MAX_WEIGHT`` so it doesn't grow unbounded.
+        Idempotent: re-running ``build()`` re-seeds (refreshing
+        ``last_activated``; weight is clamped at ``STRUCTURAL_MAX_WEIGHT``)
+        but leaves ``activation_count`` alone — seeding is not an activation,
+        so rebuilding an unchanged graph never makes its edges LTP-protected.
 
         Returns the number of synapse edges upserted (0 if the structural
         table is empty, e.g. a fresh project with no graph).
@@ -1539,7 +1549,6 @@ class SynapseStore:
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
                         weight = MAX(synapses.weight, excluded.weight),
-                        activation_count = synapses.activation_count + 1,
                         last_activated = excluded.last_activated
                     """,
                     rows,
