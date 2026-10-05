@@ -47,6 +47,7 @@ from neuralmind.core import GraphNotBuiltError, NeuralMind
 from neuralmind.mcp_security import (
     AccessDeniedError,
     MCPSecurityManager,
+    PolicyConfigError,
     RateLimitExceededError,
     build_security_manager,
 )
@@ -1439,6 +1440,8 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
                 "hint": "Call neuralmind_build with this project_path, then retry.",
             }
         )
+    except PolicyConfigError as e:
+        return json.dumps({"error": str(e), "code": "security_denied", "reason": "config"})
     except AccessDeniedError as e:
         return json.dumps({"error": str(e), "code": "security_denied", "reason": "rbac"})
     except RateLimitExceededError as e:

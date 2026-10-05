@@ -20,6 +20,11 @@ def test_rbac_policy_allows_expected_tools():
     assert policy.is_allowed("reader", "neuralmind_build") is False
 
 
+def test_an_empty_policy_is_not_the_default_policy():
+    assert RBACPolicy({}).is_allowed("admin", "neuralmind_query") is False
+    assert RBACPolicy().is_allowed("admin", "neuralmind_query") is True
+
+
 def test_rate_limiter_enforces_sliding_window():
     limiter = RateLimiter(max_calls=2, window_seconds=60)
     assert limiter.allow("alice") is True
