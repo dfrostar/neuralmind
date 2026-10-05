@@ -292,7 +292,7 @@ Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
 each role can call. By default callers declare their own role, so leave `admin`
 out of the policy to cap what any caller can reach. Since v4.7.0,
 `security.identity: os` with a `security.users` map gives each OS account its
-own role and ignores what a call declares. (The MCP server in v4.5.1 and
+own role and ignores what a call declares. (The MCP server in v4.6.0 and
 earlier ignored `security.roles`.) See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 

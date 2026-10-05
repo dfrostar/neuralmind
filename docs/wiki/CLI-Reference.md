@@ -3481,7 +3481,7 @@ process, so restart the MCP server after changing it.
 
 | Key | Default | Effect |
 |-----|---------|--------|
-| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools, and an empty mapping grants nothing. The MCP server in v4.5.1 and earlier ignored this setting |
+| `roles` | built-in `admin` / `builder` / `reader` | Role name → list of MCP tool names, or `"*"` for all. Replaces the default policy; a role it doesn't list gets no tools, and an empty mapping grants nothing. The MCP server in v4.6.0 and earlier ignored this setting |
 | `rate_limit` | `max_calls: 60`, `window_seconds: 60` | Calls allowed per actor per window. Whole numbers; `window_seconds` at least 1 |
 | `identity` *(v4.7.0+)* | `declared` | `declared`: each MCP call names its own `actor` and `role`, unauthenticated. `os`: the actor is the OS account the server runs as, read from the OS rather than environment variables, and the role comes from `users`. Stdio transport only |
 | `users` *(v4.7.0+)* | `{}` | OS account name → role, used with `identity: os` |

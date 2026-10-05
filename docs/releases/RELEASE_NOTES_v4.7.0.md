@@ -16,13 +16,12 @@ index source code containing Controlled Unclassified Information (CUI).
 2. **`security.require_encrypted_storage: true` refuses unverified volumes.**
    NeuralMind checks for FileVault, BitLocker, or dm-crypt/LUKS and refuses to
    build, query, serve MCP tools, or run hooks until the check passes.
-3. **`security.roles` and `security.rate_limit` now apply.** The MCP server in
-   v4.5.1 and earlier built its security manager without reading
-   `neuralmind-backend.yaml`, so both settings were ignored.
-4. **`neuralmind doctor` reports both** as two new checks: *Security policy*
+3. **`neuralmind doctor` reports both** as two new checks: *Security policy*
    and *Storage encryption*.
 
-Nothing changes for a project that doesn't set these keys.
+Nothing changes for a project that doesn't set these keys. Both build on
+[v4.6.1](RELEASE_NOTES_v4.6.1.md), which made the MCP server apply
+`security.roles` and `security.rate_limit` at all.
 
 ---
 
@@ -101,21 +100,14 @@ With `require_encrypted_storage: true` and an unverified volume:
   the agent's way;
 - the decision store won't open.
 
-## 3. `security.roles` and `security.rate_limit` now apply
+## 3. Malformed policies under the new settings
 
-The Security Guide has told operators to cap what a caller can claim by
-leaving `admin` out of `security.roles`. The MCP server constructed its
-security manager without reading the config, so through v4.5.1 that advice had
-no effect and a caller declaring `admin` still got every tool. Both factories
-now read the project's `neuralmind-backend.yaml`.
-
-An empty `roles: {}` grants nothing. A malformed `security`, `roles` or
-`rate_limit` value (not a mapping, a window under one second, a value that
-isn't a whole number) refuses every MCP call with `reason: config` rather than
-falling back to defaults that may be looser.
-
-**Check after upgrading:** if your `security.roles` was written for a policy
-that never applied, calls it doesn't grant will now be denied.
+v4.6.1 refuses a `security:` value of the wrong type with `reason: config`. In
+v4.7.0 the MCP dispatcher checks for that before the storage check, so a broken
+policy is reported as the cause rather than as a storage refusal it also
+triggers. A file that names `identity` or `require_encrypted_storage` but
+doesn't parse is refused too; other unparseable files still read as empty, as
+in v4.6.1.
 
 ## What the agent actually sees post-install
 
@@ -149,8 +141,6 @@ audit actor; it is recorded as `claimed_actor`.
 ## Upgrade notes
 
 - No action is needed if `neuralmind-backend.yaml` has no `security:` section.
-- If it has `security.roles` or `security.rate_limit`, check them: they now
-  apply (section 3).
 - To adopt `identity: os`, list each OS account in `users`, make the file
   writable only by its owner (`chmod 644`), and run `neuralmind doctor` to see
   the role your account gets.
