@@ -326,6 +326,10 @@ class DaemonContext:
     on_shutdown: Callable[[], None] | None = None
 
 
+# Seconds a client may stall mid-request before its connection is closed.
+REQUEST_TIMEOUT_SECONDS = 30
+
+
 class DaemonError(Exception):
     """Raised when the daemon rejects a request."""
 
@@ -348,6 +352,30 @@ def _require(body: dict, key: str) -> str:
     if not isinstance(val, str):
         raise DaemonError(400, f"field {key!r} must be a string, got {json_type_name(val)}")
     return val
+
+
+_TRUE_STRINGS = frozenset({"true", "1", "yes", "on"})
+_FALSE_STRINGS = frozenset({"false", "0", "no", "off"})
+
+
+def _bool_param(value: Any, key: str, default: bool) -> bool:
+    """Read a flag from a request body, or raise a 400 naming ``key``.
+
+    Accepts JSON booleans, 0/1, and the usual spellings as strings. A bare
+    ``bool()`` read ``"false"`` as True, so ``{"force": "false"}`` forced a
+    rebuild.
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str) and value.strip().lower() in _TRUE_STRINGS | _FALSE_STRINGS:
+        return value.strip().lower() in _TRUE_STRINGS
+    shown = repr(value)
+    shown = shown if len(shown) <= 60 else shown[:57] + "..."
+    raise DaemonError(400, f"{key!r} must be a boolean, got {shown}")
 
 
 def _int_param(value: Any, key: str, default: int, minimum: int) -> int:
@@ -425,8 +453,8 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
                 ctx,
                 _require(body, "project"),
                 _require(body, "question"),
-                trace=bool(body.get("trace", False)),
-                trace_verbose=bool(body.get("trace_verbose", False)),
+                trace=_bool_param(body.get("trace"), "trace", False),
+                trace_verbose=_bool_param(body.get("trace_verbose"), "trace_verbose", False),
             )
         if method == "POST" and route == "/search":
             return 200, _search(
@@ -439,11 +467,13 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
             return _build(
                 ctx,
                 _require(body, "project"),
-                bool(body.get("force", False)),
-                bool(body.get("sync", False)),
+                _bool_param(body.get("force"), "force", False),
+                _bool_param(body.get("sync"), "sync", False),
             )
         if method == "POST" and route == "/validate":
-            return 200, _validate(ctx, _require(body, "project"), bool(body.get("write", False)))
+            return 200, _validate(
+                ctx, _require(body, "project"), _bool_param(body.get("write"), "write", False)
+            )
         if method == "POST" and route == "/shutdown":
             if ctx.on_shutdown:
                 ctx.on_shutdown()
@@ -555,6 +585,11 @@ class _Handler(BaseHTTPRequestHandler):
     # Context and token live on the *server instance* (set in create_server),
     # never as class attributes — so multiple daemons in one process (e.g. the
     # test suite) can't clobber each other's state.
+
+    # Socket timeout for each request. Without one, a client that declares a
+    # body and never sends it held a handler thread open indefinitely;
+    # http.server closes a timed-out connection itself.
+    timeout = REQUEST_TIMEOUT_SECONDS
 
     def log_message(self, *args) -> None:  # silence default stderr spam
         pass

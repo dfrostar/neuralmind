@@ -448,3 +448,82 @@ def test_dispatch_rejects_non_string_required_field(registry, tmp_path, field):
     body[field] = ["not", "a", "string"]
     status, payload = daemon_mod.dispatch(_ctx(registry), "POST", "/query", body)
     assert status == 400 and field in payload["error"]
+
+
+# --------------------------------------------------------------------------- #
+# Flags and stalled clients
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(None, False), (True, True), (False, False), (1, True), (0, False)]
+    + [("true", True), ("FALSE", False), (" yes ", True), ("off", False), ("0", False)],
+)
+def test_bool_param_reads_flags(value, expected):
+    assert daemon_mod._bool_param(value, "force", False) is expected
+
+
+@pytest.mark.parametrize("value", ["maybe", 2, -1, 1.5, [True], {"x": 1}, ""])
+def test_bool_param_rejects_non_flags(value):
+    with pytest.raises(daemon_mod.DaemonError) as excinfo:
+        daemon_mod._bool_param(value, "force", False)
+    assert excinfo.value.status == 400 and "'force'" in excinfo.value.message
+
+
+@pytest.mark.parametrize(
+    "route, body",
+    [
+        ("/build", {"force": "maybe"}),
+        ("/build", {"sync": [1]}),
+        ("/validate", {"write": "sometimes"}),
+        ("/query", {"question": "q", "trace": 7}),
+    ],
+)
+def test_dispatch_rejects_a_flag_that_is_not_a_boolean(registry, tmp_path, route, body):
+    status, payload = daemon_mod.dispatch(
+        _ctx(registry), "POST", route, {"project": str(tmp_path), **body}
+    )
+    assert status == 400 and "must be a boolean" in payload["error"]
+
+
+def test_dispatch_reads_a_false_string_as_false(registry, tmp_path, monkeypatch):
+    # bool("false") is True, so {"write": "false"} used to write.
+    seen = {}
+
+    def fake_validate(ctx, project, write):
+        seen["write"] = write
+        return {"ok": True}
+
+    monkeypatch.setattr(daemon_mod, "_validate", fake_validate)
+    status, _ = daemon_mod.dispatch(
+        _ctx(registry), "POST", "/validate", {"project": str(tmp_path), "write": "false"}
+    )
+    assert status == 200 and seen == {"write": False}
+
+
+def test_e2e_stalled_body_times_out(running_daemon, monkeypatch):
+    # A client that declares a body and never sends it no longer holds a
+    # handler thread forever: the socket times out and the daemon closes it.
+    import socket
+
+    monkeypatch.setattr(daemon_mod._Handler, "timeout", 0.5)
+    info = daemon_mod.read_discovery()
+    with socket.create_connection((info["host"], info["port"]), timeout=10) as sock:
+        sock.sendall(
+            (
+                "POST /query HTTP/1.1\r\nHost: x\r\n"
+                f"Authorization: Bearer {info['token']}\r\n"
+                "Content-Length: 10\r\n\r\n"
+            ).encode()
+        )
+        started = time.monotonic()
+        assert sock.recv(1024) == b""  # closed by the daemon, not by our 10s timeout
+        assert time.monotonic() - started < 5
+    assert running_daemon.health()["ok"] is True
+
+
+def test_handler_has_a_request_timeout():
+    # http.server's default is None: no timeout at all.
+    assert daemon_mod._Handler.timeout == daemon_mod.REQUEST_TIMEOUT_SECONDS
+    assert 0 < daemon_mod.REQUEST_TIMEOUT_SECONDS <= 120

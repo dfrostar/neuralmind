@@ -205,6 +205,11 @@ def _resolve_open_target(mind: NeuralMind, node_id: str) -> tuple[Path | None, i
 class _Handler(BaseHTTPRequestHandler):
     """HTTP request handler for the NeuralMind graph-view server."""
 
+    # Socket timeout for each request, as in the daemon: a client that
+    # declares a body and never sends it no longer holds a thread open. The
+    # /api/events stream only writes, so a live subscriber isn't affected.
+    timeout = 30
+
     # Set by serve() before the server starts; shared across threads.
     mind: NeuralMind | None = None
     auth_token: str | None = None  # None disables auth

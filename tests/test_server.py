@@ -550,3 +550,25 @@ def test_non_ascii_token_gets_401(path, headers):
         # Still serving, and the real token still works.
         status, payload = _raw_request(base, "GET", "/api/queries?token=secret-token")
         assert status == 200 and "queries" in payload
+
+
+def test_stalled_body_times_out(tmp_path, monkeypatch):
+    # As in the daemon: a declared body that never arrives no longer pins a
+    # handler thread; http.server closes the timed-out connection.
+    import socket
+
+    monkeypatch.setattr(_Handler, "timeout", 0.5)
+    with _running_server(_open_mind(tmp_path)) as base:
+        host, port = base.removeprefix("http://").split(":")
+        with socket.create_connection((host, int(port)), timeout=10) as sock:
+            sock.sendall(b"POST /api/open HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\n")
+            started = time.monotonic()
+            assert sock.recv(1024) == b""
+            assert time.monotonic() - started < 5
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+
+
+def test_handler_has_a_request_timeout():
+    # http.server's default is None: no timeout at all.
+    assert _Handler.timeout is not None and 0 < _Handler.timeout <= 120
