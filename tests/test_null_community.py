@@ -106,3 +106,27 @@ def test_build_and_query_with_null_community(tmp_path: Path):
     finally:
         mind.close()
     assert "a_fn" in {h["id"] for h in res.top_search_hits}
+
+
+def test_graph_data_reads_null_community_as_no_community(tmp_path):
+    """The `serve` graph view built from int(None) and then sorted None with ints."""
+    from types import SimpleNamespace
+
+    from neuralmind import querying
+
+    embedder = SimpleNamespace(
+        nodes=[{"id": "a", "community": None}, {"id": "b", "community": 2}], edges=[]
+    )
+    mind = SimpleNamespace(embedder=embedder, synapses=None, project_path=tmp_path)
+    data = querying.graph_data(mind)
+    assert {n["id"]: n["community"] for n in data["nodes"]} == {"a": -1, "b": 2}
+
+
+def test_in_memory_backend_reads_null_community(tmp_path):
+    from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+
+    backend = InMemoryEmbeddingBackend(str(tmp_path))
+    assert backend._node_metadata({"id": "a", "community": None})["community"] == -1
+    backend.nodes = [{"id": "a", "label": "a", "community": None}]
+    summary = backend.get_community_summary(-1)
+    assert summary["node_count"] == 1

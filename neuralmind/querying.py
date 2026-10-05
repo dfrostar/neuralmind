@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .ir import node_community
+
 if TYPE_CHECKING:
     from .core import NeuralMind
 
@@ -223,7 +225,7 @@ def graph_data(
                 "file_type": n.get("file_type", "unknown"),
                 "source_file": n.get("source_file", ""),
                 "source_location": n.get("source_location", ""),
-                "community": int(n.get("community", -1)),
+                "community": node_community(n),
             }
         )
     node_ids = {n["id"] for n in nodes}
