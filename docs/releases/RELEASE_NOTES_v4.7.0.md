@@ -18,8 +18,12 @@ index source code containing Controlled Unclassified Information (CUI).
    build, query, serve MCP tools, or run hooks until the check passes.
 3. **`neuralmind doctor` reports both** as two new checks: *Security policy*
    and *Storage encryption*.
+4. **`neuralmind audit verify` catches records without a hash at the end of
+   the log.** v4.6.1 and earlier passed records edited or appended there with
+   their hash removed.
 
-Nothing changes for a project that doesn't set these keys. Both build on
+Items 1 to 3 change nothing for a project that doesn't set these keys. Items 1
+and 2 build on
 [v4.6.1](RELEASE_NOTES_v4.6.1.md), which made the MCP server apply
 `security.roles` and `security.rate_limit` at all.
 
@@ -109,9 +113,48 @@ triggers. A file that names `identity` or `require_encrypted_storage` but
 doesn't parse is refused too; other unparseable files still read as empty, as
 in v4.6.1.
 
+## 4. `audit verify` catches records without a hash at the end of the log
+
+`verify` treated any record without a `sha256` as a legacy line, written
+before the hash chain existed (v0.46.2). It accepted such records anywhere,
+and a missing hash mid-log was only caught because the next record's hash
+stopped matching. So at the end of the log, two kinds of tampering passed:
+
+- the last records edited, with their `sha256` removed
+- forged records appended with no `sha256`
+
+Now:
+
+- **Once the chain has started, a record without a hash fails**, and the
+  failure names the line and the reason. A legitimate record appended after it
+  doesn't hide it.
+- **Records before the chain are reported.** They're still accepted, because
+  versions before v0.46.2 wrote them, but the output says how many there are
+  and that the chain doesn't cover them. A log stripped of every hash still
+  passes, as records outside the chain, so read that count.
+- **A rotated log verifies, and is linked to its archive.** `AuditTrail.rotate()`
+  hashed its continuation marker differently from every other record, so the
+  new file failed at line 1. Its marker also chained to zeros instead of the
+  archive's last hash, because the backward scan for the last line stopped on
+  the archive's final newline. The marker now links to the archive and is
+  hashed the same way as every other record. `verify` starts from it and checks
+  it against the archive while the archive is still there. A malformed marker
+  fails verification instead of raising. No CLI command rotates the log.
+- **`--json` adds `unchained`, `continues_from`, `archive_checked` and
+  `reason`.** The existing keys are unchanged.
+
+Still not detected: records deleted from the end, and a chain recomputed by
+anyone who can write the file, because the hash has no secret key. Keep an
+exported copy off the host (`neuralmind audit export`). Risk
+[R-07](../compliance/RISK_ASSESSMENT.md) stays MEDIUM for that reason.
+
+Each tamper case has a test in `tests/test_audit_new.py`, including one that
+pins truncation as undetected so the docs can't claim otherwise.
+
 ## What the agent actually sees post-install
 
-Nothing, unless the project sets the new keys.
+Nothing, unless the project sets the new keys. `audit verify` (item 4) is a
+CLI check, so agents see no change from it.
 
 With `identity: os`, a tool call that declares `role: admin` runs with the role
 `security.users` gives the OS account. A tool outside that role returns:
@@ -147,6 +190,10 @@ audit actor; it is recorded as `claimed_actor`.
 - To adopt `require_encrypted_storage`, run `neuralmind doctor` first. The
   *Storage encryption* line shows what the check sees on each machine,
   including CI runners, which usually aren't encrypted.
+- **Run `neuralmind audit verify .` after upgrading.** A log that passed before
+  can fail now if a record at its end has no hash. NeuralMind always hashes
+  what it writes, so treat that as a record changed or added outside
+  NeuralMind.
 
 ## Related
 
@@ -155,3 +202,5 @@ audit actor; it is recorded as `claimed_actor`.
 - [Security settings reference](../wiki/CLI-Reference.md)
 - [Use case: NeuralMind in a CMMC CUI enclave](../use-cases/cmmc-cui-enclave.md)
 - [Security Guide — Access Control](../SECURITY-GUIDE.md#access-control)
+- [Security Guide — Audit Trail](../SECURITY-GUIDE.md#audit-trail) and
+  [CLI Reference — audit verify](../wiki/CLI-Reference.md#audit-verify)

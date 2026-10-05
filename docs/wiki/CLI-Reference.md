@@ -150,7 +150,7 @@ On failure, the line number and the reason go to stderr. `--json` prints `ok`,
 `first_bad_line`, `total`, `unchained`, `continues_from`, `archive_checked` and
 `reason`.
 
-v4.6.0 and earlier accepted a record without a hash anywhere in the log, so
+v4.6.1 and earlier accepted a record without a hash anywhere in the log, so
 records edited or appended at the end with their hash removed passed.
 
 #### What it can't detect
