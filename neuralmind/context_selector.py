@@ -74,6 +74,9 @@ class ContextResult:
     # was decided ("classifier" or "keywords"); empty when L3 didn't run.
     intent: str = ""
     intent_source: str = ""
+    # (layer, text) for each layer in ``context``, in order ("L0".."L3");
+    # what context-budget trimming cuts, instead of re-parsing the text.
+    layer_texts: list[tuple[str, str]] = field(default_factory=list, repr=False)
 
     @property
     def tokens(self) -> int:
@@ -2109,7 +2112,7 @@ class ContextSelector:
         if full_codebase_tokens is None:
             full_codebase_tokens = self.baseline_tokens or 50000
         budget = TokenBudget()
-        context_parts = []
+        context_parts: list[tuple[str, str]] = []  # (layer, text)
         layers_used = []
         communities_loaded = []
         search_hits = 0
@@ -2125,14 +2128,14 @@ class ContextSelector:
         if include_l0:
             l0 = self.get_l0_identity()
             budget.l0_identity = self._estimate_tokens(l0)
-            context_parts.append(l0)
+            context_parts.append(("L0", l0))
             layers_used.append("L0:Identity")
 
         # L1: Summary (always fast, cached)
         if include_l1:
             l1 = self.get_l1_summary()
             budget.l1_summary = self._estimate_tokens(l1)
-            context_parts.append(l1)
+            context_parts.append(("L1", l1))
             layers_used.append("L1:Summary")
 
         # Prose branch: return chapter text instead of L2/L3 cluster metadata.
@@ -2162,7 +2165,7 @@ class ContextSelector:
                 # Clear any L0/L1 that was added — prose returns ONLY chapter text
                 context_parts.clear()
                 layers_used.clear()
-                context_parts.append(prose_context)
+                context_parts.append(("L3", prose_context))
                 layers_used.append(f"L3:Prose({len(ranked_nodes)} nodes)")
             search_hits = len(ranked_nodes)
 
@@ -2171,13 +2174,14 @@ class ContextSelector:
             if ranked_nodes:
                 top_hits = list(ranked_nodes)
             return ContextResult(
-                context="\n".join(context_parts),
+                context="\n".join(text for _, text in context_parts),
                 budget=budget,
                 layers_used=layers_used,
                 communities_loaded=communities_loaded,
                 search_hits=search_hits,
                 reduction_ratio=reduction_ratio,
                 top_search_hits=top_hits,
+                layer_texts=list(context_parts),
             )
 
         # L2: On-demand (requires query)
@@ -2185,7 +2189,7 @@ class ContextSelector:
             l2, comms = self.get_l2_context(query)
             if l2:
                 budget.l2_ondemand = self._estimate_tokens(l2)
-                context_parts.append(l2)
+                context_parts.append(("L2", l2))
                 communities_loaded = comms
                 layers_used.append(f"L2:OnDemand({len(comms)} clusters)")
 
@@ -2194,7 +2198,7 @@ class ContextSelector:
             l3, hits = self.get_l3_search(query, query_type=query_type)
             if l3:
                 budget.l3_search = self._estimate_tokens(l3)
-                context_parts.append(l3)
+                context_parts.append(("L3", l3))
                 search_hits = hits
                 layers_used.append(f"L3:Search({hits} results)")
 
@@ -2215,7 +2219,7 @@ class ContextSelector:
             top_hits = list(boosted) if boosted else list(self._query_search_cache.get(query, []))
 
         return ContextResult(
-            context="\n".join(context_parts),
+            context="\n".join(text for _, text in context_parts),
             budget=budget,
             layers_used=layers_used,
             communities_loaded=communities_loaded,
@@ -2226,6 +2230,7 @@ class ContextSelector:
             intent_source=(
                 getattr(self, "_last_intent_source", "") if (include_l3 and query) else ""
             ),
+            layer_texts=list(context_parts),
         )
 
     def get_wakeup_context(self) -> ContextResult:
@@ -2294,25 +2299,10 @@ class ContextSelector:
                 used = count_tokens(result.context)
                 if used > context_budget:
                     # Trim L3 search results first, then L2, then L1
-                    trimmed_context, layers_trimmed = self._trim_context_to_budget(
-                        result.context, context_budget
-                    )
-                    result.context = trimmed_context
-                    # Update budget tracking
-                    result.budget.l3_search = (
-                        0 if "L3" in layers_trimmed else result.budget.l3_search
-                    )
-                    result.budget.l2_ondemand = (
-                        0 if "L2" in layers_trimmed else result.budget.l2_ondemand
-                    )
-                    result.budget.l1_summary = (
-                        0 if "L1" in layers_trimmed else result.budget.l1_summary
-                    )
+                    layers_trimmed = self.fit_to_budget(result, context_budget)
                     # Log budget warning
                     if check_budget_warning(used, context_budget):
-                        import logging
-
-                        logging.getLogger(__name__).warning(
+                        logger.warning(
                             "[context_budget] query exceeded budget: %d/%d tokens (trimmed: %s)",
                             used,
                             context_budget,
@@ -2325,8 +2315,13 @@ class ContextSelector:
         finally:
             self._trace = None
 
-    def _trim_context_to_budget(self, context: str, budget_tokens: int) -> tuple[str, list[str]]:
-        """Trim context to fit within budget, removing lower-priority layers first.
+    # The section name fit_to_budget gives a prefix placed above the layers.
+    _PREFIX_SECTION = "prefix"
+
+    def fit_to_budget(
+        self, result: ContextResult, budget_tokens: int, prefix: str = ""
+    ) -> list[str]:
+        """Trim ``result`` in place so its context fits ``budget_tokens``.
 
         Layer priority (highest to lowest):
         - L0: Identity (project name, description) — never trimmed
@@ -2334,90 +2329,44 @@ class ContextSelector:
         - L2: On-demand modules — trimmed before L1
         - L3: Search results — trimmed first
 
+        Each layer is cut from its end at whole lines and dropped once only
+        its header would be left. ``prefix`` (the hybrid highlights) goes
+        above the layers, a blank line apart, and counts against the same
+        budget; it is trimmed only after L1. When anything is trimmed, the
+        token budget, ``layers_used`` and the reduction ratio are recomputed
+        to describe the context returned.
+
         Returns:
-            (trimmed_context, layers_trimmed)
+            The layers trimmed, in the order they were trimmed.
         """
-        from .context_budget import count_tokens
+        from .context_budget import TRIM_ORDER, fit_layers, split_layers
 
-        current_tokens = count_tokens(context)
-        if current_tokens <= budget_tokens:
-            return context, []
+        pre = self._PREFIX_SECTION
+        sections = list(result.layer_texts) or split_layers(result.context)
+        if prefix:
+            sections.insert(0, (pre, prefix))
 
-        layers_trimmed: list[str] = []
+        def render(secs: list[tuple[str, str]]) -> str:
+            head = [text for name, text in secs if name == pre]
+            body = "\n".join(text for name, text in secs if name != pre)
+            return "\n\n".join([*head, body]) if head else body
 
-        # Split by layer markers (L3: Search results, L2: OnDemand, L1: Summary)
-        # The context is assembled as "\n".join(context_parts) in get_context
-        # We look for the layer labels that were added in layers_used
-        l3_marker = "L3:Search("
-        l2_marker = "L2:OnDemand("
-        l1_marker = "L1:Summary"
+        kept, trimmed = fit_layers(sections, budget_tokens, order=(*TRIM_ORDER, pre), render=render)
+        result.context = render(kept)
+        if not trimmed:
+            return trimmed
 
-        # Split context into sections by layer markers
-        sections: list[tuple[str, str]] = []  # (layer_name, content)
-        remaining = context
-
-        # Find L3 section
-        if l3_marker in remaining:
-            idx = remaining.index(l3_marker)
-            # Find the start of the L3 content (after the marker line)
-            l3_start = remaining.find("\n", idx)
-            if l3_start == -1:
-                l3_start = idx
-            else:
-                l3_start += 1
-            sections.append(("L3", remaining[l3_start:]))
-            remaining = remaining[:idx]
-
-        # Find L2 section
-        if l2_marker in remaining:
-            idx = remaining.index(l2_marker)
-            l2_start = remaining.find("\n", idx)
-            if l2_start == -1:
-                l2_start = idx
-            else:
-                l2_start += 1
-            sections.append(("L2", remaining[l2_start:]))
-            remaining = remaining[:idx]
-
-        # Find L1 section
-        if l1_marker in remaining:
-            idx = remaining.index(l1_marker)
-            l1_start = remaining.find("\n", idx)
-            if l1_start == -1:
-                l1_start = idx
-            else:
-                l1_start += 1
-            sections.append(("L1", remaining[l1_start:]))
-            remaining = remaining[:idx]
-
-        # Priority order: L3 first (trim search results), then L2, then L1
-        priority_order = ["L3", "L2", "L1"]
-
-        for layer in priority_order:
-            if current_tokens <= budget_tokens:
-                break
-            for i, (name, content) in enumerate(sections):
-                if name == layer and content.strip():
-                    # Remove this layer
-                    sections[i] = (name, "")
-                    layers_trimmed.append(layer)
-                    # Reassemble
-                    context = "".join(content for _, content in sections)
-                    current_tokens = count_tokens(context)
-                    break
-
-        # If still over budget, truncate from the end (L3 search results)
-        if current_tokens > budget_tokens:
-            # Binary search for the truncation point
-            low, high = 0, len(context)
-            while low < high:
-                mid = (low + high + 1) // 2
-                if count_tokens(context[:mid]) <= budget_tokens:
-                    low = mid
-                else:
-                    high = mid - 1
-            context = context[:low]
-            if "L3" not in layers_trimmed:
-                layers_trimmed.append("L3")
-
-        return context, layers_trimmed
+        layers = [(name, text) for name, text in kept if name != pre]
+        result.layer_texts = layers
+        texts = dict(layers)
+        budget = result.budget
+        budget.l0_identity = self._estimate_tokens(texts.get("L0", ""))
+        budget.l1_summary = self._estimate_tokens(texts.get("L1", ""))
+        budget.l2_ondemand = self._estimate_tokens(texts.get("L2", ""))
+        budget.l3_search = self._estimate_tokens(texts.get("L3", ""))
+        result.layers_used = [
+            label for label in result.layers_used if label.split(":", 1)[0] in texts
+        ]
+        full_codebase_tokens = self.baseline_tokens or 50000
+        result.reduction_ratio = full_codebase_tokens / budget.total if budget.total > 0 else 0
+        return trimmed
