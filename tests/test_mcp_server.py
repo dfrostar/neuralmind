@@ -261,6 +261,48 @@ class TestErrorCodes:
         assert second["code"] == "security_denied"
         assert second["reason"] == "rate_limit"
 
+    def _config(self, temp_project, text):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(text, encoding="utf-8")
+
+    def test_an_empty_role_policy_grants_nothing(self, temp_project):
+        """`roles: {}` used to read as "no policy" and restore the defaults,
+        admin included. An explicit empty policy is a policy."""
+        self._config(temp_project, "security:\n  roles: {}\n")
+        base = {"project_path": str(temp_project)}
+        for args in ({**base, "role": "admin"}, base):
+            data = json.loads(handle_tool_call("neuralmind_stats", args))
+            assert data["code"] == "security_denied", args
+            assert data["reason"] == "rbac"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "security:\n  roles: [admin]\n",
+            "security:\n  rate_limit: 60\n",
+            "security:\n  rate_limit:\n    window_seconds: 0\n",
+            "security:\n  rate_limit:\n    window_seconds: -5\n",
+            "security:\n  rate_limit:\n    max_calls: lots\n",
+            "security:\n  rate_limit:\n    max_calls: true\n",
+            "security: open\n",
+        ],
+    )
+    def test_a_malformed_policy_refuses_every_call(self, temp_project, body):
+        """These used to crash every call (`rate_limit: 60`, a non-number),
+        switch the limit off (a window of 0 or less), or fall back to the
+        defaults (`roles` not a mapping)."""
+        self._config(temp_project, body)
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    def test_a_null_rate_limit_means_the_defaults(self, temp_project):
+        self._config(temp_project, "security:\n  rate_limit: null\n")
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        # It used to raise AttributeError inside the dispatcher, which came
+        # back as a bare {"error": ...} on every call.
+        assert "error" not in data, data
+
     def test_unknown_decision_status_is_invalid_request(self, temp_project):
         """The status filter is case-insensitive, so its schema has no enum; an
         unknown value used to run inside the security manager and come back
