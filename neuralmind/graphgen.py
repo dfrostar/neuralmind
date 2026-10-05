@@ -389,10 +389,21 @@ def _walk_files(
     extra_ignores: tuple[str, ...],
     git_patterns: tuple[str, ...] = (),
 ) -> list[Path]:
-    """Directory walk: skip dot-dirs and ``ignores``, apply ignore patterns."""
-    out: list[Path] = []
+    """Directory walk: skip dot-dirs and ``ignores``, apply ignore patterns.
 
-    def walk(d: Path) -> None:
+    A symlinked directory is followed only if it resolves inside ``root`` to a
+    directory not walked already — so a link out of the project can't pull
+    foreign files in, and a link to an ancestor (``src/loop -> ..``) can't
+    recurse forever. Links are followed after every real directory, so a file
+    reachable both ways is listed once, under its real path.
+    """
+    out: list[Path] = []
+    real_root = root.resolve()
+    walked: set[Path] = set()  # resolved directories already walked
+    links: list[Path] = []  # symlinked directories, deferred
+
+    def walk(d: Path, real: Path) -> None:
+        walked.add(real)
         try:
             entries = sorted(d.iterdir(), key=lambda p: p.name)
         except (OSError, PermissionError):
@@ -410,12 +421,24 @@ def _walk_files(
                     and not _is_ignored(rel, extra_ignores)
                     and not _is_ignored(rel, git_patterns)
                 ):
-                    walk(p)
+                    if p.is_symlink():
+                        links.append(p)
+                    else:
+                        walk(p, real / p.name)
             elif p.suffix in suffixes:
                 if not _is_ignored(rel, extra_ignores) and not _is_ignored(rel, git_patterns):
                     out.append(p)
 
-    walk(root)
+    walk(root, real_root)
+    while links:
+        pending, links = links, []
+        for link in pending:
+            try:
+                target = link.resolve()
+            except (OSError, RuntimeError):
+                continue
+            if target not in walked and target.is_relative_to(real_root):
+                walk(link, target)
     return out
 
 

@@ -6,6 +6,10 @@
   both became ``docs_md``). Colliding entities now get distinct ids; every id
   that never collided stays byte-identical (learned synapse memory is keyed by
   node id).
+- Outside git (or with ``respect_gitignore: false``) the directory walk
+  followed symlinked directories anywhere: a link to an outside directory
+  pulled foreign files into the index and ``src/loop -> ..`` recursed until
+  the path got too long.
 """
 
 from __future__ import annotations
@@ -252,3 +256,58 @@ def test_doc_code_coupling_reaches_disambiguated_code_files(tmp_path: Path) -> N
     assert {_file_node(graph, "pkg/a-b.py")["id"], _file_node(graph, "pkg/a_b.py")["id"]} <= (
         described
     )
+
+
+# --------------------------------------------------------------------------- #
+# The walk stays inside the project
+# --------------------------------------------------------------------------- #
+def _symlink(link: Path, target: str | Path) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not supported here")
+
+
+@pytest.fixture
+def linked_project(tmp_path: Path) -> Path:
+    outside = _write(tmp_path / "outside", {"secret_mod.py": "def outside_fn(): pass\n"})
+    root = _write(
+        tmp_path / "proj",
+        {"src/app.py": "def f(): pass\n", "lib/util.py": "def g(): pass\n"},
+    )
+    _symlink(root / "src" / "loop", "..")  # a loop back to the project root
+    _symlink(root / "ext", outside)  # a directory outside the project
+    _symlink(root / "a_alias", root / "lib")  # an alias of a real directory
+    return root
+
+
+def _rels(root: Path, files: list[Path]) -> list[str]:
+    return [f.relative_to(root).as_posix() for f in files]
+
+
+def test_walk_skips_outside_links_and_loops(linked_project: Path) -> None:
+    root = linked_project
+    files = _rels(root, graphgen._walk_files(root, graphgen._DEFAULT_IGNORES, {".py"}, ()))
+    # Each real file once, under its real path; nothing from outside.
+    assert files == ["lib/util.py", "src/app.py"]
+
+
+def test_build_outside_git_ignores_outside_links(linked_project: Path) -> None:
+    graph = graphgen.build_graph(linked_project)
+    assert {n["source_file"] for n in graph["nodes"]} == {"lib/util.py", "src/app.py"}
+
+
+def test_respect_gitignore_false_ignores_outside_links(linked_project: Path) -> None:
+    root = linked_project
+    (root / ".neuralmind.yaml").write_text("respect_gitignore: false\n")
+    files = _rels(root, graphgen._iter_source_files(root, graphgen._DEFAULT_IGNORES))
+    assert files == ["lib/util.py", "src/app.py"]
+
+
+def test_link_to_an_unwalked_directory_inside_the_project_is_followed(tmp_path: Path) -> None:
+    """A link into the project whose target isn't otherwise walked (here an
+    ignored directory) still contributes its files, under the link's path."""
+    root = _write(tmp_path, {"node_modules/pkg/mod.py": "def m(): pass\n", "app.py": ""})
+    _symlink(root / "vendored", root / "node_modules" / "pkg")
+    files = _rels(root, graphgen._walk_files(root, graphgen._DEFAULT_IGNORES, {".py"}, ()))
+    assert files == ["app.py", "vendored/mod.py"]
