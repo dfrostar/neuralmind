@@ -210,14 +210,6 @@
                 <li><strong><code>neuralmind recap</code></strong> &mdash; prints what the next session will see; <code>--clear</code> deletes the records. <code>NEURALMIND_SESSION_RECAP=0</code> stops recording and the recap, <code>NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS</code> (default 14) hides an older one, <code>NEURALMIND_NO_LEARN=1</code> stops recording but still shows an existing recap, and <code>NEURALMIND_BYPASS=1</code> switches off every hook action, this one included</li>
                 <li><strong>Claude Code only, automatically</strong> &mdash; Cursor, Cline and generic MCP clients don&rsquo;t run Claude Code hooks, so nothing is recorded or injected; Hermes-Agent or any agent with a shell can run <code>neuralmind recap</code></li>
             </ul>
-            <h3><code>audit verify</code> checks the whole log</h3>
-            <p><strong>In v4.7.0 and earlier, <code>neuralmind audit verify</code> passed logs it should have failed.</strong> v4.8.0 closes three gaps.</p>
-            <ul>
-                <li><strong>Records without a hash at the end of the log fail</strong> once the chain has started, so the last records can&rsquo;t be edited or forged by dropping their <code>sha256</code></li>
-                <li><strong>Every line must be a JSON object</strong> &mdash; a line it can&rsquo;t read fails instead of being skipped; search and export still skip it</li>
-                <li><strong>Each record&rsquo;s <code>prev_sha256</code> must match</strong> the hash of the record before it; a rotated log is checked against its archive</li>
-            </ul>
-            <p>It still can&rsquo;t detect records deleted from the end, or a chain recomputed by someone who can write the file.</p>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md">v4.8.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
             <h3>Decision search finds a decision worded differently from the question</h3>
             <p><strong>Decision search found a decision only when the question shared a word with it, so &ldquo;what happens if someone steals a copy of our db?&rdquo; never reached &ldquo;Hash API tokens before storing them&rdquo;.</strong> v4.8.0 ranks decisions by meaning as well, with the embedding model the code index already runs locally, and makes the fused ranking the default. It became the default only after passing a keep rule committed, with 20 paraphrased questions, before semantic search was run on them. Evidence level: reproducible on demand from a source checkout (<code>neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json</code>); the wiki&rsquo;s keyword column is CI-gated, the semantic and hybrid columns are checked wherever the model is on disk.</p>

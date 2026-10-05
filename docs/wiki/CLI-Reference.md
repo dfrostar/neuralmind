@@ -152,7 +152,7 @@ prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
 `archive_checked` and `reason`. `first_bad_line` is `null` when the file can't
 be read at all.
 
-v4.7.0 and earlier accepted a record without a hash anywhere in the log,
+v4.8.0 and earlier accepted a record without a hash anywhere in the log,
 skipped lines they couldn't parse, and never compared `prev_sha256`. So records
 edited or appended at the end with their hash removed, and garbage appended to
 the log, passed.

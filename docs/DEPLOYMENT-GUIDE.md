@@ -356,7 +356,7 @@ neuralmind audit export . --format cef --since 2026-01-01 -o audit.cef   # or --
 Each record carries a SHA-256 hash chained to the previous one. `audit verify`
 detects a record that was edited, deleted from the middle of the log, or
 written without a hash after the chain started, and any line that isn't a
-JSON object (v4.7.0 and earlier missed those last two at the end of the log).
+JSON object (v4.8.0 and earlier missed those last two at the end of the log).
 It can't detect records removed from
 the end, or a chain recomputed by anyone with write access to the file. To
 keep a copy outside the host's control, ship `audit export` output to your

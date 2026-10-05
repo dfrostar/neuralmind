@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.8.0 — A new session starts where the last one left off; decision search by meaning; policy mistakes refused; `audit verify` checks the whole log (October 2026)
+### v4.8.0 — A new session starts where the last one left off; decision search by meaning; policy mistakes refused (October 2026)
 
 A fresh or cleared Claude Code session now starts with a short recap of the
 previous one in the project: its first prompt, its last three, and the files it
@@ -67,11 +67,6 @@ block the server. `neuralmind doctor`'s *Security policy* check names the
 setting to fix; see the
 [Security Guide](https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim).
 
-`neuralmind audit verify` now fails on a record without a
-hash once the chain has started, on any line that isn't a JSON object, and on a
-`prev_sha256` that doesn't match the record before it. v4.7.0 and earlier
-passed all three. It still can't detect records deleted from the end.
-
 ### v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage (October 2026)
 
 `security.identity: os` takes each MCP caller's identity from the OS account
@@ -82,14 +77,6 @@ dm-crypt/LUKS is verified. `neuralmind doctor` reports both. Nothing changes
 for a project that doesn't set these keys. See the
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md)
 and the [CMMC CUI enclave walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md).
-
-### v4.6.1 — The MCP server applies your security settings (October 2026)
-
-The MCP server now applies `security.roles` and `security.rate_limit` from
-`neuralmind-backend.yaml`; v4.6.0 and earlier ignored both. An empty or
-malformed policy refuses calls instead of falling back to the default policy,
-which includes `admin`. See the
-[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md).
 
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 

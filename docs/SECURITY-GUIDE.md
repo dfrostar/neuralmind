@@ -487,7 +487,7 @@ March 31, and `--until 2026-03-31` would leave March 31 out.
 the log, and, once the chain has started, any record without a `sha256` or
 with a `prev_sha256` that doesn't match the record before it. So records
 edited or appended with their hash removed fail too. It also fails on any
-line that isn't a JSON object, where search and export skip it. v4.7.0 and
+line that isn't a JSON object, where search and export skip it. v4.8.0 and
 earlier accepted a record without a hash anywhere as a legacy line, skipped
 lines they couldn't parse, and never compared `prev_sha256`, so all of those
 passed.
