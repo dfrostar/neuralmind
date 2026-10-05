@@ -180,26 +180,36 @@ class MCPSecurityManager:
             raise
 
 
+def build_security_manager(project_path: str) -> MCPSecurityManager:
+    """A manager configured from the project's ``neuralmind-backend.yaml``.
+
+    ``security.roles`` replaces the default role policy and
+    ``security.rate_limit`` sets the limiter. Uncached: callers keep their own.
+    """
+    key = str(Path(project_path).resolve())
+    config = load_backend_config(key)
+    security = config.get("security", {}) if isinstance(config, dict) else {}
+    role_permissions = security.get("roles") if isinstance(security, dict) else None
+    parsed_roles: dict[str, set[str] | str] | None = None
+    if isinstance(role_permissions, dict):
+        parsed_roles = {}
+        for role, permissions in role_permissions.items():
+            if permissions == "*":
+                parsed_roles[str(role)] = "*"
+            elif isinstance(permissions, list):
+                parsed_roles[str(role)] = {str(name) for name in permissions}
+    rate_cfg = security.get("rate_limit", {}) if isinstance(security, dict) else {}
+    max_calls = int(rate_cfg.get("max_calls", 60))
+    window_seconds = int(rate_cfg.get("window_seconds", 60))
+    return MCPSecurityManager(
+        project_path=key,
+        policy=RBACPolicy(parsed_roles) if parsed_roles else RBACPolicy(),
+        rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
+    )
+
+
 def get_security_manager(project_path: str) -> MCPSecurityManager:
     key = str(Path(project_path).resolve())
     if key not in _SECURITY_MANAGERS:
-        config = load_backend_config(key)
-        security = config.get("security", {}) if isinstance(config, dict) else {}
-        role_permissions = security.get("roles") if isinstance(security, dict) else None
-        parsed_roles: dict[str, set[str] | str] | None = None
-        if isinstance(role_permissions, dict):
-            parsed_roles = {}
-            for role, permissions in role_permissions.items():
-                if permissions == "*":
-                    parsed_roles[str(role)] = "*"
-                elif isinstance(permissions, list):
-                    parsed_roles[str(role)] = {str(name) for name in permissions}
-        rate_cfg = security.get("rate_limit", {}) if isinstance(security, dict) else {}
-        max_calls = int(rate_cfg.get("max_calls", 60))
-        window_seconds = int(rate_cfg.get("window_seconds", 60))
-        _SECURITY_MANAGERS[key] = MCPSecurityManager(
-            project_path=key,
-            policy=RBACPolicy(parsed_roles) if parsed_roles else RBACPolicy(),
-            rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
-        )
+        _SECURITY_MANAGERS[key] = build_security_manager(key)
     return _SECURITY_MANAGERS[key]
