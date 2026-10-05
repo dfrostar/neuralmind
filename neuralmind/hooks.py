@@ -298,26 +298,54 @@ def run_hook(action: str) -> int:
     """
     try:
         raw = sys.stdin.read()
-        if not raw.strip():
-            return 0
-        payload = json.loads(raw)
     except Exception:
         return 0  # fail open
 
-    tool_input = payload.get("tool_input") or {}
-    tool_response = payload.get("tool_response") or {}
-
-    # Skip if user explicitly bypassed
+    # Skip if user explicitly bypassed — checked before the payload is
+    # parsed, so it holds whatever arrives on stdin.
     if os.environ.get("NEURALMIND_BYPASS") == "1":
+        return 0
+
+    try:
+        payload = json.loads(raw) if raw.strip() else None
+    except Exception:
+        return 0  # fail open
+    if not isinstance(payload, dict):
         return 0
 
     # Only act in a project that already has a NeuralMind directory. Hooks
     # are often installed globally, and every action below writes under
-    # <cwd>/.neuralmind/ — prompt-submit used to run a full first-time build
-    # (minutes on a real repo, far past the hook timeout) in any directory a
-    # session was opened in. `neuralmind build` is how a project opts in.
-    if not (Path(payload.get("cwd") or os.getcwd()) / ".neuralmind").is_dir():
+    # <project>/.neuralmind/ — prompt-submit used to run a full first-time
+    # build (minutes on a real repo, far past the hook timeout) in any
+    # directory a session was opened in. `neuralmind build` is how a project
+    # opts in.
+    session_cwd = payload.get("cwd") or os.getcwd()
+    if not isinstance(session_cwd, str):
         return 0
+    root = _project_root(session_cwd)
+    if root is None:
+        return 0
+
+    tool_input = payload.get("tool_input")
+    tool_input = dict(tool_input) if isinstance(tool_input, dict) else {}
+    tool_response = payload.get("tool_response")
+    tool_response = tool_response if isinstance(tool_response, dict) else {}
+    if Path(session_cwd) != root:
+        # The agent cd'd below the project root. Claude Code sends absolute
+        # tool paths; a relative one is relative to the session's cwd, so
+        # rebase it onto the root every action below now works from.
+        for key in ("file_path", "path"):
+            value = tool_input.get(key)
+            if isinstance(value, str) and value and not os.path.isabs(value):
+                tool_input[key] = os.path.relpath(
+                    os.path.normpath(os.path.join(session_cwd, value)), root
+                )
+    payload = {
+        **payload,
+        "cwd": str(root),
+        "tool_input": tool_input,
+        "tool_response": tool_response,
+    }
 
     # A project with security.require_encrypted_storage gets no hook writes
     # (transitions, output cache, synapses) until its volume is verified.
@@ -325,10 +353,44 @@ def run_hook(action: str) -> int:
     try:
         from .storage_guard import enforce_storage_policy
 
-        enforce_storage_policy(payload.get("cwd") or os.getcwd())
+        enforce_storage_policy(str(root))
     except Exception:
         return 0
 
+    try:
+        return _run_action(action, payload, tool_input, tool_response)
+    except Exception:
+        return 0  # fail open: a hook error never reaches the agent
+
+
+def _project_root(cwd: str) -> Path | None:
+    """The built project a hook payload belongs to, or None to stay out.
+
+    Normally that is ``cwd`` itself. The agent's shell can ``cd`` into a
+    subdirectory, though, and the payload's cwd follows it, so the search
+    walks up to the nearest directory with ``.neuralmind/`` — no higher than
+    ``$CLAUDE_PROJECT_DIR``, where Claude Code started the session. Without
+    that bound only ``cwd`` counts: an unbounded walk would adopt any stray
+    ``.neuralmind/`` above it (``~/.neuralmind`` holds daemon state, not a
+    project).
+    """
+    start = Path(cwd)
+    candidates = [start]
+    top = os.environ.get("CLAUDE_PROJECT_DIR")
+    if top:
+        try:
+            depth = len(start.resolve().relative_to(Path(top).resolve()).parts)
+        except (ValueError, OSError):
+            depth = 0
+        candidates = [start, *start.parents][: depth + 1]
+    for candidate in candidates:
+        if (candidate / ".neuralmind").is_dir():
+            return candidate
+    return None
+
+
+def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dict) -> int:
+    """Run one hook action for a project ``run_hook`` has already vetted."""
     # The Read/Bash/Grep actions (and the opt-in offload) used to return their
     # compressed text as `additionalContext`. Claude Code adds that next to the
     # tool result instead of replacing it, so the model got the full output
@@ -348,14 +410,18 @@ def run_hook(action: str) -> int:
             if replacement is not None:
                 _emit_updated_output(replacement)
                 return 0
+        from .read_dedup import find_read_text
+
         file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        # Claude Code nests a text read under file.content; the flat shapes
+        # are older ones. Reading only `content` recorded no transition at all.
         content = (
-            tool_response.get("content")
+            find_read_text(tool_response)
             or tool_response.get("output")
             or tool_response.get("text")
             or ""
         )
-        if not (file_path and content):
+        if not (isinstance(file_path, str) and file_path and content):
             return 0
         # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
         cwd = payload.get("cwd") or os.getcwd()
@@ -365,7 +431,10 @@ def run_hook(action: str) -> int:
     if action == "compress-bash":
         stdout = tool_response.get("stdout") or tool_response.get("output") or ""
         stderr = tool_response.get("stderr") or ""
-        exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
+        try:
+            exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
+        except (TypeError, ValueError):
+            exit_code = 0
         if not (stdout or stderr):
             return 0
         # Stash the output (credential-redacted by write_last_output) so
@@ -539,7 +608,8 @@ def run_hook(action: str) -> int:
         # additional context. Cheap: one search to seed, one spread over
         # the synapse graph.
         cwd = payload.get("cwd") or os.getcwd()
-        prompt = (payload.get("prompt") or "").strip()
+        prompt = payload.get("prompt")
+        prompt = prompt.strip() if isinstance(prompt, str) else ""
         if not prompt:
             return 0
         blocks: list[str] = []

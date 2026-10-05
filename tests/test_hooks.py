@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -482,3 +483,128 @@ class TestHooksStayOutOfUnindexedProjects:
         assert out == ""
         assert not (tmp_path / ".neuralmind" / "graph.json").exists()
         assert not (tmp_path / ".neuralmind" / "index_ir.json").exists()
+
+
+class TestHookPayloadRobustness:
+    """Hooks fail open: an odd payload never becomes a traceback and rc=1."""
+
+    def _run(self, action, raw, monkeypatch):
+        monkeypatch.setattr(sys, "stdin", io.StringIO(raw))
+        captured = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", captured)
+        return run_hook(action), captured.getvalue()
+
+    @pytest.mark.parametrize("raw", ["[]", '"text"', "42", "null"])
+    def test_non_object_payload_is_ignored(self, raw, monkeypatch):
+        assert self._run("prompt-submit", raw, monkeypatch) == (0, "")
+
+    def test_bypass_holds_for_a_payload_it_cannot_use(self, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_BYPASS", "1")
+        assert self._run("prompt-submit", "[]", monkeypatch) == (0, "")
+
+    @pytest.mark.parametrize(
+        "action, payload",
+        [
+            ("compress-read", {"tool_input": "x", "tool_response": "y"}),
+            ("edit-activity", {"tool_input": ["a.py"], "tool_response": {}}),
+            ("prompt-submit", {"prompt": 123}),
+            ("compress-bash", {"tool_response": {"stdout": "x", "exit_code": "abc"}}),
+            ("stale-guard", {"tool_input": {"file_path": 7}}),
+        ],
+    )
+    def test_wrongly_typed_fields_fail_open(self, action, payload, tmp_path, monkeypatch):
+        (tmp_path / ".neuralmind").mkdir()
+        raw = json.dumps({**payload, "cwd": str(tmp_path)})
+        code, out = self._run(action, raw, monkeypatch)
+        assert code == 0
+        assert out == ""
+
+
+class TestHookProjectRoot:
+    """After the agent runs `cd sub/`, hooks still act on the project.
+
+    The payload's cwd follows the agent's shell, so a session in a built
+    project went silent (or wrote a stray sub/.neuralmind/) once it changed
+    directory. The root is the nearest directory with `.neuralmind/`, looked
+    for no higher than $CLAUDE_PROJECT_DIR.
+    """
+
+    def _edit(self, cwd, file_path, monkeypatch):
+        import neuralmind.hooks as hooks_mod
+
+        calls = []
+        monkeypatch.setattr(
+            hooks_mod, "_record_edit_activity", lambda root, fp, code: calls.append((root, fp))
+        )
+        monkeypatch.setattr(hooks_mod, "_record_tool_transition", lambda *a: None)
+        payload = {
+            "tool_input": {"file_path": file_path, "new_string": "def f():\n    pass\n"},
+            "tool_response": {},
+            "cwd": str(cwd),
+        }
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        monkeypatch.setattr(sys, "stdout", io.StringIO())
+        assert run_hook("edit-activity") == 0
+        return calls
+
+    def test_subdirectory_resolves_to_the_project(self, tmp_path, monkeypatch):
+        (tmp_path / ".neuralmind").mkdir()
+        sub = tmp_path / "auth"
+        sub.mkdir()
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        calls = self._edit(sub, "handlers.py", monkeypatch)
+
+        # A relative path was relative to the session's cwd: rebased onto the root.
+        assert calls == [(str(tmp_path), os.path.join("auth", "handlers.py"))]
+        assert not (sub / ".neuralmind").exists()
+
+    def test_without_claude_project_dir_only_cwd_counts(self, tmp_path, monkeypatch):
+        (tmp_path / ".neuralmind").mkdir()
+        sub = tmp_path / "auth"
+        sub.mkdir()
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+        assert self._edit(sub, "handlers.py", monkeypatch) == []
+
+    def test_walk_never_leaves_claude_project_dir(self, tmp_path, monkeypatch):
+        (tmp_path / ".neuralmind").mkdir()  # above the session's project
+        project = tmp_path / "repo"
+        sub = project / "pkg"
+        sub.mkdir(parents=True)
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(project))
+
+        assert self._edit(sub, "a.py", monkeypatch) == []
+
+
+class TestReadTransitionsWithClaudeCodePayload:
+    """Read transitions are recorded from Claude Code's real Read output.
+
+    Claude Code nests a text read under tool_response.file.content; the hook
+    only looked at a flat `content`, saw nothing, and returned before
+    recording the transition.
+    """
+
+    def test_nested_read_payload_records_a_transition(self, tmp_path, monkeypatch):
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        (tmp_path / ".neuralmind").mkdir()
+        monkeypatch.delenv("NEURALMIND_NO_LEARN", raising=False)
+        monkeypatch.setenv("NEURALMIND_READ_DEDUP", "0")
+        for name in ("a.py", "b.py"):
+            path = str(tmp_path / name)
+            payload = {
+                "tool_name": "Read",
+                "tool_input": {"file_path": path},
+                "tool_response": {
+                    "type": "text",
+                    "file": {"filePath": path, "content": "x = 1\n", "numLines": 1},
+                },
+                "cwd": str(tmp_path),
+            }
+            monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+            monkeypatch.setattr(sys, "stdout", io.StringIO())
+            assert run_hook("compress-read") == 0
+
+        store = SynapseStore(default_db_path(str(tmp_path)))
+        assert store.get_meta("_last_touched_file") == str(tmp_path / "b.py")
