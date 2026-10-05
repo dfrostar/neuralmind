@@ -279,13 +279,13 @@ NeuralMind secret scan — /home/dev/myproject
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
 key IDs, secret keys and session tokens (including the
-`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.7.1),
+`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.8.0),
 GitHub tokens and fine-grained PATs, GitLab PATs and Hugging Face tokens
-*(v4.7.1)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
+*(v4.8.0)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
 tokens, PEM private-key blocks, JWTs, `Authorization: Bearer`/`Basic`
 headers, and passwords embedded in database or `http(s)://user:password@host`
 URLs. `maybe` matches a generic `SECRET=value` assignment, including a quoted
-JSON or dict key such as `{"password": "…"}` *(v4.7.1)*, that cleared a
+JSON or dict key such as `{"password": "…"}` *(v4.8.0)*, that cleared a
 Shannon-entropy threshold and a placeholder denylist — so
 `password = "changeme"`, `api_key = os.environ["X"]`, and `KEY=${VAR}` are
 not reported.
@@ -2092,13 +2092,13 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
-**Built projects only** *(v4.7.1)*: every hook action does nothing in a
+**Built projects only** *(v4.8.0)*: every hook action does nothing in a
 directory without `.neuralmind/`, so a `--global` install leaves repos you
 haven't run `neuralmind build` in untouched. Prompt-time recall reads an
-existing index and never builds one; before v4.7.1 the `UserPromptSubmit`
+existing index and never builds one; before v4.8.0 the `UserPromptSubmit`
 hook could run a full first-time build, far past the hook timeout.
 
-**A `settings.json` that isn't valid JSON is refused** *(v4.7.1)*: install
+**A `settings.json` that isn't valid JSON is refused** *(v4.8.0)*: install
 and `--uninstall` exit 1 with an error naming the file and leave it
 untouched. A trailing comma used to make the command replace the file with
 just the hooks block (or delete it on `--uninstall`), losing `permissions`,
@@ -2158,9 +2158,9 @@ client's `mcpServers` config **without clobbering** your other servers
 (idempotent — re-running is a no-op).
 
 A config file that isn't strict JSON (comments, a trailing comma) or whose top
-level isn't an object is never rewritten, for any client *(v4.7.1; VS Code
+level isn't an object is never rewritten, for any client *(v4.8.0; VS Code
 already behaved this way)*. The command prints `✗ <client>: skipped-jsonc` (or
-`skipped-not-object`) with the entry to add by hand. Before v4.7.1 such a file
+`skipped-not-object`) with the entry to add by hand. Before v4.8.0 such a file
 was read as empty, and every other server in it was lost.
 
 ```bash
@@ -2264,7 +2264,7 @@ backs the `neuralmind_query_decisions` and `neuralmind_memory_*` MCP tools, and
 
 ```bash
 neuralmind decisions record --title T --rationale R [--files F ...] [--commit SHA] [project_path]
-neuralmind decisions query "TEXT" [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json] [project_path]
+neuralmind decisions query "TEXT" [--mode hybrid|semantic|keyword] [--limit 5] [--status ACTIVE|STALE|INVALIDATED|ALL] [--json] [project_path]
 neuralmind decisions audit [--stale | --orphaned] [--format md|json] [project_path]
 neuralmind decisions amend ID [--rationale R] [--evidence E ...] [project_path]
 neuralmind decisions invalidate ID [--reason R] [project_path]
@@ -2272,13 +2272,28 @@ neuralmind decisions restore ID [--commit SHA] [project_path]
 neuralmind decisions scan [--quiet] [--json] [project_path]     # v4.6.0+
 neuralmind decisions export [--format md|json] [-o FILE] [project_path]
 neuralmind decisions eval [--tasks 10] [--format json|md] [--output FILE] [project_path]
-neuralmind decisions eval --queries FILE [--limit 5] [--format json|md] [--output FILE]
+neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [--limit 5] [--format json|md] [--output FILE]
 ```
 
 `query` takes keywords or a question, matched against decision titles and
-rationales: any word can match (common words such as "how" and "the" are
-ignored), and decisions matching more of the words rank first (v4.5.1+; before,
-every word had to match). `--status` is case-insensitive.
+rationales. `--mode` *(v4.7.0+)* picks the ranking:
+
+- `hybrid` (default): shared words and meaning, fused by reciprocal rank fusion.
+- `semantic`: meaning only: cosine similarity with each decision's embedded
+  title and rationale, using the local `all-MiniLM-L6-v2` model the code index
+  uses. A decision needs a similarity of at least 0.30.
+- `keyword`: shared words only. Any word can match (common words such as "how"
+  and "the" are ignored), and decisions matching more of the words rank first
+  (v4.5.1+; before, every word had to match).
+
+Without `--mode`, `NEURALMIND_DECISION_SEARCH` decides, then `hybrid`. Every
+output names the mode that ran: the header, the empty result, and with `--json`
+a `[neuralmind] search mode: …` line on stderr (stdout stays the JSON array).
+Search never downloads the model; it uses the
+copy `neuralmind build` fetched. Without it, `hybrid` prints keyword results and
+a notice on stderr, and `--mode semantic` exits 1. `--status` is
+case-insensitive. Measured recall per mode:
+[Memory Layer → Eval harness](Memory-Layer.md#eval-harness).
 
 `--commit` defaults to `HEAD`. `restore` re-anchors a STALE or INVALIDATED
 decision to a commit (default `HEAD`) and makes it ACTIVE again. Before an
@@ -2335,6 +2350,7 @@ directory and never read or change the project's decisions.
 | `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
 | `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
 | `--limit N` | Results per query with `--queries` (default 5) |
+| `--mode all\|keyword\|semantic\|hybrid` | *(v4.7.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
 | `--format json\|md` | Report format (default `json`) |
 | `--output FILE`, `-o` | Write the report to a file instead of stdout |
 
@@ -3412,6 +3428,7 @@ renewed — issue a new one.
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
+| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.7.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |

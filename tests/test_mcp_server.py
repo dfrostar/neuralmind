@@ -447,7 +447,7 @@ class TestToolNextLikely:
 
     def test_dispatcher_allows_builder_role_by_default(self, temp_project):
         """The default 'builder' role reaches neuralmind_next_likely. It was
-        advertised but refused to every default role until v4.7.1."""
+        advertised but refused to every default role until v4.8.0."""
         with patch("neuralmind.mcp_server.tool_next_likely") as mock_tool:
             mock_tool.return_value = {"enabled": True, "from_node": "x", "next": []}
             result = handle_tool_call(
@@ -509,7 +509,7 @@ class TestToolImpact:
             mock_tool.assert_called_once_with(str(temp_project), "x", 2)
 
     def test_dispatcher_allows_builder_role_by_default(self, temp_project):
-        """The default 'builder' role reaches neuralmind_impact (refused until v4.7.1)."""
+        """The default 'builder' role reaches neuralmind_impact (refused until v4.8.0)."""
         with patch("neuralmind.mcp_server.tool_impact") as mock_tool:
             mock_tool.return_value = {"symbol": "x", "resolution": "none", "dependents": []}
             result = handle_tool_call(

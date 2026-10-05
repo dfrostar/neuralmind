@@ -2,14 +2,15 @@
 
 ``tests/memory/fixtures/decision_queries.json`` holds agent-style questions
 with gold decision ids. ``neuralmind decisions eval --queries <that file>``
-scores search against them, and docs/wiki/Memory-Layer.md quotes the result:
-``test_wiki_quotes_the_measured_numbers`` fails when search changes until the
-page does.
+scores search against them in each mode (keyword, semantic, hybrid), and
+docs/wiki/Memory-Layer.md quotes the result: ``test_wiki_quotes_the_measured_numbers``
+fails when search changes until the page does.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -23,7 +24,12 @@ from neuralmind.memory.eval import (
     QuerySetEval,
     load_query_set,
 )
-from neuralmind.memory.store import DecisionStore
+from neuralmind.memory.semantic import (
+    SEARCH_MODES,
+    SemanticSearchUnavailableError,
+    load_default_embedder,
+)
+from neuralmind.memory.store import DecisionStore, _search_terms
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decision_queries.json"
 WIKI = Path(__file__).resolve().parents[2] / "docs" / "wiki" / "Memory-Layer.md"
@@ -64,6 +70,34 @@ def test_every_gold_id_is_an_active_decision():
     QuerySetEval(load_query_set(FIXTURE))  # raises ValueError otherwise
 
 
+def test_paraphrases_share_no_search_word_with_their_answer():
+    """A paraphrase is only a paraphrase if keyword search can't reach it.
+
+    Keyword search prefix-matches each query term against the words of a
+    decision's title and rationale, so no term of a paraphrase query may
+    begin any of those words in a gold decision.
+    """
+    harness = QuerySetEval(load_query_set(FIXTURE))
+    by_id = {d["id"]: d for d in harness.corpus}
+    paraphrases = [q for q in harness.queries if q["kind"] == "paraphrase"]
+    assert paraphrases
+    shared = {}
+    for q in paraphrases:
+        for gold in q["gold"]:
+            words = re.findall(
+                r"[a-z0-9]+", f"{by_id[gold]['title']} {by_id[gold]['rationale']}".lower()
+            )
+            hits = [
+                term
+                for term in _search_terms(q["query"])
+                for part in re.findall(r"[a-z0-9]+", term)
+                if any(word.startswith(part) for word in words)
+            ]
+            if hits:
+                shared[q["id"]] = hits
+    assert not shared, f"paraphrase queries share search words with their answers: {shared}"
+
+
 def test_unknown_gold_id_is_rejected():
     query_set = load_query_set(FIXTURE)
     query_set["queries"] = [
@@ -86,27 +120,72 @@ def test_sentence_queries_find_their_answers(summary):
     assert sentences["recall"]["mean"] >= 0.9
 
 
-@requires_fts5
-def test_wiki_quotes_the_measured_numbers(summary, monkeypatch):
-    """Each row of the wiki's eval table is what the eval measures now."""
+def _spread(s):
+    return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})"
 
-    def spread(s):
-        return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})"
 
-    sentences, titles, negatives = summary["sentence"], summary[TITLE_KIND], summary["negative"]
-    n = sentences["queries"]
+def _wiki_rows() -> dict[str, list[str]]:
+    """Every table row on the wiki page: its cells after the first, keyed by the first."""
+    rows: dict[str, list[str]] = {}
+    for line in WIKI.read_text(encoding="utf-8").splitlines():
+        if line.startswith("| ") and line.endswith(" |"):
+            cells = [cell.strip() for cell in line[2:-2].split(" | ")]
+            rows.setdefault(cells[0], cells[1:])
+    return rows
+
+
+def _mode_cells(summary) -> dict[str, str]:
+    """What one mode's column of the wiki's eval table should say, by row label."""
+    sentences, paraphrases = summary["sentence"], summary["paraphrase"]
+    titles, negatives = summary[TITLE_KIND], summary["negative"]
+    n, p = sentences["queries"], paraphrases["queries"]
     first = titles["queries"] - len(titles["not_ranked_first"])
+    return {
+        f"Recall@5 on {n} questions, mean (range)": _spread(sentences["recall"]),
+        f"MRR on {n} questions, mean (range)": _spread(sentences["mrr"]),
+        f"Recall@5 on {p} paraphrases, mean (range)": _spread(paraphrases["recall"]),
+        f"MRR on {p} paraphrases, mean (range)": _spread(paraphrases["mrr"]),
+        "Paraphrases that return nothing": f"{paraphrases['returned_nothing']} of {p}",
+        "Exact titles ranked first": f"{first} of {titles['queries']}",
+        "Questions nothing answers that still return decisions": (
+            f"{len(negatives['false_positives'])} of {negatives['queries']}"
+        ),
+    }
+
+
+@requires_fts5
+@pytest.mark.parametrize("column, mode", enumerate(SEARCH_MODES))
+def test_wiki_quotes_the_measured_numbers(column, mode, monkeypatch):
+    """Each cell of the wiki's mode table is what the eval measures now.
+
+    The semantic and hybrid columns need the embedding model on disk, which
+    CI doesn't download (tests/test_onnx_embedder.py), so they are checked
+    wherever it is.
+    """
+    if mode != "keyword":
+        try:
+            load_default_embedder()
+        except SemanticSearchUnavailableError as e:
+            pytest.skip(f"the {mode} column needs the embedding model on disk: {e}")
+        monkeypatch.setenv("NEURALMIND_ORT_THREADS", "1")
+    harness = QuerySetEval(load_query_set(FIXTURE), modes=[mode])
+    measured = _mode_cells(harness.summarize(harness.outcomes(mode)))
+    rows = _wiki_rows()
+    wrong = {
+        label: (rows[label][column] if len(rows.get(label, [])) > column else None, value)
+        for label, value in measured.items()
+        if len(rows.get(label, [])) <= column or rows[label][column] != value
+    }
+    assert not wrong, f"Memory-Layer.md's {mode} column is out of date (quoted, measured): {wrong}"
+
+
+@requires_fts5
+def test_wiki_quotes_the_keyword_only_numbers(monkeypatch):
+    """The LIKE fallback and the maintenance replay are keyword-only rows."""
     maintenance = json.loads(MaintenanceEval(".", task_count=5).run())["memory_on"]["aggregate"]
     like = _summary(monkeypatch, like=True)["sentence"]
     rows = [
-        f"| Recall@5 on {n} questions, mean (range) | {spread(sentences['recall'])} |",
-        f"| MRR on {n} questions, mean (range) | {spread(sentences['mrr'])} |",
-        f"| Exact titles ranked first | {first} of {titles['queries']} |",
-        (
-            "| Questions nothing answers that still return decisions | "
-            f"{len(negatives['false_positives'])} of {negatives['queries']} |"
-        ),
-        f"| Recall@5 without FTS5 (LIKE fallback), mean (range) | {spread(like['recall'])} |",
+        f"| Recall@5 without FTS5 (LIKE fallback), mean (range) | {_spread(like['recall'])} |",
         (
             "| Maintenance tasks, recall / precision at limit 10 | "
             f"{maintenance['recall_rate']:.0%} / {maintenance['precision']:.0%} |"

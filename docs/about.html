@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files and finds a decision by meaning as well as by its words, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -199,8 +199,8 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v471">
-            <h2>What&rsquo;s New in v4.7.1 &mdash; installers that can&rsquo;t destroy your config, and eight other fixes</h2>
+        <div class="container" id="whats-new-v480">
+            <h2>What&rsquo;s New in v4.8.0 &mdash; installers that can&rsquo;t destroy your config, and eight other fixes</h2>
             <p><strong>Eight bugs found by testing v4.7.0 end to end.</strong> Two could destroy user configuration, and one left credentials in the Bash output cache in plaintext.</p>
             <ul>
                 <li><strong><code>install-hooks</code> and <code>install-mcp</code> leave a config they can&rsquo;t parse untouched</strong> &mdash; one trailing comma used to make <code>install-hooks --global</code> replace <code>~/.claude/settings.json</code> with a bare <code>hooks</code> block (and <code>--uninstall</code> delete it), and <code>install-mcp</code> drop every other MCP server from Cursor, Cline and Claude Desktop configs. Now the command refuses, or prints the entry to paste</li>
@@ -208,13 +208,14 @@
                 <li><strong>Redaction covers what the AWS CLI prints</strong> &mdash; <code>"SecretAccessKey"</code> and <code>"SessionToken"</code> JSON, <code>{"password": &hellip;}</code>, GitLab and Hugging Face tokens, passwords in <code>https://user:password@host</code> URLs, and the tail of <code>DB_PASSWORD=abc;rest</code></li>
                 <li><strong>Indexing</strong> &mdash; a non-UTF-8 doc no longer fails the build; repeated builds stop duplicating doc edges; <code>watch --reindex</code> stops serving deleted symbols; <code>neuralmind export .</code> works without <code>--output</code></li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.1.md">v4.7.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md">v4.8.0 release notes</a></p>
         </div>
     </section>
 
     <section>
         <div class="container" id="whats-new-v470">
-            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
+            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, a check for encrypted storage, and decision search by meaning</h2>
+            <h3>MCP roles bound to OS accounts, and a check for encrypted storage</h3>
             <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
             <ul>
                 <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
@@ -222,6 +223,16 @@
                 <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
+            <h3>Decision search finds a decision worded differently from the question</h3>
+            <p><strong>Decision search found a decision only when the question shared a word with it, so &ldquo;what happens if someone steals a copy of our db?&rdquo; never reached &ldquo;Hash API tokens before storing them&rdquo;.</strong> v4.7.0 ranks decisions by meaning as well, with the embedding model the code index already runs locally, and makes the fused ranking the default. It became the default only after passing a keep rule committed, with 20 paraphrased questions, before semantic search was run on them. Evidence level: reproducible on demand from a source checkout (<code>neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json</code>); the wiki&rsquo;s keyword column is CI-gated, the semantic and hybrid columns are checked wherever the model is on disk.</p>
+            <ul>
+                <li><strong>Three search modes</strong> &mdash; <code>hybrid</code> (default) fuses shared-word and meaning rankings by reciprocal rank fusion; <code>semantic</code> ranks by cosine similarity with each decision&rsquo;s embedded title and rationale (nothing under 0.30); <code>keyword</code> is the v4.6 search. <code>neuralmind decisions query --mode</code>, a <code>mode</code> argument on <code>neuralmind_query_decisions</code> and <code>neuralmind_memory_search</code>, and <code>NEURALMIND_DECISION_SEARCH</code> for the default</li>
+                <li><strong>Local, and never a download</strong> &mdash; vectors are cached in <code>memory.db</code> and recomputed only when a decision&rsquo;s text or the model changes. Search uses the model <code>neuralmind build</code> already fetched; without it, hybrid returns keyword results with a notice and every response names the mode that ran</li>
+                <li><strong>Measured on a synthetic set</strong> &mdash; on 20 paraphrased questions that share no word with their answers, hybrid finds 9 in its top 5 and semantic 10, where keyword search finds none; on the 20 existing questions recall stays at 1.00 (MRR 0.94 &rarr; 0.95), and all 30 exact titles still rank first</li>
+                <li><strong>Misses, published</strong> &mdash; half the paraphrases are still missed (7 fall under the similarity floor); hybrid ranks the paraphrases it finds lower than semantic alone (MRR 0.28 against 0.44); semantic alone misses one question keyword search answers; unanswerable questions return decisions in 2 of 4 cases, as with keyword search. One author wrote every decision and question</li>
+                <li><strong>The eval scores every mode side by side</strong> &mdash; <code>decisions eval --queries FILE --mode all</code>; a mode that can&rsquo;t run is reported as not run, never scored as another</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/find-decisions-by-meaning.md">Find the decision behind the code when you don&rsquo;t know its words &rarr;</a></p>
         </div>
     </section>
 

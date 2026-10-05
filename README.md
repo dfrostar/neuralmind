@@ -27,8 +27,9 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.7.1:** the installers stop destroying config they can't parse — one trailing comma used to make `install-hooks --global` drop your `permissions`, `model` and `env` (and `--uninstall` delete the file), and `install-mcp` drop every other MCP server; now the file is left untouched and the entry to paste is printed. Hooks do nothing in a project you haven't built, instead of building a full index from the prompt hook. The Bash output cache redacts the AWS CLI's `SecretAccessKey`/`SessionToken` JSON and `{"password": …}`; a Latin-1 doc no longer fails the build; rebuilds stop duplicating doc edges; `watch --reindex` stops serving deleted symbols; `neuralmind export .` works without `--output` ([release notes](docs/releases/RELEASE_NOTES_v4.7.1.md))
+> - **New in v4.8.0:** the installers stop destroying config they can't parse — one trailing comma used to make `install-hooks --global` drop your `permissions`, `model` and `env` (and `--uninstall` delete the file), and `install-mcp` drop every other MCP server; now the file is left untouched and the entry to paste is printed. Hooks do nothing in a project you haven't built, instead of building a full index from the prompt hook. The Bash output cache redacts the AWS CLI's `SecretAccessKey`/`SessionToken` JSON and `{"password": …}`; a Latin-1 doc no longer fails the build; rebuilds stop duplicating doc edges; `watch --reindex` stops serving deleted symbols; `neuralmind export .` works without `--output` ([release notes](docs/releases/RELEASE_NOTES_v4.8.0.md))
 > - **v4.7.0:** access control for CMMC environments. `security.identity: os` takes each MCP caller's identity from the OS account the server runs as, and its role from `security.users`, instead of trusting the `role` a call declares; `security.require_encrypted_storage` refuses to build, query, serve MCP tools, or run hooks unless FileVault, BitLocker, or LUKS is verified on the project's volume. `neuralmind doctor` reports both ([release notes](docs/releases/RELEASE_NOTES_v4.7.0.md))
+> - **Also in v4.7.0:** decision search finds a decision worded differently from the question. `neuralmind decisions query` and the MCP decision tools rank by meaning as well as by shared words (`hybrid`, the default), using the embedding model the code index already runs locally. Search never downloads it; without it, you get keyword results and a notice. "what happens if someone steals a copy of our db?" now finds "Hash API tokens before storing them". Measured on a synthetic set before it became the default: on 20 paraphrased questions that share no word with their answers, hybrid finds 9 in its top 5 and keyword search 0; recall on 20 ordinary questions stays at 1.00 and every exact title still ranks first. Half the paraphrases are still missed, and the misses are published. `--mode semantic|keyword` and `NEURALMIND_DECISION_SEARCH` choose another ranking ([release notes](docs/releases/RELEASE_NOTES_v4.7.0.md))
 > - **v4.6.1:** the MCP server applies your security settings. `security.roles` and `security.rate_limit` in `neuralmind-backend.yaml` used to be ignored, so a caller could declare `admin` and reach every tool even where the policy left `admin` out; now a role gets only the tools the policy lists, and a policy without `admin` caps what any caller can reach; `roles: {}` grants nothing and a value of the wrong type refuses calls, though a file that doesn't parse still means the defaults. No `security:` block, no change — if you have one, check it before upgrading, because it replaces the defaults ([release notes](docs/releases/RELEASE_NOTES_v4.6.1.md))
 > - **v4.6.0:** one keyword index for docs and code, on by default — so on "how does X work" questions the code that does X can win an L3 slot on keywords too, not just the README that mentions it. Measured before it shipped (reproducible on demand, not a CI gate; one of the six repos is private): mean hit@5 72.8% → 79.4% across 30 questions on each of six repos — pre-registered and committed for the five public repos, plus a private 383-file repository — and public-benchmark gold-file recall 93.75% → 95%. Losses published: `requests` −1 question, `rich` MRR 0.71 → 0.60, a new `click` public-benchmark miss (click 100% → 85.71%), and the private 383-file repo at 73% / 0.60, short of its 80% / 0.65 target. `query --explain` now shows the query intent L3 ranked with; five more ranking changes were measured, lost, and ship off behind flags. Run `neuralmind build` once after upgrading ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
 > - **Also in v4.6.0:** what the docs described, the product now does. A repeat read of an unchanged file in the same Claude Code session comes back as a short stub, and the next read is always full; decisions go STALE when a commit changes their files (`neuralmind init-hook .` runs `decisions scan` after every commit); team governance is enforced on `memory publish`, and `remove-edge` retracts an association for the whole team. The unused co-access module is gone, and `cognition-loop` was rebuilt so it no longer deletes learned memory ([release notes](docs/releases/RELEASE_NOTES_v4.6.0.md))
@@ -203,12 +204,17 @@ and `neuralmind decisions restore <id>` for one that still holds. Re-run
 rebases don't run post-commit hooks, so a decision whose files changed only in
 pulled commits stays ACTIVE until one of your own commits touches them.
 
-Search takes keywords or a question: any word can match, and decisions matching
-more of the words rank first (v4.5.1+). `neuralmind decisions eval --queries FILE`
-scores it against questions with known answers; the
-[Memory Layer wiki](docs/wiki/Memory-Layer.md#eval-harness) has the results.
+Search takes keywords or a question, and ranks by meaning as well as by shared
+words (v4.7.0+), so a question finds a decision worded differently from it. The
+embedding model is the one the code index already runs locally, and search
+never downloads it. `--mode keyword` ranks by shared words only: any word can
+match, and decisions matching more of the words rank first (v4.5.1+).
+`neuralmind decisions eval --queries FILE` scores every mode against questions
+with known answers; the [Memory Layer wiki](docs/wiki/Memory-Layer.md#eval-harness)
+has the results, misses included.
 
-Walkthrough: [Keep decision memory honest across commits](docs/use-cases/decision-memory-across-commits.md).
+Walkthroughs: [Keep decision memory honest across commits](docs/use-cases/decision-memory-across-commits.md) ·
+[Find the decision behind the code when you don't know its words](docs/use-cases/find-decisions-by-meaning.md).
 
 ### 8. Finds the right code (not just less of it)
 
@@ -553,7 +559,8 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 `NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import),
 `NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard),
 `NEURALMIND_READ_DEDUP=0` (never stub a repeat read),
-`NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan). All fail-open.
+`NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan),
+`NEURALMIND_DECISION_SEARCH=keyword` (rank decisions by shared words only, as in v4.6). All fail-open.
 
 ---
 
@@ -571,7 +578,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
-| Read the latest release | [v4.7.1 release notes](docs/releases/RELEASE_NOTES_v4.7.1.md) — installers that can't destroy your config, and eight other fixes · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, and a check for encrypted storage · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
+| Read the latest release | [v4.8.0 release notes](docs/releases/RELEASE_NOTES_v4.8.0.md) — installers that can't destroy your config, and the bug-hunt fixes · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, a check for encrypted storage, and decision search by meaning · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 

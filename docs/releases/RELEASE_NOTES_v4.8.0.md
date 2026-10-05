@@ -1,6 +1,6 @@
-# NeuralMind v4.7.1: installers that can't destroy your config, and eight other fixes
+# NeuralMind v4.8.0: installers that can't destroy your config, and eight other fixes
 
-**Type:** Patch release | **Theme:** Correctness and safety
+**Type:** Fixes, shipping in the v4.8.0 minor release | **Theme:** Correctness and safety
 
 This release fixes eight bugs found by testing v4.7.0 end to end. Two of them
 could destroy user configuration. A third left credentials in plaintext in
