@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Home</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -50,7 +50,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/</loc>
-    <lastmod>2026-07-20</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -200,7 +200,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/claude-code.html</loc>
-    <lastmod>2026-08-18</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -230,7 +230,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/multi-agent.html</loc>
-    <lastmod>2026-06-20</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -595,14 +595,20 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/use-cases/ab-test-a-ranking-change.html</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.0.html</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://docs.neuralmind.uk/use-cases/ab-test-a-ranking-change.html</loc>
-    <lastmod>2026-10-01</lastmod>
+    <loc>https://docs.neuralmind.uk/use-cases/pick-up-where-you-left-off.html</loc>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
