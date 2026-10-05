@@ -43,10 +43,12 @@ def dirs(tmp_path) -> tuple[Path, Path, Path]:
     return project, cwd_a, cwd_b
 
 
-def test_resolve_db_path():
-    root = Path("/srv/proj")
-    assert resolve_db_path(root, "vecdb") == str(root / "vecdb")
-    assert resolve_db_path(root, "/abs/vec") == "/abs/vec"
+def test_resolve_db_path(tmp_path):
+    # Real absolute paths: "/srv/proj" has no drive on Windows, so it isn't one.
+    root = tmp_path / "proj"
+    absolute = tmp_path / "abs" / "vec"
+    assert resolve_db_path(root, "vecdb") == str(root.resolve() / "vecdb")
+    assert resolve_db_path(root, str(absolute)) == str(absolute)
     assert resolve_db_path(root, None) is None
     assert resolve_db_path(root, ":memory:") == ":memory:"
     assert resolve_db_path(root, "~/vec") == str(Path("~/vec").expanduser())
