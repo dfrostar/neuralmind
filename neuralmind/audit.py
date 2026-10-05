@@ -91,6 +91,20 @@ class AuditTrail:
         self.project_path = Path(project_path).resolve()
         self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
         self._lock = threading.Lock()
+        self._identity_os: bool | None = None
+
+    def _os_identity_mode(self) -> bool:
+        """True when the project sets ``security.identity: os``. Read once."""
+        if self._identity_os is None:
+            try:
+                from .security_config import IDENTITY_OS, load_security_settings
+
+                self._identity_os = (
+                    load_security_settings(self.project_path).identity == IDENTITY_OS
+                )
+            except Exception:
+                self._identity_os = False
+        return self._identity_os
 
     def _last_sha256_from_file(self) -> str:
         """Read the last non-empty line's sha256, or '0'*64 if file is empty/legacy."""
@@ -133,6 +147,16 @@ class AuditTrail:
         actor_role: str = "",
         ip_address: str = "",
     ) -> dict[str, Any]:
+        if actor is None and self._os_identity_mode():
+            # Under security.identity: os the actor is the OS account, as on
+            # the MCP path. NEURALMIND_ACTOR is inherited from whoever started
+            # the process, so it is recorded as a claim, not believed.
+            from .identity import os_identity
+
+            claimed = os.environ.get("NEURALMIND_ACTOR")
+            actor = os_identity() or "unknown"
+            if claimed and claimed != actor:
+                details = {**(details or {}), "claimed_actor": claimed}
         actor = _resolve_actor(actor)
         with self._lock:
             prev_sha256 = self._last_sha256_from_file()

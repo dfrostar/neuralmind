@@ -50,6 +50,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from neuralmind.state_dir import ensure_parent_dir
+from neuralmind.storage_guard import enforce_storage_policy
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +341,7 @@ class DecisionStore:
 
     def __init__(self, project_path: str) -> None:
         self.project_path = Path(project_path).resolve()
+        enforce_storage_policy(self.project_path)
         db_path = self.project_path / ".neuralmind" / "memory.db"
         self.db_path: Path = db_path
         ensure_parent_dir(self.db_path)

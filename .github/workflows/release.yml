@@ -135,7 +135,8 @@ jobs:
     name: Smoke Test PyPI Package
     needs: publish-pypi
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The install below can wait up to 20 minutes for PyPI's index.
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -149,19 +150,23 @@ jobs:
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
           echo "Testing neuralmind==${VERSION}"
-          sleep 30
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
-          for attempt in 1 2 3 4 5; do
-            if pip install "neuralmind==${VERSION}"; then
-              break
-            fi
-            if [ "${attempt}" -eq 5 ]; then
-              echo "Failed to install neuralmind==${VERSION} from PyPI after retries."
+          # A new upload can be missing from PyPI's simple index for minutes:
+          # v4.6.0 was uploaded at 01:27:41 UTC, still not installable at
+          # 01:30:56, and installable by 01:33:44. The index is served with
+          # max-age=600 and pip caches it for that long, so a retry that uses
+          # pip's cache keeps seeing the stale page. Retry without the cache,
+          # every 30s, for up to 20 minutes.
+          deadline=$((SECONDS + 1200))
+          until pip install --no-cache-dir "neuralmind==${VERSION}"; do
+            if [ "${SECONDS}" -ge "${deadline}" ]; then
+              echo "Failed to install neuralmind==${VERSION} from PyPI within 20 minutes."
               exit 1
             fi
-            sleep $((attempt * 15))
+            echo "neuralmind==${VERSION} not installable from PyPI yet; retrying in 30s."
+            sleep 30
           done
           INSTALLED_VERSION="$(python -c "import neuralmind; print(neuralmind.__version__)")"
           if [ "${INSTALLED_VERSION}" != "${VERSION}" ]; then

@@ -47,9 +47,11 @@ steps, and how to keep it disabled:
 
 ## Access Control
 
-NeuralMind does not authenticate anyone. Access to it is access to the OS
-account and project directory it runs in, plus whatever can reach its MCP
-server.
+NeuralMind has no logins of its own. By default, access to it is access to
+the OS account and project directory it runs in, plus whatever can reach its
+MCP server. With `security.identity: os` *(v4.7.0+)* it takes each MCP
+caller's identity from that OS account, which the OS authenticated
+([below](#binding-roles-to-os-accounts-identity-os)).
 
 ### Who can call the MCP server
 
@@ -71,9 +73,10 @@ Every MCP tool call goes through `MCPSecurityManager.secure_call`
 permission policy and a per-actor rate limit, then writes the decision to the
 audit log.
 
-The caller declares its own `actor` and `role` in the tool arguments. The role
-defaults to `builder`, and any caller can declare `admin`. Treat the policy as
-a guard rail for a well-behaved agent, not a boundary against a hostile caller.
+By default the caller declares its own `actor` and `role` in the tool
+arguments. The role defaults to `builder`, and any caller can declare `admin`.
+In that mode, treat the policy as a guard rail for a well-behaved agent, not a
+boundary against a hostile caller.
 
 Default roles (`DEFAULT_ROLE_POLICY`):
 
@@ -106,21 +109,98 @@ security:
 The MCP server in v4.6.0 and earlier built its security manager without
 reading this file, so both settings were ignored there.
 
-The rate limit keys on the declared actor, so it stops a runaway agent, not a
-caller that changes its actor name.
+An empty `roles: {}` grants nothing. If `roles`, `rate_limit`, or the
+`security` section itself is malformed (not a mapping, a window under one
+second, a value that isn't a whole number), the server refuses every MCP call
+with `reason: config` instead of falling back to defaults that may be looser.
+
+Two mistakes are not caught, and leave the defaults in force, `admin`
+included: a file that doesn't parse (a YAML syntax error reads as no
+configuration), and a `security:` or `roles:` key left empty, which YAML reads
+as `null` and the server as "no policy". After writing a policy, call a tool
+you left out with `role: "admin"` and check that it returns `security_denied`.
+
+The server reads the policy once per project and keeps it until it exits, so
+restart the MCP server (a new agent session, or reconnecting the server) after
+editing `security:`.
+
+*(v4.7.0+)* A file that names `identity` or `require_encrypted_storage` but
+doesn't parse is the exception: it is refused rather than read as empty.
+
+The rate limit keys on the actor, so with declared identities it stops a
+runaway agent, not a caller that changes its actor name. Under
+`identity: os` it keys on the OS account.
+
+### Binding roles to OS accounts (`identity: os`)
+
+*(v4.7.0+)* Over the stdio transport, the MCP server runs as the OS account of
+the agent that launched it, and the OS authenticated that account at login.
+`security.identity: os` makes the server use it:
+
+```yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  default_role: reader     # optional; unset refuses accounts missing from users
+```
+
+- The actor is the account name from the OS (the passwd entry for the
+  effective uid, or `GetUserNameW` on Windows), never `LOGNAME`, `USER` or
+  `USERNAME`, which the launching process controls.
+- The role comes from `users`, then `default_role`. The `actor` and `role` a
+  call declares are ignored and kept in the audit log as `claimed_actor` and
+  `claimed_role`.
+- Every call is refused, with `reason: identity`, when the HTTP transport is in
+  use, the account can't be read, the account has no role, the policy file is
+  world-writable (POSIX), or the `security:` section is invalid. A policy file
+  that names `identity` but doesn't parse is refused rather than ignored.
+- Audit events written outside MCP (CLI builds and queries) take the OS account
+  as their actor too, with `NEURALMIND_ACTOR` recorded as a claim.
+
+This makes roles and audit attribution trustworthy on a host where users have
+separate OS accounts and an administrator owns the policy file. It doesn't stop
+someone from doing as that account what the account can already do: read
+`.neuralmind/` directly, or edit a policy file they own. Keep the file
+writable only by its owner; `neuralmind doctor` warns when it's group-writable.
 
 ### Per-user roles
 
 NeuralMind has no user directory, LDAP, or OAuth integration, and SSO/SAML is
-roadmap-only. If different people need different permissions, give each their
-own OS account and checkout; OS file permissions then decide who can read
-the index.
+roadmap-only. For different permissions per person, give each an OS account
+and map it in `security.users` with `identity: os`. OS file permissions still
+decide who can read the index.
+
+### Requiring encrypted storage
+
+*(v4.7.0+)* NeuralMind doesn't encrypt `.neuralmind/` itself. The OpenSSL
+inside a pip-installed `cryptography` wheel isn't FIPS-validated, so
+in-process encryption wouldn't count as the FIPS-validated cryptography CMMC
+asks for. It verifies the OS's full-disk encryption instead:
+
+```yaml
+security:
+  require_encrypted_storage: true
+```
+
+With this set, NeuralMind checks for FileVault (macOS), dm-crypt/LUKS (Linux),
+or BitLocker (Windows) on every volume that holds its state: the project root,
+`.neuralmind/` (following a symlink), and a custom vector-index `db_path`. Only
+an explicit `false` turns the setting off; a blank value counts as on. Until the check passes, it
+refuses to build or query, MCP tools return `reason: storage`, hooks write
+nothing, and the decision store won't open. A check that can't tell (a
+container's overlay filesystem, BitLocker suspended, a timeout) counts as not
+encrypted. The verdict goes into the audit log as a `storage_check` event once
+per process. `neuralmind doctor` shows what the check sees, plus the OS FIPS
+mode on Linux and Windows. macOS has no FIPS switch; FileVault uses Apple
+corecrypto, which Apple lists in its CMVP certificates.
 
 ---
 
 ## Data Protection
 
-NeuralMind doesn't encrypt anything. Its state is plain files in the
+NeuralMind doesn't encrypt anything itself. Its state is plain files in the
 project's `.neuralmind/` directory: the vector index (which holds indexed
 source text), the code graph, learned synapses, the audit log (which records
 query text), and the Bash output cache. There is no database server, so there
@@ -136,8 +216,10 @@ is nothing to encrypt separately from the filesystem.
   ```
 
 - **Use full-disk encryption on the host**: FileVault on macOS, LUKS on
-  Linux, BitLocker on Windows. NeuralMind has no encryption setting of its
-  own.
+  Linux, BitLocker on Windows. *(v4.7.0+)*
+  `security.require_encrypted_storage: true` makes NeuralMind refuse to run
+  until it can see that encryption; see
+  [Requiring encrypted storage](#requiring-encrypted-storage).
 
 See [File permissions](DEPLOYMENT-GUIDE.md#file-permissions) in the
 deployment guide.
@@ -366,11 +448,15 @@ And an MCP call the role policy refused (hashes and timestamp omitted):
 
 What the fields do and don't tell you:
 
-- **`actor`** is whatever name the MCP caller declares (default `anonymous`).
-  For CLI commands it is `NEURALMIND_ACTOR` if set, otherwise the OS login.
-  Nothing authenticates it.
-- **The declared role** is in `details.role`. `actor_role` and `ip_address`
-  are in the schema, but nothing fills them in, so they are always empty.
+- **`actor`** is, by default, whatever name the MCP caller declares (default
+  `anonymous`). For CLI commands it is `NEURALMIND_ACTOR` if set, otherwise
+  the OS login. Nothing authenticates it. *(v4.7.0+)* With
+  `security.identity: os`, it is the OS account, read from the OS, for MCP
+  calls and CLI events alike, and declared values are kept as
+  `details.claimed_actor` and `details.claimed_role`.
+- **The role the call ran with** is in `details.role`. `actor_role` and
+  `ip_address` are in the schema, but nothing fills them in, so they are
+  always empty.
 - **No record lists the files a query retrieved.** `search_hits` is a count.
 - **`sha256`** chains each record to the previous one through `prev_sha256`.
 
@@ -389,7 +475,7 @@ March 31, and `--until 2026-03-31` would leave March 31 out.
 
 `audit verify` catches an edited record, a record deleted from the middle of
 the log, and, once the chain has started, any record without a `sha256`. So
-records edited or appended with their hash removed fail too. v4.6.0 and
+records edited or appended with their hash removed fail too. v4.6.1 and
 earlier accepted a record without a hash anywhere as a legacy line, so those
 passed.
 
@@ -411,7 +497,7 @@ build compliance reports from the export.
 Evidence NeuralMind provides for each NIST AI RMF function:
 
 GOVERN (Oversight)
-├─ Per-tool permission policy (caller-declared roles)
+├─ Per-tool permission policy (caller-declared roles, or OS accounts with identity: os)
 ├─ Audit log of MCP calls, builds, and queries
 └─ Query provenance: each result names the code nodes it came from
 
@@ -472,9 +558,9 @@ asset inside your assessment scope:
 
 ```
 AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
-   Evidence: stdio MCP transport by default; per-tool permission sets
-   Not provided: authentication. Each MCP call declares its own role, so
-   binding authenticated identities to roles is yours
+   Evidence: stdio MCP transport; per-tool permission sets; with
+   identity: os, roles bound to the OS account the OS authenticated
+   Yours: OS accounts, and owning the policy file
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
@@ -482,7 +568,9 @@ AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    starts, not records removed from the end or a recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
-   Not provided: use FIPS-validated full-disk encryption on the host
+   Evidence: require_encrypted_storage verifies full-disk encryption and
+   refuses to run without it, with an audit record of each check
+   Yours: the encryption itself, FIPS-validated (OS FIPS mode on)
 ```
 
 The full Level 2 table, including what stays your responsibility, is in
@@ -501,7 +589,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
 | **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
-| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared, so least privilege comes from OS accounts |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
 | **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios
@@ -521,10 +609,10 @@ Status: No known injection path. This comes from code review, not a
 **Scenario 2: Privilege escalation**
 ```
 Attack: A caller declares role "admin" to reach admin-only tools
-Mitigation: Roles are caller-declared. Leave admin out of
-            security.roles so no declared role reaches admin-only
-            tools, and limit who can reach the MCP server
-Status: ⚠️ Possible with the default policy
+Mitigation: Set security.identity: os so the role comes from the OS
+            account, not the call. Otherwise leave admin out of
+            security.roles, and limit who can reach the MCP server
+Status: ⚠️ Possible with the default (declared) identity
 ```
 
 **Scenario 3: Data exfiltration**
@@ -546,6 +634,8 @@ Before deploying NeuralMind to production:
 
 ### Access & Authentication
 - [ ] `security.roles` set in `neuralmind-backend.yaml`, without `admin` unless you need it
+- [ ] `security.identity: os` with each OS account in `security.users`, and the policy file writable only by its owner
+- [ ] `security.require_encrypted_storage: true` where the index holds CUI, and `neuralmind doctor` shows Storage encryption `ok`
 - [ ] MCP server reachable only by the agent that launched it (stdio), or the HTTP transport kept on localhost
 - [ ] MFA on the OS accounts that can run the agent or read the project
 - [ ] Regular access reviews scheduled

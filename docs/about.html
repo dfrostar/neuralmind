@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (95% mean gold-file recall at 46–263× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -199,15 +199,29 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v461">
-            <h2>What&rsquo;s New in v4.6.1 &mdash; the role policy and the audit check do what the docs say</h2>
-            <p><strong>Two controls the Security Guide describes didn&rsquo;t behave as described.</strong> v4.6.1 fixes both.</p>
+        <div class="container" id="whats-new-v470">
+            <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
+            <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>
             <ul>
-                <li><strong>The MCP server applies the role policy</strong> &mdash; <code>security.roles</code> and <code>security.rate_limit</code> in <code>neuralmind-backend.yaml</code> take effect; v4.6.0 and earlier ignored both and ran the default policy, so a caller could still declare <code>admin</code></li>
-                <li><strong>A broken policy fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a malformed policy refuses every call with <code>reason: "config"</code> instead of falling back to the default policy</li>
-                <li><strong><code>audit verify</code> catches records without a hash</strong> once the chain has started, so records edited or appended at the end of the log with their hash removed fail; it reports records from before the chain, and still can&rsquo;t detect records deleted from the end</li>
+                <li><strong><code>security.identity: os</code></strong> &mdash; the MCP server takes the caller&rsquo;s identity from the OS account it runs as (over stdio, the agent that launched it), read from the OS rather than from <code>LOGNAME</code> or <code>USER</code>, and the role from <code>security.users</code>. The role a call declares is ignored and logged as a claim. The HTTP transport, an account without a role, and a world-writable policy file are refused</li>
+                <li><strong><code>security.require_encrypted_storage: true</code></strong> &mdash; NeuralMind checks for FileVault, BitLocker or dm-crypt/LUKS on every volume that holds its state, including a custom index path, and refuses to build, query, serve MCP tools or run hooks until the check passes. It doesn&rsquo;t encrypt anything itself: in-process crypto from a pip wheel isn&rsquo;t FIPS-validated</li>
+                <li><strong><code>neuralmind doctor</code></strong> gains <em>Security policy</em> and <em>Storage encryption</em> checks</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.0.md">v4.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">Use case: NeuralMind in a CMMC CUI enclave</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v461">
+            <h2>What&rsquo;s New in v4.6.1 &mdash; the MCP server applies your security settings</h2>
+            <p><strong>The Security Guide told operators to cap what a caller can claim with <code>security.roles</code> in <code>neuralmind-backend.yaml</code>, and the MCP server never read it.</strong> Through v4.6.0 every call got the default role policy and a limit of 60 calls a minute, so a caller that declared <code>admin</code> reached every tool even where the policy left <code>admin</code> out. v4.6.1 applies both settings.</p>
+            <ul>
+                <li><strong><code>security.roles</code> replaces the default policy</strong> &mdash; a role gets exactly the tools listed for it, a role the policy doesn&rsquo;t list gets none, and leaving <code>admin</code> out caps what any caller can reach; a refused call returns <code>security_denied</code> with <code>reason: "rbac"</code></li>
+                <li><strong><code>security.rate_limit</code> sets the limiter</strong> &mdash; <code>max_calls</code> per <code>window_seconds</code>, counted per declared actor</li>
+                <li><strong>A policy that parses but is wrong fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a <code>security:</code> value of the wrong type refuses every MCP call with <code>reason: "config"</code> and names the setting to fix. A file that doesn&rsquo;t parse, or a <code>security:</code> or <code>roles:</code> key left empty, still means the defaults, <code>admin</code> included &mdash; check a left-out tool is denied after writing a policy</li>
+                <li><strong>No <code>security:</code> block, no change</strong> &mdash; nothing writes one for you. If you wrote one, check it before upgrading: an agent that names no role is <code>builder</code>, and a policy without <code>builder</code> gives it no tools</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/SECURITY-GUIDE.md#capping-what-a-caller-can-claim">Security Guide: capping what a caller can claim &rarr;</a></p>
         </div>
     </section>
 

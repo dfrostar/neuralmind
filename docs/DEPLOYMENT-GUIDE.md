@@ -203,17 +203,23 @@ model. That egress belongs to the agent, not to NeuralMind.
 
 ### Access control
 
-NeuralMind does not authenticate callers. Each MCP tool call declares its own
-`actor` (default `anonymous`) and `role` (default `builder`). The server checks
+By default NeuralMind does not authenticate callers. Each MCP tool call
+declares its own `actor` (default `anonymous`) and `role` (default `builder`). The server checks
 the role against its default per-tool policy (`admin`, `builder`, `reader`)
 and rate-limits each declared actor to 60 calls per 60 seconds. Any caller can
 declare `admin`.
 
 `security.roles` and `security.rate_limit` in `neuralmind-backend.yaml`
 replace those defaults. A role the policy doesn't list gets no tools, so
-leaving `admin` out caps what any caller can claim. (The MCP server in v4.5.1
+leaving `admin` out caps what any caller can claim. (The MCP server in v4.6.0
 and earlier ignored both settings.) Who can reach the MCP server, and which
 directories its OS account can read, still decide who gets in at all.
+
+`security.identity: os` *(v4.7.0+)* takes the actor from the OS account the
+server runs as and the role from `security.users`, ignoring what a call
+declares. `security.require_encrypted_storage: true` refuses to run on a volume
+NeuralMind can't verify as encrypted; CI runners usually aren't, so check with
+`neuralmind doctor` before committing it.
 See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
 ### File permissions
