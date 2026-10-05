@@ -118,7 +118,7 @@ def update_learned_half_life(
     its existing upsert transaction.
     """
     try:
-        from .synapses import SHARED_NAMESPACE, _canonical
+        from .synapses import EPHEMERAL_NAMESPACE, SHARED_NAMESPACE, _canonical
 
         canonical = _canonical(node_a, node_b)
         if canonical is None:
@@ -142,14 +142,20 @@ def update_learned_half_life(
 
             ns_default = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
 
-            learned = compute_edge_half_life(
-                activation_count=act_count,
-                last_activated=last_act,
-                first_activated=created_at,
-                namespace_default=ns_default,
-                project_path=project_path,
-                min_floor=ns_default if ns == SHARED_NAMESPACE else None,
-            )
+            if ns == EPHEMERAL_NAMESPACE:
+                # Session scratch keeps its fixed fast half-life. A learned
+                # rate is clamped to DECAY_RATE_MIN (3 days), which would
+                # triple the documented EPHEMERAL_HALF_LIFE_DAYS (1 day).
+                learned = ns_default
+            else:
+                learned = compute_edge_half_life(
+                    activation_count=act_count,
+                    last_activated=last_act,
+                    first_activated=created_at,
+                    namespace_default=ns_default,
+                    project_path=project_path,
+                    min_floor=ns_default if ns == SHARED_NAMESPACE else None,
+                )
             existing_conn.execute(
                 "UPDATE synapses SET half_life_days = ?, learned_at = ? "
                 "WHERE node_a = ? AND node_b = ? AND namespace = ?",

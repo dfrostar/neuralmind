@@ -1095,3 +1095,30 @@ def test_decay_node_ticks_outgoing_transitions(tmp_path):
             "SELECT weight FROM synapse_transitions WHERE from_node='x' AND to_node='y'"
         ).fetchone()[0]
     assert w == pytest.approx(4.0 * NODE_DECAY_FACTOR)
+
+
+# --------------------------------------------------------------------------- #
+# Ephemeral edges keep the documented 1-day half-life
+# --------------------------------------------------------------------------- #
+
+
+def test_ephemeral_edges_use_documented_half_life(tmp_path):
+    """Session scratch decays at EPHEMERAL_HALF_LIFE_DAYS, not DECAY_RATE_MIN.
+
+    The learned per-edge rate used to clamp every edge to DECAY_RATE_MIN
+    (3 days), so an ephemeral edge kept ~79% of its weight after a day
+    instead of half.
+    """
+    from neuralmind.synapses import EPHEMERAL_HALF_LIFE_DAYS, EPHEMERAL_NAMESPACE
+
+    s = SynapseStore(tmp_path / "synapses.db", namespace=EPHEMERAL_NAMESPACE)
+    t0 = time.time()
+    s.reinforce(["p", "q"], now=t0)
+    s.reinforce(["p", "q"], now=t0)
+    with s._connect() as conn:
+        hl = conn.execute("SELECT half_life_days FROM synapses").fetchone()[0]
+    assert hl == pytest.approx(EPHEMERAL_HALF_LIFE_DAYS)
+
+    s.decay(now=t0 + EPHEMERAL_HALF_LIFE_DAYS * 86400)
+    weight = _raw_edge(s, "p", "q", EPHEMERAL_NAMESPACE)[0]
+    assert weight == pytest.approx(2 * LEARNING_RATE / 2)
