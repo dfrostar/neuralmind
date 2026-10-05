@@ -565,6 +565,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.6.1.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/use-cases/decision-memory-across-commits.html</loc>
     <lastmod>2026-10-03</lastmod>
     <changefreq>monthly</changefreq>

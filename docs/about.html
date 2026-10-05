@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v461">
+            <h2>What&rsquo;s New in v4.6.1 &mdash; the role policy and the audit check do what the docs say</h2>
+            <p><strong>Two controls the Security Guide describes didn&rsquo;t behave as described.</strong> v4.6.1 fixes both.</p>
+            <ul>
+                <li><strong>The MCP server applies the role policy</strong> &mdash; <code>security.roles</code> and <code>security.rate_limit</code> in <code>neuralmind-backend.yaml</code> take effect; v4.6.0 and earlier ignored both and ran the default policy, so a caller could still declare <code>admin</code></li>
+                <li><strong>A broken policy fails closed</strong> &mdash; <code>roles: {}</code> grants nothing, and a malformed policy refuses every call with <code>reason: "config"</code> instead of falling back to the default policy</li>
+                <li><strong><code>audit verify</code> catches records without a hash</strong> once the chain has started, so records edited or appended at the end of the log with their hash removed fail; it reports records from before the chain, and still can&rsquo;t detect records deleted from the end</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md">v4.6.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v460">
             <h2>What&rsquo;s New in v4.6.0 &mdash; one keyword index for docs and code, and the documented features wired in</h2>
             <h3>Retrieval ranking, measured</h3>

@@ -173,20 +173,50 @@ class AuditTrail:
     def verify(self) -> dict[str, Any]:
         """Walk the hash chain, return status.
 
-        Returns {ok: bool, first_bad_line: int|None, total: int}.
-        Legacy lines without sha256 are accepted as trust-on-first-use seed.
+        Returns ``{ok, first_bad_line, total, unchained, continues_from,
+        reason}``.
+
+        Records before the first hashed record were written before the hash
+        chain existed. They are accepted trust-on-first-use and counted in
+        ``unchained``. Once the chain has started, every record must carry a
+        valid ``sha256``: a record without one fails, so records edited or
+        appended at the end of the log can't pass by dropping their hashes.
+
+        A file that begins with a ``rotation_continuation`` marker (written by
+        :meth:`rotate`) continues the archive named in ``continues_from``, so
+        the walk starts from the marker's ``prev_sha256``.
+
+        Records deleted from the end still leave a valid chain. The file alone
+        can't show that; a copy exported off the host can.
         """
         events = self.read_events()
-        if not events:
-            return {"ok": True, "first_bad_line": None, "total": 0}
+        result: dict[str, Any] = {
+            "ok": True,
+            "first_bad_line": None,
+            "total": len(events),
+            "unchained": 0,
+            "continues_from": None,
+            "reason": None,
+        }
 
         prev_sha = "0" * 64
+        chained = False
         for i, evt in enumerate(events, start=1):
             sha = evt.get("sha256", "")
             if not sha:
-                # Legacy line — update prev_sha from its content (no chain check)
-                prev_sha = "0" * 64  # reset; next line must carry prev_sha
+                if chained:
+                    result.update(
+                        ok=False,
+                        first_bad_line=i,
+                        reason="record has no sha256 after the hash chain started",
+                    )
+                    return result
+                result["unchained"] += 1
                 continue
+            if i == 1 and evt.get("action") == "rotation_continuation":
+                prev_sha = evt.get("prev_sha256") or prev_sha
+                result["continues_from"] = (evt.get("details") or {}).get("archive")
+            chained = True
             # Reconstruct what was hashed
             payload_str = prev_sha + json.dumps(
                 {k: v for k, v in evt.items() if k not in ("sha256", "prev_sha256")},
@@ -195,12 +225,14 @@ class AuditTrail:
             )
             expected = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
             if sha != expected:
-                # Check if prev_sha matches
-                if evt.get("prev_sha256") != prev_sha:
-                    return {"ok": False, "first_bad_line": i, "total": len(events)}
-                return {"ok": False, "first_bad_line": i, "total": len(events)}
+                result.update(
+                    ok=False,
+                    first_bad_line=i,
+                    reason="sha256 doesn't match the record and the hash before it",
+                )
+                return result
             prev_sha = sha
-        return {"ok": True, "first_bad_line": None, "total": len(events)}
+        return result
 
     def search(
         self,
@@ -296,9 +328,11 @@ class AuditTrail:
                     "status": "success",
                     "target": "",
                     "details": {"archive": str(archive_path.name)},
-                    "prev_sha256": last_sha,
                 }
+                # Hash the way append_event does: the prev hash plus the record
+                # without its own hash fields, so verify() can check the marker.
                 payload_str = last_sha + json.dumps(marker, sort_keys=True, separators=(",", ":"))
+                marker["prev_sha256"] = last_sha
                 marker["sha256"] = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
                 nf.write(json.dumps(marker, sort_keys=True) + "\n")
 

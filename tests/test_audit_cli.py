@@ -109,3 +109,20 @@ def test_cmd_audit_export_filter_actor(audit_trail, tmp_path):
     assert len(lines) == 1
     parsed = json.loads(lines[0])
     assert parsed["actor"] == "alice"
+
+
+def test_cmd_audit_verify_reports_why_a_hashless_tail_fails(audit_trail, tmp_path, capsys):
+    events_file = tmp_path / ".neuralmind" / "audit_events.jsonl"
+    lines = events_file.read_text().splitlines()
+    last = json.loads(lines[-1])
+    last.pop("sha256")
+    last.pop("prev_sha256")
+    lines[-1] = json.dumps(last)
+    events_file.write_text("\n".join(lines) + "\n")
+
+    with pytest.raises(SystemExit) as exc_info:
+        cmd_audit_verify(AuditVerifyArgs(tmp_path))
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert "line 3" in err
+    assert "no sha256" in err

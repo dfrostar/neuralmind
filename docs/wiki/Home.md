@@ -36,6 +36,17 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.6.1 — The role policy and the audit check do what the docs say (October 2026)
+
+The MCP server now applies `security.roles` and `security.rate_limit` from
+`neuralmind-backend.yaml`; v4.6.0 and earlier ignored both. An empty or
+malformed policy refuses calls instead of falling back to the default policy,
+which includes `admin`. `neuralmind audit verify` fails on a record without a
+hash once the chain has started, so records edited or appended at the end of
+the log with their hash removed no longer pass. It still can't detect records
+deleted from the end. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.1.md).
+
 ### v4.6.0 — One keyword index for docs and code; the documented features wired in (October 2026)
 
 The default backend's BM25 keyword index held only documents, so on "how does X

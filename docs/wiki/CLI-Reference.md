@@ -118,6 +118,46 @@ neuralmind audit recent --category backend --action build
 
 Requires an initialized project with audit trail.
 
+### audit verify
+
+Check the hash chain of `.neuralmind/audit_events.jsonl`.
+
+```bash
+neuralmind audit verify [project_path] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print the result as JSON |
+
+#### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every hashed record checks out |
+| `1` | A record fails: its hash doesn't match, or it has no hash after the chain started |
+
+#### Output
+
+`✓ Audit trail integrity OK (N events)`. Extra lines say how many records come
+before the hash chain (written by versions before v0.46.2, so the chain doesn't
+cover them), and which rotated archive the log continues, if any. On failure,
+the line number and the reason go to stderr. `--json` prints `ok`,
+`first_bad_line`, `total`, `unchained`, `continues_from` and `reason`.
+
+v4.6.0 and earlier accepted a record without a hash anywhere in the log, so
+records edited or appended at the end with their hash removed passed.
+
+#### What it can't detect
+
+Records deleted from the end, or a chain recomputed by anyone who can write the
+file (the hash has no secret key). Keep an exported copy off the host with
+`neuralmind audit export . -o audit.jsonl`. See the
+[Security Guide](../SECURITY-GUIDE.md#audit-trail).
+
 ### build
 
 Build or rebuild the neural index from a knowledge graph.
