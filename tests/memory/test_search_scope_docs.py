@@ -105,3 +105,29 @@ def test_like_fallback_searches_the_same_fields(tmp_path, monkeypatch, indexed_f
         field for field, word in probes.items() if [d.id for d in store.query(word)] == [rec.id]
     }
     assert found == indexed_fields
+
+
+def test_semantic_search_embeds_the_same_fields(tmp_path, indexed_fields):
+    """Semantic and hybrid search embed the fields keyword search indexes, so
+    the docs' one list of searched fields holds in every mode."""
+    from neuralmind.memory.semantic import decision_text
+
+    from .test_semantic_search import ConceptEmbedder
+
+    probes = {"title": "Zebra", "rationale": "Quokka", "evidence": "Narwhal", "tag": "axolotl"}
+    fake = ConceptEmbedder({word: {word.lower()} for word in probes.values()})
+    store = DecisionStore(str(tmp_path), embedder=fake.embedder)
+    rec = store.record(
+        title="Zebra title",
+        rationale="Quokka rationale",
+        commit_sha="a" * 40,
+        evidence=["Narwhal evidence"],
+        tags=["axolotl"],
+    )
+    found = {
+        field
+        for field, word in probes.items()
+        if [d.id for d in store.query(word, mode="semantic")] == [rec.id]
+    }
+    assert found == indexed_fields
+    assert decision_text(rec.title, rec.rationale) == f"{rec.title}\n{rec.rationale}"
