@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -271,7 +272,7 @@ def _rotated_trail(tmp_path):
     trail.append_event("audit", "query")
     last = trail.append_event("audit", "search")
     rotated = trail.rotate(max_bytes=10, keep_days=90)
-    return trail, last, rotated["archived_to"].rsplit("/", 1)[-1]
+    return trail, last, Path(rotated["archived_to"]).name
 
 
 def _rehash(record, prev):
