@@ -86,37 +86,50 @@ docker pull ghcr.io/dfrostar/neuralmind:latest
 # Or build locally from this repo
 docker build -t neuralmind:dev .
 
-# Run the MCP server against the current directory, read-only mount
-docker run --rm -i \
-  -v "$PWD:/project:ro" \
+# Build the index. Mount the project read-write, at the path the agent uses
+docker run --rm -v "$PWD:$PWD" \
   ghcr.io/dfrostar/neuralmind \
-  neuralmind-mcp /project
+  neuralmind build "$PWD"
 
-# Run the graph view on http://localhost:8787
-docker run --rm -p 8787:8787 \
-  -v "$PWD:/project:ro" \
+# Run the MCP server over stdio. It takes no arguments: each tool call
+# names its own project_path, so the container must resolve the same path
+docker run --rm -i -v "$PWD:$PWD" \
   ghcr.io/dfrostar/neuralmind \
-  neuralmind serve /project --host 0.0.0.0 --no-auth
+  neuralmind-mcp
+
+# Run the graph view, published on the host's loopback only
+docker run --rm -p 127.0.0.1:8787:8787 -v "$PWD:$PWD" \
+  ghcr.io/dfrostar/neuralmind \
+  neuralmind serve "$PWD" --host 0.0.0.0 --no-browser
 ```
 
 The image is multi-stage: a `builder` stage produces the wheel; the
 `runtime` stage is a slim Python image with `neuralmind` installed
 and a non-root user. The `Dockerfile` lives in the repo root.
 
-**Trade-offs:** the index lives inside the container by default; if
-you want it to persist between runs, also mount `.neuralmind/` and
-`graphify-out/` from the host (read-write):
+**Trade-offs:** the mount has to be writable by the container's user.
+NeuralMind keeps its index in the project's `.neuralmind/` on the host,
+so it persists between runs, and the MCP server appends to its audit log
+on every tool call. On a read-only mount every call fails.
 
-```bash
-docker run --rm \
-  -v "$PWD:/project" \
-  ghcr.io/dfrostar/neuralmind \
-  neuralmind build /project
-```
+The image runs as a fixed non-root user, `neuralmind`, not as you. A
+read-write mount isn't enough if that user can't write to the checkout,
+for example on a multi-user host or in a root-owned CI workspace. Then the
+build fails when it creates `.neuralmind/`, and every MCP call fails on
+the audit write. Check the container's UID with
+`docker run --rm ghcr.io/dfrostar/neuralmind id`, then give that UID write
+access to the project (`chown`, a shared group, or an ACL).
 
-`--no-auth` is fine on a local-only port; bind to a non-loopback
-address only if you understand the security implications
-([security guide](../SECURITY-GUIDE.md)).
+The image doesn't bundle the
+embedding model, so each fresh container downloads it on its first
+build; the [deployment guide](../DEPLOYMENT-GUIDE.md#option-2-container-image-ghcr)
+shows how to mount a pre-extracted one.
+
+`serve` prints its URL with a token (`http://0.0.0.0:8787/?token=…`);
+open it as `http://127.0.0.1:8787/?token=…`. Inside the container
+`--host 0.0.0.0` is what lets Docker forward the port, and publishing on
+`127.0.0.1` keeps it off the network. Leave the token on
+([security guide](../SECURITY-GUIDE.md#access-control)).
 
 > **Note:** GHCR auto-build lands in Phase 3 (v0.7.x). Today the
 > Dockerfile is committed but you build it locally. The pull command

@@ -355,9 +355,9 @@ neuralmind audit export . --format cef --since 2026-01-01 -o audit.cef   # or --
 
 Each record carries a SHA-256 hash chained to the previous one. `audit verify`
 detects a record that was edited, or deleted from the middle of the log. It
-can't detect tampering at the tail (records removed from the end, or the last
-record edited with its hash stripped), or a chain recomputed by anyone with
-write access to the file. To keep a copy outside the host's control, ship
+can't detect tampering at the tail (records removed from the end, the last
+records edited with their hashes stripped, or forged records appended without
+a hash), or a chain recomputed by anyone with write access to the file. To keep a copy outside the host's control, ship
 `audit export` output to your SIEM.
 
 NeuralMind doesn't rotate or expire the audit log. The file grows until you

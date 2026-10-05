@@ -70,11 +70,11 @@ class OnnxMiniLMEmbedder:
         self._explicit_dir = Path(model_dir) if model_dir else None
 
     # ---------------------------------------------------------------- model dir
-    def _resolve_model_dir(self) -> Path:
-        """Locate the ONNX model folder (env → cache → chroma cache → download).
+    def local_model_dir(self) -> Path | None:
+        """The model folder already on disk (explicit → env → caches), or None.
 
-        Returns:
-            Path to folder containing model.onnx + tokenizer.json.
+        Never downloads. Callers that must not reach the network — decision
+        search runs inside queries and MCP calls — check this first.
         """
         env = os.environ.get("NEURALMIND_ONNX_MODEL_DIR")
         for cand in (
@@ -85,6 +85,17 @@ class OnnxMiniLMEmbedder:
         ):
             if cand and (cand / "model.onnx").exists() and (cand / "tokenizer.json").exists():
                 return cand
+        return None
+
+    def _resolve_model_dir(self) -> Path:
+        """Locate the ONNX model folder (env → cache → chroma cache → download).
+
+        Returns:
+            Path to folder containing model.onnx + tokenizer.json.
+        """
+        found = self.local_model_dir()
+        if found is not None:
+            return found
         # Nothing on disk — fetch the archive into NeuralMind's own cache.
         self._download_into(_NM_CACHE)
         return _NM_CACHE

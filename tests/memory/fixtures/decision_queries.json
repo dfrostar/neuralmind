@@ -1,6 +1,7 @@
 {
   "_comment": "Decision-search eval set: questions an agent asks, each with the decision ids that answer it. The corpus is the maintenance eval's seed decisions (neuralmind/memory/eval.py, _TASK_SEED_DECISIONS) plus the distractors below, which share its vocabulary (sqlite, index, tokens, log, server) so that ranking matters: the seed alone has 10 ACTIVE decisions, and a top-5 would be half of it. All of it is synthetic. Queries run with the default status filter (ACTIVE), so gold ids are ACTIVE decisions only. The queries were written and frozen before any search variant was measured; don't tune them to a variant. Run: neuralmind decisions eval --queries tests/memory/fixtures/decision_queries.json",
-  "_kinds": "sentence = a question phrased the way agents send it; negative = nothing in the corpus answers it, so the right result is none. Keyword-style queries live in the maintenance eval's five tasks. Paraphrases that share no word with their answer belong to spec LOCAL-API-SPEC.md §4.2 (PR M, semantic search): add them here as kind 'paraphrase' with the mode that is expected to find them.",
+  "_kinds": "sentence = a question phrased the way agents send it; negative = nothing in the corpus answers it, so the right result is none; paraphrase = a question that shares no search word with its answer (tests/memory/test_query_eval.py checks this), so keyword search can't find it by construction and only the semantic and hybrid modes are expected to. Keyword-style queries live in the maintenance eval's five tasks.",
+  "_paraphrase_preregistration": "The 20 paraphrase queries, the similarity floor (0.30 cosine) and the keep rule were committed before semantic or hybrid search was run on this set. Keep rule for making hybrid the default search mode, measured against keyword mode at limit 5, status ACTIVE: (a) paraphrase recall@5 mean rises; (b) sentence recall@5 mean does not fall, and sentence MRR mean falls by no more than 0.05; (c) no fewer exact titles rank first. Negative questions are reported, not gated: keyword mode already returns partial matches for unanswerable questions, and the tools tell the agent to check the titles. If hybrid fails the rule, keyword stays the default and semantic and hybrid ship opt-in, with their numbers.",
   "extra_decisions": [
     {
       "id": "dec-fx-embed-cache",
@@ -267,6 +268,126 @@
       "kind": "negative",
       "query": "which payment provider handles billing for team seats?",
       "gold": []
+    },
+    {
+      "id": "p01-recycle-handles",
+      "kind": "paraphrase",
+      "query": "why do we recycle db handles rather than creating new ones each request?",
+      "gold": ["dec-refactor-db-001"]
+    },
+    {
+      "id": "p02-oldest-engine",
+      "kind": "paraphrase",
+      "query": "what is the oldest embedded database release we are willing to run on?",
+      "gold": ["dec-dep-sqlite-001"]
+    },
+    {
+      "id": "p03-verify-caller",
+      "kind": "paraphrase",
+      "query": "where do we verify who is calling an endpoint?",
+      "gold": ["dec-bugfix-auth-001"]
+    },
+    {
+      "id": "p04-signature-scheme",
+      "kind": "paraphrase",
+      "query": "which signature scheme protects our login credentials from forgery?",
+      "gold": ["dec-bugfix-auth-002"]
+    },
+    {
+      "id": "p05-trace-format",
+      "kind": "paraphrase",
+      "query": "what format should diagnostic output have so one call can be followed across services?",
+      "gold": ["dec-config-logging-001"]
+    },
+    {
+      "id": "p06-verbosity-live",
+      "kind": "paraphrase",
+      "query": "how verbose are we on the live deployment?",
+      "gold": ["dec-config-logging-002"]
+    },
+    {
+      "id": "p07-unit-leaks",
+      "kind": "paraphrase",
+      "query": "how do we stop one unit check leaking state into the next?",
+      "gold": ["dec-test-store-001"]
+    },
+    {
+      "id": "p08-path-intersect",
+      "kind": "paraphrase",
+      "query": "how do we find records whose stored paths intersect a commit's modified paths?",
+      "gold": ["dec-dep-sqlite-002"]
+    },
+    {
+      "id": "p09-fast-rebuild",
+      "kind": "paraphrase",
+      "query": "why does a rebuild finish quickly when only a few sources were edited?",
+      "gold": ["dec-fx-embed-cache"]
+    },
+    {
+      "id": "p10-colleague-reach",
+      "kind": "paraphrase",
+      "query": "can a colleague's laptop reach the graph viewer running on my machine?",
+      "gold": ["dec-fx-loopback"]
+    },
+    {
+      "id": "p11-plaintext-keys",
+      "kind": "paraphrase",
+      "query": "are access keys kept in plaintext?",
+      "gold": ["dec-fx-token-hash"]
+    },
+    {
+      "id": "p12-hammering",
+      "kind": "paraphrase",
+      "query": "what stops a misbehaving assistant from hammering the server with requests?",
+      "gold": ["dec-fx-rate-limit"]
+    },
+    {
+      "id": "p13-associations-weaken",
+      "kind": "paraphrase",
+      "query": "do learned associations weaken over time if nobody uses them?",
+      "gold": ["dec-fx-synapse-decay"]
+    },
+    {
+      "id": "p14-flag-parsing",
+      "kind": "paraphrase",
+      "query": "which library parses command-line flags?",
+      "gold": ["dec-fx-argparse"]
+    },
+    {
+      "id": "p15-website-hosting",
+      "kind": "paraphrase",
+      "query": "how is the public website hosted?",
+      "gold": ["dec-fx-static-site"]
+    },
+    {
+      "id": "p16-editor-crashes",
+      "kind": "paraphrase",
+      "query": "where do crashes in editor integration scripts end up?",
+      "gold": ["dec-fx-hook-log"]
+    },
+    {
+      "id": "p17-lone-worker",
+      "kind": "paraphrase",
+      "query": "why do all storage modifications go through a lone worker?",
+      "gold": ["dec-fx-single-writer"]
+    },
+    {
+      "id": "p18-semver",
+      "kind": "paraphrase",
+      "query": "what decides the next semver tag we publish?",
+      "gold": ["dec-fx-release-please"]
+    },
+    {
+      "id": "p19-excluded-outputs",
+      "kind": "paraphrase",
+      "query": "why aren't build outputs and third-party code in the search results?",
+      "gold": ["dec-fx-gitignore"]
+    },
+    {
+      "id": "p20-response-ceiling",
+      "kind": "paraphrase",
+      "query": "is there a ceiling on how much text an integration hands back to the assistant?",
+      "gold": ["dec-fx-tool-budget"]
     }
   ]
 }
