@@ -11,6 +11,7 @@ Stdlib-only.
 
 from __future__ import annotations
 
+import hmac
 import json
 from typing import Any
 
@@ -102,3 +103,19 @@ def parse_json_object(raw: bytes) -> dict:
 def read_json_object(handler: Any, max_bytes: int = MAX_BODY_BYTES) -> dict:
     """:func:`read_body` then :func:`parse_json_object`; raises :class:`RequestError`."""
     return parse_json_object(read_body(handler, max_bytes))
+
+
+def token_matches(candidate: str | None, expected: str | None) -> bool:
+    """Constant-time check of a client-supplied token; never raises.
+
+    ``hmac.compare_digest`` raises ``TypeError`` when handed a ``str`` with
+    non-ASCII characters — and a ``?token=%C3%A9`` query value or a header
+    carrying high bytes (``http.server`` decodes headers as latin-1) is exactly
+    that — so both sides are compared as UTF-8 bytes. ``surrogatepass`` keeps
+    even a lone surrogate encodable. An empty or missing value never matches.
+    """
+    if not candidate or not expected:
+        return False
+    return hmac.compare_digest(
+        candidate.encode("utf-8", "surrogatepass"), expected.encode("utf-8", "surrogatepass")
+    )

@@ -418,6 +418,30 @@ def test_dispatch_search_accepts_integer_n(registry, tmp_path, n):
     assert status == 200 and isinstance(payload["results"], list)
 
 
+@pytest.mark.parametrize(
+    "path, headers",
+    [
+        # parse_qs decodes %C3%A9 to "é"; compare_digest raised TypeError on a
+        # non-ASCII str and the connection dropped with no response.
+        ("/health?token=%C3%A9", {}),
+        ("/health?token=%FF", {}),  # invalid UTF-8 -> U+FFFD
+        # Header values are decoded as latin-1, so raw high bytes arrive as
+        # non-ASCII str too.
+        ("/health", {"Authorization": b"Bearer \xc3\xa9"}),
+    ],
+)
+def test_e2e_non_ascii_token_gets_401(running_daemon, path, headers):
+    status, payload = _raw_request("GET", path, headers=headers, auth=False)
+    assert status == 401 and "token" in payload["error"]
+    assert running_daemon.health()["ok"] is True  # the real token still works
+
+
+def test_e2e_query_string_token_still_accepted(running_daemon):
+    info = daemon_mod.read_discovery()
+    status, payload = _raw_request("GET", f"/health?token={info['token']}", auth=False)
+    assert status == 200 and payload["ok"] is True
+
+
 @pytest.mark.parametrize("field", ["project", "question"])
 def test_dispatch_rejects_non_string_required_field(registry, tmp_path, field):
     body = {"project": str(tmp_path), "question": "how?"}

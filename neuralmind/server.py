@@ -45,7 +45,7 @@ from .event_log import (
     default_log_path,
     event_log_enabled,
 )
-from .http_util import RequestError, read_json_object
+from .http_util import RequestError, read_json_object, token_matches
 from .metrics_pipeline import MetricsCollector
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -241,11 +241,14 @@ class _Handler(BaseHTTPRequestHandler):
             if "=" in piece:
                 k, v = piece.split("=", 1)
                 cookies[k.strip()] = v.strip()
-        if cookies.get(_AUTH_COOKIE) == cls.auth_token:
+        # token_matches compares UTF-8 bytes in constant time: compare_digest
+        # on a non-ASCII str (e.g. ?token=%C3%A9) raised TypeError and dropped
+        # the connection, and the cookie check was a timing-leaky ==.
+        if token_matches(cookies.get(_AUTH_COOKIE), cls.auth_token):
             return True, None
 
         query_token = (parse_qs(parsed.query).get("token") or [None])[0]
-        if query_token and secrets.compare_digest(query_token, cls.auth_token):
+        if token_matches(query_token, cls.auth_token):
             return True, cls.auth_token
 
         return False, None

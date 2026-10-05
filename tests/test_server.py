@@ -529,3 +529,24 @@ def test_open_bad_json_body_gets_400(tmp_path, raw, expected):
         )
     assert status == 400
     assert payload["ok"] is False and expected in payload["error"]
+
+
+@pytest.mark.parametrize(
+    "path, headers",
+    [
+        # parse_qs decodes %C3%A9 to "é"; compare_digest raised TypeError on a
+        # non-ASCII str and the connection dropped with no response.
+        ("/api/queries?token=%C3%A9", {}),
+        ("/?token=%C3%A9", {}),
+        ("/api/queries?token=%FF", {}),  # invalid UTF-8 -> U+FFFD
+        ("/api/queries", {"Cookie": b"nm_token=\xc3\xa9"}),  # latin-1 decoded header
+    ],
+)
+def test_non_ascii_token_gets_401(path, headers):
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+    with _running_server(fake_mind, auth_token="secret-token") as base:
+        status, _ = _raw_request(base, "GET", path, headers=headers)
+        assert status == 401
+        # Still serving, and the real token still works.
+        status, payload = _raw_request(base, "GET", "/api/queries?token=secret-token")
+        assert status == 200 and "queries" in payload

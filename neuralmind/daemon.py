@@ -43,7 +43,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from .http_util import MAX_BODY_BYTES, RequestError, json_type_name, read_json_object
+from .http_util import (
+    MAX_BODY_BYTES,
+    RequestError,
+    json_type_name,
+    read_json_object,
+    token_matches,
+)
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -563,9 +569,9 @@ class _Handler(BaseHTTPRequestHandler):
             return True
         header = self.headers.get("Authorization", "")
         if header.startswith("Bearer "):
-            return secrets.compare_digest(header[7:], token)
+            return token_matches(header[7:], token)
         qtoken = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
-        return bool(qtoken) and secrets.compare_digest(qtoken, token)
+        return token_matches(qtoken, token)
 
     def _send(self, status: int, payload: dict) -> None:
         data = json.dumps(payload).encode("utf-8")
