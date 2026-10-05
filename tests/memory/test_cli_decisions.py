@@ -338,3 +338,31 @@ def test_query_status_unknown_is_a_usage_error(parser, project, capsys):
         parser.parse_args(["decisions", "query", "Syringe", str(project), "--status", "archived"])
     assert exc.value.code == 2
     assert "invalid choice" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ #
+# restore of an unknown id (was a KeyError traceback)
+# ------------------------------------------------------------------ #
+
+
+def test_restore_unknown_id_is_an_error_not_a_traceback(parser, project, capsys):
+    _record(DecisionStore(str(project)))
+    with pytest.raises(SystemExit) as exc:
+        _run(
+            parser,
+            ["decisions", "restore", "no-such-id", str(project), "--commit", "b" * 40],
+            capsys,
+        )
+    assert exc.value.code == 1
+    assert "Decision not found: no-such-id" in capsys.readouterr().err
+
+
+def test_restore_known_id_still_reanchors(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    out = _run(parser, ["decisions", "restore", rec.id, str(project), "--commit", "b" * 40], capsys)
+    assert f"Restored decision: {rec.id}" in out
+    got = store.get(rec.id)
+    assert got.status == "ACTIVE"
+    assert got.commit_sha == "b" * 40

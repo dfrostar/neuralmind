@@ -3245,6 +3245,10 @@ def cmd_decisions_export(args):
 def cmd_decisions_restore(args):
     """Re-validate a stale entry."""
     store = _get_decisions_store(args.project_path)
+    not_found = f"Decision not found: {args.decision_id}"
+    if store.get(args.decision_id) is None:
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
     commit = args.commit
     if not commit:
         try:
@@ -3258,7 +3262,11 @@ def cmd_decisions_restore(args):
         except Exception as e:
             print(f"Error resolving commit: {e}")
             sys.exit(1)
-    decision = store.restore(args.decision_id, new_commit_sha=commit)
+    try:
+        decision = store.restore(args.decision_id, new_commit_sha=commit)
+    except KeyError:  # removed between the check above and the update
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
     print(f"Restored decision: {decision.id}")
     print(f"  Status: {decision.status}")
     print(f"  Commit: {decision.commit_sha}")
