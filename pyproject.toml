@@ -74,6 +74,8 @@ keywords = [
     "read-deduplication",
     "decision-invalidation",
     "memory-governance",
+    "session-recap",
+    "session-continuity",
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",

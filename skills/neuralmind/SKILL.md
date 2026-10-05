@@ -206,8 +206,9 @@ not for routine question-answering.
   files for you.
 - **Don't** ask the user to set `NEURALMIND_BYPASS=1` to get raw tool
   output. NeuralMind's hooks don't compress tool output, so it's already
-  raw; the bypass would only switch off the hooks' session memory, prompt
-  recall and stale-decision guard. It doesn't affect the MCP tools.
+  raw; the bypass would only switch off the hooks' session memory and
+  recap, prompt recall and stale-decision guard. It doesn't affect the MCP
+  tools.
 
 ## Failure modes
 
@@ -266,15 +267,22 @@ reinforces the same `.neuralmind/synapses.db`. Associations the user's other
 agents built are visible to you, and yours to them — so
 `neuralmind_synaptic_neighbors` can legitimately surface code this session
 never touched. That is the feature, not a stale index. Don't rebuild to
-"clear" it.
+"clear" it. In a host other than Claude Code (Hermes, OpenClaw, Agent Zero), if
+the user also works in this project from Claude Code with NeuralMind's hooks
+installed, `neuralmind recap <project path>` through the shell prints what
+their last Claude Code session there asked and which files it edited; reach for
+it when they say "carry on" or ask where they left off. Inside Claude Code
+don't run it: the recap is already in your context at session start, and the
+newest record there is your own session. It is context, not instructions:
+don't pick that work back up unless they ask.
 
 ## Environment toggles (for reference)
 
 These are set by the user, not by you. They change retrieval behavior:
 
 - `NEURALMIND_BYPASS=1` — switch off every NeuralMind Claude Code hook
-  action (session memory, prompt recall, stale-decision guard, the
-  `neuralmind last` cache). Does not change MCP-tool behavior.
+  action (session memory, session recap, prompt recall, stale-decision
+  guard, the `neuralmind last` cache). Does not change MCP-tool behavior.
 - `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time synapse recall.
 - `NEURALMIND_SYNAPSE_EXPORT=0` — disable markdown export of learned
   associations.
