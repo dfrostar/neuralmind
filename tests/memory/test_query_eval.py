@@ -2,9 +2,9 @@
 
 ``tests/memory/fixtures/decision_queries.json`` holds agent-style questions
 with gold decision ids. ``neuralmind decisions eval --queries <that file>``
-scores search against them, and docs/wiki/Memory-Layer.md quotes the result:
-``test_wiki_quotes_the_measured_numbers`` fails when search changes until the
-page does.
+scores search against them in each mode (keyword, semantic, hybrid), and
+docs/wiki/Memory-Layer.md quotes the result: ``test_wiki_quotes_the_measured_numbers``
+fails when search changes until the page does.
 """
 
 from __future__ import annotations
@@ -23,6 +23,11 @@ from neuralmind.memory.eval import (
     MaintenanceEval,
     QuerySetEval,
     load_query_set,
+)
+from neuralmind.memory.semantic import (
+    SEARCH_MODES,
+    SemanticSearchUnavailableError,
+    load_default_embedder,
 )
 from neuralmind.memory.store import DecisionStore, _search_terms
 
@@ -115,27 +120,72 @@ def test_sentence_queries_find_their_answers(summary):
     assert sentences["recall"]["mean"] >= 0.9
 
 
-@requires_fts5
-def test_wiki_quotes_the_measured_numbers(summary, monkeypatch):
-    """Each row of the wiki's eval table is what the eval measures now."""
+def _spread(s):
+    return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})"
 
-    def spread(s):
-        return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})"
 
-    sentences, titles, negatives = summary["sentence"], summary[TITLE_KIND], summary["negative"]
-    n = sentences["queries"]
+def _wiki_rows() -> dict[str, list[str]]:
+    """Every table row on the wiki page: its cells after the first, keyed by the first."""
+    rows: dict[str, list[str]] = {}
+    for line in WIKI.read_text(encoding="utf-8").splitlines():
+        if line.startswith("| ") and line.endswith(" |"):
+            cells = [cell.strip() for cell in line[2:-2].split(" | ")]
+            rows.setdefault(cells[0], cells[1:])
+    return rows
+
+
+def _mode_cells(summary) -> dict[str, str]:
+    """What one mode's column of the wiki's eval table should say, by row label."""
+    sentences, paraphrases = summary["sentence"], summary["paraphrase"]
+    titles, negatives = summary[TITLE_KIND], summary["negative"]
+    n, p = sentences["queries"], paraphrases["queries"]
     first = titles["queries"] - len(titles["not_ranked_first"])
+    return {
+        f"Recall@5 on {n} questions, mean (range)": _spread(sentences["recall"]),
+        f"MRR on {n} questions, mean (range)": _spread(sentences["mrr"]),
+        f"Recall@5 on {p} paraphrases, mean (range)": _spread(paraphrases["recall"]),
+        f"MRR on {p} paraphrases, mean (range)": _spread(paraphrases["mrr"]),
+        "Paraphrases that return nothing": f"{paraphrases['returned_nothing']} of {p}",
+        "Exact titles ranked first": f"{first} of {titles['queries']}",
+        "Questions nothing answers that still return decisions": (
+            f"{len(negatives['false_positives'])} of {negatives['queries']}"
+        ),
+    }
+
+
+@requires_fts5
+@pytest.mark.parametrize("column, mode", enumerate(SEARCH_MODES))
+def test_wiki_quotes_the_measured_numbers(column, mode, monkeypatch):
+    """Each cell of the wiki's mode table is what the eval measures now.
+
+    The semantic and hybrid columns need the embedding model on disk, which
+    CI doesn't download (tests/test_onnx_embedder.py), so they are checked
+    wherever it is.
+    """
+    if mode != "keyword":
+        try:
+            load_default_embedder()
+        except SemanticSearchUnavailableError as e:
+            pytest.skip(f"the {mode} column needs the embedding model on disk: {e}")
+        monkeypatch.setenv("NEURALMIND_ORT_THREADS", "1")
+    harness = QuerySetEval(load_query_set(FIXTURE), modes=[mode])
+    measured = _mode_cells(harness.summarize(harness.outcomes(mode)))
+    rows = _wiki_rows()
+    wrong = {
+        label: (rows[label][column] if len(rows.get(label, [])) > column else None, value)
+        for label, value in measured.items()
+        if len(rows.get(label, [])) <= column or rows[label][column] != value
+    }
+    assert not wrong, f"Memory-Layer.md's {mode} column is out of date (quoted, measured): {wrong}"
+
+
+@requires_fts5
+def test_wiki_quotes_the_keyword_only_numbers(monkeypatch):
+    """The LIKE fallback and the maintenance replay are keyword-only rows."""
     maintenance = json.loads(MaintenanceEval(".", task_count=5).run())["memory_on"]["aggregate"]
     like = _summary(monkeypatch, like=True)["sentence"]
     rows = [
-        f"| Recall@5 on {n} questions, mean (range) | {spread(sentences['recall'])} |",
-        f"| MRR on {n} questions, mean (range) | {spread(sentences['mrr'])} |",
-        f"| Exact titles ranked first | {first} of {titles['queries']} |",
-        (
-            "| Questions nothing answers that still return decisions | "
-            f"{len(negatives['false_positives'])} of {negatives['queries']} |"
-        ),
-        f"| Recall@5 without FTS5 (LIKE fallback), mean (range) | {spread(like['recall'])} |",
+        f"| Recall@5 without FTS5 (LIKE fallback), mean (range) | {_spread(like['recall'])} |",
         (
             "| Maintenance tasks, recall / precision at limit 10 | "
             f"{maintenance['recall_rate']:.0%} / {maintenance['precision']:.0%} |"

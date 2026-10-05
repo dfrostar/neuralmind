@@ -187,7 +187,7 @@ Cheval-Volant LLC hosts nothing. The README's statement that NeuralMind "transmi
 | mem0 | NeuralMind `/v1` | Python client | Notes |
 |---|---|---|---|
 | `add(messages, user_id=…)` | `POST /v1/projects/{id}/memories` | `p.memories.add(title, rationale, files=[…])` | An explicit record; no LLM extraction. The `files` field ties it to code, so it goes STALE when those files change (the existing invalidation rules). From PR 1 the response also carries `possible_duplicates` (§4.1 G3). |
-| `search(query, user_id=…)` | `POST /v1/projects/{id}/memories/search` | `p.memories.search(q)` | PR 1: FTS5 keyword search over **title and rationale only** (`store.py:147-153`, `:668`), ranked by bm25 and now returning a `score` (G4). PR M adds semantic and hybrid modes (G1). |
+| `search(query, user_id=…)` | `POST /v1/projects/{id}/memories/search` | `p.memories.search(q)` | PR 1: FTS5 keyword search over **title and rationale only** (`store.py:147-153`, `:668`), ranked by bm25 and now returning a `score` (G4). Semantic and hybrid modes shipped in v4.7.0 (G1; `DecisionStore.search(mode=…)`); the route passes `mode` through. |
 | `get_all(user_id=…)` with metadata filters | `GET /v1/projects/{id}/memories` | `p.memories.list(status=…, tags=[…], …)` | PR 1 filters: status, file, tag, type, author, created range, minimum confidence (G5) |
 | `get(memory_id)` | `GET /v1/projects/{id}/memories/{mid}` | `p.memories.get(mid)` | |
 | `update(memory_id, …)` | `PATCH /v1/projects/{id}/memories/{mid}` | `p.memories.update(mid, …)` | Amend semantics, like `neuralmind decisions amend` |
@@ -208,7 +208,7 @@ The table above covers mem0's interface. This section covers its *memory feature
 
 | # | mem0 feature | NeuralMind today | What we build | PR | Cost |
 |---|---|---|---|---|---|
-| G1 | Search by meaning | Decision search is keyword-only: FTS5 over `title` and `rationale` (`store.py:147-153`). A query for "sqlite concurrency" won't find a decision about "WAL locking". | Embed decisions with the local MiniLM embedder already used for code (`OnnxMiniLMEmbedder.embed`, `onnx_embedder.py:192`), and fuse with the FTS ranking by reciprocal rank fusion. `mode=keyword\|semantic\|hybrid`. | M | Medium; highest value |
+| G1 | Search by meaning | **Shipped in v4.7.0** (`memory/semantic.py`, `DecisionStore.search`; see §4.2 "Semantic search" for where it differs from this design). Before: keyword-only, FTS5 over `title` and `rationale`, so a query for "sqlite concurrency" wouldn't find a decision about "WAL locking". | Embed decisions with the local MiniLM embedder already used for code (`OnnxMiniLMEmbedder.embed`), and fuse with the FTS ranking by reciprocal rank fusion. `mode=keyword\|semantic\|hybrid`. | M (shipped alone) | Medium; highest value |
 | G2 | `history(memory_id)` | Only two tables, `decisions` and `meta`. `update()` overwrites the row (`store.py:454`), so an amend loses the earlier rationale. Invalidate keeps only a note appended to `evidence`. | An append-only `decision_events` table (created, amended with old → new values, stale, invalidated, restored, feedback), and `GET …/history` | M | Low–medium |
 | G3 | Deduplication on add | Recording the same decision twice creates two records | On create, return `possible_duplicates`: up to 3 ACTIVE decisions that share a file with the new one and match its title in FTS. Advisory only; it never blocks or merges. `record_edit_activity` already does the same for code (`synapse_feedback.py:119`). | 1 | Low |
 | G4 | Relevance scores | FTS ranks by `bm25()` (`store.py:758`) and discards the value | An additive `DecisionStore.query(…, with_scores=True)`. v1 returns `score`: higher is better, comparable only within one response, `null` on the LIKE fallback. | 1 | Trivial |
@@ -247,7 +247,15 @@ PR M is independent of server mode. It needs PR 1's `/v1` routing and can land b
 - `GET …/memories/{mid}/history` returns events oldest first, paginated.
 - A hard delete removes the record but **keeps** its events, flagged `deleted`, so the audit trail survives. tier2's hash-chained audit can consume the same events.
 
-**Semantic search.**
+**Semantic search.** *Shipped in v4.7.0 on its own, ahead of the rest of PR M* (no schema v2 migration, no `decision_events`, no FTS rebuild). It differs from the design below in four places:
+- It embeds `title + rationale`, the fields keyword search indexes, not `+ evidence`. `invalidate`, `mark_stale` and `restore` append lifecycle notes to evidence, which would re-embed on every status change and mix notes into the meaning. It also keeps the docs' one list of searched fields true in every mode (`tests/memory/test_search_scope_docs.py`). Evidence joins every mode together when the FTS rebuild lands.
+- Every surface embeds lazily, at search time: the first semantic or hybrid search fills missing or stale vectors in one pass. Nothing embeds at write time, the daemon included, so recording stays model-free.
+- Search never downloads the model (`OnnxMiniLMEmbedder.local_model_dir`). Without it, hybrid returns keyword results with a notice, and `semantic` raises `SemanticSearchUnavailableError`.
+- Semantic results below a cosine of 0.30 are dropped (`semantic.MIN_SIMILARITY`), so an unanswerable question doesn't get the nearest decisions anyway. Hybrid uses RRF with k = 60 over pools of `max(4 × limit, 20)`. The confidence multiplier under "Feedback" waits for G9.
+
+The paraphrase queries, the floor and the keep rule for the default mode were committed before semantic search was run on the eval set (`_paraphrase_preregistration` in `tests/memory/fixtures/decision_queries.json`). Hybrid passed and is the default; the per-mode results and misses are in `docs/wiki/Memory-Layer.md#eval-harness`.
+
+The original design:
 - **What gets embedded.** `title + rationale + evidence`, using `OnnxMiniLMEmbedder` (`onnx_embedder.py:59, 192`).
 - **When.** The daemon already has the embedder warm, so it embeds at write time. The CLI's direct mode doesn't embed at write time. A missing vector, or a stale one (`content_sha` mismatch), is filled in lazily by the next search or by a maintenance job.
 - **How it searches.** Brute-force cosine over the project's vectors in numpy. A repository holds hundreds to low thousands of decisions, so no approximate-nearest-neighbour index or turbovec dependency is needed. Revisit only if a measurement says otherwise.
@@ -415,7 +423,7 @@ The **PR** column is the delivery PR (§10). `{id}` is a project id, `{mid}` a m
 | `POST /v1/projects/{id}/validate` | `{write=false}` | `write=true` writes IR files. Allowed only in loopback mode or for the admin role. | 1 |
 | `POST /v1/projects/{id}/memories` | Record a decision. The response includes `possible_duplicates` (G3). PR M adds the `agent`, `session_id` and `review_by` fields. | Writes `memory.db` | 1 |
 | `GET /v1/projects/{id}/memories` | `?status=ACTIVE\|STALE\|INVALIDATED\|ALL&file=…&tag=…&type=…&author=…&created_after=…&created_before=…&min_confidence=…&limit=&cursor=` (G5) | — | 1 |
-| `POST /v1/projects/{id}/memories/search` | `{query, limit=10, status="ACTIVE", view="full"\|"compact"}` plus the same filters as list. Each result carries a `score` (G4). PR M adds `mode="keyword"\|"semantic"\|"hybrid"` (G1). | — | 1 |
+| `POST /v1/projects/{id}/memories/search` | `{query, limit=10, status="ACTIVE", view="full"\|"compact"}` plus the same filters as list. Each result carries a `score` (G4). `mode="keyword"\|"semantic"\|"hybrid"` (G1, in the store since v4.7.0). | — | 1 |
 | `GET /v1/projects/{id}/memories/{mid}` | One record | — | 1 |
 | `PATCH /v1/projects/{id}/memories/{mid}` | Amend the record | Writes | 1 |
 | `POST /v1/projects/{id}/memories/{mid}/invalidate` | `{reason}` | Writes | 1 |

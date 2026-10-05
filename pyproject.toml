@@ -71,6 +71,9 @@ keywords = [
     "read-deduplication",
     "decision-invalidation",
     "memory-governance",
+    "semantic-decision-search",
+    "decision-memory",
+    "hybrid-search",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

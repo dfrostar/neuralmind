@@ -278,7 +278,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/CLI-Reference.html</loc>
-    <lastmod>2026-10-01</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -476,7 +476,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Memory-Layer.html</loc>
-    <lastmod>2026-09-26</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
@@ -572,7 +572,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/decision-memory-across-commits.html</loc>
-    <lastmod>2026-10-03</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -585,6 +585,18 @@
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/ab-test-a-ranking-change.html</loc>
     <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.7.0.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/find-decisions-by-meaning.html</loc>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
