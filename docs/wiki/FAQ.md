@@ -290,9 +290,9 @@ neuralmind install-hooks .
 There is no shared index server or database backend, and real-time
 cross-machine sync is roadmap-only. What a team can share is through git:
 
-- **Backend settings:** commit `neuralmind-backend.yaml` so every checkout
-  uses the same backend. It doesn't share a role policy: the MCP server
-  ignores `security.roles`.
+- **Policy:** commit `neuralmind-backend.yaml` so every checkout uses the
+  same backend settings, role policy (`security.roles`), and rate limit. The
+  MCP server in v4.6.0 and earlier ignored the role and rate-limit settings.
 - **Learned memory (optional):** `neuralmind memory publish` writes
   `.neuralmind-team-memory.json`. Once it's committed, teammates' agents merge
   it on their next session start or build.
@@ -309,7 +309,7 @@ can read the project's `.neuralmind/` directory.
 
 Within that, `security.roles` in `neuralmind-backend.yaml` sets which MCP tools
 each role can call. Callers declare their own role, so leave `admin` out of the
-policy to cap what any caller can reach. (The MCP server in v4.5.1 and earlier
+policy to cap what any caller can reach. (The MCP server in v4.6.0 and earlier
 ignored `security.roles`.) See the
 [Security Guide](../SECURITY-GUIDE.md#access-control).
 

@@ -103,7 +103,7 @@ security:
     window_seconds: 60
 ```
 
-The MCP server in v4.5.1 and earlier built its security manager without
+The MCP server in v4.6.0 and earlier built its security manager without
 reading this file, so both settings were ignored there.
 
 The rate limit keys on the declared actor, so it stops a runaway agent, not a
@@ -497,7 +497,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Secrets exposed in code** | High | Critical | `neuralmind scan-for-secrets` before indexing. It is a separate step, not automatic. `build --redact-secrets` scrubs embedded text but not node labels or `graph.json`. The Bash output cache is redacted automatically |
 | **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
-| **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls, fixed at 60 calls per 60 s (the server ignores `security.rate_limit`). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
+| **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
 | **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared, so least privilege comes from OS accounts |
 | **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 

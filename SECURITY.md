@@ -248,7 +248,7 @@ exceptions that policy has accepted.
    - To cap what any caller can claim, set `security.roles` in `neuralmind-backend.yaml`.
      It replaces the default policy, and a role it doesn't list gets no tools, so a
      policy without `admin` keeps every caller out of the admin-only tools. (The MCP
-     server in v4.5.1 and earlier ignored this setting.)
+     server in v4.6.0 and earlier ignored this setting.)
    - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min, `security.rate_limit`)
      is enforced alongside the role check. It keys on the declared actor, so it stops a runaway
      agent, not a caller that changes its actor name.
