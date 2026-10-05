@@ -527,3 +527,17 @@ def test_handler_has_a_request_timeout():
     # http.server's default is None: no timeout at all.
     assert daemon_mod._Handler.timeout == daemon_mod.REQUEST_TIMEOUT_SECONDS
     assert 0 < daemon_mod.REQUEST_TIMEOUT_SECONDS <= 120
+
+
+def test_dispatch_answers_a_missing_project_with_404(tmp_path):
+    # The real registry builds a real NeuralMind, which refuses a path that
+    # doesn't exist; that's the client's mistake, not a daemon error (500).
+    ctx = daemon_mod.DaemonContext(
+        registry=daemon_mod.ProjectRegistry(), jobs=daemon_mod.JobManager(), version="test"
+    )
+    missing = tmp_path / "no-such-project"
+    status, payload = daemon_mod.dispatch(
+        ctx, "POST", "/query", {"project": str(missing), "question": "q"}
+    )
+    assert status == 404 and payload["code"] == "project_not_found"
+    assert not missing.exists()

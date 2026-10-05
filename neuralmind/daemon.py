@@ -50,6 +50,7 @@ from .http_util import (
     read_json_object,
     token_matches,
 )
+from .paths import ProjectNotFoundError
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -481,6 +482,9 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
         raise DaemonError(404, f"no route for {method} {route}")
     except DaemonError as exc:
         return exc.status, {"error": exc.message}
+    except ProjectNotFoundError as exc:
+        # A mistyped project path is the client's error, not the daemon's.
+        return 404, {"error": str(exc), "code": "project_not_found"}
     except Exception as exc:  # never leak a traceback across the wire
         return 500, {"error": f"{type(exc).__name__}: {exc}"}
 
