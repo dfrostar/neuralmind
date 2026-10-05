@@ -116,10 +116,10 @@ with `reason: config` instead of falling back to defaults that may be looser.
 
 *(v4.7.1+)* Two more mistakes refuse every call with `reason: config` too:
 
-- a policy file that doesn't parse, when its text names `security`, `roles`,
-  `rate_limit`, `identity` or `require_encrypted_storage` (other unparseable
-  files still read as empty, so a typo in backend tuning doesn't block the
-  server);
+- a policy file that doesn't parse, when its text outside comments names
+  `security`, `roles`, `rate_limit`, `identity` or `require_encrypted_storage`
+  (other unparseable files still read as empty, so a typo in backend tuning
+  doesn't block the server);
 - a `security:` or `roles:` key left empty, which YAML reads as `null` and is
   what's left when every entry under it is commented out. Write `roles: {}` to
   grant nothing, or remove the key to use the defaults. An empty

@@ -13,11 +13,12 @@ If `neuralmind-backend.yaml` has no `security:` section, nothing changes.
 
 ## What changed
 
-- **A policy file that doesn't parse is refused** when its text names a
-  security setting: `security`, `roles`, `rate_limit`, `identity` or
-  `require_encrypted_storage`. Every MCP call returns `code: "security_denied"`,
-  `reason: "config"`, and an error quoting the parse failure. v4.7.0 did this
-  only for files naming `identity` or `require_encrypted_storage`. Other
+- **A policy file that doesn't parse is refused** when its text, outside
+  comments, names a security setting: `security`, `roles`, `rate_limit`,
+  `identity` or `require_encrypted_storage`. Every MCP call returns
+  `code: "security_denied"`, `reason: "config"`, and an error quoting the parse
+  failure. v4.7.0 did this only for files naming `identity` or
+  `require_encrypted_storage`, and counted a mention in a comment. Other
   unparseable files still read as empty, so a typo in backend tuning doesn't
   block the server.
 - **A `security:` or `roles:` key left empty is refused.** YAML reads a key

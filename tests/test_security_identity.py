@@ -131,8 +131,12 @@ def test_an_unparseable_policy_that_names_enforcement_fails_closed(temp_project)
     assert "does not parse" in settings.problem
 
 
-def test_an_unparseable_config_without_enforcement_keeps_defaults(temp_project):
-    _config(temp_project, "backend: [turbovec\n")
+@pytest.mark.parametrize(
+    "body",
+    ["backend: [turbovec\n", "backend: [turbovec\n# identity: os is set on the server\n"],
+)
+def test_an_unparseable_config_without_enforcement_keeps_defaults(temp_project, body):
+    _config(temp_project, body)
     settings = load_security_settings(temp_project)
     assert settings.identity == IDENTITY_DECLARED
     assert settings.require_encrypted_storage is False

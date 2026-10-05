@@ -318,10 +318,19 @@ class TestErrorCodes:
         assert data["reason"] == "config"
         assert "Refusing MCP calls" in data["error"]
 
-    def test_an_unparseable_file_that_names_no_policy_is_still_ignored(self, temp_project):
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "backend: [turbovec\n",
+            # A comment that mentions a setting doesn't make it a policy.
+            "backend: [turbovec\n# security is configured elsewhere\n",
+            "backend: [turbovec  # roles live in another file\n",
+        ],
+    )
+    def test_an_unparseable_file_that_names_no_policy_is_still_ignored(self, temp_project, body):
         """Only a file that names a security setting fails closed; a typo in
         backend tuning keeps the general loader's leniency."""
-        self._config(temp_project, "backend: [turbovec\n")
+        self._config(temp_project, body)
         data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
         assert "error" not in data, data
 
