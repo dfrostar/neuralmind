@@ -36,13 +36,24 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.8.0 — `audit verify` checks the whole log (October 2026)
+### v4.8.0 — A new session starts with where the last one left off (October 2026)
 
-`neuralmind audit verify` now fails on a record without a hash once the chain
-has started, on any line that isn't a JSON object, and on a `prev_sha256` that
-doesn't match the record before it. v4.7.0 and earlier passed all three. It
-still can't detect records deleted from the end. See the
+A fresh or cleared Claude Code session now starts with a short recap of the
+previous one in the project: its first prompt, its last three, and the files it
+edited, labelled as context rather than instructions. The `UserPromptSubmit` and
+Edit/Write hooks record them (prompts credential-redacted) in
+`.neuralmind/recaps/`, and the `SessionStart` hook injects the recap; there is no
+model call and no new hook. `neuralmind recap` shows what the next session will
+see, `neuralmind recap --clear` deletes the records, and
+`NEURALMIND_SESSION_RECAP=0` turns it off. Nothing about its effect is measured
+yet. Walkthrough:
+[Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md).
+
+Also in v4.8.0: `neuralmind audit verify` now fails on a record without a
+hash once the chain has started, on any line that isn't a JSON object, and on a
+`prev_sha256` that doesn't match the record before it. v4.7.0 and earlier
+passed all three. It still can't detect records deleted from the end.
 
 ### v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage (October 2026)
 
@@ -472,8 +483,9 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users, install the lifecycle hooks (session memory, prompt-time
-recall, the stale-decision guard, and a Bash output cache for `neuralmind last`):
+Claude Code users, install the lifecycle hooks (session memory, a recap of the
+previous session on a fresh start, prompt-time recall, the stale-decision guard,
+and a Bash output cache for `neuralmind last`):
 
 ```bash
 neuralmind install-hooks .

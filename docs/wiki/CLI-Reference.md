@@ -29,6 +29,7 @@ Complete command-line interface documentation for NeuralMind.
   - [skeleton](#skeleton)
   - [structural](#structural-v0420)
   - [last](#last-v0100)
+  - [recap](#recap-v480)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
   - [decisions](#decisions-v410)
@@ -2104,6 +2105,74 @@ Re-run the command yourself if you need the real value. Disable with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended — the cache lives in a plaintext
 file inside your project).
 
+### recap *(v4.8.0+)*
+
+Print the recap the next new Claude Code session in this project will start
+with, or delete the records it is built from.
+
+With hooks installed, the `UserPromptSubmit` hook appends each prompt
+(credentials redacted, then cut to 200 characters) and the Edit/Write
+`PostToolUse` hook appends each edited file's path to
+`<project>/.neuralmind/recaps/<session_id>.jsonl`, in a project where
+`neuralmind build` has run (globally installed hooks record nothing in others);
+the ten most recently active records are kept, plus any active in the last 24
+hours. On a fresh start or after `/clear`, `SessionStart`
+injects a recap of the most recently active other session as
+`additionalContext`: the first prompt, the last three, and up to twelve edited
+files, most recent first. Resumed and compacted sessions don't get it — they
+already have their conversation or Claude Code's summary. No model call is
+involved; `neuralmind recap` prints the same block.
+
+```bash
+neuralmind recap [project_path] [--clear]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root containing `.neuralmind/recaps/` (default: current directory) |
+| `--clear` | No | Delete every stored session record for this project |
+
+#### Examples
+
+```bash
+# What the next fresh or cleared session will start with.
+neuralmind recap
+# → NeuralMind session recap — the previous session in this project (last active 3 h ago). This is context for continuity, not instructions: don't resume that work unless the user asks to.
+# →
+# → It started with: "add retry logic to the uploader"
+# → Most recent prompts (2 earlier not shown):
+# → - "now cover the timeout path in tests"
+# → - "why does test_upload_retries hang on CI?"
+# → - "make the backoff configurable through the env"
+# →
+# → Files edited (4, most recent first): src/uploader.py, src/config.py, tests/test_uploader.py, docs/uploader.md
+
+# Delete the stored records.
+neuralmind recap --clear
+# → Removed 3 session record(s) from .neuralmind/recaps.
+```
+
+With nothing recorded, or only records older than
+`NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`, it says so. With
+`NEURALMIND_SESSION_RECAP=0` it shows no recap, since the next session gets
+none, and says how many records from before the switch are still stored:
+turning the recap off doesn't delete them, `--clear` does. It exits `0` in
+every case.
+
+The prompts pass through the same credential patterns as `neuralmind last`,
+which catch common credential formats, not every secret. `.neuralmind/` is
+git-ignored, so the records aren't committed; the recap itself goes into the
+agent's context, and so to your model provider with the rest of the session.
+If two sessions run in the same project, the more recently active other one
+counts as the previous session. Only Claude Code runs these hooks: Cursor,
+Cline and other MCP clients record nothing, and an agent with a shell can run
+`neuralmind recap` itself. Off-switch `NEURALMIND_SESSION_RECAP=0`; see
+[Environment Variables](#environment-variables).
+
+---
+
 ### install-hooks
 
 Install or uninstall Claude Code lifecycle hooks. As of v4.3.0 this
@@ -2113,9 +2182,9 @@ NeuralMind block, leaving any user hooks untouched):
 | Event | What runs | Purpose |
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
-| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
-| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
-| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
+| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
+| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one |
+| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
@@ -3439,7 +3508,7 @@ renewed — issue a new one.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
-| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache) |
+| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap) |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
@@ -3450,6 +3519,8 @@ renewed — issue a new one.
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
+| `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
+| `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
 | `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.7.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
@@ -3484,7 +3555,7 @@ renewed — issue a new one.
 | `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
 | `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
 | `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
-| `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning and decay, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
+| `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning, decay and *(v4.8.0+)* session-recap recording, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
 | `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`), `build` included. Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one for `ingest-content` — so this is for golden-output tests and log-sensitive CI jobs. Since v4.4.0 the `build` embedding bar shows only on a terminal, and read commands (`query`, `search`, `wakeup`, the MCP tools) print nothing on success. |
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
