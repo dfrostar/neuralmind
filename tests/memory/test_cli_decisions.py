@@ -406,3 +406,41 @@ def test_invalidate_known_id_still_succeeds(parser, project, capsys):
     )
     assert f"Invalidated decision: {rec.id}" in out
     assert store.get(rec.id).status == "INVALIDATED"
+
+
+# ------------------------------------------------------------------ #
+# record --confidence is 0-1 (7 was accepted and stored as 1.0)
+# ------------------------------------------------------------------ #
+
+
+def _record_argv(project, confidence):
+    return [
+        "decisions",
+        "record",
+        "--title",
+        "t",
+        "--rationale",
+        "r",
+        "--commit",
+        "a" * 40,
+        "--confidence",
+        confidence,
+        str(project),
+    ]
+
+
+@pytest.mark.parametrize("bad", ["7", "-0.1", "1.5", "nan", "inf", "abc"])
+def test_record_rejects_confidence_outside_0_to_1(parser, project, capsys, bad):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(_record_argv(project, bad))
+    assert exc.value.code == 2
+    assert "confidence must be a number from 0 to 1" in capsys.readouterr().err
+    assert not (project / ".neuralmind").exists()  # nothing recorded
+
+
+@pytest.mark.parametrize("good, stored", [("0", 0.0), ("0.4", 0.4), ("1", 1.0)])
+def test_record_accepts_confidence_in_range(parser, project, capsys, good, stored):
+    out = _run(parser, _record_argv(project, good), capsys)
+    assert "Recorded decision" in out
+    (decision,) = DecisionStore(str(project)).list_all()
+    assert decision.confidence == stored

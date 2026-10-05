@@ -21,7 +21,7 @@ from typing import Any
 
 from ..paths import ProjectNotFoundError
 from .semantic import SemanticSearchUnavailableError, resolve_mode
-from .store import DecisionSearch, DecisionStore, normalize_status_filter
+from .store import DecisionSearch, DecisionStore, normalize_status_filter, validate_confidence
 
 # ---------------------------------------------------------------------------
 # Store accessor
@@ -470,6 +470,8 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "confidence": {
                     "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
                     "description": "0.0-1.0 certainty that this decision is correct (default: 1.0)",
                 },
                 "evidence": {
@@ -660,6 +662,13 @@ def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> str | None:
             resolve_mode(arguments["mode"])
         except ValueError as e:
             return f"argument 'mode': {e}"
+    # The store clamps an out-of-range confidence (7 was stored as 1.0), so
+    # reject it here, with NaN and infinities, before anything is written.
+    if name == "neuralmind_record_decision" and arguments.get("confidence") is not None:
+        try:
+            validate_confidence(arguments["confidence"])
+        except ValueError as e:
+            return f"argument 'confidence': {e}"
     return None
 
 

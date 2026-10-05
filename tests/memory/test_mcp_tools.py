@@ -249,6 +249,34 @@ def test_invalidate_db_error_is_a_storage_error(project):
     assert "status" not in out
 
 
+@pytest.mark.parametrize("bad", [7, -0.5, 1.5, float("nan"), float("inf"), "0.5"])
+def test_record_rejects_confidence_outside_0_to_1(project, bad):
+    """The store clamped these (7 was stored as 1.0); the tool now refuses them."""
+    out = json.loads(
+        handle_tool_call(
+            "neuralmind_record_decision",
+            {"project_path": project, "title": "t", "rationale": "r", "confidence": bad},
+        )
+    )
+    assert out["code"] == "invalid_request"
+    assert "confidence" in out["error"]
+    assert tool_audit_decisions(project)["count"] == 0
+
+
+def test_record_rejects_confidence_through_the_main_server(project):
+    from neuralmind.mcp_server import handle_tool_call as server_handle_tool_call
+
+    out = json.loads(
+        server_handle_tool_call(
+            "neuralmind_record_decision",
+            {"project_path": project, "title": "t", "rationale": "r", "confidence": 7},
+        )
+    )
+    assert out["code"] == "invalid_request"
+    assert "confidence" in out["error"]
+    assert tool_audit_decisions(project)["count"] == 0
+
+
 def test_invalidate_unknown_id_through_the_main_server(project):
     from neuralmind.mcp_server import handle_tool_call as server_handle_tool_call
 

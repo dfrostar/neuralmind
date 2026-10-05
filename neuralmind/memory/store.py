@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import sqlite3
 import uuid
@@ -112,6 +113,20 @@ def normalize_status_filter(status: str | None) -> str | None:
         valid = ", ".join([*sorted(VALID_STATUSES), STATUS_FILTER_ALL])
         raise ValueError(f"unknown status filter {status!r}; expected one of {valid}")
     return value
+
+
+def validate_confidence(value: Any) -> float:
+    """Return ``value`` as a decision confidence, or raise ``ValueError``.
+
+    A confidence is a finite number from 0 to 1. The CLI and MCP record
+    paths check with this before anything is stored: ``--confidence 7`` used
+    to be accepted and silently stored as 1.0, and so did ``nan``.
+    """
+    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    # NaN fails the range test too: every comparison with it is False.
+    if not is_number or not 0.0 <= value <= 1.0:
+        raise ValueError(f"confidence must be a number from 0 to 1, got {value!r}")
+    return float(value)
 
 
 class DecisionRecord(BaseModel):
@@ -506,7 +521,10 @@ class DecisionStore:
             commit_sha: Git SHA anchoring the decision to a specific state.
             files_affected: Paths of files this decision concerns.
             decision_type: One of VALID_DECISION_TYPES.
-            confidence: 0.0–1.0 certainty that this decision is correct.
+            confidence: 0.0–1.0 certainty that this decision is correct. A
+                finite value outside the range is clamped (the CLI and MCP
+                reject it up front, see validate_confidence); NaN or an
+                infinity raises ValueError.
             status: One of VALID_STATUSES.
             author: Optional identifier for who made the decision.
             evidence: URLs / refs / doc lines supporting the decision.
@@ -517,6 +535,9 @@ class DecisionStore:
             created_at: Optional explicit timestamp (defaults to now).
             updated_at: Optional explicit timestamp (defaults to now).
         """
+        if not math.isfinite(confidence):
+            # The clamp below can't place these: NaN came out as 1.0.
+            raise ValueError(f"confidence must be a finite number, got {confidence!r}")
         now = datetime.now(timezone.utc)
         files_affected_norm = [f.replace("\\", "/") for f in (files_affected or [])]
         rec = DecisionRecord(

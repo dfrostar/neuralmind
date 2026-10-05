@@ -6112,6 +6112,18 @@ def _existing_project_dir(value: str) -> str:
     return value
 
 
+def _confidence_arg(value: str) -> float:
+    """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
+    from neuralmind.memory.store import validate_confidence
+
+    try:
+        return validate_confidence(float(value))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"confidence must be a number from 0 to 1, got {value!r}"
+        ) from None
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the full CLI parser tree.
 
@@ -6990,7 +7002,9 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("--type", default="ARCHITECTURE", help="Decision type")
     d_record.add_argument("--rejected", nargs="*", help="Rejected alternatives")
     d_record.add_argument("--evidence", nargs="*", help="Supporting evidence")
-    d_record.add_argument("--confidence", type=float, default=1.0, help="Confidence 0-1")
+    d_record.add_argument(
+        "--confidence", type=_confidence_arg, default=1.0, help="Confidence 0-1 (default: 1.0)"
+    )
     d_record.add_argument("--tags", nargs="*", help="Tags for categorization")
     d_record.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_record.set_defaults(func=cmd_decisions_record)

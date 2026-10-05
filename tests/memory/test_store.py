@@ -264,6 +264,29 @@ def test_confidence_clamped(store):
     assert got.confidence <= 1.0
 
 
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_confidence_is_rejected(store, bad):
+    """The clamp can't place these: NaN used to be stored as confidence 1.0."""
+    with pytest.raises(ValueError, match="finite"):
+        _record(store, confidence=bad)
+    assert store.list_all(status=None) == []
+
+
+@pytest.mark.parametrize("good", [0, 0.0, 0.25, 1, 1.0])
+def test_validate_confidence_accepts_the_range(good):
+    from neuralmind.memory.store import validate_confidence
+
+    assert validate_confidence(good) == float(good)
+
+
+@pytest.mark.parametrize("bad", [7, -0.1, 1.0001, float("nan"), float("inf"), True, "0.5", None])
+def test_validate_confidence_rejects_everything_else(bad):
+    from neuralmind.memory.store import validate_confidence
+
+    with pytest.raises(ValueError, match="from 0 to 1"):
+        validate_confidence(bad)
+
+
 def test_invalid_commit_sha_still_records(store):
     # TRD says invalid commit_sha -> validation error; store is fail-open.
     # Document actual behavior: empty/invalid SHA is accepted.
