@@ -5175,13 +5175,14 @@ def cmd_install_hermes_plugin(args):
             print("  `hermes` isn't on PATH: run `hermes plugins disable neuralmind` yourself.")
         return
     try:
-        result = install(args.project_path, home=home, enable=not args.no_enable)
+        result = install(args.project_path, home=home, enable=not args.no_enable, unpin=args.unpin)
     except FileNotFoundError as exc:
         print(f"✗ {exc}")
         sys.exit(1)
     print(f"✓ NeuralMind plugin installed at {result['path']}")
     if result["project"]:
-        print(f"  Project: {result['project']}")
+        kept = "" if args.project_path else " (kept from the earlier install; --unpin clears it)"
+        print(f"  Project: {result['project']}{kept}")
         if not result["built"]:
             print(
                 "  ⚠ That project isn't built, and the plugin does nothing until it is: "
@@ -5192,7 +5193,12 @@ def cmd_install_hermes_plugin(args):
             "  Project: the directory Hermes runs in (TERMINAL_CWD, else its current "
             "directory). Pass a path to pin one — a gateway session has no project directory."
         )
-    if result["enabled"] is True:
+    if not result["initialised"]:
+        print(
+            f"  ⚠ {home} has no Hermes config yet, so the plugin isn't enabled. Set Hermes up "
+            "first, then run `hermes plugins enable neuralmind`."
+        )
+    elif result["enabled"] is True:
         print("  Enabled in Hermes.")
     elif result["enabled"] is False:
         print("  ⚠ `hermes plugins enable neuralmind` failed; run it yourself.")
@@ -7559,14 +7565,20 @@ def build_parser() -> argparse.ArgumentParser:
     # install-hermes-plugin — the same per-turn context for Hermes-Agent
     hermes_p = subparsers.add_parser(
         "install-hermes-plugin",
-        help="Install/uninstall NeuralMind's Hermes-Agent plugin (related files, decisions "
-        "and the session recap added to each Hermes turn)",
+        help="Install/uninstall NeuralMind's Hermes-Agent plugin (related files and decisions "
+        "added to every Hermes turn, and the last session's recap to a session's first)",
     )
     hermes_p.add_argument(
         "project_path",
         nargs="?",
         default=None,
-        help="Project the plugin serves (default: the directory Hermes runs in)",
+        help="Project the plugin serves (default: the one pinned by an earlier install, "
+        "else the directory Hermes runs in)",
+    )
+    hermes_p.add_argument(
+        "--unpin",
+        action="store_true",
+        help="Forget the pinned project, so the plugin follows the directory Hermes runs in",
     )
     hermes_p.add_argument("--uninstall", action="store_true", help="Disable and remove the plugin")
     hermes_p.add_argument(
@@ -7577,7 +7589,8 @@ def build_parser() -> argparse.ArgumentParser:
     hermes_p.add_argument(
         "--hermes-home",
         default=None,
-        help="Hermes home directory (default: $HERMES_HOME, else ~/.hermes)",
+        help="Hermes home directory (default: $HERMES_HOME, else ~/.hermes, or "
+        "%%LOCALAPPDATA%%\\hermes on Windows); a Hermes profile has its own home",
     )
     hermes_p.set_defaults(func=cmd_install_hermes_plugin)
 

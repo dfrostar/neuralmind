@@ -32,6 +32,7 @@ def _isolate(monkeypatch, tmp_path):
         monkeypatch.delenv(var, raising=False)
     # No installed config.json next to the plugin module.
     monkeypatch.setattr(plugin, "_config", dict)
+    monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", set())
     monkeypatch.chdir(tmp_path)
 
 
@@ -220,6 +221,30 @@ def test_edits_not_recorded(tmp_path, calls, sync_threads, kwargs):
     assert calls == []
 
 
+def test_subagent_edits_are_not_recorded(tmp_path, calls, sync_threads):
+    # Hermes's post_tool_call has no parent_session_id: the subagent is known by
+    # the session id its own pre_llm_call reported first.
+    _built(tmp_path)
+    plugin.on_pre_llm_call(
+        session_id="child", user_message="do X", is_first_turn=True, parent_session_id="s1"
+    )
+    plugin.on_post_tool_call(tool_name="write_file", args={"path": "a.py"}, session_id="child")
+    plugin.on_post_tool_call(tool_name="write_file", args={"path": "b.py"}, session_id="s1")
+    assert [p["session_id"] for _, p in calls] == ["s1"]
+
+
+def test_hermes_error_status_is_not_recorded(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={"path": "a.py", "old_string": "x", "new_string": "y"},
+        result="Error: no match",
+        status="error",
+        session_id="s1",
+    )
+    assert calls == []
+
+
 def test_child_env_drops_hermes_python_setup(monkeypatch):
     monkeypatch.setenv("PYTHONPATH", "/hermes/site-packages")
     monkeypatch.setenv("VIRTUAL_ENV", "/hermes/venv")
@@ -290,6 +315,7 @@ def test_install_needs_a_hermes_home(tmp_path):
 def test_enable_runs_hermes_with_the_home(tmp_path, monkeypatch):
     home = tmp_path / "hermes"
     home.mkdir()
+    (home / "config.yaml").write_text("model: x\n")
     seen = {}
 
     class Done:
@@ -312,9 +338,50 @@ def test_enable_runs_hermes_with_the_home(tmp_path, monkeypatch):
     assert seen["home"] == str(home)
 
 
+def test_never_enables_in_an_uninitialised_home(tmp_path, monkeypatch):
+    # `hermes plugins enable` in an empty home runs Hermes's first-run setup,
+    # which rewrites the shared Hermes launchers to point at that directory.
+    home = tmp_path / "hermes"
+    home.mkdir()
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("hermes must not run against an uninitialised home")
+
+    monkeypatch.setattr(hermes_install.subprocess, "run", boom)
+    result = hermes_install.install(None, home=home)
+    assert result["enabled"] is None and result["initialised"] is False
+
+
+def test_rerun_keeps_the_pinned_project_and_unpin_clears_it(tmp_path):
+    home = tmp_path / "hermes"
+    home.mkdir()
+    project = _built(tmp_path / "proj")
+    hermes_install.install(str(project), home=home, enable=False)
+    assert hermes_install.install(None, home=home, enable=False)["project"] == str(
+        project.resolve()
+    )
+    assert hermes_install.install(None, home=home, enable=False, unpin=True)["project"] is None
+    config = json.loads((home / "plugins" / "neuralmind" / "config.json").read_text())
+    assert config["project"] is None
+
+
+def test_default_hermes_home_follows_hermes(monkeypatch, tmp_path):
+    monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.delenv("HERMES_DATA_DIR_SUFFIX", raising=False)
+    monkeypatch.setattr(hermes_install.sys, "platform", "darwin")
+    assert hermes_install.hermes_home() == Path.home() / ".hermes"
+    monkeypatch.setattr(hermes_install.sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    assert hermes_install.hermes_home() == tmp_path / "hermes"
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path / "custom"))
+    assert hermes_install.hermes_home() == tmp_path / "custom"
+
+
 def test_enable_skipped_without_hermes_on_path(tmp_path, monkeypatch):
     home = tmp_path / "hermes"
     home.mkdir()
+    (home / "config.yaml").write_text("model: x\n")
     monkeypatch.setattr(hermes_install.shutil, "which", lambda name: None)
     assert hermes_install.install(None, home=home)["enabled"] is None
 

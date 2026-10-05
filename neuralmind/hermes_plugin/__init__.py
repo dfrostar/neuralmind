@@ -46,6 +46,11 @@ _V4A_PATH = re.compile(r"^\*\*\* (?:Update|Add) File: (.+)$", re.MULTILINE)
 
 _HERE = Path(__file__).resolve().parent
 
+# Hermes's post_tool_call carries no parent_session_id, so a subagent's edits are
+# recognised by the session id its pre_llm_call (which runs first) reported.
+_SUBAGENT_SESSIONS: set[str] = set()
+_SUBAGENT_SESSIONS_MAX = 4096
+
 
 def _config() -> dict:
     try:
@@ -107,6 +112,8 @@ def _run(action: str, payload: dict) -> str:
             text=True,
             timeout=_timeout(),
             env=_child_env(),
+            # Windows: no console window flashing up when Hermes runs windowless.
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             check=False,
         )
         if not done.stdout.strip():
@@ -144,7 +151,11 @@ def on_pre_llm_call(
     try:
         # A subagent's "user message" was written by its parent agent; neither
         # recording it nor recalling for it is about the user's work.
-        if parent_session_id or not session_id:
+        if parent_session_id:
+            if session_id and len(_SUBAGENT_SESSIONS) < _SUBAGENT_SESSIONS_MAX:
+                _SUBAGENT_SESSIONS.add(session_id)
+            return None
+        if not session_id:
             return None
         project = _project()
         if project is None:
@@ -180,8 +191,10 @@ def _edited_paths(tool_name: str, args: dict) -> list[str]:
     return []
 
 
-def _failed(result) -> bool:
-    """Whether a tool result reports an error (only successful edits count)."""
+def _failed(result, status=None) -> bool:
+    """Whether the tool call failed (only successful edits count)."""
+    if status == "error":
+        return True
     if isinstance(result, str):
         try:
             result = json.loads(result)
@@ -195,6 +208,7 @@ def on_post_tool_call(
     args=None,
     result=None,
     session_id: str = "",
+    status=None,
     parent_session_id: str = "",
     **_: object,
 ) -> None:
@@ -202,7 +216,7 @@ def on_post_tool_call(
     try:
         if tool_name not in EDIT_TOOLS or not isinstance(args, dict) or not session_id:
             return
-        if parent_session_id or _failed(result):
+        if parent_session_id or session_id in _SUBAGENT_SESSIONS or _failed(result, status):
             return
         project = _project()
         if project is None:

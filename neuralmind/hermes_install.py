@@ -26,7 +26,7 @@ PLUGIN_NAME = "neuralmind"
 MANIFEST = """\
 name: neuralmind
 version: "{version}"
-description: "NeuralMind code memory: related files, decisions and a session recap added to each turn, with no tool call."
+description: "NeuralMind code memory: related files and decisions added to every turn, and the last session's recap to a session's first, with no tool call."
 author: NeuralMind
 provides_hooks:
   - pre_llm_call
@@ -34,8 +34,26 @@ provides_hooks:
 """
 
 
+# Files that mark an initialised Hermes home (Hermes's own _HERMES_HOME_MARKERS).
+# `hermes plugins enable` run against any other directory starts Hermes's first-run
+# setup there, which also rewrites the shared Hermes launchers to point at it.
+HERMES_HOME_MARKERS = ("config.yaml", ".env", "state.db")
+
+
 def hermes_home() -> Path:
-    return Path(os.environ.get("HERMES_HOME") or Path.home() / ".hermes").expanduser()
+    """$HERMES_HOME, else Hermes's platform default (as hermes_constants computes it)."""
+    if os.environ.get("HERMES_HOME", "").strip():
+        return Path(os.environ["HERMES_HOME"].strip()).expanduser()
+    suffix = os.environ.get("HERMES_DATA_DIR_SUFFIX", "")
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA", "").strip()
+        base = Path(local) if local else Path.home() / "AppData" / "Local"
+        return base / ("hermes" + suffix)
+    return Path.home() / (".hermes" + suffix)
+
+
+def is_hermes_home(home: Path) -> bool:
+    return any((home / marker).exists() for marker in HERMES_HOME_MARKERS)
 
 
 def plugin_dir(home: Path | None = None) -> Path:
@@ -66,7 +84,12 @@ def _hermes(action: str, home: Path) -> bool | None:
     return done.returncode == 0
 
 
-def install(project: str | None = None, home: Path | None = None, enable: bool = True) -> dict:
+def install(
+    project: str | None = None,
+    home: Path | None = None,
+    enable: bool = True,
+    unpin: bool = False,
+) -> dict:
     """Install (or update) the plugin; returns what was done."""
     from . import __version__
 
@@ -79,7 +102,12 @@ def install(project: str | None = None, home: Path | None = None, enable: bool =
     target.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(Path(__file__).parent / "hermes_plugin" / "__init__.py", target / "__init__.py")
     (target / "plugin.yaml").write_text(MANIFEST.format(version=__version__), encoding="utf-8")
-    project_path = str(Path(project).expanduser().resolve()) if project else None
+    if project:
+        project_path = str(Path(project).expanduser().resolve())
+    elif unpin:
+        project_path = None
+    else:  # a re-run (e.g. after upgrading) keeps the project pinned earlier
+        project_path = _existing_project(target)
     config = {"python": sys.executable, "project": project_path}
     (target / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     return {
@@ -87,8 +115,17 @@ def install(project: str | None = None, home: Path | None = None, enable: bool =
         "project": project_path,
         "built": bool(project_path)
         and (Path(project_path) / ".neuralmind" / "build_status.json").is_file(),
-        "enabled": _hermes("enable", home) if enable else None,
+        "enabled": _hermes("enable", home) if enable and is_hermes_home(home) else None,
+        "initialised": is_hermes_home(home),
     }
+
+
+def _existing_project(target: Path) -> str | None:
+    try:
+        project = json.loads((target / "config.json").read_text(encoding="utf-8")).get("project")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return project if isinstance(project, str) and project else None
 
 
 def uninstall(home: Path | None = None) -> dict:
