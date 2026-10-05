@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.7.0](https://github.com/dfrostar/neuralmind/compare/v4.6.1...v4.7.0) (2026-10-05)
+
+
+### Features
+
+* **security:** bind MCP roles to OS accounts and require encrypted storage ([#574](https://github.com/dfrostar/neuralmind/issues/574)) ([63f5f3e](https://github.com/dfrostar/neuralmind/commit/63f5f3e142a779513660170683b6f146c07e3953))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([4959fb1](https://github.com/dfrostar/neuralmind/commit/4959fb12dbd47852730c221846e1ec633547d6a3))
+
 ## [4.6.1](https://github.com/dfrostar/neuralmind/compare/v4.6.0...v4.6.1) (2026-10-05)
 
 
