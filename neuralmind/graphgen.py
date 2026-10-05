@@ -957,6 +957,17 @@ def _add_doc_code_coupling(b: _GraphBuilder) -> None:
                 edges_added += 1
 
 
+def _read_doc_text(path: Path) -> str:
+    """Read a doc/schema file as text without failing on its encoding.
+
+    Decodes like code files (``_node_text``: UTF-8, ``errors="replace"``), so
+    one Latin-1 ``NOTES.md`` is still indexed with U+FFFD in place of the bad
+    bytes instead of aborting the whole build. ``utf-8-sig`` drops a leading
+    BOM that would otherwise hide the first heading. Raises ``OSError``.
+    """
+    return path.read_text(encoding="utf-8-sig", errors="replace")
+
+
 def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
     """Emit a ``document`` node for a markdown file plus one per heading.
 
@@ -972,7 +983,7 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
       ``heading_level`` (1, 2, or 3) — for section-aware chunking/retrieval.
     """
     try:
-        text = md_path.read_text(encoding="utf-8")
+        text = _read_doc_text(md_path)
     except OSError:
         return
     file_id = _slug(rel)
@@ -1040,7 +1051,7 @@ def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
     import json as _json
 
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
         return
 
@@ -1120,7 +1131,7 @@ def _extract_sql(b: _GraphBuilder, path: Path, rel: str) -> None:
     One node per CREATE TABLE/VIEW/PROCEDURE/FUNCTION/TRIGGER/INDEX/TYPE.
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
         return
 
@@ -1150,7 +1161,7 @@ def _extract_proto(b: _GraphBuilder, path: Path, rel: str) -> None:
     One node per message, service, rpc, and enum.
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
         return
 
@@ -1364,7 +1375,14 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     unchanged_edges: list[dict] = []
     deleted_files: set[str] = set()
     if existing_graph and extractor._cache:
-        changed_set = re_extract_set  # already includes transitive importers
+        # Doc/schema files aren't in the extraction cache: every build
+        # re-extracts them below, so never carry their old nodes/edges forward
+        # (add_node would keep a stale heading, add_edge append a duplicate).
+        # Every doc-derived edge (contains, describes, cross-chapter) carries
+        # the doc as its source_file.
+        doc_files = {f.relative_to(root).as_posix() for f in (*md_files, *schema_files)}
+        # re_extract_set already includes transitive importers
+        changed_set = re_extract_set | doc_files
         for node in existing_graph.get("nodes", []):
             sf = node.get("source_file", "")
             if not sf:
