@@ -338,11 +338,11 @@ Run `neuralmind build` once after upgrading to pick these up.
 - **A graph node with `"community": null` no longer fails the build.**
   graphify and hand-written graphs can carry it.
 - **`.neuralmindignore` matches the way `.gitignore` does in git.** `[Oo]bj/`
-  and `*.py[co]` never matched, `build/` also matched files named `build`,
-  `!logs/keep.py` re-included a file under an ignored `logs/`, and escapes
-  such as `\#` weren't read. A test checks the matcher against
-  `git check-ignore`. The same matcher handles `.gitignore` outside a git
-  repository.
+  and `*.py[co]` never matched, `/**/gen` matched only at the root, `build/`
+  also matched files named `build`, `!logs/keep.py` re-included a file under
+  an ignored `logs/`, and escapes such as `\#` and `foo\ ` weren't read. A
+  test checks the matcher against `git check-ignore`. The same matcher handles
+  `.gitignore` outside a git repository.
 - **Incremental builds notice more changes.** A file whose modification time
   went backwards (`mv backup.py a.py`, `cp -p`, a restore) or whose size
   changed is re-checked by content hash. When a new file defines a module or
@@ -443,6 +443,9 @@ None added or changed.
   so associations learned for the merged node don't carry over to them.
 - **`neuralmind savings` totals drop.** The old totals counted builds,
   searches and MCP calls as saved queries.
+- **Check `.neuralmindignore` re-includes.** As in git, `!logs/keep.py` no
+  longer brings a file back from under an ignored `logs/`. Write `logs/*`
+  instead. Leading spaces in a pattern now count, as they do in git.
 - **To keep the old MCP denials,** define `security.roles` for the project.
   The five read-only lookup tools are now in the default `builder` and
   `reader` roles.
