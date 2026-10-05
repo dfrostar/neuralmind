@@ -74,6 +74,26 @@ class TestLateralInhibition:
         assert "B" in results_dict
         assert "C" in results_dict
 
+    def test_inhibition_keeps_the_winner_among_many_weak_competitors(self, tmp_path):
+        # Every result was inhibited by the sum of all the others, the winner
+        # included, so enough weak competitors drove every score to 0 and
+        # spread() returned [] exactly when sharpening mattered most.
+        d = _dynamics(tmp_path)
+        for _ in range(3):
+            d.store.reinforce(["A", "W"])
+        for i in range(20):
+            d.store.reinforce(["A", f"N{i}"])
+        raw = dict(d.store.spread([("A", 1.0)], top_k=30))
+
+        results = d.spread([("A", 1.0)], top_k=10)
+
+        assert len(results) == 10
+        winner, score = results[0]
+        assert winner == "W"
+        assert abs(score - raw["W"]) < 1e-9  # nothing stronger to inhibit it
+        for node, weaker in results[1:]:
+            assert 0.0 < weaker < raw[node]  # weaker competitors are suppressed
+
     def test_inhibition_respects_seed_set(self, tmp_path):
         d = _dynamics(tmp_path, enable_fok=False)
         d.store.reinforce(["A", "B"])

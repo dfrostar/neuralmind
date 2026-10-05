@@ -386,10 +386,13 @@ class SynapseDynamics:
     ) -> list[tuple[str, float]]:
         """Suppress competing activations.
 
-        For each pair of results (A, B), if both are receiving activation from
-        different seed clusters, the weaker one gets suppressed. The suppression
-        is proportional to the product of their activations (strong competitors
-        suppress each other more).
+        For each pair of results (A, B), the weaker one gets suppressed by the
+        stronger, in proportion to the stronger one's activation (strong
+        competitors suppress more); equals don't suppress each other. The
+        strongest result is never suppressed, so inhibition sharpens the
+        ranking instead of erasing it: summing every competitor against every
+        result, the winner included, drove all scores to 0 once there were a
+        handful of comparable results.
         """
         if len(ranked) < 2:
             return ranked
@@ -404,15 +407,15 @@ class SynapseDynamics:
         # Build activation map
         activations = dict(ranked)
 
-        # For each non-seed node, compute inhibition from other non-seed nodes
+        # For each non-seed node, compute inhibition from stronger non-seed nodes
         non_seeds = [n for n in activations if n not in seed_set]
         adjusted: dict[str, float] = dict(activations)
 
         for node_a in non_seeds:
             inhibition = 0.0
             for node_b in non_seeds:
-                if node_a == node_b:
-                    continue
+                if activations[node_b] <= activations[node_a]:
+                    continue  # only a stronger competitor inhibits (never itself)
                 # Inhibition proportional to competitor's activation
                 inhibition += activations[node_b] * scale * SPREAD_DECAY
             adjusted[node_a] = max(0.0, activations[node_a] - inhibition)
