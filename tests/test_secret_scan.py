@@ -23,10 +23,13 @@ from tests.secret_fixtures import (
     ANTHROPIC_KEY,
     AWS_KEY_ID,
     AWS_SECRET,
+    AWS_SESSION_TOKEN,
     BASIC_AUTH_B64,
     GENERIC_SECRET,
     GITHUB_TOKEN,
+    GITLAB_PAT,
     GOOGLE_KEY,
+    HF_TOKEN,
     JWT,
     OPENAI_KEY,
     PEM_BLOCK,
@@ -219,6 +222,7 @@ PATTERN_PROBES = {
     "openai-api-key": f"KEY={OPENAI_KEY}",
     "aws-access-key-id": f"KEY={AWS_KEY_ID}",
     "aws-secret-access-key": f"aws_secret_access_key = {AWS_SECRET}",
+    "aws-session-token": f"AWS_SESSION_TOKEN={AWS_SESSION_TOKEN}",
     "github-token": f"KEY={GITHUB_TOKEN}",
     "github-fine-grained-pat": "KEY=github_pat_" + "A" * 60,
     "slack-token": f"KEY={SLACK_TOKEN}",
@@ -226,6 +230,8 @@ PATTERN_PROBES = {
     "stripe-secret-key": f"KEY={STRIPE_KEY}",
     "pypi-token": "KEY=pypi-" + "AgEIcHlwaS5vcmc" * 2,
     "npm-token": "KEY=npm_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+    "gitlab-token": f"KEY={GITLAB_PAT}",
+    "huggingface-token": f"KEY={HF_TOKEN}",
     "jwt": f"KEY={JWT}",
     "bearer-token": f"Authorization: Bearer {GITHUB_TOKEN}",
     "basic-auth-header": f"Authorization: Basic {BASIC_AUTH_B64}",
@@ -484,6 +490,7 @@ class TestNoFalsePositivesOnBuildOutput:
 # the keyword *is* the anchor, so a mid-identifier probe is meaningless.
 CONTEXTUAL_KINDS = {
     "aws-secret-access-key",
+    "aws-session-token",
     "bearer-token",
     "basic-auth-header",
     "connection-string-password",
@@ -867,6 +874,139 @@ class TestQuotedAssignmentValues:
         """Parsing quotes properly must not bypass the placeholder gate."""
         assert scan_text('password="changeme"') == []
         assert scan_text('api_key="your_api_key_here"') == []
+
+
+class TestCloudCliJsonAndQuotedKeys:
+    """Credentials in the shapes CLIs actually print.
+
+    `aws sts get-session-token` and `aws configure export-credentials` emit
+    JSON with quoted keys (`"SecretAccessKey": "…"`); only the access-key id
+    used to be redacted, so the secret and session token reached the output
+    cache in plaintext beside a marker claiming the output was redacted.
+    The generic rule had the same blind spot for `{"password": "…"}`.
+    """
+
+    def test_sts_credentials_json_is_fully_redacted(self):
+        text = (
+            '{"Credentials": {"AccessKeyId": "' + AWS_KEY_ID + '", '
+            '"SecretAccessKey": "' + AWS_SECRET + '", '
+            '"SessionToken": "' + AWS_SESSION_TOKEN + '", '
+            '"Expiration": "2026-10-05T14:00:00Z"}}'
+        )
+        out, matches = redact_text(text)
+        assert AWS_KEY_ID not in out
+        assert AWS_SECRET not in out
+        assert AWS_SESSION_TOKEN not in out
+        assert {"aws-access-key-id", "aws-secret-access-key", "aws-session-token"} <= {
+            m.kind for m in matches
+        }
+        assert '"Expiration": "2026-10-05T14:00:00Z"' in out
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            f"AWS_SECRET_ACCESS_KEY={AWS_SECRET}",
+            f'secret_access_key: "{AWS_SECRET}"',
+            f"aws_session_token = {AWS_SESSION_TOKEN}",
+        ],
+    )
+    def test_env_and_ini_spellings(self, line):
+        out, matches = redact_text(line)
+        assert matches
+        assert AWS_SECRET not in out and AWS_SESSION_TOKEN not in out
+
+    def test_longer_s3_compatible_secret_leaves_no_tail(self):
+        """R2/MinIO reuse the key name for 64-char secrets; redact all of it."""
+        tail = "TAILabcdef0123456789abcd"
+        out, matches = redact_text(f"R2_SECRET_ACCESS_KEY={AWS_SECRET}{tail}")
+        assert matches
+        assert tail not in out
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            f'{{"password": "{GENERIC_SECRET}"}}',
+            f"{{'api_key': '{GENERIC_SECRET}'}}",
+            f'"client_secret" : "{GENERIC_SECRET}",',
+            f'{{"db_password":"{GENERIC_SECRET}"}}',
+        ],
+    )
+    def test_quoted_keys_are_detected(self, line):
+        out, matches = redact_text(line)
+        assert matches, f"not detected: {line}"
+        assert GENERIC_SECRET not in out
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            '{"password": "changeme"}',
+            '{"api_key": "${API_KEY}"}',
+            '{"password_hash": "' + GENERIC_SECRET + '"}',
+            'password = os.environ["DB_PASSWORD"]',
+            'session_token = request.cookies.get("session")',
+            "hf_tokenizer = AutoTokenizer.from_pretrained(name)",
+        ],
+    )
+    def test_quoted_key_support_keeps_the_false_positive_guards(self, line):
+        assert scan_text(line) == []
+
+
+class TestBareValueTail:
+    """A bare value continues through `;`/`,` unless a new key follows.
+
+    `DB_PASSWORD=Ab9xQ2mZpL;TAILSECRET99` (as `env` prints it) redacted only
+    the head and left `;TAILSECRET99` on disk. Stopping at every delimiter
+    was meant for lists like `password=…,next=…` and connection strings, and
+    those still stop where the next `key=` begins.
+    """
+
+    def test_tail_after_semicolon_is_redacted(self):
+        out, matches = redact_text("DB_PASSWORD=Ab9xQ2mZpL;TAILSECRET99")
+        assert matches
+        assert "TAILSECRET99" not in out
+        assert "Ab9xQ2mZpL" not in out
+
+    def test_tail_after_comma_is_redacted(self):
+        out, _ = redact_text("api_key=Kd8fJ2pQ,REMAINDEROFKEY123 next")
+        assert "REMAINDEROFKEY123" not in out
+        assert out.endswith(" next")
+
+    def test_connection_string_keeps_following_pairs(self):
+        line = f"Server=db;Password={GENERIC_SECRET};Database=app"
+        out, _ = redact_text(line)
+        assert GENERIC_SECRET not in out
+        assert out.endswith(";Database=app")
+
+    def test_value_followed_by_space_stops_at_the_delimiter(self):
+        out, _ = redact_text(f"connect(password={GENERIC_SECRET}, host=db)")
+        assert GENERIC_SECRET not in out
+        assert ", host=db)" in out
+
+    def test_base64_padding_after_delimiter_is_not_a_key(self):
+        out, _ = redact_text("password=Ab9xQ2mZ;QmFzZTY0LXRhaWw=")
+        assert "QmFzZTY0LXRhaWw" not in out
+
+
+class TestUrlCredentials:
+    """`https://user:token@host` — how git remotes and clone URLs carry tokens."""
+
+    def test_https_userinfo_password_is_redacted(self):
+        line = f"git clone https://oauth2:{GENERIC_SECRET}@gitlab.example.com/team/repo.git"
+        out, matches = redact_text(line)
+        assert matches
+        assert GENERIC_SECRET not in out
+        assert "@gitlab.example.com/team/repo.git" in out
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "https://example.com:8080/path?a=b",
+            "see https://user:${TOKEN}@example.com",
+            "http://localhost:3000/@scope/pkg",
+        ],
+    )
+    def test_ordinary_urls_are_not_findings(self, line):
+        assert scan_text(line) == []
 
 
 class TestContainedHighConfidenceMatch:
