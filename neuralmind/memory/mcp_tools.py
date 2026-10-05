@@ -15,6 +15,7 @@ Tools:
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -165,10 +166,20 @@ def tool_invalidate_decision(
         reason: Why the decision is being retired.
 
     Returns:
-        Confirmation dict with the decision_id and new status.
+        Confirmation dict with the decision_id and new status, or an error
+        dict: code ``not_found`` for an unknown id, ``storage_error`` when
+        the update failed.
     """
     store = get_decision_store(project_path)
-    store.invalidate(decision_id, reason=reason)
+    try:
+        store.invalidate(decision_id, reason=reason)
+    except KeyError:
+        return {"error": f"Decision not found: {decision_id}", "code": "not_found"}
+    except sqlite3.Error as e:
+        return {
+            "error": f"Could not invalidate decision {decision_id}: {e}",
+            "code": "storage_error",
+        }
     return {
         "decision_id": decision_id,
         "status": "INVALIDATED",

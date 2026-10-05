@@ -3274,8 +3274,17 @@ def cmd_decisions_restore(args):
 
 def cmd_decisions_invalidate(args):
     """Mark a decision as stale."""
+    import sqlite3
+
     store = _get_decisions_store(args.project_path)
-    store.invalidate(args.decision_id, reason=args.reason)
+    try:
+        store.invalidate(args.decision_id, reason=args.reason)
+    except KeyError:
+        print(f"Decision not found: {args.decision_id}", file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not invalidate decision {args.decision_id}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Invalidated decision: {args.decision_id}")
 
 

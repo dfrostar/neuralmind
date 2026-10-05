@@ -391,7 +391,9 @@ class DecisionStore:
     Construct once per project path. Safe to share across threads/hooks;
     each call opens a short-lived connection (WAL mode allows concurrent
     readers + a single writer). Fail-open: a read returns [] on any DB
-    error; a write silently no-ops rather than crashing the caller.
+    error; a write logs and no-ops rather than crashing the caller. The
+    exceptions are the explicit user actions: ``invalidate`` raises for an
+    unknown id or a DB error, and ``restore`` for an unknown id.
 
     Args:
         project_path: Root of the project, an existing directory
@@ -636,13 +638,22 @@ class DecisionStore:
 
         The reason is appended to the decision's evidence list so the
         invalidation itself carries context — future readers can see *why*
-        a decision was retired. No-op if the id doesn't exist.
+        a decision was retired.
+
+        Invalidation is an explicit user action (CLI / MCP), so unlike the
+        fail-open background writes it reports failure: both used to be
+        silent, and both callers then printed success.
+
+        Raises:
+            KeyError: no decision has this id.
+            sqlite3.Error: the update failed (also logged); the decision's
+                status is unchanged.
         """
         reason = reason.strip()
         note = f"Invalidated: {reason}" if reason else "Invalidated"
         try:
             with self._connect() as conn:
-                conn.execute(
+                cur = conn.execute(
                     """UPDATE decisions
                        SET status = 'INVALIDATED',
                            updated_at = ?,
@@ -650,8 +661,12 @@ class DecisionStore:
                        WHERE id = ?""",
                     (_now_iso(), note, decision_id),
                 )
-        except Exception:
-            logger.exception("[memory] invalidate(%s) failed — decision still active", decision_id)
+                updated = cur.rowcount > 0
+        except sqlite3.Error:
+            logger.exception("[memory] invalidate(%s) failed — status unchanged", decision_id)
+            raise
+        if not updated:
+            raise KeyError(f"Decision not found: {decision_id}")
 
     def mark_stale(self, decision_id: str, reason: str = "") -> bool:
         """Mark a decision STALE, keeping why in its evidence list.

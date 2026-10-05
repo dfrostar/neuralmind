@@ -366,3 +366,43 @@ def test_restore_known_id_still_reanchors(parser, project, capsys):
     got = store.get(rec.id)
     assert got.status == "ACTIVE"
     assert got.commit_sha == "b" * 40
+
+
+# ------------------------------------------------------------------ #
+# invalidate reports failure (an unknown id or a DB error said "Invalidated")
+# ------------------------------------------------------------------ #
+
+
+def test_invalidate_unknown_id_is_an_error(parser, project, capsys):
+    _record(DecisionStore(str(project)))
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "invalidate", "no-such-id", str(project)], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Decision not found: no-such-id" in captured.err
+    assert "Invalidated decision" not in captured.out
+
+
+def test_invalidate_db_error_is_an_error(parser, project, capsys):
+    import sqlite3
+
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("UPDATE decisions SET evidence = '{bad' WHERE id = ?", (rec.id,))
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "invalidate", rec.id, str(project)], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Could not invalidate decision {rec.id}" in captured.err
+    assert "Invalidated decision" not in captured.out
+
+
+def test_invalidate_known_id_still_succeeds(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    out = _run(
+        parser, ["decisions", "invalidate", rec.id, str(project), "--reason", "superseded"], capsys
+    )
+    assert f"Invalidated decision: {rec.id}" in out
+    assert store.get(rec.id).status == "INVALIDATED"

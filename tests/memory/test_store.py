@@ -88,6 +88,30 @@ def test_invalidate_sets_invalidated_status(store):
     assert any("superseded" in e for e in got.evidence)
 
 
+def test_invalidate_unknown_id_raises_key_error(store):
+    """It used to be a silent no-op, and both callers then reported success."""
+    _record(store)
+    with pytest.raises(KeyError, match="no-such-id"):
+        store.invalidate("no-such-id", reason="typo")
+
+
+def _corrupt_evidence(store, decision_id):
+    """Give a row evidence json_insert can't append to: a real DB error."""
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("UPDATE decisions SET evidence = '{bad' WHERE id = ?", (decision_id,))
+
+
+def test_invalidate_db_error_raises_and_leaves_status(store):
+    """A failed update used to be logged and swallowed — reported as success."""
+    rec = _record(store)
+    _corrupt_evidence(store, rec.id)
+    with pytest.raises(sqlite3.Error):
+        store.invalidate(rec.id, reason="superseded")
+    with sqlite3.connect(store.db_path) as conn:
+        status = conn.execute("SELECT status FROM decisions WHERE id = ?", (rec.id,)).fetchone()
+    assert status == ("ACTIVE",)
+
+
 def test_update_status_invalid_is_noop(store):
     rec = _record(store)
     store.update_status(rec.id, "NOT_A_STATUS")
