@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v471">
+            <h2>What&rsquo;s New in v4.7.1 &mdash; installers that can&rsquo;t destroy your config, and eight other fixes</h2>
+            <p><strong>Eight bugs found by testing v4.7.0 end to end.</strong> Two could destroy user configuration, and one left credentials in the Bash output cache in plaintext.</p>
+            <ul>
+                <li><strong><code>install-hooks</code> and <code>install-mcp</code> leave a config they can&rsquo;t parse untouched</strong> &mdash; one trailing comma used to make <code>install-hooks --global</code> replace <code>~/.claude/settings.json</code> with a bare <code>hooks</code> block (and <code>--uninstall</code> delete it), and <code>install-mcp</code> drop every other MCP server from Cursor, Cline and Claude Desktop configs. Now the command refuses, or prints the entry to paste</li>
+                <li><strong>Hooks act only in a built project</strong> &mdash; with a global install, the prompt hook no longer runs a full first-time build in whatever directory a session opens in, and no hook creates <code>.neuralmind/</code> on its own</li>
+                <li><strong>Redaction covers what the AWS CLI prints</strong> &mdash; <code>"SecretAccessKey"</code> and <code>"SessionToken"</code> JSON, <code>{"password": &hellip;}</code>, GitLab and Hugging Face tokens, passwords in <code>https://user:password@host</code> URLs, and the tail of <code>DB_PASSWORD=abc;rest</code></li>
+                <li><strong>Indexing</strong> &mdash; a non-UTF-8 doc no longer fails the build; repeated builds stop duplicating doc edges; <code>watch --reindex</code> stops serving deleted symbols; <code>neuralmind export .</code> works without <code>--output</code></li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.7.1.md">v4.7.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v470">
             <h2>What&rsquo;s New in v4.7.0 &mdash; MCP roles bound to OS accounts, and a check for encrypted storage</h2>
             <p><strong>Every MCP tool call named its own actor and role, nothing checked either, and encryption at rest was left to the host with no way to confirm it.</strong> Both gaps came up mapping NeuralMind to CMMC 2.0 Level 2 for teams that index source code containing Controlled Unclassified Information. v4.7.0 adds two opt-in settings; nothing changes for a project that doesn&rsquo;t set them.</p>

@@ -374,6 +374,13 @@ otherwise write a live credential to a plaintext file. Credentials are stripped 
 and the entry records which kinds were removed. Opt out with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 
+Through v4.7.0 this cache missed some common shapes: the
+`"SecretAccessKey"` and `"SessionToken"` JSON that `aws sts get-session-token`
+prints, JSON keys such as `{"password": "…"}`, and the part of a bare value
+after a `;` or `,` (`DB_PASSWORD=abc;rest`). If you ran such commands under
+the hook on v4.7.0 or earlier, delete `.neuralmind/last_output.json` and
+rotate what it held. v4.7.1 redacts all three.
+
 `.neuralmind/` also carries its own `.gitignore` containing `*`, written
 when the directory is created, so the state directory cannot be
 committed by a `git add -A` even in a project whose own `.gitignore`

@@ -278,13 +278,17 @@ NeuralMind secret scan — /home/dev/myproject
 
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
-key IDs and secret keys, GitHub tokens and fine-grained PATs, Slack
-tokens, Google API keys, Stripe keys, PyPI and npm tokens, PEM private-key
-blocks, JWTs, `Authorization: Bearer`/`Basic` headers, and passwords
-embedded in database connection strings. `maybe` matches a generic
-`SECRET=value` assignment that cleared a Shannon-entropy threshold and a
-placeholder denylist — so `password = "changeme"`,
-`api_key = os.environ["X"]`, and `KEY=${VAR}` are not reported.
+key IDs, secret keys and session tokens (including the
+`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.7.1),
+GitHub tokens and fine-grained PATs, GitLab PATs and Hugging Face tokens
+*(v4.7.1)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
+tokens, PEM private-key blocks, JWTs, `Authorization: Bearer`/`Basic`
+headers, and passwords embedded in database or `http(s)://user:password@host`
+URLs. `maybe` matches a generic `SECRET=value` assignment, including a quoted
+JSON or dict key such as `{"password": "…"}` *(v4.7.1)*, that cleared a
+Shannon-entropy threshold and a placeholder denylist — so
+`password = "changeme"`, `api_key = os.environ["X"]`, and `KEY=${VAR}` are
+not reported.
 
 **Previews never include the tail of a secret** — only a short prefix and
 a length — so scan output is safe to paste into an issue or a CI log.
@@ -2088,6 +2092,18 @@ characters are never stubbed. Only in projects that already have
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
 
+**Built projects only** *(v4.7.1)*: every hook action does nothing in a
+directory without `.neuralmind/`, so a `--global` install leaves repos you
+haven't run `neuralmind build` in untouched. Prompt-time recall reads an
+existing index and never builds one; before v4.7.1 the `UserPromptSubmit`
+hook could run a full first-time build, far past the hook timeout.
+
+**A `settings.json` that isn't valid JSON is refused** *(v4.7.1)*: install
+and `--uninstall` exit 1 with an error naming the file and leave it
+untouched. A trailing comma used to make the command replace the file with
+just the hooks block (or delete it on `--uninstall`), losing `permissions`,
+`model` and `env`. An empty file counts as no settings.
+
 **Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
 its full id and the reason it left ACTIVE (for example
 `commit 3f9c2ab changed db.py since this decision was recorded`), plus a
@@ -2140,6 +2156,12 @@ Register the NeuralMind MCP server (`neuralmind-mcp`) with one or more AI coding
 agents. Auto-detects installed clients and merges a `neuralmind` entry into each
 client's `mcpServers` config **without clobbering** your other servers
 (idempotent — re-running is a no-op).
+
+A config file that isn't strict JSON (comments, a trailing comma) or whose top
+level isn't an object is never rewritten, for any client *(v4.7.1; VS Code
+already behaved this way)*. The command prints `✗ <client>: skipped-jsonc` (or
+`skipped-not-object`) with the entry to add by hand. Before v4.7.1 such a file
+was read as empty, and every other server in it was lost.
 
 ```bash
 neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
