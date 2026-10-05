@@ -1,6 +1,9 @@
 """Tests for neuralmind.audit — new B-Audit features: actor resolution, hash chain, search, export, rotate."""
 
+import hashlib
 import json
+
+import pytest
 
 from neuralmind.audit import AuditTrail, _resolve_actor
 
@@ -263,14 +266,73 @@ def test_verify_cannot_detect_records_deleted_from_the_end(tmp_path):
     assert trail.verify()["ok"] is True
 
 
-def test_rotated_log_verifies_from_its_continuation_marker(temp_project):
-    trail = AuditTrail(temp_project)
+def _rotated_trail(tmp_path):
+    trail = AuditTrail(tmp_path)
     trail.append_event("audit", "query")
-    trail.append_event("audit", "search")
+    last = trail.append_event("audit", "search")
     rotated = trail.rotate(max_bytes=10, keep_days=90)
+    return trail, last, rotated["archived_to"].rsplit("/", 1)[-1]
+
+
+def _rehash(record, prev):
+    """Give ``record`` a valid hash chained to ``prev``, as an attacker could."""
+    body = {k: v for k, v in record.items() if k not in ("sha256", "prev_sha256")}
+    payload = prev + json.dumps(body, sort_keys=True, separators=(",", ":"))
+    return dict(body, prev_sha256=prev, sha256=hashlib.sha256(payload.encode()).hexdigest())
+
+
+def test_rotate_chains_its_marker_to_the_archive_tail(tmp_path):
+    """The archive ends with a newline; the marker used to chain to zeros."""
+    trail, last, _ = _rotated_trail(tmp_path)
+    marker = trail.read_events()[0]
+    assert marker["prev_sha256"] == last["sha256"]
+
+
+def test_rotated_log_verifies_from_its_continuation_marker(tmp_path):
+    trail, _, archive = _rotated_trail(tmp_path)
     trail.append_event("audit", "query")
 
     result = trail.verify()
     assert result["ok"] is True
     assert result["total"] == 2
-    assert result["continues_from"] == rotated["archived_to"].rsplit("/", 1)[-1]
+    assert result["continues_from"] == archive
+    assert result["archive_checked"] is True
+
+
+def test_rotation_marker_must_match_the_archive(tmp_path):
+    trail, _, _ = _rotated_trail(tmp_path)
+    marker = trail.read_events()[0]
+    _write_lines(trail, [_rehash(marker, "0" * 64)])
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 1
+    assert "doesn't match the last hash" in result["reason"]
+
+
+def test_rotation_marker_with_a_pruned_archive_is_left_unchecked(tmp_path):
+    trail, _, archive = _rotated_trail(tmp_path)
+    (trail.events_file.parent / archive).unlink()
+
+    result = trail.verify()
+    assert result["ok"] is True
+    assert result["archive_checked"] is False
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"details": "not-a-mapping"},
+        {"details": {"archive": "../../etc/passwd"}},
+        {"prev_sha256": 7},
+    ],
+)
+def test_malformed_rotation_marker_fails_without_raising(tmp_path, change):
+    trail, _, _ = _rotated_trail(tmp_path)
+    marker = dict(trail.read_events()[0], **change)
+    _write_lines(trail, [marker])
+
+    result = trail.verify()
+    assert result["ok"] is False
+    assert result["first_bad_line"] == 1
+    assert "rotation marker" in result["reason"]

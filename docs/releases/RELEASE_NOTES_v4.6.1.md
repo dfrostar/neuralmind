@@ -50,12 +50,16 @@ Now:
   versions before v0.46.2 wrote them, but the output says how many there are
   and that the chain doesn't cover them. A log stripped of every hash still
   passes, as records outside the chain, so read that count.
-- **A rotated log verifies.** `AuditTrail.rotate()` hashed its continuation
-  marker differently from every other record, so the new file failed at
-  line 1. The marker is now hashed the same way, and `verify` starts from it.
-  No CLI command rotates the log.
-- **`--json` adds `unchained`, `continues_from` and `reason`.** The existing
-  keys are unchanged.
+- **A rotated log verifies, and is linked to its archive.** `AuditTrail.rotate()`
+  hashed its continuation marker differently from every other record, so the
+  new file failed at line 1. Its marker also chained to zeros instead of the
+  archive's last hash, because the backward scan for the last line stopped on
+  the archive's final newline. The marker now links to the archive and is
+  hashed the same way as every other record. `verify` starts from it and checks
+  it against the archive while the archive is still there. A malformed marker
+  fails verification instead of raising. No CLI command rotates the log.
+- **`--json` adds `unchained`, `continues_from`, `archive_checked` and
+  `reason`.** The existing keys are unchanged.
 
 Still not detected: records deleted from the end, and a chain recomputed by
 anyone who can write the file, because the hash has no secret key. Keep an

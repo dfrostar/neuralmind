@@ -2768,7 +2768,12 @@ def cmd_audit_verify(args):
                 "sha256, so the chain doesn't cover them"
             )
         if result.get("continues_from"):
-            print(f"  Chain continues from rotated archive {result['continues_from']}")
+            link = (
+                "its last hash matches"
+                if result.get("archive_checked")
+                else "archive not found, so the link wasn't checked"
+            )
+            print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
     else:
         print(
             f"✗ Audit trail tampered at line {result['first_bad_line']} "

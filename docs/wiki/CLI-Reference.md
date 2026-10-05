@@ -144,9 +144,11 @@ neuralmind audit verify [project_path] [--json]
 
 `✓ Audit trail integrity OK (N events)`. Extra lines say how many records come
 before the hash chain (written by versions before v0.46.2, so the chain doesn't
-cover them), and which rotated archive the log continues, if any. On failure,
-the line number and the reason go to stderr. `--json` prints `ok`,
-`first_bad_line`, `total`, `unchained`, `continues_from` and `reason`.
+cover them), and which rotated archive the log continues, if any, and whether
+its link to that archive was checked (it can't be once the archive is pruned).
+On failure, the line number and the reason go to stderr. `--json` prints `ok`,
+`first_bad_line`, `total`, `unchained`, `continues_from`, `archive_checked` and
+`reason`.
 
 v4.6.0 and earlier accepted a record without a hash anywhere in the log, so
 records edited or appended at the end with their hash removed passed.

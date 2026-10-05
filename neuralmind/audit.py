@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -14,6 +15,10 @@ from typing import Any
 
 AUDIT_FILE_NAME = "audit_events.jsonl"
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
+# What rotate() names an archive, and what a hash looks like. A rotation
+# marker naming anything else is rejected rather than followed as a path.
+_ARCHIVE_NAME = re.compile(r"audit_events\.\d{8}_\d{6}\.jsonl")
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 
 # Actor resolution order: explicit > env var > OS user > "system"
@@ -89,14 +94,19 @@ class AuditTrail:
 
     def _last_sha256_from_file(self) -> str:
         """Read the last non-empty line's sha256, or '0'*64 if file is empty/legacy."""
-        if not self.events_file.exists():
+        return self._last_sha256_of(self.events_file)
+
+    @classmethod
+    def _last_sha256_of(cls, path: Path) -> str:
+        """The sha256 of ``path``'s last non-empty line, or '0'*64 if it has none."""
+        if not path.exists():
             return "0" * 64
         try:
             # Read all lines; find last non-empty; extract sha256
-            with self.events_file.open(encoding="utf-8") as f:
+            with path.open(encoding="utf-8") as f:
                 last = ""
                 for raw_line in f:
-                    if len(raw_line) > self.MAX_AUDIT_LINE_BYTES:
+                    if len(raw_line) > cls.MAX_AUDIT_LINE_BYTES:
                         continue  # Skip crafted oversized lines (DoS guard)
                     line = raw_line.strip()
                     if line:
@@ -105,9 +115,10 @@ class AuditTrail:
                 return "0" * 64
             try:
                 obj = json.loads(last)
-                return obj.get("sha256") or "0" * 64
             except json.JSONDecodeError:
                 return "0" * 64
+            sha = obj.get("sha256") if isinstance(obj, dict) else None
+            return sha if isinstance(sha, str) and sha else "0" * 64
         except (UnicodeDecodeError, OSError):
             return "0" * 64
 
@@ -174,7 +185,7 @@ class AuditTrail:
         """Walk the hash chain, return status.
 
         Returns ``{ok, first_bad_line, total, unchained, continues_from,
-        reason}``.
+        archive_checked, reason}``.
 
         Records before the first hashed record were written before the hash
         chain existed. They are accepted trust-on-first-use and counted in
@@ -184,7 +195,10 @@ class AuditTrail:
 
         A file that begins with a ``rotation_continuation`` marker (written by
         :meth:`rotate`) continues the archive named in ``continues_from``, so
-        the walk starts from the marker's ``prev_sha256``.
+        the walk starts from the marker's ``prev_sha256``. When that archive is
+        still beside the log, the marker must match its last hash
+        (``archive_checked`` is True). A pruned archive leaves the link
+        unchecked (``archive_checked`` is False), and a malformed marker fails.
 
         Records deleted from the end still leave a valid chain. The file alone
         can't show that; a copy exported off the host can.
@@ -196,6 +210,7 @@ class AuditTrail:
             "total": len(events),
             "unchained": 0,
             "continues_from": None,
+            "archive_checked": None,
             "reason": None,
         }
 
@@ -214,8 +229,11 @@ class AuditTrail:
                 result["unchained"] += 1
                 continue
             if i == 1 and evt.get("action") == "rotation_continuation":
-                prev_sha = evt.get("prev_sha256") or prev_sha
-                result["continues_from"] = (evt.get("details") or {}).get("archive")
+                problem = self._check_rotation_marker(evt, result)
+                if problem:
+                    result.update(ok=False, first_bad_line=1, reason=problem)
+                    return result
+                prev_sha = evt["prev_sha256"]
             chained = True
             # Reconstruct what was hashed
             payload_str = prev_sha + json.dumps(
@@ -233,6 +251,29 @@ class AuditTrail:
                 return result
             prev_sha = sha
         return result
+
+    def _check_rotation_marker(self, marker: dict[str, Any], result: dict[str, Any]) -> str | None:
+        """Validate a rotation marker and its link to the archive it continues.
+
+        Fills ``continues_from`` and ``archive_checked`` in ``result``. Returns
+        the reason it fails, or None.
+        """
+        details = marker.get("details")
+        archive = details.get("archive") if isinstance(details, dict) else None
+        prev = marker.get("prev_sha256")
+        if not isinstance(archive, str) or not _ARCHIVE_NAME.fullmatch(archive):
+            return "rotation marker doesn't name a rotated archive"
+        if not isinstance(prev, str) or not _SHA256_HEX.fullmatch(prev):
+            return "rotation marker has no valid prev_sha256"
+        result["continues_from"] = archive
+        archive_path = self.events_file.parent / archive
+        if not archive_path.exists():
+            result["archive_checked"] = False
+            return None
+        if self._last_sha256_of(archive_path) != prev:
+            return f"rotation marker doesn't match the last hash in {archive}"
+        result["archive_checked"] = True
+        return None
 
     def search(
         self,
@@ -303,21 +344,10 @@ class AuditTrail:
 
         # Seed the new active file's chain from the archived file's final hash
         if archive_path.exists():
-            last_sha = "0" * 64
-            with archive_path.open("rb") as af:
-                af.seek(0, 2)
-                pos = af.tell()
-                while pos > 0:
-                    pos -= 1
-                    af.seek(pos)
-                    if af.read(1) == b"\n":
-                        break
-                last_line = af.readline().decode("utf-8").strip()
-                if last_line:
-                    try:
-                        last_sha = json.loads(last_line).get("sha256") or "0" * 64
-                    except json.JSONDecodeError:
-                        pass
+            # The archive ends with a newline, so a backward scan for the last
+            # line used to stop on it and read nothing, chaining the marker to
+            # zeros instead of the archive's final hash.
+            last_sha = self._last_sha256_of(archive_path)
             # Write a chain-continuation marker
             with self.events_file.open("w", encoding="utf-8") as nf:
                 marker = {
