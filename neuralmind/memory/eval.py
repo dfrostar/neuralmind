@@ -31,8 +31,8 @@ own decisions are never read or changed.
 
 ``QuerySetEval`` scores search against questions with gold decision ids
 (``neuralmind decisions eval --queries FILE``): recall@k and MRR, as mean
-and range, per query kind. The committed set is
-``tests/memory/fixtures/decision_queries.json``.
+and range, per query kind and search mode (keyword, semantic, hybrid). The
+committed set is ``tests/memory/fixtures/decision_queries.json``.
 """
 
 from __future__ import annotations
@@ -41,11 +41,18 @@ import json
 import tempfile
 import time
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from .semantic import (
+    SEARCH_MODES,
+    DecisionEmbedder,
+    SemanticSearchUnavailableError,
+    resolve_mode,
+)
 from .store import DecisionRecord, DecisionStore
 
 # ---------------------------------------------------------------------------
@@ -522,15 +529,18 @@ class MaintenanceEval:
         Memory ON: uses default query() which filters to ACTIVE only.
         Memory OFF: uses query(status=None) which includes all statuses,
         simulating a baseline without memory-based stale filtering.
+        Both run in keyword mode: the tasks replay keyword queries, and
+        their numbers must not depend on whether the embedding model is
+        on disk (the query-set eval measures the other modes).
         """
         store = self._get_store()
 
         # Time the query
         start = time.perf_counter()
         if memory_enabled:
-            results = store.query(task.query, limit=10, status="ACTIVE")
+            results = store.query(task.query, limit=10, status="ACTIVE", mode="keyword")
         else:
-            results = store.query(task.query, limit=10, status=None)
+            results = store.query(task.query, limit=10, status=None, mode="keyword")
         elapsed_ms = (time.perf_counter() - start) * 1000.0
 
         result_ids = [r.id for r in results]
@@ -937,30 +947,48 @@ def _spread(values: list[float]) -> dict[str, float]:
 
 
 class QuerySetEval:
-    """Score ``DecisionStore.query`` against questions with gold decision ids.
+    """Score ``DecisionStore.search`` against questions with gold decision ids.
 
     The corpus is the maintenance tasks' seed decisions plus the query set's
-    ``extra_decisions``, recorded in a scratch store. Each query runs with
-    the default status filter (ACTIVE) and ``limit``. Besides the set's own
-    queries, every ACTIVE decision's exact title is asked as a ``title``
-    query, whose answer should rank first.
+    ``extra_decisions``, recorded in a scratch store. Each query runs in each
+    of ``modes`` with the default status filter (ACTIVE) and ``limit``, so
+    keyword, semantic and hybrid search are scored side by side on the same
+    store. Besides the set's own queries, every ACTIVE decision's exact
+    title is asked as a ``title`` query, whose answer should rank first.
 
-    Per kind the report gives recall@limit and MRR as mean and range, how
-    many queries returned nothing, and every query that missed a gold id.
-    A query with no gold ids (kind ``negative``) should return nothing, so
-    any result it gets is a false positive.
+    Per mode and kind the report gives recall@limit and MRR as mean and
+    range, how many queries returned nothing, and every query that missed a
+    gold id. A query with no gold ids (kind ``negative``) should return
+    nothing, so any result it gets is a false positive.
+
+    A mode that can't run here (semantic and hybrid need the embedding
+    model on disk) is reported as not run, with the reason, instead of
+    being scored as something else: hybrid search that fell back to keyword
+    results is never counted as hybrid.
 
     Args:
         query_set: Parsed query-set JSON (``load_query_set``).
         limit: Results per query.
+        modes: Search modes to score (default: all three).
+        embedder: What semantic and hybrid modes embed with (default: the
+            local MiniLM model).
 
     Raises:
-        ValueError: a gold id names no ACTIVE decision in the corpus.
+        ValueError: a gold id names no ACTIVE decision in the corpus, or a
+            mode is unknown.
     """
 
-    def __init__(self, query_set: dict[str, Any], limit: int = QUERY_SET_LIMIT) -> None:
+    def __init__(
+        self,
+        query_set: dict[str, Any],
+        limit: int = QUERY_SET_LIMIT,
+        modes: Sequence[str] = SEARCH_MODES,
+        embedder: DecisionEmbedder | None = None,
+    ) -> None:
         self.source = str(query_set.get("source", "<inline>"))
         self.limit = limit
+        self.modes = list(dict.fromkeys(resolve_mode(m) for m in modes))
+        self.embedder = embedder
         seed = [d for decisions in _TASK_SEED_DECISIONS.values() for d in decisions]
         self.corpus: list[dict[str, Any]] = [*seed, *query_set.get("extra_decisions", [])]
         active = [d for d in self.corpus if d.get("status", "ACTIVE") == "ACTIVE"]
@@ -976,32 +1004,58 @@ class QuerySetEval:
         ]
         self.active_count = len(active)
 
-    def outcomes(self) -> list[QueryOutcome]:
-        """Seed a scratch store and run every query against it."""
-        results: list[QueryOutcome] = []
+    def outcomes(self, mode: str = "keyword") -> list[QueryOutcome]:
+        """Seed a scratch store and run every query in one mode.
+
+        Raises:
+            SemanticSearchUnavailableError: ``mode`` needs semantic ranking
+                and it can't run here.
+        """
+        mode = resolve_mode(mode)
+        by_mode, not_run = self._run([mode])
+        if mode in not_run:
+            raise SemanticSearchUnavailableError(not_run[mode])
+        return by_mode[mode]
+
+    def _run(self, modes: list[str]) -> tuple[dict[str, list[QueryOutcome]], dict[str, str]]:
+        """Seed one scratch store and run every query in each mode.
+
+        Returns the outcomes by mode, and the reason for each mode that
+        couldn't run.
+        """
+        by_mode: dict[str, list[QueryOutcome]] = {}
+        not_run: dict[str, str] = {}
         with _scratch_dir() as store_dir:
-            store = DecisionStore(store_dir)
+            store = DecisionStore(store_dir, embedder=self.embedder)
             _seed_store(store, self.corpus)
-            for q in self.queries:
-                returned = [r.id for r in store.query(q["query"], limit=self.limit)]
-                gold = list(q["gold"])
-                recall = rr = None
-                if gold:
-                    recall = len(set(gold) & set(returned)) / len(gold)
-                    rank = next((i for i, rid in enumerate(returned, 1) if rid in gold), None)
-                    rr = 1.0 / rank if rank else 0.0
-                results.append(
-                    QueryOutcome(
-                        id=q["id"],
-                        kind=q["kind"],
-                        query=q["query"],
-                        gold=gold,
-                        returned=returned,
-                        recall=recall,
-                        reciprocal_rank=rr,
-                    )
-                )
-        return results
+            for mode in modes:
+                try:
+                    by_mode[mode] = [self._score(store, q, mode) for q in self.queries]
+                except SemanticSearchUnavailableError as e:
+                    not_run[mode] = str(e)
+        return by_mode, not_run
+
+    def _score(self, store: DecisionStore, q: dict[str, Any], mode: str) -> QueryOutcome:
+        """Run one query in ``mode`` and score it against its gold ids."""
+        found = store.search(q["query"], limit=self.limit, mode=mode)
+        if found.mode != mode:
+            raise SemanticSearchUnavailableError(found.notice or f"ran as {found.mode} search")
+        returned = [r.id for r in found.records]
+        gold = list(q["gold"])
+        recall = rr = None
+        if gold:
+            recall = len(set(gold) & set(returned)) / len(gold)
+            rank = next((i for i, rid in enumerate(returned, 1) if rid in gold), None)
+            rr = 1.0 / rank if rank else 0.0
+        return QueryOutcome(
+            id=q["id"],
+            kind=q["kind"],
+            query=q["query"],
+            gold=gold,
+            returned=returned,
+            recall=recall,
+            reciprocal_rank=rr,
+        )
 
     @staticmethod
     def summarize(outcomes: list[QueryOutcome]) -> dict[str, dict[str, Any]]:
@@ -1033,11 +1087,11 @@ class QuerySetEval:
         return summary
 
     def run(self, output_format: str = "json") -> str:
-        """Run the eval and render it as ``"json"`` or ``"markdown"``."""
+        """Run the eval in every mode and render it as ``"json"`` or ``"markdown"``."""
         if output_format not in ("json", "markdown"):
             raise ValueError(f"Unknown output_format: {output_format!r}. Use 'json' or 'markdown'.")
-        outcomes = self.outcomes()
-        summary = self.summarize(outcomes)
+        by_mode, not_run = self._run(self.modes)
+        summaries = {mode: self.summarize(outcomes) for mode, outcomes in by_mode.items()}
         if output_format == "json":
             return json.dumps(
                 {
@@ -1045,15 +1099,24 @@ class QuerySetEval:
                     "limit": self.limit,
                     "corpus": {"decisions": len(self.corpus), "active": self.active_count},
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "summary": summary,
-                    "per_query": [o.__dict__ for o in outcomes],
+                    "modes": {
+                        mode: {
+                            "summary": summaries[mode],
+                            "per_query": [o.__dict__ for o in by_mode[mode]],
+                        }
+                        for mode in by_mode
+                    },
+                    "not_run": not_run,
                 },
                 indent=2,
             )
-        return self._render_markdown(outcomes, summary)
+        return self._render_markdown(by_mode, summaries, not_run)
 
     def _render_markdown(
-        self, outcomes: list[QueryOutcome], summary: dict[str, dict[str, Any]]
+        self,
+        by_mode: dict[str, list[QueryOutcome]],
+        summaries: dict[str, dict[str, dict[str, Any]]],
+        not_run: dict[str, str],
     ) -> str:
         def spread(s: dict[str, float] | None) -> str:
             return f"{s['mean']:.2f} ({s['min']:.2f}–{s['max']:.2f})" if s else "—"
@@ -1064,38 +1127,46 @@ class QuerySetEval:
             f"**Query set**: `{self.source}`",
             f"**Corpus**: {len(self.corpus)} decisions, {self.active_count} ACTIVE",
             f"**Limit**: {self.limit} (status ACTIVE)",
+            f"**Modes**: {', '.join(by_mode) or 'none'}",
+        ]
+        lines += [f"**Not run**: {mode} — {reason}" for mode, reason in not_run.items()]
+        lines += [
             "",
             (
-                f"| Kind | Queries | Recall@{self.limit} mean (range) | MRR mean (range) "
+                f"| Kind | Mode | Queries | Recall@{self.limit} mean (range) | MRR mean (range) "
                 "| Returned nothing | Missed a gold id |"
             ),
-            "|------|---------|------|------|------|------|",
+            "|------|------|---------|------|------|------|------|",
         ]
-        for kind, s in summary.items():
-            missed = (
-                str(len(s["misses"]))
-                if "misses" in s
-                else f"{len(s['false_positives'])} false positives"
-            )
-            lines.append(
-                f"| {kind} | {s['queries']} | {spread(s.get('recall'))} "
-                f"| {spread(s.get('mrr'))} | {s['returned_nothing']} | {missed} |"
-            )
+        kinds = list(dict.fromkeys(kind for summary in summaries.values() for kind in summary))
+        for kind in kinds:
+            for mode, summary in summaries.items():
+                s = summary[kind]
+                missed = (
+                    str(len(s["misses"]))
+                    if "misses" in s
+                    else f"{len(s['false_positives'])} false positives"
+                )
+                lines.append(
+                    f"| {kind} | {mode} | {s['queries']} | {spread(s.get('recall'))} "
+                    f"| {spread(s.get('mrr'))} | {s['returned_nothing']} | {missed} |"
+                )
         lines += ["", "## Misses, false positives, and answers not ranked first", ""]
         lines += [
-            "| Query | Kind | Gold | First gold at | Returned |",
-            "|-------|------|------|---------------|----------|",
+            "| Query | Kind | Mode | Gold | First gold at | Returned |",
+            "|-------|------|------|------|---------------|----------|",
         ]
-        for o in outcomes:
-            if o.reciprocal_rank is None and not o.returned:
-                continue
-            if o.reciprocal_rank == 1.0 and o.recall == 1.0:
-                continue
-            rank = f"#{round(1 / o.reciprocal_rank)}" if o.reciprocal_rank else "—"
-            lines.append(
-                f"| `{o.query}` | {o.kind} | {', '.join(o.gold) or '—'} | {rank} "
-                f"| {', '.join(o.returned) or '—'} |"
-            )
+        for mode, outcomes in by_mode.items():
+            for o in outcomes:
+                if o.reciprocal_rank is None and not o.returned:
+                    continue
+                if o.reciprocal_rank == 1.0 and o.recall == 1.0:
+                    continue
+                rank = f"#{round(1 / o.reciprocal_rank)}" if o.reciprocal_rank else "—"
+                lines.append(
+                    f"| `{o.query}` | {o.kind} | {mode} | {', '.join(o.gold) or '—'} | {rank} "
+                    f"| {', '.join(o.returned) or '—'} |"
+                )
         return "\n".join(lines)
 
 
@@ -1109,7 +1180,7 @@ def main() -> None:
 
     Usage:
         python -m neuralmind.memory.eval [--project PATH] [--format json|markdown]
-            [--queries FILE [--limit N]]
+            [--queries FILE [--limit N] [--mode keyword|semantic|hybrid|all]]
     """
     import argparse
 
@@ -1137,10 +1208,17 @@ def main() -> None:
         default=QUERY_SET_LIMIT,
         help=f"Results per query with --queries (default: {QUERY_SET_LIMIT})",
     )
+    parser.add_argument(
+        "--mode",
+        choices=[*SEARCH_MODES, "all"],
+        default="all",
+        help="Search mode(s) to score with --queries (default: all, side by side)",
+    )
     args = parser.parse_args()
 
     if args.queries:
-        harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+        modes = SEARCH_MODES if args.mode == "all" else (args.mode,)
+        harness = QuerySetEval(load_query_set(args.queries), limit=args.limit, modes=modes)
         print(harness.run(output_format=args.format))
         return
     eval = MaintenanceEval(args.project)
