@@ -235,10 +235,14 @@ exceptions that policy has accepted.
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened, and only the
      agent process that launched it can call it.
-   - It does **not authenticate callers**. Each tool call declares its own `actor` and
-     `role` (the role defaults to `builder`), and any caller can declare `admin`. The
-     role policy keeps a well-behaved agent within bounds; it is not a boundary against
-     a hostile caller.
+   - By default it does **not authenticate callers**. Each tool call declares its own
+     `actor` and `role` (the role defaults to `builder`), and any caller can declare
+     `admin`. The role policy keeps a well-behaved agent within bounds; it is not a
+     boundary against a hostile caller.
+   - With `security.identity: os` *(v4.7.0+)* the server takes the actor from the OS
+     account it runs as (over stdio, the agent that launched it) and the role from
+     `security.users`, ignoring what the call declares. It refuses the HTTP transport,
+     accounts without a role, and a world-writable policy file.
    - The default policy (`DEFAULT_ROLE_POLICY` in `neuralmind/mcp_security.py`) has three roles:
      - `admin` — all tools.
      - `reader` — retrieval and read-only analytics, stats, and decision queries.
@@ -341,9 +345,9 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 
 ### ✅ CMMC 2.0
 - **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
-- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets applied to the role each MCP call declares. NeuralMind doesn't authenticate callers, so binding identities to roles is the operator's job
+- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets. With `security.identity: os` *(v4.7.0+)* the role is bound to the caller's OS account; by default each MCP call declares its own role, unauthenticated
 - **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
-- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): Not provided by NeuralMind; use FIPS-validated full-disk encryption on the host
+- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): NeuralMind doesn't encrypt data itself; use FIPS-validated full-disk encryption on the host. `security.require_encrypted_storage: true` *(v4.7.0+)* verifies it and refuses to run without it
 - **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
 ### ✅ ISO 27001 / 27002

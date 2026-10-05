@@ -26,6 +26,7 @@ from neuralmind.paths import (
     graph_json_path,
     vector_db_path,
 )
+from neuralmind.storage_guard import StorageNotVerifiedError
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 
@@ -7733,6 +7734,12 @@ def main():
         # of a stack trace. `neuralmind doctor` gives the full picture.
         print(f"\n{e}\n", file=sys.stderr)
         print("Run `neuralmind doctor` to check your setup.", file=sys.stderr)
+        sys.exit(1)
+    except StorageNotVerifiedError as e:
+        # security.require_encrypted_storage refused this project's volume.
+        # A refusal, not a crash: say why and where the check's detail lives.
+        print(f"\n{e}\n", file=sys.stderr)
+        print("Run `neuralmind doctor` to see the Storage encryption check.", file=sys.stderr)
         sys.exit(1)
 
 
