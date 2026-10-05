@@ -1241,48 +1241,50 @@ def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
     if spec is None:
         return
 
+    # YAML hands back whatever the author wrote — `title: 2024` is an int,
+    # `paths:` may be a list — so every label/key is coerced to str and every
+    # container type-checked: a malformed spec indexes what it can.
     file_id = b.file_id(rel)
-    title = (
-        spec.get("info", {}).get("title", path.name)
-        if isinstance(spec.get("info"), dict)
-        else path.name
-    )
-    b.add_node(file_id, title, "document", rel, 1)
+    info = spec.get("info")
+    title = info.get("title") if isinstance(info, dict) else None
+    b.add_node(file_id, str(title) if title not in (None, "") else path.name, "document", rel, 1)
 
     # Paths / operations (OpenAPI 2/3)
-    for api_path, path_item in (spec.get("paths") or {}).items():
+    for api_path, path_item in _dict_items(spec.get("paths")):
         if not isinstance(path_item, dict):
             continue
+        api_path = str(api_path)
         for method in ("get", "post", "put", "patch", "delete", "head", "options", "trace"):
             op = path_item.get(method)
             if not isinstance(op, dict):
                 continue
             summary = op.get("summary") or op.get("operationId") or f"{method.upper()} {api_path}"
             nid = b.sym_id(f"{file_id}__", method + "_" + api_path)
-            b.add_node(nid, summary, "document", rel, 1)
+            b.add_node(nid, str(summary), "document", rel, 1)
             b.add_edge("contains", file_id, nid, rel, 1)
 
     # AsyncAPI channels
-    for channel, channel_item in (spec.get("channels") or {}).items():
+    for channel, channel_item in _dict_items(spec.get("channels")):
         if not isinstance(channel_item, dict):
             continue
-        nid = b.sym_id(f"{file_id}__", "channel_" + channel)
+        nid = b.sym_id(f"{file_id}__", f"channel_{channel}")
         b.add_node(nid, f"channel:{channel}", "document", rel, 1)
         b.add_edge("contains", file_id, nid, rel, 1)
 
-    # Schema components (OpenAPI 3.x)
-    schemas = {}
-    try:
-        schemas = spec.get("components", {}).get("schemas", {}) or {}
-    except AttributeError:
-        pass
-    # OpenAPI 2.x definitions
+    # Schema components (OpenAPI 3.x), else OpenAPI 2.x definitions
+    components = spec.get("components")
+    schemas = components.get("schemas") if isinstance(components, dict) else None
     if not schemas:
-        schemas = spec.get("definitions", {}) or {}
-    for schema_name in schemas:
-        nid = b.sym_id(f"{file_id}__schema_", schema_name)
+        schemas = spec.get("definitions")
+    for schema_name, _schema in _dict_items(schemas):
+        nid = b.sym_id(f"{file_id}__schema_", str(schema_name))
         b.add_node(nid, f"schema:{schema_name}", "document", rel, 1)
         b.add_edge("contains", file_id, nid, rel, 1)
+
+
+def _dict_items(value: Any):
+    """``value.items()`` when it's a mapping, else nothing (a malformed spec)."""
+    return value.items() if isinstance(value, dict) else ()
 
 
 _SQL_CREATE_RE = re.compile(
@@ -1373,6 +1375,18 @@ _SCHEMA_EXTRACTORS: dict[str, Any] = {
     ".sql": _extract_sql,
     ".proto": _extract_proto,
 }
+
+
+def _extract_schema_file(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Run ``path``'s schema extractor. A spec it can't handle is skipped
+    (logged at debug), never fatal — one odd file must not abort the build."""
+    extractor = _SCHEMA_EXTRACTORS.get(path.suffix)
+    if extractor is None:
+        return
+    try:
+        extractor(b, path, rel)
+    except Exception as exc:
+        logger.debug("skipped schema file %s (%s: %s)", rel, type(exc).__name__, exc, exc_info=True)
 
 
 def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None = None) -> None:
@@ -1738,10 +1752,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
 
     # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
     for sa_path in schema_files:
-        rel = sa_path.relative_to(root).as_posix()
-        extractor_ = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
-        if extractor_:
-            extractor_(b, sa_path, rel)
+        _extract_schema_file(b, sa_path, sa_path.relative_to(root).as_posix())
 
     # ---- doc-code coupling ---------------------------------------------- #
     # Link document/file nodes to the code file nodes they describe.
@@ -4578,9 +4589,7 @@ def update_files(
             stats.files_reparsed += 1
             continue
         if fpath.suffix in _SCHEMA_SUFFIXES:
-            extractor = _SCHEMA_EXTRACTORS.get(fpath.suffix)
-            if extractor:
-                extractor(b, fpath, rel)
+            _extract_schema_file(b, fpath, rel)
             stats.files_reparsed += 1
             continue
         lang = _parse_language(fpath, cpp_project)

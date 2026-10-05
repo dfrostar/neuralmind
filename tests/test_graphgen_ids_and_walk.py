@@ -10,6 +10,10 @@
   followed symlinked directories anywhere: a link to an outside directory
   pulled foreign files into the index and ``src/loop -> ..`` recursed until
   the path got too long.
+- ``.neuralmind.yaml`` include/exclude globs skipped schema files
+  (``vendor/schema.sql`` was indexed despite ``exclude: vendor/**``).
+- One malformed OpenAPI spec (``title: 2024``, ``summary: 404``, integer
+  schema names, ``paths:`` as a list) crashed the whole build.
 """
 
 from __future__ import annotations
@@ -341,3 +345,55 @@ def test_newly_excluded_schema_file_leaves_an_incremental_build(tmp_path: Path) 
     assert "vendor/schema.sql" in {n["source_file"] for n in _build(root)["nodes"]}
     (root / ".neuralmind.yaml").write_text("exclude:\n  - 'vendor/**'\n")
     assert "vendor/schema.sql" not in {n["source_file"] for n in _build(root)["nodes"]}
+
+
+# --------------------------------------------------------------------------- #
+# A malformed OpenAPI spec never aborts the build
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    ("spec", "labels"),
+    [
+        ("openapi: 3.0.0\ninfo:\n  title: 2024\n  version: 1\npaths: {}\n", {"2024"}),
+        ("openapi: 3.0.0\ninfo:\n  title:\npaths: {}\n", {"api.yaml"}),
+        (
+            "openapi: 3.0.0\ninfo: {title: X}\npaths:\n  /a:\n    get:\n      summary: 404\n",
+            {"404"},
+        ),
+        (
+            "openapi: 3.0.0\ninfo: {title: X}\ncomponents:\n  schemas:\n    200: {type: object}\n",
+            {"schema:200"},
+        ),
+        ("openapi: 3.0.0\ninfo: {title: X}\npaths:\n  - /a\n", {"X"}),
+        ("openapi: 3.0.0\ninfo: {title: X}\npaths:\n  200:\n    get: {}\n", {"GET 200"}),
+        ("asyncapi: 2.0.0\ninfo: {title: X}\nchannels:\n  - user/signedup\n", {"X"}),
+        ("asyncapi: 2.0.0\ninfo: {title: X}\nchannels:\n  42: {}\n", {"channel:42"}),
+        ("openapi: 3.0.0\ninfo: {title: X}\ncomponents: [a, b]\ndefinitions: [c]\n", {"X"}),
+    ],
+)
+def test_malformed_openapi_values_do_not_crash(tmp_path: Path, spec: str, labels: set) -> None:
+    root = _write(tmp_path, {"app.py": "def f(): pass\n", "api.yaml": spec})
+    graph = graphgen.build_graph(root)
+    assert "app_py__f_fn" in _ids(graph)
+    assert labels <= {n["label"] for n in graph["nodes"] if n["source_file"] == "api.yaml"}
+    assert all(isinstance(n["label"], str) for n in graph["nodes"])
+
+
+def test_a_failing_schema_extractor_skips_only_that_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(b, path, rel):
+        raise ValueError("unexpected spec shape")
+
+    monkeypatch.setitem(graphgen._SCHEMA_EXTRACTORS, ".sql", boom)
+    root = _write(
+        tmp_path,
+        {
+            "app.py": "def f(): pass\n",
+            "a.sql": "CREATE TABLE t (id int);\n",
+            "b.proto": "message M {}\n",
+        },
+    )
+    graph = graphgen.build_graph(root)
+    assert {"app_py__f_fn", "b_proto__msg_m"} <= _ids(graph)
+    updated, _ = graphgen.update_files(root, graph, ["a.sql"])
+    assert "app_py__f_fn" in _ids(updated)
