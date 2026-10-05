@@ -1744,14 +1744,19 @@ class NeuralMind:
         if not graphgen.is_available():
             return {"success": False, "error": "tree-sitter not available"}
 
+        from .neuralmind_config import NeuralmindConfig
+
         root = self.project_path.resolve()
         indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
-        # Files the full build would index (.gitignore, .neuralmindignore and
-        # the default ignores applied), so an edit to an excluded file can't
-        # slip it back into the graph.
+        # Files the full build would index (.gitignore, .neuralmindignore, the
+        # default ignores and .neuralmind.yaml include/exclude applied), so an
+        # edit to an excluded file can't slip it back into the graph.
+        config = NeuralmindConfig.load(root)
         allowed = {
             f.relative_to(root).as_posix()
-            for f in graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            for f in config.apply_globs(
+                root, graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            )
         }
         known = {n.get("source_file") for n in graph.get("nodes", [])}
         changed: list[str] = []
