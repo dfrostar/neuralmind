@@ -174,17 +174,16 @@ def install_hooks(
     path = _settings_path(scope, project_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load existing settings (or start fresh)
-    existing: dict = {}
-    if path.exists():
-        try:
-            existing = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            existing = {}
+    existing = _load_settings(path)
 
     # Strip any prior neuralmind block by filtering hooks
     # Claude Code's schema: settings.hooks.<Event> = list of matcher blocks
     hooks = existing.get("hooks", {})
+    if not isinstance(hooks, dict):
+        raise ValueError(
+            f'Refusing to modify {path}: its "hooks" value is not a JSON object. '
+            "Fix it by hand, then re-run."
+        )
     for event in (
         "PostToolUse",
         "PreToolUse",
@@ -231,6 +230,34 @@ def install_hooks(
     existing["hooks"] = hooks
     path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
     return {"action": "installed", "path": str(path), "scope": scope}
+
+
+def _load_settings(path: Path) -> dict:
+    """Read an existing settings.json, refusing anything we can't round-trip.
+
+    A file that doesn't parse (a trailing comma is enough) or isn't a JSON
+    object raises ``ValueError`` instead of being treated as empty: writing
+    our hooks over ``{}`` would drop the user's permissions, model and env,
+    and an uninstall would delete the file outright.
+    """
+    if not path.exists():
+        return {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ValueError(f"Refusing to modify {path}: could not read it ({exc}).") from exc
+    if not text.strip():
+        return {}
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        raise ValueError(
+            f"Refusing to modify {path}: it is not valid JSON ({exc}). "
+            "Fix the file (often a trailing comma), then re-run."
+        ) from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"Refusing to modify {path}: the top level is not a JSON object.")
+    return data
 
 
 def _is_neuralmind_block(block: dict) -> bool:

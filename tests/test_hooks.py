@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from neuralmind.hooks import (
     _is_neuralmind_block,
     install_hooks,
@@ -104,6 +106,71 @@ class TestInstallProject:
         result = install_hooks(scope="project", project_path=str(tmp_path), uninstall=True)
         assert result.get("removed_file") is True
         assert not (tmp_path / ".claude" / "settings.json").exists()
+
+
+class TestInstallRefusesUnparsableSettings:
+    """A settings.json that isn't a JSON object is never rewritten or deleted.
+
+    It used to be read as ``{}``: install then replaced the user's permissions,
+    model and env with just our hooks, and --uninstall deleted the file. A
+    single trailing comma was enough.
+    """
+
+    USER_SETTINGS = (
+        "{\n"
+        '  "model": "opus",\n'
+        '  "permissions": {"allow": ["Bash(npm test)"]},\n'
+        '  "env": {"FOO": "bar"},\n'
+        "}\n"
+    )
+
+    def _write(self, tmp_path, text):
+        settings_path = tmp_path / ".claude" / "settings.json"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(text, encoding="utf-8")
+        return settings_path
+
+    def test_install_refuses_trailing_comma_file(self, tmp_path):
+        settings_path = self._write(tmp_path, self.USER_SETTINGS)
+        with pytest.raises(ValueError, match="not valid JSON"):
+            install_hooks(scope="project", project_path=str(tmp_path))
+        assert settings_path.read_text(encoding="utf-8") == self.USER_SETTINGS
+
+    def test_uninstall_refuses_and_never_deletes(self, tmp_path):
+        settings_path = self._write(tmp_path, self.USER_SETTINGS)
+        with pytest.raises(ValueError, match="not valid JSON"):
+            install_hooks(scope="project", project_path=str(tmp_path), uninstall=True)
+        assert settings_path.read_text(encoding="utf-8") == self.USER_SETTINGS
+
+    def test_refuses_non_object_top_level(self, tmp_path):
+        settings_path = self._write(tmp_path, "[1, 2]")
+        with pytest.raises(ValueError, match="JSON object"):
+            install_hooks(scope="project", project_path=str(tmp_path))
+        assert settings_path.read_text(encoding="utf-8") == "[1, 2]"
+
+    def test_refuses_non_object_hooks_value(self, tmp_path):
+        text = json.dumps({"model": "opus", "hooks": ["not", "a", "mapping"]})
+        settings_path = self._write(tmp_path, text)
+        with pytest.raises(ValueError, match="hooks"):
+            install_hooks(scope="project", project_path=str(tmp_path))
+        assert settings_path.read_text(encoding="utf-8") == text
+
+    def test_empty_file_is_treated_as_no_settings(self, tmp_path):
+        settings_path = self._write(tmp_path, "  \n")
+        result = install_hooks(scope="project", project_path=str(tmp_path))
+        assert result["action"] == "installed"
+        assert "hooks" in json.loads(settings_path.read_text(encoding="utf-8"))
+
+    def test_cli_reports_error_and_exits_nonzero(self, tmp_path, capsys):
+        settings_path = self._write(tmp_path, self.USER_SETTINGS)
+        from neuralmind.cli import build_parser, cmd_install_hooks
+
+        args = build_parser().parse_args(["install-hooks", str(tmp_path)])
+        with pytest.raises(SystemExit) as exc:
+            cmd_install_hooks(args)
+        assert exc.value.code == 1
+        assert "not valid JSON" in capsys.readouterr().out
+        assert settings_path.read_text(encoding="utf-8") == self.USER_SETTINGS
 
 
 class TestInstallGlobal:
@@ -340,3 +407,4 @@ class TestRunHook:
         assert cached["stdout"].count(verbose_line) == 100
         assert cached["command"] == "pytest -v"
         assert cached["exit_code"] == 0
+
