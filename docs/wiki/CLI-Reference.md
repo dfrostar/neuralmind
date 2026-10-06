@@ -2612,12 +2612,16 @@ that doesn't exist exits 2 instead of creating an empty decision store.
 `decisions restore ID --commit SHA path`. On Python 3.10 and 3.11, on 3.12
 before 3.12.7, and on 3.13.0, that failed with `unrecognized arguments` in
 `amend`, `invalidate`, `query` and `restore`, and in `memory review-approve` /
-`review-reject`. `--` ends the options as usual, so a path that starts with
-`-` goes after it: `decisions restore ID --commit SHA -- -proj`. A list option
-(`--files`, `--rejected`, `--evidence`, `--tags`) takes every value up to the
-next option, so put `--` between it and a path that follows:
-`decisions amend ID --evidence proof.md -- path`. Without it the path is read
-as one more value, and the command runs on the current directory.
+`review-reject`.
+
+*(v4.9.2+)* `--` ends the options as usual, so a path that starts with `-`
+goes after it: `decisions restore ID --commit SHA -- -proj`. (v4.9.1 could
+ignore `--` in these six subcommands on Python 3.10, 3.11, 3.12 before 3.12.8
+and 3.13.0.) A list option (`--files`, `--rejected`, `--evidence`, `--tags`) takes
+every value up to the next option, so put `--` between it and a path that
+follows: `decisions amend ID --evidence proof.md -- path`. Without it the
+path is read as one more value, and the command runs on the current
+directory.
 
 `query` takes keywords or a question, matched against decision titles and
 rationales. `--mode` *(v4.8.0+)* picks the ranking:
