@@ -50,7 +50,7 @@ from .http_util import (
     read_json_object,
     token_matches,
 )
-from .paths import ProjectNotFoundError, require_project_dir
+from .paths import ProjectNotFoundError
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -558,12 +558,13 @@ def _savings(ctx: DaemonContext, project: str, cost: bool, model: str | None, qp
 
 
 def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[int, dict]:
-    # Check the path before queueing: an async build of a mistyped project
-    # otherwise answered 202 and only failed later, inside the job.
-    require_project_dir(project)
+    # Look the project up before queueing, as every other route does: the
+    # registry's NeuralMind refuses a path that isn't a directory
+    # (ProjectNotFoundError, a 404). Inside the job, an async build of a
+    # mistyped project answered 202 and only failed later.
+    mind = ctx.registry.get(project)
 
     def _do() -> dict:
-        mind = ctx.registry.get(project)
         with ctx.registry.lock_for(project):
             result = mind.build(force=force)
             # Mark built *inside* the lock: otherwise a concurrent ensure_built
