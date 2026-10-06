@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.9.0](https://github.com/dfrostar/neuralmind/compare/v4.8.2...v4.9.0) (2026-10-06)
+
+
+### Features
+
+* **hermes:** Hermes-Agent plugin — NeuralMind context in every turn, no tool call ([#589](https://github.com/dfrostar/neuralmind/issues/589)) ([347c963](https://github.com/dfrostar/neuralmind/commit/347c963dadb661f3c68342665a63d5a107a5def0))
+
+
+### Bug Fixes
+
+* GHCR :latest follows the newest release; the session recap breaks ties by mtime ([#594](https://github.com/dfrostar/neuralmind/issues/594)) ([7a1c90d](https://github.com/dfrostar/neuralmind/commit/7a1c90dcab518b4796282250622e7697216f0329))
+
+
+### Documentation
+
+* align FAQ and license files with commercial terms ([#571](https://github.com/dfrostar/neuralmind/issues/571)) ([af8055f](https://github.com/dfrostar/neuralmind/commit/af8055f1ccf613d7cf93a85b089b42e618e6348d))
+
 ## [4.8.2](https://github.com/dfrostar/neuralmind/compare/v4.8.1...v4.8.2) (2026-10-06)
 
 
