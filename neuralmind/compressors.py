@@ -401,12 +401,13 @@ def noisy_log_family(command: str) -> str | None:
     """Which allowlisted noisy log ``command`` prints, or None.
 
     The allowlist is ``pip install`` (also as ``python -m pip install``) and
-    ``neuralmind build``. The whole command line has to be such an invocation,
+    ``neuralmind build``. The whole command line has to be one such invocation,
     optionally after variable assignments and silent setup steps (``cd``,
     ``source``, ``.``, ``export``) joined with ``&&`` or ``;``, and optionally
-    with ``2>&1``. Anything else — a pipe, a redirect to a file, a subshell,
-    command substitution, ``||``, a second program, a line break — makes it
-    None, because then the output is not, or not only, that tool's log.
+    with ``2>&1``. Nothing may follow it. Anything else — a pipe, a redirect to
+    a file, a subshell, command substitution, ``||``, a second command (even a
+    second install, or a ``source`` after the install), a line break — makes
+    it None, because then the output is not, or not only, that tool's log.
     """
     command = command.replace("\\\n", " ")  # line continuations
     if "\n" in command or "\r" in command or "`" in command:
@@ -433,16 +434,23 @@ def noisy_log_family(command: str) -> str | None:
             return None
         i += 1
 
+    # Setup only before the one allowlisted invocation, and nothing after it:
+    # a `source` after it can run anything, and a second install is a second
+    # command whose output this line doesn't describe. A bare assignment or
+    # an empty segment (a trailing ";") prints nothing, so it may stand anywhere.
     family = None
     for argv in segments:
         while argv and _ASSIGNMENT.match(argv[0]):
             argv = argv[1:]
-        if not argv or argv[0] in _SILENT_SETUP:
+        if not argv:
             continue
-        found = _family_of(argv)
-        if found is None or (family is not None and found != family):
+        if family is not None:
             return None
-        family = found
+        if argv[0] in _SILENT_SETUP:
+            continue
+        family = _family_of(argv)
+        if family is None:
+            return None
     return family
 
 

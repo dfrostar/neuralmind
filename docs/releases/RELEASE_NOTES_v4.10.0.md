@@ -19,8 +19,9 @@ replacement can hide what an agent needs, it is narrow on purpose:
 - **An allowlist of commands, not a size threshold:** `pip install` (also
   `python -m pip install`) and `neuralmind build`, run on their own. `cd`,
   `source .venv/bin/activate` or variable assignments may come first. A pipe, a
-  redirect, `||`, a subshell or a second command (`pip install -e . && pytest`)
-  leaves the output whole, and so does every other command.
+  redirect, `||`, a subshell or a second command (`pip install -e . && pytest`,
+  and anything after the install, even another `pip install`) leaves the
+  output whole, and so does every other command.
 - **Removes known noise, keeps everything else:** only lines matching that
   tool's progress patterns go (pip's `Collecting`, `Downloading`, progress
   bars, build steps, and `Requirement already satisfied` for a dependency).
