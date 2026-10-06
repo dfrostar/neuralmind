@@ -50,7 +50,7 @@ from .http_util import (
     read_json_object,
     token_matches,
 )
-from .paths import ProjectNotFoundError
+from .paths import ProjectNotFoundError, require_project_dir
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -558,6 +558,10 @@ def _savings(ctx: DaemonContext, project: str, cost: bool, model: str | None, qp
 
 
 def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[int, dict]:
+    # Check the path before queueing: an async build of a mistyped project
+    # otherwise answered 202 and only failed later, inside the job.
+    require_project_dir(project)
+
     def _do() -> dict:
         mind = ctx.registry.get(project)
         with ctx.registry.lock_for(project):

@@ -286,3 +286,22 @@ class TestInProjectIngestHelpers:
             "docs/abs.md",
             "docs/dot.md",
         }
+
+    def test_ingest_stores_no_markdown_text_the_graph_leaves_out(self, tmp_path):
+        # graph_prose_files skips a whole file once the graph holds its heading
+        # sections. That loses nothing only because the ingester drops what the
+        # graph drops: text above the first heading and fenced code. If ingest
+        # ever keeps either, a skipped file loses it, and graph_prose_files must
+        # stop counting such a file as indexed.
+        from neuralmind.document_ingestion import parse_document
+
+        md = tmp_path / "setup.md"
+        md.write_text(
+            "Read this first: the platypus-kazoo flag.\n\n# Setup\n\nRun the build.\n\n"
+            "```bash\nneuralmind build . --wombat-tuba\n```\n\n## Next\n\nQuery it.\n",
+            encoding="utf-8",
+        )
+        text = "\n".join(node.text for node in parse_document(md))
+        assert "Run the build." in text and "Query it." in text
+        assert "platypus-kazoo" not in text
+        assert "wombat-tuba" not in text

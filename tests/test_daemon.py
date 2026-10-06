@@ -541,3 +541,17 @@ def test_dispatch_answers_a_missing_project_with_404(tmp_path):
     )
     assert status == 404 and payload["code"] == "project_not_found"
     assert not missing.exists()
+
+
+def test_async_build_of_a_missing_project_is_refused_before_queueing(tmp_path):
+    # A sync build failed with 404, but an async one answered 202 with a job
+    # id and only failed inside the job, so a client polling it saw an
+    # accepted build of a project that doesn't exist.
+    ctx = daemon_mod.DaemonContext(
+        registry=daemon_mod.ProjectRegistry(), jobs=daemon_mod.JobManager(), version="test"
+    )
+    missing = tmp_path / "no-such-project"
+    status, payload = daemon_mod.dispatch(ctx, "POST", "/build", {"project": str(missing)})
+    assert status == 404 and payload["code"] == "project_not_found"
+    assert ctx.jobs.list() == []
+    assert not missing.exists()
