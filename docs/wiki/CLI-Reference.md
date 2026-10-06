@@ -2613,7 +2613,11 @@ that doesn't exist exits 2 instead of creating an empty decision store.
 before 3.12.7, and on 3.13.0, that failed with `unrecognized arguments` in
 `amend`, `invalidate`, `query` and `restore`, and in `memory review-approve` /
 `review-reject`. `--` ends the options as usual, so a path that starts with
-`-` goes after it: `decisions restore ID --commit SHA -- -proj`.
+`-` goes after it: `decisions restore ID --commit SHA -- -proj`. A list option
+(`--files`, `--rejected`, `--evidence`, `--tags`) takes every value up to the
+next option, so put `--` between it and a path that follows:
+`decisions amend ID --evidence proof.md -- path`. Without it the path is read
+as one more value, and the command runs on the current directory.
 
 `query` takes keywords or a question, matched against decision titles and
 rationales. `--mode` *(v4.8.0+)* picks the ranking:

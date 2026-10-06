@@ -531,6 +531,30 @@ def test_double_dash_still_ends_the_options(parser, project, argv, field, value)
     assert args.json is False
 
 
+@pytest.mark.parametrize(
+    "argv, field, values",
+    [
+        (
+            ["decisions", "amend", "d1", "--evidence", "proof.md", "--", "{p}"],
+            "evidence",
+            ["proof.md"],
+        ),
+        (
+            ["decisions", "record", "--title", "t", "--rationale", "r"]
+            + ["--files", "a.py", "b.py", "--", "{p}"],
+            "files",
+            ["a.py", "b.py"],
+        ),
+    ],
+)
+def test_double_dash_ends_a_list_option_before_the_path(parser, project, argv, field, values):
+    # A list option takes every value up to the next option, so a path right
+    # after one goes after `--`.
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert getattr(args, field) == values
+    assert args.project_path == str(project)
+
+
 def test_a_path_starting_with_a_dash_goes_after_the_double_dash(parser, tmp_path, monkeypatch):
     # "-proj" reads as an option anywhere but after `--`; the options before
     # the marker still apply.

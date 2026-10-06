@@ -7144,7 +7144,15 @@ def build_parser() -> argparse.ArgumentParser:
         dest="decisions_cmd", required=True, parser_class=_PathAfterOptionsParser
     )
 
-    d_record = decisions_sub.add_parser("record", help="Store an architecture decision")
+    # A list option takes every value up to the next option, path included.
+    list_then_path = (
+        "A list option such as --evidence takes every value up to the next option, "
+        "so put -- between it and a project path that follows: "
+        "--evidence proof.md -- PATH"
+    )
+    d_record = decisions_sub.add_parser(
+        "record", help="Store an architecture decision", epilog=list_then_path
+    )
     d_record.add_argument("--title", required=True, help="Decision title")
     d_record.add_argument("--rationale", required=True, help="Why this decision was made")
     d_record.add_argument("--commit", help="Git commit SHA (defaults to HEAD)")
@@ -7184,7 +7192,9 @@ def build_parser() -> argparse.ArgumentParser:
     d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
-    d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
+    d_amend = decisions_sub.add_parser(
+        "amend", help="Add to existing decision", epilog=list_then_path
+    )
     d_amend.add_argument("decision_id", help="Decision ID to amend")
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
