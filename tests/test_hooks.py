@@ -624,6 +624,16 @@ class TestBashReplaceOptIn:
         payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
         assert self._run("compress-bash", payload, monkeypatch) == ""
 
+    def test_not_replaced_when_the_archive_would_be_cut(self, monkeypatch, tmp_path):
+        # Under a small NEURALMIND_OUTPUT_CACHE_MAX the archive can't hold the
+        # whole log, so the elided lines would be unrecoverable.
+        from neuralmind import output_cache
+
+        monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
+        monkeypatch.setattr(output_cache, "DEFAULT_MAX_BYTES", 200)
+        payload = self._bash("pip install -r requirements.txt", INSTALL_LOG, tmp_path)
+        assert self._run("compress-bash", payload, monkeypatch) == ""
+
     def test_bypass_wins(self, monkeypatch, tmp_path):
         monkeypatch.setenv("NEURALMIND_BASH_REPLACE", "1")
         monkeypatch.setenv("NEURALMIND_BYPASS", "1")

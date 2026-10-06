@@ -323,6 +323,27 @@ class TestArchiveOutput:
         assert AWS_KEY_ID not in text
         assert "# redacted: aws-access-key-id" in text
 
+    def test_name_does_not_depend_on_a_redacted_secret(self, tmp_path):
+        # The replaced result shows the archive's name. Hashed from the raw
+        # output, it would let anyone who sees it test guesses at a secret
+        # the archive itself redacts; hashed from the redacted text, two
+        # outputs that differ only in the secret share a name.
+        other_key = "AKIA" + "QWERTYUIOPASDFGH"
+        first = archive_path(tmp_path, f"KEY={AWS_KEY_ID}\n", "", "pip install x")
+        second = archive_path(tmp_path, f"KEY={other_key}\n", "", "pip install x")
+        assert first == second
+        assert archive_output(tmp_path, f"KEY={AWS_KEY_ID}\n", "", command="pip install x") == first
+
+    def test_an_output_over_the_cap_is_not_archived(self, tmp_path):
+        # A head-and-tail copy couldn't hold the lines a replacement elides,
+        # and the replaced result would call it the full output.
+        assert (
+            archive_output(tmp_path, "x" * 5000, "", command="pip install x", max_bytes=1000)
+            is None
+        )
+        assert not (tmp_path / ".neuralmind" / "bash_outputs").exists()
+        assert archive_output(tmp_path, "x" * 900, "", command="pip install x", max_bytes=1000)
+
     def test_keeps_only_the_newest(self, tmp_path):
         targets = [
             archive_output(tmp_path, f"output {n}\n", "", command="pip install x")
