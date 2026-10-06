@@ -323,7 +323,7 @@ earlier ignored `security.roles`.) See the
 
 **Not by default.**
 - ✅ Indexing, embedding, retrieval and synapse learning run on your machine
-- ✅ No telemetry
+- ✅ NeuralMind disables ONNX Runtime telemetry before initializing the runtime; no telemetry is sent
 - ✅ No repository content transmitted by default — the one default outbound request is a public embedding-model download on first build, pre-seedable via `NEURALMIND_ONNX_MODEL_DIR` for air-gapped installs
 - ⚠️ One opt-in feature, off by default: `NEURALMIND_LLM_SEED=1` (plus your own `ANTHROPIC_API_KEY`) sends README and architecture-doc prose to Anthropic to seed doc synapses
 - Your agent still sends the context slice it selects to its own model provider; NeuralMind makes that slice smaller but does not control it
