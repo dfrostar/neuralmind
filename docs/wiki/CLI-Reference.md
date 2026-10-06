@@ -1245,9 +1245,10 @@ neuralmind validate [project_path] [OPTIONS]
   rebuild removed) — forward-compatibility / hygiene signals. Endpoints
   NeuralMind writes on purpose aren't graph nodes and aren't stale:
   `community_<id>` for a community the index still has, `compliance:` keys,
-  and *(v4.9.1+)* the prose path's `query:<term>` nodes (written as
+  *(v4.9.1+)* the prose path's `query:<term>` nodes (written as
   `query_<term>` before v4.9.1; those older edges still count as stale until
-  they decay).
+  they decay), and *(v4.9.2+)* the chapter file names the prose path records,
+  such as `ch01.md`, while the index still holds `chapters/ch01.md`.
 
 It also reports the IR contract version, source backend + producer schema
 version, coverage (`coarse`/`precise`), per-kind / per-language counts, and the

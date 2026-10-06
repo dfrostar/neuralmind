@@ -199,6 +199,18 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v492">
+            <h2>What&rsquo;s New in v4.9.2 &mdash; two loose ends from v4.9.1</h2>
+            <p><strong>Two related problems found while fixing v4.9.1.</strong> Neither loses data.</p>
+            <ul>
+                <li><strong><code>validate</code> stops flagging prose chapters as stale</strong> &mdash; the chapter file names the prose path records, such as <code>ch01.md</code>, count as known while the index still holds <code>chapters/ch01.md</code>; a deleted chapter is still reported</li>
+                <li><strong>The sleep pass&rsquo;s long-term rule</strong> &mdash; <code>DaemonSleep.promote_ltp_edges</code> no longer boosts ephemeral edges, which decay never protects (a library fix: nothing in the CLI, hooks or daemon runs the sleep pass yet)</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.2.md">v4.9.2 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v491">
             <h2>What&rsquo;s New in v4.9.1 &mdash; the last four fixes from the v4.8.2 bug hunt</h2>
             <p><strong>Four small problems v4.8.2 left for later.</strong> None lose data; they are a command that acted on the wrong thing, a warning that didn&rsquo;t mean what it said, a count that read too high, and an argument order the CLI refused.</p>
