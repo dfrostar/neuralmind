@@ -6205,6 +6205,32 @@ def _version_string() -> str:
     return base
 
 
+class _IntermixedArgumentParser(argparse.ArgumentParser):
+    """A subcommand parser whose positionals may follow its options.
+
+    ``decisions restore <id> --commit X <path>``: before Python 3.13, argparse
+    matched an optional trailing positional (``project_path``, nargs="?")
+    together with the required one before it, giving it nothing, so the path
+    after ``--commit X`` was left over: "unrecognized arguments". Parsing
+    intermixed reads the options first, then all the positionals in order,
+    which is what 3.13 does. Only for parsers with no subcommands of their own:
+    argparse can't parse those intermixed, so they parse as usual.
+    """
+
+    _intermixing = False
+
+    def parse_known_args(self, args=None, namespace=None):
+        if self._intermixing or self._subparsers is not None:
+            return super().parse_known_args(args, namespace)
+        # parse_known_intermixed_args calls back into parse_known_args on
+        # Python < 3.13; those inner passes take the plain path above.
+        self._intermixing = True
+        try:
+            return self.parse_known_intermixed_args(args, namespace)
+        finally:
+            self._intermixing = False
+
+
 def _existing_project_dir(value: str) -> str:
     """argparse ``type=`` for a project path that must already exist.
 
@@ -7000,7 +7026,9 @@ def build_parser() -> argparse.ArgumentParser:
         "memory",
         help="Inspect, reset, export, or import learned synapse memory by namespace",
     )
-    memory_sub = memory_p.add_subparsers(dest="memory_cmd", required=True)
+    memory_sub = memory_p.add_subparsers(
+        dest="memory_cmd", required=True, parser_class=_IntermixedArgumentParser
+    )
 
     # feedback command — explicit good/bad adjustment of last-reinforced edges
     feedback_p = subparsers.add_parser(
@@ -7112,7 +7140,9 @@ def build_parser() -> argparse.ArgumentParser:
         "decisions",
         help="Persistent decision memory with commit-level invalidation",
     )
-    decisions_sub = decisions_p.add_subparsers(dest="decisions_cmd", required=True)
+    decisions_sub = decisions_p.add_subparsers(
+        dest="decisions_cmd", required=True, parser_class=_IntermixedArgumentParser
+    )
 
     d_record = decisions_sub.add_parser("record", help="Store an architecture decision")
     d_record.add_argument("--title", required=True, help="Decision title")

@@ -465,3 +465,58 @@ def test_record_accepts_confidence_in_range(parser, project, capsys, good, store
     assert "Recorded decision" in out
     (decision,) = DecisionStore(str(project)).list_all()
     assert decision.confidence == stored
+
+
+# ------------------------------------------------------------------ #
+# the project path may come after options (argparse < 3.13 rejected it)
+# ------------------------------------------------------------------ #
+
+
+def test_restore_accepts_the_path_after_options(parser, project, capsys):
+    # Regression: `decisions restore <id> --commit X <path>` failed with
+    # "unrecognized arguments: <path>" on Python 3.10-3.12.
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    out = _run(parser, ["decisions", "restore", rec.id, "--commit", "b" * 40, str(project)], capsys)
+    assert f"Restored decision: {rec.id}" in out
+    assert store.get(rec.id).commit_sha == "b" * 40
+
+
+def test_invalidate_accepts_the_path_after_options(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    out = _run(
+        parser, ["decisions", "invalidate", rec.id, "--reason", "superseded", str(project)], capsys
+    )
+    assert f"Invalidated decision: {rec.id}" in out
+    assert store.get(rec.id).status == "INVALIDATED"
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["decisions", "amend", "d1", "--rationale", "why", "{p}"],
+        ["decisions", "query", "syringe", "--limit", "3", "{p}"],
+        ["decisions", "restore", "--commit", "abc", "d1", "{p}"],
+        ["memory", "review-approve", "a.py", "b.py", "--json", "{p}"],
+        ["memory", "review-reject", "a.py", "--json", "b.py", "{p}"],
+    ],
+)
+def test_positionals_may_follow_options(parser, project, argv):
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert args.project_path == str(project)
+
+
+def test_a_missing_path_after_options_is_still_a_usage_error(parser, project, capsys):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["decisions", "restore", "d1", "--commit", "abc", str(project / "nope")])
+    assert exc.value.code == 2
+    assert "nope" in capsys.readouterr().err
+
+
+def test_an_extra_positional_is_still_rejected(parser, project, capsys):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["decisions", "restore", "d1", str(project), "--commit", "abc", "extra"])
+    assert exc.value.code == 2
+    assert "unrecognized arguments: extra" in capsys.readouterr().err
