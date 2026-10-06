@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.8.2](https://github.com/dfrostar/neuralmind/compare/v4.8.1...v4.8.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* low-severity bug-hunt fixes: missing project paths, decisions, servers, ingest, memory advice ([#590](https://github.com/dfrostar/neuralmind/issues/590)) ([424ea4f](https://github.com/dfrostar/neuralmind/commit/424ea4fc00ee88a02adaff1a38ccded64df02117))
+
 ## [4.8.1](https://github.com/dfrostar/neuralmind/compare/v4.8.0...v4.8.1) (2026-10-05)
 
 
