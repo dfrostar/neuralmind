@@ -199,6 +199,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v482">
+            <h2>What&rsquo;s New in v4.8.2 &mdash; the low-severity bug-hunt fixes</h2>
+            <p><strong>The rest of the bugs found by testing v4.7.0 end to end.</strong> None lose data; they are wrong answers, misleading messages and a test suite that dirtied the checkout.</p>
+            <ul>
+                <li><strong>A mistyped project path is an error</strong> &mdash; <code>query</code>, <code>search</code>, <code>wakeup</code>, <code>stats</code>, the <code>decisions</code> commands and every MCP tool used to create an empty project there; now the CLI exits 2, MCP tools return <code>project_not_found</code>, and the daemon answers 404</li>
+                <li><strong>Decisions report failures</strong> &mdash; <code>restore</code> and <code>invalidate</code> report an unknown id or a database error instead of a traceback or a false success; <code>--confidence</code> must be between 0 and 1</li>
+                <li><strong>The daemon and <code>serve</code> answer malformed requests with a 4xx</strong> &mdash; a bad <code>Content-Length</code>, a non-object body, a non-integer parameter or a non-ASCII token; flags are read strictly and stalled requests time out</li>
+                <li><strong>Ingest and demo</strong> &mdash; a Markdown file <code>build</code> already indexed is stored once, not twice; <code>neuralmind demo</code> stops reporting stale files</li>
+                <li><strong>Memory and learning</strong> &mdash; <code>doctor</code> and <code>feedback</code> say what actually turns query memory on; <code>validate</code> stops flagging community nodes as stale; the synapse memory export reports what each association earned</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.2.md">v4.8.2 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v481">
             <h2>What&rsquo;s New in v4.8.1 &mdash; installers that can&rsquo;t destroy your config, and the bug-hunt fixes</h2>
             <p><strong>The high- and medium-severity bugs found by testing v4.7.0 end to end, all still present in v4.8.0.</strong> Two could destroy user configuration, and one left credentials in the Bash output cache in plaintext.</p>

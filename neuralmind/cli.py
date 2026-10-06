@@ -23,7 +23,9 @@ from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.paths import (
+    ProjectNotFoundError,
     graph_json_path,
+    require_project_dir,
     vector_db_path,
 )
 from neuralmind.storage_guard import StorageNotVerifiedError
@@ -2077,13 +2079,15 @@ def cmd_stats(args):
             pass
 
     mind = NeuralMind(args.project_path)
+    # The resolved directory's name: Path(".").name is "".
+    project_name = mind.project_path.name
     try:
         stats = mind.embedder.get_stats()
-        stats["project"] = Path(args.project_path).name
+        stats["project"] = project_name
         stats["built"] = stats.get("total_nodes", 0) > 0
     except Exception as e:
         stats = {
-            "project": Path(args.project_path).name,
+            "project": project_name,
             "built": False,
             "error": str(e),
         }
@@ -3264,6 +3268,10 @@ def cmd_decisions_export(args):
 def cmd_decisions_restore(args):
     """Re-validate a stale entry."""
     store = _get_decisions_store(args.project_path)
+    not_found = f"Decision not found: {args.decision_id}"
+    if store.get(args.decision_id) is None:
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
     commit = args.commit
     if not commit:
         try:
@@ -3277,7 +3285,16 @@ def cmd_decisions_restore(args):
         except Exception as e:
             print(f"Error resolving commit: {e}")
             sys.exit(1)
-    decision = store.restore(args.decision_id, new_commit_sha=commit)
+    import sqlite3
+
+    try:
+        decision = store.restore(args.decision_id, new_commit_sha=commit)
+    except KeyError:  # removed between the check above and the update
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not restore decision {args.decision_id}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Restored decision: {decision.id}")
     print(f"  Status: {decision.status}")
     print(f"  Commit: {decision.commit_sha}")
@@ -3285,8 +3302,17 @@ def cmd_decisions_restore(args):
 
 def cmd_decisions_invalidate(args):
     """Mark a decision as stale."""
+    import sqlite3
+
     store = _get_decisions_store(args.project_path)
-    store.invalidate(args.decision_id, reason=args.reason)
+    try:
+        store.invalidate(args.decision_id, reason=args.reason)
+    except KeyError:
+        print(f"Decision not found: {args.decision_id}", file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not invalidate decision {args.decision_id}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Invalidated decision: {args.decision_id}")
 
 
@@ -4064,7 +4090,12 @@ def cmd_ingest(args):
 
     from neuralmind.content_node import ContentNode
     from neuralmind.core import create_mind
-    from neuralmind.document_ingestion import parse_document
+    from neuralmind.document_ingestion import (
+        graph_prose_files,
+        graph_prose_is_current,
+        parse_document,
+        project_relative_path,
+    )
 
     # Parse business context from JSON input
     business_types = {"decision", "meeting", "sop", "policy"}
@@ -4242,12 +4273,35 @@ def cmd_ingest(args):
     total_nodes = 0
     total_embed_time = 0.0
     errors: list[tuple[str, str]] = []
+    # Files inside the project whose prose the code graph already holds (the
+    # built-in graph indexes Markdown headings with the text under them).
+    # Ingesting one again stored a second copy under its absolute path, so
+    # the same text came back twice in query context. Read before the loop:
+    # until this run extends it, the embedder's node list is the graph.
+    graph_files = graph_prose_files(mind.embedder.nodes, project_path)
+    already_indexed: list[str] = []
+    # Graph files edited since the last build: the graph holds the old text,
+    # and an ingest would duplicate it rather than replace it, so they're
+    # skipped and reported as needing `neuralmind build`.
+    needs_build: list[str] = []
     wall_start = time.time()
 
     for idx, fpath in enumerate(files_to_ingest, 1):
         if not quiet and len(files_to_ingest) > 1:
             rel = fpath.relative_to(file_path)
             print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        project_rel = project_relative_path(fpath, project_path)
+        if project_rel is not None and project_rel in graph_files:
+            if graph_prose_is_current(graph_files[project_rel], fpath):
+                already_indexed.append(project_rel)
+                note = "already indexed by the code graph, skipped"
+            else:
+                needs_build.append(project_rel)
+                note = "changed since the last build, skipped (run `neuralmind build`)"
+            if not quiet and len(files_to_ingest) > 1:
+                print(f" {note}")
+            continue
 
         try:
             content_nodes = [
@@ -4259,6 +4313,12 @@ def cmd_ingest(args):
                 if not quiet and len(files_to_ingest) > 1:
                     print(" no content")
                 continue
+            if project_rel is not None:
+                # Inside the project: record the project-relative path every
+                # graph node uses, not the absolute one.
+                for cn in content_nodes:
+                    cn["source_file"] = project_rel
+                    cn["metadata"]["source"] = project_rel
 
             # Sync to embedder nodes list (avoid duplicates)
             existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
@@ -4315,6 +4375,8 @@ def cmd_ingest(args):
             "total_nodes": total_nodes,
             "wall_time_seconds": round(wall_time, 2),
             "synapse_doc_edges": synapse_doc_edges,
+            "already_indexed": already_indexed,
+            "needs_build": needs_build,
             "errors": [{"file": str(f), "error": e} for f, e in errors],
         }
         print(json.dumps(output, indent=2))
@@ -4335,7 +4397,20 @@ def cmd_ingest(args):
         if total_nodes > 0:
             print(
                 f"Ingested {total_nodes} content node(s) from "
-                f"{len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+                f"{len(files_to_ingest) - len(already_indexed) - len(needs_build)} file(s) "
+                f"in {wall_time:.1f}s"
+            )
+        if already_indexed:
+            shown = ", ".join(already_indexed[:3]) + (", ..." if len(already_indexed) > 3 else "")
+            print(
+                f"Skipped {len(already_indexed)} file(s) the code graph already indexes "
+                f"({shown}); `neuralmind build` keeps them current."
+            )
+        if needs_build:
+            shown = ", ".join(needs_build[:3]) + (", ..." if len(needs_build) > 3 else "")
+            print(
+                f"Skipped {len(needs_build)} file(s) the code graph indexes that changed "
+                f"since the last build ({shown}); run `neuralmind build` to index the edits."
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")
@@ -4749,6 +4824,25 @@ def cmd_serve(args):
         sys.exit(1)
 
 
+def _copy_demo_fixture(src: Path, dst: Path) -> None:
+    """Copy the bundled demo project to ``dst`` with its graph marked current.
+
+    ``copytree`` keeps each file's mtime from the package, and nothing orders
+    graph.json's after the sources' — in an installed wheel it can predate
+    them. For a graph outside git the freshness check compares source mtimes
+    with graph.json's, so every demo run reported "N files changed since the
+    graph was built → regenerate". The bundled graph was generated from these
+    exact sources, so stamp it no older than anything copied.
+    """
+    import shutil
+    import time
+
+    shutil.copytree(src, dst)
+    newest = max((p.stat().st_mtime for p in dst.rglob("*") if p.is_file()), default=0.0)
+    stamp = max(time.time(), newest)
+    os.utime(dst / ".neuralmind" / "graph.json", (stamp, stamp))
+
+
 def cmd_demo(args):
     """Run the bundled 30-second demo.
 
@@ -4789,10 +4883,10 @@ def cmd_demo(args):
 
     try:
         # importlib.resources.as_file gives us a real path even if the
-        # package was installed from a zip. shutil.copytree then makes a
+        # package was installed from a zip. _copy_demo_fixture then makes a
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
-            shutil.copytree(src, fixture_dir)
+            _copy_demo_fixture(Path(src), fixture_dir)
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
@@ -6049,6 +6143,42 @@ def _version_string() -> str:
     return base
 
 
+def _existing_project_dir(value: str) -> str:
+    """argparse ``type=`` for a project path that must already exist.
+
+    Returns ``value`` unchanged. A missing path is a usage error reported
+    before the command runs, so nothing is created under a mistyped path.
+    """
+    try:
+        require_project_dir(value)
+    except OSError as e:  # ProjectNotFoundError, or a cwd that is gone
+        raise argparse.ArgumentTypeError(str(e)) from None
+    return value
+
+
+def _positive_int(value: str) -> int:
+    """argparse ``type=`` for a result count: an integer of at least 1."""
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from None
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {n}")
+    return n
+
+
+def _confidence_arg(value: str) -> float:
+    """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
+    from neuralmind.memory.store import validate_confidence
+
+    try:
+        return validate_confidence(float(value))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"confidence must be a number from 0 to 1, got {value!r}"
+        ) from None
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the full CLI parser tree.
 
@@ -6166,7 +6296,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
-    query_p.add_argument("project_path")
+    query_p.add_argument("project_path", type=_existing_project_dir)
     query_p.add_argument("question")
     query_p.add_argument("--json", "-j", action="store_true")
     query_p.add_argument(
@@ -6232,7 +6362,7 @@ def build_parser() -> argparse.ArgumentParser:
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
-    wakeup_p.add_argument("project_path")
+    wakeup_p.add_argument("project_path", type=_existing_project_dir)
     wakeup_p.add_argument("--json", "-j", action="store_true")
     wakeup_p.set_defaults(func=cmd_wakeup)
 
@@ -6411,9 +6541,12 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.set_defaults(func=cmd_probe)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
-    search_p.add_argument("project_path")
+    search_p.add_argument("project_path", type=_existing_project_dir)
     search_p.add_argument("query")
-    search_p.add_argument("--n", type=int, default=10)
+    # The backend floors k at 1, so --n 0 / --n -3 returned one result.
+    search_p.add_argument(
+        "--n", type=_positive_int, default=10, help="Number of results (default: 10)"
+    )
     search_p.add_argument("--json", "-j", action="store_true")
     search_p.set_defaults(func=cmd_search)
 
@@ -6426,7 +6559,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
-    stats_p.add_argument("project_path")
+    stats_p.add_argument("project_path", type=_existing_project_dir)
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
 
@@ -6927,9 +7060,11 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("--type", default="ARCHITECTURE", help="Decision type")
     d_record.add_argument("--rejected", nargs="*", help="Rejected alternatives")
     d_record.add_argument("--evidence", nargs="*", help="Supporting evidence")
-    d_record.add_argument("--confidence", type=float, default=1.0, help="Confidence 0-1")
+    d_record.add_argument(
+        "--confidence", type=_confidence_arg, default=1.0, help="Confidence 0-1 (default: 1.0)"
+    )
     d_record.add_argument("--tags", nargs="*", help="Tags for categorization")
-    d_record.add_argument("project_path", nargs="?", default=".")
+    d_record.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_record.set_defaults(func=cmd_decisions_record)
 
     d_query = decisions_sub.add_parser(
@@ -6954,7 +7089,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Status filter, case-insensitive (default: ACTIVE)",
     )
     d_query.add_argument("--json", "-j", action="store_true")
-    d_query.add_argument("project_path", nargs="?", default=".")
+    d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
     d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
@@ -6962,32 +7097,32 @@ def build_parser() -> argparse.ArgumentParser:
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
     d_amend.add_argument("--evidence", nargs="*", help="Add evidence")
-    d_amend.add_argument("project_path", nargs="?", default=".")
+    d_amend.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_amend.set_defaults(func=cmd_decisions_amend)
 
     d_audit = decisions_sub.add_parser("audit", help="List all decisions")
     d_audit.add_argument("--stale", action="store_true", help="Only stale entries")
     d_audit.add_argument("--orphaned", action="store_true", help="Only orphaned")
     d_audit.add_argument("--format", choices=["md", "json"], default="md")
-    d_audit.add_argument("project_path", nargs="?", default=".")
+    d_audit.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_audit.set_defaults(func=cmd_decisions_audit)
 
     d_export = decisions_sub.add_parser("export", help="Dump all decisions to file")
     d_export.add_argument("--format", choices=["md", "json"], default="md")
     d_export.add_argument("--output", "-o", help="Output file path")
-    d_export.add_argument("project_path", nargs="?", default=".")
+    d_export.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_export.set_defaults(func=cmd_decisions_export)
 
     d_restore = decisions_sub.add_parser("restore", help="Re-validate a stale entry")
     d_restore.add_argument("decision_id", help="Decision ID to restore")
     d_restore.add_argument("--commit", help="New commit SHA")
-    d_restore.add_argument("project_path", nargs="?", default=".")
+    d_restore.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_restore.set_defaults(func=cmd_decisions_restore)
 
     d_invalidate = decisions_sub.add_parser("invalidate", help="Mark decision as stale")
     d_invalidate.add_argument("decision_id", help="Decision ID to invalidate")
     d_invalidate.add_argument("--reason", default="", help="Reason for invalidation")
-    d_invalidate.add_argument("project_path", nargs="?", default=".")
+    d_invalidate.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
     d_scan = decisions_sub.add_parser(
@@ -7871,6 +8006,11 @@ def main():
         print(f"\n{e}\n", file=sys.stderr)
         print("Run `neuralmind doctor` to see the Storage encryption check.", file=sys.stderr)
         sys.exit(1)
+    except ProjectNotFoundError as e:
+        # A mistyped project path on a command whose parser doesn't check it
+        # up front: NeuralMind / DecisionStore refused it before writing.
+        print(f"neuralmind: error: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

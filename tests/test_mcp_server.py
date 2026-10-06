@@ -147,15 +147,20 @@ class TestHandleToolCall:
             data = json.loads(result)
             assert data.get("success") is True
 
-    def test_tool_exception_returns_error(self):
-        """Exceptions in tool handlers are caught and returned as error."""
+    def test_tool_exception_returns_error(self, temp_project):
+        """Exceptions in tool handlers are caught and returned as error.
+
+        A real project path: a missing one is refused as project_not_found
+        before any handler runs (and, run as root, "/nonexistent" used to be
+        created by the security manager's audit log).
+        """
         with patch("neuralmind.mcp_server.get_mind", side_effect=RuntimeError("test error")):
             result = handle_tool_call(
                 "neuralmind_wakeup",
-                {"project_path": "/nonexistent"},
+                {"project_path": str(temp_project)},
             )
             data = json.loads(result)
-            assert "error" in data
+            assert data["error"] == "test error"
 
     def test_skeleton_tool_dispatches(self, temp_project):
         """neuralmind_skeleton calls tool_skeleton."""
@@ -803,3 +808,47 @@ class TestRelativePathGuard:
     def test_absolute_path_never_hints(self, tmp_path):
         out = tool_stats(str(tmp_path))
         assert "hint" not in out
+
+    def test_stats_dot_reports_the_directory_name(self, temp_project, tmp_path, monkeypatch):
+        """``project`` was "" for ".": Path(".").name is empty."""
+        monkeypatch.chdir(temp_project)
+        assert tool_stats(".")["project"] == temp_project.resolve().name
+        # The unindexed-cwd hint payload names it too.
+        monkeypatch.chdir(tmp_path)
+        assert tool_stats(".")["project"] == tmp_path.resolve().name
+
+
+class TestDeclaredBounds:
+    """validate_tool_arguments enforces a schema's minimum / maximum.
+
+    neuralmind_search with n 0 or -3 returned one result: the backend floors
+    k at 1, and nothing checked the count first.
+    """
+
+    @pytest.mark.parametrize("bad", [0, -3])
+    def test_search_n_below_one_is_invalid(self, temp_project, bad):
+        data = json.loads(
+            handle_tool_call(
+                "neuralmind_search",
+                {"project_path": str(temp_project), "query": "auth", "n": bad},
+            )
+        )
+        assert data["code"] == "invalid_request"
+        assert "argument 'n' must be at least 1" in data["error"]
+
+    def test_search_schema_declares_the_minimum(self):
+        from neuralmind.mcp_server import TOOLS
+
+        schema = next(t for t in TOOLS if t["name"] == "neuralmind_search")["inputSchema"]
+        assert schema["properties"]["n"]["minimum"] == 1
+
+    def test_bounds_are_checked_where_declared(self):
+        from neuralmind.mcp_server import validate_tool_arguments
+
+        search = {"project_path": "/p", "query": "x"}
+        assert validate_tool_arguments("neuralmind_search", {**search, "n": 1}) is None
+        record = {"project_path": "/p", "title": "t", "rationale": "r"}
+        problem = validate_tool_arguments("neuralmind_record_decision", {**record, "confidence": 7})
+        assert "at most 1" in problem
+        ok = validate_tool_arguments("neuralmind_record_decision", {**record, "confidence": 0})
+        assert ok is None
