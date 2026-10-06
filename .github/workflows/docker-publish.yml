@@ -3,7 +3,7 @@ name: Docker Publish (GHCR)
 # Auto-build the repo-root Dockerfile and push to GHCR on every tag push.
 # Tracks issue #120. The image lives at:
 #   ghcr.io/dfrostar/neuralmind:vX.Y.Z
-#   ghcr.io/dfrostar/neuralmind:latest        (stable tags only)
+#   ghcr.io/dfrostar/neuralmind:latest        (the newest stable release)
 #
 # Multi-platform (linux/amd64 + linux/arm64). GITHUB_TOKEN has GHCR write
 # access on private GitHub-hosted runners with the `packages: write`
@@ -23,9 +23,15 @@ name: Docker Publish (GHCR)
 # Tag/label generation uses docker/metadata-action so:
 #   - the image name is lowercased (GHCR rejects uppercase, and a
 #     future repo rename or fork with mixed case wouldn't fail the push)
-#   - `:latest` only moves for non-pre-release tags (vX.Y.Z without a
-#     `-rc1` / `-beta1` suffix), preventing pre-release images from
-#     becoming the default `:latest` that `docker pull` resolves to.
+#   - the build pushes only the version tag; the move-latest job then points
+#     `:latest` at the newest stable release's image (the highest exact
+#     vX.Y.Z), so neither a pre-release nor a rebuild of an older version
+#     becomes the default `:latest` that `docker pull` resolves to.
+#
+# A tag push runs the workflow file *at that tag's commit*, so re-pushing a
+# tag cut before this guard existed still runs the old, unguarded copy. Only
+# a tag ruleset (Settings → Rules) that restricts creating `v*` tags stops
+# that.
 
 on:
   push:
@@ -92,11 +98,10 @@ jobs:
           # AND workflow_dispatch (RELEASE_TAG = inputs.tag). The earlier
           # `type=ref,event=tag` form only fired on push:tag, so workflow-
           # dispatched runs produced only `:latest` with no version tag.
-          # type=raw,latest → :latest only when the tag has no `-` suffix
-          # (excludes v0.10.0-rc1, v1.0.0-beta1, etc.).
+          # Only the immutable version tag is pushed here; the move-latest
+          # job below points :latest at the newest release afterwards.
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
-            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
             org.opencontainers.image.title=NeuralMind
             org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 12-50× token reduction.
@@ -140,10 +145,64 @@ jobs:
           IMAGE_TAGS: ${{ needs.build-and-push.outputs.tags }}
         run: |
           set -euo pipefail
-          # The version-tagged ref is always the first line; :latest may
-          # or may not be present (only on stable releases).
+          # The build pushes one ref, the version tag.
           IMAGE="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
           echo "Pulling ${IMAGE}"
           docker pull "${IMAGE}"
           echo "Running neuralmind --help"
           docker run --rm "${IMAGE}" neuralmind --help
+
+  # :latest follows the newest stable release, not whichever version was built
+  # last. Rebuilding an older tag (a dispatch for v4.7.0, or an old tag pushed
+  # again) used to move :latest back to it: on 2026-10-06 a re-pushed v1.16.0
+  # left `docker pull …:latest` serving v1.16.0. This job runs after the
+  # pushed image passed its smoke test, one run at a time, and re-reads the
+  # tags just before it acts, so overlapping releases can't finish out of
+  # order and leave :latest on the older one. Whichever run gets here points
+  # :latest at the image of the highest exact vX.Y.Z tag that already has one
+  # (never a pre-release), so it converges on the newest release.
+  move-latest:
+    name: Point :latest at the newest release
+    needs: [build-and-push, verify-pull]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: ghcr-latest
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Point :latest at the newest stable release's image
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.tags }}
+        run: |
+          set -euo pipefail
+          built="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
+          image="${built%:*}"
+          # awk, not grep: no match is an empty list, not a failed pipeline.
+          newest="$(git ls-remote --tags --refs origin 'refs/tags/v*' \
+            | sed 's|.*refs/tags/||' \
+            | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/' \
+            | sort -V | tail -n1)"
+          if [ -z "${newest}" ]; then
+            echo "::notice title=:latest left alone::no vX.Y.Z tag on the remote."
+            exit 0
+          fi
+          if ! docker buildx imagetools inspect "${image}:${newest}" >/dev/null 2>&1; then
+            echo "::notice title=:latest left alone::${newest} has no image yet; its own run moves :latest when it finishes."
+            exit 0
+          fi
+          docker buildx imagetools create --tag "${image}:latest" "${image}:${newest}"
+          echo "::notice title=:latest moved::${image}:latest now points at ${newest} (this run built ${RELEASE_TAG})."

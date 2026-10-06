@@ -209,6 +209,24 @@ def test_old_records_are_pruned_oldest_first(tmp_path):
     assert f'"prompt {total - 1}"' in recap
 
 
+@pytest.mark.parametrize("newer", ["alpha", "omega"])
+def test_a_tie_on_last_activity_goes_to_the_record_modified_last(tmp_path, newer):
+    # Two sessions written inside one clock tick (about 15.6 ms on Windows)
+    # record the same last-activity time. max() then kept whichever record the
+    # directory listed first, alphabetical on NTFS, so on Windows CI
+    # test_old_records_are_pruned_oldest_first got "prompt 12" instead of 13.
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    recaps.mkdir(parents=True)
+    stamp = time.time() - 60
+    for name in ("alpha", "omega"):
+        entry = {"kind": "prompt", "text": f"{name} prompt", "ts": stamp}
+        (recaps / f"{name}.jsonl").write_text(json.dumps(entry) + "\n", encoding="utf-8")
+        _age(recaps / f"{name}.jsonl", 10 if name == newer else 20)
+    recap = session_recap.latest_recap(tmp_path)
+    assert f'"{newer} prompt"' in recap
+    assert ("alpha" if newer == "omega" else "omega") + " prompt" not in recap
+
+
 @pytest.mark.parametrize("env", ["NEURALMIND_NO_LEARN", "NEURALMIND_SESSION_RECAP"])
 def test_nothing_pruned_while_recording_is_off(tmp_path, monkeypatch, env):
     total = session_recap.MAX_KEPT + 2
