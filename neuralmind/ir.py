@@ -681,8 +681,13 @@ def _coarse_file_type(kind: str) -> str:
 # loaded (synapse_feedback.reinforce_from_query) so recall can boost them.
 # ``compliance:<framework>:<control>``: links code to a compliance control
 # (compliance_matcher.compliance_synapse_key).
+# ``query:<term>``: prose-path reinforcement records the query's terms
+# (synapse_dynamics.QUERY_PSEUDO_NODE_PREFIX). Graph ids are slugs and never
+# contain a colon, so a prefix match can't hide a real node; the older
+# ``query_<term>`` spelling could, so it is not exempt.
 _COMMUNITY_PSEUDO_NODE_RE = re.compile(r"community_(-?\d+)")
 _COMPLIANCE_PSEUDO_NODE_PREFIX = "compliance:"
+_QUERY_PSEUDO_NODE_PREFIX = "query:"
 
 
 def _community_pseudo_node_id(node_id: str) -> int | None:
@@ -695,10 +700,12 @@ def _synapse_endpoint_known(node_id: str, node_ids: set[str], cluster_ids: set[i
     """Whether a synapse endpoint resolves in the current index.
 
     A graph node id, a ``community_<id>`` pseudo-node for a community the
-    index still has, or a compliance-control key. Anything else (a deleted
-    node, a community a rebuild dropped) is stale.
+    index still has, a compliance-control key, or a prose query pseudo-node.
+    Anything else (a deleted node, a community a rebuild dropped) is stale.
     """
-    if node_id in node_ids or node_id.startswith(_COMPLIANCE_PSEUDO_NODE_PREFIX):
+    if node_id in node_ids or node_id.startswith(
+        (_COMPLIANCE_PSEUDO_NODE_PREFIX, _QUERY_PSEUDO_NODE_PREFIX)
+    ):
         return True
     community = _community_pseudo_node_id(node_id)
     return community is not None and community in cluster_ids
@@ -973,7 +980,8 @@ def validate_ir(ir: IndexIR) -> list[ValidationIssue]:
     # were learned on (a file gets deleted, its memory lingers), so a synapse
     # pointing at an unknown node is a *warning* (stale), not an error — but an
     # empty endpoint is malformed. Pseudo-nodes NeuralMind writes on purpose
-    # (community_<id>, compliance keys) are not graph nodes and not stale.
+    # (community_<id>, compliance keys, query:<term>) are not graph nodes and
+    # not stale.
     cluster_ids = {c.id for c in ir.clusters} | {
         n.cluster for n in ir.nodes if n.cluster is not None and n.cluster >= 0
     }

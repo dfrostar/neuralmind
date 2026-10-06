@@ -27,21 +27,31 @@ from .synapses import LEARNING_RATE, SynapseStore, default_db_path
 MAX_IR_PARSE_BYTES = 64 * 1024 * 1024
 
 
-def _memory_off_message() -> str:
-    """Why no query is being recorded for feedback to adjust; "" when query memory is on.
+def _memory_off_message(last_record: dict | None = None) -> str:
+    """Why feedback has no query to adjust; "" when query memory is on.
 
     The recent-queries log is gated on the same consent as query memory
     (``NeuralMind._record_recent_query``): ``NEURALMIND_MEMORY=0`` turns it
     off, and otherwise ``~/.neuralmind/memory_consent.json`` must say yes.
+    With memory off, ``last_record`` (the newest entry still in the log) was
+    written before memory went off, so it may not be the query the user
+    means, and feedback must not adjust it.
     """
     from . import memory
 
     reasons, steps = memory.memory_off_reasons_and_steps()
     if not reasons:
         return ""
+    why = f"query memory is off ({'; '.join(reasons)})"
+    how = f"To turn it on, {' and '.join(steps)}"
+    if last_record is None:
+        return f"No queries are recorded for feedback to adjust: {why}. {how}; then run a query."
+    question = str(last_record.get("question", "?"))[:60]
+    asked = last_record.get("ts") or "at an unknown time"
     return (
-        "No queries are recorded for feedback to adjust: query memory is off "
-        f"({'; '.join(reasons)}). To turn it on, {' and '.join(steps)}; then run a query."
+        f"Feedback was not applied: {why}, so queries asked since then aren't recorded. "
+        f"The last recorded query ({question!r}, asked {asked}) may not be the one you mean. "
+        f"{how}; then run the query again."
     )
 
 
@@ -55,11 +65,12 @@ def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
 
     recent_path = project_path / ".neuralmind" / NeuralMind.RECENT_QUERIES_FILENAME
     records = read_recent(recent_path, n=1)
+    # With query memory off nothing new is recorded, so "run a query" can't
+    # help, and a record left from before memory went off is not trusted.
+    off = _memory_off_message(records[0] if records else None)
+    if off:
+        return None, off
     if not records:
-        # With query memory off nothing is recorded, so "run a query" can't help.
-        off = _memory_off_message()
-        if off:
-            return None, off
         return None, "No recent queries recorded. Run `neuralmind query <path> <question>` first."
     record = records[0]
     top_hits = record.get("top_hits", [])

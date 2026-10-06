@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v491">
+            <h2>What&rsquo;s New in v4.9.1 &mdash; the last four fixes from the v4.8.2 bug hunt</h2>
+            <p><strong>Four small problems v4.8.2 left for later.</strong> None lose data; they are a command that acted on the wrong thing, a warning that didn&rsquo;t mean what it said, a count that read too high, and an argument order the CLI refused.</p>
+            <ul>
+                <li><strong><code>feedback</code> won&rsquo;t adjust a query from before memory went off</strong> &mdash; with query memory off it exits 1, names the last recorded query, and changes nothing</li>
+                <li><strong>&ldquo;LTP-protected&rdquo; counts the edges decay protects</strong> &mdash; <code>status</code>, <code>synapse stats</code> and the dashboard no longer count penalized or ephemeral edges, and agree with <code>SYNAPSE_MEMORY.md</code></li>
+                <li><strong><code>validate</code> stops flagging the prose path&rsquo;s query nodes</strong> &mdash; they&rsquo;re written as <code>query:&lt;term&gt;</code>, which no graph id can be; a deleted real node is still reported</li>
+                <li><strong>The project path can come after options</strong> &mdash; <code>decisions restore &lt;id&gt; --commit SHA &lt;path&gt;</code> and five other <code>decisions</code> and <code>memory</code> subcommands work on Python 3.10&ndash;3.12</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md">v4.9.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v490">
             <h2>What&rsquo;s New in v4.9.0 &mdash; Hermes-Agent gets NeuralMind&rsquo;s context in every turn, without a tool call</h2>
             <p><strong>On Hermes, NeuralMind was something the agent had to decide to use: an MCP server, or a skill that runs the CLI. Each answer cost a tool call, and when the agent didn&rsquo;t think to call it, nothing happened.</strong> v4.9.0 adds a Hermes plugin that puts NeuralMind&rsquo;s context into every turn before the model runs, the way the hooks already do in Claude Code. <code>neuralmind install-hermes-plugin /path/to/project</code> writes it into the Hermes home&rsquo;s <code>plugins/neuralmind/</code>: <code>--hermes-home</code>, else the one plain <code>hermes</code> uses: the active Hermes profile, if <code>hermes profile use</code> selected one (<code>&lt;root&gt;/profiles/&lt;name&gt;</code>), else <code>$HERMES_HOME</code>, else Hermes&rsquo;s root, <code>~/.hermes</code> (on Windows, <code>%LOCALAPPDATA%\hermes</code>); when that&rsquo;s a profile, the output names it. It then runs <code>hermes plugins enable neuralmind</code> against that home, but only in a home Hermes has already set up (one with a <code>config.yaml</code>, <code>.env</code> or <code>state.db</code>); anywhere else it tells you to enable the plugin once Hermes is set up. Start a new Hermes session, or restart the gateway, to load it.</p>

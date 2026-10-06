@@ -168,6 +168,42 @@ def test_stats_reports_edge_and_node_counts(tmp_path):
     assert stats["db_path"].endswith("synapses.db")
 
 
+def test_stats_ltp_edges_counts_only_edges_decay_protects(tmp_path):
+    # Regression: ltp_edges counted every row with enough activations, so an
+    # edge penalized below LTP_FLOOR, or one in the ephemeral namespace (no
+    # LTP exemption), was reported as LTP-protected although decay erodes it.
+    db = tmp_path / "synapses.db"
+    personal = SynapseStore(db)
+    ephemeral = SynapseStore(db, namespace="ephemeral")
+    for _ in range(LTP_THRESHOLD + 1):
+        personal.reinforce(["ltp_a", "ltp_b"])
+        personal.reinforce(["low_a", "low_b"])
+        ephemeral.reinforce(["eph_a", "eph_b"])
+    personal.reinforce(["young_a", "young_b"])  # too few activations
+    personal.penalize(["low_a", "low_b"], penalty=0.9)  # 1.0 -> 0.1 < LTP_FLOOR
+
+    stats = personal.stats()
+    assert stats["edges"] == 4
+    assert stats["ltp_edges"] == 1
+    assert personal.stats_detailed()["ltp_protected"] == 1
+
+
+def test_stats_ltp_edges_matches_the_synapse_memory_long_term_count(tmp_path):
+    from neuralmind.synapse_memory import render_synapse_memory
+    from neuralmind.synapses import default_db_path
+
+    store = SynapseStore(default_db_path(tmp_path))
+    for _ in range(LTP_THRESHOLD):
+        store.reinforce(["a", "b"])
+        store.reinforce(["c", "d"])
+    store.penalize(["c", "d"], penalty=0.9)
+
+    out = render_synapse_memory(tmp_path)
+    assert store.stats()["ltp_edges"] == 1
+    assert "Edges learned: 2 (1 long-term)" in out
+    assert out.count("*(long-term)*") == 1
+
+
 def test_reset_clears_everything(tmp_path):
     s = _store(tmp_path)
     s.reinforce(["a", "b"])
