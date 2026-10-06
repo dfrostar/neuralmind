@@ -1162,10 +1162,17 @@ class NeuralMind:
         # second copy under its absolute path, so the text came back twice in
         # query context), and any other file inside the project is stored
         # under the project-relative path every graph node uses.
-        from neuralmind.document_ingestion import graph_prose_files, project_relative_path
+        # A graph file edited since the last build isn't stored either: an
+        # ingest would sit beside the graph's old text rather than replace it,
+        # so it's reported as needing `neuralmind build`.
+        from neuralmind.document_ingestion import (
+            graph_prose_files,
+            graph_prose_is_current,
+            project_relative_path,
+        )
 
         graph_files = graph_prose_files(self.embedder.nodes, self.project_path)
-        already_indexed: set[str] = set()
+        current: dict[str, bool] = {}
         kept: list[dict] = []
         for cn in content_nodes:
             meta = cn.get("metadata") if isinstance(cn.get("metadata"), dict) else {}
@@ -1173,21 +1180,30 @@ class NeuralMind:
             rel = project_relative_path(Path(source), self.project_path) if source else None
             if rel is not None:
                 if rel in graph_files:
-                    already_indexed.add(rel)
+                    if rel not in current:
+                        current[rel] = graph_prose_is_current(
+                            graph_files[rel], self.project_path / rel
+                        )
                     continue
                 cn["source_file"] = rel
                 if meta:
                     meta["source"] = rel
             kept.append(cn)
         content_nodes = kept
+        already_indexed = sorted(rel for rel, ok in current.items() if ok)
+        needs_build = sorted(rel for rel, ok in current.items() if not ok)
         if not content_nodes:
             return {
                 "success": True,
                 "node_count": 0,
                 "file_path": str(file_path),
-                "already_indexed": sorted(already_indexed),
+                "already_indexed": already_indexed,
+                "needs_build": needs_build,
                 "message": (
-                    "The code graph already indexes this file's text; "
+                    "The code graph indexes this file, but it changed since the last "
+                    "build; run `neuralmind build` to index the edit."
+                    if needs_build
+                    else "The code graph already indexes this file's text; "
                     "`neuralmind build` keeps it current."
                 ),
             }
@@ -1259,7 +1275,8 @@ class NeuralMind:
             "file_path": str(file_path),
             "embed_stats": stats,
             "synapse_doc_edges": synapse_doc_edges,
-            "already_indexed": sorted(already_indexed),
+            "already_indexed": already_indexed,
+            "needs_build": needs_build,
         }
 
     def ingest_cmmc(self, registry_path: str | Path) -> dict:

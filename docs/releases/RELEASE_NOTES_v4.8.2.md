@@ -87,8 +87,10 @@ The ones you're most likely to notice:
   heading. `neuralmind ingest docs/guide.md` and the
   `neuralmind_ingest_document` MCP tool stored a second copy under the
   absolute path, so the text came back twice in query context. Both now skip
-  such a file and list it under `already_indexed`. Any other file inside the
-  project is stored under its project-relative path.
+  such a file and list it under `already_indexed`. A file edited since the
+  last build is skipped too, but listed under `needs_build`: the graph still
+  holds the old text, and `neuralmind build` indexes the edit. Any other file
+  inside the project is stored under its project-relative path.
 
 ### For contributors
 
@@ -100,7 +102,7 @@ The ones you're most likely to notice:
 
 | Agent | Before | After |
 |-------|--------|-------|
-| **Claude Code** (MCP + hooks) | A tool call with a mistyped `project_path` ran against a new, empty project created there. `neuralmind_ingest_document` on a Markdown file in the project put its text in context twice | The call returns `code: "project_not_found"` and creates nothing. The ingest is skipped and the file listed under `already_indexed` |
+| **Claude Code** (MCP + hooks) | A tool call with a mistyped `project_path` ran against a new, empty project created there. `neuralmind_ingest_document` on a Markdown file in the project put its text in context twice | The call returns `code: "project_not_found"` and creates nothing. The ingest is skipped and the file listed under `already_indexed`, or `needs_build` if it changed since the last build |
 | **Cursor / Cline / Claude Desktop** (MCP) | Same as Claude Code | Same as Claude Code |
 | **Generic MCP client** | Out-of-range `n` or `confidence` was accepted | Rejected with `invalid_request`, per the bounds the tool schema declares |
 | **Daemon clients** | A malformed request could drop the connection or return a 500. `"false"` flags counted as true | 4xx with a JSON error naming the problem; flags read strictly; a missing project is a 404 |

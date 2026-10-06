@@ -281,11 +281,35 @@ class TestInProjectIngestHelpers:
             },
             {"id": "code", "source_file": "", "content_text": "x"},
         ]
-        assert graph_prose_files(nodes, tmp_path) == {
+        assert set(graph_prose_files(nodes, tmp_path)) == {
             "docs/guide.md",
             "docs/abs.md",
             "docs/dot.md",
         }
+
+    def test_graph_prose_is_current_matches_what_the_build_stores(self, tmp_path):
+        # graph_prose_is_current recomputes what graphgen._extract_markdown
+        # stores. If the two drift apart, every graph file reads as edited.
+        from neuralmind import graphgen
+        from neuralmind.document_ingestion import graph_prose_files, graph_prose_is_current
+
+        md = tmp_path / "guide.md"
+        md.write_bytes(
+            (
+                "\ufeffPreamble.\r\n\r\n# Guide\r\n\r\nIntro text.\r\n\r\n"
+                "```py\r\n# not a heading\r\n```\r\n## Empty\r\n### Steps\r\nOne.\r\n#\r\nTwo.\r\n"
+            ).encode("utf-8")
+        )
+        builder = graphgen._GraphBuilder()
+        graphgen._extract_markdown(builder, md, "guide.md")
+        held = graph_prose_files(list(builder.nodes.values()), tmp_path)["guide.md"]
+        assert [heading for heading, _ in held] == ["Empty", "Guide", "Steps"]
+        assert graph_prose_is_current(held, md)
+
+        md.write_text("# Guide\n\nIntro text, edited.\n", encoding="utf-8")
+        assert not graph_prose_is_current(held, md)
+        md.unlink()
+        assert not graph_prose_is_current(held, md)
 
     def test_ingest_stores_no_markdown_text_the_graph_leaves_out(self, tmp_path):
         # graph_prose_files skips a whole file once the graph holds its heading

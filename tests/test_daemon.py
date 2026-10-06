@@ -353,7 +353,12 @@ def test_e2e_malformed_content_length_gets_400(running_daemon, length):
     assert running_daemon.health()["ok"] is True  # still serving
 
 
-@pytest.mark.parametrize("length", [str(daemon_mod.MAX_BODY_BYTES + 1), "99999999999999999999"])
+@pytest.mark.parametrize(
+    "length",
+    # 5,000 digits is over int()'s 4,300-digit limit but within a header line.
+    [str(daemon_mod.MAX_BODY_BYTES + 1), "99999999999999999999", "9" * 5000],
+    ids=["limit-plus-one", "20-digits", "5000-digits"],
+)
 def test_e2e_oversized_content_length_gets_413(running_daemon, length):
     # Answered from the header alone: the daemon neither waits for a body that
     # never arrives nor tries to allocate one this size.
@@ -521,6 +526,14 @@ def test_e2e_stalled_body_times_out(running_daemon, monkeypatch):
         assert sock.recv(1024) == b""  # closed by the daemon, not by our 10s timeout
         assert time.monotonic() - started < 5
     assert running_daemon.health()["ok"] is True
+
+
+def test_content_length_reads_a_long_zero_padded_value():
+    # Leading zeros don't make a length large; only the digits after them count.
+    from neuralmind.http_util import content_length
+
+    assert content_length({"Content-Length": "0" * 5000 + "12"}) == 12
+    assert content_length({"Content-Length": "0" * 5000}) == 0
 
 
 def test_handler_has_a_request_timeout():

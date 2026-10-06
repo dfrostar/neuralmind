@@ -537,6 +537,30 @@ class TestCLIIngest:
         assert data["already_indexed"] == ["docs/guide.md"]
         assert data["total_nodes"] == 0
 
+    def test_ingest_markdown_edited_since_the_build_reports_it_needs_one(self, tmp_path, capsys):
+        """The graph holds the text as of the last build. Skipping an edited
+        file as already indexed left the edit unsearchable without a word;
+        ingesting it would sit beside the graph's old text."""
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        guide = root / "docs" / "guide.md"
+        guide.write_text(
+            "# Deployment Guide\n\nThe zebra-unicorn deployment uses canary rollouts.\n",
+            encoding="utf-8",
+        )
+        capsys.readouterr()
+        self._ingest(guide, root)
+        data = json.loads(capsys.readouterr().out)
+        assert data["needs_build"] == ["docs/guide.md"]
+        assert data["already_indexed"] == [] and data["total_nodes"] == 0
+
+        assert NeuralMind(str(root)).build()["success"]
+        capsys.readouterr()
+        self._ingest(guide, root)
+        data = json.loads(capsys.readouterr().out)
+        assert data["already_indexed"] == ["docs/guide.md"] and data["needs_build"] == []
+
     def test_ingest_in_project_file_outside_the_graph_uses_relative_path(self, tmp_path, capsys):
         """The graph doesn't index .txt, so it's ingested — under the
         project-relative path every other node uses, not the absolute one."""
@@ -573,9 +597,23 @@ class TestCLIIngest:
         result = NeuralMind(str(root)).ingest_document(root / "docs" / "guide.md")
 
         assert result["success"] is True and result["node_count"] == 0
-        assert result["already_indexed"] == ["docs/guide.md"]
+        assert result["already_indexed"] == ["docs/guide.md"] and result["needs_build"] == []
         context = NeuralMind(str(root)).query("zebra-unicorn deployment rollouts").context
         assert context.count("zebra-unicorn") == 1, context
+
+    def test_ingest_document_api_reports_a_file_edited_since_the_build(self, tmp_path):
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        mind = NeuralMind(str(root))
+        mind.query("zebra-unicorn")  # load the graph, as a cached MCP instance has
+        guide = root / "docs" / "guide.md"
+        guide.write_text("# Deployment Guide\n\nNow with canary rollouts.\n", encoding="utf-8")
+        result = mind.ingest_document(guide)
+
+        assert result["node_count"] == 0 and result["already_indexed"] == []
+        assert result["needs_build"] == ["docs/guide.md"]
+        assert "neuralmind build" in result["message"]
 
     def test_ingest_document_api_stores_an_in_project_file_under_its_relative_path(self, tmp_path):
         from neuralmind.core import NeuralMind

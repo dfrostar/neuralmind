@@ -1676,8 +1676,10 @@ neuralmind learn --json report.md      # output stats as JSON
   tool) skips a file inside the project whose text the code graph already
   holds, such as a Markdown file `build` indexed heading by heading, and
   reports it as already indexed (`already_indexed` in `--json`). Ingesting it
-  again stored a second copy under its absolute path. Other files inside the
-  project are stored under their project-relative path.
+  again stored a second copy under its absolute path. A file edited since the
+  last build is skipped and reported under `needs_build`: run `neuralmind
+  build` to index the edit. Other files inside the project are stored under
+  their project-relative path.
 
 ---
 

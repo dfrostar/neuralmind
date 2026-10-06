@@ -65,6 +65,26 @@ def test_require_project_dir_names_where_a_relative_path_resolved(tmp_path, monk
     assert str(tmp_path.resolve() / "typo") in str(exc.value)
 
 
+def _invalid_paths(tmp_path) -> list[str]:
+    """Paths whose resolve() raises instead of OSError: an embedded NUL
+    (ValueError) and, before Python 3.13, a symlink loop (RuntimeError)."""
+    paths = [str(tmp_path / "proj\x00ect")]
+    loop = tmp_path / "loop"
+    try:
+        loop.symlink_to(tmp_path / "loop2")
+        (tmp_path / "loop2").symlink_to(loop)
+        paths.append(str(loop))
+    except OSError:  # no symlink privilege (Windows)
+        pass
+    return paths
+
+
+def test_require_project_dir_rejects_an_invalid_path(tmp_path):
+    for bad in _invalid_paths(tmp_path):
+        with pytest.raises(ProjectNotFoundError):
+            require_project_dir(bad)
+
+
 def test_neuralmind_refuses_a_missing_project(missing):
     from neuralmind import NeuralMind
 
@@ -162,6 +182,16 @@ def test_mcp_missing_relative_path_says_to_pass_an_absolute_one(tmp_path, monkey
     assert data["code"] == "project_not_found"
     assert "absolute path" in data["hint"]
     assert not (tmp_path / "typo").exists()
+
+
+def test_mcp_answers_an_invalid_project_path_with_project_not_found(tmp_path):
+    # The path check runs before the dispatcher's own error handling, so a
+    # ValueError or RuntimeError from resolve() escaped the tool call.
+    from neuralmind.mcp_server import handle_tool_call
+
+    for bad in _invalid_paths(tmp_path):
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": bad}))
+        assert data["code"] == "project_not_found", data
 
 
 def test_memory_dispatcher_reports_a_missing_project(missing):

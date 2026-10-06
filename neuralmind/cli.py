@@ -4092,6 +4092,7 @@ def cmd_ingest(args):
     from neuralmind.core import create_mind
     from neuralmind.document_ingestion import (
         graph_prose_files,
+        graph_prose_is_current,
         parse_document,
         project_relative_path,
     )
@@ -4279,6 +4280,10 @@ def cmd_ingest(args):
     # until this run extends it, the embedder's node list is the graph.
     graph_files = graph_prose_files(mind.embedder.nodes, project_path)
     already_indexed: list[str] = []
+    # Graph files edited since the last build: the graph holds the old text,
+    # and an ingest would duplicate it rather than replace it, so they're
+    # skipped and reported as needing `neuralmind build`.
+    needs_build: list[str] = []
     wall_start = time.time()
 
     for idx, fpath in enumerate(files_to_ingest, 1):
@@ -4288,9 +4293,14 @@ def cmd_ingest(args):
 
         project_rel = project_relative_path(fpath, project_path)
         if project_rel is not None and project_rel in graph_files:
-            already_indexed.append(project_rel)
+            if graph_prose_is_current(graph_files[project_rel], fpath):
+                already_indexed.append(project_rel)
+                note = "already indexed by the code graph, skipped"
+            else:
+                needs_build.append(project_rel)
+                note = "changed since the last build, skipped (run `neuralmind build`)"
             if not quiet and len(files_to_ingest) > 1:
-                print(" already indexed by the code graph, skipped")
+                print(f" {note}")
             continue
 
         try:
@@ -4366,6 +4376,7 @@ def cmd_ingest(args):
             "wall_time_seconds": round(wall_time, 2),
             "synapse_doc_edges": synapse_doc_edges,
             "already_indexed": already_indexed,
+            "needs_build": needs_build,
             "errors": [{"file": str(f), "error": e} for f, e in errors],
         }
         print(json.dumps(output, indent=2))
@@ -4386,13 +4397,20 @@ def cmd_ingest(args):
         if total_nodes > 0:
             print(
                 f"Ingested {total_nodes} content node(s) from "
-                f"{len(files_to_ingest) - len(already_indexed)} file(s) in {wall_time:.1f}s"
+                f"{len(files_to_ingest) - len(already_indexed) - len(needs_build)} file(s) "
+                f"in {wall_time:.1f}s"
             )
         if already_indexed:
             shown = ", ".join(already_indexed[:3]) + (", ..." if len(already_indexed) > 3 else "")
             print(
                 f"Skipped {len(already_indexed)} file(s) the code graph already indexes "
                 f"({shown}); `neuralmind build` keeps them current."
+            )
+        if needs_build:
+            shown = ", ".join(needs_build[:3]) + (", ..." if len(needs_build) > 3 else "")
+            print(
+                f"Skipped {len(needs_build)} file(s) the code graph indexes that changed "
+                f"since the last build ({shown}); run `neuralmind build` to index the edits."
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")

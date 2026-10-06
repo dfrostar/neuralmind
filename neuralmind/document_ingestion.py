@@ -341,8 +341,8 @@ def project_relative_path(path: Path, root: Path) -> str | None:
         return None
 
 
-def graph_prose_files(nodes: Iterable[dict], root: Path) -> set[str]:
-    """Project-relative paths of files whose prose the code graph already holds.
+def graph_prose_files(nodes: Iterable[dict], root: Path) -> dict[str, list[tuple[str, str]]]:
+    """Files whose prose the code graph holds, with the sections it holds.
 
     The built-in graph turns each Markdown heading into a ``document`` node
     carrying the text under it (``content_text``), so ingesting that file
@@ -351,22 +351,55 @@ def graph_prose_files(nodes: Iterable[dict], root: Path) -> set[str]:
     labels (graphify's) doesn't hold the prose, so ingesting adds what's
     missing. Nodes a previous ingest added (``metadata.ingested_at``) are not
     the graph and never count.
+
+    Returns project-relative path -> sorted ``(heading, text)`` pairs, one per
+    heading node. The graph holds the file as it was at the last build, so
+    check it against the file on disk (:func:`graph_prose_is_current`) before
+    treating the file as indexed.
     """
     from .freshness import normalize_source_path
 
     resolved_root = Path(root).resolve()
-    files: set[str] = set()
+    sections: dict[str, list[tuple[str, str]]] = {}
+    with_text: set[str] = set()
     for node in nodes:
-        if not isinstance(node, dict) or not node.get("content_text"):
+        if not isinstance(node, dict) or "content_text" not in node:
             continue
         meta = node.get("metadata")
         if isinstance(meta, dict) and "ingested_at" in meta:
             continue
         raw = node.get("source_file")
         rel = normalize_source_path(str(raw), resolved_root) if raw else ""
-        if rel:
-            files.add(rel)
-    return files
+        if not rel:
+            continue
+        text = str(node.get("content_text") or "")
+        heading = str(node.get("section") or node.get("label") or "")
+        sections.setdefault(rel, []).append((heading, text))
+        if text:
+            with_text.add(rel)
+    return {rel: sorted(pairs) for rel, pairs in sections.items() if rel in with_text}
+
+
+def graph_prose_is_current(sections: list[tuple[str, str]], path: Path) -> bool:
+    """Whether ``path`` on disk still holds exactly the ``sections`` the graph has.
+
+    Recomputes what the graph build stores for a Markdown file (each heading
+    with the text under it, fenced code left out; ``graphgen._extract_markdown``)
+    and compares. A file edited since the last build doesn't match, and
+    neither does one that can't be read.
+
+    Text above the first heading and fenced code are in neither the graph nor
+    an ingest (``chunk_by_heading`` drops them too), so a file whose sections
+    match holds nothing an ingest would add.
+    """
+    try:
+        # Read and split lines as the graph build does.
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return False
+    current = chunk_by_heading("\n".join(text.splitlines()), max_section_chars=len(text) + 1)
+    pairs = sorted((s["heading"], s["content"]) for s in current if s["heading"])
+    return pairs == sections
 
 
 def parse_document(

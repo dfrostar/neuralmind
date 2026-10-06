@@ -51,10 +51,13 @@ def content_length(headers: Any, max_bytes: int = MAX_BODY_BYTES) -> int:
     value = raw.strip()
     if not (value.isascii() and value.isdigit()):
         raise RequestError(400, "invalid Content-Length header (expected a non-negative integer)")
-    length = int(value)
-    if length > max_bytes:
+    # Compare by length before converting: int() refuses a string over 4,300
+    # digits (Python's integer-string limit) with a ValueError, which would
+    # drop the connection instead of answering 413.
+    digits = value.lstrip("0") or "0"
+    if len(digits) > len(str(max_bytes)) or int(digits) > max_bytes:
         raise RequestError(413, f"request body too large (limit {max_bytes} bytes)")
-    return length
+    return int(digits)
 
 
 def read_body(handler: Any, max_bytes: int = MAX_BODY_BYTES) -> bytes:

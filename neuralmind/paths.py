@@ -57,7 +57,13 @@ def require_project_dir(project_path: str | Path) -> Path:
     project state calls it first; ``build`` and the other flows that create
     ``.neuralmind/`` inside an existing project are unaffected.
     """
-    resolved = Path(project_path).resolve()
+    try:
+        resolved = Path(project_path).resolve()
+    except (ValueError, RuntimeError) as exc:
+        # An embedded NUL (ValueError) or, before Python 3.13, a symlink loop
+        # (RuntimeError) can't name a project either; callers handle
+        # ProjectNotFoundError, not these.
+        raise ProjectNotFoundError(f"project path is not valid: {project_path!r} ({exc})") from exc
     if resolved.is_dir():
         return resolved
     shown = str(project_path)
