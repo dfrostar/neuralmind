@@ -137,8 +137,13 @@ never what it points to; the install refuses to write through one.
   Docker workflow moved `:latest` to whichever version it built last, so
   rebuilding an older tag pointed it back at that version. On 2026-10-06 a
   re-pushed `v1.16.0` tag pointed `:latest` at v1.16.0's image.
-  `:latest` now moves only for the highest `vX.Y.Z` tag; a
-  rebuild of an older version pushes just its own `:vX.Y.Z`. To pin, pull
+  A build now pushes only its own `:vX.Y.Z`. A last step, one run at a
+  time, then points `:latest` at the image of the highest `vX.Y.Z` tag, so
+  neither an older rebuild nor two overlapping releases can move it
+  backwards. This holds for tags cut from this release on. A tag push runs
+  the workflow file at the tagged commit, so re-pushing an older tag still
+  runs that tag's old workflow and can still move `:latest`; only a tag
+  ruleset that restricts who can push `v*` tags prevents that. To pin, pull
   `:v4.9.0` rather than `:latest`.
 - **The session recap no longer depends on directory order.** Two sessions
   whose last activity shares a timestamp (writes inside one clock tick, about
