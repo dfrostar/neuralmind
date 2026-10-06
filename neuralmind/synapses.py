@@ -99,6 +99,14 @@ SHARED_NAMESPACE = "shared"
 EPHEMERAL_NAMESPACE = "ephemeral"
 BRANCH_NAMESPACE_PREFIX = "branch:"
 
+# The LTP criterion decay() and decay_node() apply to a stored row: enough
+# lifetime activations, a weight at or above LTP_FLOOR (the floor only holds an
+# edge at/above it; one penalized below it decays freely), and not ephemeral
+# (no LTP exemption there). stats()["ltp_edges"] and the "long-term" tags in
+# SYNAPSE_MEMORY.md (synapse_memory.py) both count by this rule.
+LTP_ROW_SQL = "(activation_count >= ? AND weight >= ? AND namespace <> ?)"
+LTP_ROW_PARAMS = (LTP_THRESHOLD, LTP_FLOOR, EPHEMERAL_NAMESPACE)
+
 # MERGED-READ WEIGHTING. When a read method gets ``namespaces=None`` it
 # merges the active namespace + ``personal`` + ``shared``, scaling each
 # namespace's weights by exactly one of these constants and summing per
@@ -2317,9 +2325,10 @@ class SynapseStore:
     def stats(self) -> dict:
         with self._connect() as conn:
             edges = conn.execute("SELECT COUNT(*) FROM synapses").fetchone()[0]
+            # Rows decay actually protects, not just rows with enough
+            # activations: a penalized or ephemeral edge isn't long-term.
             ltp_edges = conn.execute(
-                "SELECT COUNT(*) FROM synapses WHERE activation_count >= ?",
-                (LTP_THRESHOLD,),
+                f"SELECT COUNT(*) FROM synapses WHERE {LTP_ROW_SQL}", LTP_ROW_PARAMS
             ).fetchone()[0]
             total_weight = conn.execute(
                 "SELECT COALESCE(SUM(weight), 0.0) FROM synapses"
