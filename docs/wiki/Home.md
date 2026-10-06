@@ -36,6 +36,19 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.9.1 — The last four fixes from the v4.8.2 bug hunt (October 2026)
+
+`neuralmind feedback good|bad` with query memory off no longer adjusts an
+older query recorded before memory went off; it exits 1, names that query and
+says how to turn memory back on. The "LTP-protected" edge count in `status`,
+`synapse stats` and the dashboard uses decay's own rule, so expect a lower
+number. `neuralmind validate` stops reporting the prose path's query nodes,
+now written `query:<term>`, as stale. And on Python 3.10–3.12 the `decisions`
+and `memory` subcommands accept the project path after their options
+(`decisions restore <id> --commit SHA <path>`), while `--` still ends the
+options. None of the four lose data.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md).
+
 ### v4.9.0 — Hermes-Agent gets NeuralMind's context in every turn, without a tool call (October 2026)
 
 On Hermes-Agent, NeuralMind used to be something the agent had to decide to

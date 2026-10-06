@@ -38,7 +38,8 @@ that read too high, and an argument order the CLI refused.
   <id> --commit SHA <path>` failed with `unrecognized arguments: <path>` on
   Python 3.10–3.12. So did `decisions amend`, `invalidate` and `query`, and
   `memory review-approve` / `review-reject`. They now accept the path before
-  or after the options, as they already did on Python 3.13.
+  or after the options, as they already did on Python 3.13. `--` still ends
+  the options: `decisions query -- -q .` searches for "-q".
 
 ## What the agent actually sees post-install
 

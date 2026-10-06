@@ -508,6 +508,25 @@ def test_positionals_may_follow_options(parser, project, argv):
     assert args.project_path == str(project)
 
 
+@pytest.mark.parametrize(
+    "argv, field, value",
+    [
+        (["decisions", "query", "--", "--json", "{p}"], "query", "--json"),
+        (["decisions", "query", "--", "-q", "{p}"], "query", "-q"),
+        (["decisions", "query", "--limit", "3", "--", "-n", "{p}"], "query", "-n"),
+        (["memory", "review-approve", "--", "-a.py", "b.py", "{p}"], "source", "-a.py"),
+    ],
+)
+def test_double_dash_still_ends_the_options(parser, project, argv, field, value):
+    # Intermixed parsing before Python 3.13 ignored `--`: `decisions query --
+    # --json .` turned on --json and searched for ".", and `-- -q` was an
+    # unrecognized argument. Everything after `--` is a positional.
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert getattr(args, field) == value
+    assert args.project_path == str(project)
+    assert args.json is False
+
+
 def test_a_missing_path_after_options_is_still_a_usage_error(parser, project, capsys):
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["decisions", "restore", "d1", "--commit", "abc", str(project / "nope")])

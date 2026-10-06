@@ -6215,12 +6215,18 @@ class _IntermixedArgumentParser(argparse.ArgumentParser):
     intermixed reads the options first, then all the positionals in order,
     which is what 3.13 does. Only for parsers with no subcommands of their own:
     argparse can't parse those intermixed, so they parse as usual.
+
+    A line with ``--`` also parses as usual: before Python 3.13, intermixed
+    parsing ignored it, so ``decisions query -- --json .`` turned on
+    ``--json`` instead of searching for "--json", and ``-- -q`` was rejected.
     """
 
     _intermixing = False
 
     def parse_known_args(self, args=None, namespace=None):
         if self._intermixing or self._subparsers is not None:
+            return super().parse_known_args(args, namespace)
+        if "--" in (sys.argv[1:] if args is None else args):
             return super().parse_known_args(args, namespace)
         # parse_known_intermixed_args calls back into parse_known_args on
         # Python < 3.13; those inner passes take the plain path above.
