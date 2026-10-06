@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from neuralmind import learned_decay
 
 
@@ -78,6 +80,39 @@ class TestComputeEdgeHalfLife:
             namespace_default=30.0,
         )
         assert fresh >= stale
+
+
+class TestFrequencySignal:
+    """The learned half-life follows activations *per day*, not raw count."""
+
+    def test_same_count_over_longer_span_is_shorter(self) -> None:
+        # 10 activations in 2 days (5/day) is a hotter edge than 10 in 100
+        # days (0.1/day). The old formula multiplied freq back by age, so
+        # both returned the same value.
+        now = time.time()
+        hot = learned_decay.compute_edge_half_life(10, now, now - 2 * 86400, 30.0)
+        cold = learned_decay.compute_edge_half_life(10, now, now - 100 * 86400, 30.0)
+        assert hot > cold + 10.0
+
+    def test_one_activation_per_day_is_midpoint(self) -> None:
+        # Docstring contract: freq=1/day maps to the midpoint of [lo, hi]
+        # (for a just-activated edge, where recency confidence is ~1).
+        lo, hi = learned_decay.default_bounds()
+        now = time.time()
+        for days in (2, 50, 500):
+            hl = learned_decay.compute_edge_half_life(days, now, now - days * 86400, 30.0)
+            assert hl == pytest.approx((lo + hi) / 2, rel=1e-3)
+
+    def test_monotonic_in_frequency_and_bounded(self) -> None:
+        lo, hi = learned_decay.default_bounds()
+        now = time.time()
+        span = 20 * 86400
+        values = [
+            learned_decay.compute_edge_half_life(count, now, now - span, 30.0)
+            for count in (0, 1, 5, 20, 200, 20000)
+        ]
+        assert values == sorted(values)
+        assert all(lo <= v <= hi for v in values)
 
 
 class TestSchemaMigration:

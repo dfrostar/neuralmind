@@ -185,3 +185,67 @@ def test_missing_metadata_degrades_instead_of_raising():
     hits = [{"id": "a", "score": 0.9}, {"id": "b", "score": 0.1}, {"score": 0.5}]
     kept, dropped = _displace(hits, 1)
     assert len(kept) == 2 and len(dropped) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Synapse recall only spends slots on files the hits don't already cover
+# --------------------------------------------------------------------------- #
+class _FakeEmbedder:
+    def __init__(self, nodes):
+        self.nodes = {n["id"]: n for n in nodes}
+
+    def get_nodes_by_ids(self, ids):
+        return [dict(self.nodes[i]) for i in ids if i in self.nodes]
+
+
+def _boosting_selector(energy, nodes):
+    from neuralmind.context_selector import ContextSelector
+
+    sel = ContextSelector.__new__(ContextSelector)
+    sel.synapse_recall = lambda seeds: list(energy.items())
+    sel.embedder = _FakeEmbedder(nodes)
+    sel._synapse_seed_k = 2
+    sel._synapse_boost_weight = 0.1
+    sel._synapse_pull_in_min_energy = 0.0
+    sel._synapse_pull_in_max = 4
+    return sel
+
+
+def test_recall_never_trades_a_second_file_for_more_of_the_first(monkeypatch):
+    """`create-user` on the fixture: users/crud.py x3 + api/routes.py, both expected.
+
+    The learned graph's strongest neighbours were more users/crud.py nodes. They
+    used to take api/routes.py's slot (the only file not yet doubled), turning
+    the onboarding lift negative once v4.6.0's unified keyword index ranked the
+    cold hits correctly. A neighbour from a file already shown adds no module.
+    """
+    monkeypatch.delenv("NEURALMIND_SYNAPSE_INJECT", raising=False)
+    hits = [
+        _hit("crud_create", "users/crud.py", 0.90),
+        _hit("crud_get", "users/crud.py", 0.80),
+        _hit("crud_list", "users/crud.py", 0.70),
+        _hit("routes_post", "api/routes.py", 0.60),
+    ]
+    energy = {"crud_update": 0.9, "crud_delete": 0.8}
+    nodes = [_hit(nid, "users/crud.py", 0.0) for nid in energy]
+    out = _boosting_selector(energy, nodes)._apply_synapse_boost(hits)
+
+    assert [r["id"] for r in out] == [r["id"] for r in hits]
+    assert _modules(out) == ["api/routes.py", "users/crud.py"]
+
+
+def test_recall_still_pulls_in_a_file_search_missed(monkeypatch):
+    monkeypatch.delenv("NEURALMIND_SYNAPSE_INJECT", raising=False)
+    hits = [
+        _hit("crud_create", "users/crud.py", 0.90),
+        _hit("crud_get", "users/crud.py", 0.80),
+        _hit("crud_list", "users/crud.py", 0.70),
+        _hit("routes_post", "api/routes.py", 0.60),
+    ]
+    energy = {"crud_update": 0.9, "db_connect": 0.5}
+    nodes = [_hit("crud_update", "users/crud.py", 0.0), _hit("db_connect", "db/conn.py", 0.0)]
+    out = _boosting_selector(energy, nodes)._apply_synapse_boost(hits)
+
+    assert len(out) == len(hits)  # budget-neutral
+    assert "db_connect" in {r["id"] for r in out}
+    assert "crud_update" not in {r["id"] for r in out}

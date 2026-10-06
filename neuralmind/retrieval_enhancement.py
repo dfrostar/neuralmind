@@ -400,6 +400,52 @@ def classify_intent(
     return "hybrid"
 
 
+INTENT_RULES_ENV = "NEURALMIND_INTENT_RULES"
+
+# A question that names a document, or asks how to install / set something
+# up, wants the docs.
+_DOC_NOUNS = re.compile(
+    r"\b(?:docs?|documentation|readme|guide|tutorial|changelog|release notes?|wiki|faq|"
+    r"runbook|policy|license|pricing|roadmap)\b"
+)
+_USAGE_HOWTO = re.compile(
+    r"^(?:how\s+(?:do|can|should|would)\s+(?:i|we|you)|how\s+to)\s+"
+    r"(?:install|set\s*up|setup|configure|enable|disable|upgrade|uninstall|get\s+started)\b"
+)
+# A question about what the project does — how it behaves, where something
+# happens, which component runs — wants the implementation.
+_BEHAVIOUR = tuple(
+    re.compile(p)
+    for p in (
+        r"^how\s+(?:does|do|did|is|are|was|were)\s+\S+",
+        r"^where\s+(?:is|are|does|do|did|was|were)\s+\S+",
+        r"^which\s+(?:\w+\s+){0,4}(?:is|are|gets?|runs?|does|do)\b",
+        r"^what\s+happens\b",
+        r"^when\s+(?:does|do|is|are)\s+\S+",
+    )
+)
+
+
+def intent_rules_enabled() -> bool:
+    return os.environ.get(INTENT_RULES_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def classify_behaviour_intent(query: str) -> str | None:
+    """'docs' for questions about documents or setup, 'code' for questions about
+    behaviour, None when the shape says neither (v4.6.0, ``NEURALMIND_INTENT_RULES=1``).
+
+    :func:`classify_intent` sends "how does the scheduler pick a slot" to
+    docs (its implementation-verb list has no "pick") and every "where is X"
+    question to docs. On a codebase those ask how the code behaves.
+    """
+    q = query.lower().strip()
+    if _DOC_NOUNS.search(q) or _USAGE_HOWTO.match(q):
+        return "docs"
+    if any(p.match(q) for p in _BEHAVIOUR):
+        return "code"
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # 2. Code-signal boost
 # --------------------------------------------------------------------------- #

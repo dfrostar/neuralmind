@@ -72,6 +72,13 @@ learn themselves — informative, never louder than their own experience.
 Import validates the bundle's format + version first and merges weights by
 MAX, so re-importing (say, in a recurring CI step) is **idempotent**.
 
+For a baseline every teammate inherits automatically, commit it instead:
+`neuralmind memory publish .` writes `.neuralmind-team-memory.json` at the repo
+root. Under team governance *(v4.6.0+)* that publish follows an admin's scope
+and weight threshold, and an association the team should stop sharing can be
+retracted for everyone — see
+[Govern what your team's agents share](./govern-team-memory.md).
+
 ## Walkthrough 3 — throwaway exploration that leaves no trace
 
 ```bash
@@ -168,3 +175,5 @@ above. Nothing shared live, nothing to clean up.
   namespaced store, so isolation applies across Claude Code + Cursor + Cline
 - [Growing monorepo](./growing-monorepo.md) — keeping the *index* fresh;
   namespaces keep the *memory* clean
+- [Govern what your team's agents share](./govern-team-memory.md) — publish
+  policy, retraction and the audit trail for the committed team bundle

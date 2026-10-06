@@ -36,3 +36,21 @@ def test_download_into_raises_after_max_retries(tmp_path):
             embedder._download_into(dest)
 
     assert mock_retrieve.call_count == _DOWNLOAD_RETRIES
+
+
+def test_local_model_dir_finds_a_cached_model_and_never_downloads(tmp_path, monkeypatch):
+    """Decision search asks this before loading the model; it must not fetch."""
+    import neuralmind.onnx_embedder as mod
+
+    monkeypatch.delenv("NEURALMIND_ONNX_MODEL_DIR", raising=False)
+    monkeypatch.setattr(mod, "_NM_CACHE", tmp_path / "nm" / "onnx")
+    monkeypatch.setattr(mod, "_CHROMA_CACHE", tmp_path / "chroma" / "onnx")
+    embedder = OnnxMiniLMEmbedder()
+    with patch.object(OnnxMiniLMEmbedder, "_download_into") as download:
+        assert embedder.local_model_dir() is None
+        chroma = tmp_path / "chroma" / "onnx"
+        chroma.mkdir(parents=True)
+        (chroma / "model.onnx").write_bytes(b"")
+        (chroma / "tokenizer.json").write_text("{}")
+        assert embedder.local_model_dir() == chroma
+    download.assert_not_called()

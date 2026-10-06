@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from neuralmind.state_dir import ensure_parent_dir
+from neuralmind.storage_guard import enforce_storage_policy
 
 from . import ir as ir_mod
 from . import namespaces as ns_mod
@@ -166,7 +167,8 @@ class NeuralMind:
         Initialize NeuralMind for a project.
 
         Args:
-            project_path: Path to project root (where .neuralmind/ lives)
+            project_path: Path to project root (where .neuralmind/ lives). It
+                must be an existing directory; otherwise ProjectNotFoundError.
             db_path: Optional custom path for ChromaDB storage
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
@@ -175,7 +177,14 @@ class NeuralMind:
                 ``memory_namespace`` / the current git branch / ``personal``.
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
-        self.project_path = Path(project_path).resolve()
+        # A path that isn't an existing directory is an error, not a new
+        # project: the backend and audit trail below would otherwise create
+        # <path>/.neuralmind/ for a mistyped path.
+        self.project_path = paths_mod.require_project_dir(project_path)
+        self.scope = scope
+        # Before anything can write index or synapse state: a project that
+        # sets security.require_encrypted_storage refuses an unverified volume.
+        enforce_storage_policy(self.project_path)
         self.db_path = db_path
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type, scope=scope
@@ -797,17 +806,22 @@ class NeuralMind:
             self._build_stats["freshness"] = freshness.to_dict()
         # The graph this index was embedded from, so read paths can tell when
         # it has been regenerated since (graphify update, a pull) without a build.
+        from . import l3_slots
         from .freshness import graph_fingerprint
 
         status_updates: dict = {
             "graph": {
                 **self._build_stats["graph"],
                 "fingerprint": graph_fingerprint(graph_info["path"]),
-            }
+            },
+            # Stamps caches derived from this index (the unified BM25 index),
+            # one key per scope so a scoped build can't stale the default one.
+            l3_slots.generation_key(self.scope): self._build_stats["built_at"],
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
         self._record_build_status(status_updates)
+        self._write_unified_bm25()
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -1143,6 +1157,57 @@ class NeuralMind:
         if not content_nodes:
             return {"error": "No content extracted from file", "node_count": 0}
 
+        # Same rule as `neuralmind ingest`: a file inside the project whose
+        # prose the code graph already holds is skipped (ingesting it stored a
+        # second copy under its absolute path, so the text came back twice in
+        # query context), and any other file inside the project is stored
+        # under the project-relative path every graph node uses.
+        # A graph file edited since the last build isn't stored either: an
+        # ingest would sit beside the graph's old text rather than replace it,
+        # so it's reported as needing `neuralmind build`.
+        from neuralmind.document_ingestion import (
+            graph_prose_files,
+            graph_prose_is_current,
+            project_relative_path,
+        )
+
+        graph_files = graph_prose_files(self.embedder.nodes, self.project_path)
+        current: dict[str, bool] = {}
+        kept: list[dict] = []
+        for cn in content_nodes:
+            meta = cn.get("metadata") if isinstance(cn.get("metadata"), dict) else {}
+            source = cn.get("source_file") or meta.get("source") or ""
+            rel = project_relative_path(Path(source), self.project_path) if source else None
+            if rel is not None:
+                if rel in graph_files:
+                    if rel not in current:
+                        current[rel] = graph_prose_is_current(
+                            graph_files[rel], self.project_path / rel
+                        )
+                    continue
+                cn["source_file"] = rel
+                if meta:
+                    meta["source"] = rel
+            kept.append(cn)
+        content_nodes = kept
+        already_indexed = sorted(rel for rel, ok in current.items() if ok)
+        needs_build = sorted(rel for rel, ok in current.items() if not ok)
+        if not content_nodes:
+            return {
+                "success": True,
+                "node_count": 0,
+                "file_path": str(file_path),
+                "already_indexed": already_indexed,
+                "needs_build": needs_build,
+                "message": (
+                    "The code graph indexes this file, but it changed since the last "
+                    "build; run `neuralmind build` to index the edit."
+                    if needs_build
+                    else "The code graph already indexes this file's text; "
+                    "`neuralmind build` keeps it current."
+                ),
+            }
+
         # Sync content nodes into the embedder's node list so BM25 sees them
         existing_ids = {n.get("id", "") for n in self.embedder.nodes}
         for cn in content_nodes:
@@ -1210,6 +1275,8 @@ class NeuralMind:
             "file_path": str(file_path),
             "embed_stats": stats,
             "synapse_doc_edges": synapse_doc_edges,
+            "already_indexed": already_indexed,
+            "needs_build": needs_build,
         }
 
     def ingest_cmmc(self, registry_path: str | Path) -> dict:
@@ -1407,6 +1474,22 @@ class NeuralMind:
         except (OSError, ValueError):
             return {}
         return data if isinstance(data, dict) else {}
+
+    def _write_unified_bm25(self) -> None:
+        """Write the docs + code BM25 index the query path fuses (v4.6.0)."""
+        if getattr(self, "project_kind", "code") == "prose":
+            return
+        try:
+            from . import l3_slots
+
+            if not l3_slots.unified_bm25_enabled():
+                return
+            catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
+            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True, scope=self.scope)
+            if getattr(self, "selector", None) is not None:
+                self.selector._unified_bm25 = None  # reload on the next query
+        except Exception:  # pragma: no cover - a keyword index never blocks a build
+            logger.debug("unified BM25 index not written", exc_info=True)
 
     def _record_build_status(self, updates: dict) -> None:
         """Merge ``updates`` into ``.neuralmind/build_status.json``."""
@@ -1718,14 +1801,19 @@ class NeuralMind:
         if not graphgen.is_available():
             return {"success": False, "error": "tree-sitter not available"}
 
+        from .neuralmind_config import NeuralmindConfig
+
         root = self.project_path.resolve()
         indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
-        # Files the full build would index (.gitignore, .neuralmindignore and
-        # the default ignores applied), so an edit to an excluded file can't
-        # slip it back into the graph.
+        # Files the full build would index (.gitignore, .neuralmindignore, the
+        # default ignores and .neuralmind.yaml include/exclude applied), so an
+        # edit to an excluded file can't slip it back into the graph.
+        config = NeuralmindConfig.load(root)
         allowed = {
             f.relative_to(root).as_posix()
-            for f in graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            for f in config.apply_globs(
+                root, graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            )
         }
         known = {n.get("source_file") for n in graph.get("nodes", [])}
         changed: list[str] = []
@@ -1768,6 +1856,29 @@ class NeuralMind:
         self.embedder.edges = []
         self.embedder.load_graph()
         embed_stats = self.embedder.embed_nodes(force=False)
+
+        # Restamp the index the way build() does: record the updated graph's
+        # fingerprint (else every load reports the index out of step) and a new
+        # index generation, which invalidates the caches stamped with the old
+        # one; then rewrite the unified BM25 index so removed symbols stop
+        # matching keywords and added ones start.
+        from . import l3_slots
+        from .freshness import graph_fingerprint
+
+        self._record_build_status(
+            {
+                "graph": {
+                    **(self._read_build_status().get("graph") or {}),
+                    "path": self._display_path(graph_path),
+                    "kind": "built-in",
+                    "action": "incremental",
+                    "nodes": stats.nodes_after,
+                    "fingerprint": graph_fingerprint(graph_path),
+                },
+                l3_slots.generation_key(self.scope): datetime.now().isoformat(),
+            }
+        )
+        self._write_unified_bm25()
         self._graph_stats_dirty()
 
         return {
@@ -1782,11 +1893,16 @@ class NeuralMind:
 
     def _graph_stats_dirty(self) -> None:
         """Invalidate the selector's cached graph stats after an incremental
-        update so L0/L1 reflect the new node/community counts."""
+        update so L0/L1 reflect the new node/community counts, and the node
+        catalog and keyword indexes derived from the old nodes reload."""
         if self.selector is not None:
             self.selector._graph_stats = None
             self.selector._l0_cache = None
             self.selector._l1_cache = None
+            self.selector._catalog = None
+            self.selector._code_bm25 = None
+            self.selector._unified_bm25 = None
+            self.selector._hub_stats_cache = None
 
     def _ensure_built(self):
         """Make the index ready for a query without rebuilding it.
@@ -1952,8 +2068,9 @@ class NeuralMind:
             trace: If True, attach a per-layer retrieval trace (PRD 3) to
                 ``result.trace`` for explainability/debugging.
             trace_verbose: If True (with trace), keep full candidate/hit lists.
-            query_type: Filter results — 'code' restricts to source code, 'docs'
-                to documentation, 'auto' detects intent (default).
+            query_type: 'code' ranks source code first, 'docs' documentation
+                first, in place of the intent detected from the question;
+                'auto' detects it (default).
             context_budget: Optional token budget. If provided, the assembled
                 context is trimmed to fit within this budget by removing
                 lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
@@ -2007,8 +2124,14 @@ class NeuralMind:
             )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
-            if highlights:
+            if highlights and context_budget and context_budget > 0 and result.layer_texts:
+                # The highlights count against the budget too: the layers
+                # make room for them (L3, then L2, then L1), then the
+                # highlights themselves are cut; L0 is never trimmed.
+                self.selector.fit_to_budget(result, context_budget, prefix=highlights)
+            elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
+                self.selector.count_prefix(result, highlights)
         if learn:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)

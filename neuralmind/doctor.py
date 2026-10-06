@@ -353,18 +353,20 @@ def _check_hooks(project: Path) -> Check:
 
 def _check_memory() -> Check:
     try:
-        from neuralmind.memory import is_memory_logging_enabled
+        from neuralmind.memory import memory_off_reasons_and_steps
 
-        enabled = bool(is_memory_logging_enabled())
+        reasons, steps = memory_off_reasons_and_steps()
     except Exception as e:
         return Check("Query memory", WARN, f"could not check ({e})")
-    if enabled:
+    if not reasons:
         return Check("Query memory", OK, "enabled (logging queries for learning)")
+    # NEURALMIND_MEMORY defaults to on, so "set it to 1" (the old advice)
+    # never helped: name what is actually off and what turns it on.
     return Check(
         "Query memory",
         WARN,
-        "disabled (no query logging)",
-        fix="Enable with NEURALMIND_MEMORY=1, or accept the prompt on first query.",
+        f"disabled ({'; '.join(reasons)})",
+        fix=f"To enable, {' and '.join(steps)}.",
     )
 
 
@@ -450,6 +452,120 @@ def _check_turbovec_version(project: Path) -> Check:
         return Check("Turbovec compatibility", WARN, "turbovec not installed — skipping")
 
 
+def _check_security_policy(project: Path) -> Check:
+    """The ``security:`` settings that decide what NeuralMind refuses."""
+    import stat
+    import sys
+
+    from neuralmind.backend_manager import backend_config_path, read_backend_config_file
+    from neuralmind.identity import os_identity
+    from neuralmind.mcp_security import role_policy_problem
+    from neuralmind.security_config import (
+        IDENTITY_INVALID,
+        IDENTITY_OS,
+        load_security_settings,
+    )
+
+    name = "Security policy"
+    path = backend_config_path(project)
+    if path is not None:
+        try:
+            read_backend_config_file(path)
+        except Exception as e:
+            return Check(
+                name,
+                FAIL,
+                f"{path.name} does not parse ({e}); its settings are ignored, or refused if it names a security setting",
+                fix=f"Fix the syntax in {path.name}.",
+            )
+    policy_problem = role_policy_problem(project)
+    if policy_problem:
+        return Check(
+            name,
+            FAIL,
+            f"MCP calls are refused: {policy_problem}",
+            fix="Fix or remove the security setting named above, then restart the MCP server.",
+        )
+    settings = load_security_settings(project)
+    if settings.identity == IDENTITY_INVALID:
+        return Check(
+            name,
+            FAIL,
+            f"MCP calls are refused: {settings.problem}",
+            fix="Correct the security: section.",
+        )
+    if settings.identity != IDENTITY_OS:
+        return Check(
+            name,
+            OK,
+            "identity: declared (MCP callers name their own actor and role)",
+            fix="Set security.identity: os to take identity from the OS account instead.",
+        )
+
+    account = os_identity()
+    if not account:
+        return Check(
+            name,
+            FAIL,
+            "identity: os, but this OS account can't be determined; MCP calls are refused",
+        )
+    role = settings.users.get(account, settings.default_role)
+    if role is None:
+        return Check(
+            name,
+            WARN,
+            f"identity: os; account '{account}' has no role, so its MCP calls are refused",
+            fix=f"Add '{account}' to security.users or set security.default_role.",
+        )
+    detail = f"identity: os; account '{account}' gets role '{role}'"
+    if path is not None and sys.platform != "win32":
+        mode = path.stat().st_mode
+        if mode & stat.S_IWOTH:
+            return Check(
+                name,
+                FAIL,
+                f"{path.name} is writable by every user; MCP calls are refused",
+                fix=f"chmod o-w {path.name}",
+            )
+        if mode & stat.S_IWGRP:
+            return Check(
+                name,
+                WARN,
+                f"{detail}, but {path.name} is group-writable, so anyone in the group can change roles",
+                fix=f"chmod g-w {path.name}",
+            )
+    return Check(name, OK, detail)
+
+
+def _check_storage_encryption(project: Path) -> Check:
+    """Whether the project's volume is encrypted, and whether that's required."""
+    from neuralmind.security_config import load_security_settings
+    from neuralmind.storage_guard import check_storage
+
+    name = "Storage encryption"
+    required = load_security_settings(project).require_encrypted_storage
+    status = check_storage(project)
+    fips = {True: "; OS FIPS mode on", False: "; OS FIPS mode off", None: ""}[status.fips_mode]
+    if status.encrypted is True:
+        if required and status.fips_mode is False:
+            return Check(
+                name,
+                WARN,
+                f"{status.detail}{fips}",
+                fix="CMMC needs FIPS-validated cryptography: enable the OS FIPS mode.",
+            )
+        return Check(name, OK, f"{status.detail}{fips}")
+    if required:
+        return Check(
+            name,
+            FAIL,
+            f"required, and not verified: {status.detail}. NeuralMind refuses to run here",
+            fix="Turn on FileVault, BitLocker, or LUKS for this volume.",
+        )
+    state = "not encrypted" if status.encrypted is False else "not verified"
+    return Check(name, OK, f"{state} ({status.detail}); not required by this project")
+
+
 def run_diagnostics(project_path: str) -> list[Check]:
     """Run every check against ``project_path`` and return the results."""
     project = Path(project_path).resolve()
@@ -463,6 +579,8 @@ def run_diagnostics(project_path: str) -> list[Check]:
         _check_memory(),
         _check_doc_code_alignment(project),
         _check_turbovec_version(project),
+        _check_security_policy(project),
+        _check_storage_encryption(project),
     ]
 
 

@@ -27,6 +27,24 @@ from .synapses import LEARNING_RATE, SynapseStore, default_db_path
 MAX_IR_PARSE_BYTES = 64 * 1024 * 1024
 
 
+def _memory_off_message() -> str:
+    """Why no query is being recorded for feedback to adjust; "" when query memory is on.
+
+    The recent-queries log is gated on the same consent as query memory
+    (``NeuralMind._record_recent_query``): ``NEURALMIND_MEMORY=0`` turns it
+    off, and otherwise ``~/.neuralmind/memory_consent.json`` must say yes.
+    """
+    from . import memory
+
+    reasons, steps = memory.memory_off_reasons_and_steps()
+    if not reasons:
+        return ""
+    return (
+        "No queries are recorded for feedback to adjust: query memory is off "
+        f"({'; '.join(reasons)}). To turn it on, {' and '.join(steps)}; then run a query."
+    )
+
+
 def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
     """Read the last query's node ids from the recent-queries log.
 
@@ -38,6 +56,10 @@ def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
     recent_path = project_path / ".neuralmind" / NeuralMind.RECENT_QUERIES_FILENAME
     records = read_recent(recent_path, n=1)
     if not records:
+        # With query memory off nothing is recorded, so "run a query" can't help.
+        off = _memory_off_message()
+        if off:
+            return None, off
         return None, "No recent queries recorded. Run `neuralmind query <path> <question>` first."
     record = records[0]
     top_hits = record.get("top_hits", [])

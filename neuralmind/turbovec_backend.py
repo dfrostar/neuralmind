@@ -45,6 +45,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+from .ir import node_community
 from .paths import graph_json_path, vector_db_path
 from .progress import ProgressReporter, stream_is_tty
 from .secret_scan import redact_if_enabled
@@ -131,6 +132,10 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         if db_path is None:
             db_path = str(vector_db_path(self._project_path, "turbovec"))
+        else:
+            # Relative to the project, not the CWD, so every command finds the
+            # same index (an absolute path replaces the project path here).
+            db_path = str(self._project_path / Path(db_path).expanduser())
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)
@@ -598,7 +603,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         source_loc = node.get("source_location", "")
         if source_loc:
             parts.append(f"Location: {source_loc}")
-        community = node.get("community", -1)
+        community = node_community(node)
         if community >= 0:
             parts.append(f"Community: {community}")
         norm_label = node.get("norm_label", "")
@@ -611,7 +616,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             "label": str(node.get("label", node.get("id", "unknown"))),
             "file_type": str(node.get("file_type", "unknown")),
             "source_file": str(node.get("source_file", "")),
-            "community": int(node.get("community", -1)),
+            "community": node_community(node),
             "node_id": str(node.get("id", "")),
         }
 
@@ -1104,7 +1109,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                 "nodes": [],
                 "summary": "Empty community",
             }
-        nodes = [n for n in self.nodes if int(n.get("community", -1)) == community_id][:max_nodes]
+        nodes = [n for n in self.nodes if node_community(n) == community_id][:max_nodes]
         file_types: dict[str, int] = {}
         formatted = []
         for n in nodes:
@@ -1179,8 +1184,17 @@ class TurboVecEmbedder(EmbeddingBackend):
     # BM25 keyword index — hybrid search
     # ------------------------------------------------------------------
 
+    @property
+    def scope(self) -> str:
+        """The index scope: 'all', 'code', 'content' or 'docs'."""
+        return self._scope
+
     @cached_property
     def _bm25_path(self) -> Path:
+        # Per scope, like the store and index files: a `build --scope code`
+        # (no document nodes) must not delete the default docs index.
+        if self._scope != "all":
+            return self._dir / f"bm25_index.{self._scope}.json"
         return self._dir / "bm25_index.json"
 
     def _load_bm25(self):

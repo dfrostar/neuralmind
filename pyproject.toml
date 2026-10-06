@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "4.4.0"
-description = "Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue and any MCP client. Learns which files go together from how you work and serves compact, ranked context: 45-261× fewer tokens than pasting every source file, at 93.75% mean gold-file recall on a public benchmark. Local-first, no telemetry."
+version = "4.8.2"
+description = "Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue and any MCP client. Learns which files go together from how you work and serves compact, ranked context: 46-263× fewer tokens than pasting every source file, at 95% mean gold-file recall on a public benchmark. Local-first, no telemetry."
 readme = "README.md"
 license = "MIT AND LicenseRef-NeuralMind-Commercial"
 authors = [
@@ -56,6 +56,9 @@ keywords = [
     "compliance-annotations",
     "control-mapping",
     "audit-evidence",
+    "cmmc",
+    "cui-protection",
+    "os-identity-rbac",
     "content-ingestion",
     "incremental-indexing",
     "markdown-corpus-search",
@@ -65,6 +68,17 @@ keywords = [
     "retrieval-eval",
     "gitignore-aware-indexing",
     "read-only-queries",
+    "hybrid-bm25",
+    "pre-registered-eval",
+    "retrieval-ab-testing",
+    "read-deduplication",
+    "decision-invalidation",
+    "memory-governance",
+    "session-recap",
+    "session-continuity",
+    "semantic-decision-search",
+    "decision-memory",
+    "hybrid-search",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

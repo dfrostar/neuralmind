@@ -30,6 +30,10 @@ from pathlib import Path
 CoActivationCallback = Callable[[list[str]], None]
 
 DEFAULT_DEBOUNCE = 0.75
+# A pending batch is flushed after at most this many debounce windows even
+# if edits never go quiet, so a file rewritten non-stop can't starve the
+# rest of the batch forever.
+MAX_BATCH_DEBOUNCES = 10
 DEFAULT_POLL_INTERVAL = 2.0
 DEFAULT_IGNORES = (
     ".git",
@@ -70,7 +74,9 @@ class FileActivityWatcher:
     """Coalesces file edits into co-activation batches.
 
     Edits arriving within ``debounce`` seconds of each other are grouped
-    and delivered as a single batch to ``callback``. The callback runs on
+    and delivered as a single batch to ``callback`` once ``debounce``
+    seconds pass with no new edit (or, under non-stop edits, after
+    ``MAX_BATCH_DEBOUNCES`` debounce windows). The callback runs on
     the watcher thread and should be cheap (just enqueue the work).
 
     When ``deletion_callback`` is supplied it is called immediately (not
@@ -94,6 +100,7 @@ class FileActivityWatcher:
         self.poll_interval = poll_interval
         self.ignores = tuple(ignores)
         self._pending: dict[str, float] = {}
+        self._batch_started = 0.0  # when the first edit of the pending batch arrived
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._flusher: threading.Thread | None = None
@@ -107,7 +114,10 @@ class FileActivityWatcher:
         if not path.is_file():
             return
         with self._lock:
-            self._pending[str(path)] = time.time()
+            now = time.time()
+            if not self._pending:
+                self._batch_started = now
+            self._pending[str(path)] = now
 
     def _record_deletion(self, path: Path) -> None:
         """Fire the deletion callback immediately (no debounce — file is gone)."""
@@ -123,11 +133,20 @@ class FileActivityWatcher:
     def _flush_loop(self) -> None:
         while not self._stop.is_set():
             time.sleep(self.debounce / 2)
-            cutoff = time.time() - self.debounce
+            now = time.time()
+            ready_pairs: list[tuple[str, float]] = []
             with self._lock:
-                ready_pairs = [(p, ts) for p, ts in self._pending.items() if ts <= cutoff]
-                for p, _ in ready_pairs:
-                    self._pending.pop(p, None)
+                # Flush the whole batch once edits have gone quiet for
+                # ``debounce`` (measured from the *newest* edit). Flushing
+                # each path once it alone was old enough split edits 0.5s
+                # apart into single-file batches, so the callback never saw
+                # the cross-file pairs and transitions it exists to learn.
+                if self._pending and (
+                    now - max(self._pending.values()) >= self.debounce
+                    or now - self._batch_started >= self.debounce * MAX_BATCH_DEBOUNCES
+                ):
+                    ready_pairs = list(self._pending.items())
+                    self._pending.clear()
             if ready_pairs:
                 # Sort by timestamp so directional transitions reflect the
                 # actual edit order rather than dict-insertion order — a

@@ -45,6 +45,7 @@ from .event_log import (
     default_log_path,
     event_log_enabled,
 )
+from .http_util import RequestError, read_json_object, token_matches
 from .metrics_pipeline import MetricsCollector
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -204,6 +205,11 @@ def _resolve_open_target(mind: NeuralMind, node_id: str) -> tuple[Path | None, i
 class _Handler(BaseHTTPRequestHandler):
     """HTTP request handler for the NeuralMind graph-view server."""
 
+    # Socket timeout for each request, as in the daemon: a client that
+    # declares a body and never sends it no longer holds a thread open. The
+    # /api/events stream only writes, so a live subscriber isn't affected.
+    timeout = 30
+
     # Set by serve() before the server starts; shared across threads.
     mind: NeuralMind | None = None
     auth_token: str | None = None  # None disables auth
@@ -240,11 +246,14 @@ class _Handler(BaseHTTPRequestHandler):
             if "=" in piece:
                 k, v = piece.split("=", 1)
                 cookies[k.strip()] = v.strip()
-        if cookies.get(_AUTH_COOKIE) == cls.auth_token:
+        # token_matches compares UTF-8 bytes in constant time: compare_digest
+        # on a non-ASCII str (e.g. ?token=%C3%A9) raised TypeError and dropped
+        # the connection, and the cookie check was a timing-leaky ==.
+        if token_matches(cookies.get(_AUTH_COOKIE), cls.auth_token):
             return True, None
 
         query_token = (parse_qs(parsed.query).get("token") or [None])[0]
-        if query_token and secrets.compare_digest(query_token, cls.auth_token):
+        if token_matches(query_token, cls.auth_token):
             return True, cls.auth_token
 
         return False, None
@@ -305,14 +314,12 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_error(401, "missing or invalid token")
 
     def _read_json_body(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0:
-            return {}
-        raw = self.rfile.read(length)
-        try:
-            return json.loads(raw.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
-            return {}
+        """Read the request body as a JSON object.
+
+        Raises RequestError (answered as a 4xx) for a bad Content-Length,
+        invalid JSON, or JSON that isn't an object.
+        """
+        return read_json_object(self)
 
     def do_GET(self) -> None:  # noqa: N802 - http.server API
         parsed = urlparse(self.path)
@@ -504,7 +511,19 @@ class _Handler(BaseHTTPRequestHandler):
             return
 
         if route == "/api/open":
-            body = self._read_json_body()
+            try:
+                body = self._read_json_body()
+            except RequestError as exc:
+                # The body may be unread (a bad Content-Length is refused from
+                # the header alone); close rather than parse it as a
+                # follow-up request.
+                self.close_connection = True
+                self._send_json(
+                    {"ok": False, "error": exc.message},
+                    status=exc.status,
+                    set_cookie=new_cookie,
+                )
+                return
             node_id = str(body.get("id") or "")
             cls = type(self)
             path, line, label = _resolve_open_target(cls.mind, node_id)

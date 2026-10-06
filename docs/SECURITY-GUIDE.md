@@ -47,9 +47,11 @@ steps, and how to keep it disabled:
 
 ## Access Control
 
-NeuralMind does not authenticate anyone. Access to it is access to the OS
-account and project directory it runs in, plus whatever can reach its MCP
-server.
+NeuralMind has no logins of its own. By default, access to it is access to
+the OS account and project directory it runs in, plus whatever can reach its
+MCP server. With `security.identity: os` *(v4.7.0+)* it takes each MCP
+caller's identity from that OS account, which the OS authenticated
+([below](#binding-roles-to-os-accounts-identity-os)).
 
 ### Who can call the MCP server
 
@@ -58,8 +60,11 @@ server.
 - **Streamable HTTP** (`NEURALMIND_MCP_TRANSPORT=streamable_http`) is an
   unfinished skeleton. It binds to `127.0.0.1:8765` and has no OAuth or other
   authentication, so don't expose it beyond the host.
-- **Graph view** (`neuralmind serve`) binds to `127.0.0.1` and requires a
-  per-session token, unless started with `--host` or `--no-auth`.
+- **Graph view** (`neuralmind serve`) binds to `127.0.0.1` by default and
+  requires an access token. `--host` changes the bind address and keeps the
+  token. Only `--no-auth` removes it. The token persists across restarts in
+  `~/.neuralmind/server-token.json` (mode `0600`), so a shared URL stays
+  valid until you delete that file and restart the server.
 
 ### The role policy
 
@@ -68,9 +73,10 @@ Every MCP tool call goes through `MCPSecurityManager.secure_call`
 permission policy and a per-actor rate limit, then writes the decision to the
 audit log.
 
-The caller declares its own `actor` and `role` in the tool arguments. The role
-defaults to `builder`, and any caller can declare `admin`. Treat the policy as
-a guard rail for a well-behaved agent, not a boundary against a hostile caller.
+By default the caller declares its own `actor` and `role` in the tool
+arguments. The role defaults to `builder`, and any caller can declare `admin`.
+In that mode, treat the policy as a guard rail for a well-behaved agent, not a
+boundary against a hostile caller.
 
 Default roles (`DEFAULT_ROLE_POLICY`):
 
@@ -78,10 +84,14 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 |---|---|
 | `admin` | All tools |
 | `builder` | The `reader` set, plus `build`, document ingestion, and recording or invalidating decisions |
-| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`) and read-only analytics, stats, and decision queries |
+| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), the read-only structure and recall lookups (`review`, `impact`, `structural_neighbors`, `synaptic_neighbors`, `next_likely`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
 
-A few tools are admin-only by default, including `synaptic_neighbors`,
-`structural_neighbors`, `next_likely`, `impact`, and `review`.
+No tool is admin-only by default. Through v4.8.0, `synaptic_neighbors`,
+`structural_neighbors`, `next_likely`, `impact` and `review` were listed to
+agents but refused to `builder` and `reader`, so an agent following the docs
+got `security_denied` from `neuralmind_review`. They only read, like `query`,
+and v4.8.1 grants them to both roles. A `security.roles` policy you wrote is
+unaffected: it replaces the defaults, as described below.
 
 ### Capping what a caller can claim
 
@@ -100,104 +110,154 @@ security:
     window_seconds: 60
 ```
 
-The rate limit keys on the declared actor, so it stops a runaway agent, not a
-caller that changes its actor name.
+The MCP server in v4.6.0 and earlier built its security manager without
+reading this file, so both settings were ignored there.
+
+An empty `roles: {}` grants nothing. If `roles`, `rate_limit`, or the
+`security` section itself is malformed (not a mapping, a window under one
+second, a value that isn't a whole number), the server refuses every MCP call
+with `reason: config` instead of falling back to defaults that may be looser.
+
+*(v4.8.0+)* Two more mistakes refuse every call with `reason: config` too:
+
+- a policy file that doesn't parse, when its text outside comments names
+  `security`, `roles`, `rate_limit`, `identity` or `require_encrypted_storage`
+  (other unparseable files still read as empty, so a typo in backend tuning
+  doesn't block the server);
+- a `security:` or `roles:` key left empty, which YAML reads as `null` and is
+  what's left when every entry under it is commented out. Write `roles: {}` to
+  grant nothing, or remove the key to use the defaults. An empty
+  `rate_limit:` still means the default limit.
+
+v4.7.0 and earlier read both as "no policy" and applied the defaults, `admin`
+included; v4.7.0 refused an unparseable file only when it named `identity` or
+`require_encrypted_storage`.
+`neuralmind doctor` reports each as a failed *Security policy* check. A
+misspelled key (`role:` for `roles:`) is still read as absent, so after writing
+a policy, call a tool you left out with `role: "admin"` and check that it
+returns `security_denied`.
+
+The server reads the policy once per project and keeps it until it exits, so
+restart the MCP server (a new agent session, or reconnecting the server) after
+editing `security:`.
+
+The rate limit keys on the actor, so with declared identities it stops a
+runaway agent, not a caller that changes its actor name. Under
+`identity: os` it keys on the OS account.
+
+### Binding roles to OS accounts (`identity: os`)
+
+*(v4.7.0+)* Over the stdio transport, the MCP server runs as the OS account of
+the agent that launched it, and the OS authenticated that account at login.
+`security.identity: os` makes the server use it:
+
+```yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  default_role: reader     # optional; unset refuses accounts missing from users
+```
+
+- The actor is the account name from the OS (the passwd entry for the
+  effective uid, or `GetUserNameW` on Windows), never `LOGNAME`, `USER` or
+  `USERNAME`, which the launching process controls.
+- The role comes from `users`, then `default_role`. The `actor` and `role` a
+  call declares are ignored and kept in the audit log as `claimed_actor` and
+  `claimed_role`.
+- Every call is refused, with `reason: identity`, when the HTTP transport is in
+  use, the account can't be read, the account has no role, the policy file is
+  world-writable (POSIX), or the `security:` section is invalid. A policy file
+  that names `identity` but doesn't parse is refused rather than ignored.
+- Audit events written outside MCP (CLI builds and queries) take the OS account
+  as their actor too, with `NEURALMIND_ACTOR` recorded as a claim.
+
+This makes roles and audit attribution trustworthy on a host where users have
+separate OS accounts and an administrator owns the policy file. It doesn't stop
+someone from doing as that account what the account can already do: read
+`.neuralmind/` directly, or edit a policy file they own. Keep the file
+writable only by its owner; `neuralmind doctor` warns when it's group-writable.
 
 ### Per-user roles
 
 NeuralMind has no user directory, LDAP, or OAuth integration, and SSO/SAML is
-roadmap-only. If different people need different permissions, give each their
-own OS account and checkout with its own `neuralmind-backend.yaml`; OS file
-permissions then decide who can read the index.
+roadmap-only. For different permissions per person, give each an OS account
+and map it in `security.users` with `identity: os`. OS file permissions still
+decide who can read the index.
+
+### Requiring encrypted storage
+
+*(v4.7.0+)* NeuralMind doesn't encrypt `.neuralmind/` itself. The OpenSSL
+inside a pip-installed `cryptography` wheel isn't FIPS-validated, so
+in-process encryption wouldn't count as the FIPS-validated cryptography CMMC
+asks for. It verifies the OS's full-disk encryption instead:
+
+```yaml
+security:
+  require_encrypted_storage: true
+```
+
+With this set, NeuralMind checks for FileVault (macOS), dm-crypt/LUKS (Linux),
+or BitLocker (Windows) on every volume that holds its state: the project root,
+`.neuralmind/` (following a symlink), and a custom vector-index `db_path`. Only
+an explicit `false` turns the setting off; a blank value counts as on. Until the check passes, it
+refuses to build or query, MCP tools return `reason: storage`, hooks write
+nothing, and the decision store won't open. A check that can't tell (a
+container's overlay filesystem, BitLocker suspended, a timeout) counts as not
+encrypted. The verdict goes into the audit log as a `storage_check` event once
+per process. `neuralmind doctor` shows what the check sees, plus the OS FIPS
+mode on Linux and Windows. macOS has no FIPS switch; FileVault uses Apple
+corecrypto, which Apple lists in its CMVP certificates.
 
 ---
 
 ## Data Protection
 
-### Encryption at Rest
+NeuralMind doesn't encrypt anything itself. Its state is plain files in the
+project's `.neuralmind/` directory: the vector index (which holds indexed
+source text), the code graph, learned synapses, the audit log (which records
+query text), and the Bash output cache. There is no database server, so there
+is nothing to encrypt separately from the filesystem.
 
-**1. Database Encryption (PostgreSQL)**
+### At rest
 
-```bash
-# Enable pgcrypto extension
-psql -U postgres -c "CREATE EXTENSION pgcrypto;"
+- **Restrict permissions.** `.neuralmind/` is created with your umask,
+  usually readable by other accounts on the host:
 
-# Create encrypted column for sensitive data
-ALTER TABLE embeddings 
-ADD COLUMN data_encrypted bytea;
+  ```bash
+  chmod -R go-rwx /path/to/project/.neuralmind
+  ```
 
-# Encrypt on insert
-UPDATE embeddings 
-SET data_encrypted = pgp_sym_encrypt(data, 'encryption_key')
-WHERE data_encrypted IS NULL;
+- **Use full-disk encryption on the host**: FileVault on macOS, LUKS on
+  Linux, BitLocker on Windows. *(v4.7.0+)*
+  `security.require_encrypted_storage: true` makes NeuralMind refuse to run
+  until it can see that encryption; see
+  [Requiring encrypted storage](#requiring-encrypted-storage).
 
-# Decrypt on select
-SELECT pgp_sym_decrypt(data_encrypted, 'encryption_key') as data
-FROM embeddings;
-```
+See [File permissions](DEPLOYMENT-GUIDE.md#file-permissions) in the
+deployment guide.
 
-**2. Filesystem Encryption (Local Index)**
+### In transit
 
-```bash
-# Linux: Use LUKS
-sudo cryptsetup luksFormat /dev/sdX
-sudo cryptsetup luksOpen /dev/sdX neuralmind_data
-sudo mkfs.ext4 /dev/mapper/neuralmind_data
-sudo mount /dev/mapper/neuralmind_data /neuralmind_index
+- **MCP over stdio** (the default) has no network hop.
+- **The graph view and the daemon** are plain HTTP on `127.0.0.1` and require
+  a token. NeuralMind serves no TLS and has no certificate options. To reach
+  the graph view from another machine, use an SSH tunnel:
 
-# macOS: Use FileVault
-diskutil secureErase freespace 0 -secureRandom /Volumes/neuralmind_data
-# Then enable FileVault in System Preferences
-```
+  ```bash
+  ssh -N -L 8787:127.0.0.1:8787 user@host
+  # then open http://127.0.0.1:8787/?token=… on your machine
+  ```
 
-### Encryption in Transit
-
-**1. TLS for All Connections**
-
-```bash
-# Generate certificate (self-signed for dev)
-openssl req -x509 -newkey rsa:4096 \
-  -keyout neuralmind.key \
-  -out neuralmind.crt \
-  -days 365 \
-  -subj "/CN=neuralmind.internal"
-
-# Use Let's Encrypt for production
-certbot certonly --standalone -d neuralmind.company.com
-
-# Run MCP server with TLS
-neuralmind-mcp \
-  --tls-cert neuralmind.crt \
-  --tls-key neuralmind.key \
-  --port 8443
-```
-
-**2. Enforce HTTPS/TLS**
-
-```nginx
-# Force HTTPS redirect
-server {
-    listen 80;
-    server_name neuralmind.company.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name neuralmind.company.com;
-    
-    ssl_certificate /etc/ssl/certs/neuralmind.crt;
-    ssl_certificate_key /etc/ssl/private/neuralmind.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-    
-    location / {
-        proxy_pass https://neuralmind-backend:8443;
-        proxy_ssl_verify off;
-    }
-}
-```
+  If you have to expose it, terminate TLS in a reverse proxy you operate and
+  leave the token on.
+- **Streamable HTTP MCP** (`NEURALMIND_MCP_TRANSPORT=streamable_http`) is an
+  unfinished skeleton. It binds to `127.0.0.1:8765` with no authentication and
+  no TLS, so don't expose it.
+- **Outbound**, NeuralMind makes one request by default, the SHA-256-checked
+  embedding-model download on a cold first build, plus opt-in documentation
+  seeding. See [Outbound network](DEPLOYMENT-GUIDE.md#outbound-network).
 
 ---
 
@@ -288,6 +348,13 @@ otherwise write a live credential to a plaintext file. Credentials are stripped 
 and the entry records which kinds were removed. Opt out with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 
+Through v4.8.0 this cache missed some common shapes: the
+`"SecretAccessKey"` and `"SessionToken"` JSON that `aws sts get-session-token`
+prints, JSON keys such as `{"password": "…"}`, and the part of a bare value
+after a `;` or `,` (`DB_PASSWORD=abc;rest`). If you ran such commands under
+the hook on v4.8.0 or earlier, delete `.neuralmind/last_output.json` and
+rotate what it held. v4.8.1 redacts all three.
+
 `.neuralmind/` also carries its own `.gitignore` containing `*`, written
 when the directory is created, so the state directory cannot be
 committed by a `git add -A` even in a project whose own `.gitignore`
@@ -295,7 +362,23 @@ says nothing about it.
 
 ### Managing Secrets Properly
 
-**✅ Use environment variables:**
+Indexing, querying, and the MCP server need no credentials: no database
+password and no service account. Three opt-in paths read a secret from the
+environment:
+
+| Secret | Read by | What it's used for |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Documentation seeding, only with `NEURALMIND_LLM_SEED=1` | Sends `README.md` and `docs/architecture.md` text to Anthropic |
+| `ANTHROPIC_API_KEY` | `neuralmind benchmark --public --judge`, from a source checkout | Sends context built from the pinned public benchmark repositories to Anthropic for grading. Your own code isn't part of it |
+| `NEURALMIND_ISSUER_PRIVATE_KEY_HEX` | `neuralmind license issue`, `renew`, and `revoke` | Signs license files locally. Only the license issuer runs these; using a license doesn't need the key |
+
+Provision and rotate these like any other credential, and set them only in the
+environments that run those commands.
+
+The advice below is for the code you index, so the scanner has nothing to
+find.
+
+**✅ Read credentials from the environment:**
 ```python
 import os
 
@@ -305,7 +388,7 @@ API_KEY = os.getenv('API_KEY')
 # Never hardcode!
 ```
 
-**✅ Use secret management services:**
+**✅ Or from a secret manager:**
 ```python
 import boto3
 
@@ -313,36 +396,9 @@ secrets_client = boto3.client('secretsmanager')
 
 def get_db_password():
     response = secrets_client.get_secret_value(
-        SecretId='neuralmind/database/password'
+        SecretId='myapp/database/password'
     )
     return response['SecretString']
-```
-
-**✅ Use Kubernetes secrets:**
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: neuralmind-secrets
-type: Opaque
-stringData:
-  db-password: $(DB_PASSWORD)
-  api-key: $(API_KEY)
-
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: neuralmind-mcp
-spec:
-  containers:
-  - name: mcp
-    env:
-    - name: DATABASE_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: neuralmind-secrets
-          key: db-password
 ```
 
 **❌ Never commit secrets:**
@@ -364,66 +420,128 @@ git secrets --register-aws
 
 ### Audit Trail
 
-Every query is logged with full context:
+NeuralMind appends one JSON record per event to
+`.neuralmind/audit_events.jsonl`:
+
+- **Every MCP tool call**: `mcp_call` with status `success` or `failure`, or
+  `mcp_call_denied` when the role policy or the rate limit refused it.
+- **Every `build`, `wakeup`, `query`, and `search`**, including the query
+  text, plus document ingestion and backend switches.
+
+A query record, as `neuralmind query` wrote it:
 
 ```json
 {
-  "timestamp": "2026-04-22T10:30:00Z",
-  "user_id": "alice@company.com",
   "action": "query",
-  "resource": "/path/to/project",
-  "query": "How does authentication work?",
-  "retrieved_files": [
-    "src/auth/handler.py",
-    "src/auth/middleware.py"
-  ],
-  "result": "success",
-  "ip_address": "10.0.1.42",
-  "user_agent": "Claude Code v1.0"
+  "actor": "alice",
+  "actor_role": "",
+  "category": "audit",
+  "details": {
+    "hybrid_context": false,
+    "learn": true,
+    "question": "How does authentication work?",
+    "search_hits": 4,
+    "tokens": 388
+  },
+  "ip_address": "",
+  "prev_sha256": "796b0584a16fcb3a09b377bec436b81601da2f8ad6b98f8eff7b11381d38820f",
+  "sha256": "3f7905de591ecaa90f763fb1905b0686df2bbb3b40ddb1ea70d8034a6d2ece0b",
+  "status": "success",
+  "target": "myproject",
+  "timestamp": "2026-10-04T17:55:41.424849+00:00"
 }
 ```
 
-**Export for compliance:**
+And an MCP call the role policy refused (hashes and timestamp omitted):
+
+```json
+{
+  "action": "mcp_call_denied",
+  "actor": "claude-code",
+  "actor_role": "",
+  "category": "security",
+  "details": {"reason": "rbac", "role": "reader"},
+  "ip_address": "",
+  "status": "denied",
+  "target": "neuralmind_build"
+}
+```
+
+What the fields do and don't tell you:
+
+- **`actor`** is, by default, whatever name the MCP caller declares (default
+  `anonymous`). For CLI commands it is `NEURALMIND_ACTOR` if set, otherwise
+  the OS login. Nothing authenticates it. *(v4.7.0+)* With
+  `security.identity: os`, it is the OS account, read from the OS, for MCP
+  calls and CLI events alike, and declared values are kept as
+  `details.claimed_actor` and `details.claimed_role`.
+- **The role the call ran with** is in `details.role`. `actor_role` and
+  `ip_address` are in the schema, but nothing fills them in, so they are
+  always empty.
+- **No record lists the files a query retrieved.** `search_hits` is a count.
+- **`sha256`** chains each record to the previous one through `prev_sha256`.
+
+Read, check, and export the log:
 
 ```bash
-# Export last 90 days of audit logs
-neuralmind audit-export \
-  --start-date 2026-01-22 \
-  --end-date 2026-04-22 \
-  --format json \
-  --output audit_Q1_2026.jsonl
-
-# Export as NIST AI RMF report
-neuralmind audit-report . \
-  --compliance nist-ai-rmf \
-  --output nist_report_2026.md
+neuralmind audit recent . -n 50
+neuralmind audit verify .      # walks the hash chain, exits 1 on a mismatch
+neuralmind audit export . --format jsonl --since 2026-01-01 --until 2026-04-01 -o audit_Q1_2026.jsonl
+neuralmind audit export . --format cef -o audit.cef    # for SIEM ingest
 ```
+
+`--since` and `--until` compare ISO-8601 strings against UTC timestamps, so a
+bare date means the start of that day. `--until 2026-04-01` takes in all of
+March 31, and `--until 2026-03-31` would leave March 31 out.
+
+`audit verify` catches an edited record, a record deleted from the middle of
+the log, and, once the chain has started, any record without a `sha256` or
+with a `prev_sha256` that doesn't match the record before it. So records
+edited or appended with their hash removed fail too. It also fails on any
+line that isn't a JSON object, where search and export skip it. v4.8.0 and
+earlier accepted a record without a hash anywhere as a legacy line, skipped
+lines they couldn't parse, and never compared `prev_sha256`, so all of those
+passed.
+
+Records from before the hash chain existed (written by versions before
+v0.46.2) carry no hash. `verify` accepts them only ahead of the first hashed
+record and reports how many there are; the chain doesn't cover them.
+
+It can't detect records deleted from the end, or a chain recomputed by
+anyone who can write the file: the hash has no secret key. A passing check is
+therefore weak evidence on its own. Ship `audit export` output off the host,
+and compare against that copy.
+
+NeuralMind doesn't rotate or expire the log, and it has no report command:
+build compliance reports from the export.
 
 ### NIST AI RMF Mapping
 
 ```
-NeuralMind provides evidence for all NIST AI RMF domains:
+Evidence NeuralMind provides for each NIST AI RMF function:
 
 GOVERN (Oversight)
-├─ Per-tool permission policy (caller-declared roles)
-├─ Access audit trail
-└─ Query provenance
+├─ Per-tool permission policy (caller-declared roles, or OS accounts with identity: os)
+├─ Audit log of MCP calls, builds, and queries
+└─ Query provenance: each result names the code nodes it came from
 
-MAP (Impact Assessment)
-├─ Which code was retrieved
-├─ Why (similarity scores)
-└─ Confidence levels
+MAP (Context)
+├─ Which code a query retrieved, in the query result
+└─ Similarity scores on search results
 
 MEASURE (Performance)
-├─ Query latency
-├─ Index quality metrics
-└─ Benchmark reduction ratios
+├─ Context tokens per query, in the audit log
+├─ Retrieval quality on your repo: recall@k, MRR (neuralmind probe)
+└─ Token reduction on your repo (neuralmind benchmark)
 
 MANAGE (Risk)
-├─ Secret detection results
-├─ Rate limiting enforcement
-└─ Anomaly alerts
+├─ Secret scanning before indexing (neuralmind scan-for-secrets)
+├─ Per-actor rate limiting on MCP calls
+└─ Refused calls (role policy, rate limit) in the audit log
 ```
+
+NeuralMind has no anomaly detection or alerting. For that, feed
+`neuralmind audit export` to your SIEM.
 
 ### SOC 2 Trust Services Criteria
 
@@ -464,16 +582,20 @@ asset inside your assessment scope:
 
 ```
 AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
-   Evidence: stdio MCP transport by default; per-tool permission sets
-   Not provided: authentication. Each MCP call declares its own role, so
-   binding authenticated identities to roles is yours
+   Evidence: stdio MCP transport; per-tool permission sets; with
+   identity: os, roles bound to the OS account the OS authenticated
+   Yours: OS accounts, and owning the policy file
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
-   changed record mid-log, not truncation or a recomputed chain
+   changed record mid-log, a record without a hash after the chain starts,
+   and an unreadable line, not records removed from the end or a
+   recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
-   Not provided: use FIPS-validated full-disk encryption on the host
+   Evidence: require_encrypted_storage verifies full-disk encryption and
+   refuses to run without it, with an audit record of each check
+   Yours: the encryption itself, FIPS-validated (OS FIPS mode on)
 ```
 
 The full Level 2 table, including what stays your responsibility, is in
@@ -487,37 +609,48 @@ The full Level 2 table, including what stays your responsibility, is in
 
 | Threat | Likelihood | Impact | Mitigation |
 |--------|-----------|--------|-----------|
-| **Unauthorized access to MCP** | Medium | High | Stdio transport by default (no network port); keep any HTTP transport on localhost. NeuralMind has no authentication of its own |
-| **Secrets exposed in code** | High | Critical | Secret scanning + redaction |
-| **Index data breach** | Low | High | Encryption at rest + access logs |
-| **Query interception** | Low | Medium | TLS 1.3 + mutual auth |
-| **Resource exhaustion (DoS)** | Medium | Medium | Rate limiting + monitoring |
-| **Insider threat** | Low | Critical | Audit trail + least privilege |
-| **Configuration error** | Medium | High | Security checklist + automation |
+| **Unauthorized access to MCP** | Medium | High | Stdio transport by default (no network port); keep any HTTP transport on localhost. NeuralMind has no authentication of its own, and the server accepts any `project_path` its OS account can read, so confine that account |
+| **Secrets exposed in code** | High | Critical | `neuralmind scan-for-secrets` before indexing. It is a separate step, not automatic. `build --redact-secrets` scrubs embedded text but not node labels or `graph.json`. The Bash output cache is redacted automatically |
+| **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
+| **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
+| **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
+| **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios
 
-**Scenario 1: SQL Injection in queries**
+**Scenario 1: SQL injection through queries or tool arguments**
 ```
-Attack: Attacker crafts malicious query to extract schema
-Mitigation: Parameterized queries, input validation
-Status: ✅ Not vulnerable (GraphQL queries, no SQL)
+Attack: A crafted query or tool argument tries to inject SQL into
+        NeuralMind's SQLite stores
+Mitigation: Query text goes to the vector index, not into SQL. The SQLite
+            stores (synapses, decisions, index metadata) bind caller-supplied
+            values as parameters. SQL built with string formatting only
+            interpolates placeholders and fixed internal names
+Status: No known injection path. This comes from code review, not a
+        penetration test
 ```
 
 **Scenario 2: Privilege escalation**
 ```
-Attack: A caller declares role "admin" to reach admin-only tools
-Mitigation: None in NeuralMind itself: roles are caller-declared. Leave
-            admin out of security.roles, and limit who can reach the
-            MCP server
-Status: ⚠️ Possible with the default policy
+Attack: A caller declares role "admin" to reach tools its own role
+        lacks (no tool is admin-only by default; a security.roles
+        policy can make some)
+Mitigation: Set security.identity: os so the role comes from the OS
+            account, not the call. Otherwise leave admin out of
+            security.roles, and limit who can reach the MCP server
+Status: ⚠️ Possible with the default (declared) identity
 ```
 
 **Scenario 3: Data exfiltration**
 ```
-Attack: User downloads entire index to external device
-Mitigation: Rate limiting, DLP rules, audit logs
-Status: ✅ Detected (100MB/hour limit, logged)
+Attack: A user copies the index or source text off the machine
+Mitigation: None in NeuralMind itself. Anyone who can read .neuralmind/ can
+            copy it directly, with no NeuralMind call. Calls through the MCP
+            server are rate-limited by count, not bytes, and recorded in the
+            audit log with actor, role, and tool; query and search events
+            include the query text
+Status: ⚠️ Not prevented. Use OS permissions and your DLP controls
 ```
 
 ---
@@ -528,22 +661,24 @@ Before deploying NeuralMind to production:
 
 ### Access & Authentication
 - [ ] `security.roles` set in `neuralmind-backend.yaml`, without `admin` unless you need it
+- [ ] `security.identity: os` with each OS account in `security.users`, and the policy file writable only by its owner
+- [ ] `security.require_encrypted_storage: true` where the index holds CUI, and `neuralmind doctor` shows Storage encryption `ok`
 - [ ] MCP server reachable only by the agent that launched it (stdio), or the HTTP transport kept on localhost
-- [ ] MFA enabled for admin accounts
-- [ ] Service account credentials secured
+- [ ] MFA on the OS accounts that can run the agent or read the project
 - [ ] Regular access reviews scheduled
 
 ### Data Protection
-- [ ] Encryption at rest (database, filesystem)
-- [ ] TLS 1.2+ for all connections
-- [ ] Secrets scanned and redacted
+- [ ] `.neuralmind/` restricted to its owner (`chmod -R go-rwx`)
+- [ ] Full-disk encryption on every host that holds `.neuralmind/`
+- [ ] Graph view and daemon reached only over loopback, an SSH tunnel, or a TLS proxy you run
+- [ ] Secrets scanned (`neuralmind scan-for-secrets`) before indexing
 - [ ] No hardcoded credentials
 - [ ] Key rotation policy established
 
 ### Audit & Compliance
-- [ ] Audit logging enabled
-- [ ] NIST AI RMF reports generated
-- [ ] Query provenance captured
+- [ ] `neuralmind audit verify` run on a schedule
+- [ ] `neuralmind audit export` shipped off the host on a schedule
+- [ ] Audit log treated as sensitive: it records query text
 - [ ] Compliance mappings documented
 - [ ] Regular audit log review
 
@@ -574,7 +709,10 @@ Before deploying NeuralMind to production:
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email: **security@company.com**
+Instead, report it privately through
+[GitHub Security Advisories](https://github.com/dfrostar/neuralmind/security)
+("Report a vulnerability", preferred), or email `darren.frost@gmail.com` with
+`[SECURITY] neuralmind:` in the subject.
 
 Include:
 - Description of vulnerability
@@ -582,5 +720,6 @@ Include:
 - Potential impact
 - Suggested fix (if available)
 
-We aim to respond within 48 hours and issue patches within 30 days.
+Response targets and fix timelines by severity are in
+[SECURITY.md](https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md#reporting-a-vulnerability).
 

@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from . import l3_slots
 from .paths import graph_report_path
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,13 @@ class ContextResult:
     reduction_ratio: float = 0.0
     top_search_hits: list[dict] = field(default_factory=list)
     trace: dict | None = None
+    # The query intent L3 ranked with ("code", "docs" or "hybrid") and how it
+    # was decided ("classifier" or "keywords"); empty when L3 didn't run.
+    intent: str = ""
+    intent_source: str = ""
+    # (layer, text) for each layer in ``context``, in order ("L0".."L3");
+    # what context-budget trimming cuts, instead of re-parsing the text.
+    layer_texts: list[tuple[str, str]] = field(default_factory=list, repr=False)
 
     @property
     def tokens(self) -> int:
@@ -612,6 +620,12 @@ class ContextSelector:
         else:
             # Code branch: standard RRF merge (default behavior)
             bm25_search = getattr(self.embedder, "bm25_search", None)
+            # One BM25 index over docs and code instead of the turbovec
+            # backend's docs-only one (v4.6.0, on by default;
+            # NEURALMIND_BM25_UNIFIED=0 restores v4.5). Written by build; an
+            # index built before v4.6.0 keeps the old list until rebuilt.
+            if l3_slots.unified_bm25_enabled() and self._unified_index():
+                bm25_search = self._unified_bm25_search
             if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
                 kw_results = bm25_search(query, n=fetch_n)
                 if kw_results and isinstance(kw_results, list):
@@ -621,6 +635,17 @@ class ContextSelector:
                     results = vec_results
             else:
                 results = vec_results
+            # Symbol-name lexical pass (v4.6.0, spec 7 item 5): the default
+            # backend's BM25 index holds only document text, so code symbols
+            # get no keyword signal at all. Fuse a symbol index in by RRF.
+            if l3_slots.code_bm25_enabled() and os.environ.get("NEURALMIND_BM25") != "0":
+                try:
+                    code_kw = self._code_bm25_search(query, fetch_n)
+                except Exception:
+                    logger.debug("code BM25 pass failed", exc_info=True)
+                    code_kw = []
+                if code_kw:
+                    results = self._rrf_merge(results, code_kw)[:fetch_n]
 
         self._query_search_cache[query] = results
         if self._trace is not None:
@@ -988,8 +1013,21 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        energy_by_id = dict(candidates[:num_swap])
-        fetched = get_nodes_by_ids(list(energy_by_id))
+        # A recalled node from a file the hits already cover adds no module,
+        # yet it takes a slot — and, when ranking is good, the slot of the only
+        # hit from a second expected file. With docs and code sharing one
+        # keyword index (v4.6.0) that turned the onboarding lift negative on the
+        # fixture: `create-user` kept three users/crud.py nodes and lost
+        # api/routes.py. So recall spends slots only on files search missed.
+        energy_by_id = dict(candidates)
+        present_modules = {_module_of(r) for r in results}
+        fetched = [
+            node
+            for node in get_nodes_by_ids([nid for nid, _ in candidates]) or []
+            if _module_of(node) not in present_modules
+        ]
+        fetched.sort(key=lambda n: energy_by_id.get(n.get("id"), 0.0), reverse=True)
+        fetched = fetched[:num_swap]
         if not fetched:
             return results
 
@@ -1147,10 +1185,20 @@ class ContextSelector:
         exactly as it did before v3.9.0.
         """
         heuristic = self._detect_intent(query)
+        self._last_intent_source = "keywords"
         try:
-            from .retrieval_enhancement import classify_intent
+            from .retrieval_enhancement import (
+                classify_behaviour_intent,
+                classify_intent,
+                intent_rules_enabled,
+            )
         except Exception:
             return heuristic
+        if intent_rules_enabled():
+            ruled = classify_behaviour_intent(query)
+            if ruled:
+                self._last_intent_source = "question shape"
+                return ruled
         try:
             enhanced = classify_intent(
                 query,
@@ -1160,7 +1208,10 @@ class ContextSelector:
         except Exception:
             logger.debug("enhanced intent classification failed", exc_info=True)
             return heuristic
-        return heuristic if enhanced == "hybrid" else enhanced
+        if enhanced == "hybrid":
+            return heuristic
+        self._last_intent_source = "classifier"
+        return enhanced
 
     def _apply_retrieval_enhancements(
         self, query: str, results: list[dict], intent: str
@@ -1469,6 +1520,12 @@ class ContextSelector:
 
         # Boost factors (configurable via env vars)
         code_boost = float(os.environ.get("NEURALMIND_CODE_BOOST", "3.0"))
+        try:
+            from .retrieval_enhancement import intent_rules_enabled
+
+            rules = intent_rules_enabled()
+        except Exception:
+            rules = False
         doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
         for result in results:
             meta = result.get("metadata", {})
@@ -1479,6 +1536,14 @@ class ContextSelector:
             is_doc = file_type in ("rationale", "document") or source_file.endswith(
                 (".md", ".markdown", ".txt", ".rst", ".org")
             )
+            # A docstring belongs to the code it documents (v4.6.0).
+            if (
+                is_doc
+                and file_type == "rationale"
+                and rules
+                and not source_file.endswith((".md", ".markdown", ".txt", ".rst", ".org"))
+            ):
+                is_doc = False
             is_code = not is_doc and (file_type == "code" or bool(source_file))
 
             if intent == "code":
@@ -1500,15 +1565,110 @@ class ContextSelector:
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
         return results
 
-    def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
+    def _node_catalog(self):
+        if getattr(self, "_catalog", None) is None:
+            self._catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
+        return self._catalog
+
+    def _hub_stats(self):
+        if getattr(self, "_hub_stats_cache", None) is None:
+            # None means "not loaded"; NeuralMind._graph_stats_dirty resets it.
+            self._hub_stats_cache: l3_slots.HubStats | None = l3_slots.HubStats.load(
+                self.project_path, self.embedder, self._node_catalog()
+            )
+        return self._hub_stats_cache
+
+    def _spend_l3_slots(self, query: str, results: list[dict], intent: str, n: int) -> list[dict]:
+        """Re-spend the L3 slots (spec 7 work items 1–3).
+
+        The ranked hits keep their slots unless a pass vacates one: the
+        per-file cap, or hub dampening marking a hit down. Vacated slots are
+        refilled from the rest of this query's search (ranks n+1..10, scored
+        with the same intent multipliers). Doc hits hand off to the code they
+        name, competing at just below the doc's score.
+        """
+        originals = [dict(r) for r in results]
+        present = {r.get("id") for r in originals}
+        refill = [
+            dict(r) for r in self._query_search_cache.get(query, []) if r.get("id") not in present
+        ]
+        if refill:
+            refill = self._apply_intent_boost(refill, intent)
+        try:
+            if l3_slots.hub_dampening_enabled():
+                stats = self._hub_stats()
+                originals = l3_slots.dampen_hubs(originals, stats)
+                refill = l3_slots.dampen_hubs(refill, stats)
+            if l3_slots.handoff_enabled():
+                ranked = sorted(originals, key=lambda r: float(r.get("score") or 0.0), reverse=True)
+                originals += l3_slots.handoff_candidates(ranked[:n], query, self._node_catalog())
+        except Exception:
+            logger.debug("L3 slot passes failed", exc_info=True)
+        if l3_slots.intent_pool_enabled():
+            # Intent ranks the whole candidate pool (NEURALMIND_INTENT_POOL=1):
+            # a code hit at rank 6 can outrank a doc that only made the top
+            # four on raw similarity.
+            return l3_slots.allocate(originals + refill, n, l3_slots.per_file_cap())
+        return l3_slots.spend(originals, refill, n, l3_slots.per_file_cap())
+
+    def _code_bm25_search(self, query: str, n: int) -> list[dict]:
+        """Symbol-name BM25 (``NEURALMIND_BM25_CODE=1``); [] when unavailable."""
+        if getattr(self, "_code_bm25", None) is None:
+            self._code_bm25 = (
+                l3_slots.code_bm25_index(
+                    self.project_path,
+                    self._node_catalog(),
+                    scope=l3_slots.index_scope(self.embedder),
+                )
+                or False
+            )
+        return self._bm25_hits(self._code_bm25, query, n)
+
+    def _unified_index(self):
+        """The build's docs + code BM25 index, loaded once; False when absent."""
+        if getattr(self, "_unified_bm25", None) is None:
+            self._unified_bm25 = (
+                l3_slots.unified_bm25_index(
+                    self.project_path, None, scope=l3_slots.index_scope(self.embedder)
+                )
+                or False
+            )
+        return self._unified_bm25
+
+    def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:
+        """Docs + code BM25 (on by default); [] when the build wrote none."""
+        return self._bm25_hits(self._unified_index(), query, n)
+
+    @staticmethod
+    def _bm25_hits(idx, query: str, n: int) -> list[dict]:
+        if not idx:
+            return []
+        out = []
+        for r in idx.search(query, top_k=n):
+            out.append(
+                {
+                    "id": r["id"],
+                    "document": r.get("document", ""),
+                    "metadata": r.get("metadata", {}),
+                    "score": float(r.get("score") or 0.0),
+                }
+            )
+        return out
+
+    def get_l3_search(self, query: str, n: int = 4, query_type: str = "auto") -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
         Applies live synapse co-activation boosts when the graph is warm.
         Applies type-aware re-ranking based on query intent.
 
+        ``query_type`` 'code' or 'docs' replaces the detected intent; 'auto'
+        (the default) detects it from the query.
+
         Returns:
             Tuple of (search_results_text, number of hits)
         """
+        self._last_intent = ""
+        self._last_intent_source = ""
         results = self._fetch_search(query, n=n)
 
         if not results:
@@ -1528,11 +1688,24 @@ class ContextSelector:
         # Type-aware re-ranking. Resolved once and applied once: the v3.9.0
         # pipeline boosted with the keyword intent, then boosted the same
         # results again with the corrected one, compounding both multipliers.
-        intent = self._resolve_intent(query)
+        # A requested type (``--type code|docs``) stands in for the detected
+        # intent here, before anything is ranked or rendered.
+        if query_type in ("code", "docs"):
+            intent = query_type
+            self._last_intent_source = "query_type"
+        else:
+            intent = self._resolve_intent(query)
+        self._last_intent = intent
         results = self._apply_intent_boost(results, intent)
 
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)
+
+        # How the slots are spent (v4.6.0, spec 7): per-file cap, doc-to-code
+        # hand-off, hub dampening. Each is behind its own flag; with none set
+        # this is skipped and L3 is exactly as before.
+        if l3_slots.any_slot_pass_enabled():
+            results = self._spend_l3_slots(query, results, intent, n)
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
         # relevance sidecar built from it) carry the same synapse_boost /
@@ -1925,6 +2098,7 @@ class ContextSelector:
         include_l2: bool = True,
         include_l3: bool = True,
         full_codebase_tokens: int | None = None,
+        query_type: str = "auto",
     ) -> ContextResult:
         """
         Get optimized context for a query with massive token reduction.
@@ -1939,6 +2113,8 @@ class ContextSelector:
                 ratio's numerator. Defaults to :attr:`baseline_tokens` (the
                 measured size of the code the index covers, see
                 ``neuralmind.baseline``), else the fixed 50,000-token estimate.
+            query_type: 'code' or 'docs' ranks L3 with that intent instead of
+                the one detected from the query; 'auto' (default) detects it.
 
         Returns:
             ContextResult with optimized context and token budget
@@ -1946,7 +2122,7 @@ class ContextSelector:
         if full_codebase_tokens is None:
             full_codebase_tokens = self.baseline_tokens or 50000
         budget = TokenBudget()
-        context_parts = []
+        context_parts: list[tuple[str, str]] = []  # (layer, text)
         layers_used = []
         communities_loaded = []
         search_hits = 0
@@ -1962,14 +2138,14 @@ class ContextSelector:
         if include_l0:
             l0 = self.get_l0_identity()
             budget.l0_identity = self._estimate_tokens(l0)
-            context_parts.append(l0)
+            context_parts.append(("L0", l0))
             layers_used.append("L0:Identity")
 
         # L1: Summary (always fast, cached)
         if include_l1:
             l1 = self.get_l1_summary()
             budget.l1_summary = self._estimate_tokens(l1)
-            context_parts.append(l1)
+            context_parts.append(("L1", l1))
             layers_used.append("L1:Summary")
 
         # Prose branch: return chapter text instead of L2/L3 cluster metadata.
@@ -1999,7 +2175,7 @@ class ContextSelector:
                 # Clear any L0/L1 that was added — prose returns ONLY chapter text
                 context_parts.clear()
                 layers_used.clear()
-                context_parts.append(prose_context)
+                context_parts.append(("L3", prose_context))
                 layers_used.append(f"L3:Prose({len(ranked_nodes)} nodes)")
             search_hits = len(ranked_nodes)
 
@@ -2008,13 +2184,14 @@ class ContextSelector:
             if ranked_nodes:
                 top_hits = list(ranked_nodes)
             return ContextResult(
-                context="\n".join(context_parts),
+                context="\n".join(text for _, text in context_parts),
                 budget=budget,
                 layers_used=layers_used,
                 communities_loaded=communities_loaded,
                 search_hits=search_hits,
                 reduction_ratio=reduction_ratio,
                 top_search_hits=top_hits,
+                layer_texts=list(context_parts),
             )
 
         # L2: On-demand (requires query)
@@ -2022,16 +2199,16 @@ class ContextSelector:
             l2, comms = self.get_l2_context(query)
             if l2:
                 budget.l2_ondemand = self._estimate_tokens(l2)
-                context_parts.append(l2)
+                context_parts.append(("L2", l2))
                 communities_loaded = comms
                 layers_used.append(f"L2:OnDemand({len(comms)} clusters)")
 
         # L3: Deep search (requires query)
         if include_l3 and query:
-            l3, hits = self.get_l3_search(query)
+            l3, hits = self.get_l3_search(query, query_type=query_type)
             if l3:
                 budget.l3_search = self._estimate_tokens(l3)
-                context_parts.append(l3)
+                context_parts.append(("L3", l3))
                 search_hits = hits
                 layers_used.append(f"L3:Search({hits} results)")
 
@@ -2052,13 +2229,18 @@ class ContextSelector:
             top_hits = list(boosted) if boosted else list(self._query_search_cache.get(query, []))
 
         return ContextResult(
-            context="\n".join(context_parts),
+            context="\n".join(text for _, text in context_parts),
             budget=budget,
             layers_used=layers_used,
             communities_loaded=communities_loaded,
             search_hits=search_hits,
             reduction_ratio=reduction_ratio,
             top_search_hits=top_hits,
+            intent=getattr(self, "_last_intent", "") if (include_l3 and query) else "",
+            intent_source=(
+                getattr(self, "_last_intent_source", "") if (include_l3 and query) else ""
+            ),
+            layer_texts=list(context_parts),
         )
 
     def get_wakeup_context(self) -> ContextResult:
@@ -2095,7 +2277,9 @@ class ContextSelector:
             query: Natural language query
             trace: If True, attach a per-layer retrieval trace
             trace_verbose: If True (with trace), keep full candidate/hit lists
-            query_type: Filter results — 'code', 'docs', or 'auto' (default)
+            query_type: 'code' or 'docs' ranks the search results with that
+                intent instead of the one detected from the query; 'auto'
+                (default) detects it
             context_budget: Optional token budget override. If provided, the
                 assembled context is trimmed to fit within this budget by
                 removing lower-priority layers (L3 → L2 → L1). L0 identity
@@ -2115,11 +2299,8 @@ class ContextSelector:
                 include_l1=True,
                 include_l2=True,
                 include_l3=True,
+                query_type=query_type,
             )
-            # Apply type-aware re-ranking based on query intent
-            if query_type != "auto":
-                intent = self._detect_intent(query)
-                result.top_search_hits = self._apply_intent_boost(result.top_search_hits, intent)
 
             # Context budget enforcement: trim if over budget
             if context_budget is not None and context_budget > 0:
@@ -2128,25 +2309,10 @@ class ContextSelector:
                 used = count_tokens(result.context)
                 if used > context_budget:
                     # Trim L3 search results first, then L2, then L1
-                    trimmed_context, layers_trimmed = self._trim_context_to_budget(
-                        result.context, context_budget
-                    )
-                    result.context = trimmed_context
-                    # Update budget tracking
-                    result.budget.l3_search = (
-                        0 if "L3" in layers_trimmed else result.budget.l3_search
-                    )
-                    result.budget.l2_ondemand = (
-                        0 if "L2" in layers_trimmed else result.budget.l2_ondemand
-                    )
-                    result.budget.l1_summary = (
-                        0 if "L1" in layers_trimmed else result.budget.l1_summary
-                    )
+                    layers_trimmed = self.fit_to_budget(result, context_budget)
                     # Log budget warning
                     if check_budget_warning(used, context_budget):
-                        import logging
-
-                        logging.getLogger(__name__).warning(
+                        logger.warning(
                             "[context_budget] query exceeded budget: %d/%d tokens (trimmed: %s)",
                             used,
                             context_budget,
@@ -2159,8 +2325,23 @@ class ContextSelector:
         finally:
             self._trace = None
 
-    def _trim_context_to_budget(self, context: str, budget_tokens: int) -> tuple[str, list[str]]:
-        """Trim context to fit within budget, removing lower-priority layers first.
+    # The section name fit_to_budget gives a prefix placed above the layers.
+    _PREFIX_SECTION = "prefix"
+
+    def count_prefix(self, result: ContextResult, prefix: str) -> None:
+        """Count a prefix placed above the layers (the hybrid highlights) in
+        ``result.budget``, which feeds the MCP response, the query log and the
+        savings figures. The highlights are drawn from L3's search hits, so
+        their tokens go with L3, and the reduction ratio follows."""
+        result.budget.l3_search += self._estimate_tokens(prefix)
+        full_codebase_tokens = self.baseline_tokens or 50000
+        total = result.budget.total
+        result.reduction_ratio = full_codebase_tokens / total if total > 0 else 0
+
+    def fit_to_budget(
+        self, result: ContextResult, budget_tokens: int, prefix: str = ""
+    ) -> list[str]:
+        """Trim ``result`` in place so its context fits ``budget_tokens``.
 
         Layer priority (highest to lowest):
         - L0: Identity (project name, description) — never trimmed
@@ -2168,90 +2349,47 @@ class ContextSelector:
         - L2: On-demand modules — trimmed before L1
         - L3: Search results — trimmed first
 
+        Each layer is cut from its end at whole lines and dropped once only
+        its header would be left. ``prefix`` (the hybrid highlights) goes
+        above the layers, a blank line apart, and counts against the same
+        budget; it is trimmed only after L1. When anything is trimmed, the
+        token budget, ``layers_used`` and the reduction ratio are recomputed
+        to describe the context returned.
+
         Returns:
-            (trimmed_context, layers_trimmed)
+            The layers trimmed, in the order they were trimmed.
         """
-        from .context_budget import count_tokens
+        from .context_budget import TRIM_ORDER, fit_layers, split_layers
 
-        current_tokens = count_tokens(context)
-        if current_tokens <= budget_tokens:
-            return context, []
+        pre = self._PREFIX_SECTION
+        sections = list(result.layer_texts) or split_layers(result.context)
+        if prefix:
+            sections.insert(0, (pre, prefix))
 
-        layers_trimmed: list[str] = []
+        def render(secs: list[tuple[str, str]]) -> str:
+            head = [text for name, text in secs if name == pre]
+            body = "\n".join(text for name, text in secs if name != pre)
+            return "\n\n".join([*head, body]) if head else body
 
-        # Split by layer markers (L3: Search results, L2: OnDemand, L1: Summary)
-        # The context is assembled as "\n".join(context_parts) in get_context
-        # We look for the layer labels that were added in layers_used
-        l3_marker = "L3:Search("
-        l2_marker = "L2:OnDemand("
-        l1_marker = "L1:Summary"
+        kept, trimmed = fit_layers(sections, budget_tokens, order=(*TRIM_ORDER, pre), render=render)
+        result.context = render(kept)
+        kept_prefix = "".join(text for name, text in kept if name == pre)
+        if not trimmed:
+            if kept_prefix:
+                self.count_prefix(result, kept_prefix)
+            return trimmed
 
-        # Split context into sections by layer markers
-        sections: list[tuple[str, str]] = []  # (layer_name, content)
-        remaining = context
-
-        # Find L3 section
-        if l3_marker in remaining:
-            idx = remaining.index(l3_marker)
-            # Find the start of the L3 content (after the marker line)
-            l3_start = remaining.find("\n", idx)
-            if l3_start == -1:
-                l3_start = idx
-            else:
-                l3_start += 1
-            sections.append(("L3", remaining[l3_start:]))
-            remaining = remaining[:idx]
-
-        # Find L2 section
-        if l2_marker in remaining:
-            idx = remaining.index(l2_marker)
-            l2_start = remaining.find("\n", idx)
-            if l2_start == -1:
-                l2_start = idx
-            else:
-                l2_start += 1
-            sections.append(("L2", remaining[l2_start:]))
-            remaining = remaining[:idx]
-
-        # Find L1 section
-        if l1_marker in remaining:
-            idx = remaining.index(l1_marker)
-            l1_start = remaining.find("\n", idx)
-            if l1_start == -1:
-                l1_start = idx
-            else:
-                l1_start += 1
-            sections.append(("L1", remaining[l1_start:]))
-            remaining = remaining[:idx]
-
-        # Priority order: L3 first (trim search results), then L2, then L1
-        priority_order = ["L3", "L2", "L1"]
-
-        for layer in priority_order:
-            if current_tokens <= budget_tokens:
-                break
-            for i, (name, content) in enumerate(sections):
-                if name == layer and content.strip():
-                    # Remove this layer
-                    sections[i] = (name, "")
-                    layers_trimmed.append(layer)
-                    # Reassemble
-                    context = "".join(content for _, content in sections)
-                    current_tokens = count_tokens(context)
-                    break
-
-        # If still over budget, truncate from the end (L3 search results)
-        if current_tokens > budget_tokens:
-            # Binary search for the truncation point
-            low, high = 0, len(context)
-            while low < high:
-                mid = (low + high + 1) // 2
-                if count_tokens(context[:mid]) <= budget_tokens:
-                    low = mid
-                else:
-                    high = mid - 1
-            context = context[:low]
-            if "L3" not in layers_trimmed:
-                layers_trimmed.append("L3")
-
-        return context, layers_trimmed
+        layers = [(name, text) for name, text in kept if name != pre]
+        result.layer_texts = layers
+        texts = dict(layers)
+        budget = result.budget
+        budget.l0_identity = self._estimate_tokens(texts.get("L0", ""))
+        budget.l1_summary = self._estimate_tokens(texts.get("L1", ""))
+        budget.l2_ondemand = self._estimate_tokens(texts.get("L2", ""))
+        budget.l3_search = self._estimate_tokens(texts.get("L3", ""))
+        result.layers_used = [
+            label for label in result.layers_used if label.split(":", 1)[0] in texts
+        ]
+        # Recomputes the reduction ratio too, with the kept highlights counted.
+        self.count_prefix(result, kept_prefix)
+        return trimmed

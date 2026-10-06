@@ -12,6 +12,7 @@ from neuralmind.memory.store import (
     SCHEMA_VERSION,
     STALE_DAYS,
     DecisionStore,
+    normalize_status_filter,
 )
 
 
@@ -85,6 +86,49 @@ def test_invalidate_sets_invalidated_status(store):
     got = store.get(rec.id)
     assert got.status == "INVALIDATED"
     assert any("superseded" in e for e in got.evidence)
+
+
+def test_invalidate_unknown_id_raises_key_error(store):
+    """It used to be a silent no-op, and both callers then reported success."""
+    _record(store)
+    with pytest.raises(KeyError, match="no-such-id"):
+        store.invalidate("no-such-id", reason="typo")
+
+
+def _corrupt_evidence(store, decision_id):
+    """Give a row evidence json_insert can't append to: a real DB error."""
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("UPDATE decisions SET evidence = '{bad' WHERE id = ?", (decision_id,))
+
+
+def test_invalidate_db_error_raises_and_leaves_status(store):
+    """A failed update used to be logged and swallowed — reported as success."""
+    rec = _record(store)
+    _corrupt_evidence(store, rec.id)
+    with pytest.raises(sqlite3.Error):
+        store.invalidate(rec.id, reason="superseded")
+    with sqlite3.connect(store.db_path) as conn:
+        status = conn.execute("SELECT status FROM decisions WHERE id = ?", (rec.id,)).fetchone()
+    assert status == ("ACTIVE",)
+
+
+def test_restore_db_error_raises_and_leaves_the_decision(store):
+    """A failed restore used to be swallowed, and the CLI printed "Restored"."""
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    _corrupt_evidence(store, rec.id)
+    with pytest.raises(sqlite3.Error):
+        store.restore(rec.id, new_commit_sha="b" * 40)
+    with sqlite3.connect(store.db_path) as conn:
+        row = conn.execute(
+            "SELECT status, commit_sha FROM decisions WHERE id = ?", (rec.id,)
+        ).fetchone()
+    assert row[0] == "STALE" and row[1] != "b" * 40
+
+
+def test_restore_unknown_id_raises_key_error(store):
+    with pytest.raises(KeyError):
+        store.restore("no-such-id", new_commit_sha="b" * 40)
 
 
 def test_update_status_invalid_is_noop(store):
@@ -239,6 +283,29 @@ def test_confidence_clamped(store):
     assert got.confidence <= 1.0
 
 
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_confidence_is_rejected(store, bad):
+    """The clamp can't place these: NaN used to be stored as confidence 1.0."""
+    with pytest.raises(ValueError, match="finite"):
+        _record(store, confidence=bad)
+    assert store.list_all(status=None) == []
+
+
+@pytest.mark.parametrize("good", [0, 0.0, 0.25, 1, 1.0])
+def test_validate_confidence_accepts_the_range(good):
+    from neuralmind.memory.store import validate_confidence
+
+    assert validate_confidence(good) == float(good)
+
+
+@pytest.mark.parametrize("bad", [7, -0.1, 1.0001, float("nan"), float("inf"), True, "0.5", None])
+def test_validate_confidence_rejects_everything_else(bad):
+    from neuralmind.memory.store import validate_confidence
+
+    with pytest.raises(ValueError, match="from 0 to 1"):
+        validate_confidence(bad)
+
+
 def test_invalid_commit_sha_still_records(store):
     # TRD says invalid commit_sha -> validation error; store is fail-open.
     # Document actual behavior: empty/invalid SHA is accepted.
@@ -302,3 +369,65 @@ class TestFailOpenLogging:
             f"Silent except-pass blocks found in memory/: {offenders}. "
             "Fail-open paths must log (see 066a48b)."
         )
+
+
+# --------------------------------------------------------------------------- #
+# Status filter normalisation (side finding 1: "all" used to match nothing)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (None, None),
+        ("", None),
+        ("all", None),
+        ("ALL", None),
+        (" All ", None),
+        ("active", "ACTIVE"),
+        ("Stale", "STALE"),
+        ("INVALIDATED", "INVALIDATED"),
+    ],
+)
+def test_normalize_status_filter(raw, expected):
+    assert normalize_status_filter(raw) == expected
+
+
+def test_normalize_status_filter_rejects_unknown():
+    with pytest.raises(ValueError, match="ACTIVE, INVALIDATED, STALE, ALL"):
+        normalize_status_filter("archived")
+
+
+def _one_of_each_status(store):
+    active = _record(store, title="Status sweep alpha")
+    stale = _record(store, title="Status sweep beta")
+    gone = _record(store, title="Status sweep gamma")
+    store.update_status(stale.id, "STALE")
+    store.invalidate(gone.id, reason="superseded")
+    return active, stale, gone
+
+
+@pytest.mark.parametrize("word", ["all", "ALL", "All"])
+def test_query_status_all_word_includes_every_status(store, word):
+    _one_of_each_status(store)
+    hits = store.query("Status sweep", limit=10, status=word)
+    assert sorted(d.status for d in hits) == ["ACTIVE", "INVALIDATED", "STALE"]
+
+
+def test_query_status_is_case_insensitive(store):
+    _, stale, _ = _one_of_each_status(store)
+    assert [d.id for d in store.query("Status sweep", status="stale")] == [stale.id]
+
+
+def test_query_unknown_status_raises_instead_of_returning_nothing(store):
+    _one_of_each_status(store)
+    with pytest.raises(ValueError, match="unknown status filter"):
+        store.query("Status sweep", status="archived")
+
+
+def test_list_all_accepts_all_word_and_lowercase(store):
+    _, _, gone = _one_of_each_status(store)
+    assert len(store.list_all(status="all")) == 3
+    assert [d.id for d in store.list_all(status="invalidated")] == [gone.id]
+    with pytest.raises(ValueError):
+        store.list_all(status="archived")

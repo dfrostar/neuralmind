@@ -1,0 +1,61 @@
+# rich @ 7f580bdc (rich/) — 30 pre-registered questions; gold = the file whose code answers it
+- q: "How does the library parse square-bracket tags like [bold red]...[/] in a string into styled text?"
+  gold: [markup.py]
+- q: "How does long text get broken into lines at word boundaries when it is wider than the terminal?"
+  gold: [_wrap.py, text.py]
+- q: "How is the on-screen width of a string worked out when it contains wide CJK characters or emoji?"
+  gold: [cells.py]
+- q: "How does the live-updating display keep redrawing itself automatically in the background?"
+  gold: [live.py]
+- q: "How does pretty-printing decide whether a nested list or dict fits on one line or has to be expanded over several lines?"
+  gold: [pretty.py]
+- q: "How does it figure out whether the terminal supports truecolor, 256 colors, or only the basic palette?"
+  gold: [console.py]
+- q: "How is a 24-bit RGB color converted to the closest available color when the terminal only supports 256 or 16 colors?"
+  gold: [color.py]
+- q: "How is the estimated time left for a progress task calculated?"
+  gold: [progress.py]
+- q: "How does the screen layout divide the available space between child regions according to their ratios and minimum sizes?"
+  gold: [layout.py, _ratio.py]
+- q: "How do ordinary print() calls made while a live display is running end up shown above it instead of corrupting the display?"
+  gold: [file_proxy.py, live.py]
+- q: "How does the logging handler avoid repeating the same timestamp on consecutive log lines?"
+  gold: [_log_render.py]
+- q: "How are two styles merged when one is layered on top of another?"
+  gold: [style.py]
+- q: "Where is the code that turns raw terminal output containing ANSI escape sequences back into styled text objects?"
+  gold: [ansi.py]
+- q: "Which file converts a byte count into a human-readable size like 1.5 MB?"
+  gold: [filesize.py]
+- q: "Where are the built-in named styles defined, e.g. the colors used for numbers in reprs or for log levels?"
+  gold: [default_styles.py]
+- q: "Where is output written to old Windows consoles that don't understand VT escape codes?"
+  gold: [_windows_renderer.py]
+- q: "Which file handles saving the recorded console output as an SVG image, and where does its template live?"
+  gold: [console.py, _export_format.py]
+- q: "Where are the frames of a Python exception walked and filtered, e.g. hiding frames from suppressed modules, for the pretty error display?"
+  gold: [traceback.py]
+- q: "Where is the logic that asks the user for input and keeps re-asking until they enter one of the allowed choices?"
+  gold: [prompt.py]
+- q: "Which file decides which border-drawing characters to fall back to when the terminal can only show ASCII?"
+  gold: [box.py]
+- q: "Where does rich produce the HTML it shows when rendering output inside a Jupyter notebook?"
+  gold: [jupyter.py]
+- q: "Where are emoji shortcodes such as :thumbs_up: swapped for the actual emoji characters?"
+  gold: [_emoji_replace.py]
+- q: "Where are color theme definitions loaded from an ini-style config file?"
+  gold: [theme.py]
+- q: "What computes the size requirements (smallest and largest width) a renderable needs?"
+  gold: [measure.py]
+- q: "How are the blank margins around content specified with a CSS-like shorthand of one, two or four values?"
+  gold: [padding.py]
+- q: "Which part draws the branching hierarchy view with connector lines between parent and child nodes?"
+  gold: [tree.py]
+- q: "Where is the object inspector that lists an object's attributes, methods and docstring?"
+  gold: [_inspect.py]
+- q: "Where does a line of text get shortened with a trailing ellipsis when it overflows the available width?"
+  gold: [text.py]
+- q: "How are grid column sizes shrunk to fit when the cell contents are wider than the space available?"
+  gold: [table.py]
+- q: "Where are the escape sequences for moving the cursor, clearing the screen, or switching to the alternate screen built?"
+  gold: [control.py]

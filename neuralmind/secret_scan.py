@@ -226,10 +226,28 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
         re.compile(r"\b(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[0-9A-Z]{16}\b"),
         "high",
     ),
+    # Keyed rather than bare: a 40-char base64 run is too common to flag on
+    # its own. The optional quote after the key covers the JSON the AWS CLI
+    # prints (`"SecretAccessKey": "…"`, `"SessionToken": "…"`), not only the
+    # env/ini spelling. `{40,}`, not `{40}`: S3-compatible stores reuse the
+    # key name for longer secrets (R2's are 64 chars), and a fixed width
+    # would redact the head and leave the tail. STS session tokens run to
+    # hundreds of characters, so the 100-char floor keeps ordinary
+    # `session_token = …` code out.
     _Pattern(
         "aws-secret-access-key",
         re.compile(
-            r"(?i)aws_secret_access_key[ \t]*[:=][ \t]*[\"']?([A-Za-z0-9/+=]{40})",
+            r"(?i)(?<![A-Za-z0-9])(?:aws_?)?secret_?access_?key[\"']?[ \t]*[:=][ \t]*"
+            r"[\"']?([A-Za-z0-9/+=]{40,})",
+        ),
+        "high",
+        group=1,
+    ),
+    _Pattern(
+        "aws-session-token",
+        re.compile(
+            r"(?i)(?<![A-Za-z0-9])(?:aws_?)?session_?token[\"']?[ \t]*[:=][ \t]*"
+            r"[\"']?([A-Za-z0-9/+=]{100,})",
         ),
         "high",
         group=1,
@@ -270,6 +288,16 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
         "high",
     ),
     _Pattern(
+        "gitlab-token",
+        re.compile(r"\bglpat-[A-Za-z0-9_\-]{20,}"),
+        "high",
+    ),
+    _Pattern(
+        "huggingface-token",
+        re.compile(r"\bhf_[A-Za-z0-9]{30,}\b"),
+        "high",
+    ),
+    _Pattern(
         "jwt",
         re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"),
         "high",
@@ -291,7 +319,7 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
     _Pattern(
         "connection-string-password",
         re.compile(
-            r"(?i)\b(?:postgres|postgresql|mysql|mongodb\+srv|mongodb|rediss|redis|amqp)"
+            r"(?i)\b(?:postgres|postgresql|mysql|mongodb\+srv|mongodb|rediss|redis|amqp|https?)"
             r"://[^:/\s]+:([^@\s/]{3,})@"
         ),
         "high",
@@ -311,14 +339,23 @@ _HEURISTIC: tuple[_Pattern, ...] = (
             # mypassword, where a letter precedes the keyword.
             r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|apikey|secret|secret[_-]?key|"
             r"access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd|"
-            r"credentials?|private[_-]?key)\b[ \t]*[:=][ \t]*"
-            # Quoted values run to their closing quote. A bare value stops at
-            # whitespace or a delimiter. Parsing them with one character class
-            # truncated quoted secrets at an interior comma or semicolon, so
-            # password="Ab9xQ2mZ;SUPERSECRETTAIL" persisted its tail in the
-            # output cache — a partial credential left on disk, under a marker
-            # claiming it had been redacted.
-            r"(?:\"([^\"\n]{8,})\"|'([^'\n]{8,})'|([^\s\"',;]{8,}))"
+            # The optional quote after the keyword admits JSON / dict keys:
+            # {"password": "…"}, {'api_key': '…'}.
+            r"credentials?|private[_-]?key)\b[\"']?[ \t]*[:=][ \t]*"
+            # Quoted values run to their closing quote. Parsing them with the
+            # bare-value class truncated quoted secrets at an interior comma or
+            # semicolon, so password="Ab9xQ2mZ;SUPERSECRETTAIL" persisted its
+            # tail in the output cache — a partial credential left on disk,
+            # under a marker claiming it had been redacted.
+            #
+            # A bare value stops at whitespace, and at `,` / `;` only when
+            # whitespace or the next `key=` pair follows: `password=…,next=x`
+            # and `Password=…;Database=app` still stop there, while `env`
+            # output like DB_PASSWORD=Ab9xQ2mZpL;TAILSECRET99 no longer keeps
+            # its tail. A key needs a value after its `=`, so base64 padding
+            # is not mistaken for one.
+            r"(?:\"([^\"\n]{8,})\"|'([^'\n]{8,})'|"
+            r"((?:[^\s\"',;]|[,;](?!\s|$|[A-Za-z_][\w.\-]*[ \t]*[:=][^\s=])){8,}))"
         ),
         "heuristic",
         group=(1, 2, 3),
@@ -487,6 +524,7 @@ _PREFILTER_LITERALS: tuple[str, ...] = (
     "aiza",  # google
     "pypi-",
     "npm_",
+    "glpat-",  # gitlab
     "-----begin",  # pem blocks
     "eyj",  # jwt
     "authorization",  # bearer / basic headers
@@ -528,7 +566,10 @@ _PREFILTER_LITERALS: tuple[str, ...] = (
 # boundary here stays a superset. Measured on 2 MB of "task-" lines: 34 ms
 # for this regex versus ~370 ms for the sweep it now skips.
 _BOUNDARY_PREFILTER = re.compile(
-    r"\b(?:sk-|sk_|rk_|akia|asia|agpa|aida|aroa|aipa|anpa|anva)",
+    r"\b(?:sk-|sk_|rk_|akia|asia|agpa|aida|aroa|aipa|anpa|anva|hf_)"
+    # http(s) URLs carrying a password in their userinfo. "https" itself is
+    # in every log, so the scheme can't be a plain literal like "postgres".
+    r"|https?://[^\s/@:]+:[^\s/@]+@",
     re.IGNORECASE,
 )
 

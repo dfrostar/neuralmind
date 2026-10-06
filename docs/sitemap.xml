@@ -2,25 +2,25 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Home</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/about.html</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/benchmarks/</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/benchmarks/public.html</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -50,7 +50,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/</loc>
-    <lastmod>2026-07-20</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -157,6 +157,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/use-cases/cmmc-cui-enclave.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/use-cases/always-on.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -170,7 +176,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -194,7 +200,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/claude-code.html</loc>
-    <lastmod>2026-08-18</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -224,7 +230,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/multi-agent.html</loc>
-    <lastmod>2026-06-20</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -260,7 +266,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Benchmarks.html</loc>
-    <lastmod>2026-09-27</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -278,7 +284,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/CLI-Reference.html</loc>
-    <lastmod>2026-08-28</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -290,7 +296,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/FAQ.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -476,7 +482,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Memory-Layer.html</loc>
-    <lastmod>2026-09-26</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
@@ -547,8 +553,80 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.5.1.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/use-cases/measure-retrieval-on-your-repo.html</loc>
     <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.6.0.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.6.1.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/decision-memory-across-commits.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/govern-team-memory.html</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.7.0.html</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/ab-test-a-ranking-change.html</loc>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.0.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.1.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.2.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/pick-up-where-you-left-off.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/find-decisions-by-meaning.html</loc>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

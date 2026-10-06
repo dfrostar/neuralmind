@@ -102,8 +102,9 @@ NeuralMind processes code from your projects. Here's what you should know:
    - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes, **credential-redacted** — see note 5)
    - Event log for the graph-view stream (v0.6+): `<project>/.neuralmind/events.jsonl`
    - MCP audit trail (v0.41): `<project>/.neuralmind/audit_events.jsonl`
+   - Session recap records (v4.8+): `<project>/.neuralmind/recaps/<session_id>.jsonl` — each Claude Code prompt (**credential-redacted**, cut to 200 characters) and each Edit/Write path; the ten most recently active sessions kept (plus any active in the last 24 hours); written only in a project where `neuralmind build` has run; a symlinked `.neuralmind/`, `recaps/` or record file is refused, so nothing is written, read or deleted outside the project
    - **Committed** team-memory bundle (v0.30+, opt-in): `<project>/.neuralmind-team-memory.json` — travels with `git clone` (learned weights only, no source)
-4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped and redacted), and MCP audit events. Source code itself is **not** duplicated into these files — only references (node ids, file paths). The committed team-memory bundle holds learned associations, not code.
+4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped and redacted), MCP audit events, and (v4.8+) the text of your Claude Code prompts for the session recap (redacted, clipped). Source code itself is **not** duplicated into these files — only references (node ids, file paths) — except where a prompt or a command's output contains it. The committed team-memory bundle holds learned associations, not code.
 5. **Credential hygiene on persisted output.** The Bash recovery cache records whatever a command printed, which can include credentials (`printenv`, `aws configure list`, a `curl -H "Authorization: Bearer …"`). Detected secrets are replaced with `[REDACTED:<kind>]` **before** the payload is written, and the cache entry lists which kinds were removed. Redaction runs before truncation, so a secret cannot survive inside a kept head/tail slice. Opt out with `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 6. **The state directory cannot be committed.** `<project>/.neuralmind/` is created with its own `.gitignore` containing `*`, so it stays out of `git add -A` regardless of what the host project's `.gitignore` says. This matters because the directory is per-machine state, and the recovery cache within it reflects command output. Files committed by an **older version** remain tracked — the ignore rule does not apply retroactively. Check with `git ls-files .neuralmind/` and untrack with `git rm -r --cached .neuralmind/`; `neuralmind build` warns when it detects already-tracked state. Rotate any credential that reached a commit.
 7. **Pre-index scanning.** `neuralmind scan-for-secrets .` reports credentials in the working tree (including files the indexer skips, such as `.env`) and exits non-zero on high-confidence findings so it can gate CI. `neuralmind build . --redact-secrets` scrubs detected credentials from indexed text as a backstop — it is not a substitute for removing and rotating the credential. Detection is pattern-based and boundary-anchored (so it does not fire inside hex/base64 blobs); a bespoke token format with no distinctive prefix, or two credentials concatenated with no delimiter, will not be caught. A clean scan is evidence, not proof.
@@ -235,10 +236,14 @@ exceptions that policy has accepted.
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened, and only the
      agent process that launched it can call it.
-   - It does **not authenticate callers**. Each tool call declares its own `actor` and
-     `role` (the role defaults to `builder`), and any caller can declare `admin`. The
-     role policy keeps a well-behaved agent within bounds; it is not a boundary against
-     a hostile caller.
+   - By default it does **not authenticate callers**. Each tool call declares its own
+     `actor` and `role` (the role defaults to `builder`), and any caller can declare
+     `admin`. The role policy keeps a well-behaved agent within bounds; it is not a
+     boundary against a hostile caller.
+   - With `security.identity: os` *(v4.7.0+)* the server takes the actor from the OS
+     account it runs as (over stdio, the agent that launched it) and the role from
+     `security.users`, ignoring what the call declares. It refuses the HTTP transport,
+     accounts without a role, and a world-writable policy file.
    - The default policy (`DEFAULT_ROLE_POLICY` in `neuralmind/mcp_security.py`) has three roles:
      - `admin` — all tools.
      - `reader` — retrieval and read-only analytics, stats, and decision queries.
@@ -247,18 +252,19 @@ exceptions that policy has accepted.
        `structural_neighbors`, `next_likely`, `impact`, and `review`.
    - To cap what any caller can claim, set `security.roles` in `neuralmind-backend.yaml`.
      It replaces the default policy, and a role it doesn't list gets no tools, so a
-     policy without `admin` keeps every caller out of the admin-only tools.
+     policy without `admin` keeps every caller out of the admin-only tools. (The MCP
+     server in v4.6.0 and earlier ignored this setting.)
    - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min, `security.rate_limit`)
-     is enforced alongside the role check. It keys on the declared actor, so it stops a
-     runaway agent, not a caller that changes its actor name.
-   - If you customize the role policy, audit it the same way you would any access-control change.
+     is enforced alongside the role check. It keys on the declared actor, so it stops a runaway
+     agent, not a caller that changes its actor name.
    - Audit events — actor, role, tool, allow/deny decision, rate-limit hits — are written to
      `<project>/.neuralmind/audit_events.jsonl` on every tool call.
 
 3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.
    - Hooks are installed by explicit user action (`neuralmind install-hooks`) — never silently.
    - The Bash compression hook reads stdout/stderr and writes a single-slot recovery cache locally. It does not exfiltrate; it does not modify the agent's command.
-   - `NEURALMIND_BYPASS=1` disables compression for a single command; `NEURALMIND_OUTPUT_CACHE=0` disables the cache entirely.
+   - `NEURALMIND_BYPASS=1` switches off every NeuralMind hook action; `NEURALMIND_OUTPUT_CACHE=0` disables the cache entirely.
+   - The session recap (v4.8+) writes the text of each prompt (credential-redacted, cut to 200 characters) and each Edit/Write path to `<project>/.neuralmind/recaps/`, in projects where `neuralmind build` has run, and injects a recap of the previous session at a fresh or cleared `SessionStart`. Disable via `NEURALMIND_SESSION_RECAP=0`; `neuralmind recap --clear` deletes the records.
    - The synapse memory export (v0.4+) writes the per-project `SYNAPSE_MEMORY.md` and, when present, mirrors it into Claude Code's auto-memory directory at `~/.claude/projects/<slug>/memory/`. Disable via `NEURALMIND_SYNAPSE_EXPORT=0`.
 
 4. **File watcher (`neuralmind watch`).** Watches the project tree and records file co-edits as synapse activations.
@@ -297,8 +303,9 @@ air-gapped deployment, these are the knobs a security reviewer cares about
 | `NEURALMIND_TEAM_MEMORY=0` | Don't import the committed team-memory bundle | on |
 | `NEURALMIND_REUSE_FEEDBACK=0` | Disable the Edit/Write reuse-feedback signal | on |
 | `NEURALMIND_OUTPUT_CACHE=0` | Disable the Bash recovery cache (`last_output.json`) | on |
+| `NEURALMIND_SESSION_RECAP=0` | Don't record prompts and edited paths in `.neuralmind/recaps/`, and don't inject the session recap (existing records stay until `neuralmind recap --clear`) | on |
 | `NEURALMIND_EVENT_LOG=0` | Disable the `events.jsonl` graph-view bridge | on |
-| `NEURALMIND_BYPASS=1` | Skip output compression for a single command | off |
+| `NEURALMIND_BYPASS=1` | Switch off every NeuralMind hook action (including session-recap recording and injection) | off |
 | `NEURALMIND_SELECTOR_AUTOTUNE=1` | Opt **in** to selector auto-tuning (local query signals only) | off |
 | `NEURALMIND_PRECISION=1` | Opt **in** to SCIP compiler-accurate call edges | off |
 | `NEURALMIND_BM25=0` | Disable BM25 hybrid keyword search | on |
@@ -341,9 +348,9 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 
 ### ✅ CMMC 2.0
 - **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
-- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets applied to the role each MCP call declares. NeuralMind doesn't authenticate callers, so binding identities to roles is the operator's job
+- **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets. With `security.identity: os` *(v4.7.0+)* the role is bound to the caller's OS account; by default each MCP call declares its own role, unauthenticated
 - **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
-- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): Not provided by NeuralMind; use FIPS-validated full-disk encryption on the host
+- **Encryption at rest** (SC.L2-3.13.11, 3.13.16): NeuralMind doesn't encrypt data itself; use FIPS-validated full-disk encryption on the host. `security.require_encrypted_storage: true` *(v4.7.0+)* verifies it and refuses to run without it
 - **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
 ### ✅ ISO 27001 / 27002

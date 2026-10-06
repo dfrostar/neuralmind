@@ -1,17 +1,31 @@
 """Invalidation Engine — Git-aware staleness detection for DecisionRecords.
 
-Conservative invalidation: any file touch that affects a decision's
-``files_affected`` marks it STALE. Better to lose a valid memory than
-serve a stale one.
+Conservative invalidation: when a commit changes a file named in a decision's
+``files_affected``, the decision is marked STALE — there is no diff analysis,
+any change counts. Better to lose a valid memory than serve a stale one.
+
+The one exemption is the commit that *carries* the decision. When a decision
+is recorded, amended or restored, the store fingerprints each affected file
+(its git blob id, exactly as ``git add`` would store it). If the commit
+contains exactly those blobs for every changed file the decision names, it
+carries the code the decision describes, so it leaves the decision ACTIVE.
+In practice: edit ``auth.py``, record why, commit — the decision survives,
+however quickly the three steps follow each other; edit ``auth.py`` again
+before or after committing and it goes STALE. No fingerprint (an older
+record, a file that didn't exist yet, no git) means no exemption.
 
 Lifecycle:
-    1. ``scan()`` runs on each git commit (post-commit hook) or on
-       demand (pre-compact hook, context selection time).
-    2. It queries the DecisionStore for decisions whose files_affected
-       overlap with the files changed in HEAD.
-    3. Each matching decision is marked STALE (status = "STALE").
-    4. Cascading: dependents of stale decisions are flagged too.
-    5. An audit event is emitted for each invalidation.
+    1. ``neuralmind decisions scan`` runs ``scan()``; the post-commit hook
+       installed by ``neuralmind init-hook`` calls it after every commit.
+    2. It lists the files the HEAD commit changed relative to its first
+       parent (so a merge commit counts everything it brought in, and a
+       rename counts both paths), relative to the project directory.
+    3. It asks the DecisionStore for decisions naming any of those files —
+       by project-relative or absolute path.
+    4. Each match that isn't exempt (above) is marked STALE, with the reason
+       recorded on the decision when the store supports it (``mark_stale``).
+    5. Cascading: decisions that depend on a newly stale one go STALE too.
+    6. An event is published on the process event bus for each invalidation.
 
 The DecisionStore interface expected by this module::
 
@@ -25,17 +39,14 @@ The DecisionStore interface expected by this module::
         def update_status(self, decision_id: str, status: str) -> None:
             ...  # Persist status change
 
-Each DecisionRecord must have::
+        # Optional: mark_stale(decision_id, reason) -> bool records the
+        # reason and reports whether the status was persisted;
+        # fingerprints(decision_id) -> {path: blob id} enables the
+        # carried-by-this-commit exemption.
 
-    @dataclass
-    class DecisionRecord:
-        id: str                          # Unique decision identifier
-        rationale: str                   # The "why"
-        subjects: tuple[str, ...]        # Code symbols concerned
-        sha: str                         # Commit where decision was made
-        files_affected: list[str]        # Files this decision concerns
-        dependency_constraints: list[str] # Decision IDs this depends on
-        status: str = "VALID"            # VALID | STALE
+Each DecisionRecord needs ``id``, ``status``, ``commit_sha``,
+``files_affected`` and ``dependency_constraints``. Without ``fingerprints``
+every touched decision goes STALE.
 """
 
 from __future__ import annotations
@@ -43,10 +54,16 @@ from __future__ import annotations
 import logging
 import subprocess
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+
+# Paths per find_by_files() call — under SQLite's legacy 999-parameter limit.
+_LOOKUP_CHUNK = 900
+
+# Paths per git hash-object / ls-tree call, to stay under OS argv limits.
+_GIT_PATH_CHUNK = 200
 
 
 # --------------------------------------------------------------------------- #
@@ -58,24 +75,21 @@ class DecisionRecord(Protocol):
     """Structural type for a decision record — duck-typed for flexibility.
 
     The engine never instantiates these; it only reads them from the store.
-    Matches the shape of ``neuralmind.provenance.DecisionRecord`` plus the
-    additional fields the invalidation layer needs.
+    ``neuralmind.memory.store.DecisionRecord`` is the production shape.
     """
 
     id: str
-    rationale: str
-    subjects: tuple[str, ...]
-    sha: str
+    commit_sha: str
     files_affected: list[str]
     dependency_constraints: list[str]
-    status: str  # "VALID" | "STALE"
+    status: str  # "ACTIVE" | "STALE" | "INVALIDATED"
 
 
 class DecisionStore(Protocol):
     """The minimal interface the InvalidationEngine needs from a store.
 
-    Backed by SQLite in production (synapses.py's SynapseStore, or a
-    dedicated decisions table). In tests, a dict-backed mock works fine.
+    Backed by SQLite in production (``neuralmind.memory.store.DecisionStore``).
+    In tests, a dict-backed mock works fine.
     """
 
     def find_by_files(self, files: list[str]) -> list[DecisionRecord]:
@@ -123,19 +137,43 @@ def _git(
         return subprocess.CompletedProcess(args, returncode=1, stdout="", stderr=str(e))
 
 
-def get_changed_files(project_path: str | Path) -> list[str]:
-    """Get files changed in HEAD commit.
+def get_parent_commit(project_path: str | Path) -> str:
+    """SHA of HEAD's first parent, or "" for a root commit / non-repo."""
+    result = _git(["rev-parse", "--verify", "--quiet", "HEAD^"], cwd=project_path)
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
 
-    Uses ``git diff-tree --no-commit-id --name-only -r HEAD``.
-    Returns empty list if not a git repo or git is unavailable.
+
+def get_changed_files(project_path: str | Path) -> list[str]:
+    """Files the HEAD commit changed, relative to ``project_path``.
+
+    Diffs HEAD against its first parent, so a merge commit lists everything
+    it brought into the branch; ``--no-renames`` lists both sides of a rename
+    so a decision about the old path is found too. Paths are relative to
+    ``project_path`` (``--relative``) and changes outside it are left out, so
+    a project in a subdirectory of its repository matches its own decisions.
+    A root commit lists every file it added. Returns [] outside a git repo.
     """
-    result = _git(
-        ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
-        cwd=project_path,
-    )
+    parent = get_parent_commit(project_path)
+    if parent:
+        args = ["diff", "--name-only", "--relative", "--no-renames", "-z", parent, "HEAD"]
+    else:
+        args = [
+            "diff-tree",
+            "--no-commit-id",
+            "--name-only",
+            "-r",
+            "--root",
+            "--relative",
+            "--no-renames",
+            "-z",
+            "HEAD",
+        ]
+    result = _git(args, cwd=project_path)
     if result.returncode != 0:
         return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return [p for p in result.stdout.split("\0") if p.strip()]
 
 
 def get_current_commit(project_path: str | Path) -> str:
@@ -186,6 +224,64 @@ def is_file_changed(file_path: str, since_commit: str, project_path: str | Path)
     return True
 
 
+def _project_relative(path: str, root: Path) -> str:
+    """A decision's file path in the form ``get_changed_files`` reports."""
+    text = str(path).replace("\\", "/")
+    candidate = Path(text)
+    if candidate.is_absolute():
+        try:
+            return candidate.resolve().relative_to(root).as_posix()
+        except (ValueError, OSError):
+            return text
+    return PurePosixPath(text).as_posix()
+
+
+def file_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
+    """``{project-relative path: git blob id}`` for the files as they are now.
+
+    Uses ``git hash-object``, which applies the same clean filters and
+    line-ending normalization as ``git add``, so the ids compare equal to what
+    a commit stores. Files that don't exist are left out; any git failure
+    returns what was hashed so far (possibly nothing).
+    """
+    root = Path(project_path).resolve()
+    existing: list[str] = []
+    for path in files or []:
+        rel = _project_relative(path, root)
+        if rel not in existing and (root / rel).is_file():
+            existing.append(rel)
+    blobs: dict[str, str] = {}
+    for start in range(0, len(existing), _GIT_PATH_CHUNK):
+        chunk = existing[start : start + _GIT_PATH_CHUNK]
+        result = _git(["hash-object", "--", *chunk], cwd=root)
+        ids = result.stdout.split()
+        if result.returncode != 0 or len(ids) != len(chunk):
+            break
+        blobs.update(zip(chunk, ids, strict=True))
+    return blobs
+
+
+def committed_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
+    """``{project-relative path: git blob id}`` of the files as HEAD stores them.
+
+    Files HEAD doesn't contain (deleted, or the old side of a rename) are
+    left out, which makes them count as changed.
+    """
+    blobs: dict[str, str] = {}
+    paths = list(dict.fromkeys(files or []))
+    for start in range(0, len(paths), _GIT_PATH_CHUNK):
+        chunk = paths[start : start + _GIT_PATH_CHUNK]
+        result = _git(["ls-tree", "-z", "HEAD", "--", *chunk], cwd=project_path)
+        if result.returncode != 0:
+            continue
+        for record in result.stdout.split("\0"):
+            meta, _, path = record.partition("\t")
+            parts = meta.split()
+            if len(parts) == 3 and parts[1] == "blob" and path:
+                blobs[path] = parts[2]
+    return blobs
+
+
 # --------------------------------------------------------------------------- #
 # Invalidation Engine
 # --------------------------------------------------------------------------- #
@@ -215,8 +311,9 @@ class InvalidationEvent:
 class InvalidationEngine:
     """Git-aware decision invalidation engine.
 
-    Conservative: invalidates on ANY file touch — no diff analysis.
-    Better to lose a valid memory than serve a stale one.
+    Conservative: invalidates on ANY change to a decision's files — no diff
+    analysis — except in the commit that carries the decision (see the
+    module docstring).
 
     Usage::
 
@@ -237,10 +334,11 @@ class InvalidationEngine:
     # ------------------------------------------------------------------- #
 
     def scan(self) -> list[str]:
-        """Full invalidation scan: find changed files, mark stale, cascade.
+        """Mark STALE the decisions whose files the HEAD commit changed.
 
-        Returns the list of newly-invalidated decision IDs. Idempotent —
-        already-stale decisions are not re-invalidated.
+        Returns the list of newly-invalidated decision IDs (cascaded
+        dependents included). Idempotent — already-stale decisions are
+        not re-invalidated.
         """
         self._last_events.clear()
 
@@ -253,41 +351,44 @@ class InvalidationEngine:
             logger.debug("[invalidate] no files changed in HEAD")
             return []
 
-        current_sha = get_current_commit(self.project_path)
+        head = get_current_commit(self.project_path)
+        root = Path(self.project_path).resolve()
+        changed = set(changed_files)
         logger.info(
             "[invalidate] scanning %d changed file(s) at %s",
             len(changed_files),
-            current_sha[:7] or "?",
+            head[:7] or "?",
         )
 
-        # Step 1: Find decisions referencing changed files
-        candidates = self.store.find_by_files(changed_files)
-
-        # Step 2: Mark stale
+        committed: dict[str, str] | None = None  # HEAD's blob ids, fetched on first need
         newly_invalidated: list[str] = []
-        for decision in candidates:
-            if decision.status == "STALE":
-                continue  # Already invalidated
-
-            # Conservative: if commit_sha differs from HEAD, the decision
-            # was made at a different state of the codebase.
-            if decision.commit_sha and current_sha and decision.commit_sha != current_sha:
-                reason = f"commit mismatch (decision at {decision.commit_sha[:7]}, HEAD is {current_sha[:7]})"
-                self.invalidate_decision(decision.id, reason=reason, triggered_by="commit_mismatch")
-                newly_invalidated.append(decision.id)
+        for decision in self._decisions_naming(changed_files, root):
+            if decision.status in ("STALE", "INVALIDATED"):
                 continue
+            if head and getattr(decision, "commit_sha", "") == head:
+                continue  # recorded against this very commit
+            touched = self._touched_files(decision, changed, root)
+            if not touched:
+                continue
+            if committed is None:
+                committed = committed_blob_ids(self.project_path, changed_files)
+            if self._carried_by_commit(decision, touched, committed):
+                continue
+            shown = ", ".join(touched[:3])
+            if len(touched) > 3:
+                shown += f" (+{len(touched) - 3} more)"
+            reason = f"commit {head[:7] or '?'} changed {shown} since this decision was recorded"
+            if self.invalidate_decision(
+                decision.id,
+                reason=reason,
+                triggered_by="file_change",
+                commit_sha=head,
+                files=touched,
+            ):
+                newly_invalidated.append(decision.id)
 
-            # Primary path: files were touched
-            reason = f"files affected changed: {', '.join(decision.files_affected[:3])}"
-            if len(decision.files_affected) > 3:
-                reason += f" (+{len(decision.files_affected) - 3} more)"
-            self.invalidate_decision(decision.id, reason=reason, triggered_by="file_change")
-            newly_invalidated.append(decision.id)
-
-        # Step 3: Cascade to dependents
-        for decision_id in newly_invalidated:
-            cascade_ids = self.cascade_invalidation(decision_id)
-            newly_invalidated.extend(cascade_ids)
+        for decision_id in list(newly_invalidated):
+            newly_invalidated.extend(self.cascade_invalidation(decision_id, commit_sha=head))
 
         return list(dict.fromkeys(newly_invalidated))  # Preserve order, dedupe
 
@@ -297,24 +398,42 @@ class InvalidationEngine:
         reason: str = "",
         *,
         triggered_by: str = "file_change",
-    ) -> None:
-        """Mark a single decision as STALE.
+        commit_sha: str | None = None,
+        files: list[str] | None = None,
+    ) -> bool:
+        """Mark a single decision as STALE; True once the store has it.
 
-        Emits an audit event via the event bus (if available) and updates
-        the store.
+        Uses the store's ``mark_stale`` when it has one, so the reason is kept
+        on the decision itself; otherwise ``update_status``. A store that
+        reports the write failed (``mark_stale`` returning False) gets no
+        event and the decision isn't reported as stale — it is still ACTIVE.
+        Publishes an event on the process event bus.
         """
-        self.store.update_status(decision_id, "STALE")
+        mark_stale = getattr(self.store, "mark_stale", None)
+        if callable(mark_stale):
+            persisted = mark_stale(decision_id, reason)
+        else:
+            persisted = self.store.update_status(decision_id, "STALE")
+        if persisted is False:
+            logger.warning(
+                "[invalidate] could not mark decision %s STALE; leaving it unreported", decision_id
+            )
+            return False
         event = InvalidationEvent(
             decision_id=decision_id,
             reason=reason,
             triggered_by=triggered_by,
-            commit_sha=get_current_commit(self.project_path),
+            commit_sha=(
+                commit_sha if commit_sha is not None else get_current_commit(self.project_path)
+            ),
+            files=list(files or []),
         )
         self._last_events.append(event)
         self._emit_audit_event(event)
         logger.info("[invalidate] decision %s marked STALE: %s", decision_id, reason)
+        return True
 
-    def cascade_invalidation(self, decision_id: str) -> list[str]:
+    def cascade_invalidation(self, decision_id: str, commit_sha: str | None = None) -> list[str]:
         """For a stale decision, find and invalidate its dependents.
 
         A dependent is a decision whose ``dependency_constraints`` includes
@@ -327,14 +446,17 @@ class InvalidationEngine:
         invalidated: list[str] = []
 
         for dep in dependents:
-            if dep.status == "STALE":
+            if dep.status in ("STALE", "INVALIDATED"):
                 continue
             reason = f"depends on stale decision {decision_id}"
-            self.invalidate_decision(dep.id, reason=reason, triggered_by="cascade")
+            if not self.invalidate_decision(
+                dep.id, reason=reason, triggered_by="cascade", commit_sha=commit_sha
+            ):
+                continue
             invalidated.append(dep.id)
 
             # Recursive cascade: dependents of dependents
-            nested = self.cascade_invalidation(dep.id)
+            nested = self.cascade_invalidation(dep.id, commit_sha=commit_sha)
             invalidated.extend(nested)
 
         return list(dict.fromkeys(invalidated))
@@ -371,6 +493,55 @@ class InvalidationEngine:
     # Internal
     # ------------------------------------------------------------------- #
 
+    def _decisions_naming(self, changed_files: list[str], root: Path) -> list[DecisionRecord]:
+        """Decisions whose files include any changed file, each listed once.
+
+        Decisions may name a file project-relative or by absolute path (with
+        or without symlinks resolved), so every form is looked up — in chunks,
+        to stay under SQLite's bound-parameter limit on very large commits.
+        """
+        bases = dict.fromkeys((root, Path(self.project_path).absolute()))
+        forms = list(changed_files) + [(b / f).as_posix() for b in bases for f in changed_files]
+        lookup = list(dict.fromkeys(forms))
+        found: dict[str, DecisionRecord] = {}
+        for start in range(0, len(lookup), _LOOKUP_CHUNK):
+            for decision in self.store.find_by_files(lookup[start : start + _LOOKUP_CHUNK]):
+                found.setdefault(decision.id, decision)
+        return list(found.values())
+
+    @staticmethod
+    def _touched_files(decision: DecisionRecord, changed: set[str], root: Path) -> list[str]:
+        """The decision's files that the commit changed, project-relative."""
+        touched: list[str] = []
+        for path in decision.files_affected or []:
+            rel = _project_relative(path, root)
+            if rel in changed and rel not in touched:
+                touched.append(rel)
+        return touched
+
+    def _carried_by_commit(
+        self, decision: DecisionRecord, touched: list[str], committed: dict[str, str]
+    ) -> bool:
+        """True when the commit contains exactly what the decision saw.
+
+        Every changed file the decision names must have a fingerprint (its
+        blob id when the decision was recorded, amended or restored) equal to
+        the blob HEAD stores. Then this commit carries the code the decision
+        describes. A store without fingerprints, a missing fingerprint, or a
+        file HEAD no longer contains is never exempt.
+        """
+        fingerprints = getattr(self.store, "fingerprints", None)
+        if not callable(fingerprints):
+            return False
+        try:
+            recorded = fingerprints(decision.id) or {}
+        except Exception:
+            return False
+        return all(
+            recorded.get(rel) is not None and recorded.get(rel) == committed.get(rel)
+            for rel in touched
+        )
+
     def _emit_audit_event(self, event: InvalidationEvent) -> None:
         """Publish an invalidation event on the process-wide event bus.
 
@@ -384,7 +555,9 @@ class InvalidationEngine:
         except Exception:
             # Event bus is optional — log at DEBUG so normal operation is
             # silent, but misconfigured event routing is diagnosable.
-            logger.debug("[memory] event bus publish failed for %s (non-blocking)", event.id)
+            logger.debug(
+                "[memory] event bus publish failed for %s (non-blocking)", event.decision_id
+            )
 
 
 # --------------------------------------------------------------------------- #

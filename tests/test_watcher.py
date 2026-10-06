@@ -9,6 +9,7 @@ edited file in its batch.
 
 from __future__ import annotations
 
+import os
 import time
 
 from neuralmind.watcher import DEFAULT_IGNORES, FileActivityWatcher, _is_ignored
@@ -187,3 +188,84 @@ def test_flush_delivers_batch_sorted_by_timestamp(tmp_path):
     # First (and likely only) batch should be sorted by timestamp ascending:
     # B (older ts) before A (newer ts), not dict insertion order [A, B].
     assert received[0] == ["B", "A"], f"expected chronological order [B, A], got {received[0]}"
+
+
+class _FakeClock:
+    """Virtual ``time`` module for the flush loop: ``sleep`` advances the
+    clock and fires scripted edits at their exact virtual timestamps."""
+
+    def __init__(self, watcher, script, run_for):
+        self.now = 1_000.0
+        self.start = self.now
+        self.watcher = watcher
+        self.script = sorted(script, key=lambda e: e[0])
+        self.run_for = run_for
+
+    def time(self):
+        return self.now
+
+    def sleep(self, seconds):
+        target = self.now + seconds
+        while self.script and self.start + self.script[0][0] <= target:
+            offset, path = self.script.pop(0)
+            self.now = self.start + offset
+            self.watcher._record(path)
+        self.now = target
+        if self.now - self.start >= self.run_for:
+            self.watcher._stop.set()
+
+
+def _run_flush_loop(monkeypatch, tmp_path, script, debounce=0.75, run_for=30.0):
+    import neuralmind.watcher as watcher_mod
+
+    batches: list[list[str]] = []
+    w = FileActivityWatcher(
+        tmp_path,
+        lambda paths: batches.append([os.path.basename(p) for p in paths]),
+        debounce=debounce,
+    )
+    clock = _FakeClock(w, script, run_for)
+    monkeypatch.setattr(watcher_mod, "time", clock)
+    w._flush_loop()
+    return batches
+
+
+def _files(tmp_path, *names):
+    paths = []
+    for name in names:
+        p = tmp_path.resolve() / name
+        p.write_text("x = 1\n")
+        paths.append(p)
+    return paths
+
+
+def test_edits_within_debounce_of_each_other_form_one_batch(monkeypatch, tmp_path):
+    """Edits 0.5s apart (debounce 0.75s) are one co-activation batch.
+
+    The loop used to flush each path as soon as *it* was older than the
+    debounce, so a, b, c edited 0.5s apart arrived as three single-file
+    batches and activate_files never saw a cross-file pair or transition.
+    """
+    a, b, c = _files(tmp_path, "a.py", "b.py", "c.py")
+    batches = _run_flush_loop(monkeypatch, tmp_path, [(0.0, a), (0.5, b), (1.0, c)])
+    assert batches == [["a.py", "b.py", "c.py"]]
+
+
+def test_quiet_gap_splits_batches_and_keeps_edit_order(monkeypatch, tmp_path):
+    a, b, c = _files(tmp_path, "a.py", "b.py", "c.py")
+    # b, a, then b again (latest timestamp wins); a quiet gap; then c.
+    batches = _run_flush_loop(monkeypatch, tmp_path, [(0.0, b), (0.3, a), (0.6, b), (5.0, c)])
+    assert batches == [["a.py", "b.py"], ["c.py"]]
+
+
+def test_continuous_edits_still_flush_eventually(monkeypatch, tmp_path):
+    """A file rewritten non-stop must not starve the batch forever."""
+    from neuralmind.watcher import MAX_BATCH_DEBOUNCES
+
+    noisy, other = _files(tmp_path, "noisy.py", "other.py")
+    script = [(0.1, other)] + [(i * 0.25, noisy) for i in range(200)]
+    batches = _run_flush_loop(monkeypatch, tmp_path, script, debounce=0.75, run_for=50.0)
+    assert batches, "continuous edits starved the flush loop"
+    assert "other.py" in batches[0]
+    # The first flush happens within the max-wait window, not after the storm.
+    assert len(batches) >= int(50.0 / (0.75 * MAX_BATCH_DEBOUNCES)) - 1

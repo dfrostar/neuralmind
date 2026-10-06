@@ -1,7 +1,7 @@
 # Risk Assessment
 
-**Date:** 2026-10-03
-**Version:** 1.1
+**Date:** 2026-10-04
+**Version:** 1.2
 **SOC 2 Controls:** CC3.1, CC3.2
 
 ---
@@ -31,11 +31,11 @@ Risks are scored on two dimensions:
 |----|------|------------|--------|-------|-------|------------|-------|
 | R-01 | Vulnerable dependency (Critical CVE) | 3 | 5 | 15 | HIGH | Automated Dependabot alerts, 72h patch SLA for critical | Maintainer |
 | R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Code review required, branch protection, CI gates | Maintainer |
-| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default (stdio transport), per-tool permission policy (roles are caller-declared; cap it with `security.roles`), audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
-| R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode, `neuralmind build --verify`, local backups | Maintainer |
+| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default (stdio transport), per-tool permission policy (roles are caller-declared unless `security.identity: os` binds them to OS accounts, v4.7.0+; cap them with `security.roles`, which v4.6.0 and earlier ignore), audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
+| R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode; `neuralmind health` and `neuralmind doctor` report a missing or stale index; the graph and index rebuild from source (`neuralmind build --force`). Synapses, decisions, and the audit log can't be rebuilt, so they need operator backups ([Backup & Recovery](../DEPLOYMENT-GUIDE.md#backup--recovery)) | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |
 | R-06 | Key person dependency (solo maintainer) | 3 | 4 | 12 | HIGH | Documented runbooks, bus factor reduction plan, paid support option | Maintainer |
-| R-07 | Audit log tampering | 1 | 4 | 4 | LOW | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects a changed or removed record mid-log, not truncation or a recomputed chain), git-backed evidence | Maintainer |
+| R-07 | Audit log tampering | 2 | 4 | 8 | MEDIUM | Append-only JSONL with a SHA-256 hash chain (`neuralmind audit verify` detects a changed or removed record mid-log, and a record without a hash after the chain starts; not records removed from the end or a recomputed chain), git-backed evidence. Likelihood raised from 1: deleting the newest records, or recomputing the chain (the hash has no secret key), needs only write access to the file | Maintainer |
 | R-08 | Compliance failure (SOC 2 audit) | 2 | 3 | 6 | MEDIUM | Documented controls in `docs/compliance/`; compliance-automation platform planned (vendor not yet selected) | Maintainer |
 | R-09 | Cloudflare Pages outage | 2 | 3 | 6 | MEDIUM | No data loss (static), easy to redeploy, 99.9% SLA | Cloudflare |
 | R-10 | GitHub Actions disruption | 2 | 2 | 4 | LOW | Local fallback (`pytest`, `build`), no hard dependency on CI | GitHub |
@@ -50,7 +50,6 @@ Risks are scored on two dimensions:
 ## 5. Residual Risk Acceptance
 
 The following risks are accepted (score ≤ 4):
-- R-07: Audit log tampering — append-only design makes this unlikely, no further mitigation
 - R-10: GitHub Actions disruption — local development workflow is fully functional without CI
 
 ---

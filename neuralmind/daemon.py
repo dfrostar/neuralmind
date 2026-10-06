@@ -43,6 +43,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .http_util import (
+    MAX_BODY_BYTES,
+    RequestError,
+    json_type_name,
+    read_json_object,
+    token_matches,
+)
+from .paths import ProjectNotFoundError
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
 _STARTED_AT = time.time()
@@ -318,6 +327,10 @@ class DaemonContext:
     on_shutdown: Callable[[], None] | None = None
 
 
+# Seconds a client may stall mid-request before its connection is closed.
+REQUEST_TIMEOUT_SECONDS = 30
+
+
 class DaemonError(Exception):
     """Raised when the daemon rejects a request."""
 
@@ -333,11 +346,67 @@ class DaemonError(Exception):
         self.message = message
 
 
-def _require(body: dict, key: str):
+def _require(body: dict, key: str) -> str:
     val = body.get(key)
     if val in (None, ""):
         raise DaemonError(400, f"missing required field {key!r}")
+    if not isinstance(val, str):
+        raise DaemonError(400, f"field {key!r} must be a string, got {json_type_name(val)}")
     return val
+
+
+_TRUE_STRINGS = frozenset({"true", "1", "yes", "on"})
+_FALSE_STRINGS = frozenset({"false", "0", "no", "off"})
+
+
+def _bool_param(value: Any, key: str, default: bool) -> bool:
+    """Read a flag from a request body, or raise a 400 naming ``key``.
+
+    Accepts JSON booleans, 0/1, and the usual spellings as strings. A bare
+    ``bool()`` read ``"false"`` as True, so ``{"force": "false"}`` forced a
+    rebuild.
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str) and value.strip().lower() in _TRUE_STRINGS | _FALSE_STRINGS:
+        return value.strip().lower() in _TRUE_STRINGS
+    shown = repr(value)
+    shown = shown if len(shown) <= 60 else shown[:57] + "..."
+    raise DaemonError(400, f"{key!r} must be a boolean, got {shown}")
+
+
+def _int_param(value: Any, key: str, default: int, minimum: int) -> int:
+    """Coerce a body/query-string value to an int, or raise a 400 naming ``key``.
+
+    Accepts ints, integral floats (``3.0``), and decimal strings (query-string
+    values always arrive as strings). A bare ``int()`` here raised ValueError /
+    TypeError on ``"abc"`` or a list and surfaced as a 500.
+    """
+    if value is None or value == "":
+        return default
+    number: int | None = None
+    if isinstance(value, bool):
+        number = None  # bool is an int subclass; True is not a count
+    elif isinstance(value, int):
+        number = value
+    elif isinstance(value, float) and value.is_integer():
+        number = int(value)
+    elif isinstance(value, str):
+        try:
+            number = int(value.strip())
+        except ValueError:
+            number = None
+    if number is None:
+        shown = repr(value)
+        shown = shown if len(shown) <= 60 else shown[:57] + "..."
+        raise DaemonError(400, f"{key!r} must be an integer, got {shown}")
+    if number < minimum:
+        raise DaemonError(400, f"{key!r} must be >= {minimum}, got {number}")
+    return number
 
 
 def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> tuple[int, dict]:
@@ -350,6 +419,8 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
     parsed = urlparse(path)
     route = parsed.path.rstrip("/") or "/"
     qs = parse_qs(parsed.query)
+    if body is not None and not isinstance(body, dict):
+        return 400, {"error": f"request body must be a JSON object, got {json_type_name(body)}"}
     body = body or {}
 
     try:
@@ -374,29 +445,36 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
                 project,
                 (qs.get("cost") or ["0"])[0] in ("1", "true"),
                 (qs.get("model") or [None])[0],
-                int((qs.get("queries_per_day") or ["100"])[0]),
+                _int_param(
+                    (qs.get("queries_per_day") or [None])[0], "queries_per_day", 100, minimum=0
+                ),
             )
         if method == "POST" and route == "/query":
             return 200, _query(
                 ctx,
                 _require(body, "project"),
                 _require(body, "question"),
-                trace=bool(body.get("trace", False)),
-                trace_verbose=bool(body.get("trace_verbose", False)),
+                trace=_bool_param(body.get("trace"), "trace", False),
+                trace_verbose=_bool_param(body.get("trace_verbose"), "trace_verbose", False),
             )
         if method == "POST" and route == "/search":
             return 200, _search(
-                ctx, _require(body, "project"), _require(body, "query"), int(body.get("n", 10))
+                ctx,
+                _require(body, "project"),
+                _require(body, "query"),
+                _int_param(body.get("n"), "n", 10, minimum=1),
             )
         if method == "POST" and route == "/build":
             return _build(
                 ctx,
                 _require(body, "project"),
-                bool(body.get("force", False)),
-                bool(body.get("sync", False)),
+                _bool_param(body.get("force"), "force", False),
+                _bool_param(body.get("sync"), "sync", False),
             )
         if method == "POST" and route == "/validate":
-            return 200, _validate(ctx, _require(body, "project"), bool(body.get("write", False)))
+            return 200, _validate(
+                ctx, _require(body, "project"), _bool_param(body.get("write"), "write", False)
+            )
         if method == "POST" and route == "/shutdown":
             if ctx.on_shutdown:
                 ctx.on_shutdown()
@@ -404,6 +482,9 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
         raise DaemonError(404, f"no route for {method} {route}")
     except DaemonError as exc:
         return exc.status, {"error": exc.message}
+    except ProjectNotFoundError as exc:
+        # A mistyped project path is the client's error, not the daemon's.
+        return 404, {"error": str(exc), "code": "project_not_found"}
     except Exception as exc:  # never leak a traceback across the wire
         return 500, {"error": f"{type(exc).__name__}: {exc}"}
 
@@ -460,6 +541,12 @@ def _search(ctx: DaemonContext, project: str, query: str, n: int) -> dict:
 def _stats(ctx: DaemonContext, project: str) -> dict:
     mind = ctx.registry.get(project)
     with ctx.registry.lock_for(project):
+        # A fresh registry entry hasn't loaded its index, and get_stats()
+        # reports built: False until something does. Load an existing index
+        # as it stands — read-only, never a build — so stats tell the truth.
+        load = getattr(mind, "_load_existing_index", None)
+        if getattr(mind, "_built", True) is False and callable(load) and load():
+            ctx.registry.mark_built(project)
         return mind.get_stats()
 
 
@@ -471,8 +558,13 @@ def _savings(ctx: DaemonContext, project: str, cost: bool, model: str | None, qp
 
 
 def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[int, dict]:
+    # Look the project up before queueing, as every other route does: the
+    # registry's NeuralMind refuses a path that isn't a directory
+    # (ProjectNotFoundError, a 404). Inside the job, an async build of a
+    # mistyped project answered 202 and only failed later.
+    mind = ctx.registry.get(project)
+
     def _do() -> dict:
-        mind = ctx.registry.get(project)
         with ctx.registry.lock_for(project):
             result = mind.build(force=force)
             # Mark built *inside* the lock: otherwise a concurrent ensure_built
@@ -503,6 +595,11 @@ class _Handler(BaseHTTPRequestHandler):
     # never as class attributes — so multiple daemons in one process (e.g. the
     # test suite) can't clobber each other's state.
 
+    # Socket timeout for each request. Without one, a client that declares a
+    # body and never sends it held a handler thread open indefinitely;
+    # http.server closes a timed-out connection itself.
+    timeout = REQUEST_TIMEOUT_SECONDS
+
     def log_message(self, *args) -> None:  # silence default stderr spam
         pass
 
@@ -516,9 +613,9 @@ class _Handler(BaseHTTPRequestHandler):
             return True
         header = self.headers.get("Authorization", "")
         if header.startswith("Bearer "):
-            return secrets.compare_digest(header[7:], token)
+            return token_matches(header[7:], token)
         qtoken = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
-        return bool(qtoken) and secrets.compare_digest(qtoken, token)
+        return token_matches(qtoken, token)
 
     def _send(self, status: int, payload: dict) -> None:
         data = json.dumps(payload).encode("utf-8")
@@ -534,13 +631,14 @@ class _Handler(BaseHTTPRequestHandler):
             return
         body = {}
         if method == "POST":
-            length = int(self.headers.get("Content-Length", 0) or 0)
-            if length:
-                try:
-                    body = json.loads(self.rfile.read(length).decode("utf-8"))
-                except ValueError:
-                    self._send(400, {"error": "invalid JSON body"})
-                    return
+            try:
+                body = read_json_object(self, MAX_BODY_BYTES)
+            except RequestError as exc:
+                # The body may be unread (a bad Content-Length is refused from
+                # the header alone), so don't parse it as a follow-up request.
+                self.close_connection = True
+                self._send(exc.status, {"error": exc.message})
+                return
         status, payload = dispatch(self._ctx, method, self.path, body)
         self._send(status, payload)
 

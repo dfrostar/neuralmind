@@ -127,7 +127,41 @@ def test_memory_check_reflects_flag(monkeypatch):
     monkeypatch.setattr("neuralmind.memory.is_memory_logging_enabled", lambda: False)
     off = doctor._check_memory()
     assert off.status == doctor.WARN
-    assert "NEURALMIND_MEMORY" in off.fix
+    assert off.fix.startswith("To enable, ")
+
+
+@pytest.fixture
+def memory_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("NEURALMIND_MEMORY", raising=False)
+    return home
+
+
+def test_memory_check_names_the_real_fix_when_disabled_by_env(memory_home, monkeypatch):
+    # NEURALMIND_MEMORY defaults to on; the old advice "set NEURALMIND_MEMORY=1"
+    # never turned anything on.
+    from neuralmind import memory
+
+    memory.consent_file().parent.mkdir(parents=True, exist_ok=True)
+    memory.consent_file().write_text('{"memory_logging_enabled": true}', encoding="utf-8")
+    monkeypatch.setenv("NEURALMIND_MEMORY", "0")
+    check = doctor._check_memory()
+    assert check.status == doctor.WARN
+    assert "NEURALMIND_MEMORY=0" in check.detail
+    assert "unset NEURALMIND_MEMORY" in check.fix
+    assert "NEURALMIND_MEMORY=1" not in check.fix
+
+
+def test_memory_check_points_at_consent_when_never_enabled(memory_home):
+    from neuralmind import memory
+
+    check = doctor._check_memory()
+    assert check.status == doctor.WARN
+    assert str(memory.consent_file()) in check.fix
+    assert "NEURALMIND_MEMORY=1" not in check.fix
 
 
 def test_backend_check_reports_auto_resolution(temp_project, monkeypatch):
@@ -183,6 +217,8 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Query memory",
         "Doc-code alignment",
         "Turbovec compatibility",
+        "Security policy",
+        "Storage encryption",
     }
 
 

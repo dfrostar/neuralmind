@@ -135,3 +135,24 @@ class TestStaleGuardRuntime:
             "cwd": str(project),
         }
         assert self._run(project, payload, env={"NEURALMIND_STALE_GUARD": "0"}) == ""
+
+
+def test_guard_shows_why_a_decision_went_stale_and_how_to_restore(store, project):
+    """After `decisions scan` marks a decision STALE, the guard says which
+    commit moved it and gives the full id `decisions restore` needs."""
+    rec = _record(store, "Use SQLite WAL", ["neuralmind/db.py"])
+    store.mark_stale(
+        rec.id, "commit 1a2b3c4 changed neuralmind/db.py after this decision was recorded"
+    )
+    ctx = _stale_decision_context(str(project), "neuralmind/db.py")
+    assert f"(id {rec.id}," in ctx
+    assert "— commit 1a2b3c4 changed neuralmind/db.py after this decision was recorded" in ctx
+    assert "neuralmind decisions restore <id>" in ctx
+
+
+def test_guard_restore_hint_only_for_stale_decisions(store, project):
+    rec = _record(store, "Old auth flow", ["auth.py"])
+    store.invalidate(rec.id, reason="replaced by OAuth")
+    ctx = _stale_decision_context(str(project), "auth.py")
+    assert "— replaced by OAuth" in ctx
+    assert "decisions restore" not in ctx

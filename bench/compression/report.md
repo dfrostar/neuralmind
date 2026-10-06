@@ -1,6 +1,6 @@
 # Tool-output compression benchmark
 
-Generated 2026-09-28 with NeuralMind 4.3.4 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
+Generated 2026-10-05 with NeuralMind 4.8.0 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
 
 Reproduce: `python -m evals.compression.run --out bench/compression`. Method and caveats: [docs/benchmarks/compression.md](../../docs/benchmarks/compression.md).
 
@@ -17,7 +17,7 @@ Reproduce: `python -m evals.compression.run --out bench/compression`. Method and
 
 | Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |
 |---|---:|---:|---:|---:|---|
-| Read (whole file) | 136 (110 compressed) | 597,002 | 79,008 | -86.8% | 93% of definitions named, 0% of source lines |
+| Read (whole file) | 136 (110 compressed) | 597,002 | 79,308 | -86.7% | 93% of definitions named, 0% of source lines |
 | Bash | 12 of 16 | 24,858 | 8,397 | -66.2% | 53% of must-keep lines |
 | Grep, content mode | 48 | 55,800 | 16,610 | -70.2% | 63% of matches |
 
@@ -30,9 +30,9 @@ Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claud
 | Repo | Files | Hook responded | Compressor output vs. no hook | Definitions named | Source lines kept |
 |---|---:|---:|---:|---:|---:|
 | click | 16 | 0 | -87.1% | 95% | 0% |
-| flask | 24 | 0 | -85.2% | 97% | 0% |
+| flask | 24 | 0 | -85.1% | 97% | 0% |
 | requests | 18 | 0 | -81.8% | 94% | 0% |
-| rich | 78 | 0 | -88.1% | 90% | 0% |
+| rich | 78 | 0 | -88.0% | 91% | 0% |
 
 ## Bash, per command
 

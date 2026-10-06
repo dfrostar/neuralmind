@@ -5,13 +5,24 @@ import json
 import pytest
 
 from neuralmind.audit import AuditTrail
-from neuralmind.mcp_security import MCPSecurityManager, RateLimiter, RBACPolicy
+from neuralmind.mcp_security import (
+    AccessDeniedError,
+    MCPSecurityManager,
+    RateLimiter,
+    RateLimitExceededError,
+    RBACPolicy,
+)
 
 
 def test_rbac_policy_allows_expected_tools():
     policy = RBACPolicy({"reader": {"neuralmind_query"}})
     assert policy.is_allowed("reader", "neuralmind_query") is True
     assert policy.is_allowed("reader", "neuralmind_build") is False
+
+
+def test_an_empty_policy_is_not_the_default_policy():
+    assert RBACPolicy({}).is_allowed("admin", "neuralmind_query") is False
+    assert RBACPolicy().is_allowed("admin", "neuralmind_query") is True
 
 
 def test_rate_limiter_enforces_sliding_window():
@@ -52,6 +63,25 @@ def test_security_manager_audits_success_and_failure(temp_project):
     assert "denied" in statuses
 
 
+def test_security_refusals_have_their_own_types(temp_project):
+    """MCP tells a security refusal from a tool failure by these types; they
+    subclass the old PermissionError / RuntimeError so existing callers keep
+    working."""
+    assert issubclass(AccessDeniedError, PermissionError)
+    assert issubclass(RateLimitExceededError, RuntimeError)
+    manager = MCPSecurityManager(
+        project_path=str(temp_project),
+        policy=RBACPolicy({"reader": {"neuralmind_query"}}),
+        rate_limiter=RateLimiter(max_calls=1, window_seconds=60),
+        audit_trail=AuditTrail(temp_project),
+    )
+    with pytest.raises(AccessDeniedError):
+        manager.secure_call("alice", "reader", "neuralmind_build", lambda: None)
+    manager.secure_call("bob", "reader", "neuralmind_query", lambda: None)
+    with pytest.raises(RateLimitExceededError):
+        manager.secure_call("bob", "reader", "neuralmind_query", lambda: None)
+
+
 def test_handle_tool_call_rejects_missing_project_path(temp_project):
     from neuralmind.mcp_server import handle_tool_call
 
@@ -90,3 +120,89 @@ def test_handle_tool_call_rejects_empty_project_path(temp_project):
     parsed_none = json.loads(result_none)
     assert "error" in parsed_none
     assert parsed_none["code"] == "invalid_request"
+
+
+# The default policy grants every tool to a role, or leaves it out on purpose.
+# Admin-only by default, as docs/SECURITY-GUIDE.md ("Default roles") lists:
+# none since v4.8.1, when the five read-only structure and recall lookups
+# (review, impact, structural/synaptic neighbors, next_likely) were granted to
+# builder and reader.
+ADMIN_ONLY_TOOLS: set[str] = set()
+READ_ONLY_LOOKUPS = {
+    "neuralmind_synaptic_neighbors",
+    "neuralmind_structural_neighbors",
+    "neuralmind_next_likely",
+    "neuralmind_impact",
+    "neuralmind_review",
+}
+# Tools that change project state: builder has them, reader does not.
+BUILDER_ONLY_TOOLS = {
+    "neuralmind_build",
+    "neuralmind_ingest_document",
+    "neuralmind_record_decision",
+    "neuralmind_invalidate_decision",
+}
+
+
+def test_default_roles_decide_every_advertised_tool():
+    """A tool added to the MCP server without a place in DEFAULT_ROLE_POLICY is
+    denied to every default role. The three progressive-retrieval memory tools
+    shipped that way, although the Memory Layer wiki grants them to builder and
+    reader. A new tool has to be granted, or listed above as left out on purpose."""
+    from neuralmind.mcp_security import DEFAULT_ROLE_POLICY
+    from neuralmind.mcp_server import TOOLS
+
+    names = {tool["name"] for tool in TOOLS}
+    assert names - DEFAULT_ROLE_POLICY["builder"] == ADMIN_ONLY_TOOLS
+    assert names - DEFAULT_ROLE_POLICY["reader"] == ADMIN_ONLY_TOOLS | BUILDER_ONLY_TOOLS
+
+
+@pytest.mark.parametrize("role", ["builder", "reader"])
+def test_default_roles_grant_the_read_only_lookups(role):
+    """neuralmind_review et al. were advertised in tools/list but refused to
+    every default role, although the docs say Claude Code calls review."""
+    from neuralmind.mcp_security import DEFAULT_ROLE_POLICY, RBACPolicy
+
+    policy = RBACPolicy(DEFAULT_ROLE_POLICY)
+    for tool in sorted(READ_ONLY_LOOKUPS):
+        assert policy.is_allowed(role, tool), f"{role} denied {tool}"
+
+
+@pytest.mark.parametrize(
+    "tool, arguments",
+    [
+        ("neuralmind_memory_search", {"query": "sqlite"}),
+        ("neuralmind_memory_timeline", {"decision_id": "missing"}),
+        ("neuralmind_memory_get", {"ids": ["missing"]}),
+    ],
+)
+@pytest.mark.parametrize("role", [None, "builder", "reader"])
+def test_default_roles_reach_the_memory_retrieval_tools(temp_project, tool, arguments, role):
+    """Through the main dispatcher, with no role (which defaults to builder) or
+    a declared builder or reader role, the read-only memory tools run instead of
+    coming back security_denied."""
+    from neuralmind.mcp_server import handle_tool_call
+
+    args = {"project_path": str(temp_project), **arguments}
+    if role:
+        args["role"] = role
+    parsed = json.loads(handle_tool_call(tool, args))
+    assert parsed.get("code") != "security_denied", parsed
+
+
+def test_reader_still_cannot_write_decisions(temp_project):
+    from neuralmind.mcp_server import handle_tool_call
+
+    parsed = json.loads(
+        handle_tool_call(
+            "neuralmind_record_decision",
+            {
+                "project_path": str(temp_project),
+                "role": "reader",
+                "title": "Use WAL",
+                "rationale": "Concurrent readers",
+            },
+        )
+    )
+    assert parsed["code"] == "security_denied"
+    assert "Access denied for role 'reader'" in parsed["error"]

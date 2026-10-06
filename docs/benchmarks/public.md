@@ -71,14 +71,13 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 | `full-file` | 1.00 | 100% | 41,729 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 26,543 | 0.60 | 1.6× |
 | `embedding-rag` | 1.00 | 100% | 607 | 0.96 | 68.8× |
-| **`neuralmind`** | **0.93** | **86%** | **928** | **0.92** | **45.0×** |
+| **`neuralmind`** | **0.96** | **93%** | **895** | **0.96** | **46.6×** |
 
-**Where it missed** (2 of 14):
+**Where it missed** (1 of 14):
 
 | query | gold files | files it retrieved |
 |---|---|---|
-| `xfile-redirect-auth` | `sessions.py`, `auth.py` | `sessions.py` |
-| `xfile-status-codes` | `models.py`, `status_codes.py` | `models.py`, `exceptions.py` |
+| `xfile-status-codes` | `models.py`, `status_codes.py` | `models.py` |
 
 ### `click` @ `874ca2bc1c` — 7 pre-registered queries
 
@@ -87,9 +86,13 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 | `full-file` | 1.00 | 100% | 78,514 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 45,059 | 0.60 | 1.7× |
 | `embedding-rag` | 1.00 | 100% | 636 | 0.60 | 123.4× |
-| **`neuralmind`** | **1.00** | **100%** | **711** | **0.60** | **110.4×** |
+| **`neuralmind`** | **0.86** | **86%** | **645** | **0.69** | **121.7×** |
 
-**Where it missed**: none.
+**Where it missed** (1 of 7):
+
+| query | gold files | files it retrieved |
+|---|---|---|
+| `echo-util` | `utils.py` | `termui.py`, `core.py` |
 
 ### `flask` @ `c12a5d874c` — 10 pre-registered queries
 
@@ -98,14 +101,13 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 | `full-file` | 1.00 | 100% | 59,013 | 1.00 | 1× |
 | `ripgrep` | 0.85 | 80% | 26,891 | 0.65 | 2.2× |
 | `embedding-rag` | 0.95 | 90% | 677 | 0.70 | 87.2× |
-| **`neuralmind`** | **0.85** | **80%** | **723** | **0.63** | **81.6×** |
+| **`neuralmind`** | **0.95** | **90%** | **756** | **0.72** | **78.0×** |
 
-**Where it missed** (2 of 10):
+**Where it missed** (1 of 10):
 
 | query | gold files | files it retrieved |
 |---|---|---|
-| `request-wrapper` | `wrappers.py` | `app.py`, `README.md`, `helpers.py` |
-| `xfile-dispatch-context` | `app.py`, `ctx.py` | `README.md`, `app.py`, `views.py` |
+| `xfile-dispatch-context` | `app.py`, `ctx.py` | `views.py`, `app.py` |
 
 ### `rich` @ `7f580bdcf0` — 9 pre-registered queries
 
@@ -114,42 +116,44 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 | `full-file` | 1.00 | 100% | 232,483 | 1.00 | 1× |
 | `ripgrep` | 1.00 | 100% | 43,437 | 0.75 | 5.4× |
 | `embedding-rag` | 1.00 | 100% | 669 | 0.89 | 347.4× |
-| **`neuralmind`** | **1.00** | **100%** | **892** | **0.78** | **260.7×** |
+| **`neuralmind`** | **1.00** | **100%** | **887** | **0.70** | **262.1×** |
 
 No NeuralMind gold-file misses on this repo.
 
 ### Aggregate across all 4 repos (40 queries)
 
-**85–100% gold-file recall per repo (93.75% mean over all 40 queries), 90%
-found-rate, 45.0×–260.7× fewer tokens than pasting whole files.** Neither
-number is uniform across repos — that's the honest picture, not a single
-cherry-picked ratio. `flask` is the weakest repo in the corpus at 85% recall;
-every other repo clears 92%.
+**85.71–100% gold-file recall per repo (95% mean over all 40 queries), 92.5%
+found-rate (37 of 40), 46.6×–262.1× fewer tokens than pasting whole files.**
+Neither number is uniform across repos — that's the honest picture, not a
+single cherry-picked ratio. `click` is the weakest repo in the corpus at
+85.71% recall (one miss in 7 queries); every other repo reaches at least 95%.
 
-The mean is **query-weighted**: 37.5 of 40 possible gold-file hits (a two-file
+The mean is **query-weighted**: 38 of 40 possible gold-file hits (a two-file
 query that retrieves one of its two gold files scores 0.5). The unweighted
-average of the four per-repo means is higher, 94.5%, because the two perfect
-repos are the smaller ones; the query-weighted figure is the one we quote.
+average of the four per-repo means is lower, because the weakest repo
+(`click`, 7 queries) is also the smallest; the query-weighted figure is the
+one we quote.
 
 ---
 
 ## What the numbers honestly say
 
 1. **Against what developers actually do today — paste files or grep — NeuralMind
-   is a large, real win, but not a perfect one.** It reaches **85–100% gold-file
-   recall (93.75% mean) at 45.0–260.7× fewer tokens** than pasting the files, and
-   it beats `ripgrep` on cost on every repo, and on recall it's ahead on 2 of
-   4 repos (`requests`, `click`) and ties exactly on the other 2 (`flask` and
-   `rich`) — never behind. Most agents don't have a tuned
+   is a large, real win, but not a perfect one.** It reaches **85.71–100% gold-file
+   recall (95% mean) at 46.6–262.1× fewer tokens** than pasting the files, and
+   it beats `ripgrep` on cost on every repo, and on recall it's ahead on 3 of
+   4 repos (`requests`, `click`, `flask`) and ties exactly on the other one
+   (`rich`) — never behind. Most agents don't have a tuned
    function-level vector index sitting there; they read files or grep. That is
    the baseline NeuralMind replaces. It is not a claim of zero misses — see
    "Where NeuralMind loses" below.
 
 2. **A well-tuned vector RAG is also excellent at *findability* — and we show it.**
    On all four repos `embedding-rag` matches or beats NeuralMind's recall,
-   always at fewer tokens: it ties on `click` and `rich`, edges ahead on
-   `requests` (1.00 vs 0.93), and on `flask` it beats NeuralMind by a wide
-   margin (0.95 vs 0.85 recall). We do not hide this. Two honest caveats: (a) that
+   always at fewer tokens: it ties on `flask` and `rich`, edges ahead on
+   `requests` (1.00 vs 0.96), and on `click` it beats NeuralMind by a wide
+   margin (1.00 vs 0.86 recall). Across all 40 queries it reaches 98.75% mean
+   recall to NeuralMind's 95%. We do not hide this. Two honest caveats: (a) that
    baseline *is* NeuralMind's own encoder doing function-level retrieval, and
    (b) its "cost" is the bare retrieved chunks — NeuralMind spends its extra
    tokens assembling a *structured, readable* context (project map, signatures,
@@ -165,16 +169,19 @@ repos are the smaller ones; the query-weighted figure is the one we quote.
 
 Two loss modes, reported plainly:
 
-- **Gold-file misses on 2 of 4 repos.** `flask` is the weakest (2 of 10 misses,
-  recall 0.85); `requests` misses 2 of 14 (recall 0.93); `click` and `rich`
-  show zero misses. That's 4 of 40 total, and three of the four are two-file
-  queries where one of the two gold files was retrieved. These numbers move
+- **Gold-file misses on 3 of 4 repos.** `click` is the weakest (1 of 7 misses,
+  recall 0.86): `echo-util` retrieved `termui.py` and `core.py` but not its
+  gold file `utils.py` — a new miss in the v4.6.0 run, where `click` fell
+  from 100% to 85.71%. `requests` misses 1 of 14 (recall 0.96) and
+  `flask` 1 of 10 (recall 0.95); `rich` shows zero misses. That's 3 of 40
+  total, and two of the three are two-file queries where one of the two gold
+  files was retrieved. These numbers move
   between code changes — see the note in ["The corpus"](#the-corpus) below on
   why they differ from earlier published snapshots. Full per-query detail in
   the tables above and in [`bench/public/results.json`](../../bench/public/results.json).
 - **Token cost vs. a bare top-k vector retrieval.** On every repo `embedding-rag`
   reaches equal or higher recall at fewer tokens: NeuralMind spends more to
-  deliver assembled context, and on `requests` and `flask` it also trails on
+  deliver assembled context, and on `requests` and `click` it also trails on
   recall. We report that plainly; if your only need is "which file," a bare
   vector index is cheaper.
 
@@ -335,8 +342,8 @@ This page's numbers moved *twice* in the same audit that first caught the
 staleness above: an initial regeneration (branch code) found 85–100% recall
 with `requests`/`flask` as the weakest repos; merging in several months of
 independent `main` development before publishing shifted retrieval behavior
-again, landing on the 85–100% figures committed here, with `flask` as the
-weakest repo at 0.85 recall. Neither run was wrong — both were real,
+again, landing on the 85–100% figures committed at the time, with `flask` as
+the weakest repo at 0.85 recall. Neither run was wrong — both were real,
 deterministic measurements of the code that existed at that moment. That
 volatility, not any single number, is the actual finding: without either
 CI regeneration on retrieval-path changes or run-to-run averaging, a
@@ -357,6 +364,20 @@ recall — see [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduce
 The movement since the previous tables: `requests`
 recovers `xfile-send-adapter` (recall 0.89 → 0.93); every other recall figure
 is unchanged, with small shifts in tokens and MRR.
+
+**Regenerated 2026-10-01 for v4.6.0.** v4.6.0 changed the default keyword
+index: the turbovec backend's BM25 list used to hold only document nodes, so
+the hybrid fusion gave docs a keyword signal code never got; it is now one BM25
+index over docs and code. A retrieval-path change makes the previous tables
+stale by definition, so they were regenerated against the v4.6.0 code
+(`NEURALMIND_ORT_THREADS=1 python -m evals.public.run --out bench/public`) and
+`results.json` was committed with them. The movement: `requests` recovers
+`xfile-redirect-auth` (recall 0.93 → 0.96) and `flask` recovers
+`request-wrapper` (0.85 → 0.95), but `click` now misses `echo-util`
+(1.00 → 0.86); `rich` is unchanged at 1.00. Net: 93.75% → 95% mean, 90% →
+92.5% found-rate, 4 misses → 3. Why the index changed, and the five other
+ranking changes that were measured and *not* kept, is in the retrieval eval:
+[`bench/retrieval/README.md`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md).
 
 Add a repo the same way: append to `evals/public/manifest.json` (pin the commit,
 give each query an objective def-site gold file) and re-run. Community-contributed

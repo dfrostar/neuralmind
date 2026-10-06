@@ -115,7 +115,15 @@ RESOURCE_INITIAL = 10.0  # starting resource pool per node
 RESOURCE_MAX = 10.0  # cap so new nodes don't get unlimited budget
 RESOURCE_CONSUMPTION = 1.0  # resources consumed per potentiation
 RESOURCE_REPLENISH_RATE = 0.01  # resources replenished per decay tick
-RESOURCE_MIN_FLOOR = 0.1  # never fully deplete (allow some association)
+# Consumption bottoms out here instead of 0 so the pool stays positive. A pool
+# at the floor is depleted: no potentiation until replenishment lifts it above.
+RESOURCE_MIN_FLOOR = 0.1
+
+
+def _resource_depleted(pool: float) -> bool:
+    """A pool consumption has driven down to the floor (it never goes below)."""
+    return pool <= RESOURCE_MIN_FLOOR
+
 
 # --------------------------------------------------------------------------- #
 # Feeling-of-Knowing (FOK) gating parameters
@@ -378,10 +386,13 @@ class SynapseDynamics:
     ) -> list[tuple[str, float]]:
         """Suppress competing activations.
 
-        For each pair of results (A, B), if both are receiving activation from
-        different seed clusters, the weaker one gets suppressed. The suppression
-        is proportional to the product of their activations (strong competitors
-        suppress each other more).
+        For each pair of results (A, B), the weaker one gets suppressed by the
+        stronger, in proportion to the stronger one's activation (strong
+        competitors suppress more); equals don't suppress each other. The
+        strongest result is never suppressed, so inhibition sharpens the
+        ranking instead of erasing it: summing every competitor against every
+        result, the winner included, drove all scores to 0 once there were a
+        handful of comparable results.
         """
         if len(ranked) < 2:
             return ranked
@@ -396,15 +407,15 @@ class SynapseDynamics:
         # Build activation map
         activations = dict(ranked)
 
-        # For each non-seed node, compute inhibition from other non-seed nodes
+        # For each non-seed node, compute inhibition from stronger non-seed nodes
         non_seeds = [n for n in activations if n not in seed_set]
         adjusted: dict[str, float] = dict(activations)
 
         for node_a in non_seeds:
             inhibition = 0.0
             for node_b in non_seeds:
-                if node_a == node_b:
-                    continue
+                if activations[node_b] <= activations[node_a]:
+                    continue  # only a stronger competitor inhibits (never itself)
                 # Inhibition proportional to competitor's activation
                 inhibition += activations[node_b] * scale * SPREAD_DECAY
             adjusted[node_a] = max(0.0, activations[node_a] - inhibition)
@@ -483,7 +494,10 @@ class SynapseDynamics:
         """Set or increment tags, and capture if above threshold."""
         try:
             with self.store._connect() as conn:
-                conn.execute("BEGIN")
+                # IMMEDIATE: this reads before it writes. A deferred BEGIN
+                # fails the read->write upgrade at once ("database is locked")
+                # when another writer commits in between, and the tags were lost.
+                conn.execute("BEGIN IMMEDIATE")
                 try:
                     for a, b in pairs:
                         # Check existing tag
@@ -559,9 +573,15 @@ class SynapseDynamics:
         """Apply retrieval-induced forgetting to competitors of a retrieved node.
 
         When node A is retrieved, its competitors (nodes that share edges with
-        A's neighbors but were not themselves retrieved) get weakened. This
+        A's neighbors but were not themselves retrieved) get weakened: for a
+        competitor C reached through A's neighbor N (the shared cue), the N-C
+        edge loses ``SAMPL_DEPRESSION_SCALE`` times the A-N-C path strength. This
         sharpens the association landscape and prevents the "everything is
         vaguely associated" problem.
+
+        Writes land in ``namespaces`` when given (the namespaces the
+        competitors were found in), else in the store's active namespace.
+        Returns the number of synapse rows weakened.
         """
         if not self.enable_sampl or not self._ensure_schema():
             return 0
@@ -574,8 +594,11 @@ class SynapseDynamics:
 
             neighbor_ids = [n for n, _ in neighbors]
 
-            # Find competitors: nodes connected to A's neighbors but not A itself
-            competitors: dict[str, float] = {}
+            # Find competitors: nodes connected to A's neighbors but not to A.
+            # Keyed by the cue->competitor edge, the one that exists: a
+            # competitor is by construction not A's neighbor, so there is no
+            # A-competitor edge to weaken.
+            competitors: dict[tuple[str, str], float] = {}
             for neighbor_id, neighbor_weight in neighbors:
                 if depth <= 0:
                     break
@@ -588,30 +611,32 @@ class SynapseDynamics:
                         continue
                     # Competitor strength = product of edge weights
                     strength = neighbor_weight * comp_weight
-                    if strength > SAMPL_MIN_ACTIVATION_FOR_FORGETTING:
-                        competitors[comp_id] = max(competitors.get(comp_id, 0.0), strength)
+                    pair = _canonical(neighbor_id, comp_id)
+                    if pair is not None and strength > SAMPL_MIN_ACTIVATION_FOR_FORGETTING:
+                        competitors[pair] = max(competitors.get(pair, 0.0), strength)
 
             if not competitors:
                 return 0
+
+            write_namespaces = [ns for ns in dict.fromkeys(namespaces or ()) if ns] or [
+                self.store.namespace
+            ]
+            marks = ",".join("?" for _ in write_namespaces)
 
             # Apply depression
             depressed = 0
             with self.store._connect() as conn:
                 conn.execute("BEGIN")
                 try:
-                    for comp_id, strength in competitors.items():
-                        # Find the edge between retrieved_node and comp_id
-                        pair = _canonical(retrieved_node, comp_id)
-                        if pair is None:
-                            continue
+                    for (node_a, node_b), strength in competitors.items():
                         depression = SAMPL_DEPRESSION_SCALE * strength
-                        conn.execute(
-                            """UPDATE synapses
+                        cur = conn.execute(
+                            f"""UPDATE synapses
                                SET weight = MAX(0.0, weight - ?)
-                               WHERE node_a = ? AND node_b = ? AND namespace = ?""",
-                            (depression, pair[0], pair[1], self.store.namespace),
+                               WHERE node_a = ? AND node_b = ? AND namespace IN ({marks})""",
+                            (depression, node_a, node_b, *write_namespaces),
                         )
-                        depressed += 1
+                        depressed += cur.rowcount
                     conn.execute("COMMIT")
                 except Exception:
                     conn.execute("ROLLBACK")
@@ -647,7 +672,7 @@ class SynapseDynamics:
     ) -> bool:
         """Consume resource from a node's pool. Returns True if successful."""
         pool = self._get_resource_pool(node_id, namespace, conn)
-        if pool < RESOURCE_MIN_FLOOR:
+        if _resource_depleted(pool):
             return False  # depleted — no potentiation allowed
         new_pool = max(RESOURCE_MIN_FLOOR, pool - amount)
         conn.execute(
@@ -705,7 +730,7 @@ class SynapseDynamics:
             with self.store._connect() as conn:
                 for node_id in ids:
                     pool = self._get_resource_pool(node_id, ns, conn)
-                    if pool < RESOURCE_MIN_FLOOR:
+                    if _resource_depleted(pool):
                         # One node depleted — skip this reinforcement entirely
                         # (all-or-nothing to maintain Hebbian semantics)
                         return 0

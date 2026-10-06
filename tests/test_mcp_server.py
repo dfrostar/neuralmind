@@ -78,23 +78,25 @@ class TestQueryRelevanceSidecar:
         mind.embedder.get_file_nodes.return_value = []  # no line spans
         return mind
 
-    def test_include_relevance_attaches_sidecar(self):
+    def test_include_relevance_attaches_sidecar(self, tmp_path):
         from neuralmind.mcp_server import tool_query
 
+        # An absolute path on every OS: "/proj" is drive-relative on Windows,
+        # where it passed only because another test's hook left C:\proj\.neuralmind.
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q", include_relevance=True)
+            out = tool_query(str(tmp_path), "q", include_relevance=True)
         assert "relevance" in out
         assert out["relevance"]["version"] == 1
         node = out["relevance"]["files"]["a.py"]["nodes"][0]
         assert node["label"] == "f"
         assert node["score"] == 0.8
 
-    def test_default_omits_sidecar(self):
+    def test_default_omits_sidecar(self, tmp_path):
         """Backward-compatible: no relevance key unless requested."""
         from neuralmind.mcp_server import tool_query
 
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
-            out = tool_query("/proj", "q")
+            out = tool_query(str(tmp_path), "q")
         assert "relevance" not in out
 
     def test_dispatch_threads_include_relevance(self, temp_project):
@@ -145,15 +147,20 @@ class TestHandleToolCall:
             data = json.loads(result)
             assert data.get("success") is True
 
-    def test_tool_exception_returns_error(self):
-        """Exceptions in tool handlers are caught and returned as error."""
+    def test_tool_exception_returns_error(self, temp_project):
+        """Exceptions in tool handlers are caught and returned as error.
+
+        A real project path: a missing one is refused as project_not_found
+        before any handler runs (and, run as root, "/nonexistent" used to be
+        created by the security manager's audit log).
+        """
         with patch("neuralmind.mcp_server.get_mind", side_effect=RuntimeError("test error")):
             result = handle_tool_call(
                 "neuralmind_wakeup",
-                {"project_path": "/nonexistent"},
+                {"project_path": str(temp_project)},
             )
             data = json.loads(result)
-            assert "error" in data
+            assert data["error"] == "test error"
 
     def test_skeleton_tool_dispatches(self, temp_project):
         """neuralmind_skeleton calls tool_skeleton."""
@@ -169,6 +176,198 @@ class TestHandleToolCall:
             data = json.loads(result)
             assert data["file"] == "foo.py"
             assert data["indexed"] is True
+
+
+class TestErrorCodes:
+    """Side finding 3: every RuntimeError, including a missing index, was
+    reported as ``security_denied``. Only the security manager's own
+    refusals are security denials now."""
+
+    def test_missing_index_is_index_not_built(self, empty_project):
+        """End to end, no mocks: a read-only query on a project with no index."""
+        result = handle_tool_call(
+            "neuralmind_query",
+            {"project_path": str(empty_project), "question": "what is this?", "learn": False},
+        )
+        data = json.loads(result)
+        assert data["code"] == "index_not_built"
+        assert "neuralmind build" in data["error"]
+        assert "neuralmind_build" in data["hint"]
+
+    def test_graph_not_built_from_any_tool(self, temp_project):
+        from neuralmind.core import GraphNotBuiltError
+
+        with patch("neuralmind.mcp_server.get_mind", side_effect=GraphNotBuiltError("no graph")):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data["code"] == "index_not_built"
+        assert data["error"] == "no graph"
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            RuntimeError("tree-sitter grammar for 'go' is not installed"),
+            PermissionError(13, "Permission denied", "/proj/secret.py"),
+        ],
+        ids=["tool-runtime-error", "os-permission-error"],
+    )
+    def test_tool_failure_is_not_a_security_denial(self, temp_project, exc):
+        with patch("neuralmind.mcp_server.get_mind", side_effect=exc):
+            data = json.loads(
+                handle_tool_call("neuralmind_wakeup", {"project_path": str(temp_project)})
+            )
+        assert data.get("code") != "security_denied"
+        assert str(exc) == data["error"]
+
+    def test_rbac_denial_reason(self, temp_project):
+        data = json.loads(
+            handle_tool_call(
+                "neuralmind_build", {"project_path": str(temp_project), "role": "reader"}
+            )
+        )
+        assert data["code"] == "security_denied"
+        assert data["reason"] == "rbac"
+
+    def test_rate_limit_reason(self, temp_project):
+        from neuralmind.mcp_security import MCPSecurityManager, RateLimiter
+
+        _security_cache[str(Path(temp_project).resolve())] = MCPSecurityManager(
+            str(temp_project), rate_limiter=RateLimiter(max_calls=1, window_seconds=60)
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        first = json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert "code" not in first
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
+    def test_security_roles_from_config_replace_the_default_policy(self, temp_project):
+        """The Security Guide tells operators to cap what a caller can claim by
+        leaving admin out of security.roles. The server used to build its
+        security manager without reading the config, so a declared admin still
+        got every tool."""
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  roles:\n    builder: [neuralmind_stats]\n", encoding="utf-8"
+        )
+        base = {"project_path": str(temp_project)}
+        as_admin = json.loads(handle_tool_call("neuralmind_stats", {**base, "role": "admin"}))
+        assert as_admin["code"] == "security_denied"
+        assert as_admin["reason"] == "rbac"
+        as_default = json.loads(handle_tool_call("neuralmind_stats", base))
+        assert as_default.get("code") != "security_denied", as_default
+
+    def test_rate_limit_from_config_applies(self, temp_project):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(
+            "security:\n  rate_limit:\n    max_calls: 1\n    window_seconds: 60\n",
+            encoding="utf-8",
+        )
+        args = {"project_path": str(temp_project), "actor": "bob"}
+        json.loads(handle_tool_call("neuralmind_stats", args))
+        second = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert second["code"] == "security_denied"
+        assert second["reason"] == "rate_limit"
+
+    def _config(self, temp_project, text):
+        (Path(temp_project) / "neuralmind-backend.yaml").write_text(text, encoding="utf-8")
+
+    def test_an_empty_role_policy_grants_nothing(self, temp_project):
+        """`roles: {}` used to read as "no policy" and restore the defaults,
+        admin included. An explicit empty policy is a policy."""
+        self._config(temp_project, "security:\n  roles: {}\n")
+        base = {"project_path": str(temp_project)}
+        for args in ({**base, "role": "admin"}, base):
+            data = json.loads(handle_tool_call("neuralmind_stats", args))
+            assert data["code"] == "security_denied", args
+            assert data["reason"] == "rbac"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "security:\n  roles: [admin]\n",
+            "security:\n  rate_limit: 60\n",
+            "security:\n  rate_limit:\n    window_seconds: 0\n",
+            "security:\n  rate_limit:\n    window_seconds: -5\n",
+            "security:\n  rate_limit:\n    max_calls: lots\n",
+            "security:\n  rate_limit:\n    max_calls: true\n",
+            "security: open\n",
+        ],
+    )
+    def test_a_malformed_policy_refuses_every_call(self, temp_project, body):
+        """These used to crash every call (`rate_limit: 60`, a non-number),
+        switch the limit off (a window of 0 or less), or fall back to the
+        defaults (`roles` not a mapping)."""
+        self._config(temp_project, body)
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            # Doesn't parse: an unclosed flow list.
+            "security:\n  roles:\n    builder: [neuralmind_stats\n",
+            # Parses, but not to a mapping.
+            "- security\n",
+            # Empty keys, as when every entry under them is commented out.
+            "security:\n",
+            "security:\n  roles:\n  #  builder: [neuralmind_stats]\n",
+        ],
+    )
+    def test_a_policy_that_does_not_parse_or_is_empty_refuses_every_call(self, temp_project, body):
+        """Each of these used to restore the default policy, under which a
+        caller declaring admin reaches every tool."""
+        self._config(temp_project, body)
+        args = {"project_path": str(temp_project), "role": "admin"}
+        data = json.loads(handle_tool_call("neuralmind_stats", args))
+        assert data["code"] == "security_denied", body
+        assert data["reason"] == "config"
+        assert "Refusing MCP calls" in data["error"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "backend: [turbovec\n",
+            # A comment that mentions a setting doesn't make it a policy.
+            "backend: [turbovec\n# security is configured elsewhere\n",
+            "backend: [turbovec  # roles live in another file\n",
+        ],
+    )
+    def test_an_unparseable_file_that_names_no_policy_is_still_ignored(self, temp_project, body):
+        """Only a file that names a security setting fails closed; a typo in
+        backend tuning keeps the general loader's leniency."""
+        self._config(temp_project, body)
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        assert "error" not in data, data
+
+    def test_a_null_rate_limit_means_the_defaults(self, temp_project):
+        self._config(temp_project, "security:\n  rate_limit: null\n")
+        data = json.loads(handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}))
+        # It used to raise AttributeError inside the dispatcher, which came
+        # back as a bare {"error": ...} on every call.
+        assert "error" not in data, data
+
+    def test_unknown_decision_status_is_invalid_request(self, temp_project):
+        """The status filter is case-insensitive, so its schema has no enum; an
+        unknown value used to run inside the security manager and come back
+        without a code, audited as a successful call. It is rejected up front
+        now, like any other disallowed argument value."""
+        args = {"project_path": str(temp_project), "query": "queue", "role": "admin"}
+        with patch("neuralmind.mcp_server.get_security_manager") as security:
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": "archived"})
+            )
+        security.assert_not_called()
+        assert data["code"] == "invalid_request"
+        assert "'status'" in data["error"]
+        assert "ALL" in data["error"]
+        for word in ("all", "Stale"):
+            data = json.loads(
+                handle_tool_call("neuralmind_memory_search", {**args, "status": word})
+            )
+            assert "code" not in data, word
+            assert data["count"] == 0, word
 
 
 class TestToolBuild:
@@ -289,17 +488,18 @@ class TestToolNextLikely:
             assert data == {"enabled": True, "from_node": "x", "next": []}
             mock_tool.assert_called_once_with(str(temp_project), "x", 3)
 
-    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
-        """Confirm the synapse-family default: 'builder' role can't call
-        neuralmind_next_likely. Matches the pre-existing behavior for
-        neuralmind_synapse_stats/decay/synaptic_neighbors. If you want
-        builders to call this tool, extend the role policy explicitly."""
-        result = handle_tool_call(
-            "neuralmind_next_likely",
-            {"project_path": str(temp_project), "from_node": "x"},
-        )
+    def test_dispatcher_allows_builder_role_by_default(self, temp_project):
+        """The default 'builder' role reaches neuralmind_next_likely. It was
+        advertised but refused to every default role until v4.8.1."""
+        with patch("neuralmind.mcp_server.tool_next_likely") as mock_tool:
+            mock_tool.return_value = {"enabled": True, "from_node": "x", "next": []}
+            result = handle_tool_call(
+                "neuralmind_next_likely",
+                {"project_path": str(temp_project), "from_node": "x"},
+            )
         data = json.loads(result)
-        assert data.get("code") == "security_denied"
+        assert data.get("code") != "security_denied"
+        mock_tool.assert_called_once()
 
 
 class TestToolImpact:
@@ -351,14 +551,17 @@ class TestToolImpact:
             assert data == {"symbol": "x", "resolution": "none", "dependents": []}
             mock_tool.assert_called_once_with(str(temp_project), "x", 2)
 
-    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
-        """'builder' role can't call neuralmind_impact without explicit policy extension."""
-        result = handle_tool_call(
-            "neuralmind_impact",
-            {"project_path": str(temp_project), "symbol": "x"},
-        )
+    def test_dispatcher_allows_builder_role_by_default(self, temp_project):
+        """The default 'builder' role reaches neuralmind_impact (refused until v4.8.1)."""
+        with patch("neuralmind.mcp_server.tool_impact") as mock_tool:
+            mock_tool.return_value = {"symbol": "x", "resolution": "none", "dependents": []}
+            result = handle_tool_call(
+                "neuralmind_impact",
+                {"project_path": str(temp_project), "symbol": "x"},
+            )
         data = json.loads(result)
-        assert data.get("code") == "security_denied"
+        assert data.get("code") != "security_denied"
+        mock_tool.assert_called_once()
 
 
 class TestToolDefinitions:
@@ -605,3 +808,47 @@ class TestRelativePathGuard:
     def test_absolute_path_never_hints(self, tmp_path):
         out = tool_stats(str(tmp_path))
         assert "hint" not in out
+
+    def test_stats_dot_reports_the_directory_name(self, temp_project, tmp_path, monkeypatch):
+        """``project`` was "" for ".": Path(".").name is empty."""
+        monkeypatch.chdir(temp_project)
+        assert tool_stats(".")["project"] == temp_project.resolve().name
+        # The unindexed-cwd hint payload names it too.
+        monkeypatch.chdir(tmp_path)
+        assert tool_stats(".")["project"] == tmp_path.resolve().name
+
+
+class TestDeclaredBounds:
+    """validate_tool_arguments enforces a schema's minimum / maximum.
+
+    neuralmind_search with n 0 or -3 returned one result: the backend floors
+    k at 1, and nothing checked the count first.
+    """
+
+    @pytest.mark.parametrize("bad", [0, -3])
+    def test_search_n_below_one_is_invalid(self, temp_project, bad):
+        data = json.loads(
+            handle_tool_call(
+                "neuralmind_search",
+                {"project_path": str(temp_project), "query": "auth", "n": bad},
+            )
+        )
+        assert data["code"] == "invalid_request"
+        assert "argument 'n' must be at least 1" in data["error"]
+
+    def test_search_schema_declares_the_minimum(self):
+        from neuralmind.mcp_server import TOOLS
+
+        schema = next(t for t in TOOLS if t["name"] == "neuralmind_search")["inputSchema"]
+        assert schema["properties"]["n"]["minimum"] == 1
+
+    def test_bounds_are_checked_where_declared(self):
+        from neuralmind.mcp_server import validate_tool_arguments
+
+        search = {"project_path": "/p", "query": "x"}
+        assert validate_tool_arguments("neuralmind_search", {**search, "n": 1}) is None
+        record = {"project_path": "/p", "title": "t", "rationale": "r"}
+        problem = validate_tool_arguments("neuralmind_record_decision", {**record, "confidence": 7})
+        assert "at most 1" in problem
+        ok = validate_tool_arguments("neuralmind_record_decision", {**record, "confidence": 0})
+        assert ok is None

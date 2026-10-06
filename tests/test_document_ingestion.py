@@ -248,3 +248,84 @@ class TestGitignoreSemantics:
 
         assert _matches_ignore("build/out.js", ("build/",))
         assert not _matches_ignore("build.py", ("build/",))
+
+
+class TestInProjectIngestHelpers:
+    """`neuralmind ingest` of a file the graph already indexes must not store it twice."""
+
+    def test_project_relative_path(self, tmp_path):
+        from neuralmind.document_ingestion import project_relative_path
+
+        (tmp_path / "proj" / "docs").mkdir(parents=True)
+        inside = tmp_path / "proj" / "docs" / "guide.md"
+        assert project_relative_path(inside, tmp_path / "proj") == "docs/guide.md"
+        assert project_relative_path(tmp_path / "other.md", tmp_path / "proj") is None
+
+    def test_graph_prose_files_counts_only_graph_nodes_with_text(self, tmp_path):
+        from neuralmind.document_ingestion import graph_prose_files
+
+        nodes = [
+            # Built-in graph heading node: carries the prose.
+            {"id": "docs_guide_md__h1", "source_file": "docs/guide.md", "content_text": "x"},
+            # Absolute and ./-prefixed forms normalize to the same relative path.
+            {"id": "a", "source_file": str(tmp_path / "docs" / "abs.md"), "content_text": "x"},
+            {"id": "b", "source_file": "./docs/dot.md", "content_text": "x"},
+            # A bare label (graphify's document layer) doesn't hold the prose.
+            {"id": "docs_labels_md", "source_file": "docs/labels.md"},
+            # A node a previous ingest added is not the graph.
+            {
+                "id": "doc:notes.txt.abc",
+                "source_file": "docs/notes.txt",
+                "content_text": "x",
+                "metadata": {"ingested_at": 1.0},
+            },
+            {"id": "code", "source_file": "", "content_text": "x"},
+        ]
+        assert set(graph_prose_files(nodes, tmp_path)) == {
+            "docs/guide.md",
+            "docs/abs.md",
+            "docs/dot.md",
+        }
+
+    def test_graph_prose_is_current_matches_what_the_build_stores(self, tmp_path):
+        # graph_prose_is_current recomputes what graphgen._extract_markdown
+        # stores. If the two drift apart, every graph file reads as edited.
+        from neuralmind import graphgen
+        from neuralmind.document_ingestion import graph_prose_files, graph_prose_is_current
+
+        md = tmp_path / "guide.md"
+        md.write_bytes(
+            (
+                "\ufeffPreamble.\r\n\r\n# Guide\r\n\r\nIntro text.\r\n\r\n"
+                "```py\r\n# not a heading\r\n```\r\n## Empty\r\n### Steps\r\nOne.\r\n#\r\nTwo.\r\n"
+            ).encode("utf-8")
+        )
+        builder = graphgen._GraphBuilder()
+        graphgen._extract_markdown(builder, md, "guide.md")
+        held = graph_prose_files(list(builder.nodes.values()), tmp_path)["guide.md"]
+        assert [heading for heading, _ in held] == ["Empty", "Guide", "Steps"]
+        assert graph_prose_is_current(held, md)
+
+        md.write_text("# Guide\n\nIntro text, edited.\n", encoding="utf-8")
+        assert not graph_prose_is_current(held, md)
+        md.unlink()
+        assert not graph_prose_is_current(held, md)
+
+    def test_ingest_stores_no_markdown_text_the_graph_leaves_out(self, tmp_path):
+        # graph_prose_files skips a whole file once the graph holds its heading
+        # sections. That loses nothing only because the ingester drops what the
+        # graph drops: text above the first heading and fenced code. If ingest
+        # ever keeps either, a skipped file loses it, and graph_prose_files must
+        # stop counting such a file as indexed.
+        from neuralmind.document_ingestion import parse_document
+
+        md = tmp_path / "setup.md"
+        md.write_text(
+            "Read this first: the platypus-kazoo flag.\n\n# Setup\n\nRun the build.\n\n"
+            "```bash\nneuralmind build . --wombat-tuba\n```\n\n## Next\n\nQuery it.\n",
+            encoding="utf-8",
+        )
+        text = "\n".join(node.text for node in parse_document(md))
+        assert "Run the build." in text and "Query it." in text
+        assert "platypus-kazoo" not in text
+        assert "wombat-tuba" not in text
