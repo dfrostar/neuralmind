@@ -70,6 +70,51 @@ class TestPromoteLtpEdges:
         ds.store = store
         assert ds.promote_ltp_edges() > 0
 
+    def test_promote_skips_ephemeral_and_below_floor_edges(self, tmp_path: Path) -> None:
+        # Regression: promotion matched activation count and weight only, so it
+        # boosted ephemeral rows, which have no LTP protection (decay prunes
+        # them regardless of count).
+        from neuralmind.synapses import LTP_FLOOR, LTP_THRESHOLD, SynapseStore, default_db_path
+
+        db = default_db_path(tmp_path)
+        personal = SynapseStore(db)
+        ephemeral = SynapseStore(db, namespace="ephemeral")
+        for _ in range(LTP_THRESHOLD + 1):
+            personal.reinforce(["ltp_a", "ltp_b"])
+            personal.reinforce(["low_a", "low_b"])
+            ephemeral.reinforce(["eph_a", "eph_b"])
+        personal.reinforce(["young_a", "young_b"])
+        with personal._connect() as conn:
+            conn.execute("UPDATE synapses SET weight = 0.5")
+            conn.execute("UPDATE synapses SET weight = ? WHERE node_a = 'low_a'", (LTP_FLOOR / 2,))
+        ds = DaemonSleep(project_path=tmp_path)
+        ds.store = personal
+
+        assert ds.promote_ltp_edges() == 1
+        with personal._connect() as conn:
+            weights = dict(
+                conn.execute("SELECT node_a || '|' || namespace, weight FROM synapses").fetchall()
+            )
+        assert weights["ltp_a|personal"] > 0.5
+        assert weights["eph_a|ephemeral"] == 0.5
+        assert weights["low_a|personal"] == LTP_FLOOR / 2
+        assert weights["young_a|personal"] == 0.5
+
+    def test_promote_never_exceeds_the_weight_cap(self, tmp_path: Path) -> None:
+        from neuralmind.synapses import LTP_THRESHOLD, WEIGHT_CAP, SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        for _ in range(LTP_THRESHOLD):
+            store.reinforce(["a", "b"])
+        with store._connect() as conn:
+            conn.execute("UPDATE synapses SET weight = ?", (WEIGHT_CAP - 0.01,))
+        ds = DaemonSleep(project_path=tmp_path)
+        ds.store = store
+        assert ds.promote_ltp_edges() == 1
+        assert ds.promote_ltp_edges() == 0
+        with store._connect() as conn:
+            assert conn.execute("SELECT weight FROM synapses").fetchone()[0] == WEIGHT_CAP
+
 
 class TestEmitTeamBundle:
     """Consolidated team-baseline bundle."""
