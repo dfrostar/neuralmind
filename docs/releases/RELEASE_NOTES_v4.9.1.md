@@ -36,9 +36,18 @@ that read too high, and an argument order the CLI refused.
 
 - **The project path can come after options.** `neuralmind decisions restore
   <id> --commit SHA <path>` failed with `unrecognized arguments: <path>` on
-  Python 3.10–3.12. So did `decisions amend`, `invalidate` and `query`, and
-  `memory review-approve` / `review-reject`. They now accept the path before
-  or after the options, as they already did on Python 3.13.
+  Python 3.10 and 3.11, on 3.12 before 3.12.7, and on 3.13.0. So did
+  `decisions amend`, `invalidate` and `query`, and `memory review-approve` /
+  `review-reject`. They now accept the path before or after the options on
+  every supported Python, as newer versions already did. A list option such
+  as `--files` or `--evidence` still takes every value up to the next option,
+  so put the path before one.
+
+  **Known issue, fixed in [v4.9.2](RELEASE_NOTES_v4.9.2.md):** on Python 3.10
+  and 3.11, on 3.12 before 3.12.8, and on 3.13.0, these six subcommands can
+  ignore `--`. `decisions query -- -q .` fails with `unrecognized arguments:
+  -q`, and `decisions query -- --json .` turns on `--json` and searches for
+  ".".
 
 ## What the agent actually sees post-install
 
@@ -47,7 +56,7 @@ that read too high, and an argument order the CLI refused.
 | **Claude Code** (MCP + hooks) | An agent that ran `neuralmind feedback` with memory off adjusted an older query's edges. `neuralmind status` overstated the protected edge count | `feedback` exits 1, names the recorded query, and changes nothing. The count is the edges decay keeps |
 | **Cursor / Cline / Claude Desktop** (MCP) | No MCP tool changed | Same |
 | **Generic MCP client** | No MCP tool changed | Same |
-| **Agents that run the CLI** (Hermes skill, scripts) | `decisions restore <id> --commit X <path>` failed on Python 3.10–3.12 | Options and the path can come in either order |
+| **Agents that run the CLI** (Hermes skill, scripts) | `decisions restore <id> --commit X <path>` failed on Python 3.10, 3.11, 3.12.0–3.12.6 and 3.13.0 | Options and the path can come in either order, but `--` may not end the options on those Pythons (and 3.12.7); [v4.9.2](RELEASE_NOTES_v4.9.2.md) fixes that |
 
 ## Environment variables
 

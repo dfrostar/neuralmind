@@ -1,39 +1,45 @@
-# NeuralMind v4.9.2 — two loose ends from v4.9.1
+# NeuralMind v4.9.2 — `--` works again in the decisions and memory subcommands
 
-**Type:** Patch release | **Theme:** Prose chapters in `validate`, and the sleep pass's long-term rule
+**Type:** Patch release | **Theme:** A v4.9.1 regression in argument parsing
 
-While fixing the [v4.9.1](RELEASE_NOTES_v4.9.1.md) bugs, two related problems
-turned up. This release fixes both. Neither loses data.
+[v4.9.1](RELEASE_NOTES_v4.9.1.md) let six `decisions` and `memory`
+subcommands take the project path after their options by parsing them
+intermixed. On Python 3.10 and 3.11, on 3.12 before 3.12.8, and on 3.13.0,
+intermixed parsing can ignore `--`, so v4.9.1 broke `--` there. This release
+fixes that and keeps the path after options.
 
 ---
 
 ## What changed
 
-- **`validate` stops flagging prose chapters as stale.** In a project whose
-  queries go through the prose path (a `chapters/` directory, built with a
-  graph rather than as a book), each query records the chapters it retrieved
-  in the synapse store by file name, such as `ch01.md`. That's never a graph
-  node id, so `neuralmind validate` reported every chapter synapse as stale.
-  A chapter name now counts as known when the index still holds
-  `chapters/<name>`. A chapter you deleted is still reported, and so is any
-  other name that doesn't resolve.
-- **The daemon sleep pass no longer treats ephemeral edges as long-term.**
-  `DaemonSleep.promote_ltp_edges` nudges long-term edges back up after decay.
-  It picked them by activation count and weight alone, so it also boosted
-  edges in the `ephemeral` namespace, which decay never protects. It now uses
-  the same long-term rule as decay, `status` and `SYNAPSE_MEMORY.md`: at least
-  five activations, a weight of at least 0.20, and not ephemeral. Nothing in
-  the CLI, hooks, daemon or MCP tools runs the sleep pass yet; this fixes the
-  `neuralmind.sleep` API for code that calls it.
+### CLI
+
+- **`--` ends the options again.** In v4.9.1, on the Python versions above,
+  `decisions query -- -q .` failed with `unrecognized arguments: -q`, and
+  `decisions query -- --json .` turned on `--json` and searched for ".".
+  Everything after `--` is a positional again, as in v4.9.0. The six
+  subcommands (`decisions amend`, `invalidate`, `query` and `restore`, and
+  `memory review-approve` and `review-reject`) still take the project path
+  after their options, now with or without `--`: `decisions restore <id>
+  --commit SHA -- -proj` takes `-proj` as the path. Instead of parsing
+  intermixed, NeuralMind applies the rule Python 3.12.7 and 3.13.1 added to
+  argparse, on the versions without it, so every supported Python parses
+  these lines the same way.
+- **A path after a list option needs `--`.** A list option such as `--files`,
+  `--rejected`, `--evidence` or `--tags` takes every value up to the next
+  option. So `decisions amend <id> --evidence proof.md <path>` reads the path
+  as more evidence and runs on the current directory. It always has.
+  `decisions record --help` and `amend --help` now say to put `--` before the
+  path: `--evidence proof.md -- <path>`.
 
 ## What the agent actually sees post-install
 
 | Agent | Before | After |
 |-------|--------|-------|
-| **Claude Code** (MCP + hooks) | Nothing changed | Same |
-| **Cursor / Cline / Claude Desktop** (MCP) | Nothing changed | Same |
-| **Generic MCP client** | Nothing changed | Same |
-| **Agents or CI that run `neuralmind validate`** on a prose project with a graph | A `stale_synapse` warning counted every chapter synapse | Only synapses to removed chapters, or other unknown nodes, are counted |
+| **Claude Code** (MCP + hooks) | No change | Same |
+| **Cursor / Cline / Claude Desktop** (MCP) | No MCP tool changed | Same |
+| **Generic MCP client** | No MCP tool changed | Same |
+| **Agents that run the CLI** (Hermes skill, scripts) | With v4.9.1 on Python 3.10, 3.11, 3.12 before 3.12.8 or 3.13.0, `--` could fail to end the options of the six subcommands | `--` ends the options, and the path can follow the options with or without it |
 
 ## Environment variables
 
@@ -45,6 +51,6 @@ None. No stored data changes shape, and no command takes new arguments.
 
 ## Related
 
-- [CLI reference: validate](../wiki/CLI-Reference.md#validate-v0230)
+- [CLI reference: decisions](../wiki/CLI-Reference.md#decisions-v410)
 - [v4.9.1 release notes](RELEASE_NOTES_v4.9.1.md) ·
   [v4.9.0 release notes](RELEASE_NOTES_v4.9.0.md)
