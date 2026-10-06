@@ -78,7 +78,7 @@ class TestReinforceProse:
         with store._connect() as conn:
             # Count edges that involve query pseudo-nodes (node_a or node_b)
             cur = conn.execute(
-                "SELECT COUNT(*) FROM synapses WHERE node_a LIKE 'query_%' OR node_b LIKE 'query_%'"
+                "SELECT COUNT(*) FROM synapses WHERE node_a LIKE 'query:%' OR node_b LIKE 'query:%'"
             )
             count = cur.fetchone()[0]
             # 4 nodes (ch01 + 3 query terms) → C(4,2) = 6 edges total

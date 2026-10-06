@@ -465,3 +465,114 @@ def test_record_accepts_confidence_in_range(parser, project, capsys, good, store
     assert "Recorded decision" in out
     (decision,) = DecisionStore(str(project)).list_all()
     assert decision.confidence == stored
+
+
+# ------------------------------------------------------------------ #
+# the project path may come after options (argparse < 3.13 rejected it)
+# ------------------------------------------------------------------ #
+
+
+def test_restore_accepts_the_path_after_options(parser, project, capsys):
+    # Regression: `decisions restore <id> --commit X <path>` failed with
+    # "unrecognized arguments: <path>" before Python 3.12.7, and on 3.13.0.
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    out = _run(parser, ["decisions", "restore", rec.id, "--commit", "b" * 40, str(project)], capsys)
+    assert f"Restored decision: {rec.id}" in out
+    assert store.get(rec.id).commit_sha == "b" * 40
+
+
+def test_invalidate_accepts_the_path_after_options(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    out = _run(
+        parser, ["decisions", "invalidate", rec.id, "--reason", "superseded", str(project)], capsys
+    )
+    assert f"Invalidated decision: {rec.id}" in out
+    assert store.get(rec.id).status == "INVALIDATED"
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["decisions", "amend", "d1", "--rationale", "why", "{p}"],
+        ["decisions", "query", "syringe", "--limit", "3", "{p}"],
+        ["decisions", "restore", "--commit", "abc", "d1", "{p}"],
+        ["memory", "review-approve", "a.py", "b.py", "--json", "{p}"],
+        ["memory", "review-reject", "a.py", "--json", "b.py", "{p}"],
+        # ... and after `--`, with options before it.
+        ["decisions", "restore", "d1", "--commit", "abc", "--", "{p}"],
+        ["decisions", "amend", "d1", "--rationale", "why", "--", "{p}"],
+        ["memory", "review-reject", "a.py", "--json", "--", "b.py", "{p}"],
+    ],
+)
+def test_positionals_may_follow_options(parser, project, argv):
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert args.project_path == str(project)
+
+
+@pytest.mark.parametrize(
+    "argv, field, value",
+    [
+        (["decisions", "query", "--", "--json", "{p}"], "query", "--json"),
+        (["decisions", "query", "--", "-q", "{p}"], "query", "-q"),
+        (["decisions", "query", "--limit", "3", "--", "-n", "{p}"], "query", "-n"),
+        (["memory", "review-approve", "--", "-a.py", "b.py", "{p}"], "source", "-a.py"),
+    ],
+)
+def test_double_dash_still_ends_the_options(parser, project, argv, field, value):
+    # Everything after `--` is a positional, even one that starts with "-".
+    # Parsing intermixed broke this before Python 3.12.8 and 3.13.1:
+    # `decisions query -- --json .` turned on --json and searched for ".".
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert getattr(args, field) == value
+    assert args.project_path == str(project)
+    assert args.json is False
+
+
+@pytest.mark.parametrize(
+    "argv, field, values",
+    [
+        (
+            ["decisions", "amend", "d1", "--evidence", "proof.md", "--", "{p}"],
+            "evidence",
+            ["proof.md"],
+        ),
+        (
+            ["decisions", "record", "--title", "t", "--rationale", "r"]
+            + ["--files", "a.py", "b.py", "--", "{p}"],
+            "files",
+            ["a.py", "b.py"],
+        ),
+    ],
+)
+def test_double_dash_ends_a_list_option_before_the_path(parser, project, argv, field, values):
+    # A list option takes every value up to the next option, so a path right
+    # after one goes after `--`.
+    args = parser.parse_args([str(project) if a == "{p}" else a for a in argv])
+    assert getattr(args, field) == values
+    assert args.project_path == str(project)
+
+
+def test_a_path_starting_with_a_dash_goes_after_the_double_dash(parser, tmp_path, monkeypatch):
+    # "-proj" reads as an option anywhere but after `--`; the options before
+    # the marker still apply.
+    (tmp_path / "-proj").mkdir()
+    monkeypatch.chdir(tmp_path)
+    args = parser.parse_args(["decisions", "restore", "d1", "--commit", "abc", "--", "-proj"])
+    assert (args.decision_id, args.commit, args.project_path) == ("d1", "abc", "-proj")
+
+
+def test_a_missing_path_after_options_is_still_a_usage_error(parser, project, capsys):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["decisions", "restore", "d1", "--commit", "abc", str(project / "nope")])
+    assert exc.value.code == 2
+    assert "nope" in capsys.readouterr().err
+
+
+def test_an_extra_positional_is_still_rejected(parser, project, capsys):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["decisions", "restore", "d1", str(project), "--commit", "abc", "extra"])
+    assert exc.value.code == 2
+    assert "unrecognized arguments: extra" in capsys.readouterr().err

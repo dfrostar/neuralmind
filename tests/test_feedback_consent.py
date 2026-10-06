@@ -72,3 +72,63 @@ def test_memory_on_but_no_queries_keeps_the_run_a_query_hint(home, project, caps
     err = _feedback("good", project, capsys)
     assert "No recent queries recorded" in err
     assert "query memory is off" not in err
+
+
+def _write_recorded_query(project, question="where is auth handled?"):
+    """A recent-queries record left from when memory was on, plus a synapse store."""
+    import json
+
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    state = project / ".neuralmind"
+    state.mkdir(exist_ok=True)
+    record = {
+        "ts": "2026-01-02T03:04:05+00:00",
+        "question": question,
+        "top_hits": [{"id": "auth_login"}, {"id": "auth_session"}, {"id": "auth_token"}],
+    }
+    (state / "recent_queries.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
+    db = default_db_path(project)
+    SynapseStore(db)  # creates the schema
+    return db
+
+
+def _edge_count(db):
+    import sqlite3
+
+    with sqlite3.connect(db) as conn:
+        return conn.execute("SELECT COUNT(*) FROM synapses").fetchone()[0]
+
+
+@pytest.mark.parametrize("verdict", ["good", "bad"])
+def test_memory_off_does_not_adjust_a_query_recorded_before(verdict, home, project, capsys):
+    # Regression: feedback adjusted the newest record even though queries
+    # asked since memory went off were never recorded — so "the last query"
+    # was really some older one.
+    db = _write_recorded_query(project)
+    err = _feedback(verdict, project, capsys)
+    assert "not applied" in err
+    assert "query memory is off" in err
+    assert "where is auth handled?" in err
+    assert "2026-01-02T03:04:05+00:00" in err
+    assert str(memory.consent_file()) in err
+    assert _edge_count(db) == 0
+
+
+def test_memory_off_by_env_does_not_adjust_a_recorded_query(home, project, capsys, monkeypatch):
+    memory.write_consent_sentinel(True)
+    monkeypatch.setenv("NEURALMIND_MEMORY", "0")
+    db = _write_recorded_query(project)
+    err = _feedback("good", project, capsys)
+    assert "not applied" in err
+    assert "unset NEURALMIND_MEMORY" in err
+    assert _edge_count(db) == 0
+
+
+def test_memory_on_adjusts_the_recorded_query(home, project, capsys):
+    memory.write_consent_sentinel(True)
+    db = _write_recorded_query(project)
+    args = build_parser().parse_args(["feedback", "good", str(project)])
+    args.func(args)
+    assert "Boosted 3 edges" in capsys.readouterr().out
+    assert _edge_count(db) == 3

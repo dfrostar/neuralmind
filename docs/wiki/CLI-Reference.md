@@ -1150,7 +1150,11 @@ Detailed synapse diagnostics.
 #### Output
 
 - Total edges
-- LTP-protected count
+- LTP-protected count: the edges decay actually protects, meaning at least 5
+  activations, a weight of at least 0.20, and not in the `ephemeral`
+  namespace. *(v4.9.1+; it used to count activations only, so a penalized or
+  ephemeral edge counted too.)* `status`, the dashboard and the long-term count
+  in `SYNAPSE_MEMORY.md` use the same rule.
 - Stale (30+ days inactive)
 - Dormant (≤1 activation)
 - Total weight
@@ -1238,7 +1242,12 @@ neuralmind validate [project_path] [OPTIONS]
   `ir_version`.
 - **warnings**: orphaned (edgeless) nodes, unknown node kinds, unknown edge
   relations, and **stale synapses** (learned memory pointing at nodes a
-  rebuild removed) — forward-compatibility / hygiene signals.
+  rebuild removed) — forward-compatibility / hygiene signals. Endpoints
+  NeuralMind writes on purpose aren't graph nodes and aren't stale:
+  `community_<id>` for a community the index still has, `compliance:` keys,
+  and *(v4.9.1+)* the prose path's `query:<term>` nodes (written as
+  `query_<term>` before v4.9.1; those older edges still count as stale until
+  they decay).
 
 It also reports the IR contract version, source backend + producer schema
 version, coverage (`coarse`/`precise`), per-kind / per-language counts, and the
@@ -2604,6 +2613,21 @@ to be stored as 1.0). `restore` and `invalidate` exit 1 on an unknown id or a
 database error, where they printed a traceback or success. A `project_path`
 that doesn't exist exits 2 instead of creating an empty decision store.
 
+*(v4.9.1+)* `project_path` can also come after the options, as in
+`decisions restore ID --commit SHA path`. On Python 3.10 and 3.11, on 3.12
+before 3.12.7, and on 3.13.0, that failed with `unrecognized arguments` in
+`amend`, `invalidate`, `query` and `restore`, and in `memory review-approve` /
+`review-reject`.
+
+*(v4.9.2+)* `--` ends the options as usual, so a path that starts with `-`
+goes after it: `decisions restore ID --commit SHA -- -proj`. (v4.9.1 could
+ignore `--` in these six subcommands on Python 3.10, 3.11, 3.12 before 3.12.8
+and 3.13.0.) A list option (`--files`, `--rejected`, `--evidence`, `--tags`) takes
+every value up to the next option, so put `--` between it and a path that
+follows: `decisions amend ID --evidence proof.md -- path`. Without it the
+path is read as one more value, and the command runs on the current
+directory.
+
 `query` takes keywords or a question, matched against decision titles and
 rationales. `--mode` *(v4.8.0+)* picks the ranking:
 
@@ -3270,7 +3294,13 @@ neuralmind feedback bad .
 
 #### Prerequisites
 
-Requires a synapse store with edges from a previous query.
+Requires a synapse store with edges from a previous query. Feedback adjusts the
+last query recorded in `.neuralmind/recent_queries.jsonl`, and queries are
+recorded only while query memory is on. With memory off, `feedback` exits 1
+and says what turns memory on. *(v4.9.1+)* That holds even when older queries
+are still recorded: queries asked since memory went off weren't, so the last
+recorded one may not be the query you mean. `feedback` names it and when it
+was asked, and changes nothing.
 
 ### health *(v3.1.4+)*
 

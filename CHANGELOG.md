@@ -1,5 +1,36 @@
 # Changelog
 
+## [4.9.2](https://github.com/dfrostar/neuralmind/compare/v4.9.1...v4.9.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **cli:** keep "--" working with the project path after options ([#601](https://github.com/dfrostar/neuralmind/issues/601)) ([83aa5b4](https://github.com/dfrostar/neuralmind/commit/83aa5b4a6d9dda500b585216e67e5bdca5ad9a97))
+
+## [4.9.1](https://github.com/dfrostar/neuralmind/compare/v4.9.0...v4.9.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* the last four bug-hunt fixes: feedback with memory off, LTP counts, prose query nodes, path after options ([#595](https://github.com/dfrostar/neuralmind/issues/595)) ([62a38fa](https://github.com/dfrostar/neuralmind/commit/62a38fa878d590926480beeecf162be7b06ca239))
+
+## [4.9.0](https://github.com/dfrostar/neuralmind/compare/v4.8.2...v4.9.0) (2026-10-06)
+
+
+### Features
+
+* **hermes:** Hermes-Agent plugin — NeuralMind context in every turn, no tool call ([#589](https://github.com/dfrostar/neuralmind/issues/589)) ([347c963](https://github.com/dfrostar/neuralmind/commit/347c963dadb661f3c68342665a63d5a107a5def0))
+
+
+### Bug Fixes
+
+* GHCR :latest follows the newest release; the session recap breaks ties by mtime ([#594](https://github.com/dfrostar/neuralmind/issues/594)) ([7a1c90d](https://github.com/dfrostar/neuralmind/commit/7a1c90dcab518b4796282250622e7697216f0329))
+
+
+### Documentation
+
+* align FAQ and license files with commercial terms ([#571](https://github.com/dfrostar/neuralmind/issues/571)) ([af8055f](https://github.com/dfrostar/neuralmind/commit/af8055f1ccf613d7cf93a85b089b42e618e6348d))
+
 ## [4.8.2](https://github.com/dfrostar/neuralmind/compare/v4.8.1...v4.8.2) (2026-10-06)
 
 
