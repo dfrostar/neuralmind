@@ -568,9 +568,9 @@ queries:
 | | Tokens per query | Gold-file recall |
 |---|---:|---:|
 | Paste every source file | 41,729–232,483 | 100% |
-| NeuralMind | 711–928 | 85–100% per repo, 93.75% mean |
+| NeuralMind | 645–895 | 85.71–100% per repo, 95% mean |
 
-That is 45–261× fewer input tokens per query, not 45–261× less spend. The
+That is 46.6–262.1× fewer input tokens per query, not 46.6–262.1× less spend. The
 token ratio only becomes the cost ratio for uncached input billed per token.
 Prompt caching, flat-rate plans, and local models change the arithmetic, and
 output tokens are unaffected. Long context with prompt caching is the
@@ -582,7 +582,7 @@ took 232,483 tokens per query (counted with tiktoken `o200k_base`), more than
 a 200K-token window holds.
 
 The trade-off is recall. Pasting everything always includes the right file;
-NeuralMind missed at least one gold file in 4 of the 40 queries. A plain
+NeuralMind missed at least one gold file in 3 of the 40 queries. A plain
 top-k vector search over the same index used fewer tokens still, with equal
 or better recall, but without NeuralMind's project map and call edges. See
 [where NeuralMind loses](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses).
