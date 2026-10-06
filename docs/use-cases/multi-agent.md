@@ -79,7 +79,22 @@ for `neuralmind last`. Auto-active in every session.
 
 ```bash
 hermes mcp add  # or edit ~/.hermes/config.yaml
+neuralmind install-hermes-plugin /path/to/project   # v4.9.0+
 ```
+
+With the plugin, Hermes gets NeuralMind's recall and recorded decisions on
+every turn, and the session recap on a session's first turn, without calling a
+tool *(v4.9.0+)*. Its edits are recorded in the same `.neuralmind/` as Claude
+Code's, so the recap crosses between the two. The path pins that project for
+every Hermes session using that Hermes home, in any directory: sessions in
+other repositories record their prompts there too, and put their edited
+files' paths into its synapse store, from where `neuralmind memory publish`
+can carry them into the committed team-memory bundle. If you use Hermes across
+several projects, install without a path (or with `--unpin`, if you pinned one
+before), and the plugin follows the directory Hermes works in. That covers the
+terminal CLI and a standalone gateway; under Hermes Desktop, ACP editor
+sessions and per-session workspaces, pin a project or set `NEURALMIND_PROJECT`.
+See [Hermes-Agent with code memory in every turn](./hermes-agent.md).
 
 **OpenClaw:**
 

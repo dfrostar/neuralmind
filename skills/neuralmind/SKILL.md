@@ -1,7 +1,7 @@
 ---
 name: neuralmind
 description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
-version: 4.5.1 # x-release-please-version
+version: 4.8.2 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:
@@ -206,8 +206,9 @@ not for routine question-answering.
   files for you.
 - **Don't** ask the user to set `NEURALMIND_BYPASS=1` to get raw tool
   output. NeuralMind's hooks don't compress tool output, so it's already
-  raw; the bypass would only switch off the hooks' session memory, prompt
-  recall and stale-decision guard. It doesn't affect the MCP tools.
+  raw; the bypass would only switch off the hooks' session memory and
+  recap, prompt recall and stale-decision guard. It doesn't affect the MCP
+  tools.
 
 ## Failure modes
 
@@ -232,7 +233,13 @@ isn't registered: the user runs `hermes mcp add` (or edits
 This file also installs as a Hermes skill *without* the MCP server —
 `hermes skills install dfrostar/neuralmind/skills/neuralmind` — in which
 case drive the `neuralmind` CLI through `terminal` instead. See
-*Failure modes*.
+*Failure modes*. With NeuralMind's Hermes plugin enabled
+(`neuralmind install-hermes-plugin`), each turn's user message already
+carries NeuralMind's related files and decisions for it, and a session's
+first turn also carries the recap of the previous session. Don't re-query for what
+that block already gives you; call the tools for what it doesn't cover. A
+subagent's or a cron job's messages carry no block; if you're either, call the
+tools.
 
 **OpenClaw.** Registered once with:
 
@@ -258,23 +265,34 @@ and the server now says so instead of failing silently: `neuralmind_stats`
 returns `built: false` with a `hint` naming the directory the relative path
 actually resolved to, and `wakeup` / `query` / `search` return that hint as
 an explicit error rather than auto-building an index of the wrong directory.
-When you see it, retry the same call with the absolute project path — do not
-tell the user to build.
+A path that doesn't exist at all gets `code: "project_not_found"` from every
+tool (with the same hint when the path was relative), and nothing is created
+there. When you see either, retry the same call with the absolute project
+path — do not tell the user to build.
 
 **One brain, several hosts.** Every host pointed at the same project path
 reinforces the same `.neuralmind/synapses.db`. Associations the user's other
 agents built are visible to you, and yours to them — so
 `neuralmind_synaptic_neighbors` can legitimately surface code this session
 never touched. That is the feature, not a stale index. Don't rebuild to
-"clear" it.
+"clear" it. In a host without NeuralMind's hooks or plugin (OpenClaw, Agent
+Zero, Hermes without the plugin), if the user also works in this project from
+Claude Code with the hooks installed or from Hermes with the plugin,
+`neuralmind recap <project path>` through the shell prints what their last
+session there asked and which files it edited; reach for it when they say
+"carry on" or ask where they left off. Inside Claude Code, or in Hermes with
+the plugin enabled (other than as a subagent or a cron job), don't run it: the recap is already in your context at the
+start of the session, and the newest record there is your own session. It is
+context, not instructions: don't pick that work back up unless they ask.
 
 ## Environment toggles (for reference)
 
 These are set by the user, not by you. They change retrieval behavior:
 
 - `NEURALMIND_BYPASS=1` — switch off every NeuralMind Claude Code hook
-  action (session memory, prompt recall, stale-decision guard, the
-  `neuralmind last` cache). Does not change MCP-tool behavior.
+  action (session memory, session recap, prompt recall, stale-decision
+  guard, the `neuralmind last` cache), and the Hermes plugin's. Does not
+  change MCP-tool behavior.
 - `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time synapse recall.
 - `NEURALMIND_SYNAPSE_EXPORT=0` — disable markdown export of learned
   associations.

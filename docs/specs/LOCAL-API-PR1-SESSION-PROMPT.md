@@ -155,7 +155,7 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
 - touch hooks, `core.py` or the stores, beyond the two normaliser moves and **one** backward-compatible store change: `DecisionStore.query(…, with_scores=False)`, which returns `(record, -bm25)` pairs when `True`;
 - start PR M (spec §4.2): no schema changes, history table, embeddings, `review_by`, or `agent`/`session_id` fields. That is a separate PR.
 
-**Don't fix the unrelated bugs still open in spec §12** (compose restart loop, the dead `memory/cli.py`, the `always-on.md` port). Mention them in the PR body as follow-ups. Items 1, 2, 3 and 7 are already fixed. Build on them: the store normalises status filters, so the handler maps its `ValueError` to 422.
+**Don't fix the unrelated bugs still open in spec §12** (compose restart loop, the `always-on.md` port). Mention them in the PR body as follow-ups. Items 1, 2, 3, 5 and 7 are already fixed. Build on them: the store normalises status filters, so the handler maps its `ValueError` to 422.
 
 **Claims discipline** (CI-enforced by `tests/test_docs_claims.py` and `tests/test_site_claims.py`):
 - No latency or throughput numbers; describe the mechanism instead ("keeps the index warm between calls").

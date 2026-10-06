@@ -70,6 +70,8 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Measure memory across a refactor](https://docs.neuralmind.uk/use-cases/measure-memory-across-a-refactor.html)
 - [Keep decision memory honest across commits](https://docs.neuralmind.uk/use-cases/decision-memory-across-commits.html)
 - [Govern what your team's agents share](https://docs.neuralmind.uk/use-cases/govern-team-memory.html)
+- [Pick up where you left off](https://docs.neuralmind.uk/use-cases/pick-up-where-you-left-off.html)
+- [Hermes-Agent with code memory in every turn](https://docs.neuralmind.uk/use-cases/hermes-agent.html)
 
 ## Get it
 

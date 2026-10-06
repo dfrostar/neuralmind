@@ -216,17 +216,16 @@ try {
     neuralmind search . "CostTracker" 2>&1 | ForEach-Object { Log $_ }
     neuralmind search . "parse_args" 2>&1 | ForEach-Object { Log $_ }
     
-    # Generate audit reports
-    $auditJson = "$LogDir\audit_$(Split-Path $ProjectPath -Leaf)_$timestamp.json"
-    $auditMd = "$LogDir\audit_$(Split-Path $ProjectPath -Leaf)_$timestamp.md"
+    # Export the audit log and check its hash chain
+    $auditJsonl = "$LogDir\audit_$(Split-Path $ProjectPath -Leaf)_$timestamp.jsonl"
     
-    Log "Generating audit reports..."
-    neuralmind audit-report . --format json --output $auditJson 2>&1 | ForEach-Object { Log $_ }
-    neuralmind audit-report . --format markdown --output $auditMd 2>&1 | ForEach-Object { Log $_ }
+    Log "Exporting audit log..."
+    neuralmind audit export . --format jsonl -o $auditJsonl 2>&1 | ForEach-Object { Log $_ }
+    neuralmind audit verify . 2>&1 | ForEach-Object { Log $_ }
     
     Log "=== Run Complete ==="
     Log "Logs saved to: $logFile"
-    Log "Audit reports: $auditJson, $auditMd"
+    Log "Audit export: $auditJsonl"
     
 } catch {
     Log "ERROR: $_"
@@ -299,8 +298,8 @@ set LOGFILE=%LOGDIR%\neuralmind-%mydate%_%mytime%.log
 cd /d "%PROJECT_PATH%"
 echo Running NeuralMind Suite on %PROJECT_PATH% >> %LOGFILE%
 neuralmind wakeup . >> %LOGFILE% 2>&1
-neuralmind audit-report . --format json --output %LOGDIR%\audit.json >> %LOGFILE% 2>&1
-neuralmind audit-report . --format markdown --output %LOGDIR%\audit.md >> %LOGFILE% 2>&1
+neuralmind audit export . --format jsonl -o %LOGDIR%\audit.jsonl >> %LOGFILE% 2>&1
+neuralmind audit verify . >> %LOGFILE% 2>&1
 echo Done >> %LOGFILE%
 ```
 
@@ -369,8 +368,7 @@ jobs:
           mkdir -p neuralmind-audit
           neuralmind wakeup . > neuralmind-audit/wakeup.txt
           neuralmind query . "How does the cost tracking work?" > neuralmind-audit/cost-tracking.txt
-          neuralmind audit-report . --format json --output neuralmind-audit/audit.json
-          neuralmind audit-report . --format markdown --output neuralmind-audit/audit.md
+          neuralmind audit export . --format jsonl -o neuralmind-audit/audit.jsonl
       
       - name: Upload audit artifacts
         uses: actions/upload-artifact@v3
@@ -379,6 +377,10 @@ jobs:
           path: neuralmind-audit/
           retention-days: 30
 ```
+
+A CI runner starts without `.neuralmind/`, so the exported audit log covers
+only that run's own build, wakeup, and query. To audit how agents use
+NeuralMind day to day, export the log on the machines where they run.
 
 ### Multi-Project Setup
 
@@ -431,7 +433,7 @@ jobs:
           cd ${{ matrix.project.path }}
           mkdir -p ../neuralmind-audit-${{ matrix.project.name }}
           neuralmind wakeup . > ../neuralmind-audit-${{ matrix.project.name }}/audit.txt
-          neuralmind audit-report . --format json --output ../neuralmind-audit-${{ matrix.project.name }}/audit.json
+          neuralmind audit export . --format jsonl -o ../neuralmind-audit-${{ matrix.project.name }}/audit.jsonl
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -460,8 +462,8 @@ Add entries for each project:
 # Daily at 3 AM - neuralmind repo
 0 3 * * * cd ~/projects/neuralmind && neuralmind wakeup . >> ~/neuralmind-logs/neuralmind.log 2>&1
 
-# Weekly audit reports - every Sunday at 1 AM
-0 1 * * 0 cd ~/projects/video_toolkit && neuralmind audit-report . --format json --output ~/neuralmind-logs/audit-$(date +\%Y\%m\%d).json 2>&1
+# Weekly audit export - every Sunday at 1 AM
+0 1 * * 0 cd ~/projects/video_toolkit && neuralmind audit export . --format jsonl -o ~/neuralmind-logs/audit-$(date +\%Y\%m\%d).jsonl 2>&1
 
 # Weekly memory freshness rebuild - every Sunday at 12:30 AM
 30 0 * * 0 cd ~/projects/video_toolkit && neuralmind build . >> ~/neuralmind-logs/video_toolkit-build.log 2>&1
@@ -496,7 +498,7 @@ for PROJECT in "${PROJECTS[@]}"; do
     cd "$PROJECT"
     echo "=== NeuralMind run for $PROJECT at $TIMESTAMP ===" >> "$LOGFILE"
     neuralmind wakeup . >> "$LOGFILE" 2>&1
-    neuralmind audit-report . --format json --output "$LOGDIR/audit-$(basename $PROJECT)-$TIMESTAMP.json" >> "$LOGFILE" 2>&1
+    neuralmind audit export . --format jsonl -o "$LOGDIR/audit-$(basename $PROJECT)-$TIMESTAMP.jsonl" >> "$LOGFILE" 2>&1
     echo "Complete" >> "$LOGFILE"
 done
 ```
@@ -525,7 +527,7 @@ projects:
     schedule: "0 2 * * *"  # 2 AM daily
     commands:
       - wakeup
-      - audit-report
+      - audit export
       - query: "How does the cost tracking work?"
   
   - name: neuralmind
@@ -533,7 +535,7 @@ projects:
     schedule: "0 3 * * *"  # 3 AM daily
     commands:
       - wakeup
-      - audit-report
+      - audit export
       - search: "CostTracker"
   
   - name: ibkr-traderbot
@@ -617,16 +619,21 @@ foreach ($projectPath in $projects) {
     try {
         Push-Location $projectPath
         
+        # A native command's non-zero exit doesn't trigger catch, and the next
+        # command overwrites $LASTEXITCODE, so check it after every step.
+        
         # Run wakeup
         neuralmind wakeup . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        if ($LASTEXITCODE -ne 0) { throw "wakeup failed (exit $LASTEXITCODE)" }
         
-        # Generate audit reports
+        # Export the audit log and check its hash chain
         $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
-        $auditJson = "$LogDir\audit_${projectName}_$timestamp.json"
-        $auditMd = "$LogDir\audit_${projectName}_$timestamp.md"
+        $auditJsonl = "$LogDir\audit_${projectName}_$timestamp.jsonl"
         
-        neuralmind audit-report . --format json --output $auditJson 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
-        neuralmind audit-report . --format markdown --output $auditMd 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        neuralmind audit export . --format jsonl -o $auditJsonl 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        if ($LASTEXITCODE -ne 0) { throw "audit export failed (exit $LASTEXITCODE)" }
+        neuralmind audit verify . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        if ($LASTEXITCODE -ne 0) { throw "audit verify failed (exit $LASTEXITCODE)" }
         
         Log "✓ Completed: $projectName"
     } catch {
@@ -657,7 +664,7 @@ Register-ScheduledTask -TaskName "NeuralMind Suite - Auto-Discovery" -Trigger $t
 **How it works:**
 1. Scans `C:\Users\dtfro\claudecode` for all subdirectories
 2. Identifies projects that have been initialized with NeuralMind (have `neuralmind.db/`)
-3. Runs wakeup + audit-report on each project
+3. Runs wakeup, audit export, and audit verify on each project
 4. Logs all output to `Documents\neuralmind-logs\`
 5. **No manual task updates needed** — new projects are picked up automatically
 
@@ -698,12 +705,15 @@ for project_path in "${projects[@]}"; do
     
     log "Processing: $project_name"
     
+    # Chain with && so a failing step, such as `audit verify` finding a broken
+    # hash chain, reaches the || below. (`set -e` is ignored inside a subshell
+    # on the left of ||.)
     (
-        cd "$project_path"
-        neuralmind wakeup . >> "$project_log" 2>&1
-        timestamp=$(date +%Y-%m-%d_%H%M%S)
-        neuralmind audit-report . --format json --output "$LOG_DIR/audit_${project_name}_$timestamp.json" >> "$project_log" 2>&1
-        neuralmind audit-report . --format markdown --output "$LOG_DIR/audit_${project_name}_$timestamp.md" >> "$project_log" 2>&1
+        cd "$project_path" &&
+        neuralmind wakeup . >> "$project_log" 2>&1 &&
+        timestamp=$(date +%Y-%m-%d_%H%M%S) &&
+        neuralmind audit export . --format jsonl -o "$LOG_DIR/audit_${project_name}_$timestamp.jsonl" >> "$project_log" 2>&1 &&
+        neuralmind audit verify . >> "$project_log" 2>&1 &&
         log "✓ Completed: $project_name"
     ) || log "✗ Error on $project_name"
 done
@@ -826,7 +836,7 @@ $repos = @(
 $projectPath = "C:\Users\dtfro\claudecode\video_toolkit"
 cd $projectPath
 neuralmind wakeup . 
-neuralmind audit-report . --format json --output "$env:USERPROFILE\Documents\neuralmind-audit-$(Get-Date -Format 'yyyyMMdd').json"
+neuralmind audit export . --format jsonl -o "$env:USERPROFILE\Documents\neuralmind-audit-$(Get-Date -Format 'yyyyMMdd').jsonl"
 ```
 
 Register:

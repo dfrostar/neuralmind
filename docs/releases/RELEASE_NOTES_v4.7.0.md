@@ -1,133 +1,157 @@
-# NeuralMind v4.7.0
+# NeuralMind v4.7.0 — MCP roles bound to OS accounts, and a check for encrypted storage
 
-**Date:** 2026-10-03 | **Type:** Minor release (one opt-in feature, one fix)
+**Type:** Minor release | **Theme:** CMMC 2.0 readiness
 
-An opt-in mode in which a PostToolUse hook replaces tool output rather than
-adding to it, for one kind of output only: the progress lines of an install or
-an index build. It is off by default, and the
-[compression benchmark](../benchmarks/compression.md) gates it: every output it
-replaces has to keep the lines pre-registered as the ones a reader needs. With
-the variable unset, the hooks behave exactly as before: they inject nothing.
+Until this release, every MCP tool call named its own `actor` and `role`, and
+nothing checked either: any caller could declare `admin`. NeuralMind also left
+encryption at rest entirely to the host, with no way to confirm it was there.
+Both gaps came up when mapping NeuralMind to CMMC 2.0 Level 2 for teams that
+index source code containing Controlled Unclassified Information (CUI).
 
-## Opt-in: noisy install logs, trimmed (`NEURALMIND_BASH_REPLACE=1`)
+1. **`security.identity: os` ties MCP roles to OS accounts.** The server takes
+   the caller's identity from the OS account it runs as — over the default
+   stdio transport, the agent that launched it — and the role from
+   `security.users`. What a call declares is ignored and kept in the audit log
+   as a claim.
+2. **`security.require_encrypted_storage: true` refuses unverified volumes.**
+   NeuralMind checks for FileVault, BitLocker, or dm-crypt/LUKS and refuses to
+   build, query, serve MCP tools, or run hooks until the check passes.
+3. **`neuralmind doctor` reports both** as two new checks: *Security policy*
+   and *Storage encryption*.
 
-The earlier hooks returned compressed text as `additionalContext`, which Claude
-Code adds next to the tool result, so they cost tokens. This one returns
-`updatedToolOutput`, which Claude Code uses *instead of* the result. Because a
-replacement can hide what an agent needs, it is narrow on purpose:
+Nothing changes for a project that doesn't set these keys. Both build on
+[v4.6.1](RELEASE_NOTES_v4.6.1.md), which made the MCP server apply
+`security.roles` and `security.rate_limit` at all.
 
-- **An allowlist of commands, not a size threshold:** `pip install` (also
-  `python -m pip install`) and `neuralmind build`, run on their own. `cd`,
-  `source .venv/bin/activate` or variable assignments may come first. A pipe, a
-  redirect, `||`, a subshell or a second command (`pip install -e . && pytest`)
-  leaves the output whole, and so does every other command.
-- **Removes known noise, keeps everything else:** only lines matching that
-  tool's progress patterns go (pip's `Collecting`, `Downloading`, progress
-  bars, build steps, and `Requirement already satisfied` for a dependency).
-  Every other line reaches Claude as printed, and a line mentioning an error,
-  warning, failure or deprecation is never removed.
-- **The rest is one Read away:** the full output, credentials redacted, is kept in its
-  own file under `.neuralmind/bash_outputs/` (newest 20), and the replaced
-  result ends with that file's path. A later or parallel Bash call can't
-  overwrite it, unlike the single `neuralmind last` slot, which works as before.
-  If the file can't be written, nothing is replaced.
-- **Leaves Claude Code's own handling alone:** results Claude Code already moved
-  to a file (over about 30,000 characters), interrupted, backgrounded or image
-  results, and results trimming wouldn't shrink pass through untouched. The
-  replacement copies the Bash result and swaps only `stdout` and `stderr`, so it
-  keeps the tool's output shape. A failed command fires `PostToolUseFailure`,
-  which no hook can shrink, so a failure reaches Claude exactly as Claude Code
-  delivers it.
+---
 
-## What Claude sees
+## 1. Identity from the OS, not from the call
 
-A fresh `pip install -r requirements.txt` reaches Claude as 77 lines, mostly
-`Collecting …`, `Downloading …` and progress bars. With the opt-in it is:
-
-```text
-[neuralmind: 74 progress lines elided: Collecting ×24, Downloading ×48, progress bar ×2]
-Installing collected packages: urllib3, typing-extensions, pygments, …
-Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.4 … requests-2.32.3 rich-13.9.4 …
-[neuralmind: pip install progress lines elided where marked; every other line is verbatim. Full output: /path/to/project/.neuralmind/bash_outputs/33026abbedf96248.txt]
+```yaml
+# neuralmind-backend.yaml
+security:
+  identity: os
+  users:
+    alice: builder
+    bob: reader
+  default_role: reader      # optional; unset refuses accounts missing from users
 ```
 
-## Measured
+The account name comes from the OS: the passwd entry for the effective uid on
+Linux and macOS, `GetUserNameW` on Windows. `LOGNAME`, `USER` and `USERNAME` are
+not consulted, because the process that launches the server sets them.
 
-On the [compression benchmark](../benchmarks/compression.md), which drives the
-real hook with Claude Code-shaped payloads over a committed corpus of real
-command outputs:
+NeuralMind refuses every MCP call, with `reason: identity`, when:
 
-| Bash calls | Calls | Replaced | Tokens, no hook | Tokens, opt-in | Change |
-|---|---:|---:|---:|---:|---:|
-| Noisy logs (installs, builds) | 5 | 4 | 8,253 | 1,490 | −81.9% |
-| Content (tests, diagnostics, diffs, listings, files, searches) | 14 | 0 | 31,473 | 31,473 | +0.0% |
+- the HTTP transport is in use (`NEURALMIND_MCP_TRANSPORT=streamable_http`):
+  the server's OS account is not the remote caller's;
+- the OS account can't be determined;
+- the account isn't in `users` and `default_role` is unset;
+- the policy file is world-writable (POSIX), since any local user could edit
+  the role mapping;
+- `identity` has a value other than `declared` or `os`, or `users` isn't a
+  mapping.
 
-- **Per noisy-log call:** mean −54.8%, from −96.5% (`pip install -e ".[dev]"`
-  with its dependencies present) to 0% (`next build`, which isn't on the
-  allowlist).
-- **What survives:** every pre-registered must-keep line of the four replaced
-  calls reaches Claude. Read and Grep results are never replaced.
-- **Gated in CI:** `tests/test_compression_benchmark.py` recomputes the Bash
-  calls on every run. It fails if a replaced call keeps under 95% of its
-  must-keep lines, if any content output, Read or Grep result is replaced, if
-  any call costs more tokens than with no hook, or if a hook response isn't
-  valid JSON.
-- **Checked in Claude Code 2.1.287:** in a headless session, with the variable
-  set only in the project's `.claude/settings.json`, the model received the
-  trimmed result. Asked about an elided line, it read the kept file. These were
-  single runs, a mechanism check rather than a measurement.
-- **Limits:** five commands from two tools is a small corpus. When a task
-  does need an elided line, the follow-up read costs more than the original
-  output did, and the benchmark measures calls, not sessions.
+A policy file that names `identity` or `require_encrypted_storage` but doesn't
+parse is refused too. The general config loader treats a broken file as empty,
+which would quietly switch enforcement off.
 
-## Turning it on
+The rate limit keys on the OS account under `identity: os`, so a caller can't
+reset its budget by declaring a different actor. Audit events written outside
+MCP (CLI queries, builds) also take the OS account as their actor;
+`NEURALMIND_ACTOR` is recorded as `claimed_actor` instead of being believed.
 
-Hooks inherit Claude Code's environment. Set the variable in
-`.claude/settings.json`, or in your shell before launching `claude`:
+**What it does not do.** Anyone who can run commands as that OS account can
+also read `.neuralmind/` directly and edit a policy file they own. `identity:
+os` makes per-user roles and audit attribution trustworthy on a host where an
+administrator owns the policy file and users have separate accounts. On a
+single-user laptop its value is attribution: the agent can no longer write a
+different name into the audit log.
+
+## 2. Encrypted storage, verified
+
+NeuralMind does not encrypt `.neuralmind/` itself. CMMC SC.L2-3.13.11 asks for
+FIPS-validated cryptography, and the OpenSSL inside a pip-installed
+`cryptography` wheel is not FIPS-validated, so in-process encryption would not
+satisfy the control. The accepted answer is the OS's full-disk encryption, and
+NeuralMind now verifies it:
+
+| OS | What counts as encrypted | FIPS mode reported from |
+|----|--------------------------|-------------------------|
+| macOS | `diskutil` reports FileVault on for the volume. Apple silicon encrypts internal disks in hardware even with FileVault off, but then the key isn't protected by a password, so that doesn't count | Not reported: macOS has no FIPS switch. FileVault uses Apple corecrypto; check Apple's CMVP certificates for your macOS version |
+| Linux | `lsblk` shows a `crypt` layer under the filesystem holding the project | `/proc/sys/crypto/fips_enabled` |
+| Windows | BitLocker protection on for the drive | The `FipsAlgorithmPolicy` registry value |
+
+The check covers every place NeuralMind's state can land: the project root,
+`.neuralmind/` (following a symlink to wherever it points), and a custom vector
+index location from `db_path`, whether passed in, configured, or set by a
+backend switch. Anything short of a positive answer — a check that times out,
+an overlay filesystem in a container, BitLocker suspended — counts as not
+verified. Only an explicit `false` (or `0`, `no`, `off`) turns the setting off;
+a blank `require_encrypted_storage:` counts as on. The
+verdict is written to the audit log once per process as a `storage_check`
+event, which gives an assessor a dated record.
+
+With `require_encrypted_storage: true` and an unverified volume:
+
+- `neuralmind build` and `neuralmind query` exit with the reason;
+- MCP tools return `security_denied` with `reason: storage`;
+- hooks write nothing (no output cache, no synapse transitions) and stay out of
+  the agent's way;
+- the decision store won't open.
+
+## 3. Malformed policies under the new settings
+
+v4.6.1 refuses a `security:` value of the wrong type with `reason: config`. In
+v4.7.0 the MCP dispatcher checks for that before the storage check, so a broken
+policy is reported as the cause rather than as a storage refusal it also
+triggers. A file that names `identity` or `require_encrypted_storage` but
+doesn't parse is refused too; other unparseable files still read as empty, as
+in v4.6.1.
+
+## What the agent actually sees post-install
+
+Nothing, unless the project sets the new keys.
+
+With `identity: os`, a tool call that declares `role: admin` runs with the role
+`security.users` gives the OS account. A tool outside that role returns:
 
 ```json
-{
-  "env": { "NEURALMIND_BASH_REPLACE": "1" }
-}
+{"error": "Access denied for role 'reader' on tool 'neuralmind_build'", "code": "security_denied", "reason": "rbac"}
 ```
 
-No reinstall is needed: the registered `compress-bash` hook reads the variable
-on every call. `NEURALMIND_BYPASS=1` still switches off every hook action,
-this one included.
+An account with no role, or the HTTP transport, returns `reason: identity`.
+With `require_encrypted_storage` on an unverified volume, every tool returns
+`reason: storage`, with the check's detail in `error`.
 
-## What the agent actually sees after upgrading
+| Agent | Transport | `identity: os` | `require_encrypted_storage` |
+|-------|-----------|----------------|-----------------------------|
+| Claude Code | stdio | Works: the server runs as the developer's account | MCP tools and hooks both refuse on an unverified volume |
+| Cursor | stdio | Works | MCP tools refuse; Cursor runs no NeuralMind hooks |
+| Cline | stdio | Works | MCP tools refuse |
+| Generic MCP client | stdio | Works | MCP tools refuse |
+| Any client over Streamable HTTP | HTTP | Refused: the server can't identify a remote caller | MCP tools refuse |
 
-| Agent | Variable unset (default) | `NEURALMIND_BASH_REPLACE=1` |
-|---|---|---|
-| Claude Code | The tool result alone, as before | `pip install` and `neuralmind build` results without their progress lines, ending with the path of the full output; every other result unchanged |
-| Cursor, Cline, Continue, Codex, any MCP client | Unaffected: these are Claude Code hooks | Unaffected |
+## Environment variables
 
-## Fixed
+None added. `NEURALMIND_MCP_TRANSPORT=streamable_http` is now refused under
+`identity: os`. Under `identity: os`, `NEURALMIND_ACTOR` no longer sets the
+audit actor; it is recorded as `claimed_actor`.
 
-- **Read transitions.** The Read hook's file-to-file transition tracking looked
-  for the file's text under top-level keys, but Claude Code's Read payload
-  nests it under `file.content`, so real Read calls never recorded a step
-  between files. They do now. Image, PDF and notebook reads, and files under
-  `.neuralmind/`, are skipped. The hook still returns nothing.
+## Upgrade notes
 
-## New in the repo
+- No action is needed if `neuralmind-backend.yaml` has no `security:` section.
+- To adopt `identity: os`, list each OS account in `users`, make the file
+  writable only by its owner (`chmod 644`), and run `neuralmind doctor` to see
+  the role your account gets.
+- To adopt `require_encrypted_storage`, run `neuralmind doctor` first. The
+  *Storage encryption* line shows what the check sees on each machine,
+  including CI runners, which usually aren't encrypted.
 
-- `evals/compression/run.py` measures a fourth arm, the hooks with the opt-in
-  set, on every Read, Bash and Grep call, and exits non-zero if a gate fails.
-- The Bash corpus gains three real `pip install` logs, and every entry now
-  pre-registers whether it is a `content` output or a `noisy-log`. The install
-  logs' must-keep lines were committed before the trimming code.
-- `python -m evals.compression.capture_bash --only <ids>` captures new corpus
-  entries without re-capturing the rest, so existing figures don't move.
-- New `NEURALMIND_BASH_REPLACE` row in the
-  [CLI reference](../wiki/CLI-Reference.md#environment-variables).
+## Related
 
-## Not changed
-
-- The default: with the variable unset, the Read, Bash and Grep hooks inject
-  nothing, and the Bash hook still caches the latest successful output for
-  `neuralmind last`.
-- The compressor functions (`compress_bash`, `compress_read`,
-  `cap_search_results`, `offload_if_large`) stay in the Python API and are
-  still measured as a hypothetical arm. The opt-in doesn't use them: it removes
-  noise rather than keeping signal.
+- [CMMC 2.0 practice mapping](../COMPLIANCE-SUMMARY.md) — what NeuralMind
+  provides for each Level 2 practice, and what stays yours
+- [Security settings reference](../wiki/CLI-Reference.md)
+- [Use case: NeuralMind in a CMMC CUI enclave](../use-cases/cmmc-cui-enclave.md)
+- [Security Guide — Access Control](../SECURITY-GUIDE.md#access-control)

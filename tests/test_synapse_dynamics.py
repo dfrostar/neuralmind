@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import threading
 import time
 
 from neuralmind.synapse_dynamics import (
+    RESOURCE_CONSUMPTION,
     RESOURCE_INITIAL,
+    SAMPL_DEPRESSION_SCALE,
     STC_TAG_INITIAL,
     SynapseDynamics,
 )
@@ -70,6 +73,26 @@ class TestLateralInhibition:
         results_dict = dict(d.spread([("A", 1.0)], top_k=10))
         assert "B" in results_dict
         assert "C" in results_dict
+
+    def test_inhibition_keeps_the_winner_among_many_weak_competitors(self, tmp_path):
+        # Every result was inhibited by the sum of all the others, the winner
+        # included, so enough weak competitors drove every score to 0 and
+        # spread() returned [] exactly when sharpening mattered most.
+        d = _dynamics(tmp_path)
+        for _ in range(3):
+            d.store.reinforce(["A", "W"])
+        for i in range(20):
+            d.store.reinforce(["A", f"N{i}"])
+        raw = dict(d.store.spread([("A", 1.0)], top_k=30))
+
+        results = d.spread([("A", 1.0)], top_k=10)
+
+        assert len(results) == 10
+        winner, score = results[0]
+        assert winner == "W"
+        assert abs(score - raw["W"]) < 1e-9  # nothing stronger to inhibit it
+        for node, weaker in results[1:]:
+            assert 0.0 < weaker < raw[node]  # weaker competitors are suppressed
 
     def test_inhibition_respects_seed_set(self, tmp_path):
         d = _dynamics(tmp_path, enable_fok=False)
@@ -174,6 +197,32 @@ class TestSAMPL:
         after = dict(d.store.neighbors("A")).get("D", 0.0)
         assert after <= before + 1e-9  # should not increase
 
+    def test_retrieval_depresses_the_competitor_edge_that_exists(self, tmp_path):
+        # D competes with A for the shared cue B. Depression used to target
+        # the A-D edge, which by construction doesn't exist (D is not A's
+        # neighbor), so nothing changed while the call reported a count.
+        d = _dynamics(tmp_path, enable_fok=False)
+        for _ in range(5):
+            d.store.reinforce(["A", "B"])
+            d.store.reinforce(["B", "D"])
+        assert dict(d.store.neighbors("B")) == {"A": 1.0, "D": 1.0}
+
+        assert d.apply_sampl_depression("A") == 1
+
+        weights = dict(d.store.neighbors("B"))
+        assert weights["A"] == 1.0  # the retrieved association is untouched
+        assert abs(weights["D"] - (1.0 - SAMPL_DEPRESSION_SCALE)) < 1e-9
+
+    def test_depression_lands_in_the_namespaces_it_read(self, tmp_path):
+        d = _dynamics(tmp_path, enable_fok=False)
+        for _ in range(5):
+            d.store.reinforce(["A", "B"], namespace="branch:x")
+            d.store.reinforce(["B", "D"], namespace="branch:x")
+
+        assert d.apply_sampl_depression("A", namespaces=["branch:x"]) == 1
+        weights = dict(d.store.neighbors("B", namespaces=["branch:x"]))
+        assert abs(weights["D"] - (1.0 - SAMPL_DEPRESSION_SCALE)) < 1e-9
+
     def test_no_depression_without_competitors(self, tmp_path):
         d = _dynamics(tmp_path)
         d.store.reinforce(["A", "B"])
@@ -202,6 +251,22 @@ class TestResourceSTDP:
             cur = conn.execute("SELECT resource_pool FROM node_resources WHERE node_id = 'A'")
             pool = float(cur.fetchone()[0])
             assert pool <= 0.1 + 1e-9  # RESOURCE_MIN_FLOOR
+
+    def test_spent_budget_blocks_potentiation_until_replenished(self, tmp_path):
+        # The pool was clamped to RESOURCE_MIN_FLOOR but "depleted" meant
+        # strictly below it, so the limit could never trigger.
+        d = _dynamics(tmp_path)
+        budget = int(RESOURCE_INITIAL / RESOURCE_CONSUMPTION)
+        for _ in range(budget):
+            assert d.reinforce_with_resources(["A", "B"]) == 1
+        # A has spent its budget: no new association forms, nothing is written.
+        assert d.reinforce_with_resources(["A", "C"]) == 0
+        assert "C" not in dict(d.store.neighbors("A"))
+        assert d.reinforce(["A", "C"]) == 0  # the unified path honors it too
+        # Replenishment lets potentiation resume.
+        d.replenish_resources()
+        assert d.reinforce_with_resources(["A", "C"]) == 1
+        assert "C" in dict(d.store.neighbors("A"))
 
     def test_replenish_restores_resources(self, tmp_path):
         d = _dynamics(tmp_path)
@@ -317,3 +382,70 @@ class TestFailOpen:
         assert pairs == 1
         results = d.spread([("A", 1.0)], top_k=10)
         assert isinstance(results, list)
+
+
+class TestSynapticTaggingConcurrency:
+    def test_tags_survive_a_concurrent_writer(self, tmp_path, monkeypatch):
+        # A deferred BEGIN that reads first fails its first write at once when
+        # another connection commits in between; the failure was swallowed and
+        # the tag silently lost. BEGIN IMMEDIATE makes the other writer wait.
+        from contextlib import contextmanager
+
+        d = _dynamics(tmp_path)
+        d.store.reinforce(["A", "B"])
+        assert d._ensure_schema()
+        other = SynapseStore(d.store.db_path)
+        go, done = threading.Event(), threading.Event()
+        errors: list[BaseException] = []
+
+        def writer():
+            go.wait(timeout=10)
+            try:
+                other.reinforce(["C", "D"])
+            except BaseException as exc:  # pragma: no cover - surfaced below
+                errors.append(exc)
+            finally:
+                done.set()
+
+        class CommitAfterFirstRead:
+            def __init__(self, conn):
+                self._c, self._in_txn, self._fired = conn, False, False
+
+            def execute(self, sql, *args):
+                cur = self._c.execute(sql, *args)
+                head = sql.lstrip().upper()
+                if head.startswith("BEGIN"):
+                    self._in_txn = True
+                elif self._in_txn and not self._fired and head.startswith("SELECT"):
+                    self._fired = True
+                    go.set()
+                    done.wait(timeout=0.5)  # blocks on our lock under IMMEDIATE
+                return cur
+
+            def __getattr__(self, name):
+                return getattr(self._c, name)
+
+        original = SynapseStore._connect
+
+        @contextmanager
+        def patched(store):
+            with original(store) as conn:
+                yield CommitAfterFirstRead(conn) if store is d.store else conn
+
+        monkeypatch.setattr(SynapseStore, "_connect", patched)
+        t = threading.Thread(target=writer)
+        t.start()
+        try:
+            d._apply_stc_tags([("A", "B")], DEFAULT_NAMESPACE, time.time())
+        finally:
+            go.set()
+            t.join(timeout=30)
+            monkeypatch.setattr(SynapseStore, "_connect", original)
+
+        assert not errors, errors
+        assert other.neighbors("C")  # the concurrent writer landed too
+        with d.store._connect() as conn:
+            rows = conn.execute(
+                "SELECT value FROM synapses_dynamics_meta WHERE key LIKE 'stc_tag:%'"
+            ).fetchall()
+        assert [float(r[0]) for r in rows] == [STC_TAG_INITIAL]

@@ -1,6 +1,6 @@
 # Tool-output compression benchmark
 
-Generated 2026-10-03 with NeuralMind 4.3.4 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
+Generated 2026-10-06 with NeuralMind 4.8.2 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
 
 Reproduce: `python -m evals.compression.run --out bench/compression`. Method and caveats: [docs/benchmarks/compression.md](../../docs/benchmarks/compression.md).
 
@@ -27,6 +27,7 @@ Must-keep lines that reach Claude on the replaced calls: lowest 100%, mean 100%.
 
 Gates (the run fails if any fails):
 
+- `noisy_logs_replaced`: >= 1 when the rows include noisy logs; measured 4 — pass
 - `replaced_bash_must_keep_min`: >= 0.95 on every replaced Bash call; measured 100% — pass
 - `content_bash_replaced`: 0; measured 0 — pass
 - `read_or_grep_replaced`: 0; measured 0 — pass
@@ -37,7 +38,7 @@ Gates (the run fails if any fails):
 
 | Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |
 |---|---:|---:|---:|---:|---|
-| Read (whole file) | 136 (110 compressed) | 597,002 | 79,008 | -86.8% | 93% of definitions named, 0% of source lines |
+| Read (whole file) | 136 (110 compressed) | 597,002 | 79,308 | -86.7% | 93% of definitions named, 0% of source lines |
 | Bash | 15 of 19 | 32,003 | 9,093 | -71.6% | 60% of must-keep lines |
 | Grep, content mode | 48 | 55,800 | 16,610 | -70.2% | 63% of matches |
 
@@ -50,9 +51,9 @@ Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claud
 | Repo | Files | Hook responded | Compressor output vs. no hook | Definitions named | Source lines kept |
 |---|---:|---:|---:|---:|---:|
 | click | 16 | 0 | -87.1% | 95% | 0% |
-| flask | 24 | 0 | -85.2% | 97% | 0% |
+| flask | 24 | 0 | -85.1% | 97% | 0% |
 | requests | 18 | 0 | -81.8% | 94% | 0% |
-| rich | 78 | 0 | -88.1% | 90% | 0% |
+| rich | 78 | 0 | -88.0% | 91% | 0% |
 
 ## Bash, per command
 

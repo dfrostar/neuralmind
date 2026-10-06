@@ -265,11 +265,12 @@ def test_savings_summary_empty(empty_project):
 
 def test_savings_summary_with_data(project_with_audit):
     result = savings_summary(project_path=project_with_audit)
-    # compute_savings counts all non-wakeup events (queries + ingestions) as "queries"
-    assert result["total_queries"] == 4  # 2 queries + 2 ingestions
-    assert result["total_tokens_used"] == 2000  # 1200 + 800 (ingestions have 0 tokens)
-    assert result["est_total_full_cost"] == 200_000  # 4 * 50K
-    assert result["total_tokens_saved"] == 198_000
+    # Only queries (and wakeups) count; ingestions are not turns that would
+    # have loaded the codebase, so they add no baseline cost.
+    assert result["total_queries"] == 2
+    assert result["total_tokens_used"] == 2000  # 1200 + 800
+    assert result["est_total_full_cost"] == 100_000  # 2 * 50K
+    assert result["total_tokens_saved"] == 98_000
 
 
 # ---------------------------------------------------------------------------

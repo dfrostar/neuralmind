@@ -22,20 +22,36 @@ from neuralmind.compliance_matcher import (
 
 
 def _get_diff_files(project_path: str | Path, base: str = "HEAD") -> list[str]:
-    """Get list of files changed in the current diff vs ``base``."""
+    """Get list of files changed in the current diff vs ``base``.
+
+    Paths are relative to ``project_path``: ``--relative`` with the ``.``
+    pathspec limits the diff to the project, so a project in a subdirectory
+    of a larger repository doesn't get repository-root paths (or changes
+    made outside it).
+    """
     # Validate base to prevent command injection via git ref
     import re as _re
 
     if not _re.match(r"^[a-zA-Z0-9_./^\-~@]+$", base):
         return []
     try:
-        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", "--relative", base, "--", "."]
         result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         return [f.strip() for f in result.splitlines() if f.strip()]
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
-            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            cmd = [
+                "git",
+                "-C",
+                str(project_path),
+                "diff",
+                "--cached",
+                "--name-only",
+                "--relative",
+                "--",
+                ".",
+            ]
             result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             return [f.strip() for f in result.splitlines() if f.strip()]
         except Exception:

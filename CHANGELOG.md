@@ -1,5 +1,82 @@
 # Changelog
 
+## [4.8.2](https://github.com/dfrostar/neuralmind/compare/v4.8.1...v4.8.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* low-severity bug-hunt fixes: missing project paths, decisions, servers, ingest, memory advice ([#590](https://github.com/dfrostar/neuralmind/issues/590)) ([424ea4f](https://github.com/dfrostar/neuralmind/commit/424ea4fc00ee88a02adaff1a38ccded64df02117))
+
+## [4.8.1](https://github.com/dfrostar/neuralmind/compare/v4.8.0...v4.8.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **audit:** reject records without a hash once the chain has started ([#581](https://github.com/dfrostar/neuralmind/issues/581)) ([454904f](https://github.com/dfrostar/neuralmind/commit/454904f4bbf62bdab4692942d2642ea7c9eced28))
+* **audit:** report the events `audit export -o` wrote, not the whole log ([#585](https://github.com/dfrostar/neuralmind/issues/585)) ([65ad0b9](https://github.com/dfrostar/neuralmind/commit/65ad0b9e3a0efae6b40549352137de2249f0d78e))
+* bug-hunt fixes (high + medium): installers, redaction, hooks, graph, retrieval, synapse learning ([#587](https://github.com/dfrostar/neuralmind/issues/587)) ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
+
+### Documentation
+
+* RELEASE_NOTES_v4.8.1.md (with [#581](https://github.com/dfrostar/neuralmind/issues/581)'s and [#585](https://github.com/dfrostar/neuralmind/issues/585)'s audit fixes), README, about.html, the docs hub, CLI reference and Security Guide. ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
+## [4.8.0](https://github.com/dfrostar/neuralmind/compare/v4.7.0...v4.8.0) (2026-10-05)
+
+
+### Features
+
+* **hooks:** session recap — a new Claude Code session starts with where the last one left off ([#583](https://github.com/dfrostar/neuralmind/issues/583)) ([169460f](https://github.com/dfrostar/neuralmind/commit/169460f149f35e0d4281010fc43ec1767e6eb20d))
+* **memory:** semantic and hybrid decision search ([#582](https://github.com/dfrostar/neuralmind/issues/582)) ([5d3c8a8](https://github.com/dfrostar/neuralmind/commit/5d3c8a8b46c52162348778f68a7e9d629400a59e))
+
+
+### Bug Fixes
+
+* **mcp:** refuse a policy file that doesn't parse, and an empty security or roles key ([#586](https://github.com/dfrostar/neuralmind/issues/586)) ([8c04111](https://github.com/dfrostar/neuralmind/commit/8c0411129c1ed1a363ad2501f770902579c26f4f))
+
+
+### Documentation
+
+* remove backend, TLS, and audit-command claims the code doesn't back ([#569](https://github.com/dfrostar/neuralmind/issues/569)) ([7aa1e00](https://github.com/dfrostar/neuralmind/commit/7aa1e001ad8daddcc5d1bfdce066dda78455e2f2))
+
+## [4.7.0](https://github.com/dfrostar/neuralmind/compare/v4.6.1...v4.7.0) (2026-10-05)
+
+
+### Features
+
+* **security:** bind MCP roles to OS accounts and require encrypted storage ([#574](https://github.com/dfrostar/neuralmind/issues/574)) ([63f5f3e](https://github.com/dfrostar/neuralmind/commit/63f5f3e142a779513660170683b6f146c07e3953))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([4959fb1](https://github.com/dfrostar/neuralmind/commit/4959fb12dbd47852730c221846e1ec633547d6a3))
+
+## [4.6.1](https://github.com/dfrostar/neuralmind/compare/v4.6.0...v4.6.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **mcp:** an empty security.roles grants nothing; refuse malformed policies ([#576](https://github.com/dfrostar/neuralmind/issues/576)) ([c7490d7](https://github.com/dfrostar/neuralmind/commit/c7490d79b57c5b3def441df2eb86a9eddd87caba))
+* **mcp:** apply security.roles and security.rate_limit from neuralmind-backend.yaml ([#573](https://github.com/dfrostar/neuralmind/issues/573)) ([b4c9886](https://github.com/dfrostar/neuralmind/commit/b4c98860214d196e39aeb15c1f5d1ea11685432d))
+
+
+### Documentation
+
+* v4.6.1 release notes; date the security.roles fix to v4.6.1 ([#580](https://github.com/dfrostar/neuralmind/issues/580)) ([0cdd745](https://github.com/dfrostar/neuralmind/commit/0cdd74563bb133abca74b7ff4fcc5ba6687bebd6))
+
+## [4.6.0](https://github.com/dfrostar/neuralmind/compare/v4.5.1...v4.6.0) (2026-10-04)
+
+
+### Features
+
+* one BM25 index for docs and code — spec 7 retrieval items, measured across 6 repos (v4.6.0) ([#550](https://github.com/dfrostar/neuralmind/issues/550)) ([516a5f4](https://github.com/dfrostar/neuralmind/commit/516a5f443b1cb0e5bfaaeb7b12c3f751ca9b91ce))
+* wire in read dedup, commit-time decision invalidation and team governance; remove dead co-access module; rebuild cognition loop ([#558](https://github.com/dfrostar/neuralmind/issues/558)) ([36a55fa](https://github.com/dfrostar/neuralmind/commit/36a55fa2a7bd9ad007d6fdbe5bcbef0007ae3458))
+
+
+### Documentation
+
+* align deployment guide and threat model with the code ([#567](https://github.com/dfrostar/neuralmind/issues/567)) ([5569d09](https://github.com/dfrostar/neuralmind/commit/5569d09d511212e5d80127815d441184f30c99cd))
+
 ## [4.5.1](https://github.com/dfrostar/neuralmind/compare/v4.5.0...v4.5.1) (2026-10-04)
 
 

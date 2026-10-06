@@ -33,6 +33,7 @@ Design notes:
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
 import logging
 import re
@@ -221,6 +222,100 @@ def _slug(text: str) -> str:
     return _SLUG_RE.sub("_", text).strip("_").lower()
 
 
+# --------------------------------------------------------------------------- #
+# Collision-only disambiguation. ``_slug`` folds case, punctuation and
+# non-ASCII, so two different files (``api/v1.py`` / ``api_v1.py``) or symbols
+# (``Foo`` / ``foo``, ``save`` / ``save!``, ``计算`` / ``处理``) can mint the same
+# id — and the second used to vanish into the first. Only the colliding ones
+# get a different id; every other id stays byte-identical, because learned
+# synapse memory is keyed by node id.
+# --------------------------------------------------------------------------- #
+_USLUG_RE = re.compile(r"[\W_]+")
+
+
+def _uslug(text: str) -> str:
+    """``_slug`` that keeps non-ASCII word characters (``安装`` stays ``安装``).
+
+    Only ASCII letters are lowercased, so for ASCII text it *is* ``_slug``, and
+    two texts with the same ``_uslug`` always share the same ``_slug``.
+    """
+    collapsed = _USLUG_RE.sub("_", text).strip("_")
+    return "".join(c.lower() if c.isascii() else c for c in collapsed)
+
+
+def _sha1_hex(text: str) -> str:
+    return hashlib.sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+
+def _alt_ids(prefix: str, name: str, suffix: str):
+    """Fallback ids, in order, for symbol ``name`` whose natural id
+    (``prefix + _slug(name) + suffix``) a different symbol already holds: its
+    non-ASCII spelling when the slug dropped characters (``calc_py__处理_fn``),
+    then a short stable hash of the name, then the full one."""
+    frag = _slug(name)
+    u = _uslug(name)
+    if u != frag and not u.isascii():
+        yield f"{prefix}{u}{suffix}"
+    digest = _sha1_hex(name)
+    for n in (8, len(digest)):
+        yield prefix + "_".join(p for p in (frag, digest[:n]) if p) + suffix
+
+
+def _file_alt_ids(rel: str):
+    """Fallback ids, in order, for a file whose natural id another file shares.
+
+    The extension stays last (``api_v1_<hash>_py``), so suffix-based
+    classification (``domains.classify_node``) still recognizes the file; an
+    all-non-ASCII stem keeps its characters (``docs_安装_md``).
+    """
+    u = _uslug(rel)
+    if u != _slug(rel) and not u.isascii():
+        yield u
+    head, dot, ext = rel.rpartition(".")
+    if not dot or "/" in ext:
+        head, ext = rel, ""
+    digest = _sha1_hex(rel)
+    for n in (8, len(digest)):
+        yield "_".join(p for p in (_slug(head), digest[:n], _slug(ext)) if p)
+
+
+def _is_api_spec(path: Path) -> bool:
+    """True when a YAML/JSON file is an OpenAPI/AsyncAPI spec (it gets a node)."""
+    return _load_api_spec(path) is not None
+
+
+def _file_id_overrides(root: Path, rels) -> dict[str, str]:
+    """Ids for files whose natural id (``_slug(rel)``) another file shares.
+
+    ``rels`` is every file that gets a file node in this build. *Every* member
+    of a colliding group is disambiguated — not "all but the first" — so a
+    file's id never depends on walk order, and never moves to a different file
+    when a collider appears. Files that collide with nothing are absent from
+    the result and keep ``_slug(rel)``.
+    """
+    groups: dict[str, set[str]] = {}
+    for rel in rels:
+        groups.setdefault(_slug(rel), set()).add(rel)
+    taken = set(groups)
+    out: dict[str, str] = {}
+    for natural in sorted(groups):
+        members = groups[natural]
+        if len(members) > 1:
+            # A YAML file that isn't an API spec emits no node, so can't collide.
+            members = {
+                m for m in members if not m.endswith((".yaml", ".yml")) or _is_api_spec(root / m)
+            }
+        if len(members) < 2:
+            continue
+        for rel in sorted(members):
+            for cand in _file_alt_ids(rel):
+                if cand not in taken:
+                    taken.add(cand)
+                    out[rel] = cand
+                    break
+    return out
+
+
 def _make_parser(language: str = "python"):
     """Construct a tree-sitter Parser bound to ``language``'s grammar.
 
@@ -255,17 +350,19 @@ def _parse_ignore_file(project_path: Path) -> tuple[str, ...]:
     return load_patterns(project_path, ".neuralmindignore")
 
 
-def _is_ignored(rel_path: str, patterns) -> bool:
+def _is_ignored(rel_path: str, patterns, is_dir: bool | None = None) -> bool:
     """Check if a project-relative path matches the ignore patterns.
 
     gitignore semantics: ``docs/`` matches a directory named docs at any
-    depth, ``/docs/`` only at the root, ``!keep.py`` re-includes.
+    depth, ``/docs/`` only at the root, ``!keep.py`` re-includes. Pass
+    ``is_dir`` when the caller knows it, for git's exact answer (see
+    :func:`neuralmind.ignore.matches`).
     """
     if not patterns:
         return False
     from neuralmind.ignore import matches
 
-    return matches(rel_path, tuple(patterns))
+    return matches(rel_path, tuple(patterns), is_dir=is_dir)
 
 
 # Code file suffixes considered "code" (vs prose). Used by detect_project_kind
@@ -294,10 +391,21 @@ def _walk_files(
     extra_ignores: tuple[str, ...],
     git_patterns: tuple[str, ...] = (),
 ) -> list[Path]:
-    """Directory walk: skip dot-dirs and ``ignores``, apply ignore patterns."""
-    out: list[Path] = []
+    """Directory walk: skip dot-dirs and ``ignores``, apply ignore patterns.
 
-    def walk(d: Path) -> None:
+    A symlinked directory is followed only if it resolves inside ``root`` to a
+    directory not walked already — so a link out of the project can't pull
+    foreign files in, and a link to an ancestor (``src/loop -> ..``) can't
+    recurse forever. Links are followed after every real directory, so a file
+    reachable both ways is listed once, under its real path.
+    """
+    out: list[Path] = []
+    real_root = root.resolve()
+    walked: set[Path] = set()  # resolved directories already walked
+    links: list[Path] = []  # symlinked directories, deferred
+
+    def walk(d: Path, real: Path) -> None:
+        walked.add(real)
         try:
             entries = sorted(d.iterdir(), key=lambda p: p.name)
         except (OSError, PermissionError):
@@ -312,15 +420,29 @@ def _walk_files(
             if p.is_dir():
                 if (
                     p.name not in ignores
-                    and not _is_ignored(rel, extra_ignores)
-                    and not _is_ignored(rel, git_patterns)
+                    and not _is_ignored(rel, extra_ignores, is_dir=True)
+                    and not _is_ignored(rel, git_patterns, is_dir=True)
                 ):
-                    walk(p)
+                    if p.is_symlink():
+                        links.append(p)
+                    else:
+                        walk(p, real / p.name)
             elif p.suffix in suffixes:
-                if not _is_ignored(rel, extra_ignores) and not _is_ignored(rel, git_patterns):
+                if not _is_ignored(rel, extra_ignores, is_dir=False) and not _is_ignored(
+                    rel, git_patterns, is_dir=False
+                ):
                     out.append(p)
 
-    walk(root)
+    walk(root, real_root)
+    while links:
+        pending, links = links, []
+        for link in pending:
+            try:
+                target = link.resolve()
+            except (OSError, RuntimeError):
+                continue
+            if target not in walked and target.is_relative_to(real_root):
+                walk(link, target)
     return out
 
 
@@ -350,7 +472,7 @@ def _listing_to_paths(
             continue
         # Directory-level .neuralmindignore patterns (``docs/``) match the
         # file's path too, so one check per file is enough.
-        if _is_ignored(rel, extra_ignores):
+        if _is_ignored(rel, extra_ignores, is_dir=False):
             continue
         out.append((tuple(rel.split("/")), parent.joinpath(name)))
     # Same order as the directory walk: per-level name order.
@@ -521,6 +643,51 @@ class _GraphBuilder:
         # file_id → {name → literal_value}: module-level string constants for
         # dynamic-import variable resolution (G1).
         self.file_constants: dict[str, dict[str, str]] = {}
+        # (rel, start_byte, end_byte, node type) of a definition → the node id
+        # pass 1 emitted for it, so pass 2 attributes a call to the definition
+        # that encloses it rather than to whichever same-named function it finds.
+        self.def_at: dict[tuple[str, int, int, str], str] = {}
+        # rel → file node id for the files whose natural id another file
+        # shares (``_file_id_overrides``); every other file is ``_slug(rel)``.
+        self.file_ids: dict[str, str] = {}
+        # symbol id → the raw name that claimed it this build (``sym_id``).
+        self._claims: dict[str, str] = {}
+        # Schema/spec files whose extractor raised; skipped, not fatal.
+        self.skipped_schema_files: list[str] = []
+
+    # -- ids --------------------------------------------------------------- #
+    def file_id(self, rel: str) -> str:
+        """The file node id for ``rel``."""
+        return self.file_ids.get(rel) or _slug(rel)
+
+    def sym_id(self, prefix: str, name: str, suffix: str = "") -> str:
+        """``prefix + _slug(name) + suffix`` — unless a *different* name already
+        holds that id (``Foo`` vs ``foo``, ``save`` vs ``save!``), in which case
+        the newcomer gets a stable disambiguated id. The same name always maps
+        to the same id, so overloads and declaration/definition pairs still
+        share one node, as before."""
+        natural = f"{prefix}{_slug(name)}{suffix}"
+        if self._claims.setdefault(natural, name) == name:
+            return natural
+        cand = natural
+        for cand in _alt_ids(prefix, name, suffix):
+            if self._claims.setdefault(cand, name) == name:
+                break
+        return cand
+
+    # -- definition positions ---------------------------------------------- #
+    def mark_def(self, rel: str, ts_node, node_id: str) -> None:
+        """Record that ``ts_node`` (a function/method definition) became ``node_id``."""
+        self.def_at[(rel, ts_node.start_byte, ts_node.end_byte, ts_node.type)] = node_id
+
+    def def_id(self, rel: str, ts_node, enclosing: str | None) -> str | None:
+        """The node id pass 1 emitted for the definition ``ts_node``.
+
+        A definition that got no node of its own (a function nested in another
+        function, a method of a local class) falls back to ``enclosing`` — its
+        calls belong to the nearest definition that does have a node.
+        """
+        return self.def_at.get((rel, ts_node.start_byte, ts_node.end_byte, ts_node.type), enclosing)
 
     # -- node/edge helpers ------------------------------------------------- #
     def add_node(
@@ -916,7 +1083,7 @@ def _add_doc_code_coupling(b: _GraphBuilder) -> None:
         if cn.get("file_type") != "code":
             continue
         sf = cn.get("source_file", "")
-        expected_id = _slug(sf) if sf else ""
+        expected_id = b.file_id(sf) if sf else ""
         if sf and cn["id"] == expected_id and sf not in code_file_nodes:
             code_file_nodes[sf] = cn["id"]
 
@@ -957,6 +1124,17 @@ def _add_doc_code_coupling(b: _GraphBuilder) -> None:
                 edges_added += 1
 
 
+def _read_doc_text(path: Path) -> str:
+    """Read a doc/schema file as text without failing on its encoding.
+
+    Decodes like code files (``_node_text``: UTF-8, ``errors="replace"``), so
+    one Latin-1 ``NOTES.md`` is still indexed with U+FFFD in place of the bad
+    bytes instead of aborting the whole build. ``utf-8-sig`` drops a leading
+    BOM that would otherwise hide the first heading. Raises ``OSError``.
+    """
+    return path.read_text(encoding="utf-8-sig", errors="replace")
+
+
 def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
     """Emit a ``document`` node for a markdown file plus one per heading.
 
@@ -972,10 +1150,10 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
       ``heading_level`` (1, 2, or 3) — for section-aware chunking/retrieval.
     """
     try:
-        text = md_path.read_text(encoding="utf-8")
+        text = _read_doc_text(md_path)
     except OSError:
         return
-    file_id = _slug(rel)
+    file_id = b.file_id(rel)
     b.add_node(file_id, md_path.name, "document", rel, 1)
 
     lines = text.splitlines()
@@ -1030,19 +1208,12 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
         node["heading_level"] = level
 
 
-def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
-    """Emit ``document`` nodes for an OpenAPI/AsyncAPI YAML or JSON spec.
-
-    Emits a file-level node plus one node per path/operation and one per
-    top-level schema component — the granularity agents actually query
-    (``POST /payments/charge``, ``schema:Payment``).
-    """
-    import json as _json
-
+def _load_api_spec(path: Path) -> dict | None:
+    """Parse ``path`` as an OpenAPI/AsyncAPI/Swagger spec; None if it isn't one."""
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
-        return
+        return None
 
     # Parse YAML or JSON without hard-requiring PyYAML: try yaml first, fall
     # back to json, silently skip if neither can parse it.
@@ -1053,58 +1224,73 @@ def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
         spec = yaml.safe_load(text)
     except Exception:
         try:
-            spec = _json.loads(text)
+            spec = json.loads(text)
         except Exception:
-            return
+            return None
 
     if not isinstance(spec, dict):
-        return
+        return None
     # Only index files that look like OpenAPI/AsyncAPI.
     if "openapi" not in spec and "asyncapi" not in spec and "swagger" not in spec:
+        return None
+    return spec
+
+
+def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Emit ``document`` nodes for an OpenAPI/AsyncAPI YAML or JSON spec.
+
+    Emits a file-level node plus one node per path/operation and one per
+    top-level schema component — the granularity agents actually query
+    (``POST /payments/charge``, ``schema:Payment``).
+    """
+    spec = _load_api_spec(path)
+    if spec is None:
         return
 
-    file_id = _slug(rel)
-    title = (
-        spec.get("info", {}).get("title", path.name)
-        if isinstance(spec.get("info"), dict)
-        else path.name
-    )
-    b.add_node(file_id, title, "document", rel, 1)
+    # YAML hands back whatever the author wrote — `title: 2024` is an int,
+    # `paths:` may be a list — so every label/key is coerced to str and every
+    # container type-checked: a malformed spec indexes what it can.
+    file_id = b.file_id(rel)
+    info = spec.get("info")
+    title = info.get("title") if isinstance(info, dict) else None
+    b.add_node(file_id, str(title) if title not in (None, "") else path.name, "document", rel, 1)
 
     # Paths / operations (OpenAPI 2/3)
-    for api_path, path_item in (spec.get("paths") or {}).items():
+    for api_path, path_item in _dict_items(spec.get("paths")):
         if not isinstance(path_item, dict):
             continue
+        api_path = str(api_path)
         for method in ("get", "post", "put", "patch", "delete", "head", "options", "trace"):
             op = path_item.get(method)
             if not isinstance(op, dict):
                 continue
             summary = op.get("summary") or op.get("operationId") or f"{method.upper()} {api_path}"
-            nid = f"{file_id}__{_slug(method + '_' + api_path)}"
-            b.add_node(nid, summary, "document", rel, 1)
+            nid = b.sym_id(f"{file_id}__", method + "_" + api_path)
+            b.add_node(nid, str(summary), "document", rel, 1)
             b.add_edge("contains", file_id, nid, rel, 1)
 
     # AsyncAPI channels
-    for channel, channel_item in (spec.get("channels") or {}).items():
+    for channel, channel_item in _dict_items(spec.get("channels")):
         if not isinstance(channel_item, dict):
             continue
-        nid = f"{file_id}__{_slug('channel_' + channel)}"
+        nid = b.sym_id(f"{file_id}__", f"channel_{channel}")
         b.add_node(nid, f"channel:{channel}", "document", rel, 1)
         b.add_edge("contains", file_id, nid, rel, 1)
 
-    # Schema components (OpenAPI 3.x)
-    schemas = {}
-    try:
-        schemas = spec.get("components", {}).get("schemas", {}) or {}
-    except AttributeError:
-        pass
-    # OpenAPI 2.x definitions
+    # Schema components (OpenAPI 3.x), else OpenAPI 2.x definitions
+    components = spec.get("components")
+    schemas = components.get("schemas") if isinstance(components, dict) else None
     if not schemas:
-        schemas = spec.get("definitions", {}) or {}
-    for schema_name in schemas:
-        nid = f"{file_id}__schema_{_slug(schema_name)}"
+        schemas = spec.get("definitions")
+    for schema_name, _schema in _dict_items(schemas):
+        nid = b.sym_id(f"{file_id}__schema_", str(schema_name))
         b.add_node(nid, f"schema:{schema_name}", "document", rel, 1)
         b.add_edge("contains", file_id, nid, rel, 1)
+
+
+def _dict_items(value: Any):
+    """``value.items()`` when it's a mapping, else nothing (a malformed spec)."""
+    return value.items() if isinstance(value, dict) else ()
 
 
 _SQL_CREATE_RE = re.compile(
@@ -1120,11 +1306,11 @@ def _extract_sql(b: _GraphBuilder, path: Path, rel: str) -> None:
     One node per CREATE TABLE/VIEW/PROCEDURE/FUNCTION/TRIGGER/INDEX/TYPE.
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
         return
 
-    file_id = _slug(rel)
+    file_id = b.file_id(rel)
     b.add_node(file_id, path.name, "document", rel, 1)
 
     for i, line in enumerate(text.splitlines(), 1):
@@ -1133,7 +1319,8 @@ def _extract_sql(b: _GraphBuilder, path: Path, rel: str) -> None:
             continue
         kind = m.group("kind").upper()
         name = m.group("name").strip('`"[]')
-        nid = f"{file_id}__{_slug(kind + '_' + name)}"
+        # SQL names are case-insensitive: USERS and users are one table.
+        nid = b.sym_id(f"{file_id}__", (kind + "_" + name).lower())
         b.add_node(nid, f"{kind}:{name}", "document", rel, i)
         b.add_edge("contains", file_id, nid, rel, i)
 
@@ -1150,38 +1337,38 @@ def _extract_proto(b: _GraphBuilder, path: Path, rel: str) -> None:
     One node per message, service, rpc, and enum.
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = _read_doc_text(path)
     except OSError:
         return
 
-    file_id = _slug(rel)
+    file_id = b.file_id(rel)
     b.add_node(file_id, path.name, "document", rel, 1)
 
     for m in _PROTO_MESSAGE_RE.finditer(text):
         name = m.group(1)
         line = text[: m.start()].count("\n") + 1
-        nid = f"{file_id}__msg_{_slug(name)}"
+        nid = b.sym_id(f"{file_id}__msg_", name)
         b.add_node(nid, f"message:{name}", "document", rel, line)
         b.add_edge("contains", file_id, nid, rel, line)
 
     for m in _PROTO_SERVICE_RE.finditer(text):
         name = m.group(1)
         line = text[: m.start()].count("\n") + 1
-        svc_id = f"{file_id}__svc_{_slug(name)}"
+        svc_id = b.sym_id(f"{file_id}__svc_", name)
         b.add_node(svc_id, f"service:{name}", "document", rel, line)
         b.add_edge("contains", file_id, svc_id, rel, line)
 
     for m in _PROTO_RPC_RE.finditer(text):
         name = m.group(1)
         line = text[: m.start()].count("\n") + 1
-        nid = f"{file_id}__rpc_{_slug(name)}"
+        nid = b.sym_id(f"{file_id}__rpc_", name)
         b.add_node(nid, f"rpc:{name}", "document", rel, line)
         b.add_edge("contains", file_id, nid, rel, line)
 
     for m in _PROTO_ENUM_RE.finditer(text):
         name = m.group(1)
         line = text[: m.start()].count("\n") + 1
-        nid = f"{file_id}__enum_{_slug(name)}"
+        nid = b.sym_id(f"{file_id}__enum_", name)
         b.add_node(nid, f"enum:{name}", "document", rel, line)
         b.add_edge("contains", file_id, nid, rel, line)
 
@@ -1194,6 +1381,28 @@ _SCHEMA_EXTRACTORS: dict[str, Any] = {
     ".sql": _extract_sql,
     ".proto": _extract_proto,
 }
+
+
+def _extract_schema_file(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Run ``path``'s schema extractor. A spec it can't handle is skipped and
+    recorded on ``b.skipped_schema_files``, never fatal — one odd file must not
+    abort the build.
+
+    The log line carries only a count. A parser's message, and so its
+    traceback, can quote the file's text, which may hold a secret. Its path
+    can be just as revealing.
+    """
+    extractor = _SCHEMA_EXTRACTORS.get(path.suffix)
+    if extractor is None:
+        return
+    try:
+        extractor(b, path, rel)
+    except Exception:
+        b.skipped_schema_files.append(rel)
+        logger.debug(
+            "skipped a schema file its extractor couldn't read (%d this build)",
+            len(b.skipped_schema_files),
+        )
 
 
 def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None = None) -> None:
@@ -1270,6 +1479,84 @@ def _module_dotted(rel: str) -> str:
     if parts and parts[-1] == "__init__":
         parts = parts[:-1]
     return ".".join(parts)
+
+
+def _code_language(path: Path) -> str | None:
+    """The language a code file is parsed as, or None when no installed grammar
+    (and so no extractor) handles it — such a file gets no node."""
+    lang = _SUFFIX_LANG.get(path.suffix)
+    if lang is None or lang not in _EXTRACTORS or not language_available(lang):
+        return None
+    return lang
+
+
+# Suffixes only C++ uses; a project with any of them parses its .h as C++.
+_CPP_SUFFIXES: tuple[str, ...] = tuple(
+    sorted(s for s, lang in _SUFFIX_LANG.items() if lang == "cpp")
+)
+
+
+def _has_cpp_sources(names) -> bool:
+    """True if any of ``names`` (file names or paths) is a C++-only source."""
+    return any(name.endswith(_CPP_SUFFIXES) for name in names)
+
+
+# C++-only syntax at the start of a line: template/namespace/class definitions,
+# access specifiers, `using namespace`, and extension-less std headers.
+_CPP_SYNTAX_RE = re.compile(
+    rb"^[ \t]*(?:template\s*<|namespace(?:\s+[\w:]+)?\s*\{|class\s+\w+"
+    rb"|(?:public|protected|private)\s*:|using\s+namespace\b|#\s*include\s*<\w+>)",
+    re.MULTILINE,
+)
+
+
+def _has_cpp_syntax(path: Path) -> bool:
+    try:
+        return _CPP_SYNTAX_RE.search(path.read_bytes()) is not None
+    except OSError:
+        return False
+
+
+def _parse_language(path: Path, cpp_project: bool) -> str | None:
+    """``_code_language``, deciding whether a ``.h`` header is C or C++.
+
+    The suffix is shared, and the C grammar loses a C++ header's classes and
+    namespaces (``namespace ui {`` parses as a function ``ui()``). A header is
+    C++ when the project has C++ sources (``cpp_project``) or it uses C++-only
+    syntax itself (a header-only library).
+    """
+    lang = _code_language(path)
+    if (
+        lang == "c"
+        and path.suffix == ".h"
+        and language_available("cpp")
+        and (cpp_project or _has_cpp_syntax(path))
+    ):
+        return "cpp"
+    return lang
+
+
+def _lang_batches(langs) -> list[list[str]]:
+    """Languages grouped for the two extraction passes, in a stable order.
+
+    C and C++ share one batch — a ``.c`` file can include a header parsed as
+    C++ — so both run pass 1 (symbols, module keys) before either runs pass 2
+    (includes, calls). Every other language is its own batch, as before.
+    """
+    batches: dict[str, list[str]] = {}
+    for lang in sorted(langs):
+        batches.setdefault("c" if lang == "cpp" else lang, []).append(lang)
+    return [batches[k] for k in sorted(batches)]
+
+
+def _file_ids_moved(b: _GraphBuilder, graph: dict[str, Any], files: set[str]) -> set[str]:
+    """Files in ``files`` that have nodes in ``graph`` but no file node under the
+    id ``b`` gives them now: their id moved (a file sharing their natural id
+    appeared or went away), or a graph from before collision handling merged
+    them into another file's node. Every edge into them is stale."""
+    owner = {n.get("id"): n.get("source_file") for n in graph.get("nodes", [])}
+    present = {sf for sf in owner.values() if sf in files}
+    return {sf for sf in present if owner.get(b.file_id(sf)) != sf}
 
 
 def _load_existing_graph(project_path: Path) -> dict[str, Any] | None:
@@ -1353,18 +1640,46 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     md_files = config.apply_globs(
         root, _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES, fileset=fileset)
     )
-    schema_files = _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES, fileset=fileset)
+    schema_files = config.apply_globs(
+        root, _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES, fileset=fileset)
+    )
     # Every file this build indexes. A node from the previous graph is reused
     # only if its file is still in this set — so a file that was deleted, or
     # is now excluded (.gitignore, .neuralmindignore, globs), leaves the graph.
     indexed = {f.relative_to(root).as_posix() for f in (*files, *md_files, *schema_files)}
+    # File node ids: ``_slug(rel)``, except for files whose slug another file
+    # with a node shares — those get distinct ids (see _file_id_overrides).
+    noded = [*md_files, *schema_files]
+    if project_kind == "code":
+        noded += [f for f in files if _code_language(f) is not None]
+    b.file_ids = _file_id_overrides(root, [f.relative_to(root).as_posix() for f in noded])
+    # A file whose id changed since the last build (a collider appeared or
+    # went away) invalidates every edge into it: re-extract everything.
+    reuse = bool(existing_graph and extractor._cache) and not _file_ids_moved(
+        b, existing_graph or {}, indexed
+    )
+    # A .h parses as C++ in a project with C++ sources. If that flipped since
+    # the last build (the first C++ file arrived, or the last one left), every
+    # header must be re-parsed: re-extract everything.
+    cpp_project = _has_cpp_sources(f.name for f in files)
+    if reuse and any(f.suffix == ".h" for f in files):
+        old_nodes = (existing_graph or {}).get("nodes", [])
+        was_cpp = _has_cpp_sources(n.get("source_file", "") for n in old_nodes)
+        reuse = was_cpp == cpp_project
 
     # If we have an existing graph + cache, reuse unchanged nodes/edges
     unchanged_nodes: list[dict] = []
     unchanged_edges: list[dict] = []
     deleted_files: set[str] = set()
-    if existing_graph and extractor._cache:
-        changed_set = re_extract_set  # already includes transitive importers
+    if existing_graph and reuse:
+        # Doc/schema files aren't in the extraction cache: every build
+        # re-extracts them below, so never carry their old nodes/edges forward
+        # (add_node would keep a stale heading, add_edge append a duplicate).
+        # Every doc-derived edge (contains, describes, cross-chapter) carries
+        # the doc as its source_file.
+        doc_files = {f.relative_to(root).as_posix() for f in (*md_files, *schema_files)}
+        # re_extract_set already includes transitive importers
+        changed_set = re_extract_set | doc_files
         for node in existing_graph.get("nodes", []):
             sf = node.get("source_file", "")
             if not sf:
@@ -1405,7 +1720,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             rel = fpath.relative_to(root).as_posix()
             if rel not in re_extract_set:
                 continue
-            lang = _SUFFIX_LANG.get(fpath.suffix)
+            lang = _parse_language(fpath, cpp_project)
             if lang:
                 by_lang.setdefault(lang, []).append(fpath)
 
@@ -1417,31 +1732,28 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         for edge in unchanged_edges:
             b.edges.append(edge)
 
-        for lang in sorted(by_lang):
-            spec = _EXTRACTORS.get(lang)
-            if spec is None or not language_available(lang):
-                continue
-            extract_symbols, resolve_edges = spec
-            parser = _make_parser(lang)
-
-            parsed: list[tuple[str, bytes, Any]] = []
-            for fpath in by_lang[lang]:
-                rel = fpath.relative_to(root).as_posix()
-                try:
-                    src = fpath.read_bytes()
-                except OSError:
-                    continue
-                tree = parser.parse(src)
-                file_id = _slug(rel)
-                b.add_node(file_id, fpath.name, "code", rel, 1)
-                parsed.append((rel, src, tree))
-                # pass 1: file-level + symbol nodes (+ module-key registration).
-                extract_symbols(b, tree.root_node, src, rel, file_id)
+        for batch in _lang_batches(by_lang):
+            parsed: list[tuple[Any, str, bytes, Any]] = []
+            for lang in batch:
+                extract_symbols, resolve_edges = _EXTRACTORS[lang]
+                parser = _make_parser(lang)
+                for fpath in by_lang[lang]:
+                    rel = fpath.relative_to(root).as_posix()
+                    try:
+                        src = fpath.read_bytes()
+                    except OSError:
+                        continue
+                    tree = parser.parse(src)
+                    file_id = b.file_id(rel)
+                    b.add_node(file_id, fpath.name, "code", rel, 1)
+                    parsed.append((resolve_edges, rel, src, tree))
+                    # pass 1: file-level + symbol nodes (+ module-key registration).
+                    extract_symbols(b, tree.root_node, src, rel, file_id)
 
             # pass 2: cross-symbol edges (imports/inherits/calls), once every
             # file's symbols + module keys are registered.
-            for rel, src, tree in parsed:
-                resolve_edges(b, tree.root_node, src, rel, _slug(rel))
+            for resolve_edges, rel, src, tree in parsed:
+                resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
     else:
         # Prose project: no tree-sitter extraction, but still pre-seed
         # unchanged nodes if they exist.
@@ -1456,10 +1768,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
 
     # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
     for sa_path in schema_files:
-        rel = sa_path.relative_to(root).as_posix()
-        extractor_ = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
-        if extractor_:
-            extractor_(b, sa_path, rel)
+        _extract_schema_file(b, sa_path, sa_path.relative_to(root).as_posix())
 
     # ---- doc-code coupling ---------------------------------------------- #
     # Link document/file nodes to the code file nodes they describe.
@@ -1607,7 +1916,7 @@ def _emit_assignment(
     if not name or (name.startswith("__") and name.endswith("__")):
         return
     line = left.start_point[0] + 1
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
     # Module-level string constant → register for dynamic-import resolution.
@@ -1630,9 +1939,10 @@ def _emit_function(
     if not name:
         return None
     line = fn_node.start_point[0] + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     doc = _docstring(fn_node.child_by_field_name("body"), src)
     if doc:
@@ -1647,7 +1957,7 @@ def _emit_class(b: _GraphBuilder, cls_node, src: bytes, rel: str, file_id: str) 
     if not name:
         return
     line = cls_node.start_point[0] + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     b.add_node(cid, name, "code", rel, line)
     b.class_by_name.setdefault(name, []).append(cid)
     b.add_edge("contains", file_id, cid, rel, line)
@@ -1670,30 +1980,74 @@ def _emit_class(b: _GraphBuilder, cls_node, src: bytes, rel: str, file_id: str) 
             _emit_assignment(b, member, src, rel, container=cid)
 
 
+def _py_import_base(rel: str, spec: str) -> str | None:
+    """The absolute dotted module that ``from <spec> import …`` in ``rel`` names.
+
+    Leading dots are relative to the importing module's package (``pkg/a.py``
+    → ``pkg``; a package's own ``__init__.py`` is that package), one level up
+    per dot after the first. A relative import that climbs above the project
+    root names a module outside the index → ``None``.
+    """
+    stripped = spec.lstrip(".")
+    dots = len(spec) - len(stripped)
+    if not dots:
+        return stripped
+    package = [p for p in _module_dotted(rel).split(".") if p]
+    if rel.rsplit("/", 1)[-1] != "__init__.py":
+        package = package[:-1]
+    up = dots - 1
+    if up > len(package):
+        return None
+    base = package[: len(package) - up]
+    if stripped:
+        base.append(stripped)
+    return ".".join(base)
+
+
+def _py_module_file(b: _GraphBuilder, dotted: str) -> str | None:
+    """File node id for a dotted module — exact key first, then the src-layout
+    spelling (``lib.core`` → ``src/lib/core.py``, registered as ``src.lib.core``)."""
+    target = b.file_by_module.get(dotted)
+    if target is None and dotted:
+        target = b.file_by_module.get(f"src.{dotted}")
+    return target
+
+
 def _resolve_imports(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
     """`from x.y import ...` / `import x.y` → imports_from edges within project."""
     for child in root_node.named_children:
-        module_dotted = None
+        targets: list[str | None] = []
         if child.type == "import_from_statement":
             mod = child.child_by_field_name("module_name")
-            if mod is not None:
-                module_dotted = _node_text(mod, src).lstrip(".")
+            base = _py_import_base(rel, _node_text(mod, src)) if mod is not None else None
+            if base is None:
+                continue
+            # `from pkg import utils` names the submodule pkg/utils.py when there
+            # is one; any other name comes from the module/package itself.
+            from_base = False
+            for name_node in child.children_by_field_name("name"):
+                if name_node.type == "aliased_import":
+                    name_node = name_node.child_by_field_name("name")
+                name = _node_text(name_node, src) if name_node is not None else ""
+                sub = _py_module_file(b, f"{base}.{name}" if base else name) if name else None
+                if sub:
+                    targets.append(sub)
+                else:
+                    from_base = True
+            if from_base or not targets:
+                targets.append(_py_module_file(b, base))
         elif child.type == "import_statement":
             for n in child.named_children:
                 if n.type in ("dotted_name", "aliased_import"):
-                    base = n.child_by_field_name("name") if n.type == "aliased_import" else n
-                    module_dotted = _node_text(base, src) if base is not None else None
+                    base_node = n.child_by_field_name("name") if n.type == "aliased_import" else n
+                    if base_node is not None:
+                        targets.append(_py_module_file(b, _node_text(base_node, src)))
                     break
-        if not module_dotted:
-            continue
-        target = b.file_by_module.get(module_dotted)
-        if target is None:
-            # try package __init__ match: a.b -> a/b/__init__.py registered as a.b
-            target = b.file_by_module.get(module_dotted.rstrip("."))
-        if target and target != file_id:
-            b.add_edge(
-                "imports_from", file_id, target, rel, child.start_point[0] + 1, context="import"
-            )
+        for target in dict.fromkeys(targets):
+            if target and target != file_id:
+                b.add_edge(
+                    "imports_from", file_id, target, rel, child.start_point[0] + 1, context="import"
+                )
 
 
 def _resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
@@ -1725,7 +2079,7 @@ def _resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None
                 if body is not None:
                     visit(body, file_id)
 
-    visit(root_node, _slug(rel))
+    visit(root_node, b.file_id(rel))
 
 
 def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
@@ -1734,23 +2088,15 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
     No scope/type resolution — a callee name that uniquely (or first) matches a
     project function node yields one ``calls`` edge. Imperfect by design; the
     eval measures whether this is good enough vs graphify's resolved calls.
+    The *caller* is exact: the definition enclosing the call (``b.def_id``).
     """
-    file_id = _slug(rel)
-
-    def enclosing_fn_id(name: str | None, container: str) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(container)), cands[0] if cands else None)
 
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_definition":
-                fname = _name_of(child, src)
-                fid = enclosing_fn_id(fname, file_id)
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2022,16 +2368,17 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
         name = _name_of(decl, src)
         if not name:
             return
-        fid = f"{file_id}__{_slug(name)}_fn"
+        fid = b.sym_id(f"{file_id}__", name, "_fn")
         b.add_node(fid, f"{name}()", "code", rel, line)
         b.func_by_name.setdefault(name, []).append(fid)
+        b.mark_def(rel, decl, fid)
         b.add_edge("contains", file_id, fid, rel, line)
         _attach_comment_rationale(b, outer, src, rel, fid)
     elif decl.type in ("class_declaration", "abstract_class_declaration", "interface_declaration"):
         name = _name_of(decl, src)
         if not name:
             return
-        cid = f"{file_id}__{_slug(name)}_cls"
+        cid = b.sym_id(f"{file_id}__", name, "_cls")
         b.add_node(cid, name, "code", rel, line)
         b.class_by_name.setdefault(name, []).append(cid)
         b.add_edge("contains", file_id, cid, rel, line)
@@ -2044,9 +2391,10 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
                     if not mname:
                         continue
                     mline = member.start_point[0] + 1
-                    mid = f"{cid}__{_slug(mname)}_fn"
+                    mid = b.sym_id(f"{cid}__", mname, "_fn")
                     b.add_node(mid, f"{mname}()", "code", rel, mline)
                     b.func_by_name.setdefault(mname, []).append(mid)
+                    b.mark_def(rel, member, mid)
                     b.add_edge("contains", cid, mid, rel, mline)
                     _attach_comment_rationale(b, member, src, rel, mid)
     elif decl.type == "lexical_declaration":
@@ -2057,7 +2405,7 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
             if nm is None or nm.type != "identifier":
                 continue
             name = _node_text(nm, src)
-            sid = f"{file_id}__{_slug(name)}_sym"
+            sid = b.sym_id(f"{file_id}__", name, "_sym")
             b.add_node(sid, name, "code", rel, line)
             b.add_edge("contains", file_id, sid, rel, line)
             _attach_comment_rationale(b, outer, src, rel, sid)
@@ -2239,19 +2587,12 @@ def _ts_iter_type_names(node, src: bytes):
 
 
 def _ts_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("function_declaration", "method_definition"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2285,9 +2626,10 @@ def _go_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
             name = _name_of(child, src)
             if not name:
                 continue
-            fid = f"{file_id}__{_slug(name)}_fn"
+            fid = b.sym_id(f"{file_id}__", name, "_fn")
             b.add_node(fid, f"{name}()", "code", rel, line)
             b.func_by_name.setdefault(name, []).append(fid)
+            b.mark_def(rel, child, fid)
             b.add_edge("contains", file_id, fid, rel, line)
             _attach_comment_rationale(b, child, src, rel, fid)
         elif child.type == "type_declaration":
@@ -2298,7 +2640,7 @@ def _go_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
                 if nm is None:
                     continue
                 name = _node_text(nm, src)
-                cid = f"{file_id}__{_slug(name)}_cls"
+                cid = b.sym_id(f"{file_id}__", name, "_cls")
                 b.add_node(cid, name, "code", rel, line)
                 b.class_by_name.setdefault(name, []).append(cid)
                 b.add_edge("contains", file_id, cid, rel, line)
@@ -2326,7 +2668,7 @@ def _go_emit_struct_fields(
             if nm.type == "field_identifier":
                 name = _node_text(nm, src)
                 line = nm.start_point[0] + 1
-                sid = f"{container}__{_slug(name)}_sym"
+                sid = b.sym_id(f"{container}__", name, "_sym")
                 b.add_node(sid, name, "code", rel, line)
                 b.add_edge("contains", container, sid, rel, line)
 
@@ -2339,7 +2681,7 @@ def _go_emit_const_var(b: _GraphBuilder, decl, src: bytes, rel: str, file_id: st
             if nm.type == "identifier":
                 name = _node_text(nm, src)
                 line = nm.start_point[0] + 1
-                sid = f"{file_id}__{_slug(name)}_sym"
+                sid = b.sym_id(f"{file_id}__", name, "_sym")
                 b.add_node(sid, name, "code", rel, line)
                 b.add_edge("contains", file_id, sid, rel, line)
 
@@ -2382,19 +2724,12 @@ def _go_iter_import_specs(import_decl):
 
 
 def _go_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("function_declaration", "method_declaration"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2484,9 +2819,10 @@ def _rust_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     if not name:
         return
     line = fn_node.start_point[0] + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _rust_attach_doc(b, fn_node, src, rel, fid)
 
@@ -2494,7 +2830,7 @@ def _rust_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
 def _rust_type_node_id(b: _GraphBuilder, file_id: str, name: str, line: int, rel: str) -> str:
     """Ensure (idempotently) a type node for ``name`` in this file and return its
     id. Used by impls, which may precede the type's own declaration."""
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     b.add_node(cid, name, "code", rel, line)
     return cid
 
@@ -2504,7 +2840,7 @@ def _rust_emit_type(b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: 
     if not name:
         return None
     line = type_node.start_point[0] + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -2515,7 +2851,7 @@ def _rust_emit_type(b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: 
 
 
 def _rust_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
 
@@ -2665,19 +3001,12 @@ def _rust_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id
 
 
 def _rust_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_item":
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -2760,9 +3089,10 @@ def _java_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     # Anchor on the identifier's line, not the declaration's — modifiers and
     # annotations (`@Override`) make ``start_point`` land above the name.
     line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _java_attach_doc(b, fn_node, src, rel, fid)
 
@@ -2776,7 +3106,7 @@ def _java_emit_fields(b: _GraphBuilder, field_node, src: bytes, rel: str, contai
         if nm is not None:
             name = _node_text(nm, src)
             line = nm.start_point[0] + 1
-            sid = f"{container}__{_slug(name)}_sym"
+            sid = b.sym_id(f"{container}__", name, "_sym")
             b.add_node(sid, name, "code", rel, line)
             b.add_edge("contains", container, sid, rel, line)
 
@@ -2795,7 +3125,7 @@ def _java_emit_type(
         return
     # Anchor on the identifier's line (annotations/modifiers shift start_point).
     line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -2826,7 +3156,7 @@ def _java_emit_type(
             nm = member.child_by_field_name("name")
             if nm is not None:
                 name_c = _node_text(nm, src)
-                sid = f"{cid}__{_slug(name_c)}_sym"
+                sid = b.sym_id(f"{cid}__", name_c, "_sym")
                 b.add_node(sid, name_c, "code", rel, member.start_point[0] + 1)
                 b.add_edge("contains", cid, sid, rel, member.start_point[0] + 1)
         elif t in _JAVA_TYPE_DECLS:
@@ -2917,12 +3247,6 @@ def _java_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
 
 
 def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in (
@@ -2930,10 +3254,9 @@ def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
                 "constructor_declaration",
                 "compact_constructor_declaration",
             ):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "method_invocation" and current_fn is not None:
                 nm = child.child_by_field_name("name")
@@ -3072,24 +3395,25 @@ def _c_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) 
     if not name:
         return None
     line = (nm_node.start_point[0] if nm_node is not None else fn_node.start_point[0]) + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     is_new = fid not in b.nodes
     b.add_node(fid, f"{name}()", "code", rel, line)
     if is_new:
         b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _c_attach_doc(b, fn_node, src, rel, fid)
     return fid
 
 
 def _c_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
 
 
 def _c_type_node_id(b: _GraphBuilder, file_id: str, name: str, line: int, rel: str) -> str:
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -3098,7 +3422,7 @@ def _c_type_node_id(b: _GraphBuilder, file_id: str, name: str, line: int, rel: s
 
 
 def _c_emit_member_fn(b: _GraphBuilder, name: str, line: int, rel: str, cid: str) -> None:
-    fid = f"{cid}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{cid}__", name, "_fn")
     is_new = fid not in b.nodes
     b.add_node(fid, f"{name}()", "code", rel, line)
     if is_new:
@@ -3158,11 +3482,12 @@ def _c_emit_method(b: _GraphBuilder, fn_node, src: bytes, rel: str, cid: str) ->
     if not name:
         return
     line = (nm_node.start_point[0] if nm_node else fn_node.start_point[0]) + 1
-    fid = f"{cid}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{cid}__", name, "_fn")
     is_new = fid not in b.nodes
     b.add_node(fid, f"{name}()", "code", rel, line)
     if is_new:
         b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", cid, fid, rel, line)
     _c_attach_doc(b, fn_node, src, rel, fid)
 
@@ -3218,14 +3543,9 @@ def _c_walk_items(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) ->
             alias = child.child_by_field_name("declarator")
             aname, anode = _c_decl_name(alias, src)
             if aname:
-                _c_type_node_id(b, file_id, aname, (anode.start_point[0] if anode else 0) + 1, rel)
-                b.add_edge(
-                    "contains",
-                    file_id,
-                    f"{file_id}__{_slug(aname)}_cls",
-                    rel,
-                    (anode.start_point[0] if anode else 0) + 1,
-                )
+                aline = (anode.start_point[0] if anode else 0) + 1
+                alias_id = _c_type_node_id(b, file_id, aname, aline, rel)
+                b.add_edge("contains", file_id, alias_id, rel, aline)
         elif t == "declaration":
             # Top-level function prototype → register the function name.
             decl = child.child_by_field_name("declarator")
@@ -3341,20 +3661,12 @@ def _cpp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id:
 
 
 def _c_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type == "function_definition":
-                decl = child.child_by_field_name("declarator")
-                name, _n = _c_decl_name(decl, src)
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, enclosing_fn_id(name))
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call_expression" and current_fn is not None:
                 fn_field = child.child_by_field_name("function")
@@ -3458,9 +3770,10 @@ def _csharp_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: 
         return
     # Anchor on the identifier's line — attributes/modifiers shift start_point.
     line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
@@ -3474,7 +3787,7 @@ def _csharp_emit_named_sym(b: _GraphBuilder, node, src: bytes, rel: str, contain
         return
     name = _node_text(nm, src)
     line = nm.start_point[0] + 1
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
 
@@ -3493,7 +3806,7 @@ def _csharp_emit_fields(b: _GraphBuilder, field_node, src: bytes, rel: str, cont
             if nm is not None:
                 name = _node_text(nm, src)
                 line = nm.start_point[0] + 1
-                sid = f"{container}__{_slug(name)}_sym"
+                sid = b.sym_id(f"{container}__", name, "_sym")
                 b.add_node(sid, name, "code", rel, line)
                 b.add_edge("contains", container, sid, rel, line)
 
@@ -3515,7 +3828,7 @@ def _csharp_emit_record_params(b: _GraphBuilder, type_node, src: bytes, rel: str
         if nm is not None:
             name = _node_text(nm, src)
             line = nm.start_point[0] + 1
-            sid = f"{cid}__{_slug(name)}_sym"
+            sid = b.sym_id(f"{cid}__", name, "_sym")
             b.add_node(sid, name, "code", rel, line)
             b.add_edge("contains", cid, sid, rel, line)
 
@@ -3528,7 +3841,7 @@ def _csharp_emit_type(
     if not name:
         return
     line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -3633,19 +3946,12 @@ def _csharp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_
 
 
 def _csharp_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in _CSHARP_FN_DECLS:
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "invocation_expression" and current_fn is not None:
                 fn = child.child_by_field_name("function")
@@ -3712,9 +4018,10 @@ def _ruby_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: st
     if not name:
         return
     line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
@@ -3726,7 +4033,7 @@ def _ruby_emit_const(b: _GraphBuilder, assign_node, src: bytes, rel: str, contai
         return
     name = _node_text(lhs, src)
     line = lhs.start_point[0] + 1
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
 
@@ -3744,7 +4051,7 @@ def _ruby_emit_type(
     if not name:
         return
     line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -3828,19 +4135,12 @@ def _ruby_call_method_name(call_node, src: bytes) -> str | None:
 
 
 def _ruby_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("method", "singleton_method"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = _ruby_body_of(child) or child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if child.type == "call" and current_fn is not None:
                 callee = _ruby_call_method_name(child, src)
@@ -3962,15 +4262,16 @@ def _php_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str
     if not name:
         return
     line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
-    fid = f"{container}__{_slug(name)}_fn"
+    fid = b.sym_id(f"{container}__", name, "_fn")
     b.add_node(fid, f"{name}()", "code", rel, line)
     b.func_by_name.setdefault(name, []).append(fid)
+    b.mark_def(rel, fn_node, fid)
     b.add_edge("contains", container, fid, rel, line)
     _attach_comment_rationale(b, fn_node, src, rel, fid)
 
 
 def _php_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
-    sid = f"{container}__{_slug(name)}_sym"
+    sid = b.sym_id(f"{container}__", name, "_sym")
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
 
@@ -4013,7 +4314,7 @@ def _php_emit_type(
     if not name:
         return
     line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
-    cid = f"{file_id}__{_slug(name)}_cls"
+    cid = b.sym_id(f"{file_id}__", name, "_cls")
     is_new = cid not in b.nodes
     b.add_node(cid, name, "code", rel, line)
     if is_new:
@@ -4101,19 +4402,12 @@ def _php_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id:
 
 
 def _php_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    def enclosing_fn_id(name: str | None) -> str | None:
-        if not name:
-            return None
-        cands = b.func_by_name.get(name, [])
-        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
-
     def visit(node, current_fn: str | None) -> None:
         for child in node.named_children:
             if child.type in ("method_declaration", "function_definition"):
-                fid = enclosing_fn_id(_name_of(child, src))
                 body = child.child_by_field_name("body")
                 if body is not None:
-                    visit(body, fid)
+                    visit(body, b.def_id(rel, child, current_fn))
                 continue
             if current_fn is not None and child.type in (
                 "scoped_call_expression",
@@ -4201,7 +4495,7 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
     nid = node["id"]
     label = str(node.get("label", ""))
     sf = str(node.get("source_file", ""))
-    if nid == _slug(sf):  # the file node
+    if nid == b.file_id(sf):  # the file node
         suffix = "." + sf.rsplit(".", 1)[-1] if "." in sf else ""
         lang = _SUFFIX_LANG.get(suffix)
         if lang == "python":
@@ -4258,6 +4552,37 @@ def update_files(
     next_comm = max(comm_of_file.values(), default=-1) + 1
 
     b = _GraphBuilder()
+    # File ids depend on which files share a natural id, so compute them over
+    # the files the graph will hold after this update — the full build's rule.
+    kept = {n["source_file"] for n in original_nodes if n.get("source_file")} - touched
+    doc_suffixes = _DOC_SUFFIXES | _SCHEMA_SUFFIXES
+    arriving = {
+        rel
+        for rel in changed_set
+        if (root / rel).exists()
+        and (Path(rel).suffix in doc_suffixes or _code_language(Path(rel)) is not None)
+    }
+    b.file_ids = _file_id_overrides(root, kept | arriving)
+    # A file whose id moved (a collider arrived or left) is re-parsed under its
+    # new id, along with every code file holding an edge into it. So is every
+    # .h when the project gained its first / lost its last C++ source (that
+    # decides whether a header parses as C or C++).
+    stale = _file_ids_moved(b, graph, kept | arriving)
+    cpp_project = _has_cpp_sources(kept | arriving)
+    if cpp_project != _has_cpp_sources(n.get("source_file", "") for n in original_nodes):
+        stale |= {rel for rel in kept if rel.endswith(".h")}
+    if stale:
+        file_of = {n["id"]: n["source_file"] for n in original_nodes}
+        dependents = {
+            e.get("source_file", "")
+            for e in graph.get("links", [])
+            if file_of.get(e.get("target")) in stale
+            and Path(e.get("source_file", "")).suffix in _SUFFIX_LANG
+        }
+        reparse = {rel for rel in stale | dependents if rel in kept and (root / rel).exists()}
+        changed_set |= reparse
+        touched |= reparse
+
     for n in original_nodes:
         if n["source_file"] in touched:
             continue
@@ -4280,32 +4605,31 @@ def update_files(
             stats.files_reparsed += 1
             continue
         if fpath.suffix in _SCHEMA_SUFFIXES:
-            extractor = _SCHEMA_EXTRACTORS.get(fpath.suffix)
-            if extractor:
-                extractor(b, fpath, rel)
+            _extract_schema_file(b, fpath, rel)
             stats.files_reparsed += 1
             continue
-        lang = _SUFFIX_LANG.get(fpath.suffix)
-        if lang and lang in _EXTRACTORS and language_available(lang):
+        lang = _parse_language(fpath, cpp_project)
+        if lang:
             code_by_lang.setdefault(lang, []).append(rel)
 
-    for lang, rels in code_by_lang.items():
-        extract_symbols, resolve_edges = _EXTRACTORS[lang]
-        parser = _make_parser(lang)
-        parsed: list[tuple[str, bytes, Any]] = []
-        for rel in rels:
-            try:
-                src = (root / rel).read_bytes()
-            except OSError:
-                continue
-            tree = parser.parse(src)
-            file_id = _slug(rel)
-            b.add_node(file_id, (root / rel).name, "code", rel, 1)
-            extract_symbols(b, tree.root_node, src, rel, file_id)
-            parsed.append((rel, src, tree))
-            stats.files_reparsed += 1
-        for rel, src, tree in parsed:
-            resolve_edges(b, tree.root_node, src, rel, _slug(rel))
+    for batch in _lang_batches(code_by_lang):
+        parsed: list[tuple[Any, str, bytes, Any]] = []
+        for lang in batch:
+            extract_symbols, resolve_edges = _EXTRACTORS[lang]
+            parser = _make_parser(lang)
+            for rel in code_by_lang[lang]:
+                try:
+                    src = (root / rel).read_bytes()
+                except OSError:
+                    continue
+                tree = parser.parse(src)
+                file_id = b.file_id(rel)
+                b.add_node(file_id, (root / rel).name, "code", rel, 1)
+                extract_symbols(b, tree.root_node, src, rel, file_id)
+                parsed.append((resolve_edges, rel, src, tree))
+                stats.files_reparsed += 1
+        for resolve_edges, rel, src, tree in parsed:
+            resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
 
     stats.files_removed = len(removed)
 

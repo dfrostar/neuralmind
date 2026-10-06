@@ -67,6 +67,61 @@ def test_render_includes_strong_pairs_and_hubs(tmp_path):
     assert "HUB" in out
 
 
+def _pair_line(text: str, a: str, b: str) -> str:
+    lines = [ln for ln in text.splitlines() if f"`{a}` ↔ `{b}`" in ln]
+    assert len(lines) == 1, f"expected one line for {a}↔{b}, got {lines}"
+    return lines[0]
+
+
+def test_render_does_not_add_pair_weights_across_namespaces(tmp_path):
+    # Four co-activations in personal and four on a branch: each row is capped
+    # at WEIGHT_CAP with 4 activations, so neither row is LTP. Summing rendered
+    # "weight 2.00, fired 8× (long-term)" — a weight above the cap and an LTP
+    # tag no stored row has.
+    db = default_db_path(tmp_path)
+    personal = SynapseStore(db)
+    branch = SynapseStore(db, namespace="branch:feature")
+    for _ in range(LTP_THRESHOLD - 1):
+        personal.reinforce(["a", "b"])
+        branch.reinforce(["a", "b"])
+
+    line = _pair_line(render_synapse_memory(tmp_path), "a", "b")
+    assert "weight 1.00" in line
+    assert f"fired {LTP_THRESHOLD - 1}×" in line
+    assert "long-term" not in line
+
+
+def test_render_long_term_tag_follows_the_ltp_criterion(tmp_path):
+    db = default_db_path(tmp_path)
+    personal = SynapseStore(db)
+    ephemeral = SynapseStore(db, namespace="ephemeral")
+    for _ in range(LTP_THRESHOLD + 1):
+        personal.reinforce(["ltp_a", "ltp_b"])  # genuinely long-term
+        personal.reinforce(["low_a", "low_b"])  # penalized below the floor below
+        ephemeral.reinforce(["eph_a", "eph_b"])  # ephemeral has no LTP exemption
+    personal.penalize(["low_a", "low_b"], penalty=0.9)  # 1.0 -> 0.1 < LTP_FLOOR
+
+    out = render_synapse_memory(tmp_path)
+    assert "long-term" in _pair_line(out, "ltp_a", "ltp_b")
+    assert "long-term" not in _pair_line(out, "low_a", "low_b")
+    assert "long-term" not in _pair_line(out, "eph_a", "eph_b")
+    # The header counts long-term edges by the same rule as the tags.
+    assert "Edges learned: 3 (1 long-term)" in out
+
+
+def test_render_tags_pair_long_term_when_any_namespace_holds_it(tmp_path):
+    db = default_db_path(tmp_path)
+    personal = SynapseStore(db)
+    branch = SynapseStore(db, namespace="branch:feature")
+    for _ in range(LTP_THRESHOLD):
+        personal.reinforce(["a", "b"])
+    branch.reinforce(["a", "b"])
+
+    line = _pair_line(render_synapse_memory(tmp_path), "a", "b")
+    assert f"fired {LTP_THRESHOLD}×" in line
+    assert "long-term" in line
+
+
 def test_render_uses_labels_when_embedder_provided(tmp_path):
     store = SynapseStore(default_db_path(tmp_path))
     store.reinforce(["node_x", "node_y"])

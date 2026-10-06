@@ -179,7 +179,7 @@ hook returning `updatedToolOutput` would deliver it, next to what survives.
 
 | Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |
 |---|---:|---:|---:|---:|---|
-| Read (whole file) | 136 (110 compressed) | 597,002 | 79,008 | -86.8% | 93% of definitions named, **0% of source lines** |
+| Read (whole file) | 136 (110 compressed) | 597,002 | 79,308 | -86.7% | 93% of definitions named, **0% of source lines** |
 | Bash | 15 of 19 | 32,003 | 9,093 | -71.6% | 60% of must-keep lines |
 | Grep, content mode | 48 | 55,800 | 16,610 | -70.2% | 63% of matches |
 

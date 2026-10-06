@@ -253,7 +253,7 @@ than replacing it, so the copies cost tokens. From v4.5.0 the hooks inject
 nothing by default. The compressors themselves would cut 70–87% if they replaced a result,
 but they keep 0% of a file's source lines and 0% of a diff's changed lines.
 
-The one replacement that ships is opt-in (`NEURALMIND_BASH_REPLACE=1`, v4.7.0+)
+The one replacement that ships is opt-in (`NEURALMIND_BASH_REPLACE=1`, v4.10.0+)
 and narrow: it removes the progress lines of `pip install` and
 `neuralmind build` output through `updatedToolOutput`, and nothing else.
 

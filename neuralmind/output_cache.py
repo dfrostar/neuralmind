@@ -42,6 +42,7 @@ from pathlib import Path
 
 from .secret_scan import redact_text
 from .state_dir import ensure_state_dir
+from .storage_guard import StorageNotVerifiedError, enforce_storage_policy
 
 CACHE_FILENAME = "last_output.json"
 DEFAULT_MAX_BYTES = int(os.environ.get("NEURALMIND_OUTPUT_CACHE_MAX", str(2 * 1024 * 1024)))
@@ -115,6 +116,12 @@ def write_last_output(
     cache is disabled via ``NEURALMIND_OUTPUT_CACHE=0``.
     """
     if os.environ.get("NEURALMIND_OUTPUT_CACHE") == "0":
+        return None
+    # Command output is the most sensitive thing NeuralMind stores; never put
+    # it on a volume a require_encrypted_storage project hasn't verified.
+    try:
+        enforce_storage_policy(project_path)
+    except StorageNotVerifiedError:
         return None
 
     stdout, stderr, command, redacted_kinds = _scrub_and_cap(stdout, stderr, command, max_bytes)
@@ -222,6 +229,12 @@ def archive_output(
     and a caller must then leave the output whole: nothing would hold the rest.
     """
     if os.environ.get("NEURALMIND_OUTPUT_CACHE") == "0":
+        return None
+    # Command output is the most sensitive thing NeuralMind stores; never put
+    # it on a volume a require_encrypted_storage project hasn't verified.
+    try:
+        enforce_storage_policy(project_path)
+    except StorageNotVerifiedError:
         return None
     target = archive_path(project_path, stdout, stderr, command)
     stdout, stderr, command, redacted_kinds = _scrub_and_cap(stdout, stderr, command, max_bytes)

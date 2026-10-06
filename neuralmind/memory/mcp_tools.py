@@ -6,7 +6,7 @@ NeuralMind MCP server by providing a TOOLS list and handle_tool_call()
 function that follows the same pattern as ``neuralmind.mcp_server``.
 
 Tools:
-- neuralmind_query_decisions: Search decisions by keywords or a question
+- neuralmind_query_decisions: Search decisions by keywords, a question, or meaning
 - neuralmind_audit_decisions: List all decisions with status
 - neuralmind_record_decision: Store a new architecture decision
 - neuralmind_invalidate_decision: Mark a decision as stale/invalid
@@ -15,10 +15,13 @@ Tools:
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
-from .store import DecisionStore, normalize_status_filter
+from ..paths import ProjectNotFoundError
+from .semantic import SemanticSearchUnavailableError, resolve_mode
+from .store import DecisionSearch, DecisionStore, normalize_status_filter, validate_confidence
 
 # ---------------------------------------------------------------------------
 # Store accessor
@@ -40,28 +43,44 @@ def get_decision_store(project_path: str) -> DecisionStore:
 # ---------------------------------------------------------------------------
 
 
-def tool_query_decisions(project_path: str, query: str, limit: int = 5) -> dict[str, Any]:
-    """Search project decisions by keywords or a question (titles and rationales).
+def _search_report(found: DecisionSearch) -> dict[str, Any]:
+    """The mode that ranked a search's results, and why it differs from the one asked for."""
+    report: dict[str, Any] = {"mode": found.mode}
+    if found.notice:
+        report["notice"] = found.notice
+    return report
 
-    Uses FTS5 when available (relevance-ranked via bm25), falling back to
-    a LIKE scan otherwise.  By default only ACTIVE decisions are returned.
+
+def tool_query_decisions(
+    project_path: str, query: str, limit: int = 5, mode: str | None = None
+) -> dict[str, Any]:
+    """Search project decisions by keywords, a question, or meaning (titles and rationales).
+
+    ``mode`` is keyword (shared words: FTS5 ranked by bm25, a LIKE scan
+    without FTS5), semantic (meaning, local embedding model) or hybrid (both,
+    fused; the default). By default only ACTIVE decisions are returned.
 
     Args:
         project_path: Path to the project root directory.
-        query: Keywords or a question; any word can match (title +
-            rationale are searched).
+        query: Keywords or a question (title + rationale are searched).
         limit: Maximum number of results to return (default: 5).
+        mode: "keyword", "semantic" or "hybrid"; None for the default.
 
     Returns:
-        Dict with ``query``, ``count``, and ``decisions`` (list of
-        DecisionRecord dicts ordered by relevance).
+        Dict with ``query``, ``mode`` (the mode that ranked the results),
+        ``notice`` (only when hybrid fell back to keyword), ``count``, and
+        ``decisions`` (list of DecisionRecord dicts ordered by relevance).
+
+    Raises:
+        SemanticSearchUnavailableError: ``mode`` is semantic and it can't run.
     """
     store = get_decision_store(project_path)
-    records = store.query(query, limit=limit)
+    found = store.search(query, limit=limit, mode=mode)
     return {
         "query": query,
-        "count": len(records),
-        "decisions": [json.loads(r.json()) for r in records],
+        **_search_report(found),
+        "count": len(found.records),
+        "decisions": [json.loads(r.json()) for r in found.records],
     }
 
 
@@ -147,10 +166,20 @@ def tool_invalidate_decision(
         reason: Why the decision is being retired.
 
     Returns:
-        Confirmation dict with the decision_id and new status.
+        Confirmation dict with the decision_id and new status, or an error
+        dict: code ``not_found`` for an unknown id, ``storage_error`` when
+        the update failed.
     """
     store = get_decision_store(project_path)
-    store.invalidate(decision_id, reason=reason)
+    try:
+        store.invalidate(decision_id, reason=reason)
+    except KeyError:
+        return {"error": f"Decision not found: {decision_id}", "code": "not_found"}
+    except sqlite3.Error as e:
+        return {
+            "error": f"Could not invalidate decision {decision_id}: {e}",
+            "code": "storage_error",
+        }
     return {
         "decision_id": decision_id,
         "status": "INVALIDATED",
@@ -196,6 +225,7 @@ def tool_memory_search(
     query: str,
     limit: int = 10,
     status: str | None = "ACTIVE",
+    mode: str | None = None,
 ) -> dict[str, Any]:
     """Layer 1: search decisions, return compact index rows.
 
@@ -205,24 +235,29 @@ def tool_memory_search(
 
     Args:
         project_path: Path to the project root directory.
-        query: Keywords or a question; any word can match (title +
-            rationale are searched).
+        query: Keywords or a question (title + rationale are searched).
         limit: Maximum rows to return (default: 10, capped at 25).
         status: Filter by status, case-insensitive: "ACTIVE" (default),
             "STALE", "INVALIDATED", or "ALL" / None for every status.
+        mode: "keyword", "semantic" or "hybrid"; None for the default
+            (see ``tool_query_decisions``).
 
     Raises:
-        ValueError: ``status`` is not a known status or "ALL".
+        ValueError: ``status`` or ``mode`` is not a known value.
+        SemanticSearchUnavailableError: ``mode`` is semantic and it can't run.
 
     Returns:
-        Dict with ``query``, ``count``, ``results`` (compact rows), and
-        ``next`` — a hint describing the follow-up call.
+        Dict with ``query``, ``mode``, ``notice`` (only on a fallback),
+        ``count``, ``results`` (compact rows), and ``next`` — a hint
+        describing the follow-up call.
     """
     limit = max(1, min(int(limit), 25))
     store = get_decision_store(project_path)
-    records = store.query(query, limit=limit, status=status)
+    found = store.search(query, limit=limit, status=status, mode=mode)
+    records = found.records
     return {
         "query": query,
+        **_search_report(found),
         "count": len(records),
         "results": [_compact_row(r) for r in records],
         "next": (
@@ -336,10 +371,12 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "neuralmind_query_decisions",
         "description": (
-            "Search project decisions over titles and rationales, by keywords "
-            "or a question; decisions matching more of the words rank first. "
-            "Returns the top matching decisions with confidence, commit SHAs, "
-            "and file references."
+            "Search project decisions over titles and rationales, by keywords, "
+            "a question, or meaning. The default hybrid mode ranks by shared "
+            "words and by meaning (a local embedding model), so a question can "
+            "find a decision worded differently. Returns the top matching "
+            "decisions with confidence, commit SHAs, and file references, and "
+            "the mode that ranked them."
         ),
         "inputSchema": {
             "type": "object",
@@ -352,10 +389,22 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": (
                         "Keywords or a question, matched against decision titles "
-                        "and rationales. Any word can match (prefix match; common "
-                        "words such as 'how' and 'the' are ignored), and decisions "
-                        "matching more of the words rank first. A question nothing "
-                        "answers can still return partial matches, so check the titles"
+                        "and rationales. Keyword matching: any word can match "
+                        "(prefix match; common words such as 'how' and 'the' are "
+                        "ignored), and decisions matching more of the words rank "
+                        "first. A question nothing answers can still return partial "
+                        "or loosely related matches, so check the titles"
+                    ),
+                },
+                "mode": {
+                    "type": "string",
+                    "description": (
+                        "hybrid (default): shared words and meaning, fused. "
+                        "semantic: meaning only (local embedding model; an error "
+                        "if the model isn't on disk). keyword: shared words only. "
+                        "Case-insensitive. The response's mode says which ran: "
+                        "hybrid falls back to keyword, with a notice, when the "
+                        "model isn't on disk"
                     ),
                 },
                 "limit": {
@@ -421,6 +470,8 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "confidence": {
                     "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
                     "description": "0.0-1.0 certainty that this decision is correct (default: 1.0)",
                 },
                 "evidence": {
@@ -484,10 +535,22 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": (
                         "Keywords or a question, matched against decision titles "
-                        "and rationales. Any word can match (prefix match; common "
-                        "words such as 'how' and 'the' are ignored), and decisions "
-                        "matching more of the words rank first. A question nothing "
-                        "answers can still return partial matches, so check the titles"
+                        "and rationales. Keyword matching: any word can match "
+                        "(prefix match; common words such as 'how' and 'the' are "
+                        "ignored), and decisions matching more of the words rank "
+                        "first. A question nothing answers can still return partial "
+                        "or loosely related matches, so check the titles"
+                    ),
+                },
+                "mode": {
+                    "type": "string",
+                    "description": (
+                        "hybrid (default): shared words and meaning, fused. "
+                        "semantic: meaning only (local embedding model; an error "
+                        "if the model isn't on disk). keyword: shared words only. "
+                        "Case-insensitive. The response's mode says which ran: "
+                        "hybrid falls back to keyword, with a notice, when the "
+                        "model isn't on disk"
                     ),
                 },
                 "limit": {
@@ -576,11 +639,15 @@ TOOLS: list[dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 
+# The tools that take a search ``mode``.
+_MODE_TOOLS = frozenset({"neuralmind_query_decisions", "neuralmind_memory_search"})
+
+
 def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> str | None:
     """Check the argument values a memory tool's ``inputSchema`` can't express.
 
-    ``status`` on ``neuralmind_memory_search`` is case-insensitive, so its
-    schema can't carry an ``enum``. Both dispatchers call this before the tool
+    ``status`` on ``neuralmind_memory_search`` and ``mode`` on the two search
+    tools are case-insensitive, so their schemas can't carry an ``enum``. Both dispatchers call this before the tool
     runs, so an unknown status is reported as ``invalid_request`` like any
     other disallowed value. Returns a problem naming the argument, or
     ``None`` when the values are acceptable.
@@ -590,6 +657,18 @@ def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> str | None:
             normalize_status_filter(arguments["status"])
         except ValueError as e:
             return f"argument 'status': {e}"
+    if name in _MODE_TOOLS and arguments.get("mode") is not None:
+        try:
+            resolve_mode(arguments["mode"])
+        except ValueError as e:
+            return f"argument 'mode': {e}"
+    # The store clamps an out-of-range confidence (7 was stored as 1.0), so
+    # reject it here, with NaN and infinities, before anything is written.
+    if name == "neuralmind_record_decision" and arguments.get("confidence") is not None:
+        try:
+            validate_confidence(arguments["confidence"])
+        except ValueError as e:
+            return f"argument 'confidence': {e}"
     return None
 
 
@@ -612,6 +691,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["project_path"],
             args["query"],
             args.get("limit", 5),
+            args.get("mode"),
         ),
         "neuralmind_audit_decisions": lambda args: tool_audit_decisions(
             args["project_path"],
@@ -642,6 +722,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["query"],
             args.get("limit", 10),
             args.get("status", "ACTIVE"),
+            args.get("mode"),
         ),
         "neuralmind_memory_timeline": lambda args: tool_memory_timeline(
             args["project_path"],
@@ -666,5 +747,16 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     try:
         result = handlers[name](arguments)
         return json.dumps(result, indent=2, default=str)
+    except ProjectNotFoundError as e:
+        return json.dumps({"error": str(e), "code": "project_not_found"})
+    except SemanticSearchUnavailableError as e:
+        return json.dumps(
+            {
+                "error": f"semantic search unavailable: {e}",
+                "code": "semantic_unavailable",
+                "hint": "Retry with mode hybrid (falls back to keyword) or keyword. "
+                "`neuralmind build` downloads the embedding model once.",
+            }
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})

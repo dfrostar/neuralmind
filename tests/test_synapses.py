@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 
@@ -611,14 +612,18 @@ def test_seed_from_structural_weight_capped(tmp_path):
 
 
 def test_seed_from_structural_idempotent(tmp_path):
-    """Re-seeding should increment activation_count, not add rows."""
+    """Re-seeding must neither add rows nor inflate activation_count.
+
+    Seeding is not an activation: bumping the count on every build made an
+    unchanged call path LTP-protected after LTP_THRESHOLD rebuilds.
+    """
     s = _store(tmp_path)
     edges = [{"source": "A", "target": "B", "relation": "calls"}]
     s.persist_structural_edges(edges)
     s.seed_from_structural()
     s.seed_from_structural()
     assert len(s.edges()) == 1  # still one edge
-    assert s.edges()[0][3] == 2  # activation_count incremented
+    assert s.edges()[0][3] == 1  # activation_count not inflated by re-seeding
 
 
 def test_seed_from_structural_uses_shared_namespace(tmp_path):
@@ -950,3 +955,415 @@ def test_T10_exact_label_match_weight(tmp_path):
     with s._connect() as conn:
         weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
     assert weight == 0.40
+
+
+# --------------------------------------------------------------------------- #
+# Decay never raises a weight (LTP floor only holds edges at/above it)
+# --------------------------------------------------------------------------- #
+
+
+def _raw_edge(s, a, b, namespace="personal"):
+    with s._connect() as conn:
+        return conn.execute(
+            "SELECT weight, activation_count FROM synapses "
+            "WHERE node_a = ? AND node_b = ? AND namespace = ?",
+            (a, b, namespace),
+        ).fetchone()
+
+
+@pytest.mark.parametrize("namespace", ["personal", SHARED_NAMESPACE])
+@pytest.mark.parametrize("learned_half_life", [True, False])
+def test_decay_does_not_lift_penalized_ltp_edge_back_to_floor(
+    tmp_path, namespace, learned_half_life
+):
+    """An LTP edge penalized below LTP_FLOOR must stay below it on decay.
+
+    The floor protects an established association from *fading*; it must
+    not undo an explicit penalty. Decay is one-way: it never raises a weight.
+    """
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["a", "b"], now=now, namespace=namespace)
+    if not learned_half_life:
+        with s._connect() as conn:
+            conn.execute("UPDATE synapses SET half_life_days = NULL")
+    s.penalize(["a", "b"], penalty=1.0, namespace=namespace)
+    assert _raw_edge(s, "a", "b", namespace) == (0.0, LTP_THRESHOLD)
+
+    s.decay(now=now)  # zero elapsed time
+    assert _raw_edge(s, "a", "b", namespace)[0] == 0.0
+
+    # Partially penalized (0.15 < floor): decays freely, never lifted to 0.2.
+    s2 = SynapseStore(tmp_path / "second.db")
+    for _ in range(LTP_THRESHOLD):
+        s2.reinforce(["a", "b"], now=now, namespace=namespace)
+    if not learned_half_life:
+        with s2._connect() as conn:
+            conn.execute("UPDATE synapses SET half_life_days = NULL")
+    s2.penalize(["a", "b"], penalty=WEIGHT_CAP - 0.15, namespace=namespace)
+    before = _raw_edge(s2, "a", "b", namespace)[0]
+    assert before == pytest.approx(0.15)
+    s2.decay(now=now + 10 * 86400)
+    after = _raw_edge(s2, "a", "b", namespace)[0]
+    assert after < before < LTP_FLOOR
+
+
+def test_decay_still_floors_ltp_edges_that_were_above_floor(tmp_path):
+    """The fix must keep the floor for edges that sit at or above it."""
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["a", "b"], now=now)
+    s.decay(now=now + 3650 * 86400)  # ten years idle
+    assert _raw_edge(s, "a", "b")[0] == pytest.approx(LTP_FLOOR)
+
+
+def test_decay_never_increases_any_weight(tmp_path):
+    s = _store(tmp_path)
+    now = time.time()
+    for _ in range(LTP_THRESHOLD + 1):
+        s.reinforce(["h", "i"], now=now)
+        s.reinforce(["j", "k"], now=now, namespace=SHARED_NAMESPACE)
+    s.reinforce(["l", "m"], now=now)
+    s.penalize(["h", "i"], penalty=0.95)
+    s.penalize(["j", "k"], penalty=0.9, namespace=SHARED_NAMESPACE)
+    sql = "SELECT node_a, node_b, namespace, weight FROM synapses"
+    with s._connect() as conn:
+        before = {(a, b, ns): w for a, b, ns, w in conn.execute(sql)}
+    for days in (0, 1, 30, 400):
+        s.decay(now=now + days * 86400)
+        with s._connect() as conn:
+            for a, b, ns, w in conn.execute(sql):
+                assert w <= before[(a, b, ns)] + 1e-12, (a, b, ns, w, before[(a, b, ns)])
+                before[(a, b, ns)] = w
+
+
+# --------------------------------------------------------------------------- #
+# decay_node: a fixed multiplicative tick per call (explicit negative signal)
+# --------------------------------------------------------------------------- #
+
+
+def test_decay_node_softens_a_freshly_reinforced_edge(tmp_path):
+    """One negative signal must visibly weaken an edge used seconds ago.
+
+    The old time-based formula decayed by the edge's idle time, so an edge
+    reinforced moments before ``neuralmind_feedback signal=negative`` barely
+    moved (0.3 to 0.29999998 after ten calls).
+    """
+    from neuralmind.synapses import NODE_DECAY_FACTOR
+
+    s = _store(tmp_path)
+    s.reinforce(["x", "y"])
+    s.reinforce(["u", "v"])  # untouched by decay_node("x")
+    s.decay_node("x")
+    assert _raw_edge(s, "x", "y")[0] == pytest.approx(LEARNING_RATE * NODE_DECAY_FACTOR)
+    assert _raw_edge(s, "u", "v")[0] == pytest.approx(LEARNING_RATE)
+
+
+def test_decay_node_prunes_non_ltp_edges_below_threshold(tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["x", "y"])
+    pruned = 0
+    for _ in range(10):
+        pruned = s.decay_node("y")["pruned"]
+        if pruned:
+            break
+    assert pruned == 1
+    assert _raw_edge(s, "x", "y") is None
+
+
+def test_decay_node_keeps_ltp_floor_but_never_raises_a_weight(tmp_path):
+    s = _store(tmp_path)
+    for _ in range(LTP_THRESHOLD):
+        s.reinforce(["x", "y"])
+        s.reinforce(["x", "z"])
+    for _ in range(20):
+        s.decay_node("x")
+    # Established association: floored, not pruned.
+    assert _raw_edge(s, "x", "y")[0] == pytest.approx(LTP_FLOOR)
+    # An LTP edge already penalized below the floor keeps falling.
+    s.penalize(["x", "z"], penalty=1.0)
+    s.decay_node("x")
+    assert _raw_edge(s, "x", "z")[0] == 0.0
+
+
+def test_decay_node_ticks_outgoing_transitions(tmp_path):
+    from neuralmind.synapses import NODE_DECAY_FACTOR
+
+    s = _store(tmp_path)
+    for _ in range(4):
+        s.record_sequence(["x", "y"])
+    s.decay_node("x")
+    with s._connect() as conn:
+        w = conn.execute(
+            "SELECT weight FROM synapse_transitions WHERE from_node='x' AND to_node='y'"
+        ).fetchone()[0]
+    assert w == pytest.approx(4.0 * NODE_DECAY_FACTOR)
+
+
+# --------------------------------------------------------------------------- #
+# Ephemeral edges keep the documented 1-day half-life
+# --------------------------------------------------------------------------- #
+
+
+def test_ephemeral_edges_use_documented_half_life(tmp_path):
+    """Session scratch decays at EPHEMERAL_HALF_LIFE_DAYS, not DECAY_RATE_MIN.
+
+    The learned per-edge rate used to clamp every edge to DECAY_RATE_MIN
+    (3 days), so an ephemeral edge kept ~79% of its weight after a day
+    instead of half.
+    """
+    from neuralmind.synapses import EPHEMERAL_HALF_LIFE_DAYS, EPHEMERAL_NAMESPACE
+
+    s = SynapseStore(tmp_path / "synapses.db", namespace=EPHEMERAL_NAMESPACE)
+    t0 = time.time()
+    s.reinforce(["p", "q"], now=t0)
+    s.reinforce(["p", "q"], now=t0)
+    with s._connect() as conn:
+        hl = conn.execute("SELECT half_life_days FROM synapses").fetchone()[0]
+    assert hl == pytest.approx(EPHEMERAL_HALF_LIFE_DAYS)
+
+    s.decay(now=t0 + EPHEMERAL_HALF_LIFE_DAYS * 86400)
+    weight = _raw_edge(s, "p", "q", EPHEMERAL_NAMESPACE)[0]
+    assert weight == pytest.approx(2 * LEARNING_RATE / 2)
+
+
+# --------------------------------------------------------------------------- #
+# normalize_hubs is idempotent (runs on every PreCompact hook)
+# --------------------------------------------------------------------------- #
+
+
+def _all_weights(s):
+    with s._connect() as conn:
+        return {
+            (a, b, ns): w
+            for a, b, ns, w in conn.execute(
+                "SELECT node_a, node_b, namespace, weight FROM synapses"
+            )
+        }
+
+
+@pytest.mark.parametrize("strength", [1.0, 2.0])
+def test_normalize_hubs_is_idempotent(tmp_path, strength):
+    """Repeated calls on an unchanged graph must leave weights unchanged.
+
+    Each call used to multiply hub edges by sqrt(max_degree/degree) again,
+    so a saturated hub fell 1.0 -> 0.5 -> 0.25 -> ... one PreCompact at a
+    time until its edges were pruned.
+    """
+    s = _store(tmp_path)
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=strength)
+        s.reinforce(["utils", f"n{i}"], strength=strength)
+    before = _all_weights(s)
+    assert s.normalize_hubs() == 1
+    once = _all_weights(s)
+    assert all(once[k] < before[k] for k in before)  # still trims a runaway hub
+    for _ in range(6):
+        assert s.normalize_hubs() == 0
+    assert _all_weights(s) == pytest.approx(once, rel=1e-12)
+
+
+def test_normalize_hubs_idempotent_with_adjacent_hubs(tmp_path):
+    """Two hubs sharing an edge settle in one pass; later passes are no-ops."""
+    s = _store(tmp_path)
+    for i in range(120):
+        s.reinforce(["hub_a", f"a{i}"], strength=2.0)
+        s.reinforce(["hub_b", f"b{i}"], strength=2.0)
+    for _ in range(4):
+        s.reinforce(["hub_a", "hub_b"], strength=2.0)
+    assert s.normalize_hubs() == 2
+    once = _all_weights(s)
+    assert s.normalize_hubs() == 0
+    assert _all_weights(s) == pytest.approx(once, rel=1e-12)
+
+
+def test_normalize_hubs_retrims_after_new_reinforcement(tmp_path):
+    """Learning after a trim is trimmed back to the same budget, not below."""
+    s = _store(tmp_path)
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=2.0)
+    s.normalize_hubs()
+    budget = sum(_all_weights(s).values())
+    for i in range(200):
+        s.reinforce(["utils", f"n{i}"], strength=2.0)
+    assert sum(_all_weights(s).values()) > budget
+    assert s.normalize_hubs() == 1
+    assert sum(_all_weights(s).values()) == pytest.approx(budget, rel=1e-9)
+
+
+# --------------------------------------------------------------------------- #
+# Structural seeding mirrors the current build, not the build history
+# --------------------------------------------------------------------------- #
+
+
+def _structural_rows(s):
+    with s._connect() as conn:
+        return conn.execute(
+            "SELECT caller, callee, edge_type, call_count FROM structural_edges ORDER BY caller"
+        ).fetchall()
+
+
+def test_rebuilds_do_not_make_structural_edges_ltp(tmp_path):
+    """Rebuilding the same graph must not inflate call_count or LTP-protect.
+
+    Every build used to add 1 to both ``call_count`` and the seeded edge's
+    ``activation_count``, so after LTP_THRESHOLD builds an unchanged call
+    path became LTP-protected (contradicting the docstring) and its weight
+    crept up as if it had more call sites.
+    """
+    from neuralmind.synapses import STRUCTURAL_BASE_WEIGHT, STRUCTURAL_LOG_SCALE
+
+    s = _store(tmp_path)
+    edge = [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}]
+    for _ in range(LTP_THRESHOLD + 1):
+        s.persist_structural_edges(edge)
+        s.seed_from_structural()
+    assert _structural_rows(s) == [("billing.charge", "stripe.call", "call", 1)]
+    with s._connect() as conn:
+        weight, count = conn.execute(
+            "SELECT weight, activation_count FROM synapses WHERE namespace = ?",
+            (SHARED_NAMESPACE,),
+        ).fetchone()
+    assert count == 1 < LTP_THRESHOLD
+    assert weight == pytest.approx(STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(2))
+
+
+def test_call_count_counts_call_sites_within_one_build(tmp_path):
+    s = _store(tmp_path)
+    edge = {"source": "a", "target": "b", "relation": "calls"}
+    assert s.persist_structural_edges([edge, edge, edge]) == 1
+    assert _structural_rows(s) == [("a", "b", "call", 3)]
+    s.persist_structural_edges([edge, edge, edge])
+    assert _structural_rows(s) == [("a", "b", "call", 3)]
+
+
+def test_removed_call_path_is_not_reseeded(tmp_path):
+    """A call deleted from the code drops out of structural_edges on rebuild."""
+    s = _store(tmp_path)
+    t0 = time.time() - 86400
+    s.persist_structural_edges(
+        [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}], now=t0
+    )
+    s.seed_from_structural(now=t0)
+
+    s.persist_structural_edges([{"source": "other.a", "target": "other.b", "relation": "calls"}])
+    s.seed_from_structural()
+
+    assert _structural_rows(s) == [("other.a", "other.b", "call", 1)]
+    with s._connect() as conn:
+        last = conn.execute(
+            "SELECT last_activated FROM synapses WHERE node_a = 'billing.charge'"
+        ).fetchone()[0]
+    # The stale seeded synapse is left to decay and prune; it is not refreshed.
+    assert last == pytest.approx(t0)
+
+
+def test_empty_graph_does_not_wipe_structural_edges(tmp_path):
+    """A failed/empty graph load must not erase the last good snapshot."""
+    s = _store(tmp_path)
+    s.persist_structural_edges([{"source": "a", "target": "b", "relation": "calls"}])
+    assert s.persist_structural_edges([]) == 0
+    assert _structural_rows(s) == [("a", "b", "call", 1)]
+
+
+# --------------------------------------------------------------------------- #
+# Read-then-write transactions take the write lock up front (BEGIN IMMEDIATE)
+# --------------------------------------------------------------------------- #
+
+
+class _CommitAfterFirstRead:
+    """Connection proxy: after the first SELECT inside a transaction, let a
+    concurrent writer (another thread, another connection) commit.
+
+    A deferred ``BEGIN`` whose first statement is a read pins a WAL snapshot;
+    when another connection commits before the first write, SQLite fails the
+    read->write upgrade at once with "database is locked" (SQLITE_BUSY_SNAPSHOT)
+    instead of waiting out the busy timeout.
+    """
+
+    def __init__(self, conn, writer_go, writer_done):
+        self._c = conn
+        self._in_txn = False
+        self._fired = False
+        self._go = writer_go
+        self._done = writer_done
+
+    def execute(self, sql, *args):
+        cur = self._c.execute(sql, *args)
+        head = sql.lstrip().upper()
+        if head.startswith("BEGIN"):
+            self._in_txn = True
+        elif self._in_txn and not self._fired and head.startswith("SELECT"):
+            self._fired = True
+            self._go.set()
+            # With BEGIN IMMEDIATE the writer blocks on our lock, so don't
+            # wait for it forever — it finishes after we commit.
+            self._done.wait(timeout=0.5)
+        return cur
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+
+def _run_with_concurrent_writer(monkeypatch, tmp_path, store, op):
+    from contextlib import contextmanager
+
+    other = SynapseStore(store.db_path)
+    go, done = threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+
+    def writer():
+        go.wait(timeout=10)
+        try:
+            other.reinforce(["concurrent_c", "concurrent_d"])
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            errors.append(exc)
+        finally:
+            done.set()
+
+    original = SynapseStore._connect
+
+    @contextmanager
+    def patched(self):
+        with original(self) as conn:
+            yield _CommitAfterFirstRead(conn, go, done) if self is store else conn
+
+    monkeypatch.setattr(SynapseStore, "_connect", patched)
+    t = threading.Thread(target=writer)
+    t.start()
+    try:
+        op()
+    finally:
+        go.set()
+        t.join(timeout=30)
+        monkeypatch.setattr(SynapseStore, "_connect", original)
+    assert not errors, errors
+    assert other.neighbors("concurrent_c", namespaces=["personal"])  # writer landed
+
+
+def test_decay_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["a", "b"])
+    _run_with_concurrent_writer(monkeypatch, tmp_path, s, s.decay)
+
+
+def test_seed_from_documents_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node("decision:exact.20260801", "The audit_log_data function needs updating."),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+    ]
+    result: list[int] = []
+    _run_with_concurrent_writer(
+        monkeypatch, tmp_path, s, lambda: result.append(s.seed_from_documents(nodes))
+    )
+    assert result == [1]
+
+
+def test_normalize_hubs_waits_for_a_concurrent_writer(monkeypatch, tmp_path):
+    s = _store(tmp_path)
+    for i in range(60):
+        s.reinforce(["hub", f"spoke_{i}"], strength=2.0)
+    _run_with_concurrent_writer(monkeypatch, tmp_path, s, s.normalize_hubs)

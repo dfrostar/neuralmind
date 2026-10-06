@@ -388,6 +388,19 @@ def _no_real_tier2_config(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _keyword_decision_search(monkeypatch):
+    """Pin decision search to keyword mode unless a test asks for another.
+
+    The default mode (hybrid) ranks with the local MiniLM model whenever it
+    is on disk, and whether it is depends on the machine and on which tests
+    ran first, so the same assertion could see keyword results on CI and
+    hybrid ones on a developer's box. Semantic and hybrid tests pass ``mode``
+    with an injected embedder; tests of the default clear the variable.
+    """
+    monkeypatch.setenv("NEURALMIND_DECISION_SEARCH", "keyword")
+
+
+@pytest.fixture(autouse=True)
 def _release_chroma_file_handles():
     """Stop chromadb's cached Systems after each test.
 

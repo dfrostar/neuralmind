@@ -56,7 +56,7 @@ class TestStructuralEdges:
         edges = [{"source": "A", "target": "B", "relation": "calls"}]
         s.persist_structural_edges(edges)
         s.persist_structural_edges(edges)
-        # Re-upsert should increment call_count, not add new rows
+        # Re-persisting the same graph replaces the snapshot instead of adding rows
         assert _count_structural_edges(s) == 1
 
     def test_persist_skip_unknown_relations(self, tmp_path):

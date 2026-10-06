@@ -20,6 +20,11 @@ def test_rbac_policy_allows_expected_tools():
     assert policy.is_allowed("reader", "neuralmind_build") is False
 
 
+def test_an_empty_policy_is_not_the_default_policy():
+    assert RBACPolicy({}).is_allowed("admin", "neuralmind_query") is False
+    assert RBACPolicy().is_allowed("admin", "neuralmind_query") is True
+
+
 def test_rate_limiter_enforces_sliding_window():
     limiter = RateLimiter(max_calls=2, window_seconds=60)
     assert limiter.allow("alice") is True
@@ -118,8 +123,12 @@ def test_handle_tool_call_rejects_empty_project_path(temp_project):
 
 
 # The default policy grants every tool to a role, or leaves it out on purpose.
-# Admin-only by default, as docs/SECURITY-GUIDE.md ("Default roles") lists.
-ADMIN_ONLY_TOOLS = {
+# Admin-only by default, as docs/SECURITY-GUIDE.md ("Default roles") lists:
+# none since v4.8.1, when the five read-only structure and recall lookups
+# (review, impact, structural/synaptic neighbors, next_likely) were granted to
+# builder and reader.
+ADMIN_ONLY_TOOLS: set[str] = set()
+READ_ONLY_LOOKUPS = {
     "neuralmind_synaptic_neighbors",
     "neuralmind_structural_neighbors",
     "neuralmind_next_likely",
@@ -146,6 +155,17 @@ def test_default_roles_decide_every_advertised_tool():
     names = {tool["name"] for tool in TOOLS}
     assert names - DEFAULT_ROLE_POLICY["builder"] == ADMIN_ONLY_TOOLS
     assert names - DEFAULT_ROLE_POLICY["reader"] == ADMIN_ONLY_TOOLS | BUILDER_ONLY_TOOLS
+
+
+@pytest.mark.parametrize("role", ["builder", "reader"])
+def test_default_roles_grant_the_read_only_lookups(role):
+    """neuralmind_review et al. were advertised in tools/list but refused to
+    every default role, although the docs say Claude Code calls review."""
+    from neuralmind.mcp_security import DEFAULT_ROLE_POLICY, RBACPolicy
+
+    policy = RBACPolicy(DEFAULT_ROLE_POLICY)
+    for tool in sorted(READ_ONLY_LOOKUPS):
+        assert policy.is_allowed(role, tool), f"{role} denied {tool}"
 
 
 @pytest.mark.parametrize(

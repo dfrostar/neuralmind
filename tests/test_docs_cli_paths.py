@@ -36,22 +36,20 @@ REPO = Path(__file__).resolve().parents[1]
 # Pre-existing drift allowlist (remediation R3b).
 #
 # Found 2026-09-20 by the first run of this gate: these pages reference
-# commands that do NOT exist anywhere in neuralmind/cli.py. They describe
-# audit reporting, licensing administration, and backend management — either
-# planned features or a different tool's CLI. Removing/rewriting those docs
-# is tracked as R3b; until then the commands are excused HERE (explicitly,
-# with file provenance) so that any NEW drift still fails CI.
+# commands that do NOT exist anywhere in neuralmind/cli.py. The first run
+# also found audit-reporting and backend-management commands; those pages
+# now use the real `audit export|verify` and `neuralmind-backend.yaml`. The
+# licensing-administration commands below remain — either planned features
+# or a different tool's CLI. Removing/rewriting those docs is tracked as R3b;
+# until then the commands are excused HERE (explicitly, with file
+# provenance) so that any NEW drift still fails CI.
 # ---------------------------------------------------------------------------
 ALLOWED_MISSING_COMMANDS = {
-    "audit-report",  # docs/wiki/Scheduling-Guide.md, docs/SECURITY-GUIDE.md
-    "audit-export",  # docs/SECURITY-GUIDE.md
     "issue-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "renew-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "revoke-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-status",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-list",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "backend-check",  # docs/wiki/FAQ.md, docs/UPGRADING.md
-    "backend-list",  # docs/UPGRADING.md
 }
 
 # ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,7 +27,25 @@ assert _spec and _spec.loader
 graphgen = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(graphgen)
 
-FIXTURE = _REPO / "tests" / "fixtures" / "sample_project"
+_FIXTURE_COPIES = tempfile.TemporaryDirectory(prefix="nm-graphgen-fixtures-")
+
+
+def _private_copy(src: Path) -> Path:
+    """Copy a committed fixture project into this module's temp dir.
+
+    ``build_graph`` writes its incremental extraction cache into the project it
+    builds. Building the committed fixture in place rewrote the cache files
+    under ``tests/fixtures/*/.neuralmind/`` on every run, leaving the checkout
+    dirty. The copy leaves out ``.neuralmind/``, so every build here starts
+    fresh rather than from a cache committed for some other run.
+    """
+    dest = Path(_FIXTURE_COPIES.name) / src.name
+    if not dest.exists():
+        shutil.copytree(src, dest, ignore=shutil.ignore_patterns(".neuralmind"))
+    return dest
+
+
+FIXTURE = _private_copy(_REPO / "tests" / "fixtures" / "sample_project")
 
 # The graphify graph.json contract the rest of the stack consumes.
 NODE_KEYS = {
@@ -261,15 +280,15 @@ class WriteGraphTests(unittest.TestCase):
             self.assertNotIn("should_not_appear()", labels)
 
 
-FIXTURE_TS = _REPO / "tests" / "fixtures" / "sample_project_ts"
-FIXTURE_GO = _REPO / "tests" / "fixtures" / "sample_project_go"
-FIXTURE_RUST = _REPO / "tests" / "fixtures" / "sample_project_rust"
-FIXTURE_JAVA = _REPO / "tests" / "fixtures" / "sample_project_java"
-FIXTURE_C = _REPO / "tests" / "fixtures" / "sample_project_c"
-FIXTURE_CPP = _REPO / "tests" / "fixtures" / "sample_project_cpp"
-FIXTURE_CSHARP = _REPO / "tests" / "fixtures" / "sample_project_csharp"
-FIXTURE_RUBY = _REPO / "tests" / "fixtures" / "sample_project_ruby"
-FIXTURE_PHP = _REPO / "tests" / "fixtures" / "sample_project_php"
+FIXTURE_TS = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_ts")
+FIXTURE_GO = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_go")
+FIXTURE_RUST = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_rust")
+FIXTURE_JAVA = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_java")
+FIXTURE_C = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_c")
+FIXTURE_CPP = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_cpp")
+FIXTURE_CSHARP = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_csharp")
+FIXTURE_RUBY = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_ruby")
+FIXTURE_PHP = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_php")
 
 
 @unittest.skipUnless(
@@ -1448,8 +1467,8 @@ class SchemaArtifactTests(unittest.TestCase):
 # --------------------------------------------------------------------------- #
 # G1 — Dynamic Import Resolution tests
 # --------------------------------------------------------------------------- #
-FIXTURE_DYN_PY = _REPO / "tests" / "fixtures" / "sample_project_dynamic_py"
-FIXTURE_DYN_TS = _REPO / "tests" / "fixtures" / "sample_project_dynamic_ts"
+FIXTURE_DYN_PY = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_dynamic_py")
+FIXTURE_DYN_TS = _private_copy(_REPO / "tests" / "fixtures" / "sample_project_dynamic_ts")
 
 
 @unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")

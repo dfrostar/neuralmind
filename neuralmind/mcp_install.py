@@ -119,6 +119,40 @@ def is_detected(client: str, project_dir: Path) -> bool:
 # --------------------------------------------------------------------------- #
 # Merge logic (pure)
 # --------------------------------------------------------------------------- #
+def _launches_neuralmind(entry: dict) -> bool:
+    """True when an existing entry already starts NeuralMind's MCP server —
+    an absolute venv path to ``neuralmind-mcp`` or ``python -m
+    neuralmind.mcp_server`` — however it differs from the default."""
+    command = entry.get("command")
+    args = entry.get("args") if isinstance(entry.get("args"), list) else []
+    if isinstance(command, str) and Path(command.replace("\\", "/")).name in (
+        SERVER_COMMAND,
+        f"{SERVER_COMMAND}.exe",
+    ):
+        return True
+    return any(arg in ("neuralmind.mcp_server", SERVER_COMMAND) for arg in args)
+
+
+def _merge_entry(servers: dict, command: str) -> str:
+    """Add/update NeuralMind's entry in a ``servers`` mapping in place.
+
+    An entry that already launches NeuralMind is kept as the user wrote it
+    (MCP clients often start servers with a minimal PATH, so an absolute
+    command can be load-bearing); otherwise the launch spec is replaced. Any
+    other keys the user added (``env``, ``cwd``, …) are kept either way.
+    Returns ``installed``, ``updated`` or ``already-present``.
+    """
+    existing = servers.get(SERVER_NAME)
+    if not isinstance(existing, dict):
+        action = "updated" if SERVER_NAME in servers else "installed"
+        servers[SERVER_NAME] = server_entry(command)
+        return action
+    if _launches_neuralmind(existing):
+        return "already-present"
+    servers[SERVER_NAME] = {**existing, **server_entry(command)}
+    return "updated"
+
+
 def merge_server(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str]:
     """Add/update NeuralMind's entry in a config dict's ``mcpServers``.
 
@@ -130,75 +164,68 @@ def merge_server(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str
     if not isinstance(servers, dict):
         servers = {}
         config["mcpServers"] = servers
-    entry = server_entry(command)
-    existing = servers.get(SERVER_NAME)
-    if existing == entry:
-        return config, "already-present"
-    action = "updated" if SERVER_NAME in servers else "installed"
-    servers[SERVER_NAME] = entry
-    return config, action
+    return config, _merge_entry(servers, command)
 
 
 def merge_server_vscode(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str]:
     """Add/update NeuralMind's entry in a VS Code settings.json dict.
 
-    VS Code 1.99+ uses the ``"mcp.servers"`` top-level key (not ``"mcpServers"``).
-    Other settings in the file are preserved untouched.
+    VS Code 1.99+ reads ``"mcp.servers"``, or the same mapping nested as
+    ``"mcp": {"servers": …}``; an existing nested one is used rather than
+    adding a second, dotted key beside it. Other settings are preserved.
     """
+    nested = config.get("mcp")
+    if (
+        "mcp.servers" not in config
+        and isinstance(nested, dict)
+        and isinstance(nested.get("servers"), dict)
+    ):
+        return config, _merge_entry(nested["servers"], command)
     servers = config.get("mcp.servers")
     if not isinstance(servers, dict):
         servers = {}
         config["mcp.servers"] = servers
-    entry = server_entry(command)
-    existing = servers.get(SERVER_NAME)
-    if existing == entry:
-        return config, "already-present"
-    action = "updated" if SERVER_NAME in servers else "installed"
-    servers[SERVER_NAME] = entry
-    return config, action
+    return config, _merge_entry(servers, command)
 
 
-def _read_config(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
+def _read_config(path: Path) -> tuple[dict, str, str]:
+    """Read a client's JSON config.  Returns ``(config, skip_action, why)``.
 
-
-def _read_vscode_config(path: Path) -> tuple[dict, bool]:
-    """Read VS Code settings.json.  Returns ``(config, is_strict_json)``.
-
-    ``is_strict_json`` is False when the file exists, is non-empty, but fails
-    JSON parsing — i.e. it is JSONC (comments/trailing commas).  In that case
-    we must NOT overwrite it: Python's ``json`` module cannot round-trip JSONC
-    and we would destroy the user's settings.
+    ``skip_action`` is empty when the file is absent, blank, or a JSON object we
+    can round-trip. Otherwise the file must NOT be rewritten — it is JSONC
+    (comments / trailing commas, common in Cursor, Cline and VS Code configs),
+    has a non-object top level, or can't be read — and treating it as ``{}``
+    would delete every other server the user configured.
     """
     if not path.exists():
-        return {}, True
+        return {}, "", ""
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
-        return {}, True
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, "skipped-unreadable", f"could not be read ({exc})"
     if not text.strip():
-        return {}, True
+        return {}, "", ""
     try:
         data = json.loads(text)
-        return (data if isinstance(data, dict) else {}), True
     except ValueError:
-        return {}, False
+        return {}, "skipped-jsonc", "is not strict JSON (comments or a trailing comma?)"
+    if not isinstance(data, dict):
+        return {}, "skipped-not-object", "does not hold a JSON object at the top level"
+    return data, "", ""
 
 
 @dataclass
 class InstallResult:
     client: str
     path: Path
-    action: str  # installed | updated | already-present | skipped
+    action: str  # installed | updated | already-present | skipped-<reason>
+    detail: str = ""  # for a skip: why, and the entry to add by hand
 
     def to_dict(self) -> dict:
-        return {"client": self.client, "path": str(self.path), "action": self.action}
+        out = {"client": self.client, "path": str(self.path), "action": self.action}
+        if self.detail:
+            out["detail"] = self.detail
+        return out
 
 
 def install(
@@ -210,23 +237,19 @@ def install(
 ) -> InstallResult:
     """Merge NeuralMind into ``client``'s config, writing the file."""
     path = config_path(client, project_dir)
+    config, skip_action, why = _read_config(path)
+    if skip_action:
+        key = "mcp.servers" if client == "vscode" else "mcpServers"
+        entry = json.dumps({key: {SERVER_NAME: server_entry(command)}}, indent=2)
+        return InstallResult(
+            client=client,
+            path=path,
+            action=skip_action,
+            detail=f"{path} {why}; left untouched. Add this entry by hand:\n{entry}",
+        )
     if client == "vscode":
-        config, is_json = _read_vscode_config(path)
-        if not is_json:
-            # settings.json uses JSONC (comments/trailing commas) — Python's json
-            # module cannot round-trip it, so we refuse rather than clobber the file.
-            import warnings
-
-            warnings.warn(
-                f"NeuralMind: {path} appears to be JSONC (comments or trailing commas). "
-                "Add the MCP entry manually:\n"
-                '  "mcp.servers": {"neuralmind": {"command": "neuralmind-mcp", "args": []}}',
-                stacklevel=2,
-            )
-            return InstallResult(client=client, path=path, action="skipped-jsonc")
         config, action = merge_server_vscode(config, command)
     else:
-        config = _read_config(path)
         config, action = merge_server(config, command)
     if action != "already-present":
         if create_parents:

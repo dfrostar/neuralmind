@@ -23,9 +23,12 @@ from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.paths import (
+    ProjectNotFoundError,
     graph_json_path,
+    require_project_dir,
     vector_db_path,
 )
+from neuralmind.storage_guard import StorageNotVerifiedError
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 
@@ -1396,9 +1399,12 @@ def cmd_review(args):
     base = getattr(args, "base", None) or "HEAD"
     top_k = int(getattr(args, "top_k", 10))
 
-    # Get changed files from git
+    # Get changed files from git. git prints paths relative to the repository
+    # root; ``--relative`` with the ``.`` pathspec limits the diff to the
+    # project and prints paths relative to it, so a project in a subdirectory
+    # of a larger repository joins them correctly and ignores the rest.
     try:
-        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", "--relative", base, "--", "."]
         changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         changed_files = [
             str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1406,7 +1412,17 @@ def cmd_review(args):
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
-            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            cmd = [
+                "git",
+                "-C",
+                str(project_path),
+                "diff",
+                "--cached",
+                "--name-only",
+                "--relative",
+                "--",
+                ".",
+            ]
             changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             changed_files = [
                 str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1473,7 +1489,7 @@ def cmd_review(args):
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
                 seen_files.add(abs_file)
-                rel = str(Path(abs_file).relative_to(project_path))
+                rel = Path(abs_file).relative_to(project_path).as_posix()
                 at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
                 if len(at_risk) >= top_k:
                     break
@@ -1481,13 +1497,13 @@ def cmd_review(args):
             pass
 
     if args.json:
-        changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+        changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
         print(
             json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
         )
         return
 
-    changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+    changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
     print(f"NeuralMind review — {project_path.name}  (diff against: {base})")
     print()
     print(f"Changed files ({len(changed_rel)}):")
@@ -2063,13 +2079,15 @@ def cmd_stats(args):
             pass
 
     mind = NeuralMind(args.project_path)
+    # The resolved directory's name: Path(".").name is "".
+    project_name = mind.project_path.name
     try:
         stats = mind.embedder.get_stats()
-        stats["project"] = Path(args.project_path).name
+        stats["project"] = project_name
         stats["built"] = stats.get("total_nodes", 0) > 0
     except Exception as e:
         stats = {
-            "project": Path(args.project_path).name,
+            "project": project_name,
             "built": False,
             "error": str(e),
         }
@@ -2730,6 +2748,7 @@ def cmd_audit_export(args):
     trail = AuditTrail(args.project_path)
 
     if args.output:
+        written = 0
         with open(args.output, "w", encoding="utf-8") as f:
             for line in trail.export(
                 format=args.format,
@@ -2740,7 +2759,12 @@ def cmd_audit_export(args):
                 until=args.until,
             ):
                 f.write(line + "\n")
-        print(f"Exported {len(trail.read_events())} events → {args.output}")
+                written += 1
+        # Count what was written, not the whole log: with filters these differ.
+        noun = "event" if written == 1 else "events"
+        print(f"Exported {written} {noun} → {args.output}")
+        if written == 0 and trail.read_events():
+            print("  No events matched the filters.")
     else:
         for line in trail.export(
             format=args.format,
@@ -2762,12 +2786,27 @@ def cmd_audit_verify(args):
         sys.exit(0 if result["ok"] else 1)
     if result["ok"]:
         print(f"✓ Audit trail integrity OK ({result['total']} events)")
+        if result.get("unchained"):
+            print(
+                f"  {result['unchained']} record(s) before the hash chain have no "
+                "sha256, so the chain doesn't cover them"
+            )
+        if result.get("continues_from"):
+            link = (
+                "its last hash matches"
+                if result.get("archive_checked")
+                else "archive not found, so the link wasn't checked"
+            )
+            print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
     else:
-        print(
-            f"✗ Audit trail tampered at line {result['first_bad_line']} "
-            f"({result['total']} events total)",
-            file=sys.stderr,
-        )
+        if result["first_bad_line"] is None:
+            print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
+        else:
+            print(
+                f"✗ Audit trail tampered at line {result['first_bad_line']} "
+                f"({result['total']} events total): {result.get('reason')}",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
 
@@ -3110,24 +3149,40 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by keywords or a question (titles and rationales)."""
+    """Search decisions by keywords, a question, or meaning (titles and rationales)."""
+    from neuralmind.memory.semantic import SemanticSearchUnavailableError
+
     store = _get_decisions_store(args.project_path)
-    results = store.query(
-        text=args.query,
-        limit=args.limit,
-        status=args.status,
-    )
+    try:
+        found = store.search(
+            text=args.query,
+            limit=args.limit,
+            status=args.status,
+            mode=args.mode,
+        )
+    except SemanticSearchUnavailableError as e:
+        print(
+            f"Semantic search unavailable: {e}. Use --mode hybrid or --mode keyword.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if found.notice:
+        print(f"[neuralmind] {found.notice}", file=sys.stderr)
+    results = found.records
     if args.json:
         import json
 
         print(json.dumps([r.model_dump() for r in results], indent=2, default=str))
+        # stdout stays the bare array scripts already parse; the mode that
+        # ranked it goes to stderr.
+        print(f"[neuralmind] search mode: {found.mode}", file=sys.stderr)
         return
 
     if not results:
-        print(f"No decisions found for: {args.query}")
+        print(f"No decisions found for: {args.query} ({found.mode} search)")
         return
 
-    print(f'# NeuralMind Decisions Query: "{args.query}"')
+    print(f'# NeuralMind Decisions Query: "{args.query}" ({found.mode})')
     print()
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
@@ -3213,6 +3268,10 @@ def cmd_decisions_export(args):
 def cmd_decisions_restore(args):
     """Re-validate a stale entry."""
     store = _get_decisions_store(args.project_path)
+    not_found = f"Decision not found: {args.decision_id}"
+    if store.get(args.decision_id) is None:
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
     commit = args.commit
     if not commit:
         try:
@@ -3226,7 +3285,16 @@ def cmd_decisions_restore(args):
         except Exception as e:
             print(f"Error resolving commit: {e}")
             sys.exit(1)
-    decision = store.restore(args.decision_id, new_commit_sha=commit)
+    import sqlite3
+
+    try:
+        decision = store.restore(args.decision_id, new_commit_sha=commit)
+    except KeyError:  # removed between the check above and the update
+        print(not_found, file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not restore decision {args.decision_id}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Restored decision: {decision.id}")
     print(f"  Status: {decision.status}")
     print(f"  Commit: {decision.commit_sha}")
@@ -3234,8 +3302,17 @@ def cmd_decisions_restore(args):
 
 def cmd_decisions_invalidate(args):
     """Mark a decision as stale."""
+    import sqlite3
+
     store = _get_decisions_store(args.project_path)
-    store.invalidate(args.decision_id, reason=args.reason)
+    try:
+        store.invalidate(args.decision_id, reason=args.reason)
+    except KeyError:
+        print(f"Decision not found: {args.decision_id}", file=sys.stderr)
+        sys.exit(1)
+    except sqlite3.Error as e:
+        print(f"Could not invalidate decision {args.decision_id}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"Invalidated decision: {args.decision_id}")
 
 
@@ -3311,10 +3388,12 @@ def cmd_decisions_scan(args):
 def cmd_decisions_eval(args):
     """Run the maintenance replay benchmark, or score a query set (--queries)."""
     from neuralmind.memory.eval import MaintenanceEval, QuerySetEval, load_query_set
+    from neuralmind.memory.semantic import SEARCH_MODES
 
     output_format = "markdown" if args.format == "md" else args.format
     if args.queries:
-        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit)
+        modes = SEARCH_MODES if args.mode == "all" else (args.mode,)
+        eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit, modes=modes)
     else:
         eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
     report = eval_harness.run(output_format=output_format)
@@ -4011,7 +4090,12 @@ def cmd_ingest(args):
 
     from neuralmind.content_node import ContentNode
     from neuralmind.core import create_mind
-    from neuralmind.document_ingestion import parse_document
+    from neuralmind.document_ingestion import (
+        graph_prose_files,
+        graph_prose_is_current,
+        parse_document,
+        project_relative_path,
+    )
 
     # Parse business context from JSON input
     business_types = {"decision", "meeting", "sop", "policy"}
@@ -4189,12 +4273,35 @@ def cmd_ingest(args):
     total_nodes = 0
     total_embed_time = 0.0
     errors: list[tuple[str, str]] = []
+    # Files inside the project whose prose the code graph already holds (the
+    # built-in graph indexes Markdown headings with the text under them).
+    # Ingesting one again stored a second copy under its absolute path, so
+    # the same text came back twice in query context. Read before the loop:
+    # until this run extends it, the embedder's node list is the graph.
+    graph_files = graph_prose_files(mind.embedder.nodes, project_path)
+    already_indexed: list[str] = []
+    # Graph files edited since the last build: the graph holds the old text,
+    # and an ingest would duplicate it rather than replace it, so they're
+    # skipped and reported as needing `neuralmind build`.
+    needs_build: list[str] = []
     wall_start = time.time()
 
     for idx, fpath in enumerate(files_to_ingest, 1):
         if not quiet and len(files_to_ingest) > 1:
             rel = fpath.relative_to(file_path)
             print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        project_rel = project_relative_path(fpath, project_path)
+        if project_rel is not None and project_rel in graph_files:
+            if graph_prose_is_current(graph_files[project_rel], fpath):
+                already_indexed.append(project_rel)
+                note = "already indexed by the code graph, skipped"
+            else:
+                needs_build.append(project_rel)
+                note = "changed since the last build, skipped (run `neuralmind build`)"
+            if not quiet and len(files_to_ingest) > 1:
+                print(f" {note}")
+            continue
 
         try:
             content_nodes = [
@@ -4206,6 +4313,12 @@ def cmd_ingest(args):
                 if not quiet and len(files_to_ingest) > 1:
                     print(" no content")
                 continue
+            if project_rel is not None:
+                # Inside the project: record the project-relative path every
+                # graph node uses, not the absolute one.
+                for cn in content_nodes:
+                    cn["source_file"] = project_rel
+                    cn["metadata"]["source"] = project_rel
 
             # Sync to embedder nodes list (avoid duplicates)
             existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
@@ -4262,6 +4375,8 @@ def cmd_ingest(args):
             "total_nodes": total_nodes,
             "wall_time_seconds": round(wall_time, 2),
             "synapse_doc_edges": synapse_doc_edges,
+            "already_indexed": already_indexed,
+            "needs_build": needs_build,
             "errors": [{"file": str(f), "error": e} for f, e in errors],
         }
         print(json.dumps(output, indent=2))
@@ -4282,7 +4397,20 @@ def cmd_ingest(args):
         if total_nodes > 0:
             print(
                 f"Ingested {total_nodes} content node(s) from "
-                f"{len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+                f"{len(files_to_ingest) - len(already_indexed) - len(needs_build)} file(s) "
+                f"in {wall_time:.1f}s"
+            )
+        if already_indexed:
+            shown = ", ".join(already_indexed[:3]) + (", ..." if len(already_indexed) > 3 else "")
+            print(
+                f"Skipped {len(already_indexed)} file(s) the code graph already indexes "
+                f"({shown}); `neuralmind build` keeps them current."
+            )
+        if needs_build:
+            shown = ", ".join(needs_build[:3]) + (", ..." if len(needs_build) > 3 else "")
+            print(
+                f"Skipped {len(needs_build)} file(s) the code graph indexes that changed "
+                f"since the last build ({shown}); run `neuralmind build` to index the edits."
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")
@@ -4696,6 +4824,25 @@ def cmd_serve(args):
         sys.exit(1)
 
 
+def _copy_demo_fixture(src: Path, dst: Path) -> None:
+    """Copy the bundled demo project to ``dst`` with its graph marked current.
+
+    ``copytree`` keeps each file's mtime from the package, and nothing orders
+    graph.json's after the sources' — in an installed wheel it can predate
+    them. For a graph outside git the freshness check compares source mtimes
+    with graph.json's, so every demo run reported "N files changed since the
+    graph was built → regenerate". The bundled graph was generated from these
+    exact sources, so stamp it no older than anything copied.
+    """
+    import shutil
+    import time
+
+    shutil.copytree(src, dst)
+    newest = max((p.stat().st_mtime for p in dst.rglob("*") if p.is_file()), default=0.0)
+    stamp = max(time.time(), newest)
+    os.utime(dst / ".neuralmind" / "graph.json", (stamp, stamp))
+
+
 def cmd_demo(args):
     """Run the bundled 30-second demo.
 
@@ -4736,10 +4883,10 @@ def cmd_demo(args):
 
     try:
         # importlib.resources.as_file gives us a real path even if the
-        # package was installed from a zip. shutil.copytree then makes a
+        # package was installed from a zip. _copy_demo_fixture then makes a
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
-            shutil.copytree(src, fixture_dir)
+            _copy_demo_fixture(Path(src), fixture_dir)
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
@@ -5066,6 +5213,46 @@ def cmd_ci_check(args):
         sys.exit(1)
 
 
+def cmd_recap(args):
+    """Print the session recap the next new Claude Code session will start with.
+
+    NeuralMind's UserPromptSubmit and Edit/Write hooks record each session's
+    prompts (credentials redacted) and edited files under
+    ``.neuralmind/recaps/``; the SessionStart hook of the next fresh or cleared
+    session injects a short recap of the most recent one. This command shows
+    that recap, or deletes the stored records with ``--clear``.
+    """
+    from .session_recap import RECAP_ENV, clear_recaps, latest_recap, recap_enabled
+
+    project_path = args.project_path or "."
+    if args.clear:
+        removed = clear_recaps(project_path)
+        print(
+            f"Removed {removed} session record(s) from {Path(project_path) / '.neuralmind' / 'recaps'}."
+        )
+        return
+    if not recap_enabled():
+        recaps_dir = Path(project_path) / ".neuralmind" / "recaps"
+        stored = 0 if recaps_dir.is_symlink() else len(list(recaps_dir.glob("*.jsonl")))
+        print(f"Session recap is off ({RECAP_ENV}=0): nothing is recorded or injected.")
+        if stored:
+            print(
+                f"{stored} session record(s) from before it was switched off are still "
+                "stored; `neuralmind recap --clear` deletes them."
+            )
+        return
+    recap = latest_recap(project_path)
+    if not recap:
+        print(
+            "No session recap to show. The Claude Code hooks record one as you "
+            "work in a project where `neuralmind build` has run (`neuralmind "
+            "install-hooks`); recaps older than NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS "
+            "(default 14) aren't shown."
+        )
+        return
+    print(recap)
+
+
 def cmd_last(args):
     """Print the most recent cached bash output (see it again without re-running).
 
@@ -5119,6 +5306,68 @@ def cmd_last(args):
         print(stderr.rstrip())
 
 
+def cmd_install_hermes_plugin(args):
+    """Install or remove NeuralMind's Hermes-Agent plugin (see hermes_install.py)."""
+    from .hermes_install import hermes_home, install, uninstall
+
+    home = Path(args.hermes_home).expanduser() if args.hermes_home else hermes_home()
+    profile = f" (Hermes profile {home.name})" if home.parent.name == "profiles" else ""
+    if args.uninstall:
+        result = uninstall(home)
+        if result["removed"]:
+            print(f"✓ Removed the NeuralMind plugin from {result['path']}{profile}")
+        else:
+            print(f"No NeuralMind plugin at {result['path']}{profile}")
+        if not result["initialised"]:
+            pass  # no Hermes config there, so nothing was enabled to disable
+        elif result["disabled"] is None and result["removed"]:
+            print("  `hermes` isn't on PATH: run `hermes plugins disable neuralmind` yourself.")
+        elif result["disabled"] is False:
+            print("  ⚠ `hermes plugins disable neuralmind` failed; run it yourself.")
+        return
+    try:
+        result = install(args.project_path, home=home, enable=not args.no_enable, unpin=args.unpin)
+    except (FileNotFoundError, FileExistsError) as exc:
+        print(f"✗ {exc}")
+        sys.exit(1)
+    print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
+    if result["project"]:
+        kept = "" if args.project_path else " (kept from the earlier install; --unpin clears it)"
+        print(f"  Project: {result['project']}{kept}")
+        if not result["built"]:
+            print(
+                "  ⚠ That project isn't built, and the plugin does nothing until it is: "
+                f"run `neuralmind build {result['project']}`."
+            )
+    else:
+        print(
+            "  Project: the directory Hermes works in (TERMINAL_CWD, else its current "
+            "directory), if it's built. Pass a path to pin one; a pin applies to every "
+            "Hermes session in this Hermes home."
+        )
+    if not result["initialised"]:
+        print(
+            f"  ⚠ {home} has no Hermes config yet, so the plugin isn't enabled. Set Hermes up "
+            "first, then run `hermes plugins enable neuralmind`."
+        )
+    elif result["disabled_by_user"]:
+        print(
+            "  Left disabled: it's on Hermes's plugins.disabled list. Run "
+            "`hermes plugins enable neuralmind` to turn it back on."
+        )
+    elif result["enabled"] is True:
+        print("  Enabled in Hermes.")
+    elif result["enabled"] is False:
+        print("  ⚠ `hermes plugins enable neuralmind` failed; run it yourself.")
+    elif not args.no_enable:
+        print("  `hermes` isn't on PATH: run `hermes plugins enable neuralmind` yourself.")
+    print(
+        "  Each Hermes turn now gets NeuralMind's related files and decisions, and a "
+        "session's first turn gets the recap of the previous one. Start a new Hermes "
+        "session (restart the gateway if it's running) to load it."
+    )
+
+
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
@@ -5139,7 +5388,9 @@ def cmd_install_hooks(args):
                 "  Hooks active: session memory (SessionStart), prompt recall "
                 "(UserPromptSubmit), stale-decision guard (PreToolUse), reuse feedback "
                 "and the `neuralmind last` output cache (PostToolUse), session digest "
-                "(Stop, SessionEnd)"
+                "(Stop, SessionEnd), and the session recap, which records prompts "
+                "(credentials redacted) and edited files in built projects "
+                "(NEURALMIND_SESSION_RECAP=0 turns it off)"
             )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
             print(
@@ -5181,6 +5432,9 @@ def cmd_install_mcp(args):
         except ValueError as exc:
             print(f"Error: {exc}")
             sys.exit(1)
+        if result.action.startswith("skipped"):
+            print(f"✗ {client}: {result.action} → {result.detail}")
+            continue
         symbol = "✓" if result.action != "already-present" else "•"
         print(f"{symbol} {client}: {result.action} → {result.path}")
         any_change = any_change or result.action != "already-present"
@@ -5951,6 +6205,42 @@ def _version_string() -> str:
     return base
 
 
+def _existing_project_dir(value: str) -> str:
+    """argparse ``type=`` for a project path that must already exist.
+
+    Returns ``value`` unchanged. A missing path is a usage error reported
+    before the command runs, so nothing is created under a mistyped path.
+    """
+    try:
+        require_project_dir(value)
+    except OSError as e:  # ProjectNotFoundError, or a cwd that is gone
+        raise argparse.ArgumentTypeError(str(e)) from None
+    return value
+
+
+def _positive_int(value: str) -> int:
+    """argparse ``type=`` for a result count: an integer of at least 1."""
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from None
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {n}")
+    return n
+
+
+def _confidence_arg(value: str) -> float:
+    """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
+    from neuralmind.memory.store import validate_confidence
+
+    try:
+        return validate_confidence(float(value))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"confidence must be a number from 0 to 1, got {value!r}"
+        ) from None
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Construct the full CLI parser tree.
 
@@ -6068,7 +6358,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
-    query_p.add_argument("project_path")
+    query_p.add_argument("project_path", type=_existing_project_dir)
     query_p.add_argument("question")
     query_p.add_argument("--json", "-j", action="store_true")
     query_p.add_argument(
@@ -6134,7 +6424,7 @@ def build_parser() -> argparse.ArgumentParser:
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
-    wakeup_p.add_argument("project_path")
+    wakeup_p.add_argument("project_path", type=_existing_project_dir)
     wakeup_p.add_argument("--json", "-j", action="store_true")
     wakeup_p.set_defaults(func=cmd_wakeup)
 
@@ -6313,9 +6603,12 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.set_defaults(func=cmd_probe)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
-    search_p.add_argument("project_path")
+    search_p.add_argument("project_path", type=_existing_project_dir)
     search_p.add_argument("query")
-    search_p.add_argument("--n", type=int, default=10)
+    # The backend floors k at 1, so --n 0 / --n -3 returned one result.
+    search_p.add_argument(
+        "--n", type=_positive_int, default=10, help="Number of results (default: 10)"
+    )
     search_p.add_argument("--json", "-j", action="store_true")
     search_p.set_defaults(func=cmd_search)
 
@@ -6328,7 +6621,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
-    stats_p.add_argument("project_path")
+    stats_p.add_argument("project_path", type=_existing_project_dir)
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
 
@@ -6829,16 +7122,25 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("--type", default="ARCHITECTURE", help="Decision type")
     d_record.add_argument("--rejected", nargs="*", help="Rejected alternatives")
     d_record.add_argument("--evidence", nargs="*", help="Supporting evidence")
-    d_record.add_argument("--confidence", type=float, default=1.0, help="Confidence 0-1")
+    d_record.add_argument(
+        "--confidence", type=_confidence_arg, default=1.0, help="Confidence 0-1 (default: 1.0)"
+    )
     d_record.add_argument("--tags", nargs="*", help="Tags for categorization")
-    d_record.add_argument("project_path", nargs="?", default=".")
+    d_record.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_record.set_defaults(func=cmd_decisions_record)
 
     d_query = decisions_sub.add_parser(
-        "query", help="Search decisions by keywords or a question (titles and rationales)"
+        "query", help="Search decisions by keywords, a question, or meaning (titles and rationales)"
     )
     d_query.add_argument(
         "query", help="Keywords or a question; any word can match, best matches first"
+    )
+    d_query.add_argument(
+        "--mode",
+        type=str.lower,
+        choices=["keyword", "semantic", "hybrid"],
+        help="keyword: shared words; semantic: meaning (local embedding model); "
+        "hybrid: both, fused. Default: $NEURALMIND_DECISION_SEARCH, else hybrid",
     )
     d_query.add_argument("--limit", "-n", type=int, default=5)
     d_query.add_argument(
@@ -6849,7 +7151,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Status filter, case-insensitive (default: ACTIVE)",
     )
     d_query.add_argument("--json", "-j", action="store_true")
-    d_query.add_argument("project_path", nargs="?", default=".")
+    d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
     d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
@@ -6857,32 +7159,32 @@ def build_parser() -> argparse.ArgumentParser:
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
     d_amend.add_argument("--evidence", nargs="*", help="Add evidence")
-    d_amend.add_argument("project_path", nargs="?", default=".")
+    d_amend.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_amend.set_defaults(func=cmd_decisions_amend)
 
     d_audit = decisions_sub.add_parser("audit", help="List all decisions")
     d_audit.add_argument("--stale", action="store_true", help="Only stale entries")
     d_audit.add_argument("--orphaned", action="store_true", help="Only orphaned")
     d_audit.add_argument("--format", choices=["md", "json"], default="md")
-    d_audit.add_argument("project_path", nargs="?", default=".")
+    d_audit.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_audit.set_defaults(func=cmd_decisions_audit)
 
     d_export = decisions_sub.add_parser("export", help="Dump all decisions to file")
     d_export.add_argument("--format", choices=["md", "json"], default="md")
     d_export.add_argument("--output", "-o", help="Output file path")
-    d_export.add_argument("project_path", nargs="?", default=".")
+    d_export.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_export.set_defaults(func=cmd_decisions_export)
 
     d_restore = decisions_sub.add_parser("restore", help="Re-validate a stale entry")
     d_restore.add_argument("decision_id", help="Decision ID to restore")
     d_restore.add_argument("--commit", help="New commit SHA")
-    d_restore.add_argument("project_path", nargs="?", default=".")
+    d_restore.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_restore.set_defaults(func=cmd_decisions_restore)
 
     d_invalidate = decisions_sub.add_parser("invalidate", help="Mark decision as stale")
     d_invalidate.add_argument("decision_id", help="Decision ID to invalidate")
     d_invalidate.add_argument("--reason", default="", help="Reason for invalidation")
-    d_invalidate.add_argument("project_path", nargs="?", default=".")
+    d_invalidate.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_invalidate.set_defaults(func=cmd_decisions_invalidate)
 
     d_scan = decisions_sub.add_parser(
@@ -6914,6 +7216,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     d_eval.add_argument(
         "--limit", type=int, default=5, help="Results per query with --queries (default: 5)"
+    )
+    d_eval.add_argument(
+        "--mode",
+        type=str.lower,
+        choices=["keyword", "semantic", "hybrid", "all"],
+        default="all",
+        help="Search mode(s) to score with --queries (default: all, side by side)",
     )
     d_eval.add_argument("--format", choices=["json", "md"], default="json")
     d_eval.add_argument("--output", "-o", help="Output file")
@@ -7424,11 +7733,30 @@ def build_parser() -> argparse.ArgumentParser:
     last_p.add_argument("--json", "-j", action="store_true")
     last_p.set_defaults(func=cmd_last)
 
+    # recap command — what the next new session's "where we left off" will say
+    recap_p = subparsers.add_parser(
+        "recap",
+        help="Show the session recap the next new Claude Code session starts "
+        "with, or delete the stored session records",
+    )
+    recap_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root containing .neuralmind/recaps/ (default: current dir)",
+    )
+    recap_p.add_argument(
+        "--clear",
+        action="store_true",
+        help="Delete every stored session record for this project",
+    )
+    recap_p.set_defaults(func=cmd_recap)
+
     # install-hooks command — Claude Code lifecycle integration
     hooks_p = subparsers.add_parser(
         "install-hooks",
         help="Install/uninstall NeuralMind's Claude Code hooks (session memory, "
-        "prompt recall, stale-decision guard, Bash output cache)",
+        "session recap, prompt recall, stale-decision guard, Bash output cache)",
     )
     hooks_p.add_argument(
         "project_path",
@@ -7448,6 +7776,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Remove neuralmind hooks, preserve other hooks",
     )
     hooks_p.set_defaults(func=cmd_install_hooks)
+
+    # install-hermes-plugin — the same per-turn context for Hermes-Agent
+    hermes_p = subparsers.add_parser(
+        "install-hermes-plugin",
+        help="Install/uninstall NeuralMind's Hermes-Agent plugin (related files and decisions "
+        "added to every Hermes turn, and the last session's recap to a session's first)",
+    )
+    hermes_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=None,
+        help="Project the plugin serves (default: the one pinned by an earlier install, "
+        "else the directory Hermes works in: TERMINAL_CWD, else its current directory)",
+    )
+    hermes_p.add_argument(
+        "--unpin",
+        action="store_true",
+        help="Forget the pinned project, so the plugin follows the directory Hermes works in",
+    )
+    hermes_p.add_argument("--uninstall", action="store_true", help="Disable and remove the plugin")
+    hermes_p.add_argument(
+        "--no-enable",
+        action="store_true",
+        help="Install without running `hermes plugins enable neuralmind`",
+    )
+    hermes_p.add_argument(
+        "--hermes-home",
+        default=None,
+        help="Hermes home directory (default: the active Hermes profile, else $HERMES_HOME, "
+        "else ~/.hermes, or %%LOCALAPPDATA%%\\hermes on Windows)",
+    )
+    hermes_p.set_defaults(func=cmd_install_hermes_plugin)
 
     # install-mcp command — register the MCP server with AI coding agents
     mcp_p = subparsers.add_parser(
@@ -7734,6 +8094,17 @@ def main():
         print(f"\n{e}\n", file=sys.stderr)
         print("Run `neuralmind doctor` to check your setup.", file=sys.stderr)
         sys.exit(1)
+    except StorageNotVerifiedError as e:
+        # security.require_encrypted_storage refused this project's volume.
+        # A refusal, not a crash: say why and where the check's detail lives.
+        print(f"\n{e}\n", file=sys.stderr)
+        print("Run `neuralmind doctor` to see the Storage encryption check.", file=sys.stderr)
+        sys.exit(1)
+    except ProjectNotFoundError as e:
+        # A mistyped project path on a command whose parser doesn't check it
+        # up front: NeuralMind / DecisionStore refused it before writing.
+        print(f"neuralmind: error: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

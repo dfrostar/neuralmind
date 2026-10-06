@@ -28,10 +28,10 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### GOVERN — oversight, accountability, policies
 
-- **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). Callers declare their own role and aren't authenticated — see `SECURITY-GUIDE.md` §Access Control
+- **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). By default callers declare their own role, unauthenticated; with `security.identity: os` *(v4.7.0+)* the role is bound to the OS account — see `SECURITY-GUIDE.md` §Access Control
 - **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login)
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
-- **Auto-generated NIST AI RMF report:** `neuralmind audit-report . --compliance nist-ai-rmf --output report.md`
+- **Audit export for your assessor:** `neuralmind audit export . --format jsonl` (or `--format cef`). NeuralMind has no report generator, so build the report from the export
 
 ### MAP — impact assessment, context
 
@@ -43,13 +43,13 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 - **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark`); CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
-- **Query latency** logged for every retrieval — performance regressions visible in `audit-report` output
+- **Context tokens** recorded for every query in the audit log
 
 ### MANAGE — risk controls
 
-- **Secret detection** runs before any retrieval result is returned (configurable scanners)
+- **Secret scanning** before indexing: `neuralmind scan-for-secrets` is a separate step, and `build --redact-secrets` scrubs indexed text as a backstop. Neither runs at query time
 - **Rate limiting** enforceable at the MCP server boundary
-- **Anomaly alerts** — `events.jsonl` + the live activity feed surface unexpected access patterns in real time
+- **No anomaly detection or alerting.** Denied calls are in the audit log; feed `neuralmind audit export` to your SIEM to alert on them
 
 ---
 
@@ -59,8 +59,8 @@ A SOC 2 report is a CPA firm's attestation about a *service organization's* cont
 
 | Criterion | What it covers | NeuralMind evidence |
 |---|---|---|
-| **CC6.1** | Logical access security | The MCP server uses the stdio transport by default, so only the agent process that launched it can call it. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires an access token, persisted across restarts, unless started with `--no-auth`. NeuralMind does not authenticate MCP callers |
-| **CC6.3** | Role-based access, least privilege | Per-tool permission sets for `admin`, `builder`, and `reader` (`neuralmind/mcp_security.py`), with denials written to the audit log. Each MCP call declares its own role and any caller can declare `admin`, so binding authenticated identities to roles is yours |
+| **CC6.1** | Logical access security | The MCP server uses the stdio transport by default, so only the agent process that launched it can call it. With `security.identity: os` *(v4.7.0+)* it identifies that caller by the OS account the OS authenticated, and refuses the HTTP transport. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires an access token, persisted across restarts, unless started with `--no-auth` |
+| **CC6.3** | Role-based access, least privilege | Per-tool permission sets for `admin`, `builder`, and `reader` (`neuralmind/mcp_security.py`), with denials written to the audit log. By default each MCP call declares its own role; with `security.identity: os` the role comes from `security.users` for the caller's OS account, and what a call claims is logged, not used |
 | **CC6.7** | Restricting transmission of information | By default, no telemetry and no repository content sent off the machine; the one outbound request is the embedding-model download, pre-seedable with `NEURALMIND_ONNX_MODEL_DIR`. The opt-in `NEURALMIND_LLM_SEED=1` sends the project's `README.md` and `docs/architecture.md` to Anthropic |
 | **CC7.1** | Detecting vulnerabilities | CycloneDX SBOM on every tagged release, for your SCA scanner |
 | **CC7.2** | Monitoring for anomalies | Hash-chained `.neuralmind/audit_events.jsonl` (`neuralmind audit verify` walks the chain), `/healthz` endpoint, live activity feed |
@@ -81,16 +81,16 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 
 | Practice | Requirement | NeuralMind provides | Still yours |
 |---|---|---|---|
-| **AC.L2-3.1.1** | Limit system access to authorized users | Stdio MCP transport by default, reachable only by the agent process that launched it. The HTTP MCP transport binds to `127.0.0.1`; the graph server does too by default (`--host` changes it) and requires an access token, persisted across restarts, unless started with `--no-auth`. NeuralMind does not authenticate MCP callers | Authenticating users: OS accounts, file permissions on `.neuralmind/`, and control over what can reach the MCP server |
-| **AC.L2-3.1.2** | Limit access to permitted functions | Per-tool permission sets for `admin`, `builder`, and `reader`. Each MCP call declares its own role, and any caller can declare `admin` | Binding authenticated identities to roles; until you do, the permission sets limit a well-behaved agent, not a hostile caller |
+| **AC.L2-3.1.1** | Limit system access to authorized users | Stdio MCP transport by default, reachable only by the agent process that launched it. With `security.identity: os` *(v4.7.0+)*, calls are identified by the OS account the OS authenticated; accounts without a role, and the HTTP transport, are refused. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires an access token unless started with `--no-auth` | OS accounts and their authentication; file permissions on `.neuralmind/`; an administrator-owned policy file |
+| **AC.L2-3.1.2** | Limit access to permitted functions | Per-tool permission sets for `admin`, `builder`, and `reader`. With `security.identity: os`, the role comes from `security.users` and the role a call declares is ignored | Mapping each OS account to a role. Without `identity: os`, any caller can declare `admin`, so the sets limit a well-behaved agent, not a hostile caller |
 | **AC.L2-3.1.20** | Control connections to external systems | By default, no telemetry and no repository content sent off the machine. The opt-in `NEURALMIND_LLM_SEED=1` sends `README.md` and `docs/architecture.md` to Anthropic; it is off by default | Keeping `NEURALMIND_LLM_SEED` off in a CUI enclave; pre-seeding the model with `NEURALMIND_ONNX_MODEL_DIR` |
 | **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
-| **AU.L2-3.3.2** | Trace actions to individual users | Every event records an actor: the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login | Neither value is authenticated; tie events to authenticated sessions such as OS login records |
-| **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log. It cannot detect removal of the newest records, or a rewrite that recomputes the chain | Write protection and forwarding to your SIEM, so a local rewrite can't go unseen |
+| **AU.L2-3.3.2** | Trace actions to individual users | Every event records an actor. With `security.identity: os`, it is the OS account, read from the OS, for MCP calls and CLI events alike; a declared actor or `NEURALMIND_ACTOR` is kept as `claimed_actor` | Without `identity: os`, the actor is whatever the caller or environment says; tie events to OS login records |
+| **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log, a record without a hash once the chain has started, and a line that isn't a JSON object (v4.8.0 and earlier missed those at the end of the log). It cannot detect removal of the newest records, or a rewrite that recomputes the chain, which has no secret key | Write protection and forwarding to your SIEM, so a local rewrite can't go unseen |
 | **CM.L2-3.4.1** | Baseline configurations and inventories | CycloneDX SBOM on every tagged release | Recording the pinned version in your baseline |
 | **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to `127.0.0.1` by default (`neuralmind serve --host` can change it); [air-gapped install](use-cases/air-gapped.md) | Not exposing the HTTP transport beyond the enclave |
-| **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | Not provided: NeuralMind does not encrypt data at rest | FIPS-validated full-disk encryption on the host |
-| **SC.L2-3.13.16** | Protect CUI at rest | Not provided | The same host encryption must cover `.neuralmind/`, `.neuralmind-team-memory.json`, and any `graphify-out/` |
+| **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | NeuralMind doesn't encrypt data itself. `doctor` reports the OS FIPS mode on Linux and Windows | FIPS-validated full-disk encryption on the host, with the OS FIPS mode on |
+| **SC.L2-3.13.16** | Protect CUI at rest | With `security.require_encrypted_storage: true` *(v4.7.0+)*, NeuralMind verifies FileVault, BitLocker, or dm-crypt/LUKS on every volume holding its state (project, `.neuralmind/`, a custom index path), refuses to build, query, serve MCP tools, or run hooks without it, and logs each check | The encryption itself, covering `.neuralmind/`, `.neuralmind-team-memory.json`, and any `graphify-out/` |
 | **SI.L2-3.14.1** | Identify and correct system flaws | [Vulnerability disclosure policy](../SECURITY.md), SBOM for your scanner | Staying on the latest release |
 
 **The AI agent is the boundary that matters.** NeuralMind hands code slices to your coding agent, and the agent sends them to its model provider. If that code is CUI, the provider is a cloud service handling covered defense information and must meet DFARS 252.204-7012 (FedRAMP Moderate or equivalent). NeuralMind reduces how much code the agent sends; it does not make a provider eligible.

@@ -219,6 +219,13 @@ def drive_hook(action: str, payload: dict[str, Any], opt_in: bool = False) -> di
     """
     from neuralmind.hooks import run_hook
 
+    # Hooks act only in a project that has opted in with `neuralmind build`
+    # (one with a .neuralmind/ directory) and exit at once anywhere else.
+    # Measure what they do in such a project, not that early exit.
+    cwd = payload.get("cwd")
+    if cwd:
+        (Path(cwd) / ".neuralmind").mkdir(parents=True, exist_ok=True)
+
     saved_in, saved_out = sys.stdin, sys.stdout
     sys.stdin = io.StringIO(json.dumps(payload))
     sys.stdout = captured = io.StringIO()
@@ -661,7 +668,8 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def opt_in_gates(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Pass/fail for the opt-in replacement over ``rows``, any mix of tools.
 
-    A replaced Bash call must keep at least ``MIN_MUST_KEEP_REPLACED`` of its
+    The opt-in must replace at least one noisy log when there are any. A
+    replaced Bash call must keep at least ``MIN_MUST_KEEP_REPLACED`` of its
     pre-registered must-keep lines, and must have some, or nothing shows what
     it would drop. A ``content`` output, a Read or a Grep result must never be
     replaced. No call may cost more tokens than with no hook, and the hook's
@@ -670,7 +678,15 @@ def opt_in_gates(rows: list[dict[str, Any]]) -> dict[str, Any]:
     replaced = [r for r in rows if r["opt_in_replaced"]]
     bash = [r for r in replaced if r["tool"] == "Bash"]
     kept = [r["opt_in_must_keep_kept"] for r in bash]
+    noisy = [r for r in rows if r["tool"] == "Bash" and r["kind"] == "noisy-log"]
     gates = {
+        # Without this the retention gate passes vacuously when the opt-in
+        # replaces nothing at all, as it did when the hooks exited early.
+        "noisy_logs_replaced": {
+            "rule": ">= 1 when the rows include noisy logs",
+            "measured": sum(1 for r in noisy if r["opt_in_replaced"]),
+            "pass": not noisy or any(r["opt_in_replaced"] for r in noisy),
+        },
         "replaced_bash_must_keep_min": {
             "rule": f">= {MIN_MUST_KEEP_REPLACED} on every replaced Bash call",
             "measured": None if None in kept or not kept else min(kept),

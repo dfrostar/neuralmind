@@ -32,8 +32,8 @@ mcp==2.2.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 black==26.5.1
-ruff==0.16.8
-mypy==1.20.2
+ruff==0.16.10
+mypy==2.4.0
 
 # External tools (required separately)
 # graphify - install from: git clone https://github.com/Graphify-Labs/graphify.git && cd graphify && pip install -e .

@@ -203,16 +203,23 @@ model. That egress belongs to the agent, not to NeuralMind.
 
 ### Access control
 
-NeuralMind does not authenticate callers. Each MCP tool call declares its own
-`actor` (default `anonymous`) and `role` (default `builder`). The server checks
+By default NeuralMind does not authenticate callers. Each MCP tool call
+declares its own `actor` (default `anonymous`) and `role` (default `builder`). The server checks
 the role against its default per-tool policy (`admin`, `builder`, `reader`)
 and rate-limits each declared actor to 60 calls per 60 seconds. Any caller can
 declare `admin`.
 
-`neuralmind-backend.yaml` accepts `security.roles` and `security.rate_limit`,
-but the MCP server doesn't apply them today. It always uses the defaults, so
-leaving `admin` out of the YAML caps nothing. The controls that do hold are
-who can reach the MCP server and which directories its OS account can read.
+`security.roles` and `security.rate_limit` in `neuralmind-backend.yaml`
+replace those defaults. A role the policy doesn't list gets no tools, so
+leaving `admin` out caps what any caller can claim. (The MCP server in v4.6.0
+and earlier ignored both settings.) Who can reach the MCP server, and which
+directories its OS account can read, still decide who gets in at all.
+
+`security.identity: os` *(v4.7.0+)* takes the actor from the OS account the
+server runs as and the role from `security.users`, ignoring what a call
+declares. `security.require_encrypted_storage: true` refuses to run on a volume
+NeuralMind can't verify as encrypted; CI runners usually aren't, so check with
+`neuralmind doctor` before committing it.
 See [SECURITY-GUIDE.md](SECURITY-GUIDE.md#access-control) for the full model.
 
 ### File permissions
@@ -347,11 +354,13 @@ neuralmind audit export . --format cef --since 2026-01-01 -o audit.cef   # or --
 ```
 
 Each record carries a SHA-256 hash chained to the previous one. `audit verify`
-detects a record that was edited, or deleted from the middle of the log. It
-can't detect tampering at the tail (records removed from the end, or the last
-record edited with its hash stripped), or a chain recomputed by anyone with
-write access to the file. To keep a copy outside the host's control, ship
-`audit export` output to your SIEM.
+detects a record that was edited, deleted from the middle of the log, or
+written without a hash after the chain started, and any line that isn't a
+JSON object (v4.8.0 and earlier missed those last two at the end of the log).
+It can't detect records removed from
+the end, or a chain recomputed by anyone with write access to the file. To
+keep a copy outside the host's control, ship `audit export` output to your
+SIEM.
 
 NeuralMind doesn't rotate or expire the audit log. The file grows until you
 archive it.
@@ -417,8 +426,8 @@ neuralmind audit verify /path/to/project
 
 Each developer builds and queries their own index. There is no shared index
 service, and real-time cross-machine sync is roadmap-only. Committing
-`neuralmind-backend.yaml` shares backend settings, but not a role policy: the
-MCP server ignores `security.roles` ([above](#access-control)).
+`neuralmind-backend.yaml` shares backend settings and the role policy
+([above](#access-control)).
 
 Teams can optionally share learned memory through git.
 `neuralmind memory publish` writes `.neuralmind-team-memory.json` (learned
@@ -457,7 +466,7 @@ neuralmind install-mcp                   # re-register the MCP server with your 
 ## Deployment Checklist
 
 - [ ] `neuralmind-mcp` runs over stdio. The Streamable HTTP transport is not used
-- [ ] Only trusted agents can reach the MCP server: any caller can declare `admin`, and the server ignores `security.roles`
+- [ ] Only trusted agents can reach the MCP server, and `security.roles` leaves out `admin` unless you need it
 - [ ] The OS account running the agent can read only the projects it should
 - [ ] `.neuralmind/` restricted with file permissions, and the host disk encrypted
 - [ ] `neuralmind scan-for-secrets` passes before the first build

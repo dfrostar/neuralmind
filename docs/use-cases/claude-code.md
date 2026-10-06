@@ -24,6 +24,8 @@ neuralmind_wakeup(project_path=".")
 
 That gives the agent ~400 tokens of architecture/cluster context instead of 50K tokens of file reads.
 
+With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.8.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
+
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 
 ```
@@ -38,11 +40,11 @@ Returns ~800–1,100 tokens with the right clusters and search hits.
 neuralmind_skeleton(project_path=".", file_path="src/auth/handlers.py")
 ```
 
-Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.8% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
+Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.7% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
 
-**Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output by default: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing. The one exception is opt-in and narrow: [trimming install logs](#trim-noisy-install-logs-opt-in-v470).
+**Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output by default: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing. The one exception is opt-in and narrow: [trimming install logs](#trim-noisy-install-logs-opt-in-v4100).
 
-## Trim noisy install logs *(opt-in, v4.7.0+)*
+## Trim noisy install logs *(opt-in, v4.10.0+)*
 
 An agent setting up a project runs `pip install -r requirements.txt` or `pip install -e ".[dev]"` and gets dozens of `Collecting`, `Downloading` and `Requirement already satisfied` lines, when what it needs is the `Successfully installed …` line and any warnings. Turn on the replacement in the project's `.claude/settings.json`:
 

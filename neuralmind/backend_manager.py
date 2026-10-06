@@ -65,35 +65,60 @@ def resolve_backend(backend: str | None) -> str:
     return name
 
 
-def load_backend_config(project_path: str | Path) -> dict[str, Any]:
-    root = Path(project_path).resolve()
-    candidates = (
-        root / "neuralmind-backend.yaml",
-        root / "neuralmind-backend.yml",
-        root / "neuralmind-backend.json",
-    )
+_CONFIG_NAMES = ("neuralmind-backend.yaml", "neuralmind-backend.yml", "neuralmind-backend.json")
 
+
+def backend_config_path(project_path: str | Path) -> Path | None:
+    """The config file ``load_backend_config`` reads for this project, if any."""
+    root = Path(project_path).resolve()
+    for name in _CONFIG_NAMES:
+        path = root / name
+        if path.exists():
+            return path
+    return None
+
+
+def read_backend_config_file(path: Path) -> dict[str, Any]:
+    """Parse one config file. Raises on unreadable or malformed content."""
+    with path.open(encoding="utf-8") as file:
+        if path.suffix in {".yaml", ".yml"}:
+            parsed = yaml.safe_load(file) or {}
+        else:
+            parsed = json.load(file) or {}
+    if not isinstance(parsed, dict):
+        raise ValueError(f"{path.name} must contain a mapping, not {type(parsed).__name__}")
+    return parsed
+
+
+def load_backend_config(project_path: str | Path) -> dict[str, Any]:
     loaded: dict[str, Any] = {}
-    for path in candidates:
-        if not path.exists():
-            continue
+    path = backend_config_path(project_path)
+    if path is not None:
         try:
-            if path.suffix in {".yaml", ".yml"}:
-                with path.open(encoding="utf-8") as file:
-                    parsed = yaml.safe_load(file) or {}
-            else:
-                with path.open(encoding="utf-8") as file:
-                    parsed = json.load(file) or {}
-            if isinstance(parsed, dict):
-                loaded = parsed
-            break
+            loaded = read_backend_config_file(path)
         except Exception:
             loaded = {}
-            break
 
     config = DEFAULT_BACKEND_CONFIG.copy()
     config.update(loaded)
     return config
+
+
+def resolve_db_path(project_path: str | Path, db_path: str | Path | None) -> str | None:
+    """A relative ``db_path`` names a directory in the project, not the CWD.
+
+    ``db_path: vecdb`` in ``neuralmind-backend.yaml`` must mean the same
+    directory whichever directory a command runs from. Absolute paths, ``~``
+    paths and the in-memory backend's ``:memory:`` are left as they are.
+    """
+    if db_path is None:
+        return None
+    if str(db_path) == ":memory:":
+        return ":memory:"
+    path = Path(db_path).expanduser()
+    if not path.is_absolute():
+        path = Path(project_path).resolve() / path
+    return str(path)
 
 
 def create_backend(
@@ -136,6 +161,22 @@ def create_backend(
     raise ValueError(f"Unsupported backend: {backend}")
 
 
+def _require_storage(project_path: str, location: str | Path | None) -> None:
+    """Apply security.require_encrypted_storage to the vector index's location.
+
+    Checked before the backend is created (a configured db_path may be on
+    another volume) and again after, against the path it actually chose, which
+    may sit behind a symlink. The backend creates an empty directory at most;
+    nothing is indexed until build. Imported lazily: storage_guard reads the
+    security config through this module.
+    """
+    from .storage_guard import enforce_storage_policy
+
+    if location == ":memory:":  # the in-memory backend writes no file
+        location = None
+    enforce_storage_policy(project_path, location)
+
+
 class BackendManager:
     """Coordinates backend selection and runtime backend switching."""
 
@@ -151,11 +192,13 @@ class BackendManager:
         # Resolve "auto" (and None) to a concrete backend up front so
         # backend_name reports the real backend ("turbovec"/"graph"), not "auto".
         selected_backend = resolve_backend(backend or self.config.get("backend"))
-        selected_db_path = db_path or self.config.get("db_path")
+        selected_db_path = resolve_db_path(self.project_path, db_path or self.config.get("db_path"))
         self.backend_name = selected_backend
+        _require_storage(self.project_path, selected_db_path)
         self.backend = create_backend(
             selected_backend, self.project_path, selected_db_path, scope=scope
         )
+        _require_storage(self.project_path, getattr(self.backend, "db_path", None))
 
     def switch_backend(self, backend: str, db_path: str | None = None) -> EmbeddingBackend:
         if hasattr(self.backend, "close"):
@@ -163,8 +206,10 @@ class BackendManager:
                 self.backend.close()
             except Exception:
                 pass
-        selected_db_path = db_path or self.config.get("db_path")
+        selected_db_path = resolve_db_path(self.project_path, db_path or self.config.get("db_path"))
         resolved = resolve_backend(backend)
+        _require_storage(self.project_path, selected_db_path)
         self.backend_name = resolved
         self.backend = create_backend(resolved, self.project_path, selected_db_path)
+        _require_storage(self.project_path, getattr(self.backend, "db_path", None))
         return self.backend
