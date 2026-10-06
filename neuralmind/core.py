@@ -75,6 +75,22 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+_RATIONALE_SUFFIX = "__rationale"
+
+
+def _synapse_node(node_id: str) -> str:
+    """The node a search hit stands for in the synapse graph.
+
+    ``<id>__rationale`` holds ``<id>``'s docstring or comment, so it is often
+    the closest semantic match to a prompt. Synapses form between the code
+    nodes the agent reads and edits, though, so the rationale node has no
+    edges: seeding from it recalls nothing.
+    """
+    if node_id.endswith(_RATIONALE_SUFFIX) and len(node_id) > len(_RATIONALE_SUFFIX):
+        return node_id[: -len(_RATIONALE_SUFFIX)]
+    return node_id
+
+
 def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     """Validate a project's canonical IR without standing up a vector backend.
 
@@ -2423,18 +2439,36 @@ class NeuralMind:
         matches for the query, then propagates through the learned synapse
         graph. Empty list when synapses haven't accumulated any edges yet.
         """
+        return self.synaptic_recall(query, depth=depth, top_k=top_k)[0]
+
+    def synaptic_recall(
+        self, query: str, depth: int = 2, top_k: int = 10
+    ) -> tuple[list[tuple[str, float]], float]:
+        """:meth:`synaptic_neighbors`, plus how well ``query`` matched the code.
+
+        The second value is the similarity of the best semantic match (0.0
+        when nothing matched). Spreading activation from a poor match only
+        spreads noise, so the prompt-time hook abstains below a threshold.
+        """
         store = self.synapses
         if store is None:
-            return []
+            return [], 0.0
         self._ensure_built()
         try:
             hits = self.embedder.search(query, n=4)
         except Exception:
-            return []
-        seeds = [(str(hit["id"]), float(hit.get("score", 1.0))) for hit in hits if hit.get("id")]
+            return [], 0.0
+        seeds: dict[str, float] = {}
+        for hit in hits:
+            if not hit.get("id"):
+                continue
+            node_id = _synapse_node(str(hit["id"]))
+            score = float(hit.get("score", 1.0))
+            # A code node and its own rationale can both match: one seed.
+            seeds[node_id] = max(score, seeds.get(node_id, score))
         if not seeds:
-            return []
-        return store.spread(seeds, depth=depth, top_k=top_k)
+            return [], 0.0
+        return store.spread(list(seeds.items()), depth=depth, top_k=top_k), max(seeds.values())
 
     # ----------------------------------------------------------------- #
     # Structural graph (calls / inherits / imports — precise, day-one)

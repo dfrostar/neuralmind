@@ -2147,9 +2147,19 @@ the ten most recently active records are kept, plus any active in the last 24
 hours. On a fresh start or after `/clear`, `SessionStart`
 injects a recap of the most recently active other session as
 `additionalContext`: the first prompt, the last three, and up to twelve edited
-files, most recent first. Resumed and compacted sessions don't get it — they
-already have their conversation or Claude Code's summary. No model call is
-involved; `neuralmind recap` prints the same block.
+files, most recent first. A resumed session doesn't get it: its conversation
+is already there. No model call is involved; `neuralmind recap` prints the
+same block.
+
+*(v4.10.0+)* After a compaction, `SessionStart` (source `compact`) gives the
+session its **own** record back instead, headed "NeuralMind pre-compaction
+record": the same fields, kept verbatim. Claude Code's compaction summary is
+written by the model and paraphrases, and the task as you first stated it and
+the exact paths already edited are what it tends to drop. `PreCompact` marks
+the session it compacts, so if the session comes back under a new
+`session_id`, the one marked in the last 15 minutes is recalled; a session
+that wasn't compacted is never recalled this way. `NEURALMIND_SESSION_RECAP=0`
+turns this off too.
 
 ```bash
 neuralmind recap [project_path] [--clear]
@@ -2214,9 +2224,9 @@ NeuralMind block, leaving any user hooks untouched):
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
 | `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
-| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one |
-| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
-| `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
+| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one; after a compaction, the session's own record *(v4.10.0)* |
+| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`, or nothing when the prompt matches the code poorly *(v4.10.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
+| `PreCompact` *(v0.4.0)* | `normalize_hubs()`; compaction marker *(v4.10.0)* | Prevent runaway hub nodes before context compaction; mark the session so the `SessionStart` after it gets its record back |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 
@@ -3769,6 +3779,7 @@ renewed — issue a new one.
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
+| `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.10.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.44.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |

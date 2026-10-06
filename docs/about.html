@@ -199,6 +199,22 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4100">
+            <h2>What&rsquo;s New in v4.10.0 &mdash; prompt recall that stays quiet when the prompt isn&rsquo;t about the code, and a session&rsquo;s own record back after compaction</h2>
+            <p><strong>Prompt-time recall used to add up to eight code nodes to almost any prompt, &ldquo;thanks!&rdquo; and &ldquo;what&rsquo;s the capital of France&rdquo; included, while missing most prompts that were about the code. And compaction dropped what NeuralMind had already recorded about the session.</strong> v4.10.0 fixes both, through the hooks it already installs.</p>
+            <ul>
+                <li><strong>Recall seeds from the code, not the docstring</strong> &mdash; a prompt&rsquo;s best semantic match is often a function&rsquo;s rationale node (its docstring), which has no synapse edges, so recall from it returned nothing. Recall now starts from the code node the rationale belongs to. The MCP <code>neuralmind_synaptic_neighbors</code> tool gets the same fix</li>
+                <li><strong>A relevance gate</strong> &mdash; the <code>UserPromptSubmit</code> hook (and the Hermes plugin, which runs the same action) adds nothing when the prompt&rsquo;s best match in the code scores below <code>NEURALMIND_RECALL_MIN_SIMILARITY</code> (default 0.35; <code>0</code> never abstains)</li>
+                <li><strong>Measured before the default was set</strong> &mdash; on this repository&rsquo;s own index, 15 prompts about the code and 15 off-topic ones went from 5/15 and 10/15 getting recall to 15/15 and 1/15. On-topic prompts scored 0.371&ndash;0.645, off-topic 0.145&ndash;0.364; activation strength didn&rsquo;t separate them. One repository and 30 prompts: <code>python -m tests.benchmark.recall_gate</code> reproduces it, and <code>--prompts</code> calibrates your own</li>
+                <li><strong>Counted</strong> &mdash; <code>neuralmind metrics</code> shows how often recall injected, abstained on a poor match, or had nothing learned around the match. Numbers only, no prompt text</li>
+                <li><strong>The session&rsquo;s own record after compaction</strong> &mdash; Claude Code&rsquo;s compaction summary paraphrases. After a compaction, <code>SessionStart</code> now gives the session its own first prompt, latest prompts and edited files back, verbatim, alongside that summary. <code>PreCompact</code> marks the session, so it works even if the session returns under a new id; a session that wasn&rsquo;t compacted is never recalled this way</li>
+                <li><strong>Not measured</strong> &mdash; whether either change improves the agent&rsquo;s answers</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v491">
             <h2>What&rsquo;s New in v4.9.1 &mdash; the last four fixes from the v4.8.2 bug hunt</h2>
             <p><strong>Four small problems v4.8.2 left for later.</strong> None lose data; they are a command that acted on the wrong thing, a warning that didn&rsquo;t mean what it said, a count that read too high, and an argument order the CLI refused.</p>

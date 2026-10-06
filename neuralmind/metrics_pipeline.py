@@ -2,7 +2,8 @@
 F3 — Tool-use metrics pipeline.
 
 Continuous JSONL logging: per-query latency, retrieval reuse rate,
-tool-call success rate, per-query token cost, synapse activation counts.
+tool-call success rate, per-query token cost, synapse activation counts,
+and how often prompt-time recall injected or abstained.
 Bounded retention in `.neuralmind/metrics/`.
 Feeds C1 fitness + E1 scoring.
 
@@ -96,6 +97,29 @@ class MetricsCollector:
                 "tool_successes": tool_successes,
                 "tokens_used": tokens_used,
                 "synapses_activated": synapses_activated,
+            }
+        )
+
+    def log_recall_metrics(
+        self,
+        *,
+        outcome: str,
+        injected: int,
+        similarity: float,
+    ) -> bool:
+        """Log one prompt-time recall: ``injected``, or why it abstained.
+
+        ``outcome`` is ``injected``, ``low_similarity`` (the prompt didn't
+        match the code well enough) or ``no_neighbors`` (nothing learned
+        around the match yet). No prompt text is kept.
+        """
+        return self._append(
+            {
+                "event": "recall",
+                "ts": time.time(),
+                "outcome": outcome,
+                "injected": injected,
+                "similarity": round(similarity, 4),
             }
         )
 
@@ -195,6 +219,7 @@ class MetricsCollector:
         # Aggregate query events
         query_events = [e for e in events if e.get("event") == "query"]
         build_events = [e for e in events if e.get("event") == "build"]
+        recall_events = [e for e in events if e.get("event") == "recall"]
 
         summary: dict[str, Any] = {"days": days, "n_events": len(events)}
 
@@ -223,6 +248,19 @@ class MetricsCollector:
             summary["builds"] = {
                 "n_builds": len(build_events),
                 "mean_duration_s": round(sum(durations) / len(durations), 2) if durations else 0,
+            }
+
+        if recall_events:
+            outcomes: dict[str, int] = {}
+            for e in recall_events:
+                key = str(e.get("outcome", "unknown"))
+                outcomes[key] = outcomes.get(key, 0) + 1
+            injected = outcomes.get("injected", 0)
+            summary["recall"] = {
+                "n_prompts": len(recall_events),
+                "n_injected": injected,
+                "abstain_rate": round(1 - injected / len(recall_events), 4),
+                "outcomes": outcomes,
             }
 
         return summary

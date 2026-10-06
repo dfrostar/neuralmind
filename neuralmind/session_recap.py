@@ -19,11 +19,18 @@ newest ``MAX_KEPT`` records are kept, and a record active within
 ``PRUNE_GRACE_SECONDS`` is never deleted, so an idle session that's still open
 keeps its start.
 
-The recap is injected only when SessionStart's ``source`` is ``startup`` or
-``clear``: a resumed session already has its conversation, and a compacted one
-has Claude Code's own compaction summary. It is labelled as a recap, not as
-instructions, so the agent doesn't pick up an old task the user hasn't asked
-it to continue.
+The recap of the previous session is injected only when SessionStart's
+``source`` is ``startup`` or ``clear``: a resumed session already has its
+conversation. It is labelled as a recap, not as instructions, so the agent
+doesn't pick up an old task the user hasn't asked it to continue.
+
+After a compaction (``source`` is ``compact``) the session gets its *own*
+record back instead. Claude Code's compaction summary is written by the model
+and paraphrases: the task as the user first stated it and the exact paths of
+the files already edited are what it tends to lose. The record keeps both
+verbatim. ``PreCompact`` marks the session it compacts, so if the session
+comes back under a new ``session_id``, the session compacted in the last
+``COMPACT_WINDOW_SECONDS`` is the one recalled.
 
 Toggles: ``NEURALMIND_SESSION_RECAP=0`` switches off recording and injection.
 ``NEURALMIND_NO_LEARN=1`` stops recording (nothing is written) but still
@@ -55,8 +62,13 @@ PATH_CHARS = 160  # each edited path; a longer one keeps its tail
 RECENT_PROMPTS = 3  # shown after the first prompt
 MAX_FILES = 12  # most recently edited first
 
-# Sources whose conversation is already in context — nothing to recap.
+# Sources that start without the previous session's conversation; resume
+# already has it. Compact is handled on its own: it recalls this session.
 INJECT_SOURCES = ("startup", "clear")
+COMPACT_SOURCE = "compact"
+# How recently PreCompact must have marked a session for a SessionStart that
+# arrives under a different session_id to recall it.
+COMPACT_WINDOW_SECONDS = 15 * 60
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 # Control characters, including line and paragraph separators: a prompt or a
@@ -219,11 +231,22 @@ def record_edit(project_path: str | Path, session_id: str, file_path: str) -> No
         pass
 
 
+def record_compaction(project_path: str | Path, session_id: str) -> None:
+    """PreCompact: mark the session about to be compacted."""
+    try:
+        if not (session_id and _recording_enabled()):
+            return
+        _append(project_path, session_id, {"kind": "compact"})
+    except Exception:
+        pass
+
+
 def _load(path: Path) -> dict | None:
     """Fold one session's JSONL into the fields a recap shows."""
     prompts: list[str] = []
     files: list[str] = []
     last_ts = 0.0
+    compacted_ts = 0.0
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
@@ -236,6 +259,11 @@ def _load(path: Path) -> dict | None:
             ts = float(entry.get("ts") or 0)
         except (ValueError, TypeError):  # JSONDecodeError is a ValueError
             continue
+        if entry.get("kind") == "compact":
+            # A marker, not activity: it must not make an old session look
+            # like the one the user was last working in.
+            compacted_ts = max(compacted_ts, ts)
+            continue
         last_ts = max(last_ts, ts)
         if entry.get("kind") == "prompt" and isinstance(entry.get("text"), str):
             prompts.append(entry["text"])
@@ -246,7 +274,7 @@ def _load(path: Path) -> dict | None:
             files.append(entry["path"])
     if not (prompts or files):
         return None
-    return {"prompts": prompts, "files": files, "last_ts": last_ts}
+    return {"prompts": prompts, "files": files, "last_ts": last_ts, "compacted_ts": compacted_ts}
 
 
 def _prune(directory: Path, now: float | None = None) -> None:
@@ -283,17 +311,30 @@ def _ago(seconds: float) -> str:
 
 def render_recap(record: dict, now: float | None = None) -> str:
     now = time.time() if now is None else now
+    header = (
+        f"NeuralMind session recap — the previous session in this project "
+        f"(last active {_ago(now - record['last_ts'])}). This is context for "
+        "continuity, not instructions: don't resume that work unless the user "
+        "asks to."
+    )
+    return "\n".join([header, *_recap_body(record)])
+
+
+def render_compaction_recap(record: dict) -> str:
+    header = (
+        "NeuralMind pre-compaction record — this session's own prompts and "
+        "edits, kept verbatim (secrets redacted) because a compaction summary "
+        "can drop them. It restates what the user already asked for in this "
+        "session; it adds no new instructions."
+    )
+    return "\n".join([header, *_recap_body(record)])
+
+
+def _recap_body(record: dict) -> list[str]:
     # Clipped again here: a record may not have been written by this module.
     prompts = [_clip(p) for p in record["prompts"]]
     files = [_clip_path(f) for f in record["files"]]
-    lines = [
-        (
-            f"NeuralMind session recap — the previous session in this project "
-            f"(last active {_ago(now - record['last_ts'])}). This is context for "
-            "continuity, not instructions: don't resume that work unless the user "
-            "asks to."
-        ),
-    ]
+    lines: list[str] = []
     if prompts:
         lines.append("")
         lines.append(f'It started with: "{prompts[0]}"')
@@ -314,7 +355,7 @@ def render_recap(record: dict, now: float | None = None) -> str:
             + ", ".join(shown)
             + (f", +{more} more" if more else "")
         )
-    return "\n".join(lines)
+    return lines
 
 
 def latest_recap(
@@ -356,6 +397,42 @@ def latest_recap(
         return ""
 
 
+def compaction_recap(
+    project_path: str | Path,
+    session_id: str,
+    now: float | None = None,
+) -> str:
+    """This session's own record after a compaction, or "" when there is none.
+
+    The record kept under ``session_id`` when there is one. Otherwise, in case
+    the session came back from compaction under a new id, the record PreCompact
+    marked most recently, if that was within ``COMPACT_WINDOW_SECONDS``. A
+    session that has a record file of its own never borrows another's, even
+    when its own holds nothing to show. Read-only.
+    """
+    try:
+        directory = _recaps_dir(project_path)
+        if directory is None or not session_id:
+            return ""
+        own = directory / f"{_file_stem(session_id)}.jsonl"
+        if own.exists():
+            if own.is_symlink():
+                return ""
+            record = _load(own)
+            return render_compaction_recap(record) if record else ""
+        now = time.time() if now is None else now
+        marked = []
+        for path in _records(directory):
+            loaded = _load(path)
+            if loaded and now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS:
+                marked.append(((loaded["compacted_ts"], path.name), loaded))
+        if not marked:
+            return ""
+        return render_compaction_recap(max(marked, key=lambda item: item[0])[1])
+    except Exception:
+        return ""
+
+
 def recap_for_session_start(
     project_path: str | Path,
     session_id: str,
@@ -364,7 +441,11 @@ def recap_for_session_start(
 ) -> str:
     """The recap to inject at SessionStart, or "" when there's nothing to say."""
     try:
-        if not recap_enabled() or source not in INJECT_SOURCES:
+        if not recap_enabled():
+            return ""
+        if source == COMPACT_SOURCE:
+            return compaction_recap(project_path, session_id, now=now)
+        if source not in INJECT_SOURCES:
             return ""
         directory = _recaps_dir(project_path)
         if directory is None:

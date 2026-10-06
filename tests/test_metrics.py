@@ -98,6 +98,55 @@ class TestMetricsCollector(unittest.TestCase):
         summary = collector.summarize(days=90, event_type="query")
         self.assertGreater(summary.get("n_events", 0), 0)
 
+    def _log_recalls(self) -> MetricsCollector:
+        collector = MetricsCollector(self.project)
+        collector.log_recall_metrics(outcome="injected", injected=8, similarity=0.61)
+        collector.log_recall_metrics(outcome="low_similarity", injected=0, similarity=0.2)
+        collector.log_recall_metrics(outcome="low_similarity", injected=0, similarity=0.31)
+        collector.log_recall_metrics(outcome="no_neighbors", injected=0, similarity=0.5)
+        return collector
+
+    def test_recall_outcomes_are_summarized(self) -> None:
+        recall = self._log_recalls().summarize(days=7, event_type="recall")["recall"]
+        self.assertEqual(recall["n_prompts"], 4)
+        self.assertEqual(recall["n_injected"], 1)
+        self.assertEqual(recall["abstain_rate"], 0.75)
+        self.assertEqual(
+            recall["outcomes"], {"injected": 1, "low_similarity": 2, "no_neighbors": 1}
+        )
+
+    def test_recall_records_keep_no_prompt_text(self) -> None:
+        self._log_recalls()
+        records = [
+            json.loads(line)
+            for f in (self.project / ".neuralmind" / "metrics").glob("*.jsonl")
+            for line in f.read_text().splitlines()
+        ]
+        self.assertEqual(
+            {key for r in records for key in r},
+            {"event", "ts", "outcome", "injected", "similarity"},
+        )
+
+    def test_cli_metrics_shows_recall(self) -> None:
+        import contextlib
+        import io
+        from argparse import Namespace
+
+        from neuralmind.cli import cmd_metrics
+
+        self._log_recalls()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cmd_metrics(Namespace(project_path=str(self.project), days=7, json=False))
+        text = out.getvalue()
+        self.assertIn("Recall injected", text)
+        self.assertIn("75.0%", text)
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cmd_metrics(Namespace(project_path=str(self.project), days=7, json=True))
+        self.assertEqual(json.loads(out.getvalue())["recall"]["n_prompts"], 4)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

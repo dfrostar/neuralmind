@@ -128,7 +128,7 @@ last session covered.
 | Fresh start | Yes |
 | After `/clear` | Yes |
 | Resumed (`--resume`, `--continue`) | No: the conversation is already there |
-| After compaction | No: Claude Code's own summary is already there |
+| After compaction | This session's own record instead (v4.10.0+; see below) |
 | The previous session was last active more than 14 days ago | No (see `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`) |
 | No earlier session recorded in this project | No |
 
@@ -140,6 +140,22 @@ or a cron job.
 other than the new one, whichever agent ran it. Claude Code and Hermes write
 to the same `.neuralmind/recaps/`, so a Hermes session can start with what the
 last Claude Code session in the project did, and the other way round.
+
+### After compaction (v4.10.0+)
+
+When a long Claude Code session compacts, the model rewrites the conversation
+so far as a summary. Summaries paraphrase, and the details that go first are
+the ones you can't easily restate: the task as you first worded it, and which
+files have already been changed. So after a compaction the session gets its
+own record back, under the heading "NeuralMind pre-compaction record": the
+first prompt, the last three, and the files edited, verbatim (prompts
+credential-redacted), alongside Claude Code's summary rather than instead of
+it. It restates what you already asked for in this session; it adds no new
+instructions.
+
+It needs no extra setup: `PreCompact` and `SessionStart` are already among the
+hooks `install-hooks` registers. Hermes has no compaction event, so this is
+Claude Code only.
 
 ## Settings
 
