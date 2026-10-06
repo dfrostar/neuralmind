@@ -144,4 +144,4 @@ this one included.
 - [Compression benchmark](../benchmarks/compression.md)
 - Use case: [Trim noisy install logs (opt-in)](../use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100)
 - [CLI reference: `NEURALMIND_BASH_REPLACE`](../wiki/CLI-Reference.md#environment-variables)
-- Previous release: [v4.9.0](RELEASE_NOTES_v4.9.0.md)
+- Previous releases: [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)
