@@ -140,6 +140,10 @@ never what it points to; the install refuses to write through one.
   `:latest` now moves only for the highest `vX.Y.Z` tag; a
   rebuild of an older version pushes just its own `:vX.Y.Z`. To pin, pull
   `:v4.9.0` rather than `:latest`.
+- **The session recap no longer depends on directory order.** Two sessions
+  whose last activity shares a timestamp (writes inside one clock tick, about
+  15.6 ms on Windows) were decided by whichever file the directory listed
+  first. The recap now goes to the one modified last.
 
 ## Per-agent expectations
 

@@ -328,18 +328,26 @@ def latest_recap(
     ``exclude_session``'s, so a concurrent session in the same project counts
     as "where we left off" too. Ranked by the timestamps inside the records,
     not file mtimes: a partial append can refresh an old record's mtime without
-    adding activity. Read-only.
+    adding activity. Records whose last activity has the same timestamp (two
+    writes inside one clock tick: about 15.6 ms on Windows) go to the one
+    modified last, then by name, so the pick never depends on directory order.
+    Read-only.
     """
     try:
         directory = _recaps_dir(project_path)
         if directory is None:
             return ""
         own = _file_stem(exclude_session) if exclude_session else None
-        loaded = [_load(p) for p in _records(directory) if p.stem != own]
-        usable = [r for r in loaded if r is not None]
-        if not usable:
+        ranked = []
+        for path in _records(directory):
+            if path.stem == own:
+                continue
+            loaded = _load(path)
+            if loaded is not None:
+                ranked.append(((loaded["last_ts"], _mtime(path) or 0.0, path.name), loaded))
+        if not ranked:
             return ""
-        record = max(usable, key=lambda r: r["last_ts"])
+        record = max(ranked, key=lambda item: item[0])[1]
         now = time.time() if now is None else now
         if now - record["last_ts"] > _max_age_seconds():
             return ""
