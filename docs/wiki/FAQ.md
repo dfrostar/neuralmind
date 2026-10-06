@@ -517,33 +517,56 @@ neuralmind-mcp
 
 ### "Is NeuralMind free?"
 
-**Yes!**
-- ✅ MIT License (fully open source)
-- ✅ No subscription
-- ✅ No usage limits
-- ✅ Self-hosted (no cloud costs)
+**Yes, for one user, with every feature.**
+- ✅ **The core is MIT**: code graph, retrieval, synapse learning, MCP server,
+  hooks, and CLI. All the token savings live here.
+- ✅ **The Team modules are free at 1 seat.** Shared-memory governance, the
+  hash-chained audit log, and self-hosted deployment live in
+  `neuralmind/tier2/`, which is source-available, not MIT. They run under a
+  1-seat license that auto-issues on first run, never expires, and needs no
+  signup.
+- ✅ **It runs on your machine**, so there's no hosted service to pay for.
+
+Paying buys seats and support, not features:
+
+| | Free | Team | Enterprise |
+|---|---|---|---|
+| Price | $0 | $29/user/mo, annual contract | Custom |
+| Seats | 1 | 5–50 | Custom |
+| Every feature | ✅ | ✅ | ✅ |
+| Priority support, annual invoice | — | ✅ | Custom |
+
+See [pricing](https://neuralmind.uk/pricing/) or email hello@neuralmind.uk.
 
 ---
 
 ### "Can I use NeuralMind commercially?"
 
-**Yes!** MIT License allows commercial use:
-- ✅ Use in products
-- ✅ Use in services
-- ✅ Use in enterprises
-- ✅ Modify for your needs
+**Yes.**
+- **The MIT core** allows any use, commercial included: in products, in
+  services, and modified. Keep the license text with it.
+- **The Team modules** (`neuralmind/tier2/`): the free 1-seat license covers
+  production use by its one named user. More seats need a Team license.
+  Redistributing these modules, hosting them as a managed service, or
+  embedding them in another product needs an agreement.
+- Every release up to and including v2.0.1 was entirely MIT and stays MIT.
 
-Just include the license text.
+Details are in
+[LICENSING.md](https://github.com/dfrostar/neuralmind/blob/main/LICENSING.md).
 
 ---
 
 ### "Is commercial support available?"
 
-Coming in v1.0 (Q1 2027):
-- Priority bug fixes
-- Deployment consulting
-- Custom integrations
-- SLA guarantees
+**Yes, with a Team license:** priority support, self-hosted deployment
+support, and an annual invoice. Enterprise terms are custom. Contact
+hello@neuralmind.uk.
+
+Without a paid license, support is
+[GitHub Issues](https://github.com/dfrostar/neuralmind/issues) and
+[Discussions](https://github.com/dfrostar/neuralmind/discussions), as the
+maintainer has time. Security reports have their own response targets in
+[SECURITY.md](https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md#reporting-a-vulnerability).
 
 ---
 
@@ -563,21 +586,36 @@ Coming in v1.0 (Q1 2027):
 
 ### "Why not just use long context windows?"
 
-```
-Claude 3.5 Sonnet:
-- Input: $3/1M tokens
-- Output: $15/1M tokens
+It depends on how you pay for input tokens. What NeuralMind changes is how
+many go in. The
+[public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)
+measures that on four pinned open-source repos with 40 pre-registered
+queries:
 
-Traditional (50K tokens):
-- Cost: $0.15 per query
+| | Tokens per query | Gold-file recall |
+|---|---:|---:|
+| Paste every source file | 41,729–232,483 | 100% |
+| NeuralMind | 645–895 | 85.71–100% per repo, 95% mean |
 
-With NeuralMind (800 tokens):
-- Cost: $0.0024 per query
-- Savings: 60× cheaper
+That is 46.6–262.1× fewer input tokens per query, not 46.6–262.1× less spend. The
+token ratio only becomes the cost ratio for uncached input billed per token.
+Prompt caching, flat-rate plans, and local models change the arithmetic, and
+output tokens are unaffected. Long context with prompt caching is the
+strongest alternative, and on top of it NeuralMind saves much less than these
+ratios suggest; see the [honest assessment](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md).
 
-Even with 200K token context limit available,
-NeuralMind is 10× cheaper because the prompt is small.
-```
+Size matters apart from cost. On the largest repo, `rich`, pasting everything
+took 232,483 tokens per query (counted with tiktoken `o200k_base`), more than
+a 200K-token window holds.
+
+The trade-off is recall. Pasting everything always includes the right file;
+NeuralMind missed at least one gold file in 3 of the 40 queries. A plain
+top-k vector search over the same index used fewer tokens still, with equal
+or better recall, but without NeuralMind's project map and call edges. See
+[where NeuralMind loses](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses).
+
+To reproduce it, run `python -m evals.public.run` from a source checkout. To
+measure your own repo, run `neuralmind benchmark .`.
 
 ---
 
