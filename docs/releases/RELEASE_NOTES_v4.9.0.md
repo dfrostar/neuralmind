@@ -131,6 +131,16 @@ Limits:
 and removes it. If `plugins/neuralmind` is a symlink, it removes the link,
 never what it points to; the install refuses to write through one.
 
+## Also in this release
+
+- **`ghcr.io/dfrostar/neuralmind:latest` follows the newest release.** The
+  Docker workflow moved `:latest` to whichever version it built last, so
+  rebuilding an older tag pointed it back at that version. On 2026-10-06 a
+  re-pushed `v1.16.0` tag pointed `:latest` at v1.16.0's image.
+  `:latest` now moves only for the highest `vX.Y.Z` tag; a
+  rebuild of an older version pushes just its own `:vX.Y.Z`. To pin, pull
+  `:v4.9.0` rather than `:latest`.
+
 ## Per-agent expectations
 
 | Agent | What changes |
