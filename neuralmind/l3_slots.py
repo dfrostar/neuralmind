@@ -104,6 +104,27 @@ def code_bm25_enabled() -> bool:
     return _on(CODE_BM25_ENV)
 
 
+def scoped_file(filename: str, scope: str | None) -> str:
+    """The cache file for an index of ``scope``: ``name.<scope>.ext``, or as is for 'all'.
+
+    A ``build --scope docs`` must not overwrite the index a default query reads.
+    """
+    if not scope or scope == "all":
+        return filename
+    stem, dot, ext = filename.rpartition(".")
+    return f"{stem}.{scope}.{ext}" if dot else f"{filename}.{scope}"
+
+
+def generation_key(scope: str | None = "all") -> str:
+    """The ``build_status.json`` key that stamps the index of ``scope``."""
+    return "index_generation" if not scope or scope == "all" else f"index_generation.{scope}"
+
+
+def index_scope(embedder: Any) -> str:
+    """The scope a backend indexes ('all' for backends without scopes)."""
+    return getattr(embedder, "scope", None) or "all"
+
+
 def unified_bm25_enabled() -> bool:
     """On by default since v4.6.0; ``NEURALMIND_BM25_UNIFIED=0`` restores v4.5."""
     return os.environ.get(UNIFIED_BM25_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
@@ -435,18 +456,20 @@ class HubStats:
         return cls(answers, "probes", n_files)
 
 
-def _index_stamp(project: Path) -> str:
-    """Changes whenever the index is rebuilt.
+def _index_stamp(project: Path, scope: str | None = "all") -> str:
+    """Changes whenever the index of ``scope`` is rebuilt.
 
-    ``build`` writes an ``index_generation`` into ``build_status.json``; older
-    indexes fall back to file mtimes.
+    ``build`` writes an ``index_generation`` into ``build_status.json`` (one
+    per scope, see :func:`generation_key`); older indexes fall back to file
+    mtimes.
     """
+    key = generation_key(scope)
     try:
         status = json.loads(
             (Path(project) / ".neuralmind" / "build_status.json").read_text(encoding="utf-8")
         )
-        if status.get("index_generation"):
-            return f"generation:{status['index_generation']}"
+        if status.get(key):
+            return f"generation:{status[key]}"
     except (OSError, ValueError, AttributeError):
         pass
     for name in ("build_status.json", "graph.json"):
@@ -542,13 +565,15 @@ def code_bm25_text(node: dict) -> str:
     return f"{label} {_bare_name(label)} {sf}"
 
 
-def _cached_bm25(project: Path, filename: str, build, *, rebuild: bool = True):
+def _cached_bm25(
+    project: Path, filename: str, build, *, rebuild: bool = True, scope: str | None = "all"
+):
     """The cached index if it matches this build; else build it (``rebuild``) or None."""
     from .bm25 import BM25Index
 
-    cache = Path(project) / ".neuralmind" / filename
+    cache = Path(project) / ".neuralmind" / scoped_file(filename, scope)
     stamp_file = cache.with_suffix(".stamp")
-    stamp = _index_stamp(project)
+    stamp = _index_stamp(project, scope)
     try:
         if cache.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
             return BM25Index.load(cache)
@@ -572,8 +597,8 @@ def _cached_bm25(project: Path, filename: str, build, *, rebuild: bool = True):
     return idx
 
 
-def code_bm25_index(project: Path, catalog: NodeCatalog | None):
-    """BM25 over code symbols and docstrings only, cached per index build."""
+def code_bm25_index(project: Path, catalog: NodeCatalog | None, *, scope: str | None = "all"):
+    """BM25 over code symbols and docstrings only, cached per index build and scope."""
 
     def build():
         if catalog is None:
@@ -584,10 +609,16 @@ def code_bm25_index(project: Path, catalog: NodeCatalog | None):
             if n["metadata"].get("file_type") in ("code", "rationale")
         ]
 
-    return _cached_bm25(project, CODE_BM25_FILE, build)
+    return _cached_bm25(project, CODE_BM25_FILE, build, scope=scope)
 
 
-def unified_bm25_index(project: Path, catalog: NodeCatalog | None, *, rebuild: bool = False):
+def unified_bm25_index(
+    project: Path,
+    catalog: NodeCatalog | None,
+    *,
+    rebuild: bool = False,
+    scope: str | None = "all",
+):
     """One BM25 index over every node: doc text, symbol names, docstrings.
 
     The turbovec backend's own BM25 index holds only documents, so in the
@@ -596,7 +627,8 @@ def unified_bm25_index(project: Path, catalog: NodeCatalog | None, *, rebuild: b
     for the same terms in one index.
 
     ``build`` writes it (``rebuild=True``); a query only loads it, and an
-    index built before v4.6.0 has none until the next build.
+    index built before v4.6.0 has none until the next build. Each ``scope``
+    has its own file, so a scoped build leaves the default index alone.
     """
 
     def build():
@@ -612,4 +644,4 @@ def unified_bm25_index(project: Path, catalog: NodeCatalog | None, *, rebuild: b
             out.append((n["id"], text, meta))
         return out
 
-    return _cached_bm25(project, UNIFIED_BM25_FILE, build, rebuild=rebuild)
+    return _cached_bm25(project, UNIFIED_BM25_FILE, build, rebuild=rebuild, scope=scope)

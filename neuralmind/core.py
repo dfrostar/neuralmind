@@ -177,6 +177,7 @@ class NeuralMind:
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
         self.project_path = Path(project_path).resolve()
+        self.scope = scope
         # Before anything can write index or synapse state: a project that
         # sets security.require_encrypted_storage refuses an unverified volume.
         enforce_storage_policy(self.project_path)
@@ -801,6 +802,7 @@ class NeuralMind:
             self._build_stats["freshness"] = freshness.to_dict()
         # The graph this index was embedded from, so read paths can tell when
         # it has been regenerated since (graphify update, a pull) without a build.
+        from . import l3_slots
         from .freshness import graph_fingerprint
 
         status_updates: dict = {
@@ -808,8 +810,9 @@ class NeuralMind:
                 **self._build_stats["graph"],
                 "fingerprint": graph_fingerprint(graph_info["path"]),
             },
-            # Stamps caches derived from this index (the unified BM25 index).
-            "index_generation": self._build_stats["built_at"],
+            # Stamps caches derived from this index (the unified BM25 index),
+            # one key per scope so a scoped build can't stale the default one.
+            l3_slots.generation_key(self.scope): self._build_stats["built_at"],
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
@@ -1425,7 +1428,7 @@ class NeuralMind:
             if not l3_slots.unified_bm25_enabled():
                 return
             catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
-            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True)
+            l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True, scope=self.scope)
             if getattr(self, "selector", None) is not None:
                 self.selector._unified_bm25 = None  # reload on the next query
         except Exception:  # pragma: no cover - a keyword index never blocks a build
@@ -1741,14 +1744,19 @@ class NeuralMind:
         if not graphgen.is_available():
             return {"success": False, "error": "tree-sitter not available"}
 
+        from .neuralmind_config import NeuralmindConfig
+
         root = self.project_path.resolve()
         indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
-        # Files the full build would index (.gitignore, .neuralmindignore and
-        # the default ignores applied), so an edit to an excluded file can't
-        # slip it back into the graph.
+        # Files the full build would index (.gitignore, .neuralmindignore, the
+        # default ignores and .neuralmind.yaml include/exclude applied), so an
+        # edit to an excluded file can't slip it back into the graph.
+        config = NeuralmindConfig.load(root)
         allowed = {
             f.relative_to(root).as_posix()
-            for f in graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            for f in config.apply_globs(
+                root, graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+            )
         }
         known = {n.get("source_file") for n in graph.get("nodes", [])}
         changed: list[str] = []
@@ -1791,6 +1799,29 @@ class NeuralMind:
         self.embedder.edges = []
         self.embedder.load_graph()
         embed_stats = self.embedder.embed_nodes(force=False)
+
+        # Restamp the index the way build() does: record the updated graph's
+        # fingerprint (else every load reports the index out of step) and a new
+        # index generation, which invalidates the caches stamped with the old
+        # one; then rewrite the unified BM25 index so removed symbols stop
+        # matching keywords and added ones start.
+        from . import l3_slots
+        from .freshness import graph_fingerprint
+
+        self._record_build_status(
+            {
+                "graph": {
+                    **(self._read_build_status().get("graph") or {}),
+                    "path": self._display_path(graph_path),
+                    "kind": "built-in",
+                    "action": "incremental",
+                    "nodes": stats.nodes_after,
+                    "fingerprint": graph_fingerprint(graph_path),
+                },
+                l3_slots.generation_key(self.scope): datetime.now().isoformat(),
+            }
+        )
+        self._write_unified_bm25()
         self._graph_stats_dirty()
 
         return {
@@ -1805,11 +1836,16 @@ class NeuralMind:
 
     def _graph_stats_dirty(self) -> None:
         """Invalidate the selector's cached graph stats after an incremental
-        update so L0/L1 reflect the new node/community counts."""
+        update so L0/L1 reflect the new node/community counts, and the node
+        catalog and keyword indexes derived from the old nodes reload."""
         if self.selector is not None:
             self.selector._graph_stats = None
             self.selector._l0_cache = None
             self.selector._l1_cache = None
+            self.selector._catalog = None
+            self.selector._code_bm25 = None
+            self.selector._unified_bm25 = None
+            self.selector._hub_stats_cache = None
 
     def _ensure_built(self):
         """Make the index ready for a query without rebuilding it.
@@ -1975,8 +2011,9 @@ class NeuralMind:
             trace: If True, attach a per-layer retrieval trace (PRD 3) to
                 ``result.trace`` for explainability/debugging.
             trace_verbose: If True (with trace), keep full candidate/hit lists.
-            query_type: Filter results — 'code' restricts to source code, 'docs'
-                to documentation, 'auto' detects intent (default).
+            query_type: 'code' ranks source code first, 'docs' documentation
+                first, in place of the intent detected from the question;
+                'auto' detects it (default).
             context_budget: Optional token budget. If provided, the assembled
                 context is trimmed to fit within this budget by removing
                 lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
@@ -2030,8 +2067,14 @@ class NeuralMind:
             )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
-            if highlights:
+            if highlights and context_budget and context_budget > 0 and result.layer_texts:
+                # The highlights count against the budget too: the layers
+                # make room for them (L3, then L2, then L1), then the
+                # highlights themselves are cut; L0 is never trimmed.
+                self.selector.fit_to_budget(result, context_budget, prefix=highlights)
+            elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
+                self.selector.count_prefix(result, highlights)
         if learn:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)

@@ -90,9 +90,11 @@ def compute_edge_half_life(
     recency_confidence = math.exp(-LN2 * days_since_last / namespace_default)
 
     # Map frequency → half-life. The function is monotonic but saturating:
-    # freq=0 → lo, freq=∞ → hi. At freq=1/day ≈ midpoint.
+    # freq=0 → lo, freq=∞ → hi. At freq=1/day ratio == 1 → exactly midpoint.
+    # (Feeding ``freq * age_days`` here cancelled the age back out, so the
+    # result depended on the raw count alone, not on activations per day.)
     try:
-        ratio = math.log1p(freq * age_days / 10.0)
+        ratio = math.log1p(freq) / LN2
     except ValueError:
         ratio = 0.0
     learned = lo + (hi - lo) * (ratio / (1.0 + ratio))
@@ -118,7 +120,7 @@ def update_learned_half_life(
     its existing upsert transaction.
     """
     try:
-        from .synapses import SHARED_NAMESPACE, _canonical
+        from .synapses import EPHEMERAL_NAMESPACE, SHARED_NAMESPACE, _canonical
 
         canonical = _canonical(node_a, node_b)
         if canonical is None:
@@ -142,14 +144,20 @@ def update_learned_half_life(
 
             ns_default = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
 
-            learned = compute_edge_half_life(
-                activation_count=act_count,
-                last_activated=last_act,
-                first_activated=created_at,
-                namespace_default=ns_default,
-                project_path=project_path,
-                min_floor=ns_default if ns == SHARED_NAMESPACE else None,
-            )
+            if ns == EPHEMERAL_NAMESPACE:
+                # Session scratch keeps its fixed fast half-life. A learned
+                # rate is clamped to DECAY_RATE_MIN (3 days), which would
+                # triple the documented EPHEMERAL_HALF_LIFE_DAYS (1 day).
+                learned = ns_default
+            else:
+                learned = compute_edge_half_life(
+                    activation_count=act_count,
+                    last_activated=last_act,
+                    first_activated=created_at,
+                    namespace_default=ns_default,
+                    project_path=project_path,
+                    min_floor=ns_default if ns == SHARED_NAMESPACE else None,
+                )
             existing_conn.execute(
                 "UPDATE synapses SET half_life_days = ?, learned_at = ? "
                 "WHERE node_a = ? AND node_b = ? AND namespace = ?",

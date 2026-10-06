@@ -276,15 +276,14 @@ def test_preview_does_not_prune(tmp_path):
 
 
 def test_nothing_recorded_in_an_unbuilt_project(tmp_path):
-    # Globally installed hooks run everywhere, and SessionStart itself creates
-    # .neuralmind/ (the synapse store). Only a build marks a NeuralMind project.
+    # Globally installed hooks run everywhere. Only a build marks a NeuralMind
+    # project, and no hook action creates .neuralmind/ outside one.
     project = tmp_path / "unrelated"
     project.mkdir()
     _start(project, "first")
-    assert (project / ".neuralmind").is_dir()
     _prompt(project, "first", "a private prompt")
     _edit(project, "first", str(project / "a.py"))
-    assert not (project / ".neuralmind" / "recaps").exists()
+    assert not (project / ".neuralmind").exists()
 
 
 def test_records_are_never_stageable(tmp_path):

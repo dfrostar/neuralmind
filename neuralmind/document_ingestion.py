@@ -565,7 +565,9 @@ def ingest_directory(dir_path: Path, recursive: bool = True) -> list[ContentNode
                     continue
                 _walk(item, depth + 1)
             elif item.is_file():
-                if _is_ignored(rel, neuralmindignore) or _matches_ignore(rel, gitignore):
+                if _is_ignored(rel, neuralmindignore, is_dir=False) or _matches_ignore(
+                    rel, gitignore, is_dir=False
+                ):
                     continue
                 # Dot-files are never ingested: .env/.npmrc/.netrc/.pypirc
                 # carry credentials, and the rest (.gitignore, .tool-rc) are

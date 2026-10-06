@@ -5,7 +5,7 @@ The Memory Layer gives agents persistent, queryable decision memory: every archi
 ## Overview
 
 - **Storage:** SQLite (`.neuralmind/memory.db` in your project root), created on first use
-- **Search:** over titles and rationales, in three modes (v4.7.0+). `keyword` is FTS5, prefix-matched: common words (how, do, the…) are dropped, any remaining word can match, and bm25 ranks decisions that match more of the words first. `semantic` ranks by meaning, with the same local embedding model the code index uses, so a question can find a decision that shares none of its words. `hybrid`, the default, fuses the two rankings. Evidence, tags and rejected alternatives are stored and returned with each record, but search doesn't look at them yet.
+- **Search:** over titles and rationales, in three modes (v4.8.0+). `keyword` is FTS5, prefix-matched: common words (how, do, the…) are dropped, any remaining word can match, and bm25 ranks decisions that match more of the words first. `semantic` ranks by meaning, with the same local embedding model the code index uses, so a question can find a decision that shares none of its words. `hybrid`, the default, fuses the two rankings. Evidence, tags and rejected alternatives are stored and returned with each record, but search doesn't look at them yet.
 - **Invalidation:** file-touch and cascade rules, run after every commit by `neuralmind decisions scan` (the `init-hook` post-commit hook, v4.6.0+) — decisions whose files a commit changed after they were recorded go STALE
 - **Access:** CLI (`neuralmind decisions`), MCP tools (7), and Python API
 
@@ -35,7 +35,7 @@ neuralmind decisions query "keywords or a question" [project_path] [--mode hybri
 
 The query text comes **first**; the project path is optional and comes second.
 
-**Search modes (v4.7.0+).** `--mode` picks how decisions are ranked; without it,
+**Search modes (v4.8.0+).** `--mode` picks how decisions are ranked; without it,
 `NEURALMIND_DECISION_SEARCH` decides, and without that, `hybrid`:
 
 | Mode | Ranks by | Finds |

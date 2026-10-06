@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -14,6 +15,10 @@ from typing import Any
 
 AUDIT_FILE_NAME = "audit_events.jsonl"
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
+# What rotate() names an archive, and what a hash looks like. A rotation
+# marker naming anything else is rejected rather than followed as a path.
+_ARCHIVE_NAME = re.compile(r"audit_events\.\d{8}_\d{6}\.jsonl")
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 
 # Actor resolution order: explicit > env var > OS user > "system"
@@ -103,14 +108,19 @@ class AuditTrail:
 
     def _last_sha256_from_file(self) -> str:
         """Read the last non-empty line's sha256, or '0'*64 if file is empty/legacy."""
-        if not self.events_file.exists():
+        return self._last_sha256_of(self.events_file)
+
+    @classmethod
+    def _last_sha256_of(cls, path: Path) -> str:
+        """The sha256 of ``path``'s last non-empty line, or '0'*64 if it has none."""
+        if not path.exists():
             return "0" * 64
         try:
             # Read all lines; find last non-empty; extract sha256
-            with self.events_file.open(encoding="utf-8") as f:
+            with path.open(encoding="utf-8") as f:
                 last = ""
                 for raw_line in f:
-                    if len(raw_line) > self.MAX_AUDIT_LINE_BYTES:
+                    if len(raw_line) > cls.MAX_AUDIT_LINE_BYTES:
                         continue  # Skip crafted oversized lines (DoS guard)
                     line = raw_line.strip()
                     if line:
@@ -119,9 +129,10 @@ class AuditTrail:
                 return "0" * 64
             try:
                 obj = json.loads(last)
-                return obj.get("sha256") or "0" * 64
             except json.JSONDecodeError:
                 return "0" * 64
+            sha = obj.get("sha256") if isinstance(obj, dict) else None
+            return sha if isinstance(sha, str) and sha else "0" * 64
         except (UnicodeDecodeError, OSError):
             return "0" * 64
 
@@ -197,20 +208,79 @@ class AuditTrail:
     def verify(self) -> dict[str, Any]:
         """Walk the hash chain, return status.
 
-        Returns {ok: bool, first_bad_line: int|None, total: int}.
-        Legacy lines without sha256 are accepted as trust-on-first-use seed.
+        Returns ``{ok, first_bad_line, total, unchained, continues_from,
+        archive_checked, reason}``. ``first_bad_line`` is the line number in
+        the file, and ``total`` counts its non-empty lines.
+
+        Unlike :meth:`read_events`, which skips what it can't parse so search
+        and export keep working, verification reads the file strictly: a
+        non-empty line that isn't a JSON object (bad UTF-8, bad JSON, a
+        non-object value, or over 1 MB) fails.
+
+        Records before the first hashed record were written before the hash
+        chain existed. They are accepted trust-on-first-use and counted in
+        ``unchained``. Once the chain has started, every record must carry a
+        ``sha256`` and a ``prev_sha256`` that match the record before it: a
+        record without a hash fails, so records edited or appended at the end
+        of the log can't pass by dropping their hashes.
+
+        A file that begins with a ``rotation_continuation`` marker (written by
+        :meth:`rotate`) continues the archive named in ``continues_from``, so
+        the walk starts from the marker's ``prev_sha256``. When that archive is
+        still beside the log, the marker must match its last hash
+        (``archive_checked`` is True). A pruned archive leaves the link
+        unchecked (``archive_checked`` is False), and a malformed marker fails.
+
+        Records deleted from the end still leave a valid chain. The file alone
+        can't show that; a copy exported off the host can.
         """
-        events = self.read_events()
-        if not events:
-            return {"ok": True, "first_bad_line": None, "total": 0}
+        lines, read_error = self._read_lines_strict()
+        result: dict[str, Any] = {
+            "ok": True,
+            "first_bad_line": None,
+            "total": len(lines),
+            "unchained": 0,
+            "continues_from": None,
+            "archive_checked": None,
+            "reason": None,
+        }
+        if read_error:
+            result.update(ok=False, reason=read_error)
+            return result
 
         prev_sha = "0" * 64
-        for i, evt in enumerate(events, start=1):
+        chained = False
+        for index, (line_no, evt, problem) in enumerate(lines):
+            if problem:
+                result.update(ok=False, first_bad_line=line_no, reason=problem)
+                return result
             sha = evt.get("sha256", "")
             if not sha:
-                # Legacy line — update prev_sha from its content (no chain check)
-                prev_sha = "0" * 64  # reset; next line must carry prev_sha
+                if chained:
+                    result.update(
+                        ok=False,
+                        first_bad_line=line_no,
+                        reason="record has no sha256 after the hash chain started",
+                    )
+                    return result
+                result["unchained"] += 1
                 continue
+            if index == 0 and evt.get("action") == "rotation_continuation":
+                problem = self._check_rotation_marker(evt, result)
+                if problem:
+                    result.update(ok=False, first_bad_line=line_no, reason=problem)
+                    return result
+                prev_sha = evt["prev_sha256"]
+            chained = True
+            # The hash covers the record without its hash fields, so check the
+            # stored link separately: otherwise it could be altered freely.
+            if evt.get("prev_sha256") != prev_sha:
+                result.update(
+                    ok=False,
+                    first_bad_line=line_no,
+                    reason="prev_sha256 doesn't match the hash of the record before it",
+                )
+                return result
             # Reconstruct what was hashed
             payload_str = prev_sha + json.dumps(
                 {k: v for k, v in evt.items() if k not in ("sha256", "prev_sha256")},
@@ -219,12 +289,74 @@ class AuditTrail:
             )
             expected = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
             if sha != expected:
-                # Check if prev_sha matches
-                if evt.get("prev_sha256") != prev_sha:
-                    return {"ok": False, "first_bad_line": i, "total": len(events)}
-                return {"ok": False, "first_bad_line": i, "total": len(events)}
+                result.update(
+                    ok=False,
+                    first_bad_line=line_no,
+                    reason="sha256 doesn't match the record and the hash before it",
+                )
+                return result
             prev_sha = sha
-        return {"ok": True, "first_bad_line": None, "total": len(events)}
+        return result
+
+    def _read_lines_strict(
+        self,
+    ) -> tuple[list[tuple[int, dict[str, Any], str | None]], str | None]:
+        """Every non-empty line as ``(line number, record, problem)``.
+
+        ``problem`` names why a line isn't a usable record, and the record is
+        then empty. The second value is set when the file can't be read at all.
+        """
+        lines: list[tuple[int, dict[str, Any], str | None]] = []
+        if not self.events_file.exists():
+            return lines, None
+        try:
+            with self.events_file.open("rb") as f:
+                for line_no, raw in enumerate(f, start=1):
+                    if len(raw) > self.MAX_AUDIT_LINE_BYTES:
+                        lines.append((line_no, {}, "line is longer than the 1 MB limit"))
+                        continue
+                    try:
+                        text = raw.decode("utf-8").strip()
+                    except UnicodeDecodeError:
+                        lines.append((line_no, {}, "line isn't valid UTF-8"))
+                        continue
+                    if not text:
+                        continue
+                    try:
+                        obj = json.loads(text)
+                    except json.JSONDecodeError:
+                        lines.append((line_no, {}, "line isn't valid JSON"))
+                        continue
+                    if not isinstance(obj, dict):
+                        lines.append((line_no, {}, "line isn't a JSON object"))
+                        continue
+                    lines.append((line_no, obj, None))
+        except OSError as exc:
+            return lines, f"can't read the audit log: {exc}"
+        return lines, None
+
+    def _check_rotation_marker(self, marker: dict[str, Any], result: dict[str, Any]) -> str | None:
+        """Validate a rotation marker and its link to the archive it continues.
+
+        Fills ``continues_from`` and ``archive_checked`` in ``result``. Returns
+        the reason it fails, or None.
+        """
+        details = marker.get("details")
+        archive = details.get("archive") if isinstance(details, dict) else None
+        prev = marker.get("prev_sha256")
+        if not isinstance(archive, str) or not _ARCHIVE_NAME.fullmatch(archive):
+            return "rotation marker doesn't name a rotated archive"
+        if not isinstance(prev, str) or not _SHA256_HEX.fullmatch(prev):
+            return "rotation marker has no valid prev_sha256"
+        result["continues_from"] = archive
+        archive_path = self.events_file.parent / archive
+        if not archive_path.exists():
+            result["archive_checked"] = False
+            return None
+        if self._last_sha256_of(archive_path) != prev:
+            return f"rotation marker doesn't match the last hash in {archive}"
+        result["archive_checked"] = True
+        return None
 
     def search(
         self,
@@ -295,21 +427,10 @@ class AuditTrail:
 
         # Seed the new active file's chain from the archived file's final hash
         if archive_path.exists():
-            last_sha = "0" * 64
-            with archive_path.open("rb") as af:
-                af.seek(0, 2)
-                pos = af.tell()
-                while pos > 0:
-                    pos -= 1
-                    af.seek(pos)
-                    if af.read(1) == b"\n":
-                        break
-                last_line = af.readline().decode("utf-8").strip()
-                if last_line:
-                    try:
-                        last_sha = json.loads(last_line).get("sha256") or "0" * 64
-                    except json.JSONDecodeError:
-                        pass
+            # The archive ends with a newline, so a backward scan for the last
+            # line used to stop on it and read nothing, chaining the marker to
+            # zeros instead of the archive's final hash.
+            last_sha = self._last_sha256_of(archive_path)
             # Write a chain-continuation marker
             with self.events_file.open("w", encoding="utf-8") as nf:
                 marker = {
@@ -320,9 +441,11 @@ class AuditTrail:
                     "status": "success",
                     "target": "",
                     "details": {"archive": str(archive_path.name)},
-                    "prev_sha256": last_sha,
                 }
+                # Hash the way append_event does: the prev hash plus the record
+                # without its own hash fields, so verify() can check the marker.
                 payload_str = last_sha + json.dumps(marker, sort_keys=True, separators=(",", ":"))
+                marker["prev_sha256"] = last_sha
                 marker["sha256"] = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
                 nf.write(json.dumps(marker, sort_keys=True) + "\n")
 

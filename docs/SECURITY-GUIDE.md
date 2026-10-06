@@ -84,10 +84,14 @@ Default roles (`DEFAULT_ROLE_POLICY`):
 |---|---|
 | `admin` | All tools |
 | `builder` | The `reader` set, plus `build`, document ingestion, and recording or invalidating decisions |
-| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
+| `reader` | Retrieval (`wakeup`, `query`, `search`, `skeleton`), the read-only structure and recall lookups (`review`, `impact`, `structural_neighbors`, `synaptic_neighbors`, `next_likely`), read-only analytics and stats, and the read-only decision-memory tools (`query_decisions`, `audit_decisions`, `memory_search`, `memory_timeline`, `memory_get`) |
 
-A few tools are admin-only by default, including `synaptic_neighbors`,
-`structural_neighbors`, `next_likely`, `impact`, and `review`.
+No tool is admin-only by default. Through v4.8.0, `synaptic_neighbors`,
+`structural_neighbors`, `next_likely`, `impact` and `review` were listed to
+agents but refused to `builder` and `reader`, so an agent following the docs
+got `security_denied` from `neuralmind_review`. They only read, like `query`,
+and v4.8.1 grants them to both roles. A `security.roles` policy you wrote is
+unaffected: it replaces the defaults, as described below.
 
 ### Capping what a caller can claim
 
@@ -114,18 +118,28 @@ An empty `roles: {}` grants nothing. If `roles`, `rate_limit`, or the
 second, a value that isn't a whole number), the server refuses every MCP call
 with `reason: config` instead of falling back to defaults that may be looser.
 
-Two mistakes are not caught, and leave the defaults in force, `admin`
-included: a file that doesn't parse (a YAML syntax error reads as no
-configuration), and a `security:` or `roles:` key left empty, which YAML reads
-as `null` and the server as "no policy". After writing a policy, call a tool
-you left out with `role: "admin"` and check that it returns `security_denied`.
+*(v4.8.0+)* Two more mistakes refuse every call with `reason: config` too:
+
+- a policy file that doesn't parse, when its text outside comments names
+  `security`, `roles`, `rate_limit`, `identity` or `require_encrypted_storage`
+  (other unparseable files still read as empty, so a typo in backend tuning
+  doesn't block the server);
+- a `security:` or `roles:` key left empty, which YAML reads as `null` and is
+  what's left when every entry under it is commented out. Write `roles: {}` to
+  grant nothing, or remove the key to use the defaults. An empty
+  `rate_limit:` still means the default limit.
+
+v4.7.0 and earlier read both as "no policy" and applied the defaults, `admin`
+included; v4.7.0 refused an unparseable file only when it named `identity` or
+`require_encrypted_storage`.
+`neuralmind doctor` reports each as a failed *Security policy* check. A
+misspelled key (`role:` for `roles:`) is still read as absent, so after writing
+a policy, call a tool you left out with `role: "admin"` and check that it
+returns `security_denied`.
 
 The server reads the policy once per project and keeps it until it exits, so
 restart the MCP server (a new agent session, or reconnecting the server) after
 editing `security:`.
-
-*(v4.7.0+)* A file that names `identity` or `require_encrypted_storage` but
-doesn't parse is the exception: it is refused rather than read as empty.
 
 The rate limit keys on the actor, so with declared identities it stops a
 runaway agent, not a caller that changes its actor name. Under
@@ -334,6 +348,13 @@ otherwise write a live credential to a plaintext file. Credentials are stripped 
 and the entry records which kinds were removed. Opt out with
 `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
 
+Through v4.8.0 this cache missed some common shapes: the
+`"SecretAccessKey"` and `"SessionToken"` JSON that `aws sts get-session-token`
+prints, JSON keys such as `{"password": "…"}`, and the part of a bare value
+after a `;` or `,` (`DB_PASSWORD=abc;rest`). If you ran such commands under
+the hook on v4.8.0 or earlier, delete `.neuralmind/last_output.json` and
+rotate what it held. v4.8.1 redacts all three.
+
 `.neuralmind/` also carries its own `.gitignore` containing `*`, written
 when the directory is created, so the state directory cannot be
 committed by a `git add -A` even in a project whose own `.gitignore`
@@ -473,17 +494,23 @@ neuralmind audit export . --format cef -o audit.cef    # for SIEM ingest
 bare date means the start of that day. `--until 2026-04-01` takes in all of
 March 31, and `--until 2026-03-31` would leave March 31 out.
 
-`audit verify` catches an edited record, or one deleted from the middle of the
-log. It passes a log that was changed at the end, because it accepts any
-record with no `sha256` as a legacy, pre-chain line:
+`audit verify` catches an edited record, a record deleted from the middle of
+the log, and, once the chain has started, any record without a `sha256` or
+with a `prev_sha256` that doesn't match the record before it. So records
+edited or appended with their hash removed fail too. It also fails on any
+line that isn't a JSON object, where search and export skip it. v4.8.0 and
+earlier accepted a record without a hash anywhere as a legacy line, skipped
+lines they couldn't parse, and never compared `prev_sha256`, so all of those
+passed.
 
-- records deleted from the end
-- the last records edited, with their `sha256` removed
-- forged records appended with no `sha256`
+Records from before the hash chain existed (written by versions before
+v0.46.2) carry no hash. `verify` accepts them only ahead of the first hashed
+record and reports how many there are; the chain doesn't cover them.
 
-It also can't detect a chain recomputed by anyone who can write the file. A
-passing check is therefore weak evidence on its own. Ship `audit export`
-output off the host, and compare against that copy.
+It can't detect records deleted from the end, or a chain recomputed by
+anyone who can write the file: the hash has no secret key. A passing check is
+therefore weak evidence on its own. Ship `audit export` output off the host,
+and compare against that copy.
 
 NeuralMind doesn't rotate or expire the log, and it has no report command:
 build compliance reports from the export.
@@ -561,8 +588,9 @@ AC.L2-3.1.1 / 3.1.2 - Authorized access, permitted functions
 
 AU.L2-3.3.1 / 3.3.8 - Audit records, protection of audit information
    Evidence: append-only audit log with a SHA-256 hash chain. It shows a
-   changed record mid-log, not changes at the end (records removed, or
-   edited or appended there without a hash) or a recomputed chain
+   changed record mid-log, a record without a hash after the chain starts,
+   and an unreadable line, not records removed from the end or a
+   recomputed chain
 
 SC.L2-3.13.11 / 3.13.16 - FIPS cryptography, CUI at rest
    Evidence: require_encrypted_storage verifies full-disk encryption and
@@ -586,7 +614,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Index data breach** | Low | High | None in NeuralMind itself: `.neuralmind/` isn't encrypted and is created with your umask, often world-readable. Restrict it with file permissions and use full-disk encryption. The audit log records calls made through NeuralMind, not direct reads of these files |
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
 | **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
-| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not tampering at the tail of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
+| **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
 | **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
 
 ### Attack Scenarios
@@ -605,7 +633,9 @@ Status: No known injection path. This comes from code review, not a
 
 **Scenario 2: Privilege escalation**
 ```
-Attack: A caller declares role "admin" to reach admin-only tools
+Attack: A caller declares role "admin" to reach tools its own role
+        lacks (no tool is admin-only by default; a security.roles
+        policy can make some)
 Mitigation: Set security.identity: os so the role comes from the OS
             account, not the call. Otherwise leave admin out of
             security.roles, and limit who can reach the MCP server

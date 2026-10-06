@@ -1,5 +1,37 @@
 # Changelog
 
+## [4.8.1](https://github.com/dfrostar/neuralmind/compare/v4.8.0...v4.8.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **audit:** reject records without a hash once the chain has started ([#581](https://github.com/dfrostar/neuralmind/issues/581)) ([454904f](https://github.com/dfrostar/neuralmind/commit/454904f4bbf62bdab4692942d2642ea7c9eced28))
+* **audit:** report the events `audit export -o` wrote, not the whole log ([#585](https://github.com/dfrostar/neuralmind/issues/585)) ([65ad0b9](https://github.com/dfrostar/neuralmind/commit/65ad0b9e3a0efae6b40549352137de2249f0d78e))
+* bug-hunt fixes (high + medium): installers, redaction, hooks, graph, retrieval, synapse learning ([#587](https://github.com/dfrostar/neuralmind/issues/587)) ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
+
+### Documentation
+
+* RELEASE_NOTES_v4.8.1.md (with [#581](https://github.com/dfrostar/neuralmind/issues/581)'s and [#585](https://github.com/dfrostar/neuralmind/issues/585)'s audit fixes), README, about.html, the docs hub, CLI reference and Security Guide. ([f5c8b3f](https://github.com/dfrostar/neuralmind/commit/f5c8b3fd21b2eab6f17c3dfdc45e2ed49b7aa6a8))
+
+## [4.8.0](https://github.com/dfrostar/neuralmind/compare/v4.7.0...v4.8.0) (2026-10-05)
+
+
+### Features
+
+* **hooks:** session recap — a new Claude Code session starts with where the last one left off ([#583](https://github.com/dfrostar/neuralmind/issues/583)) ([169460f](https://github.com/dfrostar/neuralmind/commit/169460f149f35e0d4281010fc43ec1767e6eb20d))
+* **memory:** semantic and hybrid decision search ([#582](https://github.com/dfrostar/neuralmind/issues/582)) ([5d3c8a8](https://github.com/dfrostar/neuralmind/commit/5d3c8a8b46c52162348778f68a7e9d629400a59e))
+
+
+### Bug Fixes
+
+* **mcp:** refuse a policy file that doesn't parse, and an empty security or roles key ([#586](https://github.com/dfrostar/neuralmind/issues/586)) ([8c04111](https://github.com/dfrostar/neuralmind/commit/8c0411129c1ed1a363ad2501f770902579c26f4f))
+
+
+### Documentation
+
+* remove backend, TLS, and audit-command claims the code doesn't back ([#569](https://github.com/dfrostar/neuralmind/issues/569)) ([7aa1e00](https://github.com/dfrostar/neuralmind/commit/7aa1e001ad8daddcc5d1bfdce066dda78455e2f2))
+
 ## [4.7.0](https://github.com/dfrostar/neuralmind/compare/v4.6.1...v4.7.0) (2026-10-05)
 
 

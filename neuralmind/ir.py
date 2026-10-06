@@ -143,6 +143,23 @@ class IRError(Exception):
 # --------------------------------------------------------------------------- #
 
 
+def node_community(node: dict) -> int:
+    """A graph node's community id; -1 ("no community") when absent or not a
+    finite number.
+
+    graphify and hand-written graphs can carry ``"community": null``, which
+    ``node.get("community", -1)`` returns as None. JSON parses ``1e400`` as
+    infinity, which ``int()`` rejects with OverflowError.
+    """
+    value = node.get("community")
+    if value is None or isinstance(value, bool):
+        return -1
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return -1
+
+
 def _line_from_location(loc: Any) -> int:
     """``"L42"`` → ``42``; tolerate ints and junk → 0."""
     if isinstance(loc, int):
@@ -543,7 +560,7 @@ def from_graph_json(graph: dict[str, Any], *, source_backend: str = "") -> Index
                 source_file=source_file,
                 line=_line_from_location(n.get("source_location")),
                 language=_language_for(source_file),
-                cluster=int(n.get("community", -1)),
+                cluster=node_community(n),
                 norm_label=str(n.get("norm_label", str(n.get("label", "")).lower())),
                 raw_kind=str(n.get("file_type", "")),
                 extra=extra,

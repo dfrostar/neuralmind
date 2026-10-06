@@ -104,6 +104,23 @@ def load_backend_config(project_path: str | Path) -> dict[str, Any]:
     return config
 
 
+def resolve_db_path(project_path: str | Path, db_path: str | Path | None) -> str | None:
+    """A relative ``db_path`` names a directory in the project, not the CWD.
+
+    ``db_path: vecdb`` in ``neuralmind-backend.yaml`` must mean the same
+    directory whichever directory a command runs from. Absolute paths, ``~``
+    paths and the in-memory backend's ``:memory:`` are left as they are.
+    """
+    if db_path is None:
+        return None
+    if str(db_path) == ":memory:":
+        return ":memory:"
+    path = Path(db_path).expanduser()
+    if not path.is_absolute():
+        path = Path(project_path).resolve() / path
+    return str(path)
+
+
 def create_backend(
     backend: str,
     project_path: str,
@@ -175,7 +192,7 @@ class BackendManager:
         # Resolve "auto" (and None) to a concrete backend up front so
         # backend_name reports the real backend ("turbovec"/"graph"), not "auto".
         selected_backend = resolve_backend(backend or self.config.get("backend"))
-        selected_db_path = db_path or self.config.get("db_path")
+        selected_db_path = resolve_db_path(self.project_path, db_path or self.config.get("db_path"))
         self.backend_name = selected_backend
         _require_storage(self.project_path, selected_db_path)
         self.backend = create_backend(
@@ -189,7 +206,7 @@ class BackendManager:
                 self.backend.close()
             except Exception:
                 pass
-        selected_db_path = db_path or self.config.get("db_path")
+        selected_db_path = resolve_db_path(self.project_path, db_path or self.config.get("db_path"))
         resolved = resolve_backend(backend)
         _require_storage(self.project_path, selected_db_path)
         self.backend_name = resolved

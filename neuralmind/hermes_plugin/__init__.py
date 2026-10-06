@@ -120,7 +120,13 @@ _PYTHON_ENV = ("PYTHONPATH", "PYTHONHOME", "PYTHONSAFEPATH", "PYTHONSTARTUP", "V
 
 
 def _child_env() -> dict:
-    return {k: v for k, v in os.environ.items() if k not in _PYTHON_ENV}
+    env = {k: v for k, v in os.environ.items() if k not in _PYTHON_ENV}
+    # `python -m` puts the working directory first on sys.path: a served
+    # repository with its own neuralmind/ or neuralmind.py would run instead of
+    # the installed package. PYTHONSAFEPATH (3.11+) drops that entry; the child
+    # also runs from the plugin's own directory, which holds no such module.
+    env["PYTHONSAFEPATH"] = "1"
+    return env
 
 
 def _run(action: str, payload: dict) -> str:
@@ -133,6 +139,7 @@ def _run(action: str, payload: dict) -> str:
             text=True,
             timeout=_timeout(),
             env=_child_env(),
+            cwd=str(_HERE),
             # Windows: no console window flashing up when Hermes runs windowless.
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             check=False,
@@ -214,6 +221,23 @@ def _result_dict(result) -> dict:
     return result if isinstance(result, dict) else {}
 
 
+def _v4a_added(patch: str) -> dict:
+    """Each file's added lines in a V4A patch, keyed by its (normalised) path."""
+    sections: dict = {}
+    current = None
+    for line in patch.splitlines():
+        header = re.match(r"^\*\*\* (?:Update|Add) File: (.+)$", line)
+        move = re.match(r"^\*\*\* Move File: .+? -> (.+)$", line)
+        if header or move:
+            current = _norm((header or move).group(1))
+            sections.setdefault(current, [])
+        elif line.startswith("*** "):
+            current = None  # Delete File, End Patch …
+        elif current is not None and line.startswith("+"):
+            sections[current].append(line[1:])
+    return {path: "\n".join(added) for path, added in sections.items()}
+
+
 def _edited_paths(tool_name: str, args: dict) -> list[str]:
     path = args.get("path")
     if isinstance(path, str) and path:
@@ -235,6 +259,13 @@ def _matches_any(path: str, suffixes: set) -> bool:
     """Whether ``path`` is, or ends in whole components with, one of ``suffixes``."""
     path = _norm(path)
     return any(path == s or path.endswith("/" + s) for s in suffixes)
+
+
+def _code_for(file_path: Path, per_file: dict) -> str:
+    for section, added in per_file.items():
+        if section and _matches_any(str(file_path), {section}):
+            return added
+    return ""  # still recorded for the recap; no reuse feedback without its code
 
 
 def _failed(result, status=None) -> bool:
@@ -273,7 +304,11 @@ def on_post_tool_call(
         project = _project()
         if project is None:
             return
-        code = args.get("content") or args.get("new_string") or args.get("patch") or ""
+        patch_text = args.get("patch")
+        # A V4A patch spans several files: each file gets only its own added
+        # lines, so reuse feedback doesn't tie one file to another's code.
+        per_file = _v4a_added(patch_text) if isinstance(patch_text, str) else None
+        code = args.get("content") or args.get("new_string") or ""
         # Hermes reports the absolute paths it wrote (files_modified). Without
         # them, resolve as Hermes does: against TERMINAL_CWD, else its own
         # working directory — not against a pinned project.
@@ -282,7 +317,6 @@ def on_post_tool_call(
         if isinstance(written, list) and written and all(isinstance(p, str) for p in written):
             deleted = reported.get("files_deleted")
             gone = [p for p in deleted if isinstance(p, str)] if isinstance(deleted, list) else []
-            patch_text = args.get("patch")
             if isinstance(patch_text, str):
                 gone += [(d or m).strip() for d, m in _V4A_GONE.findall(patch_text) if (d or m)]
             # files_deleted and the patch headers may spell a path differently
@@ -301,12 +335,18 @@ def on_post_tool_call(
                 {
                     "cwd": str(project),
                     "session_id": session_id,
-                    "tool_input": {"file_path": str(file_path), "new_string": code},
+                    "tool_input": {
+                        "file_path": str(file_path),
+                        "new_string": _code_for(file_path, per_file) if per_file else code,
+                    },
                 }
             )
         if payloads:
+            # Not a daemon: Python waits for it at exit, so a short-lived Hermes run
+            # (`hermes chat -q`) doesn't drop the edits it just made. Each call is
+            # bounded by the timeout.
             threading.Thread(
-                target=lambda: [_run("edit-activity", p) for p in payloads], daemon=True
+                target=lambda: [_run("edit-activity", p) for p in payloads], daemon=False
             ).start()
     except Exception:
         pass

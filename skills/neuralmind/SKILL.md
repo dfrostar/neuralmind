@@ -1,7 +1,7 @@
 ---
 name: neuralmind
 description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
-version: 4.7.0 # x-release-please-version
+version: 4.8.1 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:
@@ -236,7 +236,7 @@ case drive the `neuralmind` CLI through `terminal` instead. See
 *Failure modes*. With NeuralMind's Hermes plugin enabled
 (`neuralmind install-hermes-plugin`), each turn's user message already
 carries NeuralMind's related files and decisions for it, and a session's
-first turn also the recap of the previous session. Don't re-query for what
+first turn also carries the recap of the previous session. Don't re-query for what
 that block already gives you; call the tools for what it doesn't cover. A
 subagent's or a cron job's messages carry no block; if you're either, call the
 tools.

@@ -692,3 +692,55 @@ def test_deleted_file_does_not_hide_a_similar_name(
         session_id="s1",
     )
     assert [p["tool_input"]["file_path"] for _, p in calls] == [kept]
+
+
+def test_a_project_cannot_shadow_the_installed_package(tmp_path, monkeypatch):
+    """A served repository with its own `neuralmind` must not run in the hook."""
+    project = _built(tmp_path / "repo")
+    evil = project / "neuralmind"
+    evil.mkdir()
+    marker = tmp_path / "pwned"
+    (evil / "__init__.py").write_text(f"open({str(marker)!r}, 'w').write('x')\n")
+    (evil / "__main__.py").write_text(f"open({str(marker)!r}, 'w').write('x')\n")
+    (project / "neuralmind.py").write_text(f"open({str(marker)!r}, 'w').write('x')\n")
+    monkeypatch.chdir(project)
+    monkeypatch.setattr(plugin, "_python", lambda: sys.executable)
+    monkeypatch.setenv(plugin.TIMEOUT_ENV, "60")
+    plugin._run("session-start", {"cwd": str(project), "session_id": "s", "source": "resume"})
+    assert not marker.exists()
+
+
+def test_v4a_patch_gives_each_file_only_its_own_code(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    patch = (
+        "*** Begin Patch\n*** Update File: src/a.py\n@@\n-old_a()\n+new_a_function()\n"
+        "*** Add File: src/b.py\n+def only_in_b():\n+    pass\n*** End Patch\n"
+    )
+    written = [str(tmp_path / "src" / "a.py"), str(tmp_path / "src" / "b.py")]
+    plugin.on_post_tool_call(
+        tool_name="patch",
+        args={"mode": "patch", "patch": patch},
+        result=json.dumps({"success": True, "files_modified": written}),
+        status="ok",
+        session_id="s1",
+    )
+    by_file = {p["tool_input"]["file_path"]: p["tool_input"]["new_string"] for _, p in calls}
+    assert by_file[written[0]] == "new_a_function()"
+    assert by_file[written[1]] == "def only_in_b():\n    pass"
+
+
+def test_edit_recording_thread_is_not_a_daemon(tmp_path, monkeypatch, calls):
+    _built(tmp_path)
+    seen = {}
+
+    class Recorder:
+        def __init__(self, target, daemon=None):
+            seen["daemon"] = daemon
+            self._target = target
+
+        def start(self):
+            self._target()
+
+    monkeypatch.setattr(threading, "Thread", Recorder)
+    plugin.on_post_tool_call(tool_name="write_file", args={"path": "a.py"}, session_id="s1")
+    assert seen["daemon"] is False

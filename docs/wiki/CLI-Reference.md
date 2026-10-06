@@ -31,7 +31,7 @@ Complete command-line interface documentation for NeuralMind.
   - [last](#last-v0100)
   - [recap](#recap-v480)
   - [install-hooks](#install-hooks)
-  - [install-hermes-plugin](#install-hermes-plugin-v480)
+  - [install-hermes-plugin](#install-hermes-plugin-v490)
   - [init-hook](#init-hook)
   - [decisions](#decisions-v410)
   - [drift](#drift-v320)
@@ -119,6 +119,51 @@ neuralmind audit recent --category backend --action build
 #### Prerequisites
 
 Requires an initialized project with audit trail.
+
+### audit verify
+
+Check the hash chain of `.neuralmind/audit_events.jsonl`.
+
+```bash
+neuralmind audit verify [project_path] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print the result as JSON |
+
+#### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every hashed record checks out |
+| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started |
+
+#### Output
+
+`✓ Audit trail integrity OK (N events)`. Extra lines say how many records come
+before the hash chain (written by versions before v0.46.2, so the chain doesn't
+cover them), and which rotated archive the log continues, if any, and whether
+its link to that archive was checked (it can't be once the archive is pruned).
+On failure, the line number in the file and the reason go to stderr. `--json`
+prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
+`archive_checked` and `reason`. `first_bad_line` is `null` when the file can't
+be read at all.
+
+v4.8.0 and earlier accepted a record without a hash anywhere in the log,
+skipped lines they couldn't parse, and never compared `prev_sha256`. So records
+edited or appended at the end with their hash removed, and garbage appended to
+the log, passed.
+
+#### What it can't detect
+
+Records deleted from the end, or a chain recomputed by anyone who can write the
+file (the hash has no secret key). Keep an exported copy off the host with
+`neuralmind audit export . -o audit.jsonl`. See the
+[Security Guide](../SECURITY-GUIDE.md#audit-trail).
 
 ### build
 
@@ -280,13 +325,17 @@ NeuralMind secret scan — /home/dev/myproject
 
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
-key IDs and secret keys, GitHub tokens and fine-grained PATs, Slack
-tokens, Google API keys, Stripe keys, PyPI and npm tokens, PEM private-key
-blocks, JWTs, `Authorization: Bearer`/`Basic` headers, and passwords
-embedded in database connection strings. `maybe` matches a generic
-`SECRET=value` assignment that cleared a Shannon-entropy threshold and a
-placeholder denylist — so `password = "changeme"`,
-`api_key = os.environ["X"]`, and `KEY=${VAR}` are not reported.
+key IDs, secret keys and session tokens (including the
+`"SecretAccessKey"` / `"SessionToken"` JSON the AWS CLI prints, v4.8.1),
+GitHub tokens and fine-grained PATs, GitLab PATs and Hugging Face tokens
+*(v4.8.1)*, Slack tokens, Google API keys, Stripe keys, PyPI and npm
+tokens, PEM private-key blocks, JWTs, `Authorization: Bearer`/`Basic`
+headers, and passwords embedded in database or `http(s)://user:password@host`
+URLs. `maybe` matches a generic `SECRET=value` assignment, including a quoted
+JSON or dict key such as `{"password": "…"}` *(v4.8.1)*, that cleared a
+Shannon-entropy threshold and a placeholder denylist — so
+`password = "changeme"`, `api_key = os.environ["X"]`, and `KEY=${VAR}` are
+not reported.
 
 **Previews never include the tail of a secret** — only a short prefix and
 a length — so scan output is safe to paste into an issue or a CI log.
@@ -329,13 +378,18 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 
 #### Type Filter *(v3.1.4+)*
 
-Filter results by node type:
+Steer the ranking toward a node type (results are ranked, not filtered, so
+other types can still appear):
 
 | Flag | Description |
 |------|-------------|
-| `--type code` | Restrict to source code only |
-| `--type docs` | Restrict to documentation only |
+| `--type code` | Rank source code first |
+| `--type docs` | Rank documentation first |
 | `--type auto` | Auto-detect intent (default) |
+
+*(v4.8.1+)* `code` and `docs` replace the detected intent before L3 is ranked.
+Before v4.8.1 they re-boosted the hits after the context was built, so the
+returned context didn't change.
 
 #### Cross-Project Search *(v3.1.4+)*
 
@@ -1254,7 +1308,8 @@ per-environment default is never a silent mystery.
 **Security policy** and **Storage encryption** *(v4.7.0+)* report the
 [security settings](#security-settings-security-in-neuralmind-backendyaml):
 which identity mode MCP calls use and the role the current OS account gets,
-whether the policy file is group- or world-writable, and whether the project's
+*(v4.8.0+)* whether a malformed, empty or unparseable role policy makes the
+server refuse every call, whether the policy file is group- or world-writable, and whether the project's
 volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
 mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
@@ -2123,8 +2178,8 @@ git-ignored, so the records aren't committed; the recap itself goes into the
 agent's context, and so to your model provider with the rest of the session.
 If two sessions run in the same project, the more recently active other one
 counts as the previous session. Claude Code runs these hooks, and
-*(v4.8.0+)* Hermes-Agent records and gets the recap through
-[`install-hermes-plugin`](#install-hermes-plugin-v480), writing to the same
+*(v4.9.0+)* Hermes-Agent records and gets the recap through
+[`install-hermes-plugin`](#install-hermes-plugin-v490), writing to the same
 `.neuralmind/recaps/`, so the recap carries over between the two. Cursor,
 Cline and other MCP clients record nothing, and an agent with a shell can run
 `neuralmind recap` itself. Off-switch `NEURALMIND_SESSION_RECAP=0`; see
@@ -2160,6 +2215,27 @@ characters are never stubbed. Only in projects that already have
 `.neuralmind/`; state in `.neuralmind/read_cache.db`. Off-switch
 `NEURALMIND_READ_DEDUP=0` (also off under `NEURALMIND_BYPASS=1` and
 `NEURALMIND_NO_LEARN=1`).
+
+**Projects with `.neuralmind/` only** *(v4.8.1)*: every hook action does
+nothing in a directory without `.neuralmind/`, so a `--global` install leaves
+repos NeuralMind has never written to untouched. `neuralmind build` creates the
+directory; other commands that store state there, such as recording a
+decision, do too. Prompt-time recall reads an
+existing index and never builds one; before v4.8.1 the `UserPromptSubmit`
+hook could run a full first-time build, far past the hook timeout.
+
+**Subdirectories** *(v4.8.1)*: the project is the nearest directory with
+`.neuralmind/`, starting from the payload's `cwd` (which follows the agent's
+shell) and going no higher than `$CLAUDE_PROJECT_DIR`, so the hooks keep
+working after the agent runs `cd src/auth`. Without `$CLAUDE_PROJECT_DIR`,
+only `cwd` itself counts. A payload the hooks can't use exits 0, never 1 with
+a traceback.
+
+**A `settings.json` that isn't valid JSON is refused** *(v4.8.1)*: install
+and `--uninstall` exit 1 with an error naming the file and leave it
+untouched. A trailing comma used to make the command replace the file with
+just the hooks block (or delete it on `--uninstall`), losing `permissions`,
+`model` and `env`. An empty file counts as no settings.
 
 **Stale-decision guard** *(v4.6.0 detail)*: each surfaced decision now carries
 its full id and the reason it left ACTIVE (for example
@@ -2207,7 +2283,7 @@ NEURALMIND_BYPASS=1 claude   # hooks inherit Claude Code's environment
 
 ---
 
-### install-hermes-plugin *(v4.8.0+)*
+### install-hermes-plugin *(v4.9.0+)*
 
 Install or uninstall NeuralMind's plugin for Hermes-Agent. Before the model
 runs, it adds NeuralMind's related files and decisions to every Hermes turn,
@@ -2392,6 +2468,12 @@ agents. Auto-detects installed clients and merges a `neuralmind` entry into each
 client's `mcpServers` config **without clobbering** your other servers
 (idempotent — re-running is a no-op).
 
+A config file that isn't strict JSON (comments, a trailing comma) or whose top
+level isn't an object is never rewritten, for any client *(v4.8.1; VS Code
+already behaved this way)*. The command prints `✗ <client>: skipped-jsonc` (or
+`skipped-not-object`) with the entry to add by hand. Before v4.8.1 such a file
+was read as empty, and every other server in it was lost.
+
 ```bash
 neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 ```
@@ -2505,7 +2587,7 @@ neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [-
 ```
 
 `query` takes keywords or a question, matched against decision titles and
-rationales. `--mode` *(v4.7.0+)* picks the ranking:
+rationales. `--mode` *(v4.8.0+)* picks the ranking:
 
 - `hybrid` (default): shared words and meaning, fused by reciprocal rank fusion.
 - `semantic`: meaning only: cosine similarity with each decision's embedded
@@ -2579,7 +2661,7 @@ directory and never read or change the project's decisions.
 | `--tasks N` | Maintenance replay: how many tasks to replay (default 10) |
 | `--queries FILE` | Score search against a query set instead of the maintenance replay. `FILE` is JSON: extra decisions plus questions with their gold decision ids, as in `tests/memory/fixtures/decision_queries.json` (source checkout). Reports recall@k and MRR as mean and range per query kind, and lists every miss, false positive and answer not ranked first |
 | `--limit N` | Results per query with `--queries` (default 5) |
-| `--mode all\|keyword\|semantic\|hybrid` | *(v4.7.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
+| `--mode all\|keyword\|semantic\|hybrid` | *(v4.8.0+)* Search mode(s) to score with `--queries`, side by side (default `all`). A mode that can't run (no embedding model on disk) is reported as not run, never scored as another |
 | `--format json\|md` | Report format (default `json`) |
 | `--output FILE`, `-o` | Write the report to a file instead of stdout |
 
@@ -3044,6 +3126,10 @@ Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
 count of the code the index covers (cached at build), labelled in the output;
 `--global` spans many projects and keeps the fixed estimate. Read-only queries
 (evals, benchmarks) aren't usage and aren't counted.
+
+Since v4.8.1 only `query` and `wakeup` events count. Earlier versions also
+counted builds, searches, MCP calls and ingestion as saved queries, and an MCP
+query twice, so totals drop after upgrading.
 
 #### Examples
 
@@ -3645,7 +3731,7 @@ renewed — issue a new one.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
-| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.8.0+)* the Hermes plugin's |
+| `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
@@ -3658,10 +3744,10 @@ renewed — issue a new one.
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
 | `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
-| `NEURALMIND_PROJECT` | unset | *(v4.8.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. Without it or a pinned project, a gateway session uses the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory). Set it, or pin a project, for Hermes Desktop, ACP editor sessions and per-session workspaces, which keep each session's directory where the plugin doesn't read it. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
-| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.8.0+)* Hermes plugin: seconds each call to NeuralMind may wait before the turn goes ahead without that call's context. A session's first turn makes two (the recap, then recall), so it can wait up to twice this; each recorded edit gets the same limit. Keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30 s): past that, Hermes drops the whole block and skips the plugin's per-turn hook for the next 60 seconds. See [`install-hermes-plugin`](#install-hermes-plugin-v480). |
+| `NEURALMIND_PROJECT` | unset | *(v4.9.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. Without it or a pinned project, a gateway session uses the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory). Set it, or pin a project, for Hermes Desktop, ACP editor sessions and per-session workspaces, which keep each session's directory where the plugin doesn't read it. See [`install-hermes-plugin`](#install-hermes-plugin-v490). |
+| `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.9.0+)* Hermes plugin: seconds each call to NeuralMind may wait before the turn goes ahead without that call's context. A session's first turn makes two (the recap, then recall), so it can wait up to twice this; each recorded edit gets the same limit. Keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30 s): past that, Hermes drops the whole block and skips the plugin's per-turn hook for the next 60 seconds. See [`install-hermes-plugin`](#install-hermes-plugin-v490). |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
-| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.7.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
+| `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
@@ -3775,9 +3861,11 @@ security:
 With `identity: os`, NeuralMind refuses every MCP call when it can't establish
 the caller: the HTTP transport is in use, the OS account can't be read, the
 account has no role, or the policy file is world-writable (POSIX). A policy file
-that names `identity` or `require_encrypted_storage` but doesn't parse is
-refused too, rather than silently ignored, and a malformed `security`,
-`roles` or `rate_limit` value refuses every call. Each refusal is written to
+that doesn't parse but names a security setting (`security`, `roles`,
+`rate_limit`, `identity` or `require_encrypted_storage`) is refused too,
+rather than silently ignored (v4.7.0 checked only `identity` and
+`require_encrypted_storage`), and so is a malformed `security`, `roles` or
+`rate_limit` value, or *(v4.8.0+)* a `security:` or `roles:` key left empty. Each refusal is written to
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.

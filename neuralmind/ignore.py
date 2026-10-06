@@ -14,10 +14,12 @@ excluded too: the rule states the intent, and those copies are exactly what
 duplicates symbols in the index.
 
 Outside a git repository (or without git), callers walk the tree and apply the
-top-level ``.gitignore`` with :func:`matches`, which implements gitignore
-pattern semantics: last match wins, ``!`` re-includes, ``/`` anchors, ``**``
-crosses directories. ``.neuralmindignore`` uses the same engine, so both files
-mean the same thing.
+top-level ``.gitignore`` with :func:`matches`, which implements gitignore(5)
+and is tested against ``git check-ignore``: last match wins, ``!`` re-includes
+(but never below an excluded directory), ``/`` anchors, ``dir/`` matches only
+directories, ``**`` crosses directories, ``[...]`` is a character class and
+``\\`` escapes. ``.neuralmindignore`` uses the same engine, so both files mean
+the same thing.
 
 ``.neuralmind.yaml`` widens or turns this off:
 
@@ -27,11 +29,13 @@ mean the same thing.
 
 from __future__ import annotations
 
+import functools
 import os
 import re
 import subprocess
 from collections import Counter
 from pathlib import Path
+from typing import NamedTuple
 
 _GIT_TIMEOUT_S = 20
 
@@ -40,114 +44,291 @@ _GIT_TIMEOUT_S = 20
 # gitignore pattern semantics
 # --------------------------------------------------------------------------- #
 def load_patterns(project_path: Path, filename: str) -> tuple[str, ...]:
-    """``.gitignore``-style patterns from ``filename`` under ``project_path``, in order."""
+    """``.gitignore``-style patterns from ``filename`` under ``project_path``, in order.
+
+    Lines are read the way git reads them: a leading UTF-8 BOM is skipped,
+    trailing spaces are dropped unless backslash-escaped (leading spaces are
+    part of the pattern), and blank lines and ``#`` comments are left out.
+    """
     ignore_path = Path(project_path) / filename
     if not ignore_path.exists():
         return ()
     try:
-        content = ignore_path.read_text(encoding="utf-8")
+        content = ignore_path.read_text(encoding="utf-8-sig")
     except OSError:
         return ()
 
     patterns: list[str] = []
-    for line in content.splitlines():
-        line = line.strip()
+    for line in content.split("\n"):
+        line = _trim_trailing_spaces(line.removesuffix("\r"))
         if not line or line.startswith("#"):
             continue
         patterns.append(line)
     return tuple(patterns)
 
 
-def pattern_regex(pattern: str):
-    """Translate one .gitignore pattern to a regex matching a repo-relative path.
+def _trim_trailing_spaces(line: str) -> str:
+    """Drop trailing spaces unless a backslash escapes them (git's rule)."""
+    last_space = None
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if c == " ":
+            if last_space is None:
+                last_space = i
+        else:
+            if c == "\\":
+                i += 1  # the escaped character, a space included, is kept
+            last_space = None
+        i += 1
+    return line if last_space is None else line[:last_space]
 
-    - A trailing ``/`` means directory-only; the pattern matches the dir
-      path itself or anything under it.
-    - A leading ``/`` anchors the pattern to the repo root.
-    - A ``/`` anywhere else also anchors the pattern (gitignore rule).
-    - Without a ``/``, the pattern matches the basename at any depth.
-    - ``**`` matches across path separators; ``*``/``?`` do not cross ``/``.
-    Returns None for empty/comment patterns.
-    """
-    p = pattern.strip()
+
+class _Rule(NamedTuple):
+    regex: re.Pattern[str]
+    negated: bool
+    dir_only: bool  # trailing '/': matches directories only
+    basename: bool  # no '/' in the pattern: matched against the last component
+
+
+# POSIX bracket classes as git's wildmatch knows them (ASCII ctype).
+_POSIX_CLASSES = {
+    "alnum": "a-zA-Z0-9",
+    "alpha": "a-zA-Z",
+    "blank": " \\t",
+    "cntrl": "\\x00-\\x1f\\x7f",
+    "digit": "0-9",
+    "graph": "\\x21-\\x7e",
+    "lower": "a-z",
+    "print": "\\x20-\\x7e",
+    "punct": "\\x21-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\x7e",
+    "space": " \\t\\n\\r\\f\\v",
+    "upper": "A-Z",
+    "xdigit": "0-9A-Fa-f",
+}
+
+
+def _compile_rule(pattern: str) -> _Rule | None:
+    """Parse one gitignore line; None when it can never match anything."""
+    p = _trim_trailing_spaces(pattern)
     if not p or p.startswith("#"):
         return None
+    negated = p.startswith("!")
+    if negated:
+        p = p[1:]
     dir_only = p.endswith("/")
     if dir_only:
-        p = p.rstrip("/")
-    rooted = p.startswith("/")
-    if rooted:
-        p = p.lstrip("/")
-    # A '/' anywhere in the pattern anchors it to the repo root
-    # (gitignore rule), except the '**/' prefix which means "any depth".
-    leading_dstar = p.startswith("**/")
-    anchored = rooted or ("/" in p and not leading_dstar)
-    if leading_dstar:
-        p = p[3:]
+        p = p[:-1]
+    # A '/' at the start or in the middle anchors the pattern to the ignore
+    # file's directory; without one it matches a name at any depth.
+    basename = "/" not in p
+    if p.startswith("/"):
+        p = p[1:]
+    body = _glob_to_regex(p, pathname=not basename) if p else None
+    if body is None:
+        return None
+    return _Rule(re.compile(body), negated, dir_only, basename)
 
-    out = ["^"]
-    i = 0
-    while i < len(p):
-        c = p[i]
+
+def _glob_to_regex(pat: str, *, pathname: bool) -> str | None:
+    """Translate a gitignore glob to a regex body, as git's wildmatch reads it.
+
+    ``*``, ``?`` and ``[...]`` never match ``/``. In a ``pathname`` pattern
+    (one containing a ``/``) a ``**`` that is a whole path component spans
+    directories: leading ``**/`` and inner ``/**/`` match zero or more of
+    them, trailing ``/**`` everything inside. Any other run of asterisks is a
+    plain ``*``. A backslash makes the next character literal. None means the
+    glob can never match (an unclosed ``[``, an unknown ``[:class:]``, a
+    trailing backslash).
+    """
+    out: list[str] = []
+    i, n = 0, len(pat)
+    while i < n:
+        c = pat[i]
         if c == "*":
-            if i + 1 < len(p) and p[i + 1] == "*":
-                if i + 2 < len(p) and p[i + 2] == "/":
-                    out.append("(?:[^/]+/)*")
-                    i += 3
-                else:
+            j = i
+            while j < n and pat[j] == "*":
+                j += 1
+            if pathname and j - i > 1 and (i == 0 or pat[i - 1] == "/"):
+                if j == n:
                     out.append(".*")
-                    i += 2
-            else:
-                out.append("[^/]*")
-                i += 1
+                    i = j
+                    continue
+                slash = 1 if pat[j] == "/" else 2 if pat.startswith("\\/", j) else 0
+                if slash:
+                    out.append("(?:.*/)?")
+                    i = j + slash
+                    continue
+            out.append("[^/]*")
+            i = j
         elif c == "?":
             out.append("[^/]")
             i += 1
-        elif c in ".[](){}+^$|\\":
-            out.append("\\" + c)
-            i += 1
+        elif c == "[":
+            cls, i = _bracket_to_regex(pat, i)
+            if cls is None:
+                return None
+            out.append(cls)
+        elif c == "\\":
+            if i + 1 == n:
+                return None
+            out.append(re.escape(pat[i + 1]))
+            i += 2
         else:
-            out.append(c)
+            out.append(re.escape(c))
             i += 1
-    out.append("$")
-    body = "".join(out)
-
-    if anchored:
-        if dir_only:
-            return re.compile(body[:-1] + "(?:/.*)?$")
-        # An anchored pattern also ignores everything under a directory it names.
-        return re.compile(body[:-1] + "(?:/.*)?$")
-
-    # Unanchored patterns match at any depth. For a file pattern this is a
-    # basename match anywhere; the same glob ALSO matches a directory name
-    # anywhere (gitignore: "temp*" ignores a/temporary/x; "**/name" matches
-    # both nested/name/x and bare name).
-    prefix = "^(?:.*/)?"
-    if dir_only:
-        return re.compile(prefix + body[1:-1] + "(?:/.*)?$")
-    return re.compile(prefix + body[1:] + "|" + prefix + body[1:-1] + "(?:/.*)?$")
+    return "".join(out)
 
 
-def matches(rel_path: str, patterns: tuple[str, ...] | list[str]) -> bool:
+def _bracket_to_regex(pat: str, i: int) -> tuple[str | None, int]:
+    """Translate the ``[...]`` opening at ``pat[i]``: (regex or None, next index).
+
+    As in wildmatch: ``[!...]`` and ``[^...]`` negate, a ``]`` first in the set
+    is a member, ``a-z`` is a range, ``\\`` escapes, ``[:digit:]`` and the other
+    POSIX classes work. An unclosed set or unknown class matches nothing.
+    """
+    n = len(pat)
+    j = i + 1
+    negated = j < n and pat[j] in "!^"
+    if negated:
+        j += 1
+    members: list[str] = []
+    prev: str | None = None  # the last single character: a range may start there
+    first = True
+    while True:
+        if j >= n:
+            return None, n
+        c = pat[j]
+        if c == "]" and not first:
+            break
+        first = False
+        if c == "\\":
+            j += 1
+            if j >= n:
+                return None, n
+            prev = pat[j]
+            members.append(re.escape(prev))
+        elif c == "-" and prev is not None and j + 1 < n and pat[j + 1] != "]":
+            j += 1
+            hi = pat[j]
+            if hi == "\\":
+                j += 1
+                if j >= n:
+                    return None, n
+                hi = pat[j]
+            if prev <= hi:
+                members.append(f"{re.escape(prev)}-{re.escape(hi)}")
+            prev = None
+        elif c == "[" and pat.startswith(":", j + 1):
+            close = pat.find("]", j + 2)
+            if close == -1:
+                return None, n
+            if close - 1 > j + 1 and pat[close - 1] == ":":
+                cls = _POSIX_CLASSES.get(pat[j + 2 : close - 1])
+                if cls is None:
+                    return None, n
+                members.append(cls)
+                prev = None
+                j = close
+            else:  # no ':]' before the first ']': a literal '['
+                prev = "["
+                members.append("\\[")
+        else:
+            prev = c
+            members.append(re.escape(c))
+        j += 1
+    body = "".join(members)
+    if negated:
+        return f"[^/{body}]", j + 1
+    return f"(?!/)[{body}]", j + 1
+
+
+def pattern_regex(pattern: str):
+    """A regex for the paths one pattern (negation aside) ignores, or None.
+
+    Matches a file path when the pattern matches the file itself or any
+    directory above it. :func:`matches` is the full engine (pattern order,
+    ``!``, directory-only patterns); this stays for single-pattern callers.
+    """
+    rule = _compile_rule(pattern.removeprefix("!"))
+    if rule is None:
+        return None
+    prefix = "(?:.*/)?" if rule.basename else ""
+    tail = "/.*" if rule.dir_only else "(?:/.*)?"
+    return re.compile(f"^{prefix}(?:{rule.regex.pattern}){tail}$")
+
+
+class _Matcher:
+    """One compiled pattern list, caching the verdict for each directory."""
+
+    _MAX_CACHED_DIRS = 100_000
+
+    def __init__(self, patterns: tuple[str, ...]) -> None:
+        self.rules = tuple(r for r in map(_compile_rule, patterns) if r is not None)
+        self._dirs: dict[str, bool] = {}
+
+    def _verdict(self, path: str, name: str, is_dir: bool) -> bool | None:
+        """The last matching rule: True ignores, False re-includes, None no match."""
+        for rule in reversed(self.rules):
+            if rule.dir_only and not is_dir:
+                continue
+            if rule.regex.fullmatch(name if rule.basename else path):
+                return not rule.negated
+        return None
+
+    def _dir_excluded(self, path: str) -> bool:
+        """True when directory ``path`` or a directory above it is excluded."""
+        hit = self._dirs.get(path)
+        if hit is None:
+            head, _, name = path.rpartition("/")
+            hit = bool(head and self._dir_excluded(head)) or bool(self._verdict(path, name, True))
+            if len(self._dirs) >= self._MAX_CACHED_DIRS:
+                self._dirs.clear()
+            self._dirs[path] = hit
+        return hit
+
+    def ignored(self, rel_path: str, is_dir: bool | None) -> bool:
+        head, _, name = rel_path.rpartition("/")
+        # git never looks inside an excluded directory, so a later '!' pattern
+        # can't re-include anything below one.
+        if head and self._dir_excluded(head):
+            return True
+        if is_dir is not None:
+            return bool(self._verdict(rel_path, name, is_dir))
+        # Unknown type: ignored only when ignored as a file and as a directory.
+        return bool(self._verdict(rel_path, name, False)) and bool(
+            self._verdict(rel_path, name, True)
+        )
+
+
+@functools.lru_cache(maxsize=64)
+def _matcher(patterns: tuple[str, ...]) -> _Matcher:
+    return _Matcher(patterns)
+
+
+def matches(
+    rel_path: str, patterns: tuple[str, ...] | list[str], *, is_dir: bool | None = None
+) -> bool:
     """True when project-relative ``rel_path`` is ignored by ``patterns``.
 
-    Follows gitignore's last-matching-pattern-wins semantics, including
-    negation (``!pattern``) re-inclusion.
+    gitignore(5) semantics, kept in step with ``git check-ignore``: the last
+    matching pattern wins and ``!`` re-includes, except below an excluded
+    directory; a pattern ending in ``/`` matches directories only.
+
+    Pass ``is_dir=False`` for a file and ``is_dir=True`` (or a trailing ``/``)
+    for a directory to get git's exact answer. Left as None, the path is
+    ignored only if it would be ignored either way, so a directory walk that
+    doesn't say never prunes a directory git would enter; the one difference
+    from git is then a file whose own name a directory-only ``!`` pattern
+    (``!*/``) matches, which stays included.
     """
     if not patterns:
         return False
-
-    ignored = False
-    for pattern in patterns:
-        negated = pattern.startswith("!")
-        if negated:
-            pattern = pattern[1:].strip()
-            if not pattern:
-                continue
-        rx = pattern_regex(pattern)
-        if rx is not None and rx.match(rel_path):
-            ignored = not negated
-    return ignored
+    if rel_path.endswith("/"):
+        rel_path, is_dir = rel_path.rstrip("/"), True
+    if not rel_path:
+        return False
+    return _matcher(tuple(patterns)).ignored(rel_path, is_dir)
 
 
 # --------------------------------------------------------------------------- #

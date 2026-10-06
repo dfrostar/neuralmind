@@ -1,6 +1,6 @@
-# NeuralMind v4.8.0 — a new session starts where the last one left off, and Hermes gets context without asking
+# NeuralMind v4.8.0 — a new session starts where the last one left off, decision search by meaning, and policy mistakes refused
 
-**Type:** Minor release | **Themes:** session continuity (the session recap) · Hermes-Agent gets every turn's context from a plugin
+**Type:** Minor release | **Themes:** session continuity · decision memory ([decision search by meaning](#decision-search-by-meaning)) · MCP access control ([policy mistakes refused](#policy-mistakes-that-meant-the-defaults-now-refuse))
 
 A new Claude Code session used to start cold. NeuralMind gave it the code it
 had learned (`SYNAPSE_MEMORY.md`, per-prompt recall), but not the work: what
@@ -8,9 +8,7 @@ you were doing yesterday, which files you had open, what you asked last. You
 re-explained it, or asked the agent to go and find out.
 
 v4.8.0 records each session's prompts and edited files as you work. The next
-fresh or cleared session starts with a short recap of the most recent one. A new
-Hermes-Agent plugin brings the same recap, and NeuralMind's per-turn recall, to
-Hermes ([below](#neuralmind-for-hermes-agent)):
+fresh or cleared session starts with a short recap of the most recent one:
 
 1. **No new hooks.** Recording rides on the `UserPromptSubmit` and Edit/Write
    hooks NeuralMind already installs; the recap arrives through the existing
@@ -65,129 +63,7 @@ Files edited (4, most recent first): src/uploader.py, src/config.py, tests/test_
 |---|---|
 | **Claude Code** (a built project, with `neuralmind install-hooks`) | A fresh or cleared session starts with the recap above. Resumed and compacted sessions don't get it. |
 | **Cursor / Cline / generic MCP clients** | Nothing. These hosts don't run Claude Code hooks, so nothing is recorded and nothing is injected. |
-| **Hermes-Agent** (with `neuralmind install-hermes-plugin`) | A session's first turn starts with the recap, and every turn gets NeuralMind's related files and decisions. See [NeuralMind for Hermes-Agent](#neuralmind-for-hermes-agent). |
-| **Other agents with a shell** | Nothing automatic. An agent that can run commands can call `neuralmind recap` to read what the last session in the project did. |
-
-## NeuralMind for Hermes-Agent
-
-On Hermes, NeuralMind was something the agent had to decide to use: an MCP
-server, or a skill that runs the CLI. Each answer cost a tool call, and when
-the agent didn't think to call it, nothing happened. v4.8.0 adds a Hermes
-plugin that puts NeuralMind's context into every turn before the model runs,
-the way the hooks already do in Claude Code.
-
-```bash
-neuralmind build /path/to/project
-neuralmind install-hermes-plugin /path/to/project
-```
-
-The command writes the plugin into the Hermes home's `plugins/neuralmind/`:
-the one `--hermes-home` names, else the one plain `hermes` uses: the active
-Hermes profile's, if `hermes profile use` selected one
-(`<root>/profiles/<name>`), else `$HERMES_HOME`, else Hermes's default
-`~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). When that's a profile, the output names it. The
-command then runs `hermes plugins enable neuralmind` in that same home, but
-only in a home Hermes has already set up (one with a `config.yaml`, `.env` or
-`state.db`); anywhere else it tells you to enable the plugin once Hermes is
-set up. Start a new Hermes session, or restart the gateway, to load it.
-
-- **Every turn** (Hermes's `pre_llm_call` hook): the files and recorded
-  decisions related to the user's message, the same block Claude Code's
-  `UserPromptSubmit` hook adds. Hermes appends it to that turn's user message,
-  not to the system prompt, so the prompt cache isn't invalidated.
-- **A session's first turn** also starts with the session recap. Hermes counts
-  a turn as first only when the session has no earlier messages, so a resumed
-  session doesn't get it.
-- **After `write_file` and `patch`** (Hermes's `post_tool_call` hook): each
-  file the edit wrote is recorded, by the absolute path Hermes reports
-  (`files_modified`), on a background thread, for the recap and the synapse
-  layer. Only an edit that landed counts: Hermes has to report its status as
-  `ok`, so a failed, cancelled, timed-out or blocked edit isn't recorded. A
-  file a V4A patch deletes or moves away isn't listed as edited, a patch that
-  changes nothing isn't recorded, and neither is a file
-  changed through the terminal.
-- **Subagents and cron jobs are skipped.** A subagent's message is written by
-  its parent agent, and a cron job's (Hermes's `cron` platform) is a scheduled
-  prompt, not one you typed. Neither is recorded or answered with recall,
-  neither runs the `SessionStart` action, and their edits aren't recorded
-  either.
-- **One record for both agents.** Hermes and Claude Code write to the same
-  `.neuralmind/recaps/`, so a Hermes session can start with what the last
-  Claude Code session in the project did, and the other way round.
-
-How it works: the plugin is a small stdlib-only file. Each action runs
-`python -m neuralmind _hook <action>` with the payload Claude Code would send,
-using the Python interpreter that ran the install. Hermes gets the same
-behavior and the same switches (`NEURALMIND_BYPASS`,
-`NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP` …), and NeuralMind
-doesn't have to be installed in Hermes's own environment.
-
-Which project a Hermes session belongs to:
-
-1. `NEURALMIND_PROJECT`, if set;
-2. else the path given to `install-hermes-plugin`;
-3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
-
-The first of these that has been built wins; if none has, the plugin does
-nothing. `TERMINAL_CWD` is read from the Hermes process's environment, so a
-`cd` the agent runs later in a session doesn't change the project. That's the
-directory the terminal CLI and a standalone gateway work in. A gateway
-session (Telegram, Discord …) uses the gateway's terminal working directory
-(`terminal.cwd`, else `MESSAGING_CWD`, else your home directory), which is
-rarely the project you mean, so pin one at install or set
-`NEURALMIND_PROJECT`. Hermes Desktop, ACP editor sessions and per-session
-workspaces keep each session's directory elsewhere, not in `TERMINAL_CWD`, so
-with those, too, pin a project or set `NEURALMIND_PROJECT`. Whenever a gateway
-session resolves to a built project, pinned or not, every message in it is
-recorded for the recap, redacted like any other prompt;
-`NEURALMIND_SESSION_RECAP=0` turns that off.
-
-A pin applies to every Hermes session that uses that Hermes home, whatever
-directory it runs in: each one gets the pinned project's context, and its
-prompts are recorded in that project. A session in another repository also
-puts the paths of the files it edits into the pinned project's synapse store,
-from where `neuralmind memory publish` can carry them into the committed
-team-memory bundle. If you use Hermes across several projects, install
-without a path (or with `--unpin`, if you pinned one before), so the plugin
-follows the directory Hermes works in (in the terminal CLI and a standalone
-gateway, as above) and does nothing in a repository NeuralMind hasn't built.
-Re-running the install without a path keeps an earlier pin; `--unpin` clears
-it.
-
-Limits:
-
-- **One subprocess per turn** (two on a session's first turn: the recap, then
-  recall), plus one per edited file. Each waits at most
-  `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds), so a first turn can wait up
-  to twice that; one that times out or fails is left out, and the turn goes
-  ahead with whatever context the others returned. Keep twice the timeout
-  below Hermes's `plugins.hook_callback_timeout` (default 30 seconds): a
-  plugin that runs past it loses its whole block, and Hermes skips the plugin's per-turn hook for the
-  next 60 seconds.
-- **The context stays in Hermes's session history.** Hermes stores the turn's
-  message with NeuralMind's block in it, so the block, recap included, is sent
-  to your model provider again with that session's later turns.
-- **On a session's first turn the plugin runs NeuralMind's whole
-  `SessionStart` action**, the same as Claude Code, including a synapse decay
-  tick, the team-memory import, clearing the session-scoped (ephemeral)
-  associations, and the `SYNAPSE_MEMORY.md` export (copied into Claude
-  Code's auto-memory directory when that exists;
-  `NEURALMIND_SYNAPSE_EXPORT=0` turns the export off).
-- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
-  calling its plugin loader and hook dispatch directly, not yet in a live
-  Hermes conversation. It relies on `pre_llm_call` accepting
-  `{"context": ...}`, which that version documents.
-- **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
-  re-run `neuralmind install-hermes-plugin` after upgrading. A re-run doesn't
-  turn back on a plugin you switched off with `hermes plugins disable
-  neuralmind`: it says so and leaves it disabled.
-- **Not measured.** As with the recap, we haven't measured what the context
-  changes in Hermes's answers.
-
-`neuralmind install-hermes-plugin --uninstall` disables it in that same home
-and removes it. If `plugins/neuralmind` is a symlink, it removes the link,
-never what it points to; the install refuses to write through one.
+| **Hermes-Agent and other agents with a shell** | Nothing automatic. An agent that can run commands can call `neuralmind recap` to read what the last Claude Code session in the project did. |
 
 ## Where it's stored, and what's redacted
 
@@ -222,8 +98,6 @@ never what it points to; the install refuses to write through one.
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | A recap whose session was last active longer ago than this isn't shown |
 | `NEURALMIND_NO_LEARN` | off | `1` stops recording (nothing is written) but still shows an existing recap |
 | `NEURALMIND_BYPASS` | off | `1` switches off every hook action, this one included |
-| `NEURALMIND_PROJECT` | unset | Hermes plugin: the project to serve, ahead of the one given at install |
-| `NEURALMIND_HERMES_TIMEOUT` | `8` | Hermes plugin: seconds each call to NeuralMind may wait (a session's first turn makes two); a call that times out is left out and the turn goes ahead. Keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30), or Hermes drops the whole block and skips the plugin's per-turn hook for the next 60 seconds |
 
 Turning the recap off, or setting `NEURALMIND_NO_LEARN=1`, doesn't delete
 records already written, and a recap past the age limit is hidden, not deleted.
@@ -248,6 +122,220 @@ most four prompts of 200 characters and twelve file paths, plus a header. The
 example above is 525 characters; four full-length prompts and twelve
 30-character paths come to about 1,500.
 
+## Decision search by meaning
+
+Decision search used to find a decision only when the question shared a word
+with it. An agent asking "where do we verify who is calling an endpoint?"
+never reached "Use per-handler authentication middleware", because the two
+share no word. v4.8.0 ranks decisions by meaning as well, with the same local
+embedding model the code index already uses, and makes the fused ranking the
+default:
+
+- **Three search modes.** `hybrid` (default) fuses a keyword ranking and a
+  meaning ranking; `semantic` ranks by meaning only; `keyword` is the v4.6
+  search.
+- **Local, and never a download.** Vectors are computed on your machine and
+  cached in `.neuralmind/memory.db`. Search uses the model `neuralmind build`
+  already fetched; without it, hybrid search returns keyword results and says
+  so.
+- **Measured before it became the default.** 20 paraphrased questions that
+  share no word with their answers were written and committed, with a keep
+  rule, before semantic search was run on them. Hybrid passed the rule. It
+  finds 9 of the 20 in its top 5, where keyword search finds none, and the
+  misses are listed below.
+
+This is item G1 of the mem0 gap analysis in
+[`docs/specs/LOCAL-API-SPEC.md`](../specs/LOCAL-API-SPEC.md) §4.1. The other
+items (change history, duplicate warnings, filters, expiry dates and the rest)
+are not in this release.
+
+### Three search modes
+
+| Mode | Ranks by | Use it for |
+|------|----------|------------|
+| `hybrid` (default) | Shared words and meaning, fused by reciprocal rank fusion (k = 60) | Everyday questions |
+| `semantic` | Cosine similarity between the question and each decision's title + rationale, embedded with `all-MiniLM-L6-v2`; a decision needs at least 0.30 | Questions you expect to share no word with the decision |
+| `keyword` | Shared words: FTS5, bm25-ranked, any word can match (v4.5.1+) | Exact identifiers, and the v4.6 ranking |
+
+- **CLI:** `neuralmind decisions query "QUESTION" --mode hybrid|semantic|keyword`.
+  Every output names the mode that ran: the header
+  (`# NeuralMind Decisions Query: "…" (hybrid)`), the empty result
+  (`No decisions found for: … (hybrid search)`), and, with `--json`, a
+  `[neuralmind] search mode: hybrid` line on stderr; stdout stays the JSON
+  array of records.
+- **MCP:** `neuralmind_query_decisions` and `neuralmind_memory_search` take an
+  optional `mode` (case-insensitive). Every response carries `mode`, the mode
+  that ranked the results, and `notice` when hybrid fell back to keyword.
+- **Python:** `DecisionStore.query(..., mode=...)` as before, and
+  `DecisionStore.search(...)`, which also returns the mode that ran and any
+  notice.
+- **Default:** `NEURALMIND_DECISION_SEARCH` sets the mode for calls that name
+  none: CLI, MCP tools and Python API. Unset, it is `hybrid`.
+  `NEURALMIND_DECISION_SEARCH=keyword` restores the v4.6 ranking everywhere.
+- All three modes search the same fields, titles and rationales, and honor
+  the same status and confidence filters. Evidence, tags and rejected
+  alternatives are still not searched.
+
+### Local, cached, and never a download
+
+- **What gets embedded:** each decision's title and rationale, the fields
+  keyword search covers. Evidence is left out because invalidating, staling
+  and restoring a decision append lifecycle notes to it.
+- **When:** the first semantic or hybrid search embeds every decision.
+  Vectors are cached in a new `decision_vectors` table in
+  `memory.db`, with a hash of the text and the model id. Later searches embed
+  only the question and any decision recorded or amended since; a status
+  change doesn't re-embed. Deleting a decision deletes its vector. Recording a
+  decision stays as fast as before, because nothing is embedded at write time.
+- **Never a download:** search uses the model only if it is already on disk
+  (`neuralmind build` fetches it once, or ChromaDB's cache has it). Without it:
+  - `hybrid` returns keyword results, with
+    `[neuralmind] semantic ranking unavailable (…); keyword results only` on
+    stderr (CLI) or `"mode": "keyword"` plus a `notice` (MCP);
+  - `semantic` is an error: the CLI exits 1, and MCP returns
+    `code: "semantic_unavailable"` with a hint.
+- Each semantic or hybrid search loads the model, so it takes longer than a
+  keyword search. No outbound request is added.
+
+### Measured before it became the default
+
+**Evidence:** reproducible on demand from a source checkout, not a CI gate for
+every column:
+
+```bash
+NEURALMIND_ORT_THREADS=1 neuralmind decisions eval \
+  --queries tests/memory/fixtures/decision_queries.json --format md
+```
+
+`tests/memory/test_query_eval.py` holds the
+[Memory Layer wiki](../wiki/Memory-Layer.md#eval-harness)'s table to what the
+eval measures: the keyword column on every CI run, the semantic and hybrid
+columns wherever the model is on disk (CI doesn't download it). Repeated runs
+here gave identical numbers, with `NEURALMIND_ORT_THREADS=1` and without it.
+
+**What was frozen first.** Commit
+[`7172855`](https://github.com/dfrostar/neuralmind/commit/7172855) added 20 paraphrased questions,
+each sharing no search word with its answer (a test enforces it), with the
+0.30 similarity floor and this keep rule. Nothing was changed after the run.
+Against keyword search, hybrid becomes the default only if:
+
+- (a) recall on the paraphrases rises;
+- (b) recall on the 20 existing questions doesn't fall, and their MRR falls by
+  no more than 0.05;
+- (c) no fewer exact titles rank first.
+
+Questions nothing answers are reported, not gated. Keyword search already
+returns partial matches for them, and the tools tell the agent to check the
+titles.
+
+Synthetic set: 35 decisions (30 ACTIVE), limit 5, status ACTIVE.
+
+| Measure | Keyword (v4.6) | Semantic | Hybrid (default) |
+|---------|---------|----------|------------------|
+| Recall@5 on 20 questions, mean (range) | 1.00 (1.00–1.00) | 0.95 (0.00–1.00) | 1.00 (1.00–1.00) |
+| MRR on 20 questions, mean (range) | 0.94 (0.33–1.00) | 0.95 (0.00–1.00) | 0.95 (0.50–1.00) |
+| Recall@5 on 20 paraphrases, mean (range) | 0.00 (0.00–0.00) | 0.50 (0.00–1.00) | 0.45 (0.00–1.00) |
+| MRR on 20 paraphrases, mean (range) | 0.00 (0.00–0.00) | 0.44 (0.00–1.00) | 0.28 (0.00–1.00) |
+| Paraphrases that return nothing | 6 of 20 | 7 of 20 | 1 of 20 |
+| Exact titles ranked first | 30 of 30 | 30 of 30 | 30 of 30 |
+| Questions nothing answers that still return decisions | 2 of 4 | 1 of 4 | 2 of 4 |
+
+Hybrid passed all three conditions.
+
+#### The misses, published
+
+- **Half the paraphrases are still missed.** Semantic search finds 10 of 20 in
+  its top 5. For 7 it returns nothing, because no decision reaches the 0.30
+  floor. For 3 it returns only other decisions: "where do we verify who is
+  calling an endpoint?" ranks a logging decision, not the authentication
+  middleware.
+- **Hybrid finds one paraphrase fewer than semantic alone, and ranks them
+  lower** (MRR 0.28 against 0.44): keyword partial matches on other words of
+  the question take slots. In exchange it keeps every keyword hit, and it
+  returns something for 19 of the 20.
+- **Semantic alone misses a question keyword search answers.** "is the graph
+  server reachable from other machines on the network?" ranks the
+  graph-server decision instead of the loopback-binding one. Hybrid ranks the
+  answer second.
+- **Questions nothing answers:** hybrid returns decisions for the same 2 of 4
+  as keyword search; for "what is our gdpr data retention policy?" it fills
+  all 5 slots.
+- **Synthetic, one author.** Every decision and question was written by the
+  same author, in the same session as the keep rule. Real teams word things
+  more differently. Score your own with a query set in the same format.
+
+The smoke test run while building this used one of the 20 paraphrases ("where
+do we verify who is calling an endpoint?"), so that question's semantic result
+was seen before the eval ran. The floor and the keep rule were not changed.
+
+### The eval scores every mode
+
+- `neuralmind decisions eval --queries FILE` runs keyword, semantic and hybrid
+  side by side on one scratch store (`--mode all`, the default), or one of
+  them with `--mode`.
+- A mode that can't run, because the model isn't on disk, is listed under
+  **Not run** with the reason. A hybrid search that fell back to keyword
+  results is never scored as hybrid.
+- The maintenance replay (`decisions eval` without `--queries`) stays on
+  keyword search, so its numbers don't depend on whether the model is cached.
+
+### What the agent sees
+
+| Agent | Before (v4.7) | After (v4.8) |
+|---|---|---|
+| **Claude Code** (MCP + hooks) | `neuralmind_memory_search` and `neuralmind_query_decisions` found a decision only through a shared word; a question in other words got nothing, or partial matches on unrelated words | The same calls also rank by meaning. The response says `"mode": "hybrid"`, or `"mode": "keyword"` with a `notice` when the model isn't on disk. Hooks are unchanged: the stale-decision guard matches by file, not by search |
+| **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
+| **Generic MCP client** | No way to choose the ranking | Optional `mode`: `hybrid`, `semantic` or `keyword`. `semantic` without the model returns `code: "semantic_unavailable"`; an unknown mode is `invalid_request` |
+
+**New variable:** `NEURALMIND_DECISION_SEARCH` sets the decision-search mode
+for calls that name none (`hybrid` by default; `semantic`; `keyword` for the
+v4.6 ranking).
+
+## Policy mistakes that meant the defaults now refuse
+
+[v4.6.1](RELEASE_NOTES_v4.6.1.md) made the MCP server apply `security.roles`
+and `security.rate_limit`, and refuse a `security:` value of the wrong type
+with `reason: config`. Its release notes also listed two mistakes it still read
+as "no policy", which applies the default policy. That policy gives `admin`
+every tool, and any caller can declare `admin` unless
+[`identity: os`](RELEASE_NOTES_v4.7.0.md) is set. v4.8.0 refuses both.
+
+If `neuralmind-backend.yaml` has no `security:` section, nothing changes.
+
+### What changed
+
+- **A policy file that doesn't parse is refused** when its text, outside
+  comments, names a security setting: `security`, `roles`, `rate_limit`,
+  `identity` or `require_encrypted_storage`. Every MCP call returns
+  `code: "security_denied"`, `reason: "config"`, and an error quoting the parse
+  failure. v4.7.0 did this only for files naming `identity` or
+  `require_encrypted_storage`, and counted a mention in a comment. Other
+  unparseable files still read as empty, so a typo in backend tuning doesn't
+  block the server.
+- **A `security:` or `roles:` key left empty is refused.** YAML reads a key
+  with nothing under it as `null`, which is what's left when every entry under
+  it is commented out. The error says what to write instead: `roles: {}` to
+  grant nothing, or no key at all to use the defaults. An empty `rate_limit:`
+  still means the default limit, and a missing key still means the defaults.
+- **`neuralmind doctor` reports it.** The *Security policy* check fails on any
+  role-policy problem that makes the server refuse every call: these two, and
+  the wrong-type values v4.6.1 already refused.
+
+A misspelled key, such as `role:` for `roles:`, is still read as absent. After
+writing a policy, call a tool you left out with `role: "admin"` and check that
+it returns `security_denied`.
+
+### What the agent sees
+
+Only in a project whose `neuralmind-backend.yaml` has one of these mistakes.
+Every other project sees what it saw in v4.7.0.
+
+| Agent | Before | After |
+|---|---|---|
+| **Claude Code** (MCP + hooks) | The default policy: a call declaring `admin` reached every tool | Every MCP tool returns `security_denied` with `reason: "config"` and the setting to fix. Hooks don't go through the MCP role policy and are unaffected |
+| **Cursor / Cline / Continue** (MCP) | Same as Claude Code | Same as Claude Code |
+| **Generic MCP client** | Same as Claude Code | Same as Claude Code |
+
 ## Upgrading
 
 `pip install -U neuralmind`. Nothing to reinstall, and nothing to rebuild in a
@@ -255,14 +343,38 @@ project built with v3.9.0 or later (the recap looks for the
 `.neuralmind/build_status.json` a build leaves). The first recap appears in the
 session after the first one you work in on v4.8.0.
 
-Hermes-Agent: run `neuralmind install-hermes-plugin [path]` once, and again
-after later upgrades, since the installed plugin is a copy.
+**Decision search:**
+
+- **The first semantic or hybrid search embeds your decisions** and caches
+  the vectors in `memory.db`. On a machine where `neuralmind build` has never
+  run, hybrid search keeps returning keyword results, with a notice, until it
+  does.
+- **Results can differ from v4.7 for the same question.** Hybrid adds
+  decisions related in meaning and reorders the list, and a question nothing
+  answers may return loosely related decisions. Check the titles, as before.
+  `NEURALMIND_DECISION_SEARCH=keyword` restores the v4.6 ranking.
+- **`neuralmind decisions eval --queries` JSON changed shape.** Results are
+  now under `modes`, keyed by mode (`{"summary", "per_query"}` each), with
+  `not_run` beside them. The Markdown table gained a Mode column. A script that
+  read the top-level `summary` should read `modes.keyword.summary` instead.
+
+**MCP security policy:**
+
+- If `neuralmind-backend.yaml` has a `security:` section, run
+  `neuralmind doctor` before upgrading the MCP server. A failed
+  *Security policy* check names the setting to fix.
+- The server reads the policy once per process, so after fixing it, restart
+  the MCP server (a new agent session, or reconnecting the server).
 
 ## Related
 
 - Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md)
-- Use case: [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md)
-- Integration guide: [Hermes-Agent](../wiki/Integration-Guide.md#hermes-agent)
 - CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
-  [`install-hermes-plugin`](../wiki/CLI-Reference.md#install-hermes-plugin-v480),
   [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
+- [Memory Layer wiki: search modes and the eval](../wiki/Memory-Layer.md#query-decisions)
+- [CLI reference: `decisions`](../wiki/CLI-Reference.md#decisions-v410) and
+  the `NEURALMIND_DECISION_SEARCH` variable
+- Use case: [Find the decision behind the code when you don't know its words](../use-cases/find-decisions-by-meaning.md)
+- Comparison: [NeuralMind vs. Mem0 and Zep](../comparisons/vs-mem0-zep.md)
+- [Security Guide: capping what a caller can claim](../SECURITY-GUIDE.md#capping-what-a-caller-can-claim)
+- Previous release: [v4.7.0](RELEASE_NOTES_v4.7.0.md)

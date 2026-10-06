@@ -9,7 +9,7 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 - [MCP Integration](#mcp-integration)
   - [Claude Desktop](#claude-desktop)
   - [Cursor](#cursor)
-  - [Hermes-Agent](#hermes-agent) — the plugin for context in every turn *(v4.8.0+)*, then MCP and the skill
+  - [Hermes-Agent](#hermes-agent) — the plugin for context in every turn *(v4.9.0+)*, then MCP and the skill
   - [Agent Zero](#agent-zero)
   - [OpenClaw](#openclaw)
   - [Custom MCP Clients](#custom-mcp-clients)
@@ -36,13 +36,13 @@ agent:
 |------|------------|------------------|
 | `graphify-out/graph.json` | Call graph (created by `graphify`) | Read-only at NeuralMind runtime |
 | `graphify-out/neuralmind_db/` | ChromaDB vector index | `neuralmind build` writes; agents read |
-| `<project>/.neuralmind/synapses.db` | Learned synapse weights | Every MCP tool call, every `watch` event, every Claude Code hook, and *(v4.8.0+)* the Hermes plugin |
+| `<project>/.neuralmind/synapses.db` | Learned synapse weights | Every MCP tool call, every `watch` event, every Claude Code hook, and *(v4.9.0+)* the Hermes plugin |
 | `<project>/.neuralmind/events.jsonl` *(v0.6.0+)* | Cross-process activity stream | Every `event_bus.publish()` writes; `serve` tails |
-| `<project>/.neuralmind/recaps/` *(v4.8.0+)* | Session recap records: each session's prompts and edited files | Claude Code's hooks and the [Hermes plugin](#the-neuralmind-plugin-context-in-every-turn-v480) write; a new session in either starts with the most recent one's recap |
+| `<project>/.neuralmind/recaps/` *(v4.8.0+)* | Session recap records: each session's prompts and edited files | Claude Code's hooks and the [Hermes plugin](#the-neuralmind-plugin-context-in-every-turn-v490) write; a new session in either starts with the most recent one's recap |
 
 There's no per-agent partition. Claude Code's `neuralmind_query`
 and Hermes-Agent's `neuralmind_query` reinforce the exact same
-synapse edges. The brain is one brain. Since v4.8.0 the same holds for
+synapse edges. The brain is one brain. Since v4.9.0 the same holds for
 the session recap: a Hermes session (with the plugin) can start with what
 the last Claude Code session in the project did, and the other way round.
 
@@ -330,7 +330,7 @@ The server takes no project setting: each tool call carries its own
 
 Hermes has two ways in, and they do different jobs:
 
-- **The NeuralMind plugin** *(v4.8.0+)* adds NeuralMind's context to every
+- **The NeuralMind plugin** *(v4.9.0+)* adds NeuralMind's context to every
   turn before the model runs, with no tool call, the way NeuralMind's Claude
   Code hooks do.
 - **The MCP server, or the skill,** lets the agent call NeuralMind when it
@@ -339,7 +339,7 @@ Hermes has two ways in, and they do different jobs:
 They work together. The plugin covers what every turn needs; the tools are
 there when the agent wants more.
 
-#### The NeuralMind plugin: context in every turn *(v4.8.0+)*
+#### The NeuralMind plugin: context in every turn *(v4.9.0+)*
 
 Through MCP or the skill alone, each answer from NeuralMind costs a tool call,
 and when the agent doesn't think to make one, nothing happens. The plugin
@@ -468,9 +468,9 @@ If `hermes` isn't on `PATH`, the command says so, and you run
 `hermes plugins enable neuralmind` (or `disable`) yourself. If
 `plugins/neuralmind` is a symlink, the install refuses to write through it,
 and `--uninstall` removes the link, never its target. Full flag list:
-[CLI Reference: `install-hermes-plugin`](CLI-Reference.md#install-hermes-plugin-v480).
+[CLI Reference: `install-hermes-plugin`](CLI-Reference.md#install-hermes-plugin-v490).
 Walkthrough: [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md).
-Release notes: [NeuralMind for Hermes-Agent](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.8.0.md#neuralmind-for-hermes-agent).
+Release notes: [NeuralMind for Hermes-Agent](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.0.md#neuralmind-for-hermes-agent).
 
 #### MCP server: tools to call on demand
 

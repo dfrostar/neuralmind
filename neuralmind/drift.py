@@ -159,16 +159,22 @@ def diff_text(project_path: str | Path, *, base: str | None = None, staged: bool
     lines keep the hunk ranges tight around what actually changed, so a
     one-line edit does not implicate its neighbors.
 
+    ``--relative`` with the ``.`` pathspec limits the diff to the project
+    and writes its ``+++ b/path`` headers relative to it — the coordinate
+    space of the graph's ``source_file`` — so a project in a subdirectory
+    of a larger repository matches its own symbols and ignores the rest.
+
     Any git failure returns ``""``; the caller reports "nothing to
     check" rather than treating a missing repo as a violation.
     """
     if base is not None and not _SAFE_REF.match(base):
         return ""
-    cmd = ["git", "-C", str(project_path), "diff", "--unified=0", "--no-color"]
+    cmd = ["git", "-C", str(project_path), "diff", "--unified=0", "--no-color", "--relative"]
     if staged:
         cmd.append("--cached")
     if base is not None:
         cmd.append(base)
+    cmd += ["--", "."]
     try:
         return subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True, errors="replace")
     except (subprocess.CalledProcessError, OSError):

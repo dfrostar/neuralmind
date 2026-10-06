@@ -1397,9 +1397,12 @@ def cmd_review(args):
     base = getattr(args, "base", None) or "HEAD"
     top_k = int(getattr(args, "top_k", 10))
 
-    # Get changed files from git
+    # Get changed files from git. git prints paths relative to the repository
+    # root; ``--relative`` with the ``.`` pathspec limits the diff to the
+    # project and prints paths relative to it, so a project in a subdirectory
+    # of a larger repository joins them correctly and ignores the rest.
     try:
-        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", "--relative", base, "--", "."]
         changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         changed_files = [
             str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1407,7 +1410,17 @@ def cmd_review(args):
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
-            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            cmd = [
+                "git",
+                "-C",
+                str(project_path),
+                "diff",
+                "--cached",
+                "--name-only",
+                "--relative",
+                "--",
+                ".",
+            ]
             changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             changed_files = [
                 str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
@@ -1474,7 +1487,7 @@ def cmd_review(args):
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
                 seen_files.add(abs_file)
-                rel = str(Path(abs_file).relative_to(project_path))
+                rel = Path(abs_file).relative_to(project_path).as_posix()
                 at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
                 if len(at_risk) >= top_k:
                     break
@@ -1482,13 +1495,13 @@ def cmd_review(args):
             pass
 
     if args.json:
-        changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+        changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
         print(
             json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
         )
         return
 
-    changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+    changed_rel = [Path(f).relative_to(project_path).as_posix() for f in changed_files]
     print(f"NeuralMind review — {project_path.name}  (diff against: {base})")
     print()
     print(f"Changed files ({len(changed_rel)}):")
@@ -2731,6 +2744,7 @@ def cmd_audit_export(args):
     trail = AuditTrail(args.project_path)
 
     if args.output:
+        written = 0
         with open(args.output, "w", encoding="utf-8") as f:
             for line in trail.export(
                 format=args.format,
@@ -2741,7 +2755,12 @@ def cmd_audit_export(args):
                 until=args.until,
             ):
                 f.write(line + "\n")
-        print(f"Exported {len(trail.read_events())} events → {args.output}")
+                written += 1
+        # Count what was written, not the whole log: with filters these differ.
+        noun = "event" if written == 1 else "events"
+        print(f"Exported {written} {noun} → {args.output}")
+        if written == 0 and trail.read_events():
+            print("  No events matched the filters.")
     else:
         for line in trail.export(
             format=args.format,
@@ -2763,12 +2782,27 @@ def cmd_audit_verify(args):
         sys.exit(0 if result["ok"] else 1)
     if result["ok"]:
         print(f"✓ Audit trail integrity OK ({result['total']} events)")
+        if result.get("unchained"):
+            print(
+                f"  {result['unchained']} record(s) before the hash chain have no "
+                "sha256, so the chain doesn't cover them"
+            )
+        if result.get("continues_from"):
+            link = (
+                "its last hash matches"
+                if result.get("archive_checked")
+                else "archive not found, so the link wasn't checked"
+            )
+            print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
     else:
-        print(
-            f"✗ Audit trail tampered at line {result['first_bad_line']} "
-            f"({result['total']} events total)",
-            file=sys.stderr,
-        )
+        if result["first_bad_line"] is None:
+            print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
+        else:
+            print(
+                f"✗ Audit trail tampered at line {result['first_bad_line']} "
+                f"({result['total']} events total): {result.get('reason')}",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
 
@@ -5304,6 +5338,9 @@ def cmd_install_mcp(args):
         except ValueError as exc:
             print(f"Error: {exc}")
             sys.exit(1)
+        if result.action.startswith("skipped"):
+            print(f"✗ {client}: {result.action} → {result.detail}")
+            continue
         symbol = "✓" if result.action != "already-present" else "•"
         print(f"{symbol} {client}: {result.action} → {result.path}")
         any_change = any_change or result.action != "already-present"

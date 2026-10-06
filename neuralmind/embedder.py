@@ -24,6 +24,7 @@ from chromadb.config import Settings
 
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
+from .ir import node_community
 from .paths import graph_json_path, vector_db_path
 from .secret_scan import redact_if_enabled
 
@@ -177,7 +178,7 @@ class GraphEmbedder(EmbeddingBackend):
             parts.append(f"Location: {source_loc}")
 
         # Community/cluster info
-        community = node.get("community", -1)
+        community = node_community(node)
         if community >= 0:
             parts.append(f"Community: {community}")
 
@@ -299,7 +300,7 @@ class GraphEmbedder(EmbeddingBackend):
             "label": str(node.get("label", node.get("id", "unknown"))),
             "file_type": str(node.get("file_type", "unknown")),
             "source_file": str(node.get("source_file", "")),
-            "community": int(node.get("community", -1)),
+            "community": node_community(node),
             "node_id": str(node.get("id", "")),
         }
         # Include prose-specific metadata for prose/book projects
