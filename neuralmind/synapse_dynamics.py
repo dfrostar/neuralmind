@@ -90,6 +90,10 @@ from .synapses import (
 
 log = logging.getLogger(__name__)
 
+# Prefix of the query-term pseudo-nodes reinforce_prose writes. ir.py mirrors
+# it so `validate` doesn't report these endpoints as stale.
+QUERY_PSEUDO_NODE_PREFIX = "query:"
+
 # --------------------------------------------------------------------------- #
 # STC (Synaptic Tagging & Capture) parameters
 # --------------------------------------------------------------------------- #
@@ -344,9 +348,11 @@ class SynapseDynamics:
         if section_ids:
             node_ids.extend(section_ids)
         if query_terms:
-            # Query terms as pseudo-nodes (same pattern as code path)
+            # Query terms as pseudo-nodes. The colon keeps them apart from graph
+            # node ids (slugs never contain one), so `validate` can tell a query
+            # pseudo-node from a deleted node named query_* (ir.py).
             for term in query_terms[:3]:  # cap at 3 to avoid noise
-                node_ids.append(f"query_{term.lower().replace(' ', '_')}")
+                node_ids.append(f"{QUERY_PSEUDO_NODE_PREFIX}{term.lower().replace(' ', '_')}")
 
         if not node_ids:
             return False

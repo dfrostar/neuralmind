@@ -337,6 +337,48 @@ def test_validate_does_not_flag_compliance_control_synapses():
     assert _stale_issues(ir_mod.validate_ir(ir)) == []
 
 
+def test_validate_does_not_flag_prose_query_pseudo_node_synapses():
+    # reinforce_prose records the query's terms as query:<term> pseudo-nodes.
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [
+        ir_mod.IRSynapse(source="readme_md", target="query:peptide_therapy", weight=0.3),
+        ir_mod.IRSynapse(source="query:peptide_therapy", target="query:dosage", weight=0.3),
+    ]
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
+def test_validate_still_flags_a_deleted_query_named_node():
+    # A real node whose slug starts with query_ (query_handler.py) that a
+    # rebuild dropped is stale memory; only the colon form is a pseudo-node.
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [
+        ir_mod.IRSynapse(source="app_py", target="query_handler_py", weight=0.3),
+        ir_mod.IRSynapse(source="query_handler_py__run_fn", target="app_py", weight=0.3),
+    ]
+    stale = _stale_issues(ir_mod.validate_ir(ir))
+    assert len(stale) == 1
+    assert stale[0].message.startswith("2 learned synapse(s)")
+
+
+def test_validate_prose_reinforcement_written_to_a_real_store_is_clean(tmp_path):
+    """End-to-end: the edges SynapseDynamics.reinforce_prose writes for a
+    query's terms validate clean (the endpoint spelling and the exemption
+    have to agree)."""
+    from neuralmind.synapse_dynamics import QUERY_PSEUDO_NODE_PREFIX, SynapseDynamics
+    from neuralmind.synapses import SynapseStore
+
+    assert QUERY_PSEUDO_NODE_PREFIX == ir_mod._QUERY_PSEUDO_NODE_PREFIX
+    db = tmp_path / ".neuralmind" / "synapses.db"
+    db.parent.mkdir(parents=True)
+    dynamics = SynapseDynamics(SynapseStore(db))
+    assert dynamics.reinforce_prose(["readme_md", "app_py"], query_terms=["How is it run?"])
+
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = ir_mod.load_synapses_for_project(tmp_path)
+    assert len(ir.synapses) == 3
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
 def test_validate_still_flags_real_stale_synapses_beside_pseudo_nodes():
     ir = ir_mod.from_graph_json(_synthetic_graph())
     ir.synapses = [
