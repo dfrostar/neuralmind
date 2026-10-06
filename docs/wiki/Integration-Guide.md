@@ -9,7 +9,7 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 - [MCP Integration](#mcp-integration)
   - [Claude Desktop](#claude-desktop)
   - [Cursor](#cursor)
-  - [Hermes-Agent](#hermes-agent)
+  - [Hermes-Agent](#hermes-agent) — the plugin for context in every turn *(v4.9.0+)*, then MCP and the skill
   - [Agent Zero](#agent-zero)
   - [OpenClaw](#openclaw)
   - [Custom MCP Clients](#custom-mcp-clients)
@@ -29,19 +29,22 @@ and v0.6.0 makes the union of their activity visible.
 
 ### The shared substrate
 
-Three pieces of local state belong to the project, not to any one
+These pieces of local state belong to the project, not to any one
 agent:
 
 | Path | What it is | Who reads/writes |
 |------|------------|------------------|
 | `graphify-out/graph.json` | Call graph (created by `graphify`) | Read-only at NeuralMind runtime |
 | `graphify-out/neuralmind_db/` | ChromaDB vector index | `neuralmind build` writes; agents read |
-| `<project>/.neuralmind/synapses.db` | Learned synapse weights | Every MCP tool call, every `watch` event, every Claude Code hook |
+| `<project>/.neuralmind/synapses.db` | Learned synapse weights | Every MCP tool call, every `watch` event, every Claude Code hook, and *(v4.9.0+)* the Hermes plugin |
 | `<project>/.neuralmind/events.jsonl` *(v0.6.0+)* | Cross-process activity stream | Every `event_bus.publish()` writes; `serve` tails |
+| `<project>/.neuralmind/recaps/` *(v4.8.0+)* | Session recap records: each session's prompts and edited files | Claude Code's hooks and the [Hermes plugin](#the-neuralmind-plugin-context-in-every-turn-v490) write; a new session in either starts with the most recent one's recap |
 
 There's no per-agent partition. Claude Code's `neuralmind_query`
 and Hermes-Agent's `neuralmind_query` reinforce the exact same
-synapse edges. The brain is one brain.
+synapse edges. The brain is one brain. Since v4.9.0 the same holds for
+the session recap: a Hermes session (with the plugin) can start with what
+the last Claude Code session in the project did, and the other way round.
 
 ### Verifying the shared-brain setup
 
@@ -312,24 +315,170 @@ Create `.cursor/mcp.json` in your project:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "neuralmind": {
-      "command": "neuralmind-mcp",
-      "env": {
-        "NEURALMIND_PROJECT": "${workspaceFolder}"
-      }
+      "command": "neuralmind-mcp"
     }
   }
 }
 ```
 
+The server takes no project setting: each tool call carries its own
+`project_path` (see [Verifying the shared-brain setup](#verifying-the-shared-brain-setup)).
+
 ### Hermes-Agent
+
+Hermes has two ways in, and they do different jobs:
+
+- **The NeuralMind plugin** *(v4.9.0+)* adds NeuralMind's context to every
+  turn before the model runs, with no tool call, the way NeuralMind's Claude
+  Code hooks do.
+- **The MCP server, or the skill,** lets the agent call NeuralMind when it
+  decides to: a query, a file skeleton, a rebuild.
+
+They work together. The plugin covers what every turn needs; the tools are
+there when the agent wants more.
+
+#### The NeuralMind plugin: context in every turn *(v4.9.0+)*
+
+Through MCP or the skill alone, each answer from NeuralMind costs a tool call,
+and when the agent doesn't think to make one, nothing happens. The plugin
+removes that step.
+
+```bash
+neuralmind build /absolute/path/to/repo
+neuralmind install-hermes-plugin /absolute/path/to/repo
+```
+
+The command writes the plugin into the Hermes home's `plugins/neuralmind/`:
+the one plain `hermes` uses: the active Hermes profile's home, if
+`hermes profile use` selected one (`<root>/profiles/<name>`), else
+`$HERMES_HOME`, else Hermes's root home, `~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). The output names the
+profile when it installs into one; pass any other home with `--hermes-home`.
+The files are `__init__.py`, the `plugin.yaml` manifest Hermes discovers it by,
+and a `config.json` holding the project and the Python interpreter that ran the
+install. The command then runs `hermes plugins enable neuralmind` against that
+same home, since Hermes loads a user plugin only once it's enabled, but only
+in a home Hermes has already set up (one with a `config.yaml`, `.env` or
+`state.db`); anywhere else it tells you to enable the plugin once Hermes is set
+up. Start a new Hermes session, or restart the gateway, to load it.
+
+The installed plugin is a copy: `pip install -U neuralmind` doesn't update it,
+so re-run `neuralmind install-hermes-plugin` after upgrading NeuralMind. A
+re-run doesn't re-enable a plugin you turned off with
+`hermes plugins disable neuralmind`: it says so and leaves it disabled.
+
+What it does:
+
+| When (Hermes hook) | What the agent gets, or what's recorded |
+|---|---|
+| Every turn, before the model runs (`pre_llm_call`) | The files and recorded decisions related to the user's message, the same block Claude Code's `UserPromptSubmit` hook adds. Hermes appends it to that turn's user message, not to the system prompt, so the prompt cache isn't invalidated. |
+| A session's first turn (same hook) | The [session recap](CLI-Reference.md#recap-v480) of the previous session in the project, ahead of the block above. Hermes counts a turn as first only when the session has no earlier messages, so a resumed session doesn't get it. |
+| After `write_file` or `patch` (`post_tool_call`) | The edited file is recorded, by the absolute path Hermes reports (`files_modified`), on a background thread, for the next session's recap and the synapse layer. A V4A patch records each file it touches, except a file it deletes, which isn't listed as edited. Only an edit that landed (Hermes's status `ok`) is recorded: a cancelled, timed-out, blocked or failed one isn't, and neither is a file changed through the `terminal` tool. |
+
+- **Subagents and cron jobs are skipped.** A subagent's message is written by
+  its parent agent, and a cron job (Hermes's `cron` platform) runs on a
+  schedule. For both, the prompt is neither recorded nor answered with recall,
+  the `SessionStart` action doesn't run, and their edits aren't recorded.
+- **One record for both agents.** Hermes and Claude Code write to the same
+  `.neuralmind/recaps/`, so a Hermes session can start with what the last
+  Claude Code session in the project did, and the other way round.
+- **Same switches as the Claude Code hooks.** The plugin is a small
+  stdlib-only file. Each action runs `python -m neuralmind _hook <action>`
+  with the interpreter recorded at install, so NeuralMind doesn't have to be
+  installed in Hermes's own environment, and Hermes's `PYTHONPATH` and
+  `VIRTUAL_ENV` aren't passed on to it. Set in Hermes's environment,
+  `NEURALMIND_BYPASS=1` turns every action off, `NEURALMIND_SYNAPSE_INJECT=0`
+  drops the related files, and `NEURALMIND_SESSION_RECAP=0` stops recording
+  and the recap.
+
+##### Which project a Hermes session belongs to
+
+1. `NEURALMIND_PROJECT` in Hermes's environment, if set (only this plugin
+   reads it);
+2. else the path given to `install-hermes-plugin`;
+3. else Hermes's terminal working directory (`TERMINAL_CWD`);
+4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
+
+The first of these where `neuralmind build` has run wins; if none has, the
+plugin does nothing. Install with a path and the command warns if that project
+isn't built yet.
+
+The plugin reads `TERMINAL_CWD` from the Hermes process's environment, which
+matches where the terminal CLI and a standalone gateway work. Hermes Desktop,
+ACP editor sessions and per-session workspaces keep each session's directory
+elsewhere, so there, pin a project or set `NEURALMIND_PROJECT`.
+
+A pin applies to every Hermes session that uses that Hermes home, whatever
+directory it runs in: each one gets the pinned project's context, and its
+prompts are recorded in that project. Sessions in other repositories also put
+their edited files' paths into the pinned project's synapse store, from where
+[`neuralmind memory publish`](CLI-Reference.md#memory-v0240) can carry them
+into the committed team-memory bundle. If you use Hermes across several
+projects, install without a path, so the plugin follows the directory Hermes
+works in and does nothing in a repository NeuralMind hasn't built. Re-running
+the install without a path keeps an earlier pin; `--unpin` clears it.
+
+A gateway session (Telegram, Discord …) uses the gateway's terminal working
+directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory),
+which is rarely the project you mean, so pin one at install or set
+`NEURALMIND_PROJECT`. Whenever a gateway session resolves to a built project,
+pinned or not, every message in it is recorded for the recap. Messages pass
+through the same credential redaction as any other prompt, which catches
+common credential formats, not every secret; `NEURALMIND_SESSION_RECAP=0`
+turns the recording off.
+
+##### Limits
+
+- **One subprocess per turn** (two on a session's first turn: the recap, then
+  recall), plus one per edited file. Each waits at most
+  `NEURALMIND_HERMES_TIMEOUT` seconds (default `8`), so a first turn can wait
+  up to twice that. One that times out or fails is left out, and the turn goes
+  ahead with whatever context the others returned. Keep twice
+  `NEURALMIND_HERMES_TIMEOUT` below Hermes's `plugins.hook_callback_timeout`
+  (default 30 s): if the plugin runs past it, Hermes drops the whole block and
+  skips the plugin's per-turn hook for the next 60 seconds.
+- **The context stays in Hermes's session history.** Hermes stores the turn's
+  message with NeuralMind's block in it, so the block, recap included, is sent
+  to your model provider again with that session's later turns.
+- **On a session's first turn the plugin runs NeuralMind's whole
+  `SessionStart` action**, the same as Claude Code: a synapse decay tick, the
+  team-memory import, clearing the session-scoped (ephemeral) associations,
+  and the `SYNAPSE_MEMORY.md` export (copied into Claude Code's auto-memory
+  directory only when that exists;
+  `NEURALMIND_SYNAPSE_EXPORT=0` turns the export off).
+- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
+  calling its plugin loader and hook dispatch directly, not yet in a live
+  Hermes conversation. It relies on `pre_llm_call` accepting
+  `{"context": ...}`, which that version documents.
+- **Not measured.** We haven't measured what the added context changes in
+  Hermes's answers.
+
+##### Options and removal
+
+```bash
+neuralmind install-hermes-plugin                         # no path: follow the directory Hermes works in (a re-run keeps an earlier pin)
+neuralmind install-hermes-plugin --unpin                 # clear an earlier pin
+neuralmind install-hermes-plugin PATH --no-enable        # write the files; enable it yourself
+neuralmind install-hermes-plugin PATH --hermes-home DIR  # a Hermes home other than the default (the active profile's, else $HERMES_HOME, else ~/.hermes)
+neuralmind install-hermes-plugin --uninstall             # disable and remove it
+```
+
+If `hermes` isn't on `PATH`, the command says so, and you run
+`hermes plugins enable neuralmind` (or `disable`) yourself. If
+`plugins/neuralmind` is a symlink, the install refuses to write through it,
+and `--uninstall` removes the link, never its target. Full flag list:
+[CLI Reference: `install-hermes-plugin`](CLI-Reference.md#install-hermes-plugin-v490).
+Walkthrough: [Hermes-Agent with code memory in every turn](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md).
+Release notes: [NeuralMind for Hermes-Agent](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.0.md#neuralmind-for-hermes-agent).
+
+#### MCP server: tools to call on demand
 
 Hermes ships its own MCP client and discovers configured servers at
 startup, so NeuralMind's tools arrive as first-class tools alongside
-`terminal` and `read_file` — no bridge process.
-
-#### Configuration
+`terminal` and `read_file` — no bridge process. Register it with or without
+the plugin: the plugin adds context on its own each turn, and the MCP tools
+let the agent ask for more.
 
 ```bash
 hermes mcp add                      # interactive

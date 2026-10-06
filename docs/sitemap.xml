@@ -308,7 +308,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Integration-Guide.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -350,7 +350,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Multi-Project-Scoping.html</loc>
-    <lastmod>2026-08-02</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -613,6 +613,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.9.0.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.2.html</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>yearly</changefreq>
@@ -620,6 +626,12 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/pick-up-where-you-left-off.html</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/hermes-agent.html</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

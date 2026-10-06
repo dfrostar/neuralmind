@@ -5306,6 +5306,68 @@ def cmd_last(args):
         print(stderr.rstrip())
 
 
+def cmd_install_hermes_plugin(args):
+    """Install or remove NeuralMind's Hermes-Agent plugin (see hermes_install.py)."""
+    from .hermes_install import hermes_home, install, uninstall
+
+    home = Path(args.hermes_home).expanduser() if args.hermes_home else hermes_home()
+    profile = f" (Hermes profile {home.name})" if home.parent.name == "profiles" else ""
+    if args.uninstall:
+        result = uninstall(home)
+        if result["removed"]:
+            print(f"✓ Removed the NeuralMind plugin from {result['path']}{profile}")
+        else:
+            print(f"No NeuralMind plugin at {result['path']}{profile}")
+        if not result["initialised"]:
+            pass  # no Hermes config there, so nothing was enabled to disable
+        elif result["disabled"] is None and result["removed"]:
+            print("  `hermes` isn't on PATH: run `hermes plugins disable neuralmind` yourself.")
+        elif result["disabled"] is False:
+            print("  ⚠ `hermes plugins disable neuralmind` failed; run it yourself.")
+        return
+    try:
+        result = install(args.project_path, home=home, enable=not args.no_enable, unpin=args.unpin)
+    except (FileNotFoundError, FileExistsError) as exc:
+        print(f"✗ {exc}")
+        sys.exit(1)
+    print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
+    if result["project"]:
+        kept = "" if args.project_path else " (kept from the earlier install; --unpin clears it)"
+        print(f"  Project: {result['project']}{kept}")
+        if not result["built"]:
+            print(
+                "  ⚠ That project isn't built, and the plugin does nothing until it is: "
+                f"run `neuralmind build {result['project']}`."
+            )
+    else:
+        print(
+            "  Project: the directory Hermes works in (TERMINAL_CWD, else its current "
+            "directory), if it's built. Pass a path to pin one; a pin applies to every "
+            "Hermes session in this Hermes home."
+        )
+    if not result["initialised"]:
+        print(
+            f"  ⚠ {home} has no Hermes config yet, so the plugin isn't enabled. Set Hermes up "
+            "first, then run `hermes plugins enable neuralmind`."
+        )
+    elif result["disabled_by_user"]:
+        print(
+            "  Left disabled: it's on Hermes's plugins.disabled list. Run "
+            "`hermes plugins enable neuralmind` to turn it back on."
+        )
+    elif result["enabled"] is True:
+        print("  Enabled in Hermes.")
+    elif result["enabled"] is False:
+        print("  ⚠ `hermes plugins enable neuralmind` failed; run it yourself.")
+    elif not args.no_enable:
+        print("  `hermes` isn't on PATH: run `hermes plugins enable neuralmind` yourself.")
+    print(
+        "  Each Hermes turn now gets NeuralMind's related files and decisions, and a "
+        "session's first turn gets the recap of the previous one. Start a new Hermes "
+        "session (restart the gateway if it's running) to load it."
+    )
+
+
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
@@ -7714,6 +7776,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Remove neuralmind hooks, preserve other hooks",
     )
     hooks_p.set_defaults(func=cmd_install_hooks)
+
+    # install-hermes-plugin — the same per-turn context for Hermes-Agent
+    hermes_p = subparsers.add_parser(
+        "install-hermes-plugin",
+        help="Install/uninstall NeuralMind's Hermes-Agent plugin (related files and decisions "
+        "added to every Hermes turn, and the last session's recap to a session's first)",
+    )
+    hermes_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=None,
+        help="Project the plugin serves (default: the one pinned by an earlier install, "
+        "else the directory Hermes works in: TERMINAL_CWD, else its current directory)",
+    )
+    hermes_p.add_argument(
+        "--unpin",
+        action="store_true",
+        help="Forget the pinned project, so the plugin follows the directory Hermes works in",
+    )
+    hermes_p.add_argument("--uninstall", action="store_true", help="Disable and remove the plugin")
+    hermes_p.add_argument(
+        "--no-enable",
+        action="store_true",
+        help="Install without running `hermes plugins enable neuralmind`",
+    )
+    hermes_p.add_argument(
+        "--hermes-home",
+        default=None,
+        help="Hermes home directory (default: the active Hermes profile, else $HERMES_HOME, "
+        "else ~/.hermes, or %%LOCALAPPDATA%%\\hermes on Windows)",
+    )
+    hermes_p.set_defaults(func=cmd_install_hermes_plugin)
 
     # install-mcp command — register the MCP server with AI coding agents
     mcp_p = subparsers.add_parser(

@@ -17,6 +17,7 @@ Two cooperating brains:
 
 Communication channels: MCP tools, Claude Code lifecycle hooks
 (`SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostToolUse`),
+the Hermes-Agent plugin's `pre_llm_call` / `post_tool_call` hooks,
 and the file activity watcher.
 
 ## Layout
@@ -30,6 +31,7 @@ and the file activity watcher.
 - `neuralmind/event_bus.py` — process-local pub/sub for live activity events
 - `neuralmind/server.py` — local graph-view HTTP server + `/api/events` SSE
 - `neuralmind/hooks.py` — Claude Code hook registration + runtime
+- `neuralmind/hermes_plugin/` — Hermes-Agent plugin (runs the same `_hook` actions), installed by `neuralmind install-hermes-plugin` via `neuralmind/hermes_install.py`
 - `neuralmind/mcp_server.py` — MCP tools for any agent
 - `neuralmind/cli.py` — `neuralmind {build,query,watch,serve,install-hooks,…}`
 - `editors/vscode/` — VS Code extension: status bar, command palette, graph panel, hover provider
@@ -155,6 +157,7 @@ When working on the NeuralMind codebase alongside other projects (cmmc20, lingog
 - **Hermes memory does NOT isolate** — tag every entry with `[project]` prefix.
 - **session_search does NOT isolate** — include project name in every query.
 - **Autopilot is NEVER indexed** (contains secrets). NeuralMind + autopilot don't mix.
+- **The Hermes plugin with a pinned project does NOT isolate** — a pin given at install (`neuralmind install-hermes-plugin <path>`) applies to every Hermes session on that Hermes home, in any directory, and `NEURALMIND_PROJECT` to every Hermes process started with it in its environment: each gets the pinned project's context, has its prompts recorded in that project's `.neuralmind/recaps/`, and puts its edited files' paths into that project's synapse store, from where `neuralmind memory publish` can carry them into the committed team-memory bundle — autopilot sessions included. For several projects, install without a path (a re-run without a path keeps an old pin; `--unpin` clears it), so the plugin follows the directory Hermes works in and does nothing in an unbuilt repo like autopilot. Pin only for a single-project setup or the gateway (its terminal working directory is `terminal.cwd`, else `MESSAGING_CWD`, else your home directory). Following reads `TERMINAL_CWD` from the Hermes process's environment, which matches the terminal CLI and a standalone gateway only: Hermes Desktop, ACP editor sessions and per-session workspaces keep each session's directory elsewhere, so there pin a project or set `NEURALMIND_PROJECT`, and all of the above applies. In Hermes Desktop and ACP editor sessions the plugin can't see each session's directory: pin or set `NEURALMIND_PROJECT` there, since unpinned every session is served and recorded as whatever the Hermes process's own `TERMINAL_CWD` (or working directory) is, if that's built.
 
 End users running NeuralMind on a single project need no scoping — `.neuralmind/` isolation is built-in. For operators, see `docs/wiki/Multi-Project-Scoping.md`.
 

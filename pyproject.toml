@@ -76,6 +76,8 @@ keywords = [
     "memory-governance",
     "session-recap",
     "session-continuity",
+    "hermes-agent",
+    "hermes-plugin",
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",
