@@ -55,6 +55,7 @@ from neuralmind.mcp_security import (
 )
 from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 from neuralmind.memory.mcp_tools import validate_tool_arguments as validate_memory_arguments
+from neuralmind.paths import ProjectNotFoundError, require_project_dir
 from neuralmind.storage_guard import StorageNotVerifiedError, enforce_storage_policy
 
 # Cache for NeuralMind instances per project
@@ -246,19 +247,21 @@ def tool_build(project_path: str, force: bool = False) -> dict[str, Any]:
 
 def tool_stats(project_path: str) -> dict[str, Any]:
     """Get index statistics for a project."""
+    # The resolved directory's name: Path(".").name is "".
+    project_name = Path(project_path).resolve().name
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         # Keep the documented stats contract (built: false, no exception) so
         # the SKILL.md prerequisite-check flow still works — but say *why*.
-        return {"project": Path(project_path).name, "built": False, "hint": hint}
+        return {"project": project_name, "built": False, "hint": hint}
     mind = get_mind(project_path, auto_build=False)
     try:
         stats = mind.embedder.get_stats()
-        stats["project"] = Path(project_path).name
+        stats["project"] = project_name
         stats["built"] = stats.get("total_nodes", 0) > 0
         return stats
     except Exception as e:
-        return {"project": Path(project_path).name, "built": False, "error": str(e)}
+        return {"project": project_name, "built": False, "error": str(e)}
 
 
 def tool_health(project_path: str) -> dict[str, Any]:
@@ -858,6 +861,7 @@ TOOLS = [
                 "query": {"type": "string", "description": "Search query"},
                 "n": {
                     "type": "integer",
+                    "minimum": 1,
                     "description": "Number of results to return (default: 10)",
                     "default": 10,
                 },
@@ -1295,9 +1299,10 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
     ``@server.call_tool()``; the 2.x constructor-callback API dropped that, so a
     missing required key reached the handler as a bare ``KeyError`` string.
     This restores the contract for both SDK lines: required keys, top-level
-    JSON types and ``enum`` membership, plus the value checks a schema can't
-    express (``validate_memory_arguments``: the case-insensitive decision
-    ``status`` filter). Returns a human-readable problem, or ``None`` when the
+    JSON types, ``enum`` membership and numeric ``minimum`` / ``maximum``
+    (``neuralmind_search``'s ``n`` must be at least 1), plus the value checks
+    a schema can't express (``validate_memory_arguments``: the case-insensitive
+    decision ``status`` filter). Returns a human-readable problem, or ``None`` when the
     arguments are acceptable. Unknown tools are not this function's concern
     (``handle_tool_call`` reports them).
     """
@@ -1324,7 +1329,28 @@ def validate_tool_arguments(name: str, arguments: Any) -> str | None:
                 return f"argument {key!r} must be of type {spec.get('type')}"
         if "enum" in spec and value not in spec["enum"]:
             return f"argument {key!r} must be one of {spec['enum']!r}"
+        # The type check above has passed, so a numeric spec has a number here.
+        if spec.get("type") in ("integer", "number"):
+            if "minimum" in spec and value < spec["minimum"]:
+                return f"argument {key!r} must be at least {spec['minimum']}"
+            if "maximum" in spec and value > spec["maximum"]:
+                return f"argument {key!r} must be at most {spec['maximum']}"
     return validate_memory_arguments(name, arguments)
+
+
+def _project_not_found(project_path: str) -> dict[str, str] | None:
+    """The ``project_not_found`` error for a path that isn't a directory, else None."""
+    try:
+        require_project_dir(project_path)
+    except OSError as e:  # ProjectNotFoundError, or a server cwd that is gone
+        error = {"error": str(e), "code": "project_not_found"}
+        if not Path(project_path).is_absolute():
+            error["hint"] = (
+                "A relative project_path resolves against the MCP server process's "
+                "working directory; pass the project's absolute path."
+            )
+        return error
+    return None
 
 
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
@@ -1430,6 +1456,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     if problem:
         return json.dumps({"error": problem, "code": "invalid_request"})
 
+    # Before the security manager writes its audit log or a tool opens any
+    # state: a project_path that isn't an existing directory used to come
+    # back as a fresh <path>/.neuralmind/ holding an empty index.
+    missing = _project_not_found(project_path)
+    if missing is not None:
+        return json.dumps(missing)
+
     try:
         security = get_security_manager(project_path)
         # A malformed policy also turns the storage check on (fail closed), so
@@ -1441,6 +1474,8 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     # Only the security manager's own refusals are security denials. A tool
     # that fails with a RuntimeError (a missing parser, an unreadable PDF) or
     # an OS PermissionError is a tool error, not an access decision.
+    except ProjectNotFoundError as e:
+        return json.dumps({"error": str(e), "code": "project_not_found"})
     except GraphNotBuiltError as e:
         return json.dumps(
             {

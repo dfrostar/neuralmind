@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import sqlite3
 import uuid
@@ -55,6 +56,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from neuralmind.paths import require_project_dir
 from neuralmind.state_dir import ensure_parent_dir
 from neuralmind.storage_guard import enforce_storage_policy
 
@@ -111,6 +113,20 @@ def normalize_status_filter(status: str | None) -> str | None:
         valid = ", ".join([*sorted(VALID_STATUSES), STATUS_FILTER_ALL])
         raise ValueError(f"unknown status filter {status!r}; expected one of {valid}")
     return value
+
+
+def validate_confidence(value: Any) -> float:
+    """Return ``value`` as a decision confidence, or raise ``ValueError``.
+
+    A confidence is a finite number from 0 to 1. The CLI and MCP record
+    paths check with this before anything is stored: ``--confidence 7`` used
+    to be accepted and silently stored as 1.0, and so did ``nan``.
+    """
+    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    # NaN fails the range test too: every comparison with it is False.
+    if not is_number or not 0.0 <= value <= 1.0:
+        raise ValueError(f"confidence must be a number from 0 to 1, got {value!r}")
+    return float(value)
 
 
 class DecisionRecord(BaseModel):
@@ -390,10 +406,13 @@ class DecisionStore:
     Construct once per project path. Safe to share across threads/hooks;
     each call opens a short-lived connection (WAL mode allows concurrent
     readers + a single writer). Fail-open: a read returns [] on any DB
-    error; a write silently no-ops rather than crashing the caller.
+    error; a write logs and no-ops rather than crashing the caller. The
+    exceptions are the explicit user actions: ``invalidate`` raises for an
+    unknown id or a DB error, and ``restore`` for an unknown id.
 
     Args:
-        project_path: Root of the project. The DB lives at
+        project_path: Root of the project, an existing directory
+            (``ProjectNotFoundError`` otherwise). The DB lives at
             ``<project_path>/.neuralmind/memory.db``.
         embedder: What semantic and hybrid search embed with. Defaults to
             the local MiniLM model, loaded on the first such search.
@@ -402,7 +421,8 @@ class DecisionStore:
     def __init__(
         self, project_path: str, *, embedder: semantic.DecisionEmbedder | None = None
     ) -> None:
-        self.project_path = Path(project_path).resolve()
+        # A mistyped project path is an error, not a new memory.db.
+        self.project_path = require_project_dir(project_path)
         enforce_storage_policy(self.project_path)
         db_path = self.project_path / ".neuralmind" / "memory.db"
         self.db_path: Path = db_path
@@ -501,7 +521,10 @@ class DecisionStore:
             commit_sha: Git SHA anchoring the decision to a specific state.
             files_affected: Paths of files this decision concerns.
             decision_type: One of VALID_DECISION_TYPES.
-            confidence: 0.0–1.0 certainty that this decision is correct.
+            confidence: 0.0–1.0 certainty that this decision is correct. A
+                finite value outside the range is clamped (the CLI and MCP
+                reject it up front, see validate_confidence); NaN or an
+                infinity raises ValueError.
             status: One of VALID_STATUSES.
             author: Optional identifier for who made the decision.
             evidence: URLs / refs / doc lines supporting the decision.
@@ -512,6 +535,9 @@ class DecisionStore:
             created_at: Optional explicit timestamp (defaults to now).
             updated_at: Optional explicit timestamp (defaults to now).
         """
+        if not math.isfinite(confidence):
+            # The clamp below can't place these: NaN came out as 1.0.
+            raise ValueError(f"confidence must be a finite number, got {confidence!r}")
         now = datetime.now(timezone.utc)
         files_affected_norm = [f.replace("\\", "/") for f in (files_affected or [])]
         rec = DecisionRecord(
@@ -633,13 +659,22 @@ class DecisionStore:
 
         The reason is appended to the decision's evidence list so the
         invalidation itself carries context — future readers can see *why*
-        a decision was retired. No-op if the id doesn't exist.
+        a decision was retired.
+
+        Invalidation is an explicit user action (CLI / MCP), so unlike the
+        fail-open background writes it reports failure: both used to be
+        silent, and both callers then printed success.
+
+        Raises:
+            KeyError: no decision has this id.
+            sqlite3.Error: the update failed (also logged); the decision's
+                status is unchanged.
         """
         reason = reason.strip()
         note = f"Invalidated: {reason}" if reason else "Invalidated"
         try:
             with self._connect() as conn:
-                conn.execute(
+                cur = conn.execute(
                     """UPDATE decisions
                        SET status = 'INVALIDATED',
                            updated_at = ?,
@@ -647,8 +682,12 @@ class DecisionStore:
                        WHERE id = ?""",
                     (_now_iso(), note, decision_id),
                 )
-        except Exception:
-            logger.exception("[memory] invalidate(%s) failed — decision still active", decision_id)
+                updated = cur.rowcount > 0
+        except sqlite3.Error:
+            logger.exception("[memory] invalidate(%s) failed — status unchanged", decision_id)
+            raise
+        if not updated:
+            raise KeyError(f"Decision not found: {decision_id}")
 
     def mark_stale(self, decision_id: str, reason: str = "") -> bool:
         """Mark a decision STALE, keeping why in its evidence list.
@@ -684,12 +723,23 @@ class DecisionStore:
 
         Useful after a cherry-pick / rebase where the original commit no
         longer exists in the current history but the decision still applies.
-        Returns the updated record, or raises KeyError if not found.
+
+        Like ``invalidate``, this is an explicit user action, so it reports
+        failure: a failed update used to be logged and swallowed, and the CLI
+        then printed "Restored" beside the unchanged status.
+
+        Returns:
+            The updated record.
+
+        Raises:
+            KeyError: no decision has this id.
+            sqlite3.Error: the update failed (also logged); the decision is
+                unchanged.
         """
         now = _now_iso()
         try:
             with self._connect() as conn:
-                conn.execute(
+                cur = conn.execute(
                     """UPDATE decisions
                        SET commit_sha = ?,
                            status = 'ACTIVE',
@@ -703,9 +753,11 @@ class DecisionStore:
                         decision_id,
                     ),
                 )
-        except Exception:
+                updated = cur.rowcount > 0
+        except sqlite3.Error:
             logger.exception("[memory] restore(%s) failed — decision not re-anchored", decision_id)
-        restored = self.get(decision_id)
+            raise
+        restored = self.get(decision_id) if updated else None
         if restored is None:
             raise KeyError(f"Decision not found: {decision_id}")
         # Restoring says "this still holds for the code as it is now".

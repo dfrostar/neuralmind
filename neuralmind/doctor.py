@@ -353,18 +353,20 @@ def _check_hooks(project: Path) -> Check:
 
 def _check_memory() -> Check:
     try:
-        from neuralmind.memory import is_memory_logging_enabled
+        from neuralmind.memory import memory_off_reasons_and_steps
 
-        enabled = bool(is_memory_logging_enabled())
+        reasons, steps = memory_off_reasons_and_steps()
     except Exception as e:
         return Check("Query memory", WARN, f"could not check ({e})")
-    if enabled:
+    if not reasons:
         return Check("Query memory", OK, "enabled (logging queries for learning)")
+    # NEURALMIND_MEMORY defaults to on, so "set it to 1" (the old advice)
+    # never helped: name what is actually off and what turns it on.
     return Check(
         "Query memory",
         WARN,
-        "disabled (no query logging)",
-        fix="Enable with NEURALMIND_MEMORY=1, or accept the prompt on first query.",
+        f"disabled ({'; '.join(reasons)})",
+        fix=f"To enable, {' and '.join(steps)}.",
     )
 
 

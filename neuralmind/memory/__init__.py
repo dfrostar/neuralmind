@@ -120,6 +120,34 @@ def is_memory_logging_enabled() -> bool:
     return read_consent_sentinel() is True
 
 
+def memory_off_reasons_and_steps() -> tuple[list[str], list[str]]:
+    """Why query memory is off, and what turns it on (both empty when it's on).
+
+    ``NEURALMIND_MEMORY`` defaults to on and only ``0`` changes anything;
+    beyond that, logging needs a yes in the consent file. So "set
+    NEURALMIND_MEMORY=1" never helps, and the steps say what does.
+    """
+    if is_memory_logging_enabled():
+        return [], []
+    path = consent_file()
+    consent = read_consent_sentinel()
+    reasons: list[str] = []
+    steps: list[str] = []
+    if is_memory_disabled():
+        reasons.append("NEURALMIND_MEMORY=0")
+        steps.append("unset NEURALMIND_MEMORY")
+    if consent is False:
+        reasons.append(f"memory logging was declined in {path}")
+        steps.append(f'set "memory_logging_enabled" to true in {path}')
+    elif consent is None or not reasons:
+        reasons.append("memory logging hasn't been enabled")
+        steps.append(
+            "answer yes when an interactive `neuralmind query` asks to enable memory "
+            f'logging (or write {{"memory_logging_enabled": true}} to {path})'
+        )
+    return reasons, steps
+
+
 def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as file:

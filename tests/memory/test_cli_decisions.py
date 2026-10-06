@@ -338,3 +338,130 @@ def test_query_status_unknown_is_a_usage_error(parser, project, capsys):
         parser.parse_args(["decisions", "query", "Syringe", str(project), "--status", "archived"])
     assert exc.value.code == 2
     assert "invalid choice" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ #
+# restore of an unknown id (was a KeyError traceback)
+# ------------------------------------------------------------------ #
+
+
+def test_restore_unknown_id_is_an_error_not_a_traceback(parser, project, capsys):
+    _record(DecisionStore(str(project)))
+    with pytest.raises(SystemExit) as exc:
+        _run(
+            parser,
+            ["decisions", "restore", "no-such-id", str(project), "--commit", "b" * 40],
+            capsys,
+        )
+    assert exc.value.code == 1
+    assert "Decision not found: no-such-id" in capsys.readouterr().err
+
+
+def test_restore_known_id_still_reanchors(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+    out = _run(parser, ["decisions", "restore", rec.id, str(project), "--commit", "b" * 40], capsys)
+    assert f"Restored decision: {rec.id}" in out
+    got = store.get(rec.id)
+    assert got.status == "ACTIVE"
+    assert got.commit_sha == "b" * 40
+
+
+def test_restore_db_error_is_an_error(parser, project, capsys, monkeypatch):
+    # The store raises on a failed update (tests/memory/test_store.py drives
+    # a real one); here, the CLI must report it rather than print "Restored".
+    import sqlite3
+
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    store.mark_stale(rec.id, reason="files changed")
+
+    def locked(self, decision_id, new_commit_sha):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(DecisionStore, "restore", locked)
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "restore", rec.id, str(project), "--commit", "b" * 40], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Could not restore decision {rec.id}" in captured.err
+    assert "Restored decision" not in captured.out
+
+
+# ------------------------------------------------------------------ #
+# invalidate reports failure (an unknown id or a DB error said "Invalidated")
+# ------------------------------------------------------------------ #
+
+
+def test_invalidate_unknown_id_is_an_error(parser, project, capsys):
+    _record(DecisionStore(str(project)))
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "invalidate", "no-such-id", str(project)], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert "Decision not found: no-such-id" in captured.err
+    assert "Invalidated decision" not in captured.out
+
+
+def test_invalidate_db_error_is_an_error(parser, project, capsys):
+    import sqlite3
+
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("UPDATE decisions SET evidence = '{bad' WHERE id = ?", (rec.id,))
+    with pytest.raises(SystemExit) as exc:
+        _run(parser, ["decisions", "invalidate", rec.id, str(project)], capsys)
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Could not invalidate decision {rec.id}" in captured.err
+    assert "Invalidated decision" not in captured.out
+
+
+def test_invalidate_known_id_still_succeeds(parser, project, capsys):
+    store = DecisionStore(str(project))
+    rec = _record(store)
+    out = _run(
+        parser, ["decisions", "invalidate", rec.id, str(project), "--reason", "superseded"], capsys
+    )
+    assert f"Invalidated decision: {rec.id}" in out
+    assert store.get(rec.id).status == "INVALIDATED"
+
+
+# ------------------------------------------------------------------ #
+# record --confidence is 0-1 (7 was accepted and stored as 1.0)
+# ------------------------------------------------------------------ #
+
+
+def _record_argv(project, confidence):
+    return [
+        "decisions",
+        "record",
+        "--title",
+        "t",
+        "--rationale",
+        "r",
+        "--commit",
+        "a" * 40,
+        "--confidence",
+        confidence,
+        str(project),
+    ]
+
+
+@pytest.mark.parametrize("bad", ["7", "-0.1", "1.5", "nan", "inf", "abc"])
+def test_record_rejects_confidence_outside_0_to_1(parser, project, capsys, bad):
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(_record_argv(project, bad))
+    assert exc.value.code == 2
+    assert "confidence must be a number from 0 to 1" in capsys.readouterr().err
+    assert not (project / ".neuralmind").exists()  # nothing recorded
+
+
+@pytest.mark.parametrize("good, stored", [("0", 0.0), ("0.4", 0.4), ("1", 1.0)])
+def test_record_accepts_confidence_in_range(parser, project, capsys, good, stored):
+    out = _run(parser, _record_argv(project, good), capsys)
+    assert "Recorded decision" in out
+    (decision,) = DecisionStore(str(project)).list_all()
+    assert decision.confidence == stored

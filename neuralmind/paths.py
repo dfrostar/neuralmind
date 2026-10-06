@@ -44,6 +44,35 @@ def _is_within(base: Path, target: str | Path) -> bool:
         return False
 
 
+class ProjectNotFoundError(FileNotFoundError):
+    """A project path that does not name an existing directory."""
+
+
+def require_project_dir(project_path: str | Path) -> Path:
+    """Return ``project_path`` resolved, or raise :class:`ProjectNotFoundError`.
+
+    The state stores create ``<project>/.neuralmind/`` with ``parents=True``,
+    so without this check a mistyped project path silently became a new
+    directory holding an empty index or decision store. Everything that opens
+    project state calls it first; ``build`` and the other flows that create
+    ``.neuralmind/`` inside an existing project are unaffected.
+    """
+    try:
+        resolved = Path(project_path).resolve()
+    except (ValueError, RuntimeError) as exc:
+        # An embedded NUL (ValueError) or, before Python 3.13, a symlink loop
+        # (RuntimeError) can't name a project either; callers handle
+        # ProjectNotFoundError, not these.
+        raise ProjectNotFoundError(f"project path is not valid: {project_path!r} ({exc})") from exc
+    if resolved.is_dir():
+        return resolved
+    shown = str(project_path)
+    if shown != str(resolved):
+        shown = f"{shown} (resolved to {resolved})"
+    problem = "is not a directory" if resolved.exists() else "does not exist"
+    raise ProjectNotFoundError(f"project path {problem}: {shown}")
+
+
 def canonical_artifact(project_path: str | Path, *parts: str) -> Path:
     """Resolve a path under the canonical ``.neuralmind/`` directory.
 

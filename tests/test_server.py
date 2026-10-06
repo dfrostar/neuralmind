@@ -449,3 +449,126 @@ def test_resolve_server_token_rejects_non_string_token(tmp_path):
     token = _resolve_server_token(True, token_file)
     assert isinstance(token, str) and token
     assert json.loads(token_file.read_text())["token"] == token
+
+
+# --------------------------------------------------------------------------- #
+# Malformed requests
+# --------------------------------------------------------------------------- #
+
+
+def _raw_request(base, method, path, *, headers=None, body=None):
+    """Send a hand-built request (headers a well-behaved client never sends).
+
+    Returns ``(status, payload)``; a handler that raises drops the connection
+    with no response, which surfaces here as ``http.client.RemoteDisconnected``.
+    """
+    host, port = base.replace("http://", "").split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=5)
+    try:
+        conn.putrequest(method, path, skip_accept_encoding=True)
+        for key, value in (headers or {}).items():
+            conn.putheader(key, value)
+        conn.endheaders(body)
+        resp = conn.getresponse()
+        raw = resp.read()
+        ctype = resp.getheader("Content-Type", "")
+        return resp.status, json.loads(raw) if ctype.startswith("application/json") else raw
+    finally:
+        conn.close()
+
+
+def _open_mind(tmp_path):
+    return SimpleNamespace(project_path=tmp_path, embedder=SimpleNamespace(nodes=[]))
+
+
+@pytest.mark.parametrize("length", ["abc", "-5", "1.5", "+3", "1_0"])
+def test_open_malformed_content_length_gets_400(tmp_path, length):
+    with _running_server(_open_mind(tmp_path)) as base:
+        status, payload = _raw_request(
+            base, "POST", "/api/open", headers={"Content-Length": length}
+        )
+        assert status == 400
+        assert payload["ok"] is False
+        assert "Content-Length" in payload["error"]
+        # Still serving after the bad request.
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+
+
+def test_open_oversized_content_length_gets_413(tmp_path):
+    from neuralmind.http_util import MAX_BODY_BYTES
+
+    with _running_server(_open_mind(tmp_path)) as base:
+        for length in (str(MAX_BODY_BYTES + 1), "99999999999999999999"):
+            status, payload = _raw_request(
+                base, "POST", "/api/open", headers={"Content-Length": length}
+            )
+            assert status == 413
+            assert "too large" in payload["error"]
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (b"[]", "JSON object"),
+        (b'"x"', "JSON object"),
+        (b"3", "JSON object"),
+        (b"{not json", "invalid JSON"),
+    ],
+)
+def test_open_bad_json_body_gets_400(tmp_path, raw, expected):
+    """A non-object body raised AttributeError in the handler (connection
+    dropped, no response); invalid JSON was silently read as {}."""
+    with _running_server(_open_mind(tmp_path)) as base:
+        status, payload = _raw_request(
+            base,
+            "POST",
+            "/api/open",
+            headers={"Content-Type": "application/json", "Content-Length": str(len(raw))},
+            body=raw,
+        )
+    assert status == 400
+    assert payload["ok"] is False and expected in payload["error"]
+
+
+@pytest.mark.parametrize(
+    "path, headers",
+    [
+        # parse_qs decodes %C3%A9 to "é"; compare_digest raised TypeError on a
+        # non-ASCII str and the connection dropped with no response.
+        ("/api/queries?token=%C3%A9", {}),
+        ("/?token=%C3%A9", {}),
+        ("/api/queries?token=%FF", {}),  # invalid UTF-8 -> U+FFFD
+        ("/api/queries", {"Cookie": b"nm_token=\xc3\xa9"}),  # latin-1 decoded header
+    ],
+)
+def test_non_ascii_token_gets_401(path, headers):
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+    with _running_server(fake_mind, auth_token="secret-token") as base:
+        status, _ = _raw_request(base, "GET", path, headers=headers)
+        assert status == 401
+        # Still serving, and the real token still works.
+        status, payload = _raw_request(base, "GET", "/api/queries?token=secret-token")
+        assert status == 200 and "queries" in payload
+
+
+def test_stalled_body_times_out(tmp_path, monkeypatch):
+    # As in the daemon: a declared body that never arrives no longer pins a
+    # handler thread; http.server closes the timed-out connection.
+    import socket
+
+    monkeypatch.setattr(_Handler, "timeout", 0.5)
+    with _running_server(_open_mind(tmp_path)) as base:
+        host, port = base.removeprefix("http://").split(":")
+        with socket.create_connection((host, int(port)), timeout=10) as sock:
+            sock.sendall(b"POST /api/open HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\n")
+            started = time.monotonic()
+            assert sock.recv(1024) == b""
+            assert time.monotonic() - started < 5
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+
+
+def test_handler_has_a_request_timeout():
+    # http.server's default is None: no timeout at all.
+    assert _Handler.timeout is not None and 0 < _Handler.timeout <= 120

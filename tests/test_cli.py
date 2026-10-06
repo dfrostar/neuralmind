@@ -1,6 +1,7 @@
 """Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -378,6 +379,22 @@ class TestCLISearch:
         assert isinstance(results, list)
         assert len(results) <= 3
 
+    @pytest.mark.parametrize("bad", ["0", "-3"])
+    def test_search_n_below_one_is_a_usage_error(self, temp_project, capsys, bad):
+        """--n 0 / --n -3 used to return 1 result (the backend floors k at 1)."""
+        from neuralmind.cli import build_parser
+
+        with pytest.raises(SystemExit) as exc:
+            build_parser().parse_args(["search", str(temp_project), "auth", f"--n={bad}"])
+        assert exc.value.code == 2
+        assert f"argument --n: must be at least 1, got {bad}" in capsys.readouterr().err
+
+    def test_search_n_one_is_accepted(self, temp_project):
+        from neuralmind.cli import build_parser
+
+        args = build_parser().parse_args(["search", str(temp_project), "auth", "--n", "1"])
+        assert args.n == 1
+
 
 class TestCLIStats:
     """Tests for CLI stats command."""
@@ -413,6 +430,22 @@ class TestCLIStats:
         assert "built" in stats
         assert isinstance(stats["built"], bool)
 
+    def test_cmd_stats_dot_names_the_directory(self, temp_project, capsys, monkeypatch):
+        """`neuralmind stats .` printed "Project: " — Path(".").name is empty."""
+        from neuralmind.cli import cmd_stats
+
+        monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+        monkeypatch.chdir(temp_project)
+        args = MagicMock()
+        args.project_path = "."
+        args.json = False
+        cmd_stats(args)
+        assert f"Project: {temp_project.resolve().name}\n" in capsys.readouterr().out
+
+        args.json = True
+        cmd_stats(args)
+        assert json.loads(capsys.readouterr().out)["project"] == temp_project.resolve().name
+
     def test_cmd_stats_node_count_matches_graph(self, temp_project, capsys):
         """Test cmd_stats reports correct node count for sample graph."""
         from neuralmind.cli import cmd_build, cmd_stats
@@ -439,6 +472,160 @@ class TestCLIStats:
 
 class TestCLIIngest:
     """Tests for `neuralmind ingest` and its `learn` alias."""
+
+    # --- a file inside the project is indexed once ------------------------ #
+
+    @staticmethod
+    def _builtin_project(tmp_path):
+        """A project built with the built-in graph, which indexes Markdown."""
+        from neuralmind import graphgen
+        from neuralmind.core import NeuralMind
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+        root = tmp_path / "proj"
+        (root / "docs").mkdir(parents=True)
+        (root / "app.py").write_text("def handler():\n    return 1\n", encoding="utf-8")
+        (root / "docs" / "guide.md").write_text(
+            "# Deployment Guide\n\nThe zebra-unicorn deployment uses blue green rollouts.\n",
+            encoding="utf-8",
+        )
+        mind = NeuralMind(str(root))
+        assert mind.build()["success"]
+        return root.resolve()
+
+    @staticmethod
+    def _ingest(path, project):
+        from neuralmind.cli import cmd_ingest
+
+        args = MagicMock()
+        args.file_path = str(path)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+        cmd_ingest(args)
+
+    @staticmethod
+    def _stored_sources(project, phrase: str) -> list[str]:
+        """``source_file`` of every stored row a search can reach.
+
+        Backend-agnostic (the default backend has no Chroma collection); the
+        index is a handful of rows, so a wide search returns all of them.
+        """
+        from neuralmind.core import NeuralMind
+
+        hits = NeuralMind(str(project)).search(phrase, n=50)
+        return [str((h.get("metadata") or {}).get("source_file", "")) for h in hits]
+
+    def test_ingest_markdown_the_graph_already_indexes_is_not_duplicated(self, tmp_path, capsys):
+        """`ingest docs/guide.md` stored a second copy under the absolute path,
+        so the same text came back twice in query context."""
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        capsys.readouterr()
+        self._ingest(root / "docs" / "guide.md", root)
+        data = json.loads(capsys.readouterr().out)
+
+        context = NeuralMind(str(root)).query("zebra-unicorn deployment rollouts").context
+        assert context.count("zebra-unicorn") == 1, context
+        assert str(root / "docs" / "guide.md") not in self._stored_sources(root, "zebra-unicorn")
+        assert data["success"] is True
+        assert data["already_indexed"] == ["docs/guide.md"]
+        assert data["total_nodes"] == 0
+
+    def test_ingest_markdown_edited_since_the_build_reports_it_needs_one(self, tmp_path, capsys):
+        """The graph holds the text as of the last build. Skipping an edited
+        file as already indexed left the edit unsearchable without a word;
+        ingesting it would sit beside the graph's old text."""
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        guide = root / "docs" / "guide.md"
+        guide.write_text(
+            "# Deployment Guide\n\nThe zebra-unicorn deployment uses canary rollouts.\n",
+            encoding="utf-8",
+        )
+        capsys.readouterr()
+        self._ingest(guide, root)
+        data = json.loads(capsys.readouterr().out)
+        assert data["needs_build"] == ["docs/guide.md"]
+        assert data["already_indexed"] == [] and data["total_nodes"] == 0
+
+        assert NeuralMind(str(root)).build()["success"]
+        capsys.readouterr()
+        self._ingest(guide, root)
+        data = json.loads(capsys.readouterr().out)
+        assert data["already_indexed"] == ["docs/guide.md"] and data["needs_build"] == []
+
+    def test_ingest_in_project_file_outside_the_graph_uses_relative_path(self, tmp_path, capsys):
+        """The graph doesn't index .txt, so it's ingested — under the
+        project-relative path every other node uses, not the absolute one."""
+        root = self._builtin_project(tmp_path)
+        notes = root / "docs" / "notes.txt"
+        notes.write_text("The quokka-lighthouse runbook covers paging.\n", encoding="utf-8")
+        capsys.readouterr()
+        self._ingest(notes, root)
+        data = json.loads(capsys.readouterr().out)
+
+        sources = self._stored_sources(root, "quokka-lighthouse runbook")
+        assert "docs/notes.txt" in sources
+        assert str(notes) not in sources
+        assert data["total_nodes"] >= 1 and data["already_indexed"] == []
+
+    def test_ingest_file_outside_the_project_keeps_absolute_path(self, tmp_path, capsys):
+        root = self._builtin_project(tmp_path)
+        outside = tmp_path / "elsewhere" / "ext.md"
+        outside.parent.mkdir()
+        outside.write_text("# External\n\nThe narwhal-teapot spec lives here.\n", encoding="utf-8")
+        capsys.readouterr()
+        self._ingest(outside, root)
+        data = json.loads(capsys.readouterr().out)
+
+        assert data["total_nodes"] >= 1
+        assert str(outside.resolve()) in self._stored_sources(root, "narwhal-teapot spec")
+
+    def test_ingest_document_api_skips_a_file_the_graph_already_indexes(self, tmp_path):
+        """The MCP tool's path (NeuralMind.ingest_document) had the same
+        double-indexing bug as `neuralmind ingest`."""
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        result = NeuralMind(str(root)).ingest_document(root / "docs" / "guide.md")
+
+        assert result["success"] is True and result["node_count"] == 0
+        assert result["already_indexed"] == ["docs/guide.md"] and result["needs_build"] == []
+        context = NeuralMind(str(root)).query("zebra-unicorn deployment rollouts").context
+        assert context.count("zebra-unicorn") == 1, context
+
+    def test_ingest_document_api_reports_a_file_edited_since_the_build(self, tmp_path):
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        mind = NeuralMind(str(root))
+        mind.query("zebra-unicorn")  # load the graph, as a cached MCP instance has
+        guide = root / "docs" / "guide.md"
+        guide.write_text("# Deployment Guide\n\nNow with canary rollouts.\n", encoding="utf-8")
+        result = mind.ingest_document(guide)
+
+        assert result["node_count"] == 0 and result["already_indexed"] == []
+        assert result["needs_build"] == ["docs/guide.md"]
+        assert "neuralmind build" in result["message"]
+
+    def test_ingest_document_api_stores_an_in_project_file_under_its_relative_path(self, tmp_path):
+        from neuralmind.core import NeuralMind
+
+        root = self._builtin_project(tmp_path)
+        notes = root / "docs" / "notes.txt"
+        notes.write_text("The quokka-lighthouse runbook covers paging.\n", encoding="utf-8")
+        result = NeuralMind(str(root)).ingest_document(notes)
+
+        assert result["node_count"] >= 1 and result["already_indexed"] == []
+        sources = self._stored_sources(root, "quokka-lighthouse runbook")
+        assert "docs/notes.txt" in sources and str(notes) not in sources
 
     def test_ingest_single_markdown(self, temp_project, capsys):
         """Ingest a single markdown file and verify node count."""
@@ -1585,6 +1772,67 @@ class TestCLIDemo:
         assert (bundle / ".neuralmind" / "graph.json").is_file()
         assert (bundle / "auth" / "handlers.py").is_file()
         assert (bundle / "billing" / "invoices.py").is_file()
+
+    @staticmethod
+    def _aged_bundle(tmp_path):
+        """A copy of the bundled fixture whose graph.json predates its sources.
+
+        That's the shape an installed wheel can have: each file keeps its own
+        mtime, and nothing orders the graph after the code it describes.
+        """
+        import shutil
+        from importlib import resources
+
+        with resources.as_file(
+            resources.files("neuralmind") / "demo_data" / "sample_project"
+        ) as src:
+            bundle = tmp_path / "pkg" / "neuralmind" / "demo_data" / "sample_project"
+            shutil.copytree(src, bundle)
+        for path in bundle.rglob("*"):
+            if path.is_file():
+                os.utime(path, (1_600_000_000, 1_600_000_000))  # 2020-09
+        graph = bundle / ".neuralmind" / "graph.json"
+        os.utime(graph, (1_500_000_000, 1_500_000_000))  # 2017-07: older than the code
+        return bundle
+
+    def test_demo_copy_is_not_stale(self, tmp_path):
+        """`neuralmind demo` reported "N files changed since the graph was
+        built" on every run: copytree kept the bundle's mtimes, and the
+        freshness check compares source mtimes with graph.json's."""
+        from neuralmind.cli import _copy_demo_fixture
+        from neuralmind.freshness import OK, graph_freshness
+
+        bundle = self._aged_bundle(tmp_path)
+        work = tmp_path / "work" / "sample_project"
+        _copy_demo_fixture(bundle, work)
+
+        report = graph_freshness(work)
+        assert report is not None
+        assert report.changed_since_graph == []
+        assert report.status == OK, report.render(str(work))
+        # The copy is a byte-for-byte working copy of the bundle.
+        assert (work / ".neuralmind" / "graph.json").read_bytes() == (
+            bundle / ".neuralmind" / "graph.json"
+        ).read_bytes()
+
+    def test_cmd_demo_does_not_report_stale_files(self, tmp_path, monkeypatch, capsys):
+        """End to end: a bundle with an old graph mtime still demos clean."""
+        from importlib import resources
+
+        from neuralmind.cli import cmd_demo
+
+        bundle = self._aged_bundle(tmp_path)
+        pkg_root = bundle.parent.parent  # .../pkg/neuralmind
+        monkeypatch.setattr(resources, "files", lambda _pkg: pkg_root)
+
+        args = MagicMock()
+        args.keep = False
+        args.quiet = False
+        cmd_demo(args)
+
+        captured = capsys.readouterr()
+        assert "NeuralMind 30-second demo" in captured.out
+        assert "changed since the graph" not in captured.out + captured.err
 
     def test_cmd_demo_runs_end_to_end(self, capsys):
         """Smoke test: demo subcommand copies the bundled fixture, builds

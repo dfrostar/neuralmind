@@ -1,9 +1,0 @@
-{
-  "src/b.ts": [
-    "src/a.ts"
-  ],
-  "src/c.ts": [
-    "src/b.ts",
-    "src/e.ts"
-  ]
-}

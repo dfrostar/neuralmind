@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -31,7 +33,15 @@ def _load(name: str, rel: str):
 precision = _load("neuralmind_precision", "neuralmind/precision.py")
 graphgen = _load("neuralmind_graphgen", "neuralmind/graphgen.py")
 
-FIXTURE = _REPO / "tests" / "fixtures" / "scip_precision"
+# A private copy: build_graph writes its extraction cache into the project it
+# builds, and building the committed fixture in place left the checkout dirty.
+_FIXTURE_COPY = tempfile.TemporaryDirectory(prefix="nm-precision-fixture-")
+FIXTURE = Path(_FIXTURE_COPY.name) / "scip_precision"
+shutil.copytree(
+    _REPO / "tests" / "fixtures" / "scip_precision",
+    FIXTURE,
+    ignore=shutil.ignore_patterns(".neuralmind"),
+)
 INDEX = FIXTURE / "index.scip"
 
 

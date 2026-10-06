@@ -650,7 +650,7 @@ neuralmind search <project_path> "<query>" [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--n` | 10 | Maximum number of results |
+| `--n` | 10 | Maximum number of results. *(v4.8.2+)* Must be at least 1; `0` or a negative value is a usage error (it used to return one result) |
 | `--json`, `-j` | False | Output results as JSON |
 
 #### Output
@@ -1673,6 +1673,14 @@ neuralmind learn --json report.md      # output stats as JSON
 - Ingested documents appear in `neuralmind query` results alongside code
 - Learning from usage (synapses) still happens automatically via the synapse layer
 - For compliance/tagged ingestion, use `neuralmind learn --type cmmc`
+- *(v4.8.2+)* `neuralmind ingest` (and the `neuralmind_ingest_document` MCP
+  tool) skips a file inside the project whose text the code graph already
+  holds, such as a Markdown file `build` indexed heading by heading, and
+  reports it as already indexed (`already_indexed` in `--json`). Ingesting it
+  again stored a second copy under its absolute path. A file edited since the
+  last build is skipped and reported under `needs_build`: run `neuralmind
+  build` to index the edit. Other files inside the project are stored under
+  their project-relative path.
 
 ---
 
@@ -2586,6 +2594,11 @@ neuralmind decisions eval [--tasks 10] [--format json|md] [--output FILE] [proje
 neuralmind decisions eval --queries FILE [--mode all|keyword|semantic|hybrid] [--limit 5] [--format json|md] [--output FILE]
 ```
 
+*(v4.8.2+)* `record --confidence` must be between 0 and 1 (`7` and `nan` used
+to be stored as 1.0). `restore` and `invalidate` exit 1 on an unknown id or a
+database error, where they printed a traceback or success. A `project_path`
+that doesn't exist exits 2 instead of creating an empty decision store.
+
 `query` takes keywords or a question, matched against decision titles and
 rationales. `--mode` *(v4.8.0+)* picks the ranking:
 
@@ -3175,7 +3188,7 @@ those figures are marked `(est)` in the human output. The JSON `dollar_savings`
 block makes this machine-readable too: `estimated: true`, a `basis` string, and
 `baseline_tokens_per_query`.
 
-Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
+Memory logging must be enabled: answer yes when an interactive `neuralmind query` first asks, or write `{"memory_logging_enabled": true}` to `~/.neuralmind/memory_consent.json`. `NEURALMIND_MEMORY` is on by default and only `0` changes anything, so setting it to `1` doesn't enable logging. *(v4.8.2)* With memory off, `feedback` says so and names the fix instead of "run a query first".
 
 ---
 
@@ -3716,7 +3729,7 @@ renewed — issue a new one.
 |------|----------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Invalid arguments |
+| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist |
 | 3 | graph.json not found |
 | 4 | Index not built (run `build` first) |
 | 5 | Database error |
