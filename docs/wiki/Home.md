@@ -55,7 +55,20 @@ fix: `hermes logs --level WARNING | grep -i neuralmind`. Fixed:
 which left it on Hermes's disabled list, so installing it again left it off;
 it now runs `hermes plugins remove neuralmind`, which drops its entries from
 `config.yaml`. Tested against Hermes v0.21.5 in live `hermes chat` sessions.
-[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490) ·
+[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490).
+
+Also in v4.10.0, opt-in for Claude Code: NeuralMind's PostToolUse hooks inject
+nothing by default, because Claude Code adds `additionalContext` next to a tool
+result instead of replacing it. With `NEURALMIND_BASH_REPLACE=1`, the Bash
+hook replaces one kind of output through `updatedToolOutput`: `pip install`
+and `neuralmind build` run on their own reach Claude with their progress lines elided and every other line verbatim,
+and a line mentioning an error, warning, failure or deprecation is never
+removed. The full output, credentials redacted, is kept under
+`.neuralmind/bash_outputs/`, and the replaced result ends with its path. Every
+other command, failed commands, and Read and Grep results are never replaced.
+The [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)
+gates it in CI on keeping the pre-registered must-keep lines. Walkthrough:
+[Trim noisy install logs](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
 
 ### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)

@@ -2,11 +2,172 @@
 
 from __future__ import annotations
 
+import pytest
+
 from neuralmind.compressors import (
     cap_search_results,
     compress_bash,
+    noisy_log_family,
     offload_if_large,
+    trim_noisy_log,
 )
+
+
+class TestNoisyLogFamily:
+    """The opt-in replacement's allowlist: decided by the command, never by size."""
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "pip install requests",
+            "pip3 install -r requirements.txt",
+            "pip3.11 install --upgrade pip",
+            "python -m pip install -e '.[dev]'",
+            "python3 -m pip install 'pydantic>=2' requests",
+            ".venv/bin/pip install flask",
+            "py -m pip install requests",
+            "PIP_NO_INPUT=1 pip install requests",
+            "cd backend && pip install -r requirements.txt",
+            "source .venv/bin/activate && pip install -e .",
+            ". venv/bin/activate; pip install x",
+            "export PIP_INDEX_URL=https://example.org/simple; pip install x",
+            "pip install x;",
+            "pip install x; DONE=1",
+            "pip install x 2>&1",
+            "pip install \\\n  requests \\\n  flask",
+            "pip install x  # make sure it's there",
+        ],
+    )
+    def test_pip_install_is_allowlisted(self, command):
+        assert noisy_log_family(command) == "pip install"
+
+    def test_neuralmind_build_is_allowlisted(self):
+        assert noisy_log_family("neuralmind build .") == "neuralmind build"
+        assert noisy_log_family("neuralmind build src/app --force") == "neuralmind build"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            # Content: the output is the answer, so it is never replaced.
+            "pip list",
+            "pip show requests",
+            "pip freeze",
+            "python -m pip --version",
+            "pytest -v",
+            "git diff",
+            "cat requirements.txt",
+            "grep -rn 'def ' src",
+            "npm run build",
+            "neuralmind query 'how does auth work'",
+            "uv pip install requests",
+            # A second program, or output that isn't (only) the install log.
+            "pip install x && pytest -q",
+            "pip install x; python -c 'import x'",
+            "pip install -e . && npm ci",
+            # Setup belongs before the install; nothing may follow it.
+            "pip install x && source verify.sh",
+            "pip install x; . ./post-install.sh",
+            "pip install x && cd ..",
+            "pip install x && pip install y",
+            "neuralmind build . && neuralmind build docs",
+            "cd a && pip install x && export DONE=1",
+            "pip install x | tail -20",
+            "pip install x 2>&1 | tail -20",
+            "pip install x > install.log",
+            "pip install pydantic>=2",  # an unquoted > is a redirect in bash
+            "pip install x 2>/dev/null",
+            "pip install x || true",
+            "pip install x &",
+            "(cd sub && pip install x)",
+            "pip install $(cat reqs.txt)",
+            "pip install `cat reqs.txt`",
+            "pip install x\npytest",
+            "time pip install x",
+            "sudo pip install x",
+            "cd backend",
+            "",
+            "pip install 'unterminated",
+        ],
+    )
+    def test_everything_else_is_not(self, command):
+        assert noisy_log_family(command) is None
+
+
+PIP_LOG = """\
+Collecting requests==2.32.3 (from -r requirements.txt (line 1))
+  Downloading requests-2.32.3-py3-none-any.whl.metadata (4.6 kB)
+Collecting idna<4,>=2.5 (from requests==2.32.3->-r requirements.txt (line 1))
+  Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Requirement already satisfied: flask in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 2)) (3.1.0)
+Requirement already satisfied: click>=8.1.3 in ./.venv/lib/python3.11/site-packages (from flask) (8.5.0)
+Requirement already satisfied: blinker>=1.9 in ./.venv/lib/python3.11/site-packages (from flask) (1.9.0)
+Downloading requests-2.32.3-py3-none-any.whl (64 kB)
+Downloading idna-3.20-py3-none-any.whl (69 kB)
+   ━━━━━━━━ 69.0/69.0 kB 2.1 MB/s  0:00:00
+WARNING: Retrying (Retry(total=4)) after connection broken: /simple/idna/
+Installing collected packages: idna, requests
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
+somepkg 1.0 requires idna<3, but you have idna 3.20 which is incompatible.
+Successfully installed idna-3.20 requests-2.32.3
+"""
+
+
+class TestTrimNoisyLog:
+    def test_elides_only_progress_lines(self):
+        trimmed, elided = trim_noisy_log(PIP_LOG, "pip install")
+        assert elided == 9
+        kept = [ln for ln in trimmed.splitlines() if not ln.startswith("[neuralmind:")]
+        original = PIP_LOG.splitlines()
+        # Everything that isn't a progress line comes back verbatim, in order.
+        assert kept == [
+            original[4],  # a requirement asked for, already installed
+            original[10],
+            original[11],
+            original[12],
+            original[13],
+            original[14],
+        ]
+
+    def test_markers_count_what_each_run_elided(self):
+        trimmed, _ = trim_noisy_log(PIP_LOG, "pip install")
+        markers = [ln for ln in trimmed.splitlines() if ln.startswith("[neuralmind:")]
+        assert markers == [
+            "[neuralmind: 4 progress lines elided: Collecting ×2, Downloading ×2]",
+            (
+                "[neuralmind: 5 progress lines elided: dependency already satisfied ×2, "
+                "Downloading ×2, progress bar ×1]"
+            ),
+        ]
+
+    def test_a_line_reporting_trouble_is_never_elided(self):
+        # Matches a progress pattern, but says something failed.
+        log = (
+            "  Building wheel for lxml (pyproject.toml): started\n"
+            "  Building wheel for lxml (pyproject.toml): finished with status 'error'\n"
+            "  Building wheel for six (pyproject.toml): started\n"
+        )
+        trimmed, elided = trim_noisy_log(log, "pip install")
+        assert "finished with status 'error'" in trimmed
+        assert elided == 0  # the error splits the run into two single lines
+
+    def test_a_single_progress_line_stays(self):
+        log = "Collecting requests\nSuccessfully installed requests-2.32.3\n"
+        assert trim_noisy_log(log, "pip install") == (log, 0)
+
+    def test_neuralmind_build_progress(self):
+        log = "".join(
+            f"Embedding {n}/40 ({n * 100 // 40}%) · 0.0s elapsed\n" for n in (1, 10, 20, 40)
+        )
+        trimmed, elided = trim_noisy_log(log, "neuralmind build")
+        assert (trimmed, elided) == (
+            "[neuralmind: 4 progress lines elided: embedding progress ×4]\n",
+            4,
+        )
+
+    def test_nothing_to_elide_returns_the_text_unchanged(self):
+        log = "Successfully installed requests-2.32.3\r\n"
+        assert trim_noisy_log(log, "pip install") == (log, 0)
+        assert trim_noisy_log("", "pip install") == ("", 0)
 
 
 class TestCompressBash:
