@@ -6216,30 +6216,30 @@ def _version_string() -> str:
     return base
 
 
-class _IntermixedArgumentParser(argparse.ArgumentParser):
-    """A subcommand parser whose positionals may follow its options.
+class _PathAfterOptionsParser(argparse.ArgumentParser):
+    """A subcommand parser whose optional project path may follow its options.
 
-    ``decisions restore <id> --commit X <path>``: before Python 3.13, argparse
-    matched an optional trailing positional (``project_path``, nargs="?")
-    together with the required one before it, giving it nothing, so the path
-    after ``--commit X`` was left over: "unrecognized arguments". Parsing
-    intermixed reads the options first, then all the positionals in order,
-    which is what 3.13 does. Only for parsers with no subcommands of their own:
-    argparse can't parse those intermixed, so they parse as usual.
+    ``decisions restore <id> --commit X <path>``: argparse matched the optional
+    trailing positional (``project_path``, nargs="?") together with the
+    required one before it, giving it nothing because an option came next, so
+    the path after ``--commit X`` was left over: "unrecognized arguments".
+    Python 3.12.7 and 3.13.1 fixed that: a positional that would match nothing
+    just before an option is left until after it. This applies the same rule on
+    the versions without the fix (3.10, 3.11, 3.12.0 to 3.12.6 and 3.13.0), so
+    every version parses these lines alike, ``--`` included. Parsing intermixed
+    would also take the path, but before 3.12.8 and 3.13.1 it ignores ``--``.
     """
 
-    _intermixing = False
+    if sys.version_info < (3, 12, 7) or sys.version_info[:3] == (3, 13, 0):
 
-    def parse_known_args(self, args=None, namespace=None):
-        if self._intermixing or self._subparsers is not None:
-            return super().parse_known_args(args, namespace)
-        # parse_known_intermixed_args calls back into parse_known_args on
-        # Python < 3.13; those inner passes take the plain path above.
-        self._intermixing = True
-        try:
-            return self.parse_known_intermixed_args(args, namespace)
-        finally:
-            self._intermixing = False
+        def _match_arguments_partial(self, actions, arg_strings_pattern):
+            result = super()._match_arguments_partial(actions, arg_strings_pattern)
+            # One pattern group per positional, so the match ends at the sum.
+            end = sum(result)
+            if end < len(arg_strings_pattern) and arg_strings_pattern[end] == "O":
+                while result and not result[-1]:
+                    result.pop()
+            return result
 
 
 def _existing_project_dir(value: str) -> str:
@@ -7038,7 +7038,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Inspect, reset, export, or import learned synapse memory by namespace",
     )
     memory_sub = memory_p.add_subparsers(
-        dest="memory_cmd", required=True, parser_class=_IntermixedArgumentParser
+        dest="memory_cmd", required=True, parser_class=_PathAfterOptionsParser
     )
 
     # feedback command — explicit good/bad adjustment of last-reinforced edges
@@ -7152,10 +7152,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Persistent decision memory with commit-level invalidation",
     )
     decisions_sub = decisions_p.add_subparsers(
-        dest="decisions_cmd", required=True, parser_class=_IntermixedArgumentParser
+        dest="decisions_cmd", required=True, parser_class=_PathAfterOptionsParser
     )
 
-    d_record = decisions_sub.add_parser("record", help="Store an architecture decision")
+    # A list option takes every value up to the next option, path included.
+    list_then_path = (
+        "A list option such as --evidence takes every value up to the next option, "
+        "so put -- between it and a project path that follows: "
+        "--evidence proof.md -- PATH"
+    )
+    d_record = decisions_sub.add_parser(
+        "record", help="Store an architecture decision", epilog=list_then_path
+    )
     d_record.add_argument("--title", required=True, help="Decision title")
     d_record.add_argument("--rationale", required=True, help="Why this decision was made")
     d_record.add_argument("--commit", help="Git commit SHA (defaults to HEAD)")
@@ -7195,7 +7203,9 @@ def build_parser() -> argparse.ArgumentParser:
     d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
-    d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
+    d_amend = decisions_sub.add_parser(
+        "amend", help="Add to existing decision", epilog=list_then_path
+    )
     d_amend.add_argument("decision_id", help="Decision ID to amend")
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")

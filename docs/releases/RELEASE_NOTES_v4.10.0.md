@@ -39,7 +39,7 @@ Measured on this repository's own index (6,894 nodes) and synapse store, with
 
 | | On-topic prompts with recall | Off-topic prompts with recall |
 |---|---|---|
-| v4.9.1 and earlier | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
+| v4.9.2 and earlier | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
 | Seeding fix only | 15 of 15 | 15 of 15 |
 | **v4.10.0** (seeding fix + gate at 0.35) | **15 of 15** | **1 of 15** |
 
@@ -350,4 +350,4 @@ recall on for every prompt.
 - CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
   [`install-hooks`](../wiki/CLI-Reference.md#install-hooks),
   [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
-- Previous release: [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)
+- Previous release: [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)

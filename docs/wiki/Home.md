@@ -54,12 +54,37 @@ On a freshly built project it used to list doc headings' neighbours as node
 ids instead; on fresh indexes it now names a file that answers the prompt for
 14 of 14 Click prompts and 14 of 15 held-out prompts about this repository
 (v4.9.2: 3 and 4), and `python -m tests.benchmark.prompt_recall` reproduces
-that. After Claude Code compacts a session, the session also gets its own first prompt,
-latest prompts and edited files back, verbatim, alongside the compaction
-summary. Whether these changes improve answers isn't measured.
+that. After Claude Code compacts a session, the session also gets its own
+first prompt, latest prompts and edited files back, verbatim, alongside the
+compaction summary. Whether these changes improve answers isn't measured.
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [`NEURALMIND_RECALL_MIN_SIMILARITY`](CLI-Reference#environment-variables) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
+
+### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
+
+v4.9.1 let six `decisions` and `memory` subcommands take the project path
+after their options, but on Python 3.10, 3.11, 3.12 before 3.12.8 and 3.13.0
+`--` could stop ending their options: `decisions query -- -q .` failed. `--` works again, the path can still follow the options, and every
+supported Python parses these lines the same way. A path after a list option
+such as `--evidence` needs `--` before it, which `record --help` and
+`amend --help` now say.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.2.md).
+
+### v4.9.1 — The last four fixes from the v4.8.2 bug hunt (October 2026)
+
+`neuralmind feedback good|bad` with query memory off no longer adjusts an
+older query recorded before memory went off; it exits 1, names that query and
+says how to turn memory back on. The "LTP-protected" edge count in `status`,
+`synapse stats` and the dashboard uses decay's own rule, so expect a lower
+number. `neuralmind validate` stops reporting the prose path's query nodes,
+now written `query:<term>`, as stale. And the `decisions` and `memory`
+subcommands accept the project path after their options (`decisions restore
+<id> --commit SHA <path>`) on every supported Python; on 3.10, 3.11, 3.12
+before 3.12.7 and 3.13.0 that failed. (On those versions, and on 3.12.7, `--`
+could stop ending their options; v4.9.2 fixes that.) None of the four lose
+data.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md).
 
 ### v4.9.0 — Hermes-Agent gets NeuralMind's context in every turn, without a tool call (October 2026)
 
