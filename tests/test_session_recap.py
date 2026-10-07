@@ -128,39 +128,35 @@ def test_compaction_gives_the_session_its_own_record_back(tmp_path):
     assert "uploader" not in recap
 
 
-def test_compaction_without_a_precompact_marker_still_uses_own_record(tmp_path):
+def test_compaction_needs_no_pre_compact_hook(tmp_path):
     _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
     assert "migrate the scheduler" in _start(tmp_path, "now", source="compact")
 
 
-def test_compaction_under_a_new_session_id_recalls_the_marked_session(tmp_path):
+def test_compaction_under_a_new_session_id_recalls_nothing(tmp_path):
+    # Nothing in the hook payloads links the two ids, so no guess: even the
+    # one session that just compacted isn't recalled under another id.
     _prompt(tmp_path, "before", "migrate the scheduler to asyncio")
     _compact(tmp_path, "before")
-    assert "migrate the scheduler" in _start(tmp_path, "after", source="compact")
+    assert _start(tmp_path, "after", source="compact") == ""
 
 
-def test_compaction_under_a_new_id_never_recalls_an_unmarked_session(tmp_path):
-    # The previous session wasn't the one compacted: it's not this session's.
+def test_compaction_never_recalls_the_previous_session(tmp_path):
+    # A compacted session has no record of its own yet: the previous
+    # session's record is not this session's.
     _previous_session(tmp_path)
     assert _start(tmp_path, "after", source="compact") == ""
 
 
-def test_compaction_marker_expires(tmp_path):
-    _prompt(tmp_path, "before", "migrate the scheduler to asyncio")
-    _compact(tmp_path, "before")
-    later = time.time() + session_recap.COMPACT_WINDOW_SECONDS + 60
-    assert session_recap.recap_for_session_start(tmp_path, "after", "compact", now=later) == ""
-
-
-def test_a_session_with_its_own_record_never_borrows_another(tmp_path):
-    _prompt(tmp_path, "other", "someone else's task")
-    _compact(tmp_path, "other")
-    # "now" has a record file, holding only its own compaction marker.
+def test_pre_compact_writes_nothing_to_the_record(tmp_path):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    record = tmp_path / ".neuralmind" / "recaps" / "now.jsonl"
+    before = record.read_text()
     _compact(tmp_path, "now")
-    assert _start(tmp_path, "now", source="compact") == ""
+    assert record.read_text() == before
 
 
-def test_compaction_marker_is_not_activity(tmp_path):
+def test_compacting_a_session_is_not_activity(tmp_path):
     # Compacting an older session must not make it "where we left off".
     _prompt(tmp_path, "older", "older task")
     _prompt(tmp_path, "newer", "newer task")
@@ -171,7 +167,6 @@ def test_compaction_marker_is_not_activity(tmp_path):
         for row in rows:
             row["ts"] = time.time() - seconds_ago
         record.write_text("".join(json.dumps(r) + "\n" for r in rows))
-    # The marker is now the newest line in either record.
     _compact(tmp_path, "older")
     assert '"newer task"' in _start(tmp_path, "fresh")
 
@@ -181,13 +176,6 @@ def test_compaction_recap_respects_the_opt_out(tmp_path, monkeypatch):
     _compact(tmp_path, "now")
     monkeypatch.setenv("NEURALMIND_SESSION_RECAP", "0")
     assert _start(tmp_path, "now", source="compact") == ""
-
-
-def test_no_learn_writes_no_compaction_marker(tmp_path, monkeypatch):
-    _prompt(tmp_path, "before", "migrate the scheduler to asyncio")
-    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
-    _compact(tmp_path, "before")
-    assert '"compact"' not in (tmp_path / ".neuralmind" / "recaps" / "before.jsonl").read_text()
 
 
 def test_clear_gets_recap(tmp_path):
@@ -504,142 +492,6 @@ def test_recap_is_chosen_by_recorded_activity_not_mtime(tmp_path):
     )
     _age(recaps / "fresh.jsonl", 600)
     assert '"the session that really ran last"' in _start(tmp_path, "new")
-
-
-def test_compaction_under_a_new_id_with_two_marked_sessions_recalls_neither(tmp_path):
-    # Nothing links the new id to either marked session, so neither's prompts
-    # are injected as this session's own.
-    _prompt(tmp_path, "a", "session a's task")
-    _prompt(tmp_path, "b", "session b's task")
-    _compact(tmp_path, "a")
-    _compact(tmp_path, "b")
-    assert _start(tmp_path, "a-after", source="compact") == ""
-
-
-def test_a_second_compaction_under_another_new_id_still_recalls(tmp_path):
-    # One session, two compactions inside the window, a new id each time:
-    # a -> b recalls a and spends a's marker, so b -> c finds only b's.
-    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
-    _compact(tmp_path, "a")
-    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
-    _prompt(tmp_path, "b", "keep the old sync API as a wrapper")
-    _compact(tmp_path, "b")
-    recap = _start(tmp_path, "c", source="compact")
-    assert "keep the old sync API" in recap
-    assert "migrate the scheduler" not in recap
-
-
-def test_a_second_compaction_before_any_prompt_still_recalls(tmp_path):
-    # a -> b, then b compacts before recording anything: b's record holds
-    # only its marker, so b's record is still the one it took back from a.
-    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
-    _compact(tmp_path, "a")
-    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
-    _compact(tmp_path, "b")
-    # One compaction, one SessionStart: here it comes back under a new id.
-    # (Back under its own id instead is the marker-only test below.)
-    assert "migrate the scheduler" in _start(tmp_path, "c", source="compact")
-    # And once more, c -> d, still before any prompt.
-    _compact(tmp_path, "c")
-    assert "migrate the scheduler" in _start(tmp_path, "d", source="compact")
-
-
-def test_a_same_id_recovery_spends_its_marker(tmp_path):
-    # a comes back under its own id; b then compacts and comes back under a
-    # new id: a's marker mustn't make b's compaction look ambiguous.
-    _prompt(tmp_path, "a", "session a's task")
-    _compact(tmp_path, "a")
-    assert "session a's task" in _start(tmp_path, "a", source="compact")
-    _prompt(tmp_path, "b", "session b's task")
-    _compact(tmp_path, "b")
-    recap = _start(tmp_path, "b-after", source="compact")
-    assert "session b's task" in recap
-    assert "session a's task" not in recap
-    # a still gets its own record back after the spend.
-    assert "session a's task" in _start(tmp_path, "a", source="compact")
-
-
-@pytest.mark.parametrize("recovered_after, compacted_again_after", [(0.0, 0.0), (5.0, 0.0)])
-def test_marker_state_follows_append_order_not_timestamps(
-    tmp_path, recovered_after, compacted_again_after
-):
-    # a came back under its own id, then compacted again: on a coarse clock
-    # the two entries can share a timestamp, or the clock can step back.
-    t = time.time() - 300
-    recaps = tmp_path / ".neuralmind" / "recaps"
-    recaps.mkdir()
-    rows = [
-        {"kind": "prompt", "text": "session a's task", "ts": t - 10},
-        {"kind": "compact", "ts": t},
-        {"kind": "recovered", "by": "a", "ts": t + recovered_after},
-        {"kind": "compact", "ts": t + compacted_again_after},
-    ]
-    (recaps / "a.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
-    recap = session_recap.recap_for_session_start(tmp_path, "b", "compact", now=t + 100)
-    assert "session a's task" in recap
-
-
-def test_a_spent_marker_is_never_live_however_close_now_is_to_the_epoch(tmp_path):
-    _prompt(tmp_path, "a", "session a's task")
-    recaps = tmp_path / ".neuralmind" / "recaps"
-    with (recaps / "a.jsonl").open("a") as fh:
-        fh.write(json.dumps({"kind": "compact", "ts": 50.0}) + "\n")
-        fh.write(json.dumps({"kind": "recovered", "by": "a", "ts": 60.0}) + "\n")
-    assert session_recap.recap_for_session_start(tmp_path, "b", "compact", now=100.0) == ""
-
-
-def test_a_marker_only_session_back_under_its_own_id_spends_its_marker(tmp_path):
-    # a -> b; b compacts before its first prompt and comes back as b; then x
-    # compacts and comes back under a new id: b's marker mustn't block x.
-    _prompt(tmp_path, "a", "session a's task")
-    _compact(tmp_path, "a")
-    assert "session a's task" in _start(tmp_path, "b", source="compact")
-    _compact(tmp_path, "b")
-    assert "session a's task" in _start(tmp_path, "b", source="compact")
-    _prompt(tmp_path, "x", "session x's task")
-    _compact(tmp_path, "x")
-    recap = _start(tmp_path, "x-after", source="compact")
-    assert "session x's task" in recap
-    assert "session a's task" not in recap
-    # b still gets a's record back after spending its own marker.
-    assert "session a's task" in _start(tmp_path, "b", source="compact")
-
-
-def test_a_marker_only_session_that_took_nothing_back_recalls_nothing(tmp_path):
-    _compact(tmp_path, "b")
-    assert _start(tmp_path, "c", source="compact") == ""
-
-
-def test_a_spent_marker_leaves_another_sessions_compaction_unambiguous(tmp_path):
-    _prompt(tmp_path, "a", "session a's task")
-    _compact(tmp_path, "a")
-    assert "session a's task" in _start(tmp_path, "a-after", source="compact")
-    _prompt(tmp_path, "x", "session x's task")
-    _compact(tmp_path, "x")
-    recap = _start(tmp_path, "x-after", source="compact")
-    assert "session x's task" in recap
-    assert "session a's task" not in recap
-
-
-def test_a_repeated_session_start_gets_the_same_record(tmp_path):
-    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
-    _compact(tmp_path, "a")
-    first = _start(tmp_path, "b", source="compact")
-    assert "migrate the scheduler" in first
-    assert _start(tmp_path, "b", source="compact") == first
-
-
-def test_no_learn_has_no_new_id_fallback(tmp_path, monkeypatch):
-    # Under NO_LEARN this session's PreCompact wrote no marker, so the one
-    # marked record ("a") may be another session's: recall nothing.
-    _prompt(tmp_path, "a", "session a's task")
-    _compact(tmp_path, "a")
-    record = tmp_path / ".neuralmind" / "recaps" / "a.jsonl"
-    before = record.read_text()
-    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
-    _compact(tmp_path, "b")
-    assert _start(tmp_path, "b-after", source="compact") == ""
-    assert record.read_text() == before
 
 
 def test_no_learn_still_gives_a_session_its_own_record(tmp_path, monkeypatch):

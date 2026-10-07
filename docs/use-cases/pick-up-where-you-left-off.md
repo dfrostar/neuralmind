@@ -153,8 +153,9 @@ credential-redacted) and the files edited, alongside Claude Code's summary rathe
 it. It restates what you already asked for in this session; it adds no new
 instructions.
 
-It needs no extra setup: `PreCompact` and `SessionStart` are already among the
-hooks `install-hooks` registers. Hermes has no compaction event, so this is
+It needs no extra setup: `SessionStart` is already among the hooks
+`install-hooks` registers. The record is found by the session's own id, so a
+session that comes back under a different id gets none rather than a guess. Hermes has no compaction event, so this is
 Claude Code only.
 
 ## Settings

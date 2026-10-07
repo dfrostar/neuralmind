@@ -29,9 +29,8 @@ record back instead. Claude Code's compaction summary is written by the model
 and paraphrases: the task as the user first stated it and the exact paths of
 the files already edited are what it tends to lose. The record keeps each
 prompt as written (secrets redacted, up to ``PROMPT_CHARS`` characters) and
-each edited path. ``PreCompact`` marks the session it compacts, so if the
-session comes back under a new ``session_id``, the one session compacted in
-the last ``COMPACT_WINDOW_SECONDS`` is recalled, and its marker is spent.
+each edited path. It is found by the session's own ``session_id``: a session
+that comes back under a different id gets no recap rather than a guess.
 
 Toggles: ``NEURALMIND_SESSION_RECAP=0`` switches off recording and injection.
 ``NEURALMIND_NO_LEARN=1`` stops recording (nothing is written) but still
@@ -67,9 +66,6 @@ MAX_FILES = 12  # most recently edited first
 # already has it. Compact is handled on its own: it recalls this session.
 INJECT_SOURCES = ("startup", "clear")
 COMPACT_SOURCE = "compact"
-# How recently PreCompact must have marked a session for a SessionStart that
-# arrives under a different session_id to recall it.
-COMPACT_WINDOW_SECONDS = 15 * 60
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 # Control characters, including line and paragraph separators: a prompt or a
@@ -192,19 +188,14 @@ def _append(project_path: str | Path, session_id: str, entry: dict) -> None:
     directory = _recaps_dir(project_path, create=True)
     if directory is None:
         return
-    entry["ts"] = time.time()
-    _write_entry(directory / f"{_file_stem(session_id)}.jsonl", entry)
-
-
-def _write_entry(target: Path, entry: dict, create: bool = True) -> None:
+    target = directory / f"{_file_stem(session_id)}.jsonl"
     if target.is_symlink():
         return
+    entry["ts"] = time.time()
     line = json.dumps(entry, ensure_ascii=False) + "\n"
     # O_NOFOLLOW (where the OS has it) closes the gap between the check above
     # and the open: a symlink swapped in meanwhile fails the open.
-    flags = os.O_WRONLY | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
-    if create:
-        flags |= os.O_CREAT
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
     with os.fdopen(os.open(target, flags, 0o600), "a", encoding="utf-8") as fh:
         fh.write(line)
 
@@ -237,29 +228,11 @@ def record_edit(project_path: str | Path, session_id: str, file_path: str) -> No
         pass
 
 
-def record_compaction(project_path: str | Path, session_id: str) -> None:
-    """PreCompact: mark the session about to be compacted."""
-    try:
-        if not (session_id and _recording_enabled()):
-            return
-        _append(project_path, session_id, {"kind": "compact"})
-    except Exception:
-        pass
-
-
-def _load(path: Path, keep_empty: bool = False) -> dict | None:
-    """Fold one session's JSONL into the fields a recap shows.
-
-    None when it holds no prompt or edit, unless ``keep_empty``: a record
-    holding only compaction entries still links sessions (see
-    ``compaction_recap``).
-    """
+def _load(path: Path) -> dict | None:
+    """Fold one session's JSONL into the fields a recap shows."""
     prompts: list[str] = []
     files: list[str] = []
     last_ts = 0.0
-    compacted_ts = 0.0
-    marker_active = False
-    taken_by: set[str] = set()
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
@@ -272,22 +245,6 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
             ts = float(entry.get("ts") or 0)
         except (ValueError, TypeError):  # JSONDecodeError is a ValueError
             continue
-        # Compaction entries go by the order they were appended, not their
-        # timestamps, which can tie on a coarse clock or step back; the
-        # timestamp only dates a marker for the expiry window.
-        if entry.get("kind") == "compact":
-            # A marker, not activity: it must not make an old session look
-            # like the one the user was last working in.
-            compacted_ts, marker_active = ts, True
-            continue
-        if entry.get("kind") == "recovered":
-            # A session took this record back after its compaction (see
-            # compaction_recap), spending the marker. Not activity either.
-            marker_active = False
-            by = entry.get("by")
-            if isinstance(by, str) and by:
-                taken_by.add(by)
-            continue
         last_ts = max(last_ts, ts)
         if entry.get("kind") == "prompt" and isinstance(entry.get("text"), str):
             prompts.append(entry["text"])
@@ -296,19 +253,9 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
             if entry["path"] in files:
                 files.remove(entry["path"])
             files.append(entry["path"])
-    if not (prompts or files or keep_empty):
+    if not (prompts or files):
         return None
-    if not marker_active:
-        # No marker, or one already spent: a later compaction of the session
-        # that took this record back must find only its own marker.
-        compacted_ts = 0.0
-    return {
-        "prompts": prompts,
-        "files": files,
-        "last_ts": last_ts,
-        "compacted_ts": compacted_ts,
-        "taken_by": taken_by,
-    }
+    return {"prompts": prompts, "files": files, "last_ts": last_ts}
 
 
 def _prune(directory: Path, now: float | None = None) -> None:
@@ -432,108 +379,23 @@ def latest_recap(
         return ""
 
 
-def _content(record: dict) -> dict | None:
-    return record if record["prompts"] or record["files"] else None
-
-
-def _taken_back(records: dict[str, tuple[Path, dict]], stem: str) -> dict | None:
-    """The record ``stem``'s session took back after a compaction, if any.
-
-    Follows the ``recovered`` links back to the first record that holds a
-    prompt or edit: a session that compacted again before its first prompt
-    holds only markers itself.
-    """
-    seen = set()
-    while stem not in seen:
-        seen.add(stem)
-        # Another session's record this one took back; its own spent marker
-        # (a session back under its own id) names itself and isn't a link.
-        stem = next((s for s, (_, r) in records.items() if s != stem and stem in r["taken_by"]), "")
-        if not stem:
-            return None
-        found = _content(records[stem][1])
-        if found:
-            return found
-    return None
-
-
-def compaction_recap(
-    project_path: str | Path,
-    session_id: str,
-    now: float | None = None,
-) -> str:
+def compaction_recap(project_path: str | Path, session_id: str) -> str:
     """This session's own record after a compaction, or "" when there is none.
 
-    The record kept under ``session_id`` when there is one. Otherwise, in case
-    the session came back from compaction under a new id, the one record
-    PreCompact marked within ``COMPACT_WINDOW_SECONDS``. When two sessions
-    compacted in that window, nothing links the new id to either, so there is
-    no recap rather than another session's. A session that has a record file
-    of its own never borrows another's, even when its own holds nothing to
-    show, unless it took one back after an earlier compaction.
-
-    Recalling a marked record spends its marker (a ``recovered`` entry naming
-    the id that took it back, its own included), so when the same session
-    compacts again under yet another id within the window, only its newest
-    marker counts, and a session back under its own id doesn't make another
-    session's compaction look ambiguous. Until a session records
-    a prompt or edit of its own, its record is the one it took back: the new
-    id gets it again if SessionStart repeats, and so does a later id if the
-    session compacts again before its first prompt.
-
-    With recording off (``NEURALMIND_NO_LEARN=1``) there is no new-id
-    fallback: this session's own PreCompact wrote no marker, so the one
-    marked record could be another session's.
+    Only the record kept under ``session_id``. A session that comes back from
+    compaction under a different id gets no recap: nothing in the hook
+    payloads links the two ids, and a guess could hand it another session's
+    prompts. Read-only.
     """
     try:
         directory = _recaps_dir(project_path)
         if directory is None or not session_id:
             return ""
-        stem = _file_stem(session_id)
-        own = directory / f"{stem}.jsonl"
-        if own.is_symlink():
+        own = directory / f"{_file_stem(session_id)}.jsonl"
+        if own.is_symlink() or not own.is_file():
             return ""
-        own_record = _load(own, keep_empty=True) if own.exists() else None
-        if own_record and own_record["compacted_ts"] and _recording_enabled():
-            # Back under its own id: spend its marker too, or it would make
-            # another session's new-id compaction look ambiguous.
-            try:
-                _write_entry(
-                    own, {"kind": "recovered", "by": stem, "ts": time.time()}, create=False
-                )
-            except OSError:
-                pass
-        record = _content(own_record) if own_record else None
-        if record:
-            return render_compaction_recap(record)
-        records = {}
-        for path in _records(directory):
-            loaded = _load(path, keep_empty=True)
-            if loaded:
-                records[path.stem] = (path, loaded)
-        taken = _taken_back(records, stem)
-        if taken or own.exists():
-            return render_compaction_recap(taken) if taken else ""
-        if not _recording_enabled():
-            return ""
-        now = time.time() if now is None else now
-        marked = [
-            (path, loaded)
-            for path, loaded in records.values()
-            # 0.0 means no live marker, never "marked at the epoch".
-            if loaded["compacted_ts"] and now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS
-        ]
-        if len(marked) != 1:
-            return ""
-        path, marked_record = marked[0]
-        record = _content(marked_record) or _taken_back(records, path.stem)
-        if not record:
-            return ""
-        try:
-            _write_entry(path, {"kind": "recovered", "by": stem, "ts": now}, create=False)
-        except OSError:
-            pass  # pruned meanwhile: the recap below still stands
-        return render_compaction_recap(record)
+        record = _load(own)
+        return render_compaction_recap(record) if record else ""
     except Exception:
         return ""
 
@@ -549,7 +411,7 @@ def recap_for_session_start(
         if not recap_enabled():
             return ""
         if source == COMPACT_SOURCE:
-            return compaction_recap(project_path, session_id, now=now)
+            return compaction_recap(project_path, session_id)
         if source not in INJECT_SOURCES:
             return ""
         directory = _recaps_dir(project_path)

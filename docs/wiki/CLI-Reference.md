@@ -2161,14 +2161,10 @@ same block.
 session its **own** record back instead, headed "NeuralMind pre-compaction
 record": the same fields, prompts as written up to 200 characters. Claude Code's compaction summary is
 written by the model and paraphrases, and the task as you first stated it and
-the exact paths already edited are what it tends to drop. `PreCompact` marks
-the session it compacts, so if the session comes back under a new
-`session_id`, the one marked in the last 15 minutes is recalled, if only one
-was; with two, neither is. Recalling it spends its marker, so the same session
-compacting again under another new id still gets its record. A session that
-wasn't compacted is never recalled this way, and under `NEURALMIND_NO_LEARN=1`
-(no marker written) there is no new-id fallback. `NEURALMIND_SESSION_RECAP=0`
-turns this off too.
+the exact paths already edited are what it tends to drop. The record is found
+by the session's own `session_id`: a session that comes back under a different
+id gets none, rather than a guess that could be another session's.
+`NEURALMIND_SESSION_RECAP=0` turns this off too.
 
 ```bash
 neuralmind recap [project_path] [--clear]
@@ -2235,7 +2231,7 @@ NeuralMind block, leaving any user hooks untouched):
 | `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing by default ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); opt-in `NEURALMIND_BASH_REPLACE=1` *(v4.10.0)* trims the progress lines of `pip install` and `neuralmind build` output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one; after a compaction, the session's own record *(v4.11.0)* |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`, or nothing when the prompt matches the code poorly *(v4.11.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
-| `PreCompact` *(v0.4.0)* | `normalize_hubs()`; compaction marker *(v4.11.0)* | Prevent runaway hub nodes before context compaction; mark the session so the `SessionStart` after it gets its record back |
+| `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 

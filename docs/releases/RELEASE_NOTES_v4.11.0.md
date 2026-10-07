@@ -19,9 +19,9 @@ NeuralMind's Claude Code hooks:
    its own record back: its prompts as written, up to 200 characters each, and
    the files it edited.
 
-No new hooks and no re-install: both changes ride on the `UserPromptSubmit`,
-`PreCompact` and `SessionStart` hooks NeuralMind already registers. The hook
-block's version is unchanged.
+No new hooks and no re-install: both changes ride on the `UserPromptSubmit`
+and `SessionStart` hooks NeuralMind already registers. The hook block's version
+is unchanged.
 
 ## Prompt recall that knows when to add nothing
 
@@ -110,26 +110,21 @@ and which files have already been changed. NeuralMind already had both in
 `.neuralmind/recaps/`, each prompt as written up to 200 characters. Now the
 session gets them back.
 
-- **`PreCompact`** marks the session it's about to compact.
-- **`SessionStart`** with source `compact` injects that session's own record.
-  It's the same fields as the v4.8.0 recap, under a different heading.
-- **If the session comes back under a new `session_id`**, which Claude Code's
-  documentation doesn't rule out, the session marked within the last 15
-  minutes is recalled, if only one was. When two sessions in the project
-  compacted in that window, nothing says which one came back, so neither is
-  recalled. A session that already came back, under its own id or a new one,
-  has spent its marker: it doesn't make a later compaction look ambiguous, and
-  the same session compacting again under yet another id within the window
-  still gets its record, even if it compacts again before its first prompt. A session that wasn't compacted is never recalled
-  this way, and a session with a record of its own never borrows another's.
-- **The marker isn't activity.** Compacting an old session doesn't make it the
-  "previous session" a fresh start recaps.
+- **`SessionStart`** with source `compact` injects that session's own record,
+  found by its `session_id`. It's the same fields as the v4.8.0 recap, under a
+  different heading.
+- **Only its own.** If the session came back under a different `session_id`
+  (Claude Code's documentation doesn't say whether that can happen), it gets
+  no record: nothing in the hook payloads links the two ids, and a guess could
+  hand it another session's prompts. The previous session's recap isn't
+  injected either.
+- **Compacting isn't activity.** Nothing is written at compaction, so
+  compacting an old session doesn't make it the "previous session" a fresh
+  start recaps.
 
 `NEURALMIND_SESSION_RECAP=0` turns this off along with the recap.
-`NEURALMIND_NO_LEARN=1` records nothing, marker included, so a session run
-with it gets back only what was recorded under its own id before it was set.
-It never falls back to a marked record under a new id: with its own marker
-missing, that record could be another session's.
+`NEURALMIND_NO_LEARN=1` records nothing, so a session run with it gets back only
+what was recorded before it was set.
 
 ## What the agent actually sees
 
@@ -179,7 +174,7 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 | `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | Prompt-time recall adds nothing below this best-match similarity. `0` never abstains |
 | `NEURALMIND_SYNAPSE_INJECT` | on | `0` turns prompt-time recall off entirely, as before |
 | `NEURALMIND_SESSION_RECAP` | on | `0` stops the recap and the pre-compaction record |
-| `NEURALMIND_NO_LEARN` | off | `1` logs no recall outcomes and writes no compaction marker |
+| `NEURALMIND_NO_LEARN` | off | `1` logs no recall outcomes, and records no prompts or edits for the pre-compaction record (as for the recap) |
 
 ## Not measured
 
@@ -191,7 +186,8 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 - **The compaction record's effect.** We haven't measured how often an agent
   repeats work or loses the original task after compaction, with or without the
   record. Whether Claude Code keeps the `session_id` across a compaction isn't
-  documented, so both paths are handled and tested.
+  documented either; if it doesn't, a compacted session gets no record rather
+  than a guessed one.
 
 ## Upgrading
 
