@@ -2316,13 +2316,22 @@ a user plugin only once it's enabled, but only in a home Hermes has already
 set up (one with a `config.yaml`, `.env` or `state.db`); anywhere else it
 tells you to enable the plugin once Hermes is set up. Re-running updates the
 plugin in place and keeps the project pinned earlier unless you pass a new
-path or `--unpin`. It doesn't re-enable a plugin you turned off with
-`hermes plugins disable neuralmind`: it says so and leaves it disabled.
+path or `--unpin`. A re-run doesn't re-enable a plugin you turned off with
+`hermes plugins disable neuralmind`: it says so and leaves it disabled. *(v4.10.0+)* A
+fresh install (no `plugins/neuralmind` yet) enables it whatever an earlier one left
+on Hermes's disabled list.
+
+*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
+repository: `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
+For a plugin Hermes installed (it keeps an install record in
+`plugins/.install-metadata.json`), this command writes only `config.json` and
+prints `✓ NeuralMind plugin configured at …`: the code is Hermes's to update,
+with `hermes plugins update neuralmind`.
 
 | File | Contents |
 |------|----------|
-| `__init__.py` | The plugin: a stdlib-only shim that runs `python -m neuralmind _hook <action>` |
-| `plugin.yaml` | The manifest Hermes discovers it by; declares `pre_llm_call` and `post_tool_call` |
+| `__init__.py` | The plugin: a stdlib-only shim that runs `neuralmind _hook <action>` |
+| `plugin.yaml` | The manifest Hermes discovers it by, copied from `neuralmind/hermes_plugin/`; declares `pre_llm_call` and `post_tool_call`, and *(v4.10.0+)* `requires_hermes: ">=0.21.5"` |
 | `config.json` | The Python interpreter that ran the install, and the project, if one was given |
 
 It registers two Hermes hooks:
@@ -2347,7 +2356,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
-| `--uninstall` | False | Run `hermes plugins disable neuralmind` and remove the plugin directory; if `plugins/neuralmind` is a symlink, remove the link, never its target |
+| `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
@@ -2385,9 +2394,10 @@ neuralmind install-hermes-plugin /path/to/project
 # A Hermes home other than the default
 neuralmind install-hermes-plugin /path/to/project --hermes-home /opt/hermes
 
-# Disable and remove it
+# Remove it, and its entries in Hermes's config
 neuralmind install-hermes-plugin --uninstall
 # → ✓ Removed the NeuralMind plugin from /Users/you/.hermes/plugins/neuralmind
+# →   Hermes's config no longer lists it.
 ```
 
 Start a new Hermes session, or restart the gateway, to load the plugin. If the
@@ -2398,8 +2408,12 @@ writes the plugin but doesn't enable it: it prints
 `⚠ … has no Hermes config yet, so the plugin isn't enabled` and asks you to
 run `hermes plugins enable neuralmind` once Hermes is set up. If `hermes`
 isn't on `PATH`, or `hermes plugins enable neuralmind` fails, it says so and
-asks you to run that command yourself; `--uninstall` does the same for
-`hermes plugins disable neuralmind`. With no Hermes home it prints
+asks you to run that command yourself. *(v4.10.0+)* Whenever the plugin doesn't
+end up enabled, the last line reads `Once it's enabled, each Hermes turn gets …`.
+Without `hermes` on `PATH`, `--uninstall` still removes the plugin directory
+and says that `config.yaml` still names the plugin; if
+`hermes plugins remove neuralmind` fails, it disables the plugin instead and
+says so. With no Hermes home it prints
 `✗ No Hermes home at …` and exits `1`. It won't write through a symlinked
 `plugins/neuralmind`: it prints `✗ … is a symlink; remove it, then install again.`
 and exits `1`. `--uninstall` removes such a link, never its target.
@@ -2442,9 +2456,11 @@ earlier pin; `--unpin` clears it.
 #### Notes
 
 - **Same behavior and switches as the hooks.** Each action runs
-  `python -m neuralmind _hook <action>` with the payload Claude Code would
-  send, using the interpreter recorded in `config.json`, with Hermes's own
-  Python settings (`PYTHONPATH`, `VIRTUAL_ENV` …) left out of its environment.
+  `neuralmind _hook <action>` with the payload Claude Code would send: through
+  the interpreter recorded in `config.json`, else *(v4.10.0+)* the `neuralmind`
+  command on Hermes's PATH (absolute PATH entries only, so a repository can't supply its
+  own), else Hermes's own Python. Hermes's own Python settings (`PYTHONPATH`,
+  `VIRTUAL_ENV` …) are left out of its environment.
   NeuralMind doesn't have to be installed in Hermes's environment, and
   `NEURALMIND_BYPASS`, `NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP`
   and the rest apply as they do under Claude Code, set in the environment
@@ -2457,6 +2473,10 @@ earlier pin; `--unpin` clears it.
   `NEURALMIND_HERMES_TIMEOUT` below Hermes's `plugins.hook_callback_timeout`
   (default 30 s): if the plugin runs past it, Hermes drops the whole block and
   skips the plugin's per-turn hook for the next 60 seconds.
+- **Says why in Hermes's log** *(v4.10.0+)*. When it can't start NeuralMind, finds one older
+  than 4.9 (which answers without the recap), or a call times out, the plugin
+  logs one warning per Hermes process naming the fix:
+  `hermes logs --level WARNING | grep -i neuralmind`.
 - **Subagents and cron jobs are skipped.** A subagent's message is written by
   its parent agent, and a cron job (Hermes's `cron` platform) runs on a
   schedule. For both, the prompt is neither recorded nor answered with recall,
@@ -2464,13 +2484,18 @@ earlier pin; `--unpin` clears it.
 - **One record for both agents.** Hermes and Claude Code write to the same
   `.neuralmind/recaps/`, so a Hermes session can start with what the last
   Claude Code session in the project did, and the other way round.
-- **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
-  re-run `neuralmind install-hermes-plugin` after upgrading.
-- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
-  calling its plugin loader and hook dispatch directly, not yet in a live
-  Hermes conversation. It relies on `pre_llm_call` accepting
-  `{"context": ...}`, which that version documents. What the context changes
-  in Hermes's answers isn't measured.
+- **Installed by this command, the plugin is a copy.** `pip install -U
+  neuralmind` doesn't update it; re-run `neuralmind install-hermes-plugin`
+  after upgrading. Installed by Hermes, `hermes plugins update neuralmind`
+  updates it.
+- **Tested against Hermes v0.21.5** (a 0.21.5+5355 main-branch build), in live
+  `hermes chat` sessions and through its plugin loader and hook dispatch, and
+  `hermes plugins validate` passes. Hermes older than the manifest's
+  `requires_hermes: ">=0.21.5"` skips it. It relies on `pre_llm_call`
+  accepting `{"context": ...}`, which that version documents. What the
+  context changes in Hermes's answers isn't measured.
+- The plugin's own [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+  lists what it reads, writes and sends.
 - The MCP server and the Hermes skill, which the agent calls itself, are
   covered in [Integration Guide: Hermes-Agent](Integration-Guide.md#hermes-agent).
 
