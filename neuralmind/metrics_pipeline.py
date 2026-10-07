@@ -172,9 +172,18 @@ class MetricsCollector:
                     f.unlink()
                     removed += 1
                 elif f.stat().st_size > self.max_bytes:
-                    # Truncate to half max_bytes, keeping recent lines
-                    lines = f.read_text(encoding="utf-8").splitlines()
-                    keep = lines[-1000:] if len(lines) > 1000 else lines
+                    # Keep the newest whole records that fit in half the cap
+                    # (at most 1,000), so the file ends up well under it even
+                    # when single records are large.
+                    budget = self.max_bytes // 2
+                    keep: list[str] = []
+                    for line in reversed(f.read_text(encoding="utf-8").splitlines()):
+                        size = len(line.encode("utf-8")) + 1
+                        if size > budget or len(keep) >= 1000:
+                            break
+                        keep.append(line)
+                        budget -= size
+                    keep.reverse()
                     f.write_text(
                         "\n".join(keep) + "\n" if keep else "",
                         encoding="utf-8",
