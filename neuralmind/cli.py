@@ -5351,6 +5351,13 @@ def cmd_install_hermes_plugin(args):
             "  Hermes installed this plugin, so its code is Hermes's to update "
             "(`hermes plugins update neuralmind`); only its settings were written."
         )
+    elif result["managed"] is None:
+        print(f"✓ NeuralMind plugin configured at {result['path']}{profile}")
+        print(
+            f"  ⚠ Couldn't read Hermes's install records ({home / 'plugins' / '.install-metadata.json'}), "
+            "so the plugin's code was left untouched and only its settings were written. "
+            "Fix or delete that file, then run this again to update the code."
+        )
     else:
         print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
     if result["project"]:

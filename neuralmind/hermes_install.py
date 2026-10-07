@@ -78,18 +78,25 @@ def plugin_dir(home: Path | None = None) -> Path:
     return (home or hermes_home()) / "plugins" / PLUGIN_NAME
 
 
-def managed_by_hermes(home: Path) -> bool:
+def managed_by_hermes(home: Path) -> bool | None:
     """Whether Hermes installed the plugin (``hermes plugins install``) and owns its code.
 
     Hermes keeps a record per plugin it installed in ``plugins/.install-metadata.json``.
+    False only when that file, or the plugin's record in it, is absent. None when
+    the file can't be read or parsed: that's no evidence of a manual install, so
+    the caller leaves the code alone.
     """
     try:
         records = json.loads(
             (home / "plugins" / ".install-metadata.json").read_text(encoding="utf-8-sig")
         )
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return False
-    return isinstance(records, dict) and PLUGIN_NAME in records
+    except (OSError, ValueError):
+        return None
+    if not isinstance(records, dict):
+        return None
+    return PLUGIN_NAME in records
 
 
 def _hermes(action: str, home: Path) -> bool | None:
@@ -136,9 +143,10 @@ def install(
     if target.is_symlink():
         raise FileExistsError(f"{target} is a symlink; remove it, then install again.")
     rerun = target.is_dir()
-    managed = rerun and managed_by_hermes(home)
+    # None: Hermes's install records are unreadable, so the code is left alone.
+    managed = managed_by_hermes(home) if rerun else False
     target.mkdir(parents=True, exist_ok=True)
-    if not managed:
+    if managed is False:
         for name in PLUGIN_FILES:
             shutil.copyfile(PLUGIN_SOURCE / name, target / name)
     if project:
@@ -209,15 +217,15 @@ def uninstall(home: Path | None = None) -> dict:
             disabled = _hermes("disable", home)
         else:
             forgotten = _hermes("remove", home)
-            if forgotten is False and target.exists():
+            if forgotten is False:
+                # Hermes deletes the plugin tree before its config bookkeeping,
+                # so a failed remove may already have taken the directory.
                 disabled = _hermes("disable", home)
-    removed = forgotten is True and not (target.exists() or target.is_symlink())
     if target.is_symlink():
         target.unlink()
-        removed = True
     elif target.is_dir():
         shutil.rmtree(target)
-        removed = True
+    removed = present and not (target.exists() or target.is_symlink())
     return {
         "path": target,
         "removed": removed,

@@ -37,7 +37,9 @@ hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
   (a gateway run as a service, Hermes Desktop), also run
   `neuralmind install-hermes-plugin`: on a plugin Hermes installed, it writes
   only the interpreter and the project to the plugin's `config.json`, and
-  leaves the code alone.
+  leaves the code alone. If Hermes's install records
+  (`plugins/.install-metadata.json`) can't be read, it leaves the code alone
+  too, and says so.
 - **The manifest declares `requires_hermes: ">=0.21.5"`**, the version it's
   tested with, so an older Hermes skips it.
 - **The README lists what the plugin does on your machine**: the subprocess it
@@ -78,7 +80,9 @@ turns it back on. A fresh install also enables the plugin whatever an earlier
 one left on the disabled list; only a re-run over an existing install respects
 a `hermes plugins disable neuralmind` you ran. Hermes won't remove a symlinked
 `plugins/neuralmind`, so for one the command still disables the plugin and
-removes the link, never what it points to.
+removes the link, never what it points to. If `hermes plugins remove` fails,
+even after it has already deleted the directory, the command disables the
+plugin instead and says Hermes's config may still name it.
 
 The install's last line also stopped saying "Each Hermes turn now gets
 NeuralMind's related files…" when the plugin wasn't enabled (left disabled,

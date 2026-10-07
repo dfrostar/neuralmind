@@ -220,7 +220,10 @@ def _run(action: str, payload: dict) -> str:
         command = _command(action)
         if not _version_checked:  # once per process, off the turn's path
             _version_checked = True
-            threading.Thread(target=_check_version, args=(command[:-2],), daemon=True).start()
+            try:
+                threading.Thread(target=_check_version, args=(command[:-2],), daemon=True).start()
+            except Exception:  # e.g. no thread to spare: skip the diagnostic, not the hook
+                pass
         try:
             done = subprocess.run(
                 command,

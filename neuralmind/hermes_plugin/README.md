@@ -66,7 +66,9 @@ updates it. Installed this way, the plugin runs the `neuralmind` command it
 finds on Hermes's PATH. Where Hermes's PATH doesn't include it (a gateway run
 as a service, Hermes Desktop), also run `neuralmind install-hermes-plugin`
 once: on a plugin Hermes installed, it writes only the interpreter and the
-project to the plugin's `config.json` and leaves the code alone.
+project to the plugin's `config.json` and leaves the code alone. If Hermes's
+install records (`plugins/.install-metadata.json`) can't be read, it leaves the
+code alone too, and says so.
 
 Start a new Hermes session, or restart the gateway, to load the plugin.
 
