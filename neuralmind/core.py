@@ -1903,6 +1903,7 @@ class NeuralMind:
             self.selector._code_bm25 = None
             self.selector._unified_bm25 = None
             self.selector._hub_stats_cache = None
+            self.selector._role_summary_cache = None
 
     def _ensure_built(self):
         """Make the index ready for a query without rebuilding it.

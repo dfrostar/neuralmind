@@ -21,7 +21,7 @@ is behind its own flag, and kept on by default only if the multi-repo eval
 
 With every flag unset, nothing here runs and L3 is unchanged.
 
-One pass is on by default (v4.10.0): **roles**, at the end of this module.
+One pass is on by default (v4.10.1): **roles**, at the end of this module.
 Indexed from its root, a repository's tests, examples and docs compete with
 its own code for the four slots, and they often win: a test repeats the
 names of the code it tests, an example script uses the very words of a
@@ -143,7 +143,7 @@ def intent_pool_enabled() -> bool:
 
 
 def roles_enabled() -> bool:
-    """On by default since v4.10.0; ``NEURALMIND_L3_ROLES=0`` restores v4.9."""
+    """On by default since v4.10.1; ``NEURALMIND_L3_ROLES=0`` restores v4.9."""
     return os.environ.get(ROLES_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
 
 
@@ -661,7 +661,7 @@ def unified_bm25_index(
 
 
 # --------------------------------------------------------------------------- #
-# Roles: the project's code, the code that exercises it, and prose (v4.10.0)
+# Roles: the project's code, the code that exercises it, and prose (v4.10.1)
 # --------------------------------------------------------------------------- #
 SOURCE, SUPPORT, DOC = "source", "support", "doc"
 
@@ -669,8 +669,18 @@ _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _EXAMPLE_DIRS = frozenset({"example", "examples", "demo", "demos", "sample", "samples"})
 _TEST_STEM = re.compile(r"^test_|_test$|^tests?$|^conftest$|[a-z0-9]Tests?$")
 _TEST_NAME = re.compile(r"\.(?:test|spec)\.")
-_ASKS_TESTS = re.compile(r"\b(?:tests?|testing|tested|specs?|pytest|unittest|fixtures?)\b", re.I)
+# A question asks for tests when it names them, or names a test: an identifier
+# or file such as test_parse_option(), parse_test.go, cart.test.ts,
+# UserServiceTest. "_" is a word character, so \btest\b alone misses those.
+_ASKS_TESTS = re.compile(
+    r"\b(?:tests?|testing|tested|specs?|pytest|unittest|fixtures?|conftest)\b"
+    r"|\btest_\w|\w_tests?\b|\w\.(?:test|spec)\.\w",
+    re.I,
+)
+_ASKS_TEST_CLASS = re.compile(r"\b[A-Za-z]\w*[a-z0-9]Tests?\b")
 _ASKS_EXAMPLES = re.compile(r"\b(?:examples?|demos?|samples?)\b", re.I)
+_ABSOLUTE = re.compile(r"^(?:/|[A-Za-z]:/)")
+_PROSE_SUFFIXES = (*_DOC_SUFFIXES, ".pdf")
 
 # What a hit the question didn't ask for is worth, as a fraction of its score:
 # a test or an example always, unless the question names tests or examples,
@@ -681,15 +691,39 @@ ROLE_WEIGHT = 1 / 3
 SOURCE_FLOOR = {"code": 2, "hybrid": 2, "docs": 1}
 
 
-def support_kind(path: str) -> str:
+def project_path(path: str, root: str | os.PathLike | None = None) -> str:
+    """``path`` with forward slashes, made relative to ``root`` if it's absolute and inside it.
+
+    Graphs may store absolute source paths. Only the part inside the project
+    says what a file is: a checkout at ``/home/work/examples/click`` doesn't
+    make ``src/click/core.py`` an example. An absolute path outside ``root`` is
+    returned as it is.
+    """
+    p = str(path).replace("\\", "/")
+    if root is None or not _ABSOLUTE.match(p):
+        return p
+    bases = {str(root).replace("\\", "/").rstrip("/")}
+    try:
+        bases.add(str(Path(root).resolve()).replace("\\", "/").rstrip("/"))
+    except OSError:
+        pass
+    for base in bases:
+        if base and len(p) > len(base) and p[len(base)] == "/":
+            head = p[: len(base)]
+            if head == base or (re.match(r"^[A-Za-z]:", base) and head.lower() == base.lower()):
+                return p[len(base) + 1 :]
+    return p
+
+
+def support_kind(path: str, root: str | os.PathLike | None = None) -> str:
     """'test' or 'example' for a file that exercises the code, '' for the code itself.
 
-    By layout: a ``tests/``, ``spec/`` or ``examples/`` directory anywhere in
-    the path, or a test file's name (``test_x.py``, ``x_test.go``,
-    ``x.test.ts``, ``conftest.py``). ``src/click/testing.py`` is not one: the
-    project ships it.
+    By layout, inside the project (see :func:`project_path`): a ``tests/``,
+    ``spec/`` or ``examples/`` directory anywhere in the path, or a test
+    file's name (``test_x.py``, ``x_test.go``, ``x.test.ts``, ``conftest.py``).
+    ``src/click/testing.py`` is not one: the project ships it.
     """
-    parts = path.replace("\\", "/").split("/")
+    parts = project_path(path, root).split("/")
     dirs = {d.lower() for d in parts[:-1]}
     name = parts[-1]
     if dirs & _TEST_DIRS or _TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name):
@@ -702,18 +736,32 @@ def support_kind(path: str) -> str:
 def asked_kinds(query: str) -> frozenset[str]:
     """The support kinds a question names: "how do I test …" asks for tests."""
     asked = set()
-    if _ASKS_TESTS.search(query or ""):
+    if _ASKS_TESTS.search(query or "") or _ASKS_TEST_CLASS.search(query or ""):
         asked.add("test")
     if _ASKS_EXAMPLES.search(query or ""):
         asked.add("example")
     return frozenset(asked)
 
 
-def role(hit: dict, asked: frozenset[str] = frozenset()) -> str:
-    """SOURCE, SUPPORT or DOC. A test or example the question asks for is SOURCE."""
-    if is_doc_hit(hit):
+def is_prose(hit: dict) -> bool:
+    """A doc: a ``document`` or ingested ``document_*`` node (``document_pdf``), or a doc file."""
+    meta = hit.get("metadata") or {}
+    file_type = str(meta.get("file_type") or "")
+    if file_type == "document" or file_type.startswith("document_"):
+        return True
+    return source_file(hit).lower().endswith(_PROSE_SUFFIXES)
+
+
+def role(
+    hit: dict, asked: frozenset[str] = frozenset(), root: str | os.PathLike | None = None
+) -> str:
+    """SOURCE, SUPPORT or DOC. A test or example the question asks for is SOURCE.
+
+    ``root`` is the project root, for graphs that store absolute paths.
+    """
+    if is_prose(hit):
         return DOC
-    kind = support_kind(source_file(hit))
+    kind = support_kind(source_file(hit), root)
     return SUPPORT if kind and kind not in asked else SOURCE
 
 

@@ -809,7 +809,7 @@ class ContextSelector:
         if not search_results:
             return "", []
 
-        # Count community hits. With roles on (v4.10.0), a test or example
+        # Count community hits. With roles on (v4.10.1), a test or example
         # hit the question doesn't ask for counts a third, as it does in L3.
         roles = l3_slots.roles_enabled()
         asked = l3_slots.asked_kinds(query)
@@ -817,7 +817,7 @@ class ContextSelector:
         for result in search_results:
             comm = result.get("metadata", {}).get("community", -1)
             score = result.get("score", 0)
-            if roles and l3_slots.role(result, asked) == l3_slots.SUPPORT:
+            if roles and self._role(result, asked) == l3_slots.SUPPORT:
                 score *= l3_slots.ROLE_WEIGHT
             if comm >= 0:
                 community_scores[comm] = community_scores.get(comm, 0) + score
@@ -894,15 +894,21 @@ class ContextSelector:
         is by path, so ``examples/`` comes before ``src/``. On pallets/click a
         390-node cluster holding three nodes of ``examples/inout/inout.py``
         was shown as ``inout.py``, and a 963-node one holding ``core.py`` as
-        ``examples/completion/completion.py``. The sort is stable, so when
-        every member is the project's code, as on an index of a library's
-        source directory, the summary is the one the backend returned.
+        ``examples/completion/completion.py``.
+
+        It reads the ten members the summary always read, and reads further
+        (up to :attr:`L2_ROLE_SCAN`) only when one of those ten isn't the
+        project's code. So an index of a library's source directory costs and
+        renders exactly what it did. The sort is stable, and the result is
+        cached per cluster until the index changes.
         """
-        summary: dict = self.embedder.get_community_summary(comm_id, max_nodes=self.L2_ROLE_SCAN)
+        cache = getattr(self, "_role_summary_cache", None)
+        if cache is None:
+            cache = self._role_summary_cache = {}
+        key = (comm_id, asked)
+        if key in cache:
+            return cache[key]
         order = {l3_slots.SOURCE: 0, l3_slots.SUPPORT: 1, l3_slots.DOC: 2}
-        members = list(summary.get("nodes") or [])
-        if not members:
-            return summary
 
         def rank(node: dict) -> int:
             hit = {
@@ -911,16 +917,21 @@ class ContextSelector:
                     "source_file": node.get("source_file", ""),
                 }
             }
-            return order[l3_slots.role(hit, asked)]
+            return order[self._role(hit, asked)]
 
-        members = sorted(members, key=rank)[:10]
-        # Count types over the ten shown, as the backend does over the ten it reads.
-        types: dict[str, int] = {}
-        for node in members:
-            ft = node.get("file_type", "unknown")
-            types[ft] = types.get(ft, 0) + 1
-        type_summary = ", ".join(f"{v} {k}s" for k, v in types.items())
-        return dict(summary, nodes=members, node_count=len(members), type_summary=type_summary)
+        summary: dict = self.embedder.get_community_summary(comm_id, max_nodes=10)
+        if any(rank(n) for n in summary.get("nodes") or []):
+            wide: dict = self.embedder.get_community_summary(comm_id, max_nodes=self.L2_ROLE_SCAN)
+            members = sorted(wide.get("nodes") or [], key=rank)[:10]
+            # Count types over the ten shown, as the backend does over the ten it reads.
+            types: dict[str, int] = {}
+            for node in members:
+                ft = node.get("file_type", "unknown")
+                types[ft] = types.get(ft, 0) + 1
+            type_summary = ", ".join(f"{v} {k}s" for k, v in types.items())
+            summary = dict(wide, nodes=members, node_count=len(members), type_summary=type_summary)
+        cache[key] = summary
+        return summary
 
     def _synapse_disabled(self) -> bool:
         """True when synapse recall isn't wired or the kill switch is set."""
@@ -1354,13 +1365,13 @@ class ContextSelector:
         # Re-rank in place. This one is already budget-neutral: it reweights
         # the hits we have rather than adding to them. A test or example
         # shares the question's identifiers because it exercises that code,
-        # so with roles on it scores like a doc here (v4.10.0).
+        # so with roles on it scores like a doc here, as any doc does (v4.10.1).
         if intent == "code":
             roles = l3_slots.roles_enabled()
             asked = l3_slots.asked_kinds(query)
 
             def about_code(hit: dict) -> bool:
-                return roles and l3_slots.role(hit, asked) == l3_slots.SUPPORT
+                return roles and self._role(hit, asked) in (l3_slots.SUPPORT, l3_slots.DOC)
 
             try:
                 results = apply_code_signal_boost(results, identifiers, about_code)
@@ -1568,6 +1579,10 @@ class ContextSelector:
             return "docs"
         return "hybrid"
 
+    def _role(self, hit: dict, asked: frozenset[str] = frozenset()) -> str:
+        """``hit``'s role, judged by its path inside this project."""
+        return l3_slots.role(hit, asked, self.project_path)
+
     def _reserve_source_slots(
         self, query: str, results: list[dict], intent: str, n: int
     ) -> list[dict]:
@@ -1596,7 +1611,7 @@ class ContextSelector:
         want = min(l3_slots.SOURCE_FLOOR.get(intent, 0), n)
 
         def is_source(hit: dict) -> bool:
-            return l3_slots.role(hit) == l3_slots.SOURCE
+            return self._role(hit) == l3_slots.SOURCE
 
         have = sum(1 for h in results if is_source(h))
         if have >= want:
@@ -1664,7 +1679,7 @@ class ContextSelector:
         """
         roles = l3_slots.roles_enabled()
         asked = l3_slots.asked_kinds(query) if roles else frozenset()
-        hit_roles = [l3_slots.role(r, asked) if roles else l3_slots.SOURCE for r in results]
+        hit_roles = [self._role(r, asked) if roles else l3_slots.SOURCE for r in results]
         if intent == "hybrid":
             weighted = False
             for result, hit_role in zip(results, hit_roles, strict=True):
@@ -1705,9 +1720,12 @@ class ContextSelector:
                 is_doc = False
             is_code = not is_doc and (file_type == "code" or bool(source_file))
             # A test or example is about the code, as a doc is, but it is not
-            # the docs either: neither boost (v4.10.0).
+            # the docs either: neither boost (v4.10.1). A doc by role (an
+            # ingested ``document_pdf`` chunk, say) gets the doc boost.
             if hit_role == l3_slots.SUPPORT:
                 is_doc = is_code = False
+            elif hit_role == l3_slots.DOC:
+                is_doc, is_code = True, False
 
             if intent == "code":
                 if is_code:
@@ -1856,7 +1874,7 @@ class ContextSelector:
         self._last_intent = intent
 
         # The project's own code gets slots its tests, examples and docs took
-        # (v4.10.0). A no-op when nothing but the project's code was found.
+        # (v4.10.1). A no-op when nothing but the project's code was found.
         if l3_slots.roles_enabled():
             results = self._reserve_source_slots(query, results, intent, n)
 
@@ -1870,6 +1888,12 @@ class ContextSelector:
         # co-activated with this query's top hits get a relevance nudge, so
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
+
+        # Both passes displace the weakest hits, and the floor's hits came from
+        # ranks 5-10, so a recalled neighbour can take a slot the floor gave
+        # the code. Hold the floor on what they left.
+        if l3_slots.roles_enabled():
+            results = self._reserve_source_slots(query, results, intent, n)
 
         results = self._apply_intent_boost(results, intent, query)
 

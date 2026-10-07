@@ -1,4 +1,4 @@
-"""v4.10.0: the project's own code competes with its tests, examples and docs.
+"""v4.10.1: the project's own code competes with its tests, examples and docs.
 
 Indexed from its root, a repository's tests, example scripts and doc headings
 outrank the code they are about, and they filled all four L3 slots for "which
@@ -338,3 +338,121 @@ def test_l2_project_code_only_is_untouched(tmp_path, monkeypatch):
         emb = StubEmbedder(tmp_path, ranked, members)
         texts.append(ContextSelector(emb, str(tmp_path)).get_l2_context("m0")[0])
     assert texts[0] == texts[1]
+
+
+# --------------------------------------------------------------------------- #
+# Review follow-ups (#610)
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "question",
+    [
+        "where is test_parse_option() defined?",
+        "fix the failing parse_test.go case",
+        "why does cart.test.ts time out?",
+        "what does UserServiceTest cover?",
+    ],
+)
+def test_naming_a_test_asks_for_tests(question):
+    assert "test" in l3_slots.asked_kinds(question)
+
+
+@pytest.mark.parametrize("question", ["who won the contest?", "the latest release", QUESTION])
+def test_words_containing_test_do_not_ask_for_tests(question):
+    assert "test" not in l3_slots.asked_kinds(question)
+
+
+def test_a_named_test_keeps_its_boosts(tmp_path):
+    ranked = [
+        hit("parse_option", "src/pkg/parser.py", 0.9),
+        hit("test_parse_option", "tests/test_parser.py", 0.85),
+    ]
+    sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
+    sel.get_l3_search("where is test_parse_option() defined?", query_type="code")
+    test_hit = next(h for h in sel._last_l3_boosted if h["id"] == "test_parse_option")
+    assert "_role_weight" not in test_hit
+
+
+@pytest.mark.parametrize(
+    "path, root, kind",
+    [
+        ("/home/work/examples/click/src/click/core.py", "/home/work/examples/click", ""),
+        ("/home/work/tests/app/src/app/core.py", "/home/work/tests/app", ""),
+        ("/home/work/examples/click/tests/test_core.py", "/home/work/examples/click", "test"),
+        ("/home/work/examples/click/examples/repo.py", "/home/work/examples/click/", "example"),
+        ("C:/work/examples/app/src/core.py", "C:\\work\\examples\\app", ""),
+        ("src/click/core.py", "/home/work/examples/click", ""),
+        ("tests/test_core.py", "/home/work/examples/click", "test"),
+    ],
+)
+def test_layout_is_judged_inside_the_project(path, root, kind):
+    assert l3_slots.support_kind(path, root) == kind
+
+
+def test_absolute_graph_paths_under_an_examples_checkout(tmp_path):
+    root = tmp_path / "examples" / "proj"
+    root.mkdir(parents=True)
+    ranked = [hit(f"c{i}", str(root / "src" / f"m{i}.py"), 1 - i / 10) for i in range(6)]
+    sel = ContextSelector(StubEmbedder(root, ranked), str(root))
+    sel.get_l3_search("where is m0 parsed", query_type="code")
+    hits = sel._last_l3_boosted
+    assert [h["id"] for h in hits] == ["c0", "c1", "c2", "c3"]
+    assert not any(h.get("_role_weight") or h.get("_source_slot") for h in hits)
+
+
+@pytest.mark.parametrize(
+    "file_type, sf", [("document_pdf", "papers/design.pdf"), ("document", "docs/x.txt")]
+)
+def test_ingested_documents_are_docs(file_type, sf):
+    assert l3_slots.role(hit("d", sf, 1, file_type)) == l3_slots.DOC
+
+
+def test_a_pdf_chunk_cannot_fill_the_code_floor(tmp_path):
+    ranked = [hit(f"p{i}", "papers/design.pdf", 1 - i / 10, "document_pdf") for i in range(4)]
+    ranked.append(hit("impl", "app/orders.py", 0.5))
+    sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
+    sel.get_l3_search("where are orders placed", query_type="code")
+    assert l3_files(sel)[0] == "app/orders.py"
+
+
+class RecallEmbedder(StubEmbedder):
+    """Adds id lookup, so synapse recall can pull neighbours in."""
+
+    def __init__(self, project, ranked, extra):
+        super().__init__(project, ranked)
+        self._extra = {h["id"]: h for h in extra}
+
+    def get_nodes_by_ids(self, ids):
+        return [dict(self._extra[i], metadata=dict(self._extra[i]["metadata"])) for i in ids]
+
+
+def test_the_floor_holds_after_synapse_recall_displaces(tmp_path):
+    """Recall displaces the weakest hits, which the floor's hits usually are."""
+    recalled = [
+        hit("demo_a", "examples/a/a.py", 0.0),
+        hit("demo_b", "examples/b/b.py", 0.0),
+    ]
+    sel = ContextSelector(RecallEmbedder(tmp_path, CLICK, recalled), str(tmp_path))
+    sel.synapse_recall = lambda seeds: [("demo_a", 0.9), ("demo_b", 0.8)]
+    sel.get_l3_search(QUESTION, query_type="code")
+    files = l3_files(sel)
+    assert files.count("src/click/core.py") == 2
+    assert not any(f.startswith("examples/") for f in files)
+
+
+def test_l2_reads_no_further_when_the_first_members_are_the_code(tmp_path):
+    members = [member(f"n{i}", f"src/pkg/m{i % 3}.py") for i in range(12)]
+    members.append(member("t", "tests/test_m.py"))
+    emb = StubEmbedder(tmp_path, [hit("n0", "src/pkg/m0.py", 0.9)], members)
+    sel = ContextSelector(emb, str(tmp_path))
+    sel.get_l2_context("m0")
+    assert emb.summary_calls == [10]
+
+
+def test_l2_caches_the_role_order(tmp_path):
+    ranked = [hit("progress", "src/click/_termui_impl.py", 0.9, community=0)]
+    emb = StubEmbedder(tmp_path, ranked, MEMBERS)
+    sel = ContextSelector(emb, str(tmp_path))
+    first = sel.get_l2_context("progress bar")
+    second = sel.get_l2_context("progress bar")
+    assert first == second
+    assert emb.summary_calls == [10, ContextSelector.L2_ROLE_SCAN]
