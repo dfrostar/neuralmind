@@ -7,7 +7,8 @@
       "changelog-path": "CHANGELOG.md",
       "version-file": "neuralmind/__init__.py",
       "extra-files": [
-        "skills/neuralmind/SKILL.md"
+        "skills/neuralmind/SKILL.md",
+        "neuralmind/hermes_plugin/plugin.yaml"
       ]
     }
   }

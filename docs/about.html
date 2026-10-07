@@ -199,14 +199,22 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v493">
-            <h2>What&rsquo;s New in v4.9.3 &mdash; two loose ends from v4.9.1</h2>
-            <p><strong>Two related problems found while fixing v4.9.1.</strong> Neither loses data.</p>
+        <div class="container" id="whats-new-v4100">
+            <h2>What&rsquo;s New in v4.10.0 &mdash; Hermes can install the NeuralMind plugin itself, and the plugin says why when it can&rsquo;t work</h2>
+            <p><strong>v4.9.0&rsquo;s Hermes plugin could only be installed by NeuralMind&rsquo;s own command, did nothing without saying why when it couldn&rsquo;t run NeuralMind, and couldn&rsquo;t be reinstalled after an uninstall without enabling it again by hand.</strong> v4.10.0 fixes all three.</p>
+            <ul>
+                <li><strong>Hermes can install it</strong> &mdash; the plugin&rsquo;s directory carries its own <code>plugin.yaml</code> (with <code>requires_hermes: "&gt;=0.21.5"</code>) and a <a href="https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md">README</a> that lists what it reads, writes and sends, so <code>hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable</code> installs it from a clone of this repository, and Hermes&rsquo;s catalog check, <code>hermes plugins validate</code>, passes. Hermes then owns the code: <code>hermes plugins update neuralmind</code> updates it</li>
+                <li><strong>It finds NeuralMind on PATH</strong> &mdash; without an interpreter recorded by <code>neuralmind install-hermes-plugin</code>, the plugin runs the <code>neuralmind</code> command on Hermes&rsquo;s PATH, looked up in absolute PATH entries only, so a repository can&rsquo;t supply its own. Where Hermes&rsquo;s PATH doesn&rsquo;t include it (a gateway run as a service, Hermes Desktop), <code>neuralmind install-hermes-plugin</code> on a plugin Hermes installed writes only the interpreter and the project, and leaves the code alone</li>
+                <li><strong>It says why</strong> &mdash; when it can&rsquo;t start NeuralMind, finds one older than 4.9 (which answers without the session recap), or a call times out, the plugin logs one warning per Hermes process naming the fix: <code>hermes logs --level WARNING | grep -i neuralmind</code>. The turn still goes ahead without NeuralMind&rsquo;s context, as before</li>
+                <li><strong>Fixed: a reinstall after an uninstall stayed off</strong> &mdash; <code>neuralmind install-hermes-plugin --uninstall</code> disabled the plugin before removing it, which left it on Hermes&rsquo;s <code>plugins.disabled</code> list, so installing it again left it disabled. It now runs <code>hermes plugins remove neuralmind</code>, which drops the plugin&rsquo;s entries from <code>config.yaml</code>, and a fresh install enables it whatever an earlier one left behind. The install also stopped saying each turn now gets NeuralMind&rsquo;s context when the plugin wasn&rsquo;t enabled</li>
+                <li><strong>Tested live</strong> &mdash; against Hermes v0.21.5 (a 0.21.5+5355 main-branch build) in live <code>hermes chat</code> sessions: the first-turn recap, recall, edits made with <code>patch</code> and <code>write_file</code>, a resumed session, a subagent, a directory that hasn&rsquo;t been built, both ways of installing, and uninstalling. What the context changes in Hermes&rsquo;s answers still isn&rsquo;t measured</li>
+            </ul>
+            <p><strong>Also in v4.10.0:</strong></p>
             <ul>
                 <li><strong><code>validate</code> stops flagging prose chapters as stale</strong> &mdash; the chapter file names the prose path records, such as <code>ch01.md</code>, count as known while the index still holds <code>chapters/ch01.md</code>; a deleted chapter is still reported</li>
                 <li><strong>The sleep pass&rsquo;s long-term rule</strong> &mdash; <code>DaemonSleep.promote_ltp_edges</code> no longer boosts ephemeral edges, which decay never protects (a library fix: nothing in the CLI, hooks or daemon runs the sleep pass yet)</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.3.md">v4.9.3 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md">Hermes-Agent with code memory in every turn &rarr;</a></p>
         </div>
     </section>
 

@@ -5,13 +5,16 @@ home (``--hermes-home``, else the one plain ``hermes`` runs in: ``$HERMES_HOME``
 or Hermes's default root, switched to the active profile when ``hermes profile
 use`` picked one):
 
-- ``plugins/neuralmind/__init__.py`` — a copy of :mod:`neuralmind.hermes_plugin`
-- ``plugins/neuralmind/plugin.yaml`` — the manifest Hermes discovers it by
+- ``plugins/neuralmind/__init__.py`` and ``plugin.yaml`` — copies of
+  :mod:`neuralmind.hermes_plugin`'s, the plugin and the manifest Hermes
+  discovers it by
 - ``plugins/neuralmind/config.json`` — the Python interpreter that has
   NeuralMind installed, and the project, if one was given
 
 then runs ``hermes plugins enable neuralmind``: Hermes loads a user plugin only
 once it's on the ``plugins.enabled`` list. Re-running updates the copy in place.
+When Hermes installed the plugin itself (from a clone, with an install record),
+only ``config.json`` is written: the code is Hermes's to update.
 """
 
 from __future__ import annotations
@@ -24,16 +27,8 @@ import sys
 from pathlib import Path
 
 PLUGIN_NAME = "neuralmind"
-
-MANIFEST = """\
-name: neuralmind
-version: "{version}"
-description: "NeuralMind code memory: related files and decisions added to every turn, and the last session's recap to a session's first, with no tool call."
-author: NeuralMind
-provides_hooks:
-  - pre_llm_call
-  - post_tool_call
-"""
+PLUGIN_SOURCE = Path(__file__).parent / "hermes_plugin"
+PLUGIN_FILES = ("__init__.py", "plugin.yaml")
 
 
 # Files that mark an initialised Hermes home (Hermes's own _HERMES_HOME_MARKERS).
@@ -83,6 +78,27 @@ def plugin_dir(home: Path | None = None) -> Path:
     return (home or hermes_home()) / "plugins" / PLUGIN_NAME
 
 
+def managed_by_hermes(home: Path) -> bool | None:
+    """Whether Hermes installed the plugin (``hermes plugins install``) and owns its code.
+
+    Hermes keeps a record per plugin it installed in ``plugins/.install-metadata.json``.
+    False only when that file, or the plugin's record in it, is absent. None when
+    the file can't be read or parsed: that's no evidence of a manual install, so
+    the caller leaves the code alone.
+    """
+    try:
+        records = json.loads(
+            (home / "plugins" / ".install-metadata.json").read_text(encoding="utf-8-sig")
+        )
+    except FileNotFoundError:
+        return False
+    except (OSError, ValueError):
+        return None
+    if not isinstance(records, dict):
+        return None
+    return PLUGIN_NAME in records
+
+
 def _hermes(action: str, home: Path) -> bool | None:
     """Run ``hermes plugins <action> neuralmind``; None when Hermes isn't on PATH."""
     hermes = shutil.which("hermes")
@@ -118,8 +134,6 @@ def install(
     unpin: bool = False,
 ) -> dict:
     """Install (or update) the plugin; returns what was done."""
-    from . import __version__
-
     home = home or hermes_home()
     if not home.is_dir():
         raise FileNotFoundError(
@@ -128,9 +142,13 @@ def install(
     target = plugin_dir(home)
     if target.is_symlink():
         raise FileExistsError(f"{target} is a symlink; remove it, then install again.")
+    rerun = target.is_dir()
+    # None: Hermes's install records are unreadable, so the code is left alone.
+    managed = managed_by_hermes(home) if rerun else False
     target.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(Path(__file__).parent / "hermes_plugin" / "__init__.py", target / "__init__.py")
-    (target / "plugin.yaml").write_text(MANIFEST.format(version=__version__), encoding="utf-8")
+    if managed is False:
+        for name in PLUGIN_FILES:
+            shutil.copyfile(PLUGIN_SOURCE / name, target / name)
     if project:
         project_path = str(Path(project).expanduser().resolve())
     elif unpin:
@@ -138,8 +156,10 @@ def install(
     else:  # a re-run (e.g. after upgrading) keeps the project pinned earlier
         project_path = _existing_project(target)
     config = {"python": sys.executable, "project": project_path}
-    # A re-run (e.g. after an upgrade) mustn't turn back on what the user turned off.
-    disabled_by_user = _disabled_in_hermes(home)
+    # A re-run (e.g. after an upgrade) mustn't turn back on what the user turned
+    # off. A fresh install is a request to use the plugin, whatever an earlier
+    # one left on Hermes's disabled list.
+    disabled_by_user = rerun and _disabled_in_hermes(home)
     (target / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     return {
         "path": target,
@@ -153,6 +173,7 @@ def install(
         ),
         "initialised": is_hermes_home(home),
         "disabled_by_user": disabled_by_user,
+        "managed": managed,
     }
 
 
@@ -177,18 +198,38 @@ def _existing_project(target: Path) -> str | None:
 
 
 def uninstall(home: Path | None = None) -> dict:
-    """Disable the plugin in Hermes and remove its directory."""
+    """Remove the plugin, and its entries in Hermes's config, from the Hermes home.
+
+    ``hermes plugins remove`` deletes the directory, Hermes's install record and
+    every ``config.yaml`` entry naming the plugin, so a later install starts
+    fresh instead of finding it on the disabled list. Hermes won't remove a
+    symlink that points outside its plugins directory, so one is disabled in
+    Hermes and unlinked here — the link only, never what it points to.
+    """
     home = home or hermes_home()
     target = plugin_dir(home)
     initialised = is_hermes_home(home)
-    # As with enable: never run `hermes` against a home Hermes hasn't set up.
     present = target.exists() or target.is_symlink()
-    disabled = _hermes("disable", home) if present and initialised else None
-    removed = False
+    forgotten = disabled = None
+    # As with enable: never run `hermes` against a home Hermes hasn't set up.
+    if present and initialised:
+        if target.is_symlink():
+            disabled = _hermes("disable", home)
+        else:
+            forgotten = _hermes("remove", home)
+            if forgotten is False:
+                # Hermes deletes the plugin tree before its config bookkeeping,
+                # so a failed remove may already have taken the directory.
+                disabled = _hermes("disable", home)
     if target.is_symlink():
-        target.unlink()  # the link only, never what it points to
-        removed = True
+        target.unlink()
     elif target.is_dir():
         shutil.rmtree(target)
-        removed = True
-    return {"path": target, "removed": removed, "disabled": disabled, "initialised": initialised}
+    removed = present and not (target.exists() or target.is_symlink())
+    return {
+        "path": target,
+        "removed": removed,
+        "forgotten": forgotten,
+        "disabled": disabled,
+        "initialised": initialised,
+    }
