@@ -40,7 +40,7 @@ Measured on this repository's own index (6,894 nodes) and synapse store, with
 
 | | On-topic prompts with recall | Off-topic prompts with recall |
 |---|---|---|
-| v4.9.1 and earlier | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
+| Before v4.11.0 (measured on v4.9.1) | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
 | Seeding fix only | 15 of 15 | 15 of 15 |
 | **v4.11.0** (seeding fix + gate at 0.35) | **15 of 15** | **1 of 15** |
 
@@ -71,7 +71,11 @@ gate.
 
 ### Reproduce it, or calibrate your own
 
+The harness is in this repository's `tests/`, which the PyPI package doesn't
+include, so run it from a source checkout:
+
 ```bash
+git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 neuralmind build .
 python -m tests.benchmark.recall_gate .          # this repo's prompt sets
 python -m tests.benchmark.recall_gate . --json
@@ -79,8 +83,11 @@ python -m tests.benchmark.recall_gate /path/to/project --prompts my_prompts.json
 ```
 
 `--prompts` takes a JSON file with `on_topic` and `off_topic` lists. It prints
-each prompt's similarity and a sweep from 0.25 to 0.40: on-topic prompts kept
-against off-topic prompts let through.
+each prompt's similarity, how many nodes recall would inject without the gate
+(the "Seeding fix only" row) and a sweep from 0.25 to 0.40: on-topic prompts
+kept against off-topic prompts let through (0.35 is the v4.11.0 row). It runs
+the current code only, so it can't rerun the first row: v4.9.1's recall
+reports no similarity.
 
 ### Count what it does
 
@@ -220,6 +227,9 @@ spreads two hops and returns node ids.
 
 ### Reproduce it
 
+From a NeuralMind source checkout (the harness is in `tests/`, which the PyPI
+package doesn't include):
+
 ```bash
 git clone https://github.com/pallets/click
 git -C click checkout 2247b35ea1c47c727d7a06e51fa280e12a863ff6
@@ -249,8 +259,10 @@ session gets them back.
   documentation doesn't rule out, the session marked within the last 15
   minutes is recalled, if only one was. When two sessions in the project
   compacted in that window, nothing says which one came back, so neither is
-  recalled. A session that wasn't compacted is never recalled this way, and a
-  session with a record of its own never borrows another's.
+  recalled. Once a new id takes a record back, that record's marker is spent,
+  so the same session compacting again under yet another id within the window
+  still gets its record. A session that wasn't compacted is never recalled
+  this way, and a session with a record of its own never borrows another's.
 - **The marker isn't activity.** Compacting an old session doesn't make it the
   "previous session" a fresh start recaps.
 
@@ -349,9 +361,9 @@ recall on for every prompt.
 
 ## Related
 
-- Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md#after-compaction-v4100)
+- Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md#after-compaction-v4110)
 - Use case: [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md)
 - CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
   [`install-hooks`](../wiki/CLI-Reference.md#install-hooks),
   [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
-- Previous release: [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)
+- Previous release: [v4.10.0](RELEASE_NOTES_v4.10.0.md) · [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md)

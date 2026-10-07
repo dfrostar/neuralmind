@@ -15,7 +15,9 @@ name, then sweeps candidate thresholds: on-topic prompts kept against
 off-topic prompts let through.
 
 The on-topic set is about this repository, so run it against a built
-NeuralMind checkout. ``--prompts`` takes a JSON file with ``on_topic`` and
+NeuralMind checkout. It lives in ``tests/``, which the PyPI package doesn't
+include, so it needs a source checkout. It measures the current code only:
+``would_inject`` is recall without the gate, the sweep is the gate. ``--prompts`` takes a JSON file with ``on_topic`` and
 ``off_topic`` lists to calibrate on another project. Read-only: learning is
 switched off for the run.
 

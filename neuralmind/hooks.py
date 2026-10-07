@@ -572,7 +572,7 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         cwd = payload.get("cwd") or os.getcwd()
         # Session recap: on a fresh or cleared session, say where the
         # previous one left off; after a compaction, give this session its
-        # own verbatim record back. Emitted first; nothing below writes stdout.
+        # own record back. Emitted first; nothing below writes stdout.
         from .session_recap import recap_for_session_start
 
         recap = recap_for_session_start(
