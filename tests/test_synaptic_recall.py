@@ -102,10 +102,27 @@ def test_rationale_owners_reads_either_edge_shape():
     assert _rationale_owners(mind) is owners
 
 
+def test_rationale_owners_accepts_a_code_to_rationale_edge():
+    # The orientation probe.extract_rationales also accepts: the node data
+    # says which end is the rationale.
+    mind = SimpleNamespace(
+        embedder=SimpleNamespace(
+            nodes=[
+                {"id": "a", "file_type": "code"},
+                {"id": "a_rationale", "file_type": "rationale"},
+            ],
+            edges=[{"relation": "rationale_for", "source": "a", "target": "a_rationale"}],
+        )
+    )
+    assert _rationale_owners(mind) == {"a_rationale": "a"}
+
+
 def test_every_rationale_in_a_graphify_graph_maps_to_a_graph_node():
     graph = json.loads(GO_GRAPH.read_text(encoding="utf-8"))
     nodes = {n["id"]: n for n in graph["nodes"]}
-    mind = SimpleNamespace(embedder=SimpleNamespace(edges=graph.get("links") or graph["edges"]))
+    mind = SimpleNamespace(
+        embedder=SimpleNamespace(nodes=graph["nodes"], edges=graph.get("links") or graph["edges"])
+    )
     owners = _rationale_owners(mind)
     rationales = [nid for nid, n in nodes.items() if n.get("file_type") == "rationale"]
     assert rationales
