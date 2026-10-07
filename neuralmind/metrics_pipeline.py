@@ -67,15 +67,17 @@ class MetricsCollector:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             new_day = not path.exists()
+            if not new_day and path.stat().st_size >= self.max_bytes:
+                # Today's file is full. Drop the record rather than rewrite
+                # a file other hook processes may be appending to.
+                return False
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(payload, sort_keys=True) + "\n")
-                size = f.tell()
         except Exception:
             return False
-        if new_day or size > self.max_bytes:
-            # When a day's file is started, and when today's outgrows the
-            # cap: the retention limits apply without a separate cleanup
-            # step, and an ordinary append doesn't rescan the directory.
+        if new_day:
+            # Once a day, when its file is started: the retention limits
+            # apply without a separate cleanup step.
             self.rotate()
         return True
 
@@ -154,6 +156,9 @@ class MetricsCollector:
         """
         Purge metrics files older than retention_days and truncate
         files exceeding max_bytes. Returns count of removed files.
+
+        Today's file is never rewritten: hook processes append to it
+        concurrently, so it is capped by ``_append`` refusing records instead.
         """
         if self.project_path is None:
             return 0
@@ -162,6 +167,7 @@ class MetricsCollector:
             return 0
 
         removed = 0
+        today = _metrics_file(self.project_path).name
         cutoff_ts = time.time() - (self.retention_days * 86400)
         cutoff_day = time.strftime("%Y-%m-%d", time.gmtime(cutoff_ts))
 
@@ -171,7 +177,7 @@ class MetricsCollector:
                 if day_str < cutoff_day:
                     f.unlink()
                     removed += 1
-                elif f.stat().st_size > self.max_bytes:
+                elif f.name != today and f.stat().st_size > self.max_bytes:
                     # Keep the newest whole records that fit in half the cap
                     # (at most 1,000), so the file ends up well under it even
                     # when single records are large.

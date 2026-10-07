@@ -179,32 +179,29 @@ class TestMetricsCollector(unittest.TestCase):
         collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
         self.assertTrue(old.exists())
 
-    def test_outgrowing_the_size_cap_applies_retention_the_same_day(self) -> None:
+    def test_a_full_day_file_stops_growing_and_is_never_rewritten(self) -> None:
         collector = MetricsCollector(self.project, max_bytes=2000)
-        for _ in range(3):
-            collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
         today = next((self.project / ".neuralmind" / "metrics").glob("metrics_*.jsonl"))
-        # Over the cap: rotate() truncates to the newest lines.
-        today.write_text(today.read_text() * 200)
-        calls = []
-        real_rotate = collector.rotate
-        collector.rotate = lambda: calls.append(1) or real_rotate()
+        today.write_text(today.read_text() * 40)  # past the cap
+        before = today.read_text()
         collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
-        self.assertEqual(calls, [1])
-        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
-        self.assertLessEqual(len(today.read_text().splitlines()), 1001)
+        collector.rotate()
+        # Not appended to, and not rewritten: other processes may append to it.
+        self.assertEqual(today.read_text(), before)
 
     def test_rotation_brings_a_file_of_large_records_under_the_cap(self) -> None:
         collector = MetricsCollector(self.project, max_bytes=4000)
         metrics = self.project / ".neuralmind" / "metrics"
         metrics.mkdir(parents=True)
-        today = metrics / f"metrics_{time.strftime('%Y-%m-%d')}.jsonl"
+        yesterday = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))
+        past = metrics / f"metrics_{yesterday}.jsonl"
         big = json.dumps({"event": "query", "query": "x" * 1500, "ts": time.time()})
-        today.write_text("".join(f"{big}\n" for _ in range(10)))
+        past.write_text("".join(f"{big}\n" for _ in range(10)))
         collector.rotate()
-        self.assertLessEqual(today.stat().st_size, 2000)
+        self.assertLessEqual(past.stat().st_size, 2000)
         # The newest whole records are the ones kept.
-        lines = today.read_text().splitlines()
+        lines = past.read_text().splitlines()
         self.assertTrue(lines)
         self.assertTrue(all(json.loads(line)["query"] == "x" * 1500 for line in lines))
 
