@@ -141,6 +141,20 @@ def test_edges_learned_on_a_docstring_id_are_still_linked(tmp_path):
     assert "src/click/testing.py" in [entry.path for entry in result.linked]
 
 
+def test_a_docstring_and_its_symbol_dont_double_a_shared_link(tmp_path):
+    # _OptionParser is linked more strongly to _resolve_context() than to
+    # CliRunner. Its docstring is linked to CliRunner too, which mustn't
+    # add up to put CliRunner first.
+    store = SynapseStore(tmp_path / "synapses.db")
+    for _ in range(3):
+        store.reinforce([PARSER, RESOLVE])
+    for _ in range(2):
+        store.reinforce([PARSER, RUNNER])
+        store.reinforce([PARSER + "__rationale", RUNNER])
+    result = recall(_Mind(store, hits=[(PARSER + "__rationale", 0.6)]), "q")
+    assert result.linked_ids == [RESOLVE, RUNNER]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.

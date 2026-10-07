@@ -114,7 +114,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     is the best match's score over every node type: the value the hook's
     ``NEURALMIND_RECALL_MIN_SIMILARITY`` gate compares.
     """
-    from .core import _rationale_owners, _synapse_node
+    from .core import _rationale_owners, _spread_with_aliases, _synapse_node
 
     hits = mind.embedder.search(prompt, n=SEARCH_N)
     nodes = _node_index(mind)
@@ -151,12 +151,15 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     seeds = _seeds(primary, info, result.matches)
     store = getattr(mind, "synapses", None)
     if store is not None and seeds:
-        # Query feedback can have learned edges on a docstring node's own id;
-        # seed it beside its symbol (an edgeless seed adds nothing).
-        spread_seeds = seeds + [
-            (raw, score) for nid, score in seeds for raw in sorted(rationale_ids.get(nid, ()))
-        ]
-        spread = store.spread(spread_seeds, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES)
+        # Query feedback can have learned edges on a docstring node's own id:
+        # spread from it too, without counting its symbol's score twice.
+        aliases: dict[str, float] = {}
+        for nid, score in seeds:
+            for raw in rationale_ids.get(nid, ()):
+                aliases[raw] = max(score, aliases.get(raw, score))
+        spread = _spread_with_aliases(
+            store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES
+        )
         missing = [nid for nid, _ in spread if nid not in nodes]
         for node in _fetch(mind, missing):
             nodes[node["id"]] = node
