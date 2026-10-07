@@ -66,13 +66,16 @@ class MetricsCollector:
         try:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
+            line = json.dumps(payload, sort_keys=True) + "\n"
             new_day = not path.exists()
-            if not new_day and path.stat().st_size >= self.max_bytes:
-                # Today's file is full. Drop the record rather than rewrite
-                # a file other hook processes may be appending to.
+            size = 0 if new_day else path.stat().st_size
+            if size + len(line.encode("utf-8")) > self.max_bytes:
+                # It would take today's file past the cap. Drop the record
+                # rather than rewrite a file other hook processes may be
+                # appending to.
                 return False
             with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(payload, sort_keys=True) + "\n")
+                f.write(line)
         except Exception:
             return False
         if new_day:

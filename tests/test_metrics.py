@@ -190,6 +190,31 @@ class TestMetricsCollector(unittest.TestCase):
         # Not appended to, and not rewritten: other processes may append to it.
         self.assertEqual(today.read_text(), before)
 
+    def test_a_record_that_would_pass_the_cap_is_dropped(self) -> None:
+        collector = MetricsCollector(self.project, max_bytes=2000)
+        metrics = self.project / ".neuralmind" / "metrics"
+
+        def log(query: str) -> bool:
+            return collector.log_query_metrics(
+                session_id="s",
+                query=query,
+                latency_ms=1.0,
+                retrieval_reuse_rate=0.0,
+                tool_calls=0,
+                tool_successes=0,
+                tokens_used=0,
+                synapses_activated=0,
+            )
+
+        # Too big on its own, as the day's first record: no file at all.
+        self.assertFalse(log("x" * 5000))
+        self.assertFalse(list(metrics.glob("metrics_*.jsonl")))
+        # Small records fit; one that would cross the cap doesn't.
+        self.assertTrue(log("q"))
+        self.assertFalse(log("x" * 1900))
+        today = next(metrics.glob("metrics_*.jsonl"))
+        self.assertLessEqual(today.stat().st_size, 2000)
+
     def test_rotation_brings_a_file_of_large_records_under_the_cap(self) -> None:
         collector = MetricsCollector(self.project, max_bytes=4000)
         metrics = self.project / ".neuralmind" / "metrics"
