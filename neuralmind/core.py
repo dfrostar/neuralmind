@@ -2509,10 +2509,15 @@ class NeuralMind:
         for hit in hits:
             if not hit.get("id"):
                 continue
-            node_id = _synapse_node(str(hit["id"]), owners)
+            raw_id = str(hit["id"])
+            node_id = _synapse_node(raw_id, owners)
             score = float(hit.get("score", 1.0))
             # A code node and its own rationale can both match: one seed.
             seeds[node_id] = max(score, seeds.get(node_id, score))
+            if raw_id != node_id:
+                # Query feedback can have learned edges on the rationale id
+                # itself; an edgeless seed adds nothing.
+                seeds[raw_id] = max(score, seeds.get(raw_id, score))
         if not seeds:
             return [], 0.0
         return store.spread(list(seeds.items()), depth=depth, top_k=top_k), max(seeds.values())
