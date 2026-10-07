@@ -85,6 +85,9 @@ keywords = [
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",
+    "posttooluse-hook",
+    "updated-tool-output",
+    "noisy-log-trimming",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

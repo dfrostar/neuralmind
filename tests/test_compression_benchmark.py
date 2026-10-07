@@ -3,8 +3,9 @@
 ``bench/compression/results.json`` is what the docs quote about PostToolUse
 compression. These checks recompute everything that needs no network — the Bash
 corpus is committed — and fail when the hooks no longer behave the way the
-committed run recorded. A change to the compressors or the hook wiring therefore
-ships with a regenerated benchmark::
+committed run recorded, or when the opt-in replacement
+(``NEURALMIND_BASH_REPLACE=1``) fails its retention gates. A change to the
+compressors or the hook wiring therefore ships with a regenerated benchmark::
 
     python -m evals.compression.run --out bench/compression
 
@@ -79,6 +80,7 @@ def test_bash_results_match_what_the_hooks_do_today(committed, tmp_path):
     assert fresh.keys() == recorded.keys()
 
     fields = [
+        "kind",
         "event",
         "hook_fired",
         "hook_json_valid",
@@ -87,11 +89,20 @@ def test_bash_results_match_what_the_hooks_do_today(committed, tmp_path):
         "must_keep_kept",
         "as_shipped_sha256",
         "compressor_only_sha256",
+        "opt_in_hook_json_valid",
+        "opt_in_replaced",
+        "opt_in_must_keep_kept",
+        "opt_in_sha256",
     ]
     # Token counts are only comparable under the tokenizer that produced them;
     # the digests above pin the delivered text exactly either way.
     if tokenizer_name() == committed["meta"]["tokenizer"]:
-        fields += ["baseline_tokens", "as_shipped_tokens", "compressor_only_tokens"]
+        fields += [
+            "baseline_tokens",
+            "as_shipped_tokens",
+            "compressor_only_tokens",
+            "opt_in_tokens",
+        ]
     drift = [
         f"{cid}.{field}: committed {recorded[cid][field]!r}, now {fresh[cid][field]!r}"
         for cid in sorted(fresh)
@@ -101,6 +112,31 @@ def test_bash_results_match_what_the_hooks_do_today(committed, tmp_path):
     assert not drift, "the Bash hook no longer does what the committed run recorded:\n  " + (
         "\n  ".join(drift) + f"\n{REGENERATE}"
     )
+
+
+def test_the_opt_in_replacement_passes_its_gates(committed, tmp_path):
+    # NEURALMIND_BASH_REPLACE=1, recomputed from the committed corpus: every
+    # call it replaces keeps at least MIN_MUST_KEEP_REPLACED of its must-keep
+    # lines, no content output is replaced, and no call costs more tokens than
+    # with no hook. This holds whatever results.json says; a change that breaks
+    # it can't ship by regenerating the results.
+    fresh = bench.bash_samples(bench.CORPUS_DIR, tmp_path)
+    gates = bench.opt_in_gates(fresh)
+    failed = {name: gate for name, gate in gates.items() if name != "all_pass" and not gate["pass"]}
+    assert not failed, f"opt-in gates failed: {failed}"
+    assert committed["summary"]["opt_in_gates"]["all_pass"]
+
+    # And it does what it is for: the noisy logs cost fewer tokens.
+    noisy = bench.summarize_bash_kinds(fresh)["noisy-log"]
+    assert noisy["opt_in_replaced_calls"] > 0
+    assert noisy["opt_in_tokens"] < noisy["baseline_tokens"]
+
+
+def test_every_corpus_entry_registers_its_kind():
+    manifest = json.loads((bench.CORPUS_DIR / "manifest.json").read_text(encoding="utf-8"))
+    kinds = {entry["id"]: entry.get("kind") for entry in manifest["entries"]}
+    unknown = {cid: kind for cid, kind in kinds.items() if kind not in ("content", "noisy-log")}
+    assert not unknown, f"corpus entries without a content/noisy-log kind: {unknown}"
 
 
 def test_the_read_hook_still_handles_claude_codes_payload_as_recorded(
@@ -148,7 +184,13 @@ def _pct(value: float) -> str:
 
 def test_the_docs_quote_the_committed_figures(committed):
     s = committed["summary"]
+    noisy = s["Bash"]["by_kind"]["noisy-log"]
+    spread = noisy["opt_in_per_call_pct"]
     expected = {
+        "Bash noisy logs, opt-in": _pct(noisy["opt_in_change_pct"]),
+        "Bash noisy logs, opt-in per-call mean": _pct(spread["mean"]),
+        "Bash noisy logs, opt-in per-call best": _pct(spread["min"]),
+        "Bash content, opt-in": _pct(s["Bash"]["by_kind"]["content"]["opt_in_change_pct"]),
         "Read, as shipped": _pct(s["Read"]["as_shipped_change_pct"]),
         "Bash, as shipped": _pct(s["Bash"]["as_shipped_change_pct"]),
         "Grep content mode, as shipped": _pct(

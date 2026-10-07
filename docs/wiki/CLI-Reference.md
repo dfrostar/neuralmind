@@ -2090,8 +2090,13 @@ atomic temp-file + rename writes). `neuralmind last` surfaces it. A call
 Claude Code reports as failed (a non-zero exit, other than exit 1 from
 `grep`, `find`, `diff` and a few others) fires `PostToolUseFailure`
 instead, so its output isn't cached. Despite
-its name, the hook no longer returns compressed output to Claude
+its name, the hook returns nothing to Claude by default
 ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)), so this is the output Claude already saw.
+With `NEURALMIND_BASH_REPLACE=1` it does replace an allowlisted noisy log
+(`pip install`, `neuralmind build`) with its progress lines elided; the
+replaced result names a file of its own under `.neuralmind/bash_outputs/`
+holding the full output, which a later Bash call can't overwrite the way it
+overwrites this single slot.
 
 ```bash
 neuralmind last [project_path] [--json]
@@ -2232,7 +2237,7 @@ NeuralMind block, leaving any user hooks untouched):
 | Event | What runs | Purpose |
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
-| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
+| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing by default ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); opt-in `NEURALMIND_BASH_REPLACE=1` *(v4.10.0)* trims the progress lines of `pip install` and `neuralmind build` output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt; prompt record *(v4.8.0)* | Inject ranked synapse neighbors as `additionalContext`; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
@@ -3819,7 +3824,7 @@ renewed — issue a new one.
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
-| `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
+| `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`) and from the full outputs `NEURALMIND_BASH_REPLACE` keeps (`.neuralmind/bash_outputs/`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
@@ -3837,8 +3842,9 @@ renewed — issue a new one.
 | `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
-| `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
+| `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. It also turns off `NEURALMIND_BASH_REPLACE`, which never trims an output it has nowhere to keep whole. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
+| `NEURALMIND_BASH_REPLACE` | unset | *(v4.10.0+)* Set to `1` to let the `Bash` PostToolUse hook replace the output of an allowlisted noisy log with its progress lines elided, via `updatedToolOutput`. The allowlist is `pip install` (also `python -m pip install`) and `neuralmind build`, run on their own (after `cd`, `source` or variable assignments at most; any pipe, redirect or second command disqualifies the line). Each run of elided lines becomes one `[neuralmind: N progress lines elided: …]` marker; every other line, and any line mentioning an error, warning, failure or deprecation, reaches Claude as printed. The full output, credentials redacted, is kept in `.neuralmind/bash_outputs/` (newest 20), and the replaced result ends with its path. Other commands, failed commands, and Read and Grep results are never replaced. Measured, with its retention gates, in the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md). Hooks inherit Claude Code's environment, so set it in `.claude/settings.json` (`"env": {"NEURALMIND_BASH_REPLACE": "1"}`) or before launching `claude`. |
 | `NEURALMIND_BASH_SMALL` | `500` | *(v0.10.0+)* Threshold below which `compress_bash()` passes failing output through verbatim. Python API only: the hooks no longer compress tool output. |
 | `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which `compress_bash()` compresses successful output. Python API only: the hooks no longer compress tool output. |
 | `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines `compress_bash()` always keeps verbatim. Python API only: the hooks no longer compress tool output. |
