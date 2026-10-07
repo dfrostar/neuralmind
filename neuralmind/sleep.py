@@ -30,6 +30,7 @@ from typing import Any
 from .contracts import (
     META_SLEEP_LAST_RUN,
 )
+from .synapses import LTP_ROW_PARAMS, LTP_ROW_SQL, WEIGHT_CAP
 
 log = logging.getLogger(__name__)
 
@@ -168,10 +169,13 @@ class DaemonSleep:
     def promote_ltp_edges(self) -> int:
         """Gradually restore LTP edges toward their pre-decay weight.
 
-        LTP edges (activation_count >= LTP_THRESHOLD) are floored at
-        LTP_FLOOR during decay, but repeated decay cycles can leave them
-        well below their original weight. This pass applies a small
-        multiplicative restoration (1.1x) to nudge them back up.
+        LTP edges are the rows decay protects (``synapses.LTP_ROW_SQL``:
+        enough activations, a weight at or above LTP_FLOOR, and not
+        ephemeral). Decay floors them at LTP_FLOOR, but repeated decay
+        cycles can leave them well below their original weight. This pass
+        applies a small multiplicative restoration (1.1x) to nudge them
+        back up. Ephemeral rows are session scratch with no LTP protection,
+        so they're never promoted.
 
         NOTE: This is gradual restoration, not full restoration. We do
         not track pre-decay weight, so we cannot restore exactly. The
@@ -179,10 +183,11 @@ class DaemonSleep:
         over multiple sleep passes without overshooting.
         """
         with self.store._connect() as conn:
-            cur = conn.execute("""UPDATE synapses SET weight = MIN(1.0, weight * 1.1)
-                   WHERE activation_count >= 5
-                     AND weight >= 0.20
-                     AND weight < 1.0""")
+            cur = conn.execute(
+                f"UPDATE synapses SET weight = MIN(?, weight * 1.1) "
+                f"WHERE {LTP_ROW_SQL} AND weight < ?",
+                (WEIGHT_CAP, *LTP_ROW_PARAMS, WEIGHT_CAP),
+            )
             return cur.rowcount
 
     def emit_team_bundle(self) -> dict[str, Any] | None:

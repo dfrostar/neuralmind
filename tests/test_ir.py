@@ -379,6 +379,73 @@ def test_validate_prose_reinforcement_written_to_a_real_store_is_clean(tmp_path)
     assert _stale_issues(ir_mod.validate_ir(ir)) == []
 
 
+def _graph_with_chapters(*chapter_files):
+    graph = _synthetic_graph()
+    for rel in chapter_files:
+        graph["nodes"].append(
+            {
+                "id": rel.replace("/", "_").replace(".", "_"),
+                "label": rel,
+                "file_type": "document",
+                "source_file": rel,
+                "community": 1,
+            }
+        )
+    return graph
+
+
+def test_validate_does_not_flag_prose_chapter_endpoints_the_index_holds():
+    # The prose query path records each retrieved chapter by file name
+    # (MedicalRetriever's source_file), which is never a graph id.
+    ir = ir_mod.from_graph_json(_graph_with_chapters("chapters/ch01.md", "chapters/ch02.md"))
+    ir.synapses = [
+        ir_mod.IRSynapse(source="ch01.md", target="ch02.md", weight=0.3),
+        ir_mod.IRSynapse(source="ch02.md", target="query:dosage", weight=0.3),
+    ]
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+
+def test_validate_still_flags_chapters_the_index_no_longer_holds():
+    ir = ir_mod.from_graph_json(_graph_with_chapters("chapters/ch01.md", "docs/ch03.md"))
+    ir.synapses = [
+        ir_mod.IRSynapse(source="ch01.md", target="ch02.md", weight=0.3),  # ch02 deleted
+        ir_mod.IRSynapse(source="ch01.md", target="ch03.md", weight=0.3),  # not a chapter
+        ir_mod.IRSynapse(source="chapters/ch01.md", target="app_py", weight=0.3),  # a path
+    ]
+    stale = _stale_issues(ir_mod.validate_ir(ir))
+    assert len(stale) == 1
+    assert stale[0].message.startswith("3 learned synapse(s)")
+
+
+def test_validate_prose_project_after_prose_queries_is_clean(tmp_path):
+    """End-to-end: a real build of a project with chapters, and the edges
+    reinforce_prose writes for chapters the prose path retrieved, validate clean."""
+    from neuralmind import graphgen
+    from neuralmind.synapse_dynamics import SynapseDynamics
+    from neuralmind.synapses import SynapseStore
+
+    chapters = tmp_path / "chapters"
+    chapters.mkdir()
+    (chapters / "ch01.md").write_text("# One\n\nPeptide basics.\n", encoding="utf-8")
+    (chapters / "ch02.md").write_text("# Two\n\nDosage.\n", encoding="utf-8")
+    ir = ir_mod.from_graph_json(graphgen.build_graph(tmp_path))
+
+    db = tmp_path / ".neuralmind" / "synapses.db"
+    db.parent.mkdir(exist_ok=True)
+    dynamics = SynapseDynamics(SynapseStore(db))
+    assert dynamics.reinforce_prose(["ch01.md", "ch02.md"], query_terms=["dosage?"])
+    ir.synapses = ir_mod.load_synapses_for_project(tmp_path)
+    assert len(ir.synapses) == 3
+    assert _stale_issues(ir_mod.validate_ir(ir)) == []
+
+    (chapters / "ch02.md").unlink()
+    ir = ir_mod.from_graph_json(graphgen.build_graph(tmp_path))
+    ir.synapses = ir_mod.load_synapses_for_project(tmp_path)
+    stale = _stale_issues(ir_mod.validate_ir(ir))
+    assert len(stale) == 1
+    assert stale[0].message.startswith("2 learned synapse(s)")
+
+
 def test_validate_still_flags_real_stale_synapses_beside_pseudo_nodes():
     ir = ir_mod.from_graph_json(_synthetic_graph())
     ir.synapses = [

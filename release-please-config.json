@@ -8,7 +8,10 @@
       "version-file": "neuralmind/__init__.py",
       "extra-files": [
         "skills/neuralmind/SKILL.md",
-        "neuralmind/hermes_plugin/plugin.yaml"
+        {
+          "type": "generic",
+          "path": "neuralmind/hermes_plugin/plugin.yaml"
+        }
       ]
     }
   }

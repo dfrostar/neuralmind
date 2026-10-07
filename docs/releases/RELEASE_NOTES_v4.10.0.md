@@ -220,6 +220,27 @@ first fixed, shipped in v4.8.1.)
   still measured as a hypothetical arm. The opt-in doesn't use them: it removes
   noise rather than keeping signal.
 
+## Also in this release
+
+Two fixes found while fixing [v4.9.1](RELEASE_NOTES_v4.9.1.md). Neither loses data.
+
+- **`validate` stops flagging prose chapters as stale.** In a project whose
+  queries go through the prose path (a `chapters/` directory, built with a
+  graph rather than as a book), each query records the chapters it retrieved
+  in the synapse store by file name, such as `ch01.md`. That's never a graph
+  node id, so `neuralmind validate` reported every chapter synapse as stale.
+  A chapter name now counts as known when the index still holds
+  `chapters/<name>`. A chapter you deleted is still reported, and so is any
+  other name that doesn't resolve.
+- **The daemon sleep pass no longer treats ephemeral edges as long-term.**
+  `DaemonSleep.promote_ltp_edges` nudges long-term edges back up after decay.
+  It picked them by activation count and weight alone, so it also boosted
+  edges in the `ephemeral` namespace, which decay never protects. It now uses
+  the same long-term rule as decay, `status` and `SYNAPSE_MEMORY.md`: at least
+  five activations, a weight of at least 0.20, and not ephemeral. Nothing in
+  the CLI, hooks, daemon or MCP tools runs the sleep pass yet; this fixes the
+  `neuralmind.sleep` API for code that calls it.
+
 ## What the agent sees
 
 On Hermes, nothing new in a turn: the same recap and recall v4.9.0 added,
@@ -273,6 +294,20 @@ the plugin it installed is a copy, and a re-run keeps an earlier pin and leaves
 a plugin you disabled disabled. A plugin Hermes installed is updated with
 `hermes plugins update neuralmind` instead. `NEURALMIND_BASH_REPLACE` needs no
 hook reinstall: the registered `compress-bash` hook reads it on every call.
+
+## Privacy: ONNX Runtime telemetry
+
+NeuralMind runs its embedding model with ONNX Runtime, and ONNX Runtime has
+telemetry of its own. Its official builds turn it on by default, uploading
+usage events to Microsoft from Linux and macOS (version 1.30's privacy notes
+say so; we haven't checked when that started). So a NeuralMind process could
+send ONNX Runtime's telemetry even though NeuralMind itself sends none. From
+this release, importing NeuralMind sets `ORT_DISABLE_TELEMETRY=1`, ONNX
+Runtime's switch for turning that off, before the runtime starts. A test
+checks that the variable is set and that `onnxruntime` isn't loaded by the
+import itself. It overrides a value you set yourself. On Windows, ONNX Runtime
+writes trace events to ETW instead, which are recorded only when a Windows
+trace session is collecting them; the variable doesn't change that.
 
 ## Related
 

@@ -231,6 +231,11 @@
                 <li><strong><code>NEURALMIND_BASH_REPLACE=1</code></strong> &mdash; off by default. <code>pip install</code> and <code>neuralmind build</code> output reaches Claude with its progress lines elided and every other line verbatim; a line mentioning an error, warning, failure or deprecation is never removed, and the full output is kept in a file the result names</li>
                 <li><strong>Measured and gated</strong> &mdash; on the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>&rsquo;s five noisy logs, 81.9% fewer tokens (per call: mean &minus;54.8%, from 0% for the one it leaves alone to &minus;96.5%) with every must-keep line kept. CI fails the build if a replaced call keeps under 95% of them, or if a test run, diff, file dump, search, Read or Grep result is replaced. Five commands from two tools is a small corpus</li>
             </ul>
+            <h3>Also in v4.10.0: two fixes from the v4.9.1 bug hunt</h3>
+            <ul>
+                <li><strong><code>validate</code> stops flagging prose chapters as stale</strong> &mdash; the chapter file names the prose path records, such as <code>ch01.md</code>, count as known while the index still holds <code>chapters/ch01.md</code>; a deleted chapter is still reported</li>
+                <li><strong>The sleep pass&rsquo;s long-term rule</strong> &mdash; <code>DaemonSleep.promote_ltp_edges</code> no longer boosts ephemeral edges, which decay never protects (a library fix: nothing in the CLI, hooks or daemon runs the sleep pass yet)</li>
+            </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md">Hermes-Agent with code memory in every turn &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100">Trim noisy install logs</a></p>
         </div>
     </section>
