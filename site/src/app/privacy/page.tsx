@@ -22,15 +22,15 @@ const sections: Section[] = [
     },
     {
         title: 'Data We Do Not Collect',
-        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. By default it makes one kind of outbound request of its own: the first time it needs to embed on a machine with no cached model, it downloads a public embedding model (all-MiniLM-L6-v2) over HTTPS, verified against a pinned checksum. That fetch retries on transient network errors and runs again if the cached model is later removed, so it is not a once-in-a-lifetime event — but it is always the same public file, it is a plain download that carries none of your data, and pre-seeding the model via NEURALMIND_ONNX_MODEL_DIR removes it entirely. The only other outbound path is opt-in and off by default: if you set NEURALMIND_LLM_SEED=1 and provide your own Anthropic API key, README and architecture-document prose (never source code) is sent to Anthropic under your key to seed associations. Beyond that, the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control. Payment card data never touches our systems — it is handled entirely by Stripe.',
+        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. By default it makes one kind of outbound request of its own: the first time it needs to embed on a machine with no cached model, it downloads a public embedding model (all-MiniLM-L6-v2) over HTTPS, verified against a pinned checksum. That fetch retries on transient network errors and runs again if the cached model is later removed, so it is not a once-in-a-lifetime event — but it is always the same public file, it is a plain download that carries none of your data, and pre-seeding the model via NEURALMIND_ONNX_MODEL_DIR removes it entirely. The only other outbound path is opt-in and off by default: if you set NEURALMIND_LLM_SEED=1 and provide your own Anthropic API key, README and architecture-document prose (never source code) is sent to Anthropic under your key to seed associations. Beyond that, the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control.',
     },
     {
         title: 'Data We Collect',
         body: [
             'From the open-source software: nothing. There is no telemetry mechanism in the product.',
-            'Team tier license data: your email address (and optional company name) when you purchase a license, the seat email addresses you add, and license metadata (tier, seats, expiry, signature hash).',
-            'Payment: a Stripe customer ID for reconciliation. Card data is handled entirely by Stripe (PCI-DSS Level 1) and never touches our systems.',
-            'License portal: IP address and user agent are recorded in audit logs when you use the license portal, for security monitoring and fraud prevention.',
+            'Team tier license data: your email address (and optional company name) when you purchase a license, and license metadata (tier, seats, expiry, signature hash). Seat email addresses you add with `neuralmind team seats` are stored on your own machines and are not sent to us.',
+            'Payment: no payment processor is integrated. Team licenses are invoiced manually, in USD.',
+            'License portal: not available yet. Licenses are issued manually and sent to you directly, so no portal logs your IP address or user agent.',
             'PyPI download counts (public registry data, collected by PyPI, not by us)',
             'Website visitor analytics on neuralmind.uk (see Cloudflare section below)',
         ],
@@ -40,8 +40,8 @@ const sections: Section[] = [
         body: 'We keep Team-tier data only as long as the law and license validation require:',
         list: [
             'Active license data: duration of the license + 3 years after expiry',
-            'Audit logs (with IP): 3 years after creation, then anonymized',
-            'Financial records (Stripe): 7 years, required for tax compliance',
+            'Audit logs: 3 years after creation, then anonymized',
+            'Financial records: 7 years, required for tax compliance',
             'Deleted customer records: personal data anonymized immediately; financial records retained per above',
         ],
     },
@@ -61,7 +61,7 @@ const sections: Section[] = [
     },
     {
         title: 'Cookies & Tracking',
-        body: 'NeuralMind does not use cookies on neuralmind.uk. The Team license portal uses a single strictly-necessary session cookie for authentication — nothing else. We have no advertising pixels, no cross-site trackers, and no fingerprinting anywhere.',
+        body: 'NeuralMind does not use cookies on neuralmind.uk, and there is no license portal yet, so licensing sets no cookies either. We have no advertising pixels, no cross-site trackers, and no fingerprinting anywhere.',
     },
     {
         title: 'Third-Party Services',
@@ -69,12 +69,11 @@ const sections: Section[] = [
             'GitHub: for source code hosting and releases. GitHub\'s privacy policy applies.',
             'PyPI: for package distribution. Python Software Foundation privacy policy applies.',
             'Cloudflare: for domain, DNS, and Pages hosting. Cloudflare\'s privacy policy applies.',
-            'Stripe: payment processing for Team licenses. Card data goes directly to Stripe; Stripe\'s privacy policy applies.',
         ],
     },
     {
         title: 'Changes to This Policy',
-        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: September 27, 2026.',
+        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: October 6, 2026.',
     },
     {
         title: 'Contact',
@@ -90,7 +89,7 @@ export default function Privacy() {
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
                     <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. We never receive your code, the software has no telemetry, and this website uses only cookie-free, aggregate analytics.</p>
-                    <p className="text-slate-400 text-lg mb-12">Last updated: September 27, 2026</p>
+                    <p className="text-slate-400 text-lg mb-12">Last updated: October 6, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">
                             <h2 className="font-display text-2xl font-bold text-white mb-3 border-l-4 border-electric pl-4">{s.title}</h2>

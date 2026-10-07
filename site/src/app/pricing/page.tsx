@@ -47,7 +47,6 @@ const tiers = [
             'Multi-seat license (5-50 seats)',
             'Priority support',
             'Annual invoice — procurement-friendly',
-            'Signed seat manifests + admin audit at team scale',
             'Self-hosted deployment support',
         ],
         cta: 'Contact us about Team',

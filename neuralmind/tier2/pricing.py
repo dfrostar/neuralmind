@@ -11,7 +11,8 @@ import yaml
 
 # Per-seat prices must agree with commercial-terms.json ($29/user/mo, the
 # CI-gated source of truth) — longer terms are the flat monthly rate, no
-# invented discounts.
+# invented discounts. No trial entry either: nothing issues trials, and its
+# do_not_market list says so; the free 1-seat license is the evaluation path.
 DEFAULT_PRICING = {
     "team": {
         "monthly": {"base_per_seat": 29.00, "currency": "USD"},
@@ -24,7 +25,6 @@ DEFAULT_PRICING = {
         "default_commission_percent": 20,
         "tiers": {"bronze": 20, "silver": 25, "gold": 30, "platinum": 35},
     },
-    "trial": {"default_days": 14, "max_seats": 5, "auto_convert": False},
 }
 
 

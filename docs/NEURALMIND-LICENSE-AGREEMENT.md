@@ -176,27 +176,26 @@ When issuing a license, the following JSON file is delivered:
 
 ```bash
 # Issue a new license
-neuralmind issue-license \
+neuralmind license issue \
   --customer "Acme Corporation" \
   --seats 15 \
-  --term 12 \
-  --output ./acme-license.json
+  --term 12
 
 # Renew a license
-neuralmind renew-license \
+neuralmind license renew \
   --customer "Acme Corporation" \
   --term 12
 
 # Revoke a license
-neuralmind revoke-license \
+neuralmind license revoke \
   --customer "Acme Corporation" \
   --reason "non-payment"
 
 # Check status
-neuralmind license-status --customer "Acme Corporation"
+neuralmind license status --customer "Acme Corporation"
 
 # List all licenses
-neuralmind license-list
+neuralmind license list
 ```
 
 ---
