@@ -46,7 +46,8 @@ Recall now starts from the code node behind that match, and the
 `NEURALMIND_RECALL_MIN_SIMILARITY` (default 0.35). On this repository's own
 index, 15 prompts about the code and 15 off-topic ones went from 5/15 and 10/15
 getting recall to 15/15 and 1/15; that's one repository and 30 prompts, and
-`python -m tests.benchmark.recall_gate` reproduces it or calibrates your own.
+`python -m tests.benchmark.recall_gate`, run from a source checkout, reproduces
+the 15/15 and 1/15 or calibrates your own.
 `neuralmind metrics` counts how often recall injected or abstained. After
 Claude Code compacts a session, the session also gets its own first prompt,
 latest prompts (as written, up to 200 characters each) and edited files

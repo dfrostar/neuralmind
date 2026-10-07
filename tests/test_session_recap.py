@@ -516,6 +516,48 @@ def test_compaction_under_a_new_id_with_two_marked_sessions_recalls_neither(tmp_
     assert _start(tmp_path, "a-after", source="compact") == ""
 
 
+def test_a_second_compaction_under_another_new_id_still_recalls(tmp_path):
+    # One session, two compactions inside the window, a new id each time:
+    # a -> b recalls a and spends a's marker, so b -> c finds only b's.
+    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "a")
+    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
+    _prompt(tmp_path, "b", "keep the old sync API as a wrapper")
+    _compact(tmp_path, "b")
+    recap = _start(tmp_path, "c", source="compact")
+    assert "keep the old sync API" in recap
+    assert "migrate the scheduler" not in recap
+
+
+def test_a_spent_marker_leaves_another_sessions_compaction_unambiguous(tmp_path):
+    _prompt(tmp_path, "a", "session a's task")
+    _compact(tmp_path, "a")
+    assert "session a's task" in _start(tmp_path, "a-after", source="compact")
+    _prompt(tmp_path, "x", "session x's task")
+    _compact(tmp_path, "x")
+    recap = _start(tmp_path, "x-after", source="compact")
+    assert "session x's task" in recap
+    assert "session a's task" not in recap
+
+
+def test_a_repeated_session_start_gets_the_same_record(tmp_path):
+    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "a")
+    first = _start(tmp_path, "b", source="compact")
+    assert "migrate the scheduler" in first
+    assert _start(tmp_path, "b", source="compact") == first
+
+
+def test_no_learn_recalls_without_spending_the_marker(tmp_path, monkeypatch):
+    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "a")
+    record = tmp_path / ".neuralmind" / "recaps" / "a.jsonl"
+    before = record.read_text()
+    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
+    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
+    assert record.read_text() == before
+
+
 def test_compaction_header_says_prompts_are_clipped(tmp_path):
     _prompt(tmp_path, "now", "x" * (session_recap.PROMPT_CHARS + 50))
     _compact(tmp_path, "now")
