@@ -137,6 +137,30 @@ def _rationale_owners(mind: Any) -> dict[str, str]:
     return owners
 
 
+def _spread_with_aliases(
+    store: Any,
+    seeds: dict[str, float],
+    aliases: dict[str, float],
+    depth: int,
+    top_k: int,
+) -> list[tuple[str, float]]:
+    """Spread from ``seeds``, and from the rationale ids behind them.
+
+    Query feedback stores raw search-hit ids, so a rationale node can carry
+    learned edges of its own. Spreading from it separately and keeping each
+    neighbour's higher activation keeps those edges reachable without
+    applying one semantic hit's energy twice.
+    """
+    ranked = store.spread(list(seeds.items()), depth=depth, top_k=top_k)
+    if not aliases:
+        return ranked
+    merged = dict(ranked)
+    for node_id, energy in store.spread(list(aliases.items()), depth=depth, top_k=top_k):
+        if node_id not in seeds and node_id not in aliases:
+            merged[node_id] = max(energy, merged.get(node_id, 0.0))
+    return sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
+
+
 def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     """Validate a project's canonical IR without standing up a vector backend.
 
@@ -2506,6 +2530,7 @@ class NeuralMind:
             return [], 0.0
         owners = _rationale_owners(self)
         seeds: dict[str, float] = {}
+        aliases: dict[str, float] = {}
         for hit in hits:
             if not hit.get("id"):
                 continue
@@ -2515,12 +2540,11 @@ class NeuralMind:
             # A code node and its own rationale can both match: one seed.
             seeds[node_id] = max(score, seeds.get(node_id, score))
             if raw_id != node_id:
-                # Query feedback can have learned edges on the rationale id
-                # itself; an edgeless seed adds nothing.
-                seeds[raw_id] = max(score, seeds.get(raw_id, score))
+                aliases[raw_id] = max(score, aliases.get(raw_id, score))
         if not seeds:
             return [], 0.0
-        return store.spread(list(seeds.items()), depth=depth, top_k=top_k), max(seeds.values())
+        ranked = _spread_with_aliases(store, seeds, aliases, depth=depth, top_k=top_k)
+        return ranked, max(seeds.values())
 
     # ----------------------------------------------------------------- #
     # Structural graph (calls / inherits / imports — precise, day-one)

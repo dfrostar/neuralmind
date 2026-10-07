@@ -70,6 +70,18 @@ def test_edges_learned_on_a_rationale_id_still_recall(tmp_path):
     assert "docs_loading_md" in [node for node, _ in ranked]
 
 
+def test_a_rationale_and_its_code_node_dont_double_a_shared_neighbour(tmp_path):
+    # Both ids carry an edge to the same neighbour: it gets the code node's
+    # activation, not the sum of the two.
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce(["pkg_mod_py__load_fn", "pkg_mod_py__save_fn"])
+    store.reinforce(["pkg_mod_py__load_fn__rationale", "pkg_mod_py__save_fn"])
+    hits = [{"id": "pkg_mod_py__load_fn__rationale", "score": 0.6}]
+    ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits), "q")
+    alone = dict(store.spread([("pkg_mod_py__load_fn", 0.6)], depth=2, top_k=10))
+    assert dict(ranked)["pkg_mod_py__save_fn"] == alone["pkg_mod_py__save_fn"]
+
+
 def test_no_match_recalls_nothing(tmp_path):
     assert NeuralMind.synaptic_recall(_Mind(_store(tmp_path), []), "q") == ([], 0.0)
 
