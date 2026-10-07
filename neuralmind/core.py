@@ -2230,7 +2230,7 @@ class NeuralMind:
         if self._medical_retriever is None:
             from neuralmind.medical_retriever import MedicalRetriever
 
-            chapters_dir = self.project_path / "chapters"
+            chapters_dir = self.project_path / paths_mod.PROSE_CHAPTERS_DIR
             self._medical_retriever = MedicalRetriever(
                 project_path=str(self.project_path),
                 chapter_dir=str(chapters_dir),

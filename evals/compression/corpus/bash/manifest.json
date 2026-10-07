@@ -236,13 +236,13 @@
       "kind": "content"
     },
     {
-      "id": "pip-install-requirements",
+      "id": "pip-install-from-file",
       "category": "install log (fresh environment)",
       "kind": "noisy-log",
       "cwd": "scratch",
       "command": "python -m pip install -r requirements.txt",
       "exit_code": 0,
-      "stdout_file": "pip-install-requirements.stdout.txt",
+      "stdout_file": "pip-install-from-file.stdout.txt",
       "stderr_file": null,
       "must_keep": [
         "(?i)^\\s*(error|warning|deprecation)\\b",

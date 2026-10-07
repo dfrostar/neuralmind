@@ -97,6 +97,11 @@ gates it in CI on keeping the pre-registered must-keep lines. Walkthrough:
 [Trim noisy install logs](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
 
+Also in v4.10.0: `neuralmind validate` stops reporting the chapter files the
+prose path records, such as `ch01.md`, as stale synapses while the index
+still holds `chapters/ch01.md`, and the `neuralmind.sleep` API's long-term
+promotion no longer boosts ephemeral edges, which decay never protects.
+
 ### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
 
 v4.9.1 let six `decisions` and `memory` subcommands take the project path

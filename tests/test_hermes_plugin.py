@@ -982,7 +982,10 @@ def test_manifest_version_tracks_the_release():
     released = json.loads((REPO_ROOT / ".release-please-manifest.json").read_text())["."]
     assert _manifest()["version"] == __version__ == released
     config = json.loads((REPO_ROOT / "release-please-config.json").read_text())
-    assert rel in config["packages"]["."]["extra-files"]
+    # A bare path ending in .yaml also gets release-please's YAML updater, which
+    # rewrites the file and drops this marker (the 4.10.0 release PR did);
+    # "generic" bumps only the marked line.
+    assert {"type": "generic", "path": rel} in config["packages"]["."]["extra-files"]
 
 
 # --- finding NeuralMind --------------------------------------------------------
