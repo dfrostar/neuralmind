@@ -151,11 +151,19 @@ jobs:
       - name: Import smoke test
         run: |
           source .smoke/bin/activate
+          # Run from outside the checkout. `python -c` puts the working
+          # directory first on sys.path, so from the repo root `import
+          # neuralmind` loads ./neuralmind/ instead of the wheel installed
+          # above, and a module or data file missing from the wheel would still
+          # pass. Python 3.10 has no -P to switch that off. The next two steps
+          # do the same; the stdio round-trip's script handles it itself.
+          cd "$RUNNER_TEMP"
           # NOTE: do NOT import neuralmind.embedder here — it is the ChromaDB
           # backend (top-level `import chromadb`), which is an opt-in extra as of
           # v0.29.0. The default install must work without it.
           python -c "
           import neuralmind
+          assert 'site-packages' in neuralmind.__file__, neuralmind.__file__
           import neuralmind.cli
           import neuralmind.core
           import neuralmind.config
@@ -167,6 +175,7 @@ jobs:
       - name: ChromaDB-free default install assertions (v0.29.0)
         run: |
           source .smoke/bin/activate
+          cd "$RUNNER_TEMP"  # test the wheel, not ./neuralmind/ (see the import smoke test)
           # The default install must be ChromaDB-free and resolve to turbovec.
           python -c "
           import importlib.util as u
@@ -191,6 +200,7 @@ jobs:
       - name: MCP bundling smoke test
         run: |
           source .smoke/bin/activate
+          cd "$RUNNER_TEMP"  # test the wheel, not ./neuralmind/ (see the import smoke test)
           # The whole point of v0.5.0 is that `pip install neuralmind`
           # (no extras) gives a working MCP server out of the box.
           # Catch packaging regressions before they ship to PyPI.
@@ -204,8 +214,11 @@ jobs:
           # Importing the module is not starting the server: mcp 2.0.0 removed
           # the decorator API and `neuralmind-mcp` crashed on every fresh
           # install for three weeks while the step above stayed green. This
-          # spawns the real entry point and speaks JSON-RPC to it.
-          python scripts/mcp_stdio_smoke.py
+          # spawns the real entry point and speaks JSON-RPC to it. The script
+          # starts the server outside the checkout, and --require-wheel fails
+          # the step unless that server imports neuralmind from the venv's
+          # site-packages rather than ./neuralmind/.
+          python scripts/mcp_stdio_smoke.py --require-wheel
 
       - name: CLI smoke test
         run: |

@@ -21,6 +21,14 @@ against whichever ``mcp`` version the resolver picked. ``tests/test_mcp_transpor
 wraps the same function under pytest. Exit code 0 on success, 1 on failure;
 prints one line per step.
 
+The server starts in an empty temporary directory, not the caller's. ``python
+-c`` puts the working directory first on ``sys.path``, so a server started from
+a checkout's root would import ``./neuralmind/`` instead of the installed
+package, and the fresh-install job would test the source tree rather than the
+wheel (Python 3.10 has no ``-P`` to switch that off). ``--require-wheel``, which
+that job passes, also fails the run unless the server's ``neuralmind`` comes
+from this interpreter's site-packages.
+
 This exists because ``pip install neuralmind`` shipped a server that crashed on
 startup for three weeks in 2026 (mcp 2.0.0 removed the decorator API) while the
 CI smoke test only *imported* the module. Importing is not starting.
@@ -28,17 +36,25 @@ CI smoke test only *imported* the module. Importing is not starting.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import queue
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
+from pathlib import Path
 from typing import Any
 
 PROTOCOL_VERSION = "2025-06-18"
 DEFAULT_TIMEOUT = 60.0
+SERVER_CODE = "from neuralmind.mcp_server import main; main()"
+# Prints the file the server's ``import neuralmind`` loads, without importing it.
+ORIGIN_CODE = (
+    "import importlib.util as u; s = u.find_spec('neuralmind'); print(s.origin if s else '')"
+)
 
 
 class SmokeFailureError(RuntimeError):
@@ -51,24 +67,70 @@ def _reader(stream, out: queue.Queue[str | None]) -> None:
     out.put(None)
 
 
-def run_smoke(timeout: float = DEFAULT_TIMEOUT, project_path: str | None = None) -> dict[str, Any]:
-    """Run the round-trip; return a summary dict; raise SmokeFailureError on any miss."""
+def _in_site_packages(path: str) -> bool:
+    """Whether ``path`` is in this interpreter's site-packages: an installed
+    wheel, not a source tree or an editable install."""
+    if not path:
+        return False
+    resolved = Path(path).resolve()
+    return any(
+        resolved.is_relative_to(Path(sysconfig.get_path(key)).resolve())
+        for key in ("purelib", "platlib")
+    )
+
+
+def run_smoke(
+    timeout: float = DEFAULT_TIMEOUT,
+    project_path: str | None = None,
+    require_wheel: bool = False,
+) -> dict[str, Any]:
+    """Run the round-trip; return a summary dict; raise SmokeFailureError on any miss.
+
+    The server runs in an empty temporary directory (see the module docstring),
+    removed once it has exited. ``require_wheel`` fails before the round-trip
+    unless the server's ``neuralmind`` comes from this interpreter's
+    site-packages.
+    """
+    with tempfile.TemporaryDirectory(
+        prefix="neuralmind-smoke-", ignore_cleanup_errors=True
+    ) as workdir:
+        return _round_trip(workdir, timeout, project_path, require_wheel)
+
+
+def _round_trip(
+    workdir: str, timeout: float, project_path: str | None, require_wheel: bool
+) -> dict[str, Any]:
     env = dict(os.environ)
     env.setdefault("NEURALMIND_ORT_THREADS", "1")
     env.setdefault("PYTHONUNBUFFERED", "1")
-    cmd = [sys.executable, "-c", "from neuralmind.mcp_server import main; main()"]
+    # Same interpreter, working directory and environment as the server, so the
+    # same sys.path: this is the neuralmind the round-trip tests.
+    origin = subprocess.run(
+        [sys.executable, "-c", ORIGIN_CODE],
+        cwd=workdir,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    ).stdout.strip()
+    if require_wheel and not _in_site_packages(origin):
+        raise SmokeFailureError(
+            f"the server would import neuralmind from {origin or '(not found)'}, "
+            "not from this interpreter's site-packages"
+        )
     proc = subprocess.Popen(
-        cmd,
+        [sys.executable, "-c", SERVER_CODE],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
         env=env,
+        cwd=workdir,
     )
     lines: queue.Queue[str | None] = queue.Queue()
     threading.Thread(target=_reader, args=(proc.stdout, lines), daemon=True).start()
-    summary: dict[str, Any] = {"steps": []}
+    summary: dict[str, Any] = {"steps": [], "neuralmind_origin": origin}
 
     def send(message: dict[str, Any]) -> None:
         assert proc.stdin is not None
@@ -196,18 +258,27 @@ def run_smoke(timeout: float = DEFAULT_TIMEOUT, project_path: str | None = None)
             proc.wait(timeout=15)
         except Exception:
             proc.kill()
+            proc.wait()  # reaped before run_smoke removes its working directory
     summary["exit_code"] = proc.returncode
     return summary
 
 
 def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Smoke-test the NeuralMind MCP server over stdio.")
+    parser.add_argument(
+        "--require-wheel",
+        action="store_true",
+        help="fail unless the server imports neuralmind from this interpreter's "
+        "site-packages (an installed wheel, not a checkout or an editable install)",
+    )
+    args = parser.parse_args(argv)
     try:
         import mcp  # noqa: F401
     except ImportError:
         print("mcp SDK not importable; nothing to smoke-test", file=sys.stderr)
         return 1
     try:
-        summary = run_smoke()
+        summary = run_smoke(require_wheel=args.require_wheel)
     except SmokeFailureError as exc:
         print(f"MCP stdio smoke FAILED: {exc}", file=sys.stderr)
         return 1
@@ -217,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
         version: str | None = _dist_version("mcp")
     except Exception:  # pragma: no cover - metadata missing in odd installs
         version = None
+    print(f"[mcp-smoke] server's neuralmind: {summary['neuralmind_origin']}")
     for step in summary["steps"]:
         print(f"[mcp-smoke] {step}")
     print(
