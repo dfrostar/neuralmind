@@ -7,11 +7,11 @@ neighbours in the index, however poor the match. The hook now abstains when
 the best match scores below ``DEFAULT_RECALL_MIN_SIMILARITY`` in
 ``neuralmind/hooks.py``. This module is where that number comes from.
 
-It runs two fixed prompt sets through ``NeuralMind.synaptic_recall``, the
+It runs two fixed prompt sets through ``neuralmind.prompt_recall.recall``, the
 call the hook makes: prompts about the NeuralMind code itself, and off-topic
 prompts (short agent-session replies, general questions, other domains). For
-each it reports the best-match similarity and how many nodes recall would
-inject, then sweeps candidate thresholds: on-topic prompts kept against
+each it reports the best-match similarity and how many files the block would
+name, then sweeps candidate thresholds: on-topic prompts kept against
 off-topic prompts let through.
 
 The on-topic set is about this repository, so run it against a built
@@ -78,6 +78,7 @@ THRESHOLDS = (0.25, 0.30, 0.33, 0.35, 0.37, 0.40)
 def measure(project: str, on_topic: list[str], off_topic: list[str]) -> dict:
     os.environ["NEURALMIND_NO_LEARN"] = "1"
     from neuralmind.core import NeuralMind
+    from neuralmind.prompt_recall import recall
 
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         mind = NeuralMind(project)
@@ -90,13 +91,13 @@ def measure(project: str, on_topic: list[str], off_topic: list[str]) -> dict:
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(io.StringIO()),
             ):
-                ranked, similarity = mind.synaptic_recall(prompt, depth=2, top_k=8)
+                result = recall(mind, prompt)
             rows.append(
                 {
                     "set": label,
                     "prompt": prompt,
-                    "similarity": round(similarity, 4),
-                    "would_inject": len(ranked),
+                    "similarity": round(result.similarity, 4),
+                    "would_inject": result.count,
                 }
             )
     sweep = []

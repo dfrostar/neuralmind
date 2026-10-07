@@ -1,0 +1,103 @@
+{
+  "repo": "https://github.com/dfrostar/neuralmind",
+  "commit": "edbc239c85ab3e1a529fb95298d76a05f1de925e",
+  "note": "The on-topic prompts of tests/benchmark/recall_gate.py. Expected files were chosen by reading the code before any run, and this set was held out while the v4.10.0 block was tuned on tests/benchmark/prompt_recall_click.json. A prompt counts as named when the hook's block names any expected file.",
+  "prompts": [
+    {
+      "prompt": "how does synapse decay work",
+      "expect": [
+        "neuralmind/synapses.py"
+      ]
+    },
+    {
+      "prompt": "where is the PreCompact hook handled",
+      "expect": [
+        "neuralmind/hooks.py"
+      ]
+    },
+    {
+      "prompt": "add a threshold to the spreading activation recall in the prompt-submit hook",
+      "expect": [
+        "neuralmind/hooks.py"
+      ]
+    },
+    {
+      "prompt": "why does the session recap skip resumed sessions",
+      "expect": [
+        "neuralmind/session_recap.py"
+      ]
+    },
+    {
+      "prompt": "fix the claims guard test for site numbers",
+      "expect": [
+        "tests/test_site_claims.py"
+      ]
+    },
+    {
+      "prompt": "the hermes plugin isn't injecting context, debug it",
+      "expect": [
+        "neuralmind/hermes_plugin/__init__.py"
+      ]
+    },
+    {
+      "prompt": "how are team memory bundles imported on session start",
+      "expect": [
+        "neuralmind/team_memory.py"
+      ]
+    },
+    {
+      "prompt": "what does fit_to_budget trim first",
+      "expect": [
+        "neuralmind/context_selector.py"
+      ]
+    },
+    {
+      "prompt": "make the MCP query tool report a stale index",
+      "expect": [
+        "neuralmind/mcp_server.py"
+      ]
+    },
+    {
+      "prompt": "the decision store marks decisions stale on commit, where is that",
+      "expect": [
+        "neuralmind/memory/invalidate.py",
+        "neuralmind/memory/store.py"
+      ]
+    },
+    {
+      "prompt": "rename synaptic_neighbors to associative_recall everywhere",
+      "expect": [
+        "neuralmind/core.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/synapse_client.py"
+      ]
+    },
+    {
+      "prompt": "how is the bash output cache redacted",
+      "expect": [
+        "neuralmind/output_cache.py"
+      ]
+    },
+    {
+      "prompt": "explain the L0 L1 L2 L3 context layers",
+      "expect": [
+        "neuralmind/context_selector.py"
+      ]
+    },
+    {
+      "prompt": "why did the public benchmark recall drop on rich",
+      "expect": [
+        "evals/public/run.py",
+        "evals/public/judge.py",
+        "evals/public/backends.py"
+      ]
+    },
+    {
+      "prompt": "add a new env var to disable the read dedup",
+      "expect": [
+        "neuralmind/read_dedup.py",
+        "neuralmind/hooks.py"
+      ]
+    }
+  ]
+}

@@ -2200,7 +2200,7 @@ def cmd_metrics(args):
         print(f"{'Prompts seen by recall':.<30} {recall.get('n_prompts', 0):>12,}")
         print(f"{'Recall injected':.<30} {recall.get('n_injected', 0):>12,}")
         print(f"{'Abstained: low similarity':.<30} {outcomes.get('low_similarity', 0):>12,}")
-        print(f"{'Abstained: nothing learned':.<30} {outcomes.get('no_neighbors', 0):>12,}")
+        print(f"{'Abstained: nothing to name':.<30} {outcomes.get('no_neighbors', 0):>12,}")
         print(f"{'Abstain rate':.<30} {recall.get('abstain_rate', 0) * 100:>11.1f}%")
 
 

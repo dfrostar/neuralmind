@@ -1,0 +1,100 @@
+{
+  "repo": "https://github.com/pallets/click",
+  "commit": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+  "note": "Expected files were chosen by reading the code, before any run. This is the set the v4.10.0 block was tuned on (file ranking, tests after code); tests/benchmark/prompt_recall_neuralmind.json was held out. A prompt counts as named when the hook's block names any expected file.",
+  "prompts": [
+    {
+      "prompt": "which files in this repo handle parsing command-line options?",
+      "expect": [
+        "src/click/parser.py",
+        "src/click/core.py"
+      ]
+    },
+    {
+      "prompt": "where is shell completion implemented?",
+      "expect": [
+        "src/click/shell_completion.py"
+      ]
+    },
+    {
+      "prompt": "how do I make an option prompt for a password?",
+      "expect": [
+        "src/click/core.py",
+        "src/click/termui.py",
+        "src/click/decorators.py"
+      ]
+    },
+    {
+      "prompt": "how does click decide the order parameters are processed?",
+      "expect": [
+        "src/click/core.py"
+      ]
+    },
+    {
+      "prompt": "how can I test a click command and capture its output?",
+      "expect": [
+        "src/click/testing.py"
+      ]
+    },
+    {
+      "prompt": "where are the built-in parameter types like IntRange and Choice defined?",
+      "expect": [
+        "src/click/types.py"
+      ]
+    },
+    {
+      "prompt": "how does the help page get formatted and wrapped?",
+      "expect": [
+        "src/click/formatting.py",
+        "src/click/_textwrap.py",
+        "src/click/core.py"
+      ]
+    },
+    {
+      "prompt": "how are environment variables mapped to options?",
+      "expect": [
+        "src/click/core.py"
+      ]
+    },
+    {
+      "prompt": "how does click show a progress bar?",
+      "expect": [
+        "src/click/termui.py",
+        "src/click/_termui_impl.py"
+      ]
+    },
+    {
+      "prompt": "what exception is raised for a missing required argument and how is it displayed?",
+      "expect": [
+        "src/click/exceptions.py"
+      ]
+    },
+    {
+      "prompt": "how do command groups dispatch to subcommands?",
+      "expect": [
+        "src/click/core.py"
+      ]
+    },
+    {
+      "prompt": "how does click open files lazily for File parameters?",
+      "expect": [
+        "src/click/utils.py",
+        "src/click/types.py"
+      ]
+    },
+    {
+      "prompt": "where does echo handle colors on windows?",
+      "expect": [
+        "src/click/utils.py",
+        "src/click/_compat.py",
+        "src/click/_winconsole.py"
+      ]
+    },
+    {
+      "prompt": "how does the decorator stack attach params to a function?",
+      "expect": [
+        "src/click/decorators.py"
+      ]
+    }
+  ]
+}

@@ -2012,6 +2012,37 @@ class SynapseStore:
         ranked = sorted(merged.items(), key=lambda x: x[1], reverse=True)
         return ranked[:k]
 
+    def degrees(
+        self, node_ids: Iterable[str], namespaces: list[str] | None = None
+    ) -> dict[str, int]:
+        """Count each node's distinct neighbors across the read namespaces.
+
+        This is the degree :meth:`spread` compares with ``HUB_DEGREE`` to damp
+        a hub's outgoing activation. Nodes with no edges are left out.
+        """
+        ids = [n for n in dict.fromkeys(node_ids) if n]
+        selected = self._read_namespaces(namespaces)
+        if not ids or not selected:
+            return {}
+        ns_marks = ",".join("?" for _ in selected)
+        id_marks = ",".join("?" for _ in ids)
+        names = [ns for ns, _ in selected]
+        with self._connect() as conn:
+            cur = conn.execute(
+                f"""
+                SELECT node, COUNT(DISTINCT other) FROM (
+                    SELECT node_a AS node, node_b AS other FROM synapses
+                    WHERE node_a IN ({id_marks}) AND namespace IN ({ns_marks})
+                    UNION ALL
+                    SELECT node_b AS node, node_a AS other FROM synapses
+                    WHERE node_b IN ({id_marks}) AND namespace IN ({ns_marks})
+                )
+                GROUP BY node
+                """,
+                (*ids, *names, *ids, *names),
+            )
+            return {str(node): int(count) for node, count in cur.fetchall()}
+
     def next_likely(
         self,
         from_node: str,
