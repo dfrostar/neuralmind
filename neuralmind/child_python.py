@@ -27,10 +27,17 @@ from collections.abc import Iterator
 # Whether this interpreter has ``-P`` (Python 3.11+).
 HAS_SAFE_PATH = sys.version_info >= (3, 11)
 
-# Path settings made absolute for the child, so they mean the same thing from
-# the 3.10 child's temporary directory. A pre-seeded model the child failed to
-# find would be downloaded: the network request the setting exists to avoid.
-_PATH_SETTINGS = ("NEURALMIND_ONNX_MODEL_DIR",)
+# Path settings a child reads, made absolute so they mean the same thing from
+# the working directory a 3.10 child runs in. A pre-seeded model the child
+# missed would be downloaded, the request the setting exists to avoid, and a
+# daemon would write its discovery file where the CLI that started it never
+# looks, reporting a failed start while the daemon runs on.
+_PATH_SETTINGS = (
+    "NEURALMIND_CONFIG_DIR",
+    "NEURALMIND_DAEMON_HOME",
+    "NEURALMIND_ONNX_MODEL_DIR",
+    "NEURALMIND_RERANK_MODEL",
+)
 
 
 def python_argv(*args: str) -> list[str]:

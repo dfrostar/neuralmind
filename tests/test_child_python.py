@@ -116,14 +116,25 @@ def test_child_still_imports_neuralmind(shadowing_cwd, safe_path):
     assert done.returncode == 0, done.stderr
 
 
-def test_relative_model_dir_still_resolves_in_the_child(shadowing_cwd, monkeypatch, safe_path):
-    """A child that missed a pre-seeded model would download one."""
-    (shadowing_cwd / "models").mkdir()
-    monkeypatch.setenv("NEURALMIND_ONNX_MODEL_DIR", "models")
+@pytest.mark.parametrize(
+    "name",
+    [
+        "NEURALMIND_CONFIG_DIR",
+        "NEURALMIND_DAEMON_HOME",
+        "NEURALMIND_ONNX_MODEL_DIR",
+        "NEURALMIND_RERANK_MODEL",
+    ],
+)
+def test_relative_path_settings_still_resolve_in_the_child(
+    shadowing_cwd, monkeypatch, safe_path, name
+):
+    """From 3.10's other working directory a relative setting would point
+    elsewhere: a missed pre-seeded model is downloaded, a missed daemon home
+    hides the daemon from the CLI that started it."""
+    (shadowing_cwd / "configured").mkdir()
+    monkeypatch.setenv(name, "configured")
     done = _run(
-        child_python.python_argv(
-            "-c", "import os; print(os.path.isdir(os.environ['NEURALMIND_ONNX_MODEL_DIR']))"
-        )
+        child_python.python_argv("-c", f"import os; print(os.path.isdir(os.environ[{name!r}]))")
     )
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == "True"
@@ -205,13 +216,15 @@ def test_doc_evolver_children_start_clear_of_the_working_directory(
 
 
 def test_daemon_starts_clear_of_the_working_directory(tmp_path, monkeypatch, safe_path):
+    """And still writes its discovery file where the CLI that started it looks,
+    with ``NEURALMIND_DAEMON_HOME`` relative to the CLI's working directory."""
     from neuralmind import cli, daemon_client
     from neuralmind import daemon as daemon_mod
 
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))  # Path.home() on Windows
-    monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(home / ".neuralmind"))
+    monkeypatch.setenv("NEURALMIND_DAEMON_HOME", ".daemon")
     clients = iter([None, SimpleNamespace(health=lambda: {"pid": 4242})])
     monkeypatch.setattr(daemon_client, "connect", lambda **_: next(clients))
     monkeypatch.setattr(daemon_mod, "read_discovery", lambda *_: {"port": 8765})
@@ -219,7 +232,7 @@ def test_daemon_starts_clear_of_the_working_directory(tmp_path, monkeypatch, saf
 
     def popen(argv, **kwargs):
         kwargs["stdout"].close()  # the daemon log, normally the child's to keep
-        started.append((argv, kwargs.get("cwd")))
+        started.append((argv, kwargs.get("cwd"), kwargs["env"]))
 
     monkeypatch.setattr(subprocess, "Popen", popen)
     cli.cmd_daemon(
@@ -228,11 +241,14 @@ def test_daemon_starts_clear_of_the_working_directory(tmp_path, monkeypatch, saf
         )
     )
 
-    argv = child_python.python_argv(
+    [(argv, cwd, env)] = started
+    assert argv == child_python.python_argv(
         "-m", "neuralmind.daemon", "--host", "127.0.0.1", "--port", "8765"
     )
     # 3.10: its own state directory, which outlives the call, not a temporary one.
-    assert started == [(argv, None if safe_path else home / ".neuralmind")]
+    assert cwd == (None if safe_path else home / ".neuralmind")
+    daemon_sees = Path(cwd or os.getcwd(), env["NEURALMIND_DAEMON_HOME"], "daemon.json")
+    assert daemon_sees == Path.cwd() / daemon_mod.discovery_path()
 
 
 def test_every_python_child_goes_through_child_python():
