@@ -148,8 +148,8 @@ so far as a summary. Summaries paraphrase, and the details that go first are
 the ones you can't easily restate: the task as you first worded it, and which
 files have already been changed. So after a compaction the session gets its
 own record back, under the heading "NeuralMind pre-compaction record": the
-first prompt, the last three, and the files edited, verbatim (prompts
-credential-redacted), alongside Claude Code's summary rather than instead of
+first prompt, the last three (each as written, up to 200 characters,
+credential-redacted) and the files edited, alongside Claude Code's summary rather than instead of
 it. It restates what you already asked for in this session; it adds no new
 instructions.
 

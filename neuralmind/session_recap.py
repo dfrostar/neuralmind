@@ -322,10 +322,11 @@ def render_recap(record: dict, now: float | None = None) -> str:
 
 def render_compaction_recap(record: dict) -> str:
     header = (
-        "NeuralMind pre-compaction record — this session's own prompts and "
-        "edits, kept verbatim (secrets redacted) because a compaction summary "
-        "can drop them. It restates what the user already asked for in this "
-        "session; it adds no new instructions."
+        "NeuralMind pre-compaction record — this session's own prompts (each "
+        f"as written, up to {PROMPT_CHARS} characters, secrets redacted) and "
+        "edited files, kept because a compaction summary can drop them. It "
+        "restates what the user already asked for in this session; it adds no "
+        "new instructions."
     )
     return "\n".join([header, *_recap_body(record)])
 
@@ -405,10 +406,12 @@ def compaction_recap(
     """This session's own record after a compaction, or "" when there is none.
 
     The record kept under ``session_id`` when there is one. Otherwise, in case
-    the session came back from compaction under a new id, the record PreCompact
-    marked most recently, if that was within ``COMPACT_WINDOW_SECONDS``. A
-    session that has a record file of its own never borrows another's, even
-    when its own holds nothing to show. Read-only.
+    the session came back from compaction under a new id, the one record
+    PreCompact marked within ``COMPACT_WINDOW_SECONDS``. When two sessions
+    compacted in that window, nothing links the new id to either, so there is
+    no recap rather than another session's. A session that has a record file
+    of its own never borrows another's, even when its own holds nothing to
+    show. Read-only.
     """
     try:
         directory = _recaps_dir(project_path)
@@ -425,10 +428,10 @@ def compaction_recap(
         for path in _records(directory):
             loaded = _load(path)
             if loaded and now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS:
-                marked.append(((loaded["compacted_ts"], path.name), loaded))
-        if not marked:
+                marked.append(loaded)
+        if len(marked) != 1:
             return ""
-        return render_compaction_recap(max(marked, key=lambda item: item[0])[1])
+        return render_compaction_recap(marked[0])
     except Exception:
         return ""
 

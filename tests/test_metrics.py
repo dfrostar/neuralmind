@@ -147,6 +147,38 @@ class TestMetricsCollector(unittest.TestCase):
             cmd_metrics(Namespace(project_path=str(self.project), days=7, json=True))
         self.assertEqual(json.loads(out.getvalue())["recall"]["n_prompts"], 4)
 
+    def test_cli_metrics_json_counts_every_event_in_one_window(self) -> None:
+        import contextlib
+        import io
+        from argparse import Namespace
+
+        from neuralmind.cli import cmd_metrics
+
+        collector = self._log_recalls()
+        collector.log_build_metrics(
+            duration_s=1.5, files_processed=3, synapse_edges=0, graph_edges=2
+        )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cmd_metrics(Namespace(project_path=str(self.project), days=7, json=True))
+        summary = json.loads(out.getvalue())
+        self.assertEqual(summary["n_events"], 5)
+        self.assertEqual(summary["recall"]["n_prompts"], 4)
+        self.assertEqual(summary["builds"]["n_builds"], 1)
+
+    def test_starting_a_new_day_applies_retention(self) -> None:
+        metrics = self.project / ".neuralmind" / "metrics"
+        metrics.mkdir(parents=True)
+        old = metrics / "metrics_2000-01-01.jsonl"
+        old.write_text('{"event": "recall", "ts": 0}\n')
+        collector = MetricsCollector(self.project)
+        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        self.assertFalse(old.exists())
+        # Later appends to the same day's file don't rescan.
+        old.write_text('{"event": "recall", "ts": 0}\n')
+        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        self.assertTrue(old.exists())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

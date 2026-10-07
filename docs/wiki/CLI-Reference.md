@@ -2153,12 +2153,13 @@ same block.
 
 *(v4.11.0+)* After a compaction, `SessionStart` (source `compact`) gives the
 session its **own** record back instead, headed "NeuralMind pre-compaction
-record": the same fields, kept verbatim. Claude Code's compaction summary is
+record": the same fields, prompts as written up to 200 characters. Claude Code's compaction summary is
 written by the model and paraphrases, and the task as you first stated it and
 the exact paths already edited are what it tends to drop. `PreCompact` marks
 the session it compacts, so if the session comes back under a new
-`session_id`, the one marked in the last 15 minutes is recalled; a session
-that wasn't compacted is never recalled this way. `NEURALMIND_SESSION_RECAP=0`
+`session_id`, the one marked in the last 15 minutes is recalled, if only one
+was; with two, neither is. A session that wasn't compacted is never recalled
+this way. `NEURALMIND_SESSION_RECAP=0`
 turns this off too.
 
 ```bash

@@ -66,11 +66,16 @@ class MetricsCollector:
         try:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
+            new_day = not path.exists()
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(payload, sort_keys=True) + "\n")
-            return True
         except Exception:
             return False
+        if new_day:
+            # Once a day, when its file is started: the retention limits
+            # apply without a separate cleanup step.
+            self.rotate()
+        return True
 
     def log_query_metrics(
         self,

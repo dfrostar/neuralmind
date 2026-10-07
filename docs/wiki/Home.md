@@ -49,8 +49,8 @@ getting recall to 15/15 and 1/15; that's one repository and 30 prompts, and
 `python -m tests.benchmark.recall_gate` reproduces it or calibrates your own.
 `neuralmind metrics` counts how often recall injected or abstained. After
 Claude Code compacts a session, the session also gets its own first prompt,
-latest prompts and edited files back, verbatim, alongside the compaction
-summary. Whether either change improves answers isn't measured.
+latest prompts (as written, up to 200 characters each) and edited files
+back, alongside the compaction summary. Whether either change improves answers isn't measured.
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [`NEURALMIND_RECALL_MIN_SIMILARITY`](CLI-Reference#environment-variables) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md).

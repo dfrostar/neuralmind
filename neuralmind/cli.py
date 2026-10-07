@@ -2156,10 +2156,8 @@ def cmd_metrics(args):
     project_path = Path(getattr(args, "project_path", ".")).resolve()
     days = getattr(args, "days", 7)
     collector = MetricsCollector(project_path)
-    summary = collector.summarize(days=days, event_type="query")
-    recall = collector.summarize(days=days, event_type="recall").get("recall")
-    if recall:
-        summary = {**summary, "recall": recall}
+    summary = collector.summarize(days=days)
+    recall = summary.get("recall")
 
     if getattr(args, "json", False):
         print(json.dumps(summary, indent=2))

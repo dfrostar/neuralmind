@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sys
 from pathlib import Path
@@ -712,9 +713,11 @@ DEFAULT_RECALL_MIN_SIMILARITY = 0.35
 def _recall_min_similarity() -> float:
     """The abstain threshold; unset or malformed means the default, 0 never abstains."""
     try:
-        return float(os.environ[RECALL_MIN_SIMILARITY_ENV])
+        value = float(os.environ[RECALL_MIN_SIMILARITY_ENV])
     except (KeyError, ValueError):
         return DEFAULT_RECALL_MIN_SIMILARITY
+    # NaN compares false with everything, so it would never abstain.
+    return value if math.isfinite(value) else DEFAULT_RECALL_MIN_SIMILARITY
 
 
 def _log_recall(project_path: str, outcome: str, injected: int, similarity: float) -> None:

@@ -16,7 +16,8 @@ NeuralMind's Claude Code hooks:
    compaction summary is written by the model, and it paraphrases. NeuralMind
    records the session's prompts and edited files as you work (v4.8.0), but gave
    them back only to the *next* session. After a compaction, the session now gets
-   its own record back, verbatim.
+   its own record back: its prompts as written, up to 200 characters each, and
+   the files it edited.
 
 No new hooks and no re-install: both changes ride on the `UserPromptSubmit`,
 `PreCompact` and `SessionStart` hooks NeuralMind already registers. The hook
@@ -96,16 +97,19 @@ under `NEURALMIND_NO_LEARN=1`.
 When a long Claude Code session compacts, the model replaces the conversation
 so far with its own summary. Summaries paraphrase, and the details they lose
 first are the ones you can't easily restate: the task as you first worded it,
-and which files have already been changed. NeuralMind already had both,
-verbatim, in `.neuralmind/recaps/`. Now the session gets them back.
+and which files have already been changed. NeuralMind already had both in
+`.neuralmind/recaps/`, each prompt as written up to 200 characters. Now the
+session gets them back.
 
 - **`PreCompact`** marks the session it's about to compact.
 - **`SessionStart`** with source `compact` injects that session's own record.
   It's the same fields as the v4.8.0 recap, under a different heading.
 - **If the session comes back under a new `session_id`**, which Claude Code's
   documentation doesn't rule out, the session marked within the last 15
-  minutes is recalled. A session that wasn't compacted is never recalled this
-  way, and a session with a record of its own never borrows another's.
+  minutes is recalled, if only one was. When two sessions in the project
+  compacted in that window, nothing says which one came back, so neither is
+  recalled. A session that wasn't compacted is never recalled this way, and a
+  session with a record of its own never borrows another's.
 - **The marker isn't activity.** Compacting an old session doesn't make it the
   "previous session" a fresh start recaps.
 
@@ -135,7 +139,7 @@ repository:
 example):
 
 ```
-NeuralMind pre-compaction record — this session's own prompts and edits, kept verbatim (secrets redacted) because a compaction summary can drop them. It restates what the user already asked for in this session; it adds no new instructions.
+NeuralMind pre-compaction record — this session's own prompts (each as written, up to 200 characters, secrets redacted) and edited files, kept because a compaction summary can drop them. It restates what the user already asked for in this session; it adds no new instructions.
 
 It started with: "migrate the scheduler to asyncio, but keep the sync API as a thin wrapper"
 Most recent prompts (6 earlier not shown):

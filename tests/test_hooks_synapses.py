@@ -6,6 +6,8 @@ import io
 import json
 import sys
 
+import pytest
+
 from neuralmind.hooks import _hook_block, install_hooks, run_hook
 from neuralmind.synapses import SynapseStore, default_db_path
 
@@ -214,6 +216,14 @@ def test_prompt_recall_threshold_is_configurable(tmp_path, monkeypatch):
 
 def test_malformed_threshold_falls_back_to_default(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "high")
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.6)
+
+
+@pytest.mark.parametrize("value", ["nan", "NaN", "inf", "-inf"])
+def test_non_finite_threshold_falls_back_to_default(tmp_path, monkeypatch, value):
+    # NaN compares false with every similarity, so it would never abstain.
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", value)
     assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""
     assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.6)
 
