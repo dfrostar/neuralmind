@@ -468,8 +468,10 @@ def compaction_recap(
     show, unless it took one back after an earlier compaction.
 
     Recalling a marked record spends its marker (a ``recovered`` entry naming
-    the new id), so when the same session compacts again under yet another id
-    within the window, only its newest marker counts. Until a session records
+    the id that took it back, its own included), so when the same session
+    compacts again under yet another id within the window, only its newest
+    marker counts, and a session back under its own id doesn't make another
+    session's compaction look ambiguous. Until a session records
     a prompt or edit of its own, its record is the one it took back: the new
     id gets it again if SessionStart repeats, and so does a later id if the
     session compacts again before its first prompt.
@@ -488,6 +490,15 @@ def compaction_recap(
             return ""
         record = _load(own) if own.exists() else None
         if record:
+            if record["compacted_ts"] and _recording_enabled():
+                # Back under its own id: spend its marker too, or it would
+                # make another session's new-id compaction look ambiguous.
+                try:
+                    _write_entry(
+                        own, {"kind": "recovered", "by": stem, "ts": time.time()}, create=False
+                    )
+                except OSError:
+                    pass
             return render_compaction_recap(record)
         records = {}
         for path in _records(directory):

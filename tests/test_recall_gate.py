@@ -27,3 +27,16 @@ def test_the_sweep_uses_the_raw_similarity(monkeypatch):
     assert at_035["on_topic_kept"] == 0
     assert at_035["off_topic_passed"] == 0
     assert report["rows"][0]["similarity"] == 0.34996
+
+
+class _NothingToName(_FakeMind):
+    def synaptic_recall(self, prompt, depth=2, top_k=8):
+        # A strong match, but no synapse edges around it: the hook adds nothing.
+        return [], 0.6
+
+
+def test_the_sweep_counts_only_prompts_that_get_a_block(monkeypatch):
+    monkeypatch.setenv("NEURALMIND_NO_LEARN", "0")
+    monkeypatch.setattr(core, "NeuralMind", _NothingToName)
+    report = recall_gate.measure(".", ["on topic"], ["off topic"])
+    assert all(s["on_topic_kept"] == 0 and s["off_topic_passed"] == 0 for s in report["sweep"])

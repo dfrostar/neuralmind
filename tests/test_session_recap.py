@@ -543,6 +543,21 @@ def test_a_second_compaction_before_any_prompt_still_recalls(tmp_path):
     assert "migrate the scheduler" in _start(tmp_path, "d", source="compact")
 
 
+def test_a_same_id_recovery_spends_its_marker(tmp_path):
+    # a comes back under its own id; b then compacts and comes back under a
+    # new id: a's marker mustn't make b's compaction look ambiguous.
+    _prompt(tmp_path, "a", "session a's task")
+    _compact(tmp_path, "a")
+    assert "session a's task" in _start(tmp_path, "a", source="compact")
+    _prompt(tmp_path, "b", "session b's task")
+    _compact(tmp_path, "b")
+    recap = _start(tmp_path, "b-after", source="compact")
+    assert "session b's task" in recap
+    assert "session a's task" not in recap
+    # a still gets its own record back after the spend.
+    assert "session a's task" in _start(tmp_path, "a", source="compact")
+
+
 def test_a_marker_only_session_that_took_nothing_back_recalls_nothing(tmp_path):
     _compact(tmp_path, "b")
     assert _start(tmp_path, "c", source="compact") == ""
