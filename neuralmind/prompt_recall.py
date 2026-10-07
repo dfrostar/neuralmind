@@ -122,6 +122,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     code: dict[str, float] = {}
     other: dict[str, float] = {}
     info: dict[str, dict] = {}
+    rationale_ids: dict[str, set[str]] = {}
     similarity = 0.0
     for hit in hits or []:
         raw_id = hit.get("id")
@@ -134,6 +135,8 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         if node is None:
             node_id = str(raw_id)
             node = nodes.get(node_id) or dict(hit.get("metadata") or {})
+        elif node_id != str(raw_id):
+            rationale_ids.setdefault(node_id, set()).add(str(raw_id))
         info[node_id] = node
         bucket = code if node.get("file_type") == "code" else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
@@ -148,7 +151,12 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     seeds = _seeds(primary, info, result.matches)
     store = getattr(mind, "synapses", None)
     if store is not None and seeds:
-        spread = store.spread(seeds, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES)
+        # Query feedback can have learned edges on a docstring node's own id;
+        # seed it beside its symbol (an edgeless seed adds nothing).
+        spread_seeds = seeds + [
+            (raw, score) for nid, score in seeds for raw in sorted(rationale_ids.get(nid, ()))
+        ]
+        spread = store.spread(spread_seeds, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES)
         missing = [nid for nid, _ in spread if nid not in nodes]
         for node in _fetch(mind, missing):
             nodes[node["id"]] = node

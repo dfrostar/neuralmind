@@ -132,6 +132,15 @@ def test_a_graphify_docstring_match_names_its_function_through_its_edge():
     ]
 
 
+def test_edges_learned_on_a_docstring_id_are_still_linked(tmp_path):
+    # Query feedback stores raw hit ids: a docstring node can carry its own
+    # learned edges, which must stay reachable once it counts as its function.
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce([PARSER + "__rationale", RUNNER])
+    result = recall(_Mind(store, hits=[(PARSER + "__rationale", 0.6)]), "q")
+    assert "src/click/testing.py" in [entry.path for entry in result.linked]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.
