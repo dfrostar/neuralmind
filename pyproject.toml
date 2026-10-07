@@ -84,6 +84,8 @@ keywords = [
     "compaction-recovery",
     "context-compaction",
     "recall-relevance-gating",
+    "cold-start-context",
+    "prompt-time-recall",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

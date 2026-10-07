@@ -26,6 +26,21 @@ That gives the agent ~400 tokens of architecture/cluster context instead of 50K 
 
 With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.8.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
 
+**Every prompt about the code** also arrives with a short block naming the files it matches, with their symbols and line numbers, code in other files the synapse graph links to them, and matching docs *(v4.10.0+)*. That starts with the first prompt after `neuralmind build`, so it helps most in a repository you've just cloned. In a fresh index of [Click](https://github.com/pallets/click), "which files in this repo handle parsing command-line options?" arrives with:
+
+```
+## NeuralMind associative recall
+
+Code matching this prompt:
+- src/click/core.py: make_parser() L1256, Parameter L2241
+- src/click/parser.py: _OptionParser L224, parse_args() L298
+- examples/repo/repo.py: cli() L44
+- src/click/_termui_impl.py: _less_uses_raw_mode() L520
+Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
+```
+
+The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt that isn't about the code, like "yes", gets nothing. On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md#measured)); whether that makes the agent's answers better isn't measured.
+
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 
 ```
@@ -53,6 +68,7 @@ Returns the function list, rationales, call graph, and cross-file edges. Across 
 | Every commit drifts the index | `post-commit` hook rebuilds incrementally |
 | An eleventh handler quietly skips the auth check the other ten share *(v3.2.0+)* | `pre-commit` drift guard flags it before the commit lands |
 | "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
+| The first question in a repo you just cloned starts with a search *(v4.10.0+)* | The prompt arrives with the files, symbols and line numbers it matches |
 
 ## Predict the next file *(v0.11.0+)*
 

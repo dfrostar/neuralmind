@@ -204,14 +204,16 @@ cat .neuralmind/SYNAPSE_MEMORY.md
 
 ## How synapse learning happens
 
-Five activation paths, all of which strengthen pairwise edges between
+Four activation paths, all of which strengthen pairwise edges between
 co-active nodes (Hebbian: "nodes that fire together wire together"):
 
 1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
 2. **`PostToolUse` hook on Edit/Write** — when the agent's new code reuses existing symbols, their edges are reinforced (reuse feedback).
-3. **`UserPromptSubmit` hook** — current prompt's neighbors get an activation pulse.
-4. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
-5. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
+3. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
+4. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
+
+The `UserPromptSubmit` hook only reads the graph: it adds the files the prompt
+matches and the code linked to them to the prompt, and strengthens nothing.
 
 The synapse layer has been namespace-aware since v0.24.0:
 `branch:<name>` / `personal` / `shared` / `ephemeral` memory live

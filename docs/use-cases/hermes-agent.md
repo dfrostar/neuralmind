@@ -98,22 +98,27 @@ On every turn, the first one included, the plugin asks NeuralMind about the
 user's message and adds what comes back. It's the same block Claude Code's
 `UserPromptSubmit` hook adds, in two parts, either of which can be missing:
 
-- **Associative recall:** the code nodes the synapse layer has learned go with
-  the ones your message matches, ranked by spreading activation. Left out
-  when the message matches the code poorly, such as "yes" or a question about
-  something else (v4.10.0+, `NEURALMIND_RECALL_MIN_SIMILARITY`).
+- **Associative recall:** the files your message matches, with their symbols
+  and line numbers; code in other files the synapse graph links directly to
+  them; and a line of matching docs (v4.10.0+; before, the synapse graph's
+  neighbours of the matches, as node ids). Left out when the message matches
+  the code poorly, such as "yes" or a question about something else (v4.10.0+,
+  `NEURALMIND_RECALL_MIN_SIMILARITY`).
 - **Decision provenance:** recorded decisions (`Decision:` git trailers) whose
   subjects the message mentions.
 
-An illustrative example. The node names, activation values and decision are
-made up for this page:
+An illustrative example. The files, symbols and decision are made up for this
+page:
 
 ```
 ## NeuralMind associative recall
 
-- src_uploader_py__upload_with_retry_fn (activation 0.84)
-- src_config_py__backoff_settings_fn (activation 0.57)
-- tests_test_uploader_py (activation 0.41)
+Code matching this prompt:
+- src/uploader.py: upload_with_retry() L88, RetryPolicy L21
+- src/config.py: backoff_settings() L140
+Connected to it in the synapse graph:
+- src/http_client.py: send() L57
+Docs: docs/uploads.md
 
 ## NeuralMind decision provenance
 
@@ -121,10 +126,11 @@ made up for this page:
 ```
 
 Hermes appends the block to that turn's user message, not to the system
-prompt, so the prompt cache isn't invalidated. A freshly built project has no
-learned associations yet, so early turns may get no recall; it fills in as you
-work in the project. When neither part has anything for a message, nothing is
-added.
+prompt, so the prompt cache isn't invalidated. Recall works from the first
+turn on a freshly built project: `neuralmind build` links the code's calls,
+imports and inheritance, so the connected files start out structural and
+come to reflect what you edit together as you work in the project. When
+neither part has anything for a message, nothing is added.
 
 ## 4. Edits are recorded
 
