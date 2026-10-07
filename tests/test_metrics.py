@@ -179,6 +179,21 @@ class TestMetricsCollector(unittest.TestCase):
         collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
         self.assertTrue(old.exists())
 
+    def test_outgrowing_the_size_cap_applies_retention_the_same_day(self) -> None:
+        collector = MetricsCollector(self.project, max_bytes=2000)
+        for _ in range(3):
+            collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        today = next((self.project / ".neuralmind" / "metrics").glob("metrics_*.jsonl"))
+        # Over the cap: rotate() truncates to the newest lines.
+        today.write_text(today.read_text() * 200)
+        calls = []
+        real_rotate = collector.rotate
+        collector.rotate = lambda: calls.append(1) or real_rotate()
+        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        self.assertEqual(calls, [1])
+        collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        self.assertLessEqual(len(today.read_text().splitlines()), 1001)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

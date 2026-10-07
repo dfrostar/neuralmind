@@ -783,7 +783,9 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
             ranked, similarity = mind.synaptic_recall(prompt, depth=2, top_k=top_k)
     except Exception:
         return ""
-    if similarity < _recall_min_similarity():
+    threshold = _recall_min_similarity()
+    # 0 (or below) never abstains: a match score can be negative.
+    if threshold > 0 and similarity < threshold:
         ranked, outcome = [], "low_similarity"
     else:
         outcome = "injected" if ranked else "no_neighbors"

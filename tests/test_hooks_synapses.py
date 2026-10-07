@@ -214,6 +214,11 @@ def test_prompt_recall_threshold_is_configurable(tmp_path, monkeypatch):
     assert _recall(tmp_path, monkeypatch, _RANKED, 0.6) == ""
 
 
+def test_a_zero_threshold_never_abstains_even_on_a_negative_score(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "0")
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, -0.1)
+
+
 def test_malformed_threshold_falls_back_to_default(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "high")
     assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""

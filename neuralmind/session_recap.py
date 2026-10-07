@@ -29,7 +29,8 @@ record back instead. Claude Code's compaction summary is written by the model
 and paraphrases: the task as the user first stated it and the exact paths of
 the files already edited are what it tends to lose. The record keeps each
 prompt as written (secrets redacted, up to ``PROMPT_CHARS`` characters) and
-each edited path. It is found by the session's own ``session_id``: a session
+each edited path (up to ``PATH_CHARS``; a longer one keeps its tail). It is
+found by the session's own ``session_id``: a session
 that comes back under a different id gets no recap rather than a guess.
 
 Toggles: ``NEURALMIND_SESSION_RECAP=0`` switches off recording and injection.
@@ -379,13 +380,14 @@ def latest_recap(
         return ""
 
 
-def compaction_recap(project_path: str | Path, session_id: str) -> str:
+def compaction_recap(project_path: str | Path, session_id: str, now: float | None = None) -> str:
     """This session's own record after a compaction, or "" when there is none.
 
     Only the record kept under ``session_id``. A session that comes back from
     compaction under a different id gets no recap: nothing in the hook
     payloads links the two ids, and a guess could hand it another session's
-    prompts. Read-only.
+    prompts. A record older than ``NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS``
+    isn't shown, as at a fresh start. Read-only.
     """
     try:
         directory = _recaps_dir(project_path)
@@ -395,7 +397,10 @@ def compaction_recap(project_path: str | Path, session_id: str) -> str:
         if own.is_symlink() or not own.is_file():
             return ""
         record = _load(own)
-        return render_compaction_recap(record) if record else ""
+        now = time.time() if now is None else now
+        if not record or now - record["last_ts"] > _max_age_seconds():
+            return ""
+        return render_compaction_recap(record)
     except Exception:
         return ""
 
@@ -411,7 +416,7 @@ def recap_for_session_start(
         if not recap_enabled():
             return ""
         if source == COMPACT_SOURCE:
-            return compaction_recap(project_path, session_id)
+            return compaction_recap(project_path, session_id, now=now)
         if source not in INJECT_SOURCES:
             return ""
         directory = _recaps_dir(project_path)

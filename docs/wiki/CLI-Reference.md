@@ -2161,8 +2161,9 @@ same block.
 session its **own** record back instead, headed "NeuralMind pre-compaction
 record": the same fields, prompts as written up to 200 characters. Claude Code's compaction summary is
 written by the model and paraphrases, and the task as you first stated it and
-the exact paths already edited are what it tends to drop. The record is found
-by the session's own `session_id`: a session that comes back under a different
+the exact paths already edited are what it tends to drop. The record keeps
+each edited path up to 160 characters (a longer one keeps its tail), and is
+found by the session's own `session_id`: a session that comes back under a different
 id gets none, rather than a guess that could be another session's.
 `NEURALMIND_SESSION_RECAP=0` turns this off too.
 
