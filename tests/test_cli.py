@@ -90,6 +90,57 @@ class TestCLIBuild:
         captured = capsys.readouterr()
         assert "Build failed" in captured.out or "error" in captured.out.lower()
 
+    @pytest.mark.parametrize("backend", ["chroma", "in_memory"])
+    def test_cmd_build_off_turbovec_leaves_no_turbovec_store(
+        self, temp_project, capsys, request, backend
+    ):
+        """The pre-build quarantine check used to construct TurboVecEmbedder
+        whatever the backend, and its __init__ creates
+        .neuralmind/neuralmind_turbovec/store.sqlite: every build of a chroma
+        project left an empty turbovec store behind."""
+        from neuralmind.cli import cmd_build
+
+        if backend == "chroma":
+            request.getfixturevalue("mock_chromadb")
+        (temp_project / "neuralmind-backend.yaml").write_text(
+            f"backend: {backend}\n", encoding="utf-8"
+        )
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.force = False
+        args.rebuild_index = False
+
+        cmd_build(args)
+
+        assert "Build successful!" in capsys.readouterr().out
+        assert not (temp_project / ".neuralmind" / "neuralmind_turbovec").exists()
+
+
+class TestTurbovecMismatchCheck:
+    """``_check_turbovec_mismatch``: the quarantine heads-up cmd_build prints."""
+
+    @pytest.mark.parametrize("backend", ["graph", "chroma", "chromadb", "in_memory"])
+    def test_skipped_when_backend_is_not_turbovec(self, tmp_path, backend):
+        from neuralmind.cli import _check_turbovec_mismatch
+
+        (tmp_path / "neuralmind-backend.yaml").write_text(f"backend: {backend}\n", encoding="utf-8")
+        assert _check_turbovec_mismatch(str(tmp_path)) is None
+        assert not (tmp_path / ".neuralmind").exists()
+
+    @pytest.mark.parametrize("config", [None, "backend: turbovec\n", "backend: turboquant\n"])
+    def test_still_warns_on_a_quarantined_turbovec_index(self, tmp_path, config):
+        from neuralmind.cli import _check_turbovec_mismatch
+
+        if config:
+            (tmp_path / "neuralmind-backend.yaml").write_text(config, encoding="utf-8")
+        tv_dir = tmp_path / ".neuralmind" / "neuralmind_turbovec"
+        tv_dir.mkdir(parents=True)
+        (tv_dir / "index.tvim.stale").write_bytes(b"")
+
+        warning = _check_turbovec_mismatch(str(tmp_path))
+        assert warning is not None
+        assert "quarantined" in warning
+
 
 class TestCLIQuery:
     """Tests for CLI query command."""

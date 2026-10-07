@@ -433,7 +433,25 @@ def _check_backend(project: Path) -> Check:
 
 
 def _check_turbovec_version(project: Path) -> Check:
-    """Check if the turbovec index is compatible with the installed version."""
+    """Check if the turbovec index is compatible with the installed version.
+
+    Only a project whose backend resolves to turbovec has a turbovec index.
+    On any other backend the check reports itself not applicable without
+    constructing TurboVecEmbedder, which would create an empty store and
+    then report an index that doesn't exist as compatible.
+    """
+    try:
+        from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
+
+        backend_name = project_backend(project)
+    except Exception as e:
+        return Check("Turbovec compatibility", WARN, f"could not resolve backend ({e})")
+    if backend_name not in TURBOVEC_BACKENDS:
+        return Check(
+            "Turbovec compatibility",
+            OK,
+            f"not applicable: the {backend_name} backend keeps no turbovec index",
+        )
     try:
         from neuralmind.turbovec_backend import TurboVecEmbedder
 

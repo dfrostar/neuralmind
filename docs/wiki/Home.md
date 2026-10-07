@@ -36,6 +36,17 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.10.1 — No turbovec store on a ChromaDB project (October 2026)
+
+`neuralmind build` and `neuralmind doctor` check whether the turbovec index
+was quarantined, and both opened the turbovec store to do it, whatever the
+backend. So on a project with ChromaDB pinned (`backend: graph` or `chroma`),
+every build left an empty `.neuralmind/neuralmind_turbovec/store.sqlite`
+behind, and `doctor` called it "Index version compatible". Both checks now
+run only on turbovec projects; elsewhere `doctor` reports the check as not
+applicable.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.1.md).
+
 ### v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work (October 2026)
 
 The Hermes plugin's directory now carries its own `plugin.yaml` (declaring

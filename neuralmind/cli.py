@@ -223,7 +223,16 @@ def _check_turbovec_mismatch(project_path: str) -> str | None:
     This runs in cmd_build BEFORE the slow embed loop so the operator knows
     a rebuild is coming and why. Recovery itself happens inside
     embed_nodes via _rebuild_index_from_store.
+
+    Only a project whose backend resolves to turbovec has a turbovec index.
+    On any other backend this returns None without constructing
+    TurboVecEmbedder, whose __init__ creates the store it opens: an empty
+    one left behind on every build of a chroma project.
     """
+    from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
+
+    if project_backend(project_path) not in TURBOVEC_BACKENDS:
+        return None
     try:
         from neuralmind.turbovec_backend import TurboVecEmbedder
 

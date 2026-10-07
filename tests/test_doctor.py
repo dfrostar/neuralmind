@@ -204,6 +204,40 @@ def test_backend_check_treats_null_config_as_auto(temp_project, monkeypatch):
     assert "turbovec" in check.detail
 
 
+@pytest.mark.parametrize("backend", ["graph", "chroma", "in_memory"])
+def test_turbovec_check_not_applicable_off_turbovec(temp_project, backend):
+    # No turbovec index exists on these backends. The check used to construct
+    # TurboVecEmbedder anyway, creating .neuralmind/neuralmind_turbovec/
+    # store.sqlite and calling that empty store "Index version compatible".
+    (temp_project / "neuralmind-backend.yaml").write_text(f"backend: {backend}\n", encoding="utf-8")
+    check = doctor._check_turbovec_version(temp_project)
+    assert check.status == doctor.OK
+    assert "not applicable" in check.detail
+    assert backend in check.detail
+    assert not (temp_project / ".neuralmind" / "neuralmind_turbovec").exists()
+
+
+@pytest.mark.parametrize(
+    "config", [None, "backend: auto\n", "backend: turbovec\n", "backend: turboquant\n"]
+)
+def test_turbovec_check_still_catches_a_quarantined_index(temp_project, config):
+    if config:
+        (temp_project / "neuralmind-backend.yaml").write_text(config, encoding="utf-8")
+    tv_dir = temp_project / ".neuralmind" / "neuralmind_turbovec"
+    tv_dir.mkdir(parents=True)
+    (tv_dir / "index.tvim.stale").write_bytes(b"")
+    check = doctor._check_turbovec_version(temp_project)
+    assert check.status == doctor.FAIL
+    assert "quarantined" in check.detail
+
+
+def test_run_diagnostics_off_turbovec_creates_no_turbovec_store(temp_project):
+    (temp_project / "neuralmind-backend.yaml").write_text("backend: in_memory\n", encoding="utf-8")
+    checks = {c.name: c for c in doctor.run_diagnostics(str(temp_project))}
+    assert "not applicable" in checks["Turbovec compatibility"].detail
+    assert not (temp_project / ".neuralmind" / "neuralmind_turbovec").exists()
+
+
 def test_run_diagnostics_returns_all_checks(temp_project):
     checks = doctor.run_diagnostics(str(temp_project))
     names = {c.name for c in checks}

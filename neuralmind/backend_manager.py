@@ -65,6 +65,9 @@ def resolve_backend(backend: str | None) -> str:
     return name
 
 
+# The backend names create_backend serves with TurboVecEmbedder.
+TURBOVEC_BACKENDS = frozenset({"turbovec", "turboquant"})
+
 _CONFIG_NAMES = ("neuralmind-backend.yaml", "neuralmind-backend.yml", "neuralmind-backend.json")
 
 
@@ -102,6 +105,15 @@ def load_backend_config(project_path: str | Path) -> dict[str, Any]:
     config = DEFAULT_BACKEND_CONFIG.copy()
     config.update(loaded)
     return config
+
+
+def project_backend(project_path: str | Path) -> str:
+    """The backend a project's ``NeuralMind`` uses when no backend is passed.
+
+    What ``neuralmind build`` and ``neuralmind doctor`` run with: the
+    configured ``backend:``, resolved the same way ``BackendManager`` does.
+    """
+    return resolve_backend(load_backend_config(project_path).get("backend"))
 
 
 def resolve_db_path(project_path: str | Path, db_path: str | Path | None) -> str | None:
@@ -152,7 +164,7 @@ def create_backend(
         return GraphEmbedder(project_path, db_path=db_path)
     if normalized in {"in_memory", "inmemory", "memory"}:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
-    if normalized in {"turbovec", "turboquant"}:
+    if normalized in TURBOVEC_BACKENDS:
         # Lazy import, mirroring the chroma branch — keeps construction symmetric
         # and import-light. turbovec is the default backend since v0.29.0.
         from .turbovec_backend import TurboVecEmbedder
