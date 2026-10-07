@@ -119,7 +119,7 @@ session gets them back.
   compacted in that window, nothing says which one came back, so neither is
   recalled. Once a new id takes a record back, that record's marker is spent,
   so the same session compacting again under yet another id within the window
-  still gets its record. A session that wasn't compacted is never recalled
+  still gets its record, even if it compacts again before its first prompt. A session that wasn't compacted is never recalled
   this way, and a session with a record of its own never borrows another's.
 - **The marker isn't activity.** Compacting an old session doesn't make it the
   "previous session" a fresh start recaps.

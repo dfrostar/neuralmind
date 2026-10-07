@@ -247,8 +247,13 @@ def record_compaction(project_path: str | Path, session_id: str) -> None:
         pass
 
 
-def _load(path: Path) -> dict | None:
-    """Fold one session's JSONL into the fields a recap shows."""
+def _load(path: Path, keep_empty: bool = False) -> dict | None:
+    """Fold one session's JSONL into the fields a recap shows.
+
+    None when it holds no prompt or edit, unless ``keep_empty``: a record
+    holding only compaction entries still links sessions (see
+    ``compaction_recap``).
+    """
     prompts: list[str] = []
     files: list[str] = []
     last_ts = 0.0
@@ -288,7 +293,7 @@ def _load(path: Path) -> dict | None:
             if entry["path"] in files:
                 files.remove(entry["path"])
             files.append(entry["path"])
-    if not (prompts or files):
+    if not (prompts or files or keep_empty):
         return None
     if recovered_ts >= compacted_ts:
         # No marker, or one already spent: a later compaction of the session
@@ -424,6 +429,29 @@ def latest_recap(
         return ""
 
 
+def _content(record: dict) -> dict | None:
+    return record if record["prompts"] or record["files"] else None
+
+
+def _taken_back(records: dict[str, tuple[Path, dict]], stem: str) -> dict | None:
+    """The record ``stem``'s session took back after a compaction, if any.
+
+    Follows the ``recovered`` links back to the first record that holds a
+    prompt or edit: a session that compacted again before its first prompt
+    holds only markers itself.
+    """
+    seen = set()
+    while stem not in seen:
+        seen.add(stem)
+        stem = next((s for s, (_, r) in records.items() if r["recovered_by"] == stem), "")
+        if not stem:
+            return None
+        found = _content(records[stem][1])
+        if found:
+            return found
+    return None
+
+
 def compaction_recap(
     project_path: str | Path,
     session_id: str,
@@ -437,12 +465,14 @@ def compaction_recap(
     compacted in that window, nothing links the new id to either, so there is
     no recap rather than another session's. A session that has a record file
     of its own never borrows another's, even when its own holds nothing to
-    show.
+    show, unless it took one back after an earlier compaction.
 
     Recalling a marked record spends its marker (a ``recovered`` entry naming
     the new id), so when the same session compacts again under yet another id
-    within the window, only its newest marker counts. The new id gets the same
-    record again if SessionStart repeats before its first prompt.
+    within the window, only its newest marker counts. Until a session records
+    a prompt or edit of its own, its record is the one it took back: the new
+    id gets it again if SessionStart repeats, and so does a later id if the
+    session compacts again before its first prompt.
 
     With recording off (``NEURALMIND_NO_LEARN=1``) there is no new-id
     fallback: this session's own PreCompact wrote no marker, so the one
@@ -452,28 +482,35 @@ def compaction_recap(
         directory = _recaps_dir(project_path)
         if directory is None or not session_id:
             return ""
-        own = directory / f"{_file_stem(session_id)}.jsonl"
-        if own.exists():
-            if own.is_symlink():
-                return ""
-            record = _load(own)
-            return render_compaction_recap(record) if record else ""
+        stem = _file_stem(session_id)
+        own = directory / f"{stem}.jsonl"
+        if own.is_symlink():
+            return ""
+        record = _load(own) if own.exists() else None
+        if record:
+            return render_compaction_recap(record)
+        records = {}
+        for path in _records(directory):
+            loaded = _load(path, keep_empty=True)
+            if loaded:
+                records[path.stem] = (path, loaded)
+        taken = _taken_back(records, stem)
+        if taken or own.exists():
+            return render_compaction_recap(taken) if taken else ""
         if not _recording_enabled():
             return ""
         now = time.time() if now is None else now
-        stem = _file_stem(session_id)
-        marked = []
-        for path in _records(directory):
-            loaded = _load(path)
-            if not loaded:
-                continue
-            if loaded["recovered_by"] == stem:
-                return render_compaction_recap(loaded)
-            if now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS:
-                marked.append((path, loaded))
+        marked = [
+            (path, loaded)
+            for path, loaded in records.values()
+            if now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS
+        ]
         if len(marked) != 1:
             return ""
-        path, record = marked[0]
+        path, marked_record = marked[0]
+        record = _content(marked_record) or _taken_back(records, path.stem)
+        if not record:
+            return ""
         try:
             _write_entry(path, {"kind": "recovered", "by": stem, "ts": now}, create=False)
         except OSError:
