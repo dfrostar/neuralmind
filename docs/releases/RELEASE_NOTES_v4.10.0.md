@@ -220,205 +220,26 @@ first fixed, shipped in v4.8.1.)
   still measured as a hypothetical arm. The opt-in doesn't use them: it removes
   noise rather than keeping signal.
 
-## Also in v4.10.0: `query` finds the project's code, not its tests, examples and docs
+## Also in this release
 
-`neuralmind build .` indexes a checkout from its root, so a repository's tests,
-example scripts and docs are in the index next to its code. They competed with
-it for the four search results `query` returns (L3), and often took all four.
-On a freshly built index of [pallets/click](https://github.com/pallets/click)
-(commit `2247b35`), "which files in this repo handle parsing command-line
-options?" returned an example script, a test docstring and a doc heading, and
-listed `examples/imagepipe` and `examples/inout` as the relevant code areas.
-`src/click/core.py`, which builds the option parser, was the 5th and 8th
-result of the search, and never reached the answer. `neuralmind search` found
-it, because `search` doesn't pick four.
+Two fixes found while fixing [v4.9.1](RELEASE_NOTES_v4.9.1.md). Neither loses data.
 
-### Why tests, examples and docs won
-
-Three causes, each found on that index:
-
-1. **L3 picked its four hits before ranking them by intent.** The four slots
-   go to the top four of the fused vector and keyword search. The intent
-   multipliers (×3 for code when the question asks for code) only re-order
-   those four, so when all four were tests, examples and docs, nothing after
-   could bring the code back. v4.6.0's eval measured the same limit from the
-   other side: the intent rules "only re-order the four hits L3 already
-   chose".
-2. **Tests and examples were scored as the code itself.** A test repeats the
-   names of the code it tests, and the code-signal boost multiplies a code hit
-   by up to 10 for sharing the question's identifiers, so
-   `test_suggest_possible_options()` outranked the code that works out the
-   suggestions. An example script uses the words of a question about the
-   feature it demonstrates; a doc heading is a short, question-like match.
-3. **L2 listed each cluster's first members in path order.** `examples/`
-   sorts before `src/`, so a 390-node cluster with three nodes from
-   `examples/inout/inout.py` was shown as `inout.py`, and the 963-node cluster
-   holding `core.py` as `examples/completion/completion.py`. That is where
-   `imagepipe` and `inout` came from.
-
-### What changed in ranking
-
-`query` now tells a hit's role apart, by layout: the project's own code; a
-test or example (a `test`, `tests`, `spec`, `__tests__`, `example(s)`,
-`demo(s)` or `sample(s)` directory, or a test file's name: `test_*.py`,
-`*_test.go`, `*.test.ts`, `*.spec.js`, `conftest.py`); or a doc.
-
-- **The project's code is owed L3 slots.** When fewer than two of the four
-  hits are the project's code (one, for a question classified `docs`) and
-  ranks 5–10 of the same search hold some, the weakest test, example or doc
-  hits give their slots to it, a file not yet shown first. It swaps hits and
-  never adds one, so the answer's size doesn't grow.
-- **Tests and examples count a third** when ranking, under every intent,
-  unless the question names them ("how do I test …", "an example of …").
-  Under `code` intent they are scored like docs, which are about the code,
-  instead of getting the code's ×3 and identifier boosts. Docs count a third
-  under `code` intent too, so a docstring of the code ranks above a doc heading.
-- **L2 lists a cluster's own code first**, and test and example hits count a
-  third toward a cluster's relevance.
-- **`--trace` shows the swap:** `[L3/roles] 2 slot(s) from tests/examples/docs
-  to the project's code`.
-- **`NEURALMIND_L3_ROLES=0`** turns it all off and gives v4.9's ranking back.
-
-**Nothing changes when only the project's code is indexed.** Where every hit
-is the project's code, as on an index of a library's source directory, there
-is nothing to swap or weigh, and L2's sort is stable. That is also why the
-[public benchmark](../benchmarks/public.md), which indexes each library's
-source directory only, never showed this. Its result is unchanged, to the byte
-(below).
-
-### What `query` returns now
-
-`neuralmind query click "which files in this repo handle parsing
-command-line options?"` on that index, abridged. Before:
-
-```
-## Relevant Code Areas
-### Cluster 45 (relevance: 1.57)
-- imagepipe.py (code) — imagepipe.py
-- cli() (code) — imagepipe.py
-### Cluster 46 (relevance: 0.96)
-- inout.py (code) — inout.py
-- cli() (code) — inout.py
-…
-## Search Results
-1. **Repo is a command line tool that showcases how to build complex …** (score: 0.15)
-   File: examples/repo/repo.py
-2. **Raw-mode detection parses the option tokens from ``LESS`` …** (score: 0.14)
-   File: tests/test_termui.py
-3. **Copies one or multiple files to a new location. …** (score: 0.09)
-   File: examples/repo/repo.py
-4. **Options** (score: 0.08)
-   File: docs/parameters.md
-```
-
-After (1,085 tokens, down from 1,238):
-
-```
-## Relevant Code Areas
-### Cluster 45 (relevance: 0.52)
-- utils.py (code) — utils.py
-…
-### Cluster 42 (relevance: 0.48)
-- core.py (code) — core.py
-…
-## Search Results
-1. **Commands are the basic building block of command line interfaces in Click. …** (score: 0.07)
-   File: src/click/core.py
-2. **Creates the underlying option parser for this command.** (score: 0.06)
-   File: src/click/core.py
-3. **Raw-mode detection parses the option tokens from ``LESS`` …** (score: 0.05)
-   File: tests/test_termui.py
-4. **Options** (score: 0.03)
-   File: docs/parameters.md
-```
-
-With `--trace`, the swap is one line:
-`[L3/roles] 2 slot(s) from tests/examples/docs to the project's code`.
-The second `core.py` hit is the docstring of `make_parser()`, which builds
-the option parser. `parser.py` itself still isn't named (see below).
-
-### Measured: roles on vs off
-
-Every number here is reproducible on demand, not a CI gate. "Before" is the
-same build with `NEURALMIND_L3_ROLES=0`, which ranks as v4.9 did; every run is
-read-only. hit@5 / MRR, from the scorer `neuralmind eval` uses:
-
-| Question set | Index | Before | After | Tokens |
-|---|---|---:|---:|---:|
-| 14 Click questions, **the set this was tuned on** ([`bench/retrieval/roles-v4.10/click-2247b35.md`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/click-2247b35.md)) | `click` @ `2247b35`, whole repository | 64% / 0.49 | **100% / 0.80** | +1.8% |
-| 30 pre-registered questions per repo, **held out** ([`bench/retrieval/roles-v4.10/full-repo`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/full-repo/report.md)) | `requests`, `click`, `flask`, `rich` at the public benchmark's commits, whole repository | 77.5% / 0.615 | **79.2% / 0.672** | +1.6% |
-| the same 30, this repository, **held out** ([`bench/retrieval/roles-v4.10/source-dir`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/source-dir/report.md)) | `neuralmind`, docs indexed | 57% / 0.45 | **70% / 0.55** | +1.8% |
-| the same 30 per repo | `requests`, `click`, `flask`, `rich`, source directory only | identical | identical | identical |
-| the public benchmark, 40 queries | source directory only | — | **`results.json` byte-identical** | identical |
-
-- **The tuning set.** The 14 questions and their gold files come from the
-  prompt-recall benchmark of
-  [#607](https://github.com/dfrostar/neuralmind/pull/607), whose gold files
-  were chosen by reading the code before any run. An answering file is in the
-  results for all 14, up from 9; hit@1 rose from 5 to 10. Reproduce it with
-  `neuralmind eval click --questions tests/benchmark/query_recall_click.eval.yaml`
-  (the file has the clone command), and again with `NEURALMIND_L3_ROLES=0`.
-- **Held out, whole repository.** The pre-registered questions from v4.6.0's
-  eval, run against each repository indexed from its root
-  (`python -m evals.retrieval.run --full-repo`, new in this release). Of 120
-  questions, 18 rank their gold file higher and **none lower**; hit@1 went from
-  59 to 69. hit@5 rose on `click` only (77% → 83%, two questions); MRR rose on
-  all four (`requests` 0.69 → 0.72, `click` 0.64 → 0.76, `flask` 0.65 →
-  0.72, `rich` 0.48 → 0.50). Tokens rose most on `flask`, 3.8%.
-- **Held out, this repository.** With its docs indexed, hit@5 rose from 57%
-  to 70% (17 to 21 of 30) and MRR from 0.45 to 0.55; seven questions rank
-  their gold file higher and none lower, and the six that a doc answers kept
-  their ranks.
-  On 15 more prompts about this repository, from #607's held-out set, an
-  answering file is in the results for 11, up from 6.
-- **Source directories: no change, by construction.** The four libraries'
-  source directories hold only the library's code, so there is nothing to swap
-  or weigh: per question, every rank and token count is the same. The public
-  benchmark indexes the same directories: run on one machine, this release's
-  code and v4.9's produce byte-identical `results.json` files, so the
-  published figures stand.
-
-**Where it still loses.** On the tuning set, four answers rank docs above the
-code: "how are environment variables mapped to options?", "how do command
-groups dispatch to subcommands?" and "where are the built-in parameter types
-like IntRange and Choice defined?" put `core.py` or `types.py` third, and
-"how can I test a click command and capture its output?" puts `testing.py`
-fourth. Each is a question the intent classifier calls `docs` or `hybrid`,
-where docs keep their full weight. And `parser.py`, the other answer to the
-parsing question, is never named: it isn't in the search's top ten, so
-there is nothing to swap in. On `rich`, 10 of 30 held-out questions still miss
-on the whole repository, as they did before.
-
-**By spec 7's keep rule, this would not pass.** The rule v4.6.0 used to pick
-defaults asks for hit@5 to rise on at least three repositories. This change
-is a no-op wherever only the project's code is indexed, which is four of the
-five repositories in the standard eval, and on whole repositories it raised
-hit@5 on one of four. It ships on by default because it was written for the
-case those runs don't cover, a repository indexed from its root, and there no
-question got worse, in any repository; `NEURALMIND_L3_ROLES=0` restores v4.9.
-
-### Per-agent expectations for the ranking change
-
-| Agent | What changes |
-|---|---|
-| **Any MCP client** (Claude Code, Cursor, Cline, Codex, Hermes …) | `neuralmind_query` returns the project's code ahead of its tests, examples and docs on an index built from the repository root. |
-| **CLI and scripts** | `neuralmind query`, `neuralmind eval` and `neuralmind benchmark` rank the same way, so `eval`'s hit@5 on a whole repository can rise after upgrading. |
-| **Claude Code hooks, the Hermes plugin** | Nothing: prompt-time recall, the session recap and the wake-up context don't use L3. |
-
-### Use cases for the ranking change
-
-- **Existing:** [A/B-test a ranking change on your own repo](../use-cases/ab-test-a-ranking-change.md):
-  `NEURALMIND_L3_ROLES=0 neuralmind eval . --no-history` measures what this
-  change did on your questions, and the multi-repo harness gained
-  `--full-repo`, which indexes each public repository from its root.
-- **Potential:** asking "which files handle X?" of a whole repository, not
-  just its library directory, and getting the files to open. Before, that
-  question was where tests and examples won.
-
-### The setting
-
-`NEURALMIND_L3_ROLES` (on by default; `0` turns the roles pass off). Nothing to
-rebuild: it reads the index you have.
+- **`validate` stops flagging prose chapters as stale.** In a project whose
+  queries go through the prose path (a `chapters/` directory, built with a
+  graph rather than as a book), each query records the chapters it retrieved
+  in the synapse store by file name, such as `ch01.md`. That's never a graph
+  node id, so `neuralmind validate` reported every chapter synapse as stale.
+  A chapter name now counts as known when the index still holds
+  `chapters/<name>`. A chapter you deleted is still reported, and so is any
+  other name that doesn't resolve.
+- **The daemon sleep pass no longer treats ephemeral edges as long-term.**
+  `DaemonSleep.promote_ltp_edges` nudges long-term edges back up after decay.
+  It picked them by activation count and weight alone, so it also boosted
+  edges in the `ephemeral` namespace, which decay never protects. It now uses
+  the same long-term rule as decay, `status` and `SYNAPSE_MEMORY.md`: at least
+  five activations, a weight of at least 0.20, and not ephemeral. Nothing in
+  the CLI, hooks, daemon or MCP tools runs the sleep pass yet; this fixes the
+  `neuralmind.sleep` API for code that calls it.
 
 ## What the agent sees
 
@@ -462,9 +283,8 @@ then install and build logs arrive as shown in [What Claude sees](#what-claude-s
 
 ## Settings
 
-Two new settings: `NEURALMIND_BASH_REPLACE` (unset by default; see
-[Turning it on](#turning-it-on)) and `NEURALMIND_L3_ROLES` (on by default; see
-[The setting](#the-setting)). `NEURALMIND_PROJECT` and
+One new setting, `NEURALMIND_BASH_REPLACE` (unset by default): see
+[Turning it on](#turning-it-on). `NEURALMIND_PROJECT` and
 `NEURALMIND_HERMES_TIMEOUT` work as in v4.9.0, and a timeout is now logged.
 
 ## Upgrading
@@ -475,6 +295,20 @@ a plugin you disabled disabled. A plugin Hermes installed is updated with
 `hermes plugins update neuralmind` instead. `NEURALMIND_BASH_REPLACE` needs no
 hook reinstall: the registered `compress-bash` hook reads it on every call.
 
+## Privacy: ONNX Runtime telemetry
+
+NeuralMind runs its embedding model with ONNX Runtime, and ONNX Runtime has
+telemetry of its own. Its official builds turn it on by default, uploading
+usage events to Microsoft from Linux and macOS (version 1.30's privacy notes
+say so; we haven't checked when that started). So a NeuralMind process could
+send ONNX Runtime's telemetry even though NeuralMind itself sends none. From
+this release, importing NeuralMind sets `ORT_DISABLE_TELEMETRY=1`, ONNX
+Runtime's switch for turning that off, before the runtime starts. A test
+checks that the variable is set and that `onnxruntime` isn't loaded by the
+import itself. It overrides a value you set yourself. On Windows, ONNX Runtime
+writes trace events to ETW instead, which are recorded only when a Windows
+trace session is collecting them; the variable doesn't change that.
+
 ## Related
 
 - Plugin README: [neuralmind/hermes_plugin/README.md](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
@@ -484,5 +318,4 @@ hook reinstall: the registered `compress-bash` hook reads it on every call.
 - [Compression benchmark](../benchmarks/compression.md)
 - Use case: [Trim noisy install logs (opt-in)](../use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100)
 - [CLI reference: `NEURALMIND_BASH_REPLACE`](../wiki/CLI-Reference.md#environment-variables)
-- Use case: [Code/document scoring](../use-cases/code-doc-scoring.md#tests-and-examples-are-not-the-code-v4100) · raw data for the `query` ranking change: [`bench/retrieval/roles-v4.10`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)
 - Previous releases: [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)

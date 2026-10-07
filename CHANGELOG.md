@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.10.0](https://github.com/dfrostar/neuralmind/compare/v4.9.2...v4.10.0) (2026-10-07)
+
+
+### Features
+
+* **hermes:** Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work ([#600](https://github.com/dfrostar/neuralmind/issues/600)) ([b189237](https://github.com/dfrostar/neuralmind/commit/b18923736f2d3efe2ec598725d9b2c1e8c9d64b4))
+* **hooks:** opt-in noisy-log replacement via updatedToolOutput, gated by the compression benchmark ([#559](https://github.com/dfrostar/neuralmind/issues/559)) ([113adf7](https://github.com/dfrostar/neuralmind/commit/113adf7c3640132258da6dfa4b151f63d185d02b))
+
+
+### Bug Fixes
+
+* disable ONNX Runtime telemetry before the runtime initializes ([#605](https://github.com/dfrostar/neuralmind/issues/605)) ([d1c538c](https://github.com/dfrostar/neuralmind/commit/d1c538cd68d08f71dc4e0a7b050aafaa55d07f1f))
+* validate recognises prose chapters; the sleep pass skips ephemeral edges ([#604](https://github.com/dfrostar/neuralmind/issues/604)) ([8a9a3c2](https://github.com/dfrostar/neuralmind/commit/8a9a3c215b25299a1df941468bed8cef9c51cfcd))
+
 ## [4.9.2](https://github.com/dfrostar/neuralmind/compare/v4.9.1...v4.9.2) (2026-10-06)
 
 

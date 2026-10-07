@@ -2,6 +2,9 @@ import logging
 import os
 import warnings
 
+# Disable ONNX Runtime telemetry before any backend can initialize it.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
+
 # Mute ChromaDB telemetry and Pydantic warnings.
 #
 # ChromaDB 0.6.x has a posthog signature mismatch that spams stderr with
@@ -109,7 +112,7 @@ from .team_memory import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "4.9.2"
+__version__ = "4.10.0"
 # Derived so it can never drift from __version__ again (release-please only
 # rewrites the string literal above; the old hardcoded tuple sat at (1, 12, 0)
 # through three releases).

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generated": "2026-10-06",
-    "neuralmind_version": "4.8.2",
+    "generated": "2026-10-07",
+    "neuralmind_version": "4.9.2",
     "tokenizer": "tiktoken o200k_base",
     "tool_response_shapes": "@anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283)",
     "protocol_docs": [
@@ -36,7 +36,7 @@
       "flask": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
       "rich": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf"
     },
-    "bash_corpus_sha256": "d583488102638e0ca5ce29e1aa3c2997d9eef9b69465865c6f290d39ee176349"
+    "bash_corpus_sha256": "1f7da928e408346a446bea5274fb4bdb8905a829a05cdc5cc8ce76dbb5009ea4"
   },
   "summary": {
     "Read": {
@@ -843,7 +843,7 @@
     },
     {
       "tool": "Bash",
-      "id": "pip-install-requirements",
+      "id": "pip-install-from-file",
       "category": "install log (fresh environment)",
       "kind": "noisy-log",
       "command": "python -m pip install -r requirements.txt",

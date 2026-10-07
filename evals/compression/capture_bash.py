@@ -402,7 +402,7 @@ def _entries(py: str, nm: str, fresh_py: str) -> list[dict[str, Any]]:
             "must_keep": [r"^[-dl][rwx-]{9}"],
         },
         {
-            "id": "pip-install-requirements",
+            "id": "pip-install-from-file",
             "category": "install log (fresh environment)",
             "kind": "noisy-log",
             "cwd": "scratch",

@@ -36,6 +36,22 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.10.1 — `query` finds the project's code, not its tests, examples and docs (October 2026)
+
+Indexed from the repository root, tests, example scripts and doc
+headings used to take all four of `query`'s search results from the code they
+are about: asked which files in Click parse command-line options, it returned
+an example script, a test and a doc heading. Now the project's code is owed
+two of the four results when the search found it (one for a docs question),
+tests and examples count a third unless the question asks about them, docs
+count a third when the question asks for code, and L2 lists a cluster's own
+code first. On 14 Click questions (the set it was tuned on) an answering file
+is in the results for 14, up from 9; held-out results and losses are in the
+release notes. An index of a library's source directory alone ranks exactly as
+before. `NEURALMIND_L3_ROLES=0` turns it off.
+[Query intent and roles](CLI-Reference#query) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.1.md).
+
 ### v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work (October 2026)
 
 The Hermes plugin's directory now carries its own `plugin.yaml` (declaring
@@ -71,20 +87,10 @@ gates it in CI on keeping the pre-registered must-keep lines. Walkthrough:
 [Trim noisy install logs](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
 
-**Also in v4.10.0: `query` finds the project's code, not its tests, examples
-and docs.** Indexed from the repository root, tests, example scripts and doc
-headings used to take all four of `query`'s search results from the code they
-are about: asked which files in Click parse command-line options, it returned
-an example script, a test and a doc heading. Now the project's code is owed
-two of the four results when the search found it (one for a docs question),
-tests and examples count a third unless the question asks about them, docs
-count a third when the question asks for code, and L2 lists a cluster's own
-code first. On 14 Click questions (the set it was tuned on) an answering file
-is in the results for 14, up from 9; held-out results and losses are in the
-release notes. An index of a library's source directory alone ranks exactly as
-before. `NEURALMIND_L3_ROLES=0` turns it off.
-[Query intent and roles](CLI-Reference#query) ·
-[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md#also-in-v4100-query-finds-the-projects-code-not-its-tests-examples-and-docs).
+Also in v4.10.0: `neuralmind validate` stops reporting the chapter files the
+prose path records, such as `ch01.md`, as stale synapses while the index
+still holds `chapters/ch01.md`, and the `neuralmind.sleep` API's long-term
+promotion no longer boosts ephemeral edges, which decay never protects.
 
 ### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
 
