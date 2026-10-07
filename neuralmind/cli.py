@@ -4708,6 +4708,7 @@ def cmd_daemon(args):
     import time
 
     from neuralmind import daemon as daemon_mod
+    from neuralmind.child_python import HAS_SAFE_PATH, python_argv, python_env
     from neuralmind.daemon_client import connect
 
     action = args.action
@@ -4766,16 +4767,13 @@ def cmd_daemon(args):
         log_dir = Path.home() / ".neuralmind"
         log_dir.mkdir(parents=True, exist_ok=True)
         log = open(log_dir / "daemon.log", "ab")  # noqa: SIM115 - lifetime is the child's
-        cmd = [
-            sys.executable,
-            "-m",
-            "neuralmind.daemon",
-            "--host",
-            args.host,
-            "--port",
-            str(args.port),
-        ]
-        subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
+        cmd = python_argv("-m", "neuralmind.daemon", "--host", args.host, "--port", str(args.port))
+        # On 3.10 (no -P) the daemon starts in its own state directory, which
+        # holds no Python modules: it outlives any temporary one.
+        cwd = None if HAS_SAFE_PATH else log_dir
+        subprocess.Popen(
+            cmd, stdout=log, stderr=log, start_new_session=True, cwd=cwd, env=python_env()
+        )
         for _ in range(50):  # up to ~5s for it to come up
             client = connect()
             if client is not None:
