@@ -57,6 +57,40 @@ Lower threshold = more sensitive detection. Higher threshold = more queries clas
 3. **File path detection** — regex matches like `src/auth/handler.py` strongly signal code intent
 4. **Scoring** — code and doc scores are computed, threshold applied for final classification
 
+## Tests and examples are not the code *(v4.10.0+)*
+
+Index a repository from its root and two more kinds of node compete for the
+four results: tests and example scripts. Both are code, so the table above
+used to give them the code's ×3.0, and a test, which repeats the names of the
+code it tests, also got the identifier boost (up to ×10). On
+[Click](https://github.com/pallets/click), "which files in this repo handle
+parsing command-line options?" came back as an example script, a test and a
+doc heading, and `core.py` never made the four.
+
+v4.10.0 scores the project's own code, its tests and examples, and its docs
+separately (by layout: `tests/`, `examples/`, `test_*.py`, `*_test.go`,
+`*.test.ts` and the like):
+
+| Intent | The project's code | Tests and examples | Docs |
+|--------|---------------------|--------------------|------|
+| `code` | × 3.0 (docstrings × 0.5) | × 0.5, then × ⅓ | × 0.5, then × ⅓ |
+| `docs` | × 0.7 (docstrings × 2.0) | × 0.7, then × ⅓ | × 2.0 |
+| `hybrid` | × 1.0 | × ⅓ | × 1.0 |
+
+The ⅓ for tests and examples drops when the question names them ("how do I
+test …", "an example of …"). And before any of that is applied, the project's
+code is owed two of the four results (one for a `docs` question) when the
+search found it at ranks 5–10: the weakest test, example or doc results give
+their slots to it. The project's own code is scored exactly as before, so a
+repository with no tests, examples or docs in its index ranks as it always did.
+`NEURALMIND_L3_ROLES=0` turns this off. Measured in the
+[v4.10.0 release notes](../releases/RELEASE_NOTES_v4.10.0.md#measured-roles-on-vs-off).
+
+```bash
+neuralmind query . "which files handle parsing command-line options?" --trace
+# →   [L3/roles] 2 slot(s) from tests/examples/docs to the project's code
+```
+
 ## Results
 
 - Code-framed queries: >80% code nodes in top-4 results

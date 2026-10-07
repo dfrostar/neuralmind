@@ -82,6 +82,9 @@ keywords = [
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",
+    "code-first-ranking",
+    "test-aware-retrieval",
+    "whole-repo-eval",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

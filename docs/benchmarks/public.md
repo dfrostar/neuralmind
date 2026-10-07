@@ -195,6 +195,14 @@ Two loss modes, reported plainly:
 across runs, CI-gated on direction, budget-
   neutral, on the reference fixture. That is the differentiator a static index
   structurally cannot copy.
+- **A repository indexed from its root.** Each repo is indexed from its source
+  directory only (the manifest's `subdir`, e.g. `src/click`), so its tests,
+  examples and docs never compete with the library code for a slot. Indexed
+  from the root, as `neuralmind build .` indexes a checkout, they do. The
+  multi-repo retrieval eval measures that case on the same four repos and
+  commits
+  (`python -m evals.retrieval.run --full-repo`, v4.10.0+; raw output in
+  [`bench/retrieval/roles-v4.10/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
   metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds
   the *answering* signal — see below — but it stays a clearly-labeled secondary,

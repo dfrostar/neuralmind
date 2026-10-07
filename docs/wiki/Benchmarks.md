@@ -98,6 +98,48 @@ rather than adding tokens. The onboarding lift is the answer to "does an agent
 that inherits a committed team memory retrieve better on its *first* queries than
 a cold agent?" — gated in CI at lift ≥ 0.
 
+## Retrieval eval (v4.10.0): the project's code against its tests, examples and docs
+
+Indexed from its root, as `neuralmind build .` indexes a checkout, a
+repository's tests, example scripts and docs competed with its own code for
+L3's four slots, and often won: on pallets/click, "which files in this repo
+handle parsing command-line options?" got an example script, a test and a doc
+heading. v4.10.0's roles pass, on by default (`NEURALMIND_L3_ROLES=0` restores
+v4.9), owes the project's code two of the four slots when the search found it
+(one for a `docs` question), and weighs tests and examples, and docs under
+`code` intent, at a third. Measured read-only with the v4.6.0 harness and its
+pre-registered questions, plus `--full-repo`, which indexes the four public
+repositories from their roots
+([`bench/retrieval/roles-v4.10`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
+hit@5 / MRR:
+
+| Repository | Index | v4.9 ranking | v4.10.0 |
+|---|---|---:|---:|
+| `requests` | whole repository | 83% / 0.69 | 83% / 0.72 |
+| `click` | whole repository | 77% / 0.64 | 83% / 0.76 |
+| `flask` | whole repository | 83% / 0.65 | 83% / 0.72 |
+| `rich` | whole repository | 67% / 0.48 | 67% / 0.50 |
+| `neuralmind` | whole repository, docs indexed | 57% / 0.45 | 70% / 0.55 |
+| `requests`, `click`, `flask`, `rich` | source directory only | unchanged | unchanged |
+
+On the 120 whole-repository questions, 18 rank their gold file higher and none
+lower, and tokens rose 1.6% (`flask` 3.8%). On the four source directories,
+where every hit is the library's own code, every rank and token count is the
+same, and on one machine the [public benchmark](../benchmarks/public.md)'s
+`results.json` is byte-identical to v4.9's. On the 14 Click questions it was tuned on (`click` @
+`2247b35`, whole repository), hit@5 went from 64% to 100% and MRR from 0.49 to
+0.80. **By spec 7's keep rule it wouldn't pass**: hit@5 rose on one repository
+in each run, and the rule asks for three. It is on by default because the
+standard runs index source directories, where it does nothing by design, and
+on whole repositories no question got worse. The
+[v4.10.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md#measured-roles-on-vs-off)
+list where it still loses.
+
+```bash
+python -m evals.retrieval.run --full-repo --repos requests,click,flask,rich --configs baseline,roles_off
+NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --configs baseline,roles_off --public-benchmark
+```
+
 ## Retrieval eval (v4.6.0)
 
 *Evidence level: reproducible on demand — one command, raw output committed in

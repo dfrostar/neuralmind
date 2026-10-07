@@ -540,6 +540,25 @@ the implementation missing from those four: in v4.6.0's eval, switching intent
 never changed hit@5. The hit list prints each hit's label and
 file; before v4.6.0 it printed raw node ids.
 
+**The project's code, its tests, examples and docs *(v4.10.0+)*.** Indexed from
+the repository root, tests, example scripts and doc headings can take all four
+L3 slots from the code they're about: a test repeats the names of the code it
+tests, an example uses the words of a question about what it demonstrates.
+`query` now tells them apart by layout. When fewer than two of the four hits
+are the project's code (one for a `docs` question) and ranks 5–10 of the same
+search hold some, the weakest test, example or doc hits give their slots to it,
+and `--trace` shows the swap:
+
+```
+  [L3/roles] 2 slot(s) from tests/examples/docs to the project's code
+```
+
+Tests and examples also count a third when ranking, unless the question names
+them ("how do I test …"), and so do docs under `code` intent; L2 lists a
+cluster's own code before its tests and examples. An index of a library's
+source directory alone ranks exactly as before. `NEURALMIND_L3_ROLES=0` turns
+it off (see [Environment Variables](#environment-variables)).
+
 #### Sample Output
 
 ```
@@ -3859,6 +3878,7 @@ renewed — issue a new one.
 | `NEURALMIND_HUB_DAMPEN` | unset | *(v4.6.0+, research flag)* Set to `1` to down-weight files returned far more often than chance (with a floor, so a hub that is the only match still wins). **Off by default:** it cost `click` 3–4 questions — on a small library the most-returned files are central modules, not hubs. |
 | `NEURALMIND_INTENT_RULES` | unset | *(v4.6.0+, research flag)* Set to `1` to classify "how does X…", "where is X…" and "which X is…" questions as `code` intent (and questions that name a document or ask how to install as `docs`) before the v3.9.0 classifier runs; `query --explain` then shows `(by question shape)`. **Off by default:** it only re-orders the four hits L3 already chose, so it moved MRR (0.654 → 0.672) and never hit@5. |
 | `NEURALMIND_INTENT_POOL` | unset | *(v4.6.0+, research flag)* Set to `1` (measured with `NEURALMIND_INTENT_RULES=1`) to let intent rank all 10 search candidates instead of re-ordering the four L3 chose. **Off by default:** it cost `click` 8 questions and took the public benchmark's recall to 83.75% (measured against v4.5.0). |
+| `NEURALMIND_L3_ROLES` | on | *(v4.10.0+)* Set to `0` to turn off the roles pass and get v4.9's ranking back. **On by default:** `query` (and the MCP `neuralmind_query` tool) tells the project's own code from its tests, examples and docs. When fewer than two of L3's four hits are the project's code (one for a `docs` question) and ranks 5–10 of the same search hold some, the weakest test, example or doc hits give their slots to it; tests and examples count a third under every intent unless the question names them ("how do I test …", "an example of …"), and docs count a third under `code` intent; L2 lists a cluster's own code before its tests and examples. Tests and examples are recognised by layout: a `test`, `tests`, `spec`, `__tests__`, `example(s)`, `demo(s)` or `sample(s)` directory, or a test file's name (`test_*.py`, `*_test.go`, `*.test.ts`, `*.spec.js`, `conftest.py`). An index of a library's source directory alone ranks exactly as before. |
 
 ---
 
