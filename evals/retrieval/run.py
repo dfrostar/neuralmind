@@ -48,6 +48,7 @@ FLAGS = (
     "NEURALMIND_INTENT_RULES",
     "NEURALMIND_BM25_UNIFIED",
     "NEURALMIND_INTENT_POOL",
+    "NEURALMIND_L3_ROLES",
 )
 
 # One configuration per work item, the all-on combination, and the BM25-off
@@ -71,6 +72,8 @@ CONFIGS: dict[str, dict[str, str]] = {
         "NEURALMIND_INTENT_RULES": "1",
         "NEURALMIND_INTENT_POOL": "1",
     },
+    # v4.10.0: the roles pass, on by default; this restores v4.9's ranking.
+    "roles_off": {"NEURALMIND_L3_ROLES": "0"},
     "all": {
         "NEURALMIND_L3_PER_FILE": "2",
         "NEURALMIND_DOC_HANDOFF": "1",
@@ -128,13 +131,24 @@ def _copy_git_visible(src: Path, dest: Path) -> Path:
 
 
 def prepare(
-    work: Path, only: set[str] | None, private: Path | None, fresh: bool = True
+    work: Path,
+    only: set[str] | None,
+    private: Path | None,
+    fresh: bool = True,
+    full_repo: bool = False,
 ) -> list[dict[str, Any]]:
-    """[{name, root, questions_path}] for every repo to evaluate.
+    """[{name, root, questions_path, gold_prefix}] for every repo to evaluate.
 
     With ``fresh`` (the default), each pinned clone's ``.neuralmind/`` is
     removed so the index is rebuilt from nothing: any learned state (synapses
     from a learning query) would otherwise change what the baseline returns.
+
+    With ``full_repo``, a public repo is indexed from its clone's root, as
+    ``neuralmind build .`` in a checkout would: its docs, tests and examples
+    compete with the library code for every slot. Gold paths are written
+    relative to the source directory (``subdir`` in the manifest), so they get
+    that prefix. Without it only the source directory is indexed, as the
+    public benchmark does.
     """
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     repos: list[dict[str, Any]] = []
@@ -142,6 +156,10 @@ def prepare(
         if only and repo["name"] not in only:
             continue
         root = _pinned_clone(work, repo)
+        prefix = ""
+        if full_repo and repo.get("subdir"):
+            prefix = repo["subdir"].strip("/") + "/"
+            root = work / repo["name"]
         if fresh:
             shutil.rmtree(root / ".neuralmind", ignore_errors=True)
         repos.append(
@@ -149,10 +167,15 @@ def prepare(
                 "name": repo["name"],
                 "root": root,
                 "questions": QUESTIONS / f"{repo['name']}.eval.yaml",
+                "gold_prefix": prefix,
             }
         )
     if not only or "neuralmind" in only:
-        root = _copy_git_visible(REPO_ROOT, work / "neuralmind")
+        root = work / "neuralmind"
+        # --no-build reuses the copy its index was built from; a fresh copy
+        # would have no index.
+        if fresh or not (root / ".neuralmind").exists():
+            root = _copy_git_visible(REPO_ROOT, root)
         # This repo's .neuralmindignore drops every markdown file. Spec 7 is
         # about docs competing with code for L3 slots, and six of its
         # questions are answered by a doc, so the eval indexes the docs.
@@ -187,13 +210,19 @@ def build(root: Path) -> float:
     return time.perf_counter() - start
 
 
-def eval_config(root: Path, questions_path: Path, env: dict[str, str]) -> dict[str, Any]:
+def eval_config(
+    root: Path, questions_path: Path, env: dict[str, str], gold_prefix: str = ""
+) -> dict[str, Any]:
     from neuralmind.core import NeuralMind
-    from neuralmind.project_eval import load_questions, run_eval
+    from neuralmind.project_eval import EvalQuestion, load_questions, run_eval
 
     _set_flags(env)
     try:
         questions = load_questions(root, questions_path)
+        if gold_prefix:
+            questions = [
+                EvalQuestion(q=q.q, gold=[gold_prefix + g for g in q.gold]) for q in questions
+            ]
         mind = NeuralMind(str(root))  # fresh selector: no cache shared across configs
         report = run_eval(root, questions, mind=mind)
     finally:
@@ -364,6 +393,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--out", default="", help="write results.json + report.md here")
     ap.add_argument("--no-build", action="store_true", help="reuse existing indexes")
+    ap.add_argument(
+        "--full-repo",
+        action="store_true",
+        help="index each public repo from its root (docs, tests, examples included)",
+    )
     args = ap.parse_args(argv)
 
     work = Path(args.work_dir).resolve()
@@ -374,7 +408,7 @@ def main(argv: list[str] | None = None) -> int:
     if "baseline" not in configs:
         configs.insert(0, "baseline")
 
-    repos = prepare(work, only, private, fresh=not args.no_build)
+    repos = prepare(work, only, private, fresh=not args.no_build, full_repo=args.full_repo)
     results: dict[str, dict[str, dict]] = {}
     repeat: dict[str, bool] = {}
     for repo in repos:
@@ -383,7 +417,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[{repo['name']}] built in {secs:.0f}s", file=sys.stderr)
         results[repo["name"]] = {}
         for config in configs:
-            r = eval_config(repo["root"], repo["questions"], CONFIGS[config])
+            r = eval_config(
+                repo["root"], repo["questions"], CONFIGS[config], repo.get("gold_prefix", "")
+            )
             results[repo["name"]][config] = r
             print(
                 f"[{repo['name']}] {config:<10} hit@5 {r['hit_at_5']:.0%}  "
@@ -391,7 +427,9 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
         # Determinism check: the baseline again, after every configuration ran.
-        again = eval_config(repo["root"], repo["questions"], CONFIGS["baseline"])
+        again = eval_config(
+            repo["root"], repo["questions"], CONFIGS["baseline"], repo.get("gold_prefix", "")
+        )
         repeat[repo["name"]] = again["ranks"] == results[repo["name"]]["baseline"]["ranks"]
         print(f"[{repo['name']}] baseline reproduced: {repeat[repo['name']]}", file=sys.stderr)
 

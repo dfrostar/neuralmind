@@ -31,6 +31,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from collections.abc import Callable
 from typing import Any
 
 from .synapses import (
@@ -504,6 +505,10 @@ def extract_code_identifiers(query: str) -> list[str]:
     return identifiers
 
 
+# What a non-code hit is worth to a code-signal query.
+DOC_SIGNAL = 0.3
+
+
 def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
     """Compute a boost score for a result based on code-signal identifiers.
 
@@ -524,7 +529,7 @@ def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
         (".md", ".markdown", ".txt", ".rst", ".org")
     )
     if is_doc:
-        return 0.3  # Strongly penalize docs for code-signal queries
+        return DOC_SIGNAL  # Strongly penalize docs for code-signal queries
 
     # Check how many identifiers appear in the source file name
     file_name = source_file.lower().replace("/", "_").replace(".", "_")
@@ -553,8 +558,16 @@ def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
     return 1.0
 
 
-def apply_code_signal_boost(results: list[dict], identifiers: list[str]) -> list[dict]:
+def apply_code_signal_boost(
+    results: list[dict],
+    identifiers: list[str],
+    about_code: Callable[[dict], bool] | None = None,
+) -> list[dict]:
     """Apply code-signal boost to results.
+
+    ``about_code`` marks hits that are about the code rather than the code
+    itself, such as tests and examples: they get the docs' :data:`DOC_SIGNAL`,
+    because sharing the question's identifiers is what a test does by design.
 
     Mutates results in place. Returns the re-ranked list.
     """
@@ -562,7 +575,10 @@ def apply_code_signal_boost(results: list[dict], identifiers: list[str]) -> list
         return results
 
     for result in results:
-        boost = compute_code_signal_score(result, identifiers)
+        if about_code is not None and about_code(result):
+            boost = DOC_SIGNAL
+        else:
+            boost = compute_code_signal_score(result, identifiers)
         result["score"] = result.get("score", 0.0) * boost
         if boost > 1.0:
             result["_code_signal_boost"] = boost

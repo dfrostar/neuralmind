@@ -809,11 +809,16 @@ class ContextSelector:
         if not search_results:
             return "", []
 
-        # Count community hits
+        # Count community hits. With roles on (v4.10.0), a test or example
+        # hit the question doesn't ask for counts a third, as it does in L3.
+        roles = l3_slots.roles_enabled()
+        asked = l3_slots.asked_kinds(query)
         community_scores: dict[int, float] = {}
         for result in search_results:
             comm = result.get("metadata", {}).get("community", -1)
             score = result.get("score", 0)
+            if roles and l3_slots.role(result, asked) == l3_slots.SUPPORT:
+                score *= l3_slots.ROLE_WEIGHT
             if comm >= 0:
                 community_scores[comm] = community_scores.get(comm, 0) + score
 
@@ -849,7 +854,10 @@ class ContextSelector:
         loaded_communities = []
 
         for comm_id, score in top_communities:
-            comm_summary = self.embedder.get_community_summary(comm_id, max_nodes=10)
+            if roles:
+                comm_summary = self._community_summary_by_role(comm_id, asked)
+            else:
+                comm_summary = self.embedder.get_community_summary(comm_id, max_nodes=10)
             loaded_communities.append(comm_id)
 
             parts.append(f"### Cluster {comm_id} (relevance: {score:.2f})")
@@ -874,6 +882,45 @@ class ContextSelector:
 
         context = self._truncate_to_tokens("\n".join(parts), self._l2_max_tokens)
         return context, loaded_communities
+
+    # Members read per cluster when sorting them by role: enough to reach a
+    # cluster's own code past the examples and tests that sort before it.
+    L2_ROLE_SCAN = 2000
+
+    def _community_summary_by_role(self, comm_id: int, asked: frozenset[str]) -> dict:
+        """A cluster's summary listing the project's code before its tests, examples and docs.
+
+        A summary lists a cluster's first members in the index's order, which
+        is by path, so ``examples/`` comes before ``src/``. On pallets/click a
+        390-node cluster holding three nodes of ``examples/inout/inout.py``
+        was shown as ``inout.py``, and a 963-node one holding ``core.py`` as
+        ``examples/completion/completion.py``. The sort is stable, so when
+        every member is the project's code, as on an index of a library's
+        source directory, the summary is the one the backend returned.
+        """
+        summary: dict = self.embedder.get_community_summary(comm_id, max_nodes=self.L2_ROLE_SCAN)
+        order = {l3_slots.SOURCE: 0, l3_slots.SUPPORT: 1, l3_slots.DOC: 2}
+        members = list(summary.get("nodes") or [])
+        if not members:
+            return summary
+
+        def rank(node: dict) -> int:
+            hit = {
+                "metadata": {
+                    "file_type": node.get("file_type", ""),
+                    "source_file": node.get("source_file", ""),
+                }
+            }
+            return order[l3_slots.role(hit, asked)]
+
+        members = sorted(members, key=rank)[:10]
+        # Count types over the ten shown, as the backend does over the ten it reads.
+        types: dict[str, int] = {}
+        for node in members:
+            ft = node.get("file_type", "unknown")
+            types[ft] = types.get(ft, 0) + 1
+        type_summary = ", ".join(f"{v} {k}s" for k, v in types.items())
+        return dict(summary, nodes=members, node_count=len(members), type_summary=type_summary)
 
     def _synapse_disabled(self) -> bool:
         """True when synapse recall isn't wired or the kill switch is set."""
@@ -1305,10 +1352,18 @@ class ContextSelector:
             return results
 
         # Re-rank in place. This one is already budget-neutral: it reweights
-        # the hits we have rather than adding to them.
+        # the hits we have rather than adding to them. A test or example
+        # shares the question's identifiers because it exercises that code,
+        # so with roles on it scores like a doc here (v4.10.0).
         if intent == "code":
+            roles = l3_slots.roles_enabled()
+            asked = l3_slots.asked_kinds(query)
+
+            def about_code(hit: dict) -> bool:
+                return roles and l3_slots.role(hit, asked) == l3_slots.SUPPORT
+
             try:
-                results = apply_code_signal_boost(results, identifiers)
+                results = apply_code_signal_boost(results, identifiers, about_code)
             except Exception:
                 logger.debug("code-signal boost failed", exc_info=True)
 
@@ -1513,9 +1568,113 @@ class ContextSelector:
             return "docs"
         return "hybrid"
 
-    def _apply_intent_boost(self, results: list[dict], intent: str) -> list[dict]:
-        """Apply type-aware boost based on query intent."""
+    def _reserve_source_slots(
+        self, query: str, results: list[dict], intent: str, n: int
+    ) -> list[dict]:
+        """Give the project's own code the L3 slots its tests, examples and docs took.
+
+        Indexed from its root, a repository's tests repeat the names of the
+        code they test, its example scripts use the words of a question about
+        the feature they demonstrate, and its doc headings are short,
+        question-like matches. All three outrank the code itself, and the four
+        L3 slots are taken from the top of the fused search before intent
+        re-ranks them, so no boost downstream can bring the code back. On
+        pallets/click, "which files in this repo handle parsing command-line
+        options?" filled all four with an example script, a test docstring
+        and a doc heading, while ``core.py`` waited at ranks 5 and 8.
+
+        When fewer than :data:`l3_slots.SOURCE_FLOOR` of the hits are the
+        project's code and the rest of the same search (the cached fused list,
+        ranks ``n+1``-10) has some, the weakest test, example or doc hits give
+        their slots to the best of it, a file not yet shown first. Budget-
+        neutral: never adds a hit. A no-op when every hit, or every candidate,
+        is the project's code, as on an index of a library's source directory.
+
+        Tests count as tests here even when the question asks about them: the
+        floor is for the code they test. Ranking is where asking counts.
+        """
+        want = min(l3_slots.SOURCE_FLOOR.get(intent, 0), n)
+
+        def is_source(hit: dict) -> bool:
+            return l3_slots.role(hit) == l3_slots.SOURCE
+
+        have = sum(1 for h in results if is_source(h))
+        if have >= want:
+            return results
+        present = {h.get("id") for h in results}
+        candidates = [
+            h
+            for h in self._query_search_cache.get(query, [])
+            if h.get("id") not in present and is_source(h)
+        ]
+        if not candidates:
+            return results
+        # A file the answer doesn't show yet before a second hit from one it does.
+        shown = {_module_of(h) for h in results if is_source(h)}
+        fresh: list[dict] = []
+        again: list[dict] = []
+        for h in candidates:
+            if _module_of(h) in shown:
+                again.append(h)
+            else:
+                fresh.append(h)
+                shown.add(_module_of(h))
+        incoming = (fresh + again)[: want - have]
+
+        # Victims: the weakest of the rest, a hit whose file another hit still
+        # shows first (as _displace prefers), then lowest score, then id.
+        per_file: dict[str, int] = {}
+        for h in results:
+            per_file[_module_of(h)] = per_file.get(_module_of(h), 0) + 1
+        victims = sorted(
+            (h for h in results if not is_source(h)),
+            key=lambda h: (
+                per_file[_module_of(h)] <= 1,
+                float(h.get("score") or 0.0),
+                str(h.get("id") or ""),
+            ),
+        )
+        swaps = min(len(incoming), len(victims))
+        if not swaps:
+            return results
+        dropped = {id(h) for h in victims[:swaps]}
+        kept = [h for h in results if id(h) not in dropped]
+        added = [dict(h, _source_slot=True) for h in incoming[:swaps]]
+        if self._trace is not None:
+            self._trace.add(
+                "L3",
+                "roles",
+                f"{swaps} slot(s) from tests/examples/docs to the project's code",
+                taken=[_module_of(h) for h in added],
+                given_up=[_module_of(h) for h in victims[:swaps]],
+            )
+        merged = kept + added
+        merged.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
+        return merged
+
+    def _apply_intent_boost(self, results: list[dict], intent: str, query: str = "") -> list[dict]:
+        """Apply type-aware boost based on query intent.
+
+        With roles on (the default), a test or example the question doesn't
+        ask for is neither the code nor its docs: code intent gives it the
+        non-code multiplier, docs intent the non-doc one. Then it, and a doc
+        under code intent, is worth :data:`l3_slots.ROLE_WEIGHT` of its score,
+        under every intent. Nothing changes for the project's own code, so an
+        index of a library's source directory ranks exactly as before.
+        """
+        roles = l3_slots.roles_enabled()
+        asked = l3_slots.asked_kinds(query) if roles else frozenset()
+        hit_roles = [l3_slots.role(r, asked) if roles else l3_slots.SOURCE for r in results]
         if intent == "hybrid":
+            weighted = False
+            for result, hit_role in zip(results, hit_roles, strict=True):
+                weight = l3_slots.role_weight(hit_role, intent)
+                if weight != 1.0:
+                    result["score"] = result.get("score", 0) * weight
+                    result["_role_weight"] = weight
+                    weighted = True
+            if weighted:
+                results.sort(key=lambda x: x.get("score", 0), reverse=True)
             return results
 
         # Boost factors (configurable via env vars)
@@ -1527,7 +1686,7 @@ class ContextSelector:
         except Exception:
             rules = False
         doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
-        for result in results:
+        for result, hit_role in zip(results, hit_roles, strict=True):
             meta = result.get("metadata", {})
             file_type = meta.get("file_type", "")
             source_file = meta.get("source_file", "")
@@ -1545,6 +1704,10 @@ class ContextSelector:
             ):
                 is_doc = False
             is_code = not is_doc and (file_type == "code" or bool(source_file))
+            # A test or example is about the code, as a doc is, but it is not
+            # the docs either: neither boost (v4.10.0).
+            if hit_role == l3_slots.SUPPORT:
+                is_doc = is_code = False
 
             if intent == "code":
                 if is_code:
@@ -1560,6 +1723,10 @@ class ContextSelector:
                 else:
                     result["score"] = result.get("score", 0) * 0.7
                     result["_intent_boost"] = 0.7
+            weight = l3_slots.role_weight(hit_role, intent)
+            if weight != 1.0:
+                result["score"] = result.get("score", 0) * weight
+                result["_role_weight"] = weight
 
         # Re-rank by boosted score
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
@@ -1593,7 +1760,7 @@ class ContextSelector:
             dict(r) for r in self._query_search_cache.get(query, []) if r.get("id") not in present
         ]
         if refill:
-            refill = self._apply_intent_boost(refill, intent)
+            refill = self._apply_intent_boost(refill, intent, query)
         try:
             if l3_slots.hub_dampening_enabled():
                 stats = self._hub_stats()
@@ -1674,6 +1841,25 @@ class ContextSelector:
         if not results:
             return "", 0
 
+        # Type-aware re-ranking. Resolved once and applied once: the v3.9.0
+        # pipeline boosted with the keyword intent, then boosted the same
+        # results again with the corrected one, compounding both multipliers.
+        # A requested type (``--type code|docs``) stands in for the detected
+        # intent here, before anything is ranked or rendered. Resolved before
+        # the slots are filled, because the project's code is owed more of
+        # them when the question asks for code.
+        if query_type in ("code", "docs"):
+            intent = query_type
+            self._last_intent_source = "query_type"
+        else:
+            intent = self._resolve_intent(query)
+        self._last_intent = intent
+
+        # The project's own code gets slots its tests, examples and docs took
+        # (v4.10.0). A no-op when nothing but the project's code was found.
+        if l3_slots.roles_enabled():
+            results = self._reserve_source_slots(query, results, intent, n)
+
         # Fold in the static structural graph first: pull a query hit's
         # callers/callees/base classes into contention (precise, day-one
         # wiring). Runs before the synapse boost so structure claims a
@@ -1685,18 +1871,7 @@ class ContextSelector:
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
 
-        # Type-aware re-ranking. Resolved once and applied once: the v3.9.0
-        # pipeline boosted with the keyword intent, then boosted the same
-        # results again with the corrected one, compounding both multipliers.
-        # A requested type (``--type code|docs``) stands in for the detected
-        # intent here, before anything is ranked or rendered.
-        if query_type in ("code", "docs"):
-            intent = query_type
-            self._last_intent_source = "query_type"
-        else:
-            intent = self._resolve_intent(query)
-        self._last_intent = intent
-        results = self._apply_intent_boost(results, intent)
+        results = self._apply_intent_boost(results, intent, query)
 
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)

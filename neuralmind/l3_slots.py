@@ -20,6 +20,13 @@ is behind its own flag, and kept on by default only if the multi-repo eval
   over symbol names, their files and docstrings, fused by RRF.
 
 With every flag unset, nothing here runs and L3 is unchanged.
+
+One pass is on by default (v4.10.0): **roles**, at the end of this module.
+Indexed from its root, a repository's tests, examples and docs compete with
+its own code for the four slots, and they often win: a test repeats the
+names of the code it tests, an example script uses the very words of a
+question about the feature it demonstrates, and a doc heading is a short,
+question-like match. ``NEURALMIND_L3_ROLES=0`` turns it off.
 """
 
 from __future__ import annotations
@@ -41,6 +48,7 @@ HUB_ENV = "NEURALMIND_HUB_DAMPEN"
 CODE_BM25_ENV = "NEURALMIND_BM25_CODE"
 UNIFIED_BM25_ENV = "NEURALMIND_BM25_UNIFIED"
 INTENT_POOL_ENV = "NEURALMIND_INTENT_POOL"
+ROLES_ENV = "NEURALMIND_L3_ROLES"
 
 # A file counts as a hub above this share of answers.
 HUB_SHARE = 0.15
@@ -132,6 +140,11 @@ def unified_bm25_enabled() -> bool:
 
 def intent_pool_enabled() -> bool:
     return _on(INTENT_POOL_ENV)
+
+
+def roles_enabled() -> bool:
+    """On by default since v4.10.0; ``NEURALMIND_L3_ROLES=0`` restores v4.9."""
+    return os.environ.get(ROLES_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
 
 
 def any_slot_pass_enabled() -> bool:
@@ -645,3 +658,67 @@ def unified_bm25_index(
         return out
 
     return _cached_bm25(project, UNIFIED_BM25_FILE, build, rebuild=rebuild, scope=scope)
+
+
+# --------------------------------------------------------------------------- #
+# Roles: the project's code, the code that exercises it, and prose (v4.10.0)
+# --------------------------------------------------------------------------- #
+SOURCE, SUPPORT, DOC = "source", "support", "doc"
+
+_TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
+_EXAMPLE_DIRS = frozenset({"example", "examples", "demo", "demos", "sample", "samples"})
+_TEST_STEM = re.compile(r"^test_|_test$|^tests?$|^conftest$|[a-z0-9]Tests?$")
+_TEST_NAME = re.compile(r"\.(?:test|spec)\.")
+_ASKS_TESTS = re.compile(r"\b(?:tests?|testing|tested|specs?|pytest|unittest|fixtures?)\b", re.I)
+_ASKS_EXAMPLES = re.compile(r"\b(?:examples?|demos?|samples?)\b", re.I)
+
+# What a hit the question didn't ask for is worth, as a fraction of its score:
+# a test or an example always, unless the question names tests or examples,
+# and a doc when the question asks for code.
+ROLE_WEIGHT = 1 / 3
+# How many of the L3 slots the project's own code is owed, by intent, when the
+# rest of the search found some.
+SOURCE_FLOOR = {"code": 2, "hybrid": 2, "docs": 1}
+
+
+def support_kind(path: str) -> str:
+    """'test' or 'example' for a file that exercises the code, '' for the code itself.
+
+    By layout: a ``tests/``, ``spec/`` or ``examples/`` directory anywhere in
+    the path, or a test file's name (``test_x.py``, ``x_test.go``,
+    ``x.test.ts``, ``conftest.py``). ``src/click/testing.py`` is not one: the
+    project ships it.
+    """
+    parts = path.replace("\\", "/").split("/")
+    dirs = {d.lower() for d in parts[:-1]}
+    name = parts[-1]
+    if dirs & _TEST_DIRS or _TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name):
+        return "test"
+    if dirs & _EXAMPLE_DIRS:
+        return "example"
+    return ""
+
+
+def asked_kinds(query: str) -> frozenset[str]:
+    """The support kinds a question names: "how do I test …" asks for tests."""
+    asked = set()
+    if _ASKS_TESTS.search(query or ""):
+        asked.add("test")
+    if _ASKS_EXAMPLES.search(query or ""):
+        asked.add("example")
+    return frozenset(asked)
+
+
+def role(hit: dict, asked: frozenset[str] = frozenset()) -> str:
+    """SOURCE, SUPPORT or DOC. A test or example the question asks for is SOURCE."""
+    if is_doc_hit(hit):
+        return DOC
+    kind = support_kind(source_file(hit))
+    return SUPPORT if kind and kind not in asked else SOURCE
+
+
+def role_weight(hit_role: str, intent: str) -> float:
+    """What ``hit_role`` is worth under ``intent``: 1, or :data:`ROLE_WEIGHT`."""
+    if hit_role == SUPPORT or (hit_role == DOC and intent == "code"):
+        return ROLE_WEIGHT
+    return 1.0
