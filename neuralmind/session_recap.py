@@ -259,7 +259,7 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
     last_ts = 0.0
     compacted_ts = 0.0
     marker_active = False
-    recovered_by = ""
+    taken_by: set[str] = set()
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
@@ -285,7 +285,8 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
             # compaction_recap), spending the marker. Not activity either.
             marker_active = False
             by = entry.get("by")
-            recovered_by = by if isinstance(by, str) else ""
+            if isinstance(by, str) and by:
+                taken_by.add(by)
             continue
         last_ts = max(last_ts, ts)
         if entry.get("kind") == "prompt" and isinstance(entry.get("text"), str):
@@ -306,7 +307,7 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
         "files": files,
         "last_ts": last_ts,
         "compacted_ts": compacted_ts,
-        "recovered_by": recovered_by,
+        "taken_by": taken_by,
     }
 
 
@@ -445,7 +446,9 @@ def _taken_back(records: dict[str, tuple[Path, dict]], stem: str) -> dict | None
     seen = set()
     while stem not in seen:
         seen.add(stem)
-        stem = next((s for s, (_, r) in records.items() if r["recovered_by"] == stem), "")
+        # Another session's record this one took back; its own spent marker
+        # (a session back under its own id) names itself and isn't a link.
+        stem = next((s for s, (_, r) in records.items() if s != stem and stem in r["taken_by"]), "")
         if not stem:
             return None
         found = _content(records[stem][1])
@@ -490,17 +493,18 @@ def compaction_recap(
         own = directory / f"{stem}.jsonl"
         if own.is_symlink():
             return ""
-        record = _load(own) if own.exists() else None
+        own_record = _load(own, keep_empty=True) if own.exists() else None
+        if own_record and own_record["compacted_ts"] and _recording_enabled():
+            # Back under its own id: spend its marker too, or it would make
+            # another session's new-id compaction look ambiguous.
+            try:
+                _write_entry(
+                    own, {"kind": "recovered", "by": stem, "ts": time.time()}, create=False
+                )
+            except OSError:
+                pass
+        record = _content(own_record) if own_record else None
         if record:
-            if record["compacted_ts"] and _recording_enabled():
-                # Back under its own id: spend its marker too, or it would
-                # make another session's new-id compaction look ambiguous.
-                try:
-                    _write_entry(
-                        own, {"kind": "recovered", "by": stem, "ts": time.time()}, create=False
-                    )
-                except OSError:
-                    pass
             return render_compaction_recap(record)
         records = {}
         for path in _records(directory):

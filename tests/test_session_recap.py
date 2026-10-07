@@ -536,7 +536,8 @@ def test_a_second_compaction_before_any_prompt_still_recalls(tmp_path):
     _compact(tmp_path, "a")
     assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
     _compact(tmp_path, "b")
-    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
+    # One compaction, one SessionStart: here it comes back under a new id.
+    # (Back under its own id instead is the marker-only test below.)
     assert "migrate the scheduler" in _start(tmp_path, "c", source="compact")
     # And once more, c -> d, still before any prompt.
     _compact(tmp_path, "c")
@@ -585,6 +586,23 @@ def test_a_spent_marker_is_never_live_however_close_now_is_to_the_epoch(tmp_path
         fh.write(json.dumps({"kind": "compact", "ts": 50.0}) + "\n")
         fh.write(json.dumps({"kind": "recovered", "by": "a", "ts": 60.0}) + "\n")
     assert session_recap.recap_for_session_start(tmp_path, "b", "compact", now=100.0) == ""
+
+
+def test_a_marker_only_session_back_under_its_own_id_spends_its_marker(tmp_path):
+    # a -> b; b compacts before its first prompt and comes back as b; then x
+    # compacts and comes back under a new id: b's marker mustn't block x.
+    _prompt(tmp_path, "a", "session a's task")
+    _compact(tmp_path, "a")
+    assert "session a's task" in _start(tmp_path, "b", source="compact")
+    _compact(tmp_path, "b")
+    assert "session a's task" in _start(tmp_path, "b", source="compact")
+    _prompt(tmp_path, "x", "session x's task")
+    _compact(tmp_path, "x")
+    recap = _start(tmp_path, "x-after", source="compact")
+    assert "session x's task" in recap
+    assert "session a's task" not in recap
+    # b still gets a's record back after spending its own marker.
+    assert "session a's task" in _start(tmp_path, "b", source="compact")
 
 
 def test_a_marker_only_session_that_took_nothing_back_recalls_nothing(tmp_path):
