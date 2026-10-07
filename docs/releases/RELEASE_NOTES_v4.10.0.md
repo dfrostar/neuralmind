@@ -220,6 +220,27 @@ first fixed, shipped in v4.8.1.)
   still measured as a hypothetical arm. The opt-in doesn't use them: it removes
   noise rather than keeping signal.
 
+## Also in this release
+
+Two fixes found while fixing [v4.9.1](RELEASE_NOTES_v4.9.1.md). Neither loses data.
+
+- **`validate` stops flagging prose chapters as stale.** In a project whose
+  queries go through the prose path (a `chapters/` directory, built with a
+  graph rather than as a book), each query records the chapters it retrieved
+  in the synapse store by file name, such as `ch01.md`. That's never a graph
+  node id, so `neuralmind validate` reported every chapter synapse as stale.
+  A chapter name now counts as known when the index still holds
+  `chapters/<name>`. A chapter you deleted is still reported, and so is any
+  other name that doesn't resolve.
+- **The daemon sleep pass no longer treats ephemeral edges as long-term.**
+  `DaemonSleep.promote_ltp_edges` nudges long-term edges back up after decay.
+  It picked them by activation count and weight alone, so it also boosted
+  edges in the `ephemeral` namespace, which decay never protects. It now uses
+  the same long-term rule as decay, `status` and `SYNAPSE_MEMORY.md`: at least
+  five activations, a weight of at least 0.20, and not ephemeral. Nothing in
+  the CLI, hooks, daemon or MCP tools runs the sleep pass yet; this fixes the
+  `neuralmind.sleep` API for code that calls it.
+
 ## What the agent sees
 
 On Hermes, nothing new in a turn: the same recap and recall v4.9.0 added,

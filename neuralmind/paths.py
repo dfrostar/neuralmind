@@ -28,6 +28,11 @@ CANONICAL_DIR = ".neuralmind"
 # Legacy artifact directory name (pre-v4.2.0)
 LEGACY_DIR = "graphify-out"
 
+# Where the prose query path (MedicalRetriever) reads chapter files, relative to
+# the project. It records each chapter in the synapse store by file name, so
+# ``validate`` resolves those endpoints against the files under this directory.
+PROSE_CHAPTERS_DIR = "chapters"
+
 
 def _resolve_base(project_path: str | Path) -> Path:
     """Resolve and normalize a project path, refusing path traversal."""
