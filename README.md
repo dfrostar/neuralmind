@@ -28,6 +28,7 @@ that publishes every miss.
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
 > - **New in v4.10.0:** Hermes can install the NeuralMind plugin itself, and it says why when it can't work. The plugin's directory now carries its own `plugin.yaml` and a [README](neuralmind/hermes_plugin/README.md) that lists what it reads, writes and sends, so `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable` installs it from a clone of this repository, and Hermes's catalog check (`hermes plugins validate`) passes. Installed that way, the plugin runs the `neuralmind` command on Hermes's PATH (absolute PATH entries only, so a repository can't supply its own); `neuralmind install-hermes-plugin` still records an interpreter, and on a plugin Hermes installed it writes only that and the project. When the plugin can't start NeuralMind, finds one older than 4.9 (which answers without the session recap), or a call times out, it logs one warning per Hermes process naming the fix (`hermes logs --level WARNING | grep -i neuralmind`) instead of silently adding nothing. Fixed: `neuralmind install-hermes-plugin --uninstall` disabled the plugin before removing it, which left it on Hermes's disabled list, so installing it again left it off; it now runs `hermes plugins remove neuralmind`, which drops its entries from `config.yaml`, and the install says each turn gets NeuralMind's context only when the plugin is enabled. The manifest declares `requires_hermes: ">=0.21.5"`. Tested against Hermes v0.21.5 in live `hermes chat` sessions ([release notes](docs/releases/RELEASE_NOTES_v4.10.0.md) · [walkthrough](docs/use-cases/hermes-agent.md))
+> - **Also in v4.10.0, opt-in:** with `NEURALMIND_BASH_REPLACE=1`, sees `pip install` and `neuralmind build` output without its progress lines, every other line verbatim and the full output one Read away. On the [compression benchmark](docs/benchmarks/compression.md)'s five noisy logs that is 81.9% fewer tokens (per call: mean −54.8%, from 0% on the one it leaves alone to −96.5%), with every must-keep line kept; test runs, diffs, file dumps and searches are never touched ([release notes](docs/releases/RELEASE_NOTES_v4.10.0.md))
 > - **Also in v4.10.0:** `validate` stops flagging the chapter files the prose path records (such as `ch01.md`) as stale synapses while the index still holds them, and the `neuralmind.sleep` API's long-term promotion skips ephemeral edges ([release notes](docs/releases/RELEASE_NOTES_v4.10.0.md#also-in-this-release))
 > - **v4.9.2:** `--` ends the options again in the six `decisions` and `memory` subcommands that v4.9.1 let take the project path after their options; on Python 3.10, 3.11, 3.12 before 3.12.8 and 3.13.0, v4.9.1 could ignore it (`decisions query -- -q .` failed). The path can still follow the options, with or without `--`, and a path after a list option such as `--evidence` goes after `--` ([release notes](docs/releases/RELEASE_NOTES_v4.9.2.md))
 > - **v4.9.1:** the last four fixes from the v4.8.2 bug hunt. With query memory off, `feedback` no longer adjusts an older recorded query; the "LTP-protected" edge count in `status` and `synapse stats` counts only edges decay actually protects; `validate` stops flagging the prose path's query nodes as stale; and the `decisions` and `memory` subcommands accept the project path after their options on every supported Python, where 3.10, 3.11, 3.12 before 3.12.7 and 3.13.0 rejected it ([release notes](docs/releases/RELEASE_NOTES_v4.9.1.md))
@@ -239,7 +240,7 @@ truncation currently wins slightly: **0.451 vs 0.505 expected-fact recall, a
 **−0.10**; earlier releases measured +0.013 to +0.143. We publish it as a loss
 rather than drop the eval.
 
-### 10. Tool-output compression (measured, and removed)
+### 10. Tool-output compression (measured, removed, and one opt-in for noisy logs)
 
 Through v4.4.0, NeuralMind's PostToolUse hooks handed Claude Code compressed
 copies of `Bash` and `Grep` output. Claude Code adds a hook's
@@ -247,10 +248,21 @@ copies of `Bash` and `Grep` output. Claude Code adds a hook's
 copies cost tokens instead of saving them: **+17.5% on Bash calls and +22.1% on
 content-mode Grep**, and the Read hook never saw Claude Code's payload at all
 ([compression benchmark](docs/benchmarks/compression.md)). From v4.5.0 the
-hooks inject nothing, so Claude sees exactly the tool result. The compressors
-themselves would cut 66–87%, but a Read replaced by its skeleton would keep
-none of the file's source lines. So nothing replaces tool output until something
-keeps what the agent needs.
+hooks inject nothing by default, so Claude sees exactly the tool result. The
+compressors themselves would cut 70–87%, but a Read replaced by its skeleton
+would keep none of the file's source lines.
+
+**Opt-in since v4.10.0:** `NEURALMIND_BASH_REPLACE=1` replaces one kind of
+output for real, through `updatedToolOutput`: the progress lines of
+`pip install` and `neuralmind build`. It removes only lines it recognizes as
+that tool's progress, never a line that mentions an error or warning, and keeps
+the full output in a file the result names. On the benchmark's five noisy logs
+it cuts **81.9% of the tokens** (per call: mean −54.8%, from 0% for `next build`,
+which isn't on its allowlist, to −96.5%) and every pre-registered must-keep line
+reaches Claude. CI fails the build if a replaced call keeps under 95% of them,
+or if any test run, diff, file dump, search, Read or Grep result is replaced.
+Five commands from two tools is a small corpus: the figure describes those
+logs, not build output in general.
 
 ---
 
@@ -535,7 +547,9 @@ demand with `python -m evals.public.run`, raw per-query data committed:
   tolerance of the legacy graphify backend on every PR.
 - **Tool-output compression:** measured on v4.3.4, the PostToolUse hooks added
   17.5% to Bash calls and 22.1% to content-mode Grep rather than saving
-  anything; they now inject nothing
+  anything; they now inject nothing by default. The opt-in noisy-log
+  replacement (`NEURALMIND_BASH_REPLACE=1`) cuts 81.9% of the tokens on the
+  benchmark's five install and build logs, keeping every must-keep line
   ([compression benchmark](docs/benchmarks/compression.md)).
 
 ![Benchmark chart](docs/images/benchmark_chart.png)
@@ -608,7 +622,7 @@ The Hermes plugin runs the same hook actions, so the switches for those actions
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
-| Read the latest release | [v4.10.0 release notes](docs/releases/RELEASE_NOTES_v4.10.0.md) — Hermes can install the plugin itself, it logs why when it can't work, and a reinstall after uninstalling is enabled again · [v4.9.2](docs/releases/RELEASE_NOTES_v4.9.2.md) — `--` works again in the `decisions` and `memory` subcommands · [v4.9.1](docs/releases/RELEASE_NOTES_v4.9.1.md) — the last four bug-hunt fixes: `feedback` with memory off, the LTP-protected count, prose query nodes in `validate`, and the path after options · [v4.9.0](docs/releases/RELEASE_NOTES_v4.9.0.md) — a Hermes-Agent plugin puts NeuralMind's context into every turn · [v4.8.2](docs/releases/RELEASE_NOTES_v4.8.2.md) — the low-severity bug-hunt fixes: mistyped project paths, malformed daemon requests, duplicate ingests · [v4.8.1](docs/releases/RELEASE_NOTES_v4.8.1.md) — the bug-hunt fixes: installers that can't destroy your config, redaction gaps, hooks, graph, retrieval and synapse learning, plus a stricter `audit verify` · [v4.8.0](docs/releases/RELEASE_NOTES_v4.8.0.md) — a new Claude Code session starts with a recap of the last one, decision search by meaning, and MCP policy mistakes refused · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, and a check for encrypted storage · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
+| Read the latest release | [v4.10.0 release notes](docs/releases/RELEASE_NOTES_v4.10.0.md) — Hermes can install the plugin itself, it logs why when it can't work, and a reinstall after uninstalling is enabled again; also opt-in trimming of noisy install and build logs, with the full output one Read away · [v4.9.2](docs/releases/RELEASE_NOTES_v4.9.2.md) — `--` works again in the `decisions` and `memory` subcommands · [v4.9.1](docs/releases/RELEASE_NOTES_v4.9.1.md) — the last four bug-hunt fixes: `feedback` with memory off, the LTP-protected count, prose query nodes in `validate`, and the path after options · [v4.9.0](docs/releases/RELEASE_NOTES_v4.9.0.md) — a Hermes-Agent plugin puts NeuralMind's context into every turn · [v4.8.2](docs/releases/RELEASE_NOTES_v4.8.2.md) — the low-severity bug-hunt fixes: mistyped project paths, malformed daemon requests, duplicate ingests · [v4.8.1](docs/releases/RELEASE_NOTES_v4.8.1.md) — the bug-hunt fixes: installers that can't destroy your config, redaction gaps, hooks, graph, retrieval and synapse learning, plus a stricter `audit verify` · [v4.8.0](docs/releases/RELEASE_NOTES_v4.8.0.md) — a new Claude Code session starts with a recap of the last one, decision search by meaning, and MCP policy mistakes refused · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, and a check for encrypted storage · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 

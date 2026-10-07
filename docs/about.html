@@ -91,8 +91,8 @@
             <p>A 4-layer retrieval system that starts with the most relevant code entities and escalates only when needed. The result: 12-50× fewer tokens per code question compared to pasting raw source files.</p>
             <h3>Hebbian synapse learning</h3>
             <p>Every co-edit, query, and tool call strengthens associations between code nodes. The longer you use NeuralMind on a codebase, the better it gets at predicting what context you need.</p>
-            <h3>No tool-output compression</h3>
-            <p>NeuralMind&rsquo;s hooks don&rsquo;t compress tool output. Through v4.4.0 its PostToolUse hooks handed Claude compressed copies of Bash and Grep output, but Claude Code adds a hook&rsquo;s context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them &mdash; +17.5% on Bash calls and +22.1% on content-mode Grep in the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>. They now inject nothing; the Bash hook still caches the latest successful command&rsquo;s output, credentials redacted, for <code>neuralmind last</code>.</p>
+            <h3>No tool-output compression by default</h3>
+            <p>NeuralMind&rsquo;s hooks don&rsquo;t compress tool output unless you opt in. Through v4.4.0 its PostToolUse hooks handed Claude compressed copies of Bash and Grep output, but Claude Code adds a hook&rsquo;s context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them &mdash; +17.5% on Bash calls and +22.1% on content-mode Grep in the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>. They now inject nothing; the Bash hook still caches the latest successful command&rsquo;s output, credentials redacted, for <code>neuralmind last</code>. The opt-in (<code>NEURALMIND_BASH_REPLACE=1</code>, v4.10.0) replaces one kind of output, the progress lines of <code>pip install</code> and <code>neuralmind build</code>, and is measured with its retention gates in the same benchmark.</p>
         </section>
         <section>
             <h2>Supply chain</h2>
@@ -209,12 +209,18 @@
                 <li><strong>Fixed: a reinstall after an uninstall stayed off</strong> &mdash; <code>neuralmind install-hermes-plugin --uninstall</code> disabled the plugin before removing it, which left it on Hermes&rsquo;s <code>plugins.disabled</code> list, so installing it again left it disabled. It now runs <code>hermes plugins remove neuralmind</code>, which drops the plugin&rsquo;s entries from <code>config.yaml</code>, and a fresh install enables it whatever an earlier one left behind. The install also stopped saying each turn now gets NeuralMind&rsquo;s context when the plugin wasn&rsquo;t enabled</li>
                 <li><strong>Tested live</strong> &mdash; against Hermes v0.21.5 (a 0.21.5+5355 main-branch build) in live <code>hermes chat</code> sessions: the first-turn recap, recall, edits made with <code>patch</code> and <code>write_file</code>, a resumed session, a subagent, a directory that hasn&rsquo;t been built, both ways of installing, and uninstalling. What the context changes in Hermes&rsquo;s answers still isn&rsquo;t measured</li>
             </ul>
-            <p><strong>Also in v4.10.0:</strong></p>
+            <h3>Also in v4.10.0: noisy install logs, trimmed (opt-in, Claude Code)</h3>
+            <p><strong>NeuralMind&rsquo;s PostToolUse hooks inject nothing by default, because Claude Code adds <code>additionalContext</code> next to a tool result instead of replacing it.</strong> v4.10.0 adds one replacement that does shrink what Claude sees, through <code>updatedToolOutput</code>, and keeps it narrow enough to gate.</p>
+            <ul>
+                <li><strong><code>NEURALMIND_BASH_REPLACE=1</code></strong> &mdash; off by default. <code>pip install</code> and <code>neuralmind build</code> output reaches Claude with its progress lines elided and every other line verbatim; a line mentioning an error, warning, failure or deprecation is never removed, and the full output is kept in a file the result names</li>
+                <li><strong>Measured and gated</strong> &mdash; on the <a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>&rsquo;s five noisy logs, 81.9% fewer tokens (per call: mean &minus;54.8%, from 0% for the one it leaves alone to &minus;96.5%) with every must-keep line kept. CI fails the build if a replaced call keeps under 95% of them, or if a test run, diff, file dump, search, Read or Grep result is replaced. Five commands from two tools is a small corpus</li>
+            </ul>
+            <h3>Also in v4.10.0: two fixes from the v4.9.1 bug hunt</h3>
             <ul>
                 <li><strong><code>validate</code> stops flagging prose chapters as stale</strong> &mdash; the chapter file names the prose path records, such as <code>ch01.md</code>, count as known while the index still holds <code>chapters/ch01.md</code>; a deleted chapter is still reported</li>
                 <li><strong>The sleep pass&rsquo;s long-term rule</strong> &mdash; <code>DaemonSleep.promote_ltp_edges</code> no longer boosts ephemeral edges, which decay never protects (a library fix: nothing in the CLI, hooks or daemon runs the sleep pass yet)</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md">Hermes-Agent with code memory in every turn &rarr;</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md">Hermes-Agent with code memory in every turn &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100">Trim noisy install logs</a></p>
         </div>
     </section>
 
