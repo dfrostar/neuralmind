@@ -143,7 +143,7 @@ def intent_pool_enabled() -> bool:
 
 
 def roles_enabled() -> bool:
-    """On by default since v4.10.1; ``NEURALMIND_L3_ROLES=0`` restores v4.9."""
+    """On by default since v4.10.1; ``NEURALMIND_L3_ROLES=0`` restores v4.10.0."""
     return os.environ.get(ROLES_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
 
 

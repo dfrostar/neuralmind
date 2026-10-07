@@ -72,7 +72,7 @@ CONFIGS: dict[str, dict[str, str]] = {
         "NEURALMIND_INTENT_RULES": "1",
         "NEURALMIND_INTENT_POOL": "1",
     },
-    # v4.10.0: the roles pass, on by default; this restores v4.9's ranking.
+    # v4.10.1: the roles pass, on by default; this restores v4.10.0's ranking.
     "roles_off": {"NEURALMIND_L3_ROLES": "0"},
     "all": {
         "NEURALMIND_L3_PER_FILE": "2",

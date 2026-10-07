@@ -57,7 +57,7 @@ Lower threshold = more sensitive detection. Higher threshold = more queries clas
 3. **File path detection** — regex matches like `src/auth/handler.py` strongly signal code intent
 4. **Scoring** — code and doc scores are computed, threshold applied for final classification
 
-## Tests and examples are not the code *(v4.10.0+)*
+## Tests and examples are not the code *(v4.10.1+)*
 
 Index a repository from its root and two more kinds of node compete for the
 four results: tests and example scripts. Both are code, so the table above
@@ -67,7 +67,7 @@ code it tests, also got the identifier boost (up to ×10). On
 parsing command-line options?" came back as an example script, a test and a
 doc heading, and `core.py` never made the four.
 
-v4.10.0 scores the project's own code, its tests and examples, and its docs
+v4.10.1 scores the project's own code, its tests and examples, and its docs
 separately (by layout: `tests/`, `examples/`, `test_*.py`, `*_test.go`,
 `*.test.ts` and the like):
 
@@ -84,7 +84,7 @@ search found it at ranks 5–10: the weakest test, example or doc results give
 their slots to it. The project's own code is scored exactly as before, so a
 repository with no tests, examples or docs in its index ranks as it always did.
 `NEURALMIND_L3_ROLES=0` turns this off. Measured in the
-[v4.10.0 release notes](../releases/RELEASE_NOTES_v4.10.0.md#measured-roles-on-vs-off).
+[v4.10.1 release notes](../releases/RELEASE_NOTES_v4.10.1.md#measured-roles-on-vs-off).
 
 ```bash
 neuralmind query . "which files handle parsing command-line options?" --trace
