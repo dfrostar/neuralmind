@@ -58,6 +58,31 @@ it now runs `hermes plugins remove neuralmind`, which drops its entries from
 [`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
 
+### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
+
+v4.9.1 let six `decisions` and `memory` subcommands take the project path
+after their options, but on Python 3.10, 3.11, 3.12 before 3.12.8 and 3.13.0
+`--` could stop ending their options: `decisions query -- -q .` failed. `--` works again, the path can still follow the options, and every
+supported Python parses these lines the same way. A path after a list option
+such as `--evidence` needs `--` before it, which `record --help` and
+`amend --help` now say.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.2.md).
+
+### v4.9.1 — The last four fixes from the v4.8.2 bug hunt (October 2026)
+
+`neuralmind feedback good|bad` with query memory off no longer adjusts an
+older query recorded before memory went off; it exits 1, names that query and
+says how to turn memory back on. The "LTP-protected" edge count in `status`,
+`synapse stats` and the dashboard uses decay's own rule, so expect a lower
+number. `neuralmind validate` stops reporting the prose path's query nodes,
+now written `query:<term>`, as stale. And the `decisions` and `memory`
+subcommands accept the project path after their options (`decisions restore
+<id> --commit SHA <path>`) on every supported Python; on 3.10, 3.11, 3.12
+before 3.12.7 and 3.13.0 that failed. (On those versions, and on 3.12.7, `--`
+could stop ending their options; v4.9.2 fixes that.) None of the four lose
+data.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md).
+
 ### v4.9.0 — Hermes-Agent gets NeuralMind's context in every turn, without a tool call (October 2026)
 
 On Hermes-Agent, NeuralMind used to be something the agent had to decide to
