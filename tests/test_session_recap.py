@@ -171,6 +171,15 @@ def test_compacting_a_session_is_not_activity(tmp_path):
     assert '"newer task"' in _start(tmp_path, "fresh")
 
 
+def test_compaction_recap_respects_the_age_limit(tmp_path, monkeypatch):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    later = time.time() + 15 * 86400  # past the default 14 days
+    assert session_recap.recap_for_session_start(tmp_path, "now", "compact", now=later) == ""
+    monkeypatch.setenv("NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS", "30")
+    recap = session_recap.recap_for_session_start(tmp_path, "now", "compact", now=later)
+    assert "migrate the scheduler" in recap
+
+
 def test_compaction_recap_respects_the_opt_out(tmp_path, monkeypatch):
     _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
     _compact(tmp_path, "now")

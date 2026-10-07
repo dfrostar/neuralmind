@@ -69,11 +69,13 @@ class MetricsCollector:
             new_day = not path.exists()
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(payload, sort_keys=True) + "\n")
+                size = f.tell()
         except Exception:
             return False
-        if new_day:
-            # Once a day, when its file is started: the retention limits
-            # apply without a separate cleanup step.
+        if new_day or size > self.max_bytes:
+            # When a day's file is started, and when today's outgrows the
+            # cap: the retention limits apply without a separate cleanup
+            # step, and an ordinary append doesn't rescan the directory.
             self.rotate()
         return True
 

@@ -785,7 +785,9 @@ def _spread_for_prompt(project_path: str, prompt: str) -> str:
             result = recall(mind, prompt)
     except Exception:
         return ""
-    if result.similarity < _recall_min_similarity():
+    threshold = _recall_min_similarity()
+    # 0 (or below) never abstains: a match score can be negative.
+    if threshold > 0 and result.similarity < threshold:
         result, outcome = PromptRecall(similarity=result.similarity), "low_similarity"
     else:
         outcome = "injected" if result.count else "no_neighbors"
