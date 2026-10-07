@@ -82,6 +82,15 @@ def test_a_rationale_and_its_code_node_dont_double_a_shared_neighbour(tmp_path):
     assert dict(ranked)["pkg_mod_py__save_fn"] == alone["pkg_mod_py__save_fn"]
 
 
+def test_a_rationale_hit_never_recalls_itself_or_its_code_node(tmp_path):
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce(["pkg_mod_py__load_fn", "pkg_mod_py__save_fn"])
+    store.reinforce(["pkg_mod_py__load_fn__rationale", "pkg_mod_py__save_fn"])
+    hits = [{"id": "pkg_mod_py__load_fn__rationale", "score": 0.6}]
+    ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits), "q")
+    assert [node for node, _ in ranked] == ["pkg_mod_py__save_fn"]
+
+
 def test_no_match_recalls_nothing(tmp_path):
     assert NeuralMind.synaptic_recall(_Mind(_store(tmp_path), []), "q") == ([], 0.0)
 
