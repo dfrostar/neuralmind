@@ -558,6 +558,35 @@ def test_a_same_id_recovery_spends_its_marker(tmp_path):
     assert "session a's task" in _start(tmp_path, "a", source="compact")
 
 
+@pytest.mark.parametrize("recovered_after, compacted_again_after", [(0.0, 0.0), (5.0, 0.0)])
+def test_marker_state_follows_append_order_not_timestamps(
+    tmp_path, recovered_after, compacted_again_after
+):
+    # a came back under its own id, then compacted again: on a coarse clock
+    # the two entries can share a timestamp, or the clock can step back.
+    t = time.time() - 300
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    recaps.mkdir()
+    rows = [
+        {"kind": "prompt", "text": "session a's task", "ts": t - 10},
+        {"kind": "compact", "ts": t},
+        {"kind": "recovered", "by": "a", "ts": t + recovered_after},
+        {"kind": "compact", "ts": t + compacted_again_after},
+    ]
+    (recaps / "a.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    recap = session_recap.recap_for_session_start(tmp_path, "b", "compact", now=t + 100)
+    assert "session a's task" in recap
+
+
+def test_a_spent_marker_is_never_live_however_close_now_is_to_the_epoch(tmp_path):
+    _prompt(tmp_path, "a", "session a's task")
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    with (recaps / "a.jsonl").open("a") as fh:
+        fh.write(json.dumps({"kind": "compact", "ts": 50.0}) + "\n")
+        fh.write(json.dumps({"kind": "recovered", "by": "a", "ts": 60.0}) + "\n")
+    assert session_recap.recap_for_session_start(tmp_path, "b", "compact", now=100.0) == ""
+
+
 def test_a_marker_only_session_that_took_nothing_back_recalls_nothing(tmp_path):
     _compact(tmp_path, "b")
     assert _start(tmp_path, "c", source="compact") == ""
