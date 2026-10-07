@@ -9,9 +9,10 @@ benchmark on real OSS repos and the multi-repo
 estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
-in CI. On the public benchmark, "reproducible" means gold-file recall,
-found-rate and MRR have come back identical on every machine compared, while
-per-repo mean tokens have varied by up to 1.3% between machines
+in CI. On the public benchmark, "reproducible" means gold-file recall and
+found-rate have come back identical on every machine compared, while for the
+current run per-repo mean tokens differ by up to 0.8% between CPUs with and
+without AVX-512, and so does the vector-RAG baseline's MRR on `click`
 ([details](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces)).
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
@@ -28,7 +29,7 @@ benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
 fixture** (real but smaller-scope): **(1) Cheaper context** — **85.71–100%
-gold-file recall (95% mean, 92.5% found-rate across 40 queries) at 46–263×
+gold-file recall (95% mean, 92.5% found-rate across 40 queries) at 45–246×
 fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
 on recall on three of four (tying on the fourth); **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96

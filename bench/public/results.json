@@ -37,7 +37,7 @@
           "n": 14,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 606.9,
+          "mean_tokens": 602.1,
           "median_tokens": 618.0,
           "mean_mrr": 0.9643
         },
@@ -45,8 +45,8 @@
           "n": 14,
           "mean_recall": 0.9643,
           "found_rate": 0.9286,
-          "mean_tokens": 895.1,
-          "median_tokens": 906.5,
+          "mean_tokens": 922.1,
+          "median_tokens": 922.5,
           "mean_mrr": 0.9643
         }
       },
@@ -130,7 +130,7 @@
               "context_files": [
                 "auth.py"
               ],
-              "tokens": 862,
+              "tokens": 879,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -201,8 +201,8 @@
               "context_files": [
                 "utils.py",
                 "structures.py",
-                "cookies.py",
                 "models.py",
+                "cookies.py",
                 "adapters.py",
                 "status_codes.py"
               ],
@@ -223,7 +223,7 @@
                 "utils.py",
                 "models.py"
               ],
-              "tokens": 990,
+              "tokens": 1007,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -311,7 +311,7 @@
                 "sessions.py",
                 "cookies.py"
               ],
-              "tokens": 806,
+              "tokens": 823,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -382,7 +382,7 @@
               "context_files": [
                 "exceptions.py"
               ],
-              "tokens": 392,
+              "tokens": 390,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -397,7 +397,7 @@
               "context_files": [
                 "exceptions.py"
               ],
-              "tokens": 737,
+              "tokens": 730,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -469,7 +469,7 @@
                 "adapters.py",
                 "sessions.py"
               ],
-              "tokens": 761,
+              "tokens": 765,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -484,7 +484,7 @@
               "context_files": [
                 "adapters.py"
               ],
-              "tokens": 925,
+              "tokens": 942,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -556,7 +556,7 @@
                 "cookies.py",
                 "utils.py"
               ],
-              "tokens": 569,
+              "tokens": 483,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -571,7 +571,7 @@
               "context_files": [
                 "cookies.py"
               ],
-              "tokens": 912,
+              "tokens": 929,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -643,9 +643,10 @@
                 "models.py",
                 "sessions.py",
                 "adapters.py",
-                "hooks.py"
+                "hooks.py",
+                "api.py"
               ],
-              "tokens": 660,
+              "tokens": 724,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -662,7 +663,7 @@
                 "sessions.py",
                 "adapters.py"
               ],
-              "tokens": 1078,
+              "tokens": 1095,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -733,9 +734,10 @@
               "context_files": [
                 "api.py",
                 "sessions.py",
-                "hooks.py"
+                "hooks.py",
+                "_internal_utils.py"
               ],
-              "tokens": 768,
+              "tokens": 721,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -750,7 +752,7 @@
               "context_files": [
                 "api.py"
               ],
-              "tokens": 664,
+              "tokens": 741,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -820,8 +822,8 @@
               ],
               "context_files": [
                 "status_codes.py",
-                "cookies.py",
                 "models.py",
+                "cookies.py",
                 "utils.py"
               ],
               "tokens": 756,
@@ -840,7 +842,7 @@
                 "status_codes.py",
                 "models.py"
               ],
-              "tokens": 1166,
+              "tokens": 1181,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -926,10 +928,9 @@
               ],
               "context_files": [
                 "models.py",
-                "utils.py",
-                "exceptions.py"
+                "utils.py"
               ],
-              "tokens": 796,
+              "tokens": 860,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1023,7 +1024,7 @@
                 "sessions.py",
                 "utils.py"
               ],
-              "tokens": 988,
+              "tokens": 1005,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1115,7 +1116,7 @@
                 "cookies.py",
                 "models.py"
               ],
-              "tokens": 932,
+              "tokens": 949,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1207,7 +1208,7 @@
                 "sessions.py",
                 "auth.py"
               ],
-              "tokens": 774,
+              "tokens": 853,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1299,7 +1300,7 @@
               "context_files": [
                 "models.py"
               ],
-              "tokens": 901,
+              "tokens": 916,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
@@ -1319,7 +1320,7 @@
           "context_files": [
             "models.py"
           ],
-          "tokens": 901,
+          "tokens": 916,
           "recall": 0.5,
           "found": false,
           "recall_at_5": 0.5,
@@ -1355,16 +1356,16 @@
           "n": 7,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 636,
-          "median_tokens": 609,
-          "mean_mrr": 0.5952
+          "mean_tokens": 645.3,
+          "median_tokens": 603,
+          "mean_mrr": 0.6905
         },
         "neuralmind": {
           "n": 7,
           "mean_recall": 0.8571,
           "found_rate": 0.8571,
-          "mean_tokens": 645.4,
-          "median_tokens": 674,
+          "mean_tokens": 681.6,
+          "median_tokens": 705,
           "mean_mrr": 0.6905
         }
       },
@@ -1428,15 +1429,15 @@
                 "core.py"
               ],
               "context_files": [
-                "shell_completion.py",
                 "core.py",
+                "shell_completion.py",
                 "testing.py"
               ],
               "tokens": 712,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 1.0
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -1445,11 +1446,11 @@
                 "core.py"
               ],
               "context_files": [
-                "shell_completion.py",
                 "testing.py",
+                "shell_completion.py",
                 "core.py"
               ],
-              "tokens": 727,
+              "tokens": 762,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1538,7 +1539,7 @@
                 "core.py",
                 "shell_completion.py"
               ],
-              "tokens": 674,
+              "tokens": 705,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1606,15 +1607,15 @@
               ],
               "context_files": [
                 "decorators.py",
-                "core.py",
                 "formatting.py",
+                "core.py",
                 "_textwrap.py"
               ],
               "tokens": 532,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.5
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -1626,7 +1627,7 @@
                 "core.py",
                 "formatting.py"
               ],
-              "tokens": 675,
+              "tokens": 706,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1715,7 +1716,7 @@
                 "termui.py",
                 "core.py"
               ],
-              "tokens": 622,
+              "tokens": 653,
               "recall": 0.0,
               "found": false,
               "recall_at_5": 0.0,
@@ -1784,9 +1785,10 @@
               "context_files": [
                 "termui.py",
                 "_termui_impl.py",
-                "globals.py"
+                "globals.py",
+                "_compat.py"
               ],
-              "tokens": 550,
+              "tokens": 552,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1803,7 +1805,7 @@
                 "globals.py",
                 "_compat.py"
               ],
-              "tokens": 409,
+              "tokens": 557,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1873,9 +1875,10 @@
                 "core.py",
                 "types.py",
                 "formatting.py",
-                "utils.py"
+                "utils.py",
+                "shell_completion.py"
               ],
-              "tokens": 681,
+              "tokens": 750,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1892,7 +1895,7 @@
                 "_winconsole.py",
                 "core.py"
               ],
-              "tokens": 630,
+              "tokens": 661,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1966,7 +1969,7 @@
                 "core.py",
                 "formatting.py"
               ],
-              "tokens": 609,
+              "tokens": 603,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1984,7 +1987,7 @@
                 "decorators.py",
                 "formatting.py"
               ],
-              "tokens": 781,
+              "tokens": 727,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2004,7 +2007,7 @@
             "termui.py",
             "core.py"
           ],
-          "tokens": 622,
+          "tokens": 653,
           "recall": 0.0,
           "found": false,
           "recall_at_5": 0.0,
@@ -2040,17 +2043,17 @@
           "n": 10,
           "mean_recall": 0.95,
           "found_rate": 0.9,
-          "mean_tokens": 676.7,
-          "median_tokens": 703.0,
-          "mean_mrr": 0.7
+          "mean_tokens": 671.3,
+          "median_tokens": 668.0,
+          "mean_mrr": 0.7167
         },
         "neuralmind": {
           "n": 10,
           "mean_recall": 0.95,
           "found_rate": 0.9,
-          "mean_tokens": 756.2,
-          "median_tokens": 773.0,
-          "mean_mrr": 0.7167
+          "mean_tokens": 773,
+          "median_tokens": 812.5,
+          "mean_mrr": 0.7333
         }
       },
       "queries": [
@@ -2138,7 +2141,7 @@
                 "app.py",
                 "logging.py"
               ],
-              "tokens": 656,
+              "tokens": 864,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2211,8 +2214,8 @@
               ],
               "context_files": [
                 "cli.py",
-                "app.py",
                 "blueprints.py",
+                "app.py",
                 "views.py",
                 "scaffold.py",
                 "typing.py"
@@ -2221,7 +2224,7 @@
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.5
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -2231,14 +2234,14 @@
               ],
               "context_files": [
                 "cli.py",
-                "app.py",
-                "blueprints.py"
+                "blueprints.py",
+                "app.py"
               ],
-              "tokens": 807,
+              "tokens": 718,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -2328,7 +2331,7 @@
                 "config.py",
                 "sessions.py"
               ],
-              "tokens": 845,
+              "tokens": 879,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2419,7 +2422,7 @@
                 "ctx.py",
                 "app.py"
               ],
-              "tokens": 739,
+              "tokens": 782,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2512,7 +2515,7 @@
                 "views.py",
                 "scaffold.py"
               ],
-              "tokens": 860,
+              "tokens": 894,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2605,7 +2608,7 @@
                 "wrappers.py",
                 "helpers.py"
               ],
-              "tokens": 885,
+              "tokens": 843,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2697,7 +2700,7 @@
                 "cli.py",
                 "testing.py"
               ],
-              "tokens": 678,
+              "tokens": 624,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2788,7 +2791,7 @@
                 "sessions.py",
                 "tag.py"
               ],
-              "tokens": 647,
+              "tokens": 668,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2864,9 +2867,10 @@
                 "scaffold.py",
                 "helpers.py",
                 "wrappers.py",
-                "blueprints.py"
+                "blueprints.py",
+                "cli.py"
               ],
-              "tokens": 769,
+              "tokens": 699,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2884,7 +2888,7 @@
                 "helpers.py",
                 "blueprints.py"
               ],
-              "tokens": 901,
+              "tokens": 1003,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2962,7 +2966,7 @@
                 "views.py",
                 "app.py"
               ],
-              "tokens": 411,
+              "tokens": 427,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
@@ -2979,7 +2983,7 @@
                 "views.py",
                 "app.py"
               ],
-              "tokens": 544,
+              "tokens": 455,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
@@ -3000,7 +3004,7 @@
             "views.py",
             "app.py"
           ],
-          "tokens": 544,
+          "tokens": 455,
           "recall": 0.5,
           "found": false,
           "recall_at_5": 0.5,
@@ -3036,7 +3040,7 @@
           "n": 9,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 669.2,
+          "mean_tokens": 671.7,
           "median_tokens": 708,
           "mean_mrr": 0.8889
         },
@@ -3044,8 +3048,8 @@
           "n": 9,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 887.1,
-          "median_tokens": 877,
+          "mean_tokens": 948,
+          "median_tokens": 973,
           "mean_mrr": 0.7037
         }
       },
@@ -3192,7 +3196,7 @@
                 "__init__.py",
                 "_win32_console.py"
               ],
-              "tokens": 1085,
+              "tokens": 1119,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3342,7 +3346,7 @@
                 "layout.py",
                 "table.py"
               ],
-              "tokens": 850,
+              "tokens": 860,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3476,7 +3480,7 @@
                 "padding.py",
                 "syntax.py"
               ],
-              "tokens": 826,
+              "tokens": 848,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3492,7 +3496,7 @@
                 "style.py",
                 "text.py"
               ],
-              "tokens": 786,
+              "tokens": 973,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3625,8 +3629,8 @@
                 "padding.py",
                 "console.py",
                 "box.py",
-                "screen.py",
-                "layout.py"
+                "layout.py",
+                "screen.py"
               ],
               "tokens": 872,
               "recall": 1.0,
@@ -3646,7 +3650,7 @@
                 "console.py",
                 "box.py"
               ],
-              "tokens": 1065,
+              "tokens": 1128,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3794,7 +3798,7 @@
                 "color_triplet.py",
                 "color.py"
               ],
-              "tokens": 697,
+              "tokens": 728,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3944,7 +3948,7 @@
                 "syntax.py",
                 "highlighter.py"
               ],
-              "tokens": 936,
+              "tokens": 987,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -4091,7 +4095,7 @@
               "context_files": [
                 "progress.py"
               ],
-              "tokens": 723,
+              "tokens": 757,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -4242,7 +4246,7 @@
                 "screen.py",
                 "__init__.py"
               ],
-              "tokens": 965,
+              "tokens": 1071,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -4398,7 +4402,7 @@
                 "console.py",
                 "table.py"
               ],
-              "tokens": 877,
+              "tokens": 909,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,

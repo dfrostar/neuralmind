@@ -26,7 +26,7 @@ export const metadata: Metadata = pageMetadata({
     ],
     ogTitle: 'The NeuralMind Public Benchmark',
     ogDescription:
-        '40 pre-registered queries on requests, click, flask and rich: 95% mean gold-file recall at 46–263× fewer tokens than pasting files — and the three queries NeuralMind misses.',
+        '40 pre-registered queries on requests, click, flask and rich: 95% mean gold-file recall at 45–246× fewer tokens than pasting files — and the three queries NeuralMind misses.',
 });
 
 /**
@@ -56,12 +56,12 @@ const REPOS: Repo[] = [
         name: 'requests',
         sha: '0e322af877',
         queries: 14,
-        ratio: '46.6×',
+        ratio: '45.3×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '41,729', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '26,543', mrr: '0.60' },
-            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '607', mrr: '0.96' },
-            { backend: 'neuralmind', recall: '0.96', found: '93%', tokens: '895', mrr: '0.96', nm: true },
+            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '602', mrr: '0.96' },
+            { backend: 'neuralmind', recall: '0.96', found: '93%', tokens: '922', mrr: '0.96', nm: true },
         ],
         misses: [
             { query: 'xfile-status-codes', gold: 'models.py, status_codes.py', got: 'models.py' },
@@ -71,13 +71,13 @@ const REPOS: Repo[] = [
         name: 'click',
         sha: '874ca2bc1c',
         queries: 7,
-        ratio: '121.7×',
-        note: 'The weakest repo in the corpus at 85.71% recall. It had no misses in the previous run; echo-util is a new one.',
+        ratio: '115.2×',
+        note: 'The weakest repo in the corpus at 85.71% recall. It had no misses before the v4.6.0 run; echo-util has missed since.',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '78,514', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '45,059', mrr: '0.60' },
-            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '636', mrr: '0.60' },
-            { backend: 'neuralmind', recall: '0.86', found: '86%', tokens: '645', mrr: '0.69', nm: true },
+            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '645', mrr: '0.69' },
+            { backend: 'neuralmind', recall: '0.86', found: '86%', tokens: '682', mrr: '0.69', nm: true },
         ],
         misses: [
             { query: 'echo-util', gold: 'utils.py', got: 'termui.py, core.py' },
@@ -87,12 +87,12 @@ const REPOS: Repo[] = [
         name: 'flask',
         sha: 'c12a5d874c',
         queries: 10,
-        ratio: '78.0×',
+        ratio: '76.3×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '59,013', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.85', found: '80%', tokens: '26,891', mrr: '0.65' },
-            { backend: 'embedding-rag', recall: '0.95', found: '90%', tokens: '677', mrr: '0.70' },
-            { backend: 'neuralmind', recall: '0.95', found: '90%', tokens: '756', mrr: '0.72', nm: true },
+            { backend: 'embedding-rag', recall: '0.95', found: '90%', tokens: '671', mrr: '0.72' },
+            { backend: 'neuralmind', recall: '0.95', found: '90%', tokens: '773', mrr: '0.73', nm: true },
         ],
         misses: [
             { query: 'xfile-dispatch-context', gold: 'app.py, ctx.py', got: 'views.py, app.py' },
@@ -102,12 +102,12 @@ const REPOS: Repo[] = [
         name: 'rich',
         sha: '7f580bdcf0',
         queries: 9,
-        ratio: '262.1×',
+        ratio: '245.2×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '232,483', mrr: '1.00' },
             { backend: 'ripgrep', recall: '1.00', found: '100%', tokens: '43,437', mrr: '0.75' },
-            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '669', mrr: '0.89' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '887', mrr: '0.70', nm: true },
+            { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '672', mrr: '0.89' },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '948', mrr: '0.70', nm: true },
         ],
         misses: [],
     },
@@ -136,7 +136,7 @@ const METHOD = [
     },
     {
         decision: 'Deterministic per machine',
-        why: 'Synapse injection is off, the repos are pinned and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall, found-rate and MRR have come back identical; token counts have shifted slightly on some CI runners, by up to 1.3% on a per-repo mean.',
+        why: 'Synapse injection is off, the repos are pinned and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall and found-rate have come back identical. On CPUs without AVX-512, token counts shift slightly, by up to 0.8% on a per-repo mean in this run, and so does the vector-RAG baseline’s MRR on click.',
     },
 ];
 
@@ -190,7 +190,7 @@ export default function BenchmarkPage() {
                             '@type': 'Dataset',
                             name: 'NeuralMind public retrieval benchmark',
                             description:
-                                'Gold-file recall and token cost for four retrieval backends across 40 pre-registered queries on four pinned open-source Python repositories (requests, click, flask, rich). Reproducible from a fresh clone: recall, found-rate and MRR exactly; token counts exactly on the same machine and within 1.3% per repo across the machines compared.',
+                                'Gold-file recall and token cost for four retrieval backends across 40 pre-registered queries on four pinned open-source Python repositories (requests, click, flask, rich). Reproducible from a fresh clone: recall and found-rate exactly; token counts exactly on the same machine and within 0.8% per repo across the machines compared.',
                             url: 'https://neuralmind.uk/benchmark/',
                             license: 'https://opensource.org/licenses/MIT',
                             isAccessibleForFree: true,
@@ -248,9 +248,9 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                     <p className="text-slate-400 text-sm mt-4 leading-relaxed">
                         The harness lives in the source tree, not the PyPI wheel, so run it from a clone.
                         The repos are cloned at fixed commit SHAs and nothing in the run is random, so
-                        recall, found-rate and MRR should match the tables below exactly. Token counts
-                        can shift slightly between machines — some CI runners land up to 1.3% off on a
-                        per-repo mean;{' '}
+                        recall and found-rate should match the tables below exactly. Token counts
+                        can shift slightly between machines — CI runners without AVX-512 land up to
+                        0.8% off on a per-repo mean;{' '}
                         <code className="font-mono text-[0.85em] text-slate-300">NEURALMIND_ORT_THREADS=1</code> matches
                         CI&rsquo;s setup (
                         <a href={`${PUBLIC_MD}#how-exactly-a-re-run-reproduces`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
@@ -281,7 +281,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         <div className="border-b border-r border-carbon-border p-5">
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Tokens vs pasting files</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">46–263×</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">45–246×</p>
                                 <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio.</p>
                             </dd>
                         </div>
@@ -376,9 +376,9 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         <p className="text-slate-400 text-sm mb-6 leading-relaxed">
                             Two of the three are cross-file queries where the answer spans two modules
                             and only one was retrieved, one each in <code className="font-mono text-[0.85em] text-slate-300">requests</code> and <code className="font-mono text-[0.85em] text-slate-300">flask</code>.
-                            The third is new in this run: <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code> misses its
-                            gold file outright, so <code className="font-mono text-[0.85em] text-slate-300">click</code>, which had no misses in the previous run, is
-                            now the weakest repo in the corpus at 0.86 recall. <code className="font-mono text-[0.85em] text-slate-300">rich</code> has none.
+                            The third has missed since the v4.6.0 run: <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code> misses its
+                            gold file outright, so <code className="font-mono text-[0.85em] text-slate-300">click</code>, which had no misses before that run, is
+                            the weakest repo in the corpus at 0.86 recall. <code className="font-mono text-[0.85em] text-slate-300">rich</code> has none.
                         </p>
 
                         <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">2 — Token cost against a bare vector index</h3>

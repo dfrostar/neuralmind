@@ -1,7 +1,7 @@
 <!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # 🧠 NeuralMind Wiki
 
-**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file.
+**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 95% mean gold-file recall at 45–246× fewer tokens than pasting every source file.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -17,7 +17,7 @@ a loss, published as such.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| 💸 | **Cheaper context** | **85.71–100% gold-file recall (95% mean) at 45–246× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Competitor head-to-head, **real repos** (`requests`, `click` only — off by default, not yet re-run on the four-repo corpus) |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
 | 🔬 | **Answer grounding vs. naive truncation — a published loss** | At a *matched* token budget, naive truncation currently keeps slightly more gold facts on this prose-heavy fixture: **delta −0.054 at v4.3.4** (earlier releases +0.013 to +0.143). CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
@@ -325,8 +325,8 @@ session summaries and the on-demand `neuralmind cognition-loop` (rebuilt in
 v4.6.0, which also wired read dedup into the Read hook and removed the unused
 co-access module). The public benchmark was
 regenerated at v4.3.4 with raw data committed: **93.75% mean gold-file recall
-(85–100% per repo) at 45–261× fewer tokens** than pasting every source file
-(superseded at v4.6.0: 95%, 46–263×).
+(85–100% per repo) at 45–261× fewer tokens** than pasting every source file <!-- claims-guard:allow — dated v4.3.4 and v4.6.0 figures, this line and the next -->
+(superseded at v4.6.0: 95%, 46–263×; the ratios again at v4.10.0: 45–246×).
 Guide: [Memory Layer](Memory-Layer).
 
 ### N-16 — Content QA System: Book/Markdown Retrieval (August 2026)
@@ -607,7 +607,7 @@ Token-efficient retrieval plus persistent memory for AI coding agents.
 - **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt; since v4.9.0, Hermes-Agent gets it with each turn too, through `neuralmind install-hermes-plugin`.
 
-Measured effect: **46–263× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 95% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+Measured effect: **45–246× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 95% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 

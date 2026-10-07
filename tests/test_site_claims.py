@@ -182,6 +182,62 @@ def test_every_site_ratio_has_provenance() -> None:
     )
 
 
+def _superseded_ratios() -> dict[float, str]:
+    """Ratios a regenerated benchmark replaced, from the ``ratios`` lists in
+    ``unsourced_do_not_use``, minus any value that is canon again."""
+    allowed = _allowed_ratios()
+    return {
+        float(value): entry["claim"]
+        for entry in _claims()["unsourced_do_not_use"]
+        for value in entry.get("ratios", [])
+        if float(value) not in allowed
+    }
+
+
+def test_site_does_not_quote_superseded_ratios() -> None:
+    """A ratio claims.json records as replaced must not appear on any page.
+
+    The provenance check above reads only the homepage sections and the
+    layout, so a page outside them keeps quoting a figure after the canon
+    drops it: /benchmark carried its own copy of every per-repo ratio. This
+    check reads every page under site/src.
+    """
+    superseded = _superseded_ratios()
+    violations: list[str] = []
+    for path in _site_files():
+        lines = _prose(path).splitlines()
+        for index, line in enumerate(lines):
+            if _exempt(lines, index):
+                continue
+            for _, ratio in _ratios_in(line):
+                if ratio in superseded:
+                    rel = path.relative_to(REPO_ROOT)
+                    violations.append(
+                        f"{rel}:{index + 1}: {ratio:g}× — replaced: {superseded[ratio]}"
+                    )
+    assert not violations, (
+        "The site quotes a ratio that a regenerated run replaced. Quote the "
+        "committed run's figures from site/claims.json:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
+    superseded = _superseded_ratios()
+    for line in (
+        "{ label: 'Fewer tokens', value: '46–263×', evidence: 'than pasting every source file' },",
+        "ratio: '262.1×',",
+        "ratio: '78.0×',",
+    ):
+        assert any(r in superseded for _, r in _ratios_in(line)), line
+    # A value that is canon again is no longer treated as replaced: v4.3.4's
+    # 45.0× for requests is numerically the current range's low end.
+    assert 45.0 not in superseded and 45.0 in _allowed_ratios()
+    current = (
+        "{ label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file' },"
+    )
+    assert not any(r in superseded for _, r in _ratios_in(current))
+
+
 def test_site_does_not_name_private_projects() -> None:
     names = _claims()["private_names_never_publish"]
     violations: list[str] = []
@@ -454,7 +510,7 @@ def test_public_benchmark_ratios_are_registered_from_the_committed_run() -> None
     bench = _public_benchmark()
     allowed = _allowed_ratios()
     per_repo = bench["ratios"]
-    # The site quotes the range rounded outward: 46.6x -> "46", 262.1x -> "263".
+    # The site quotes the range rounded outward: 45.3x -> "45", 245.2x -> "246".
     low = float(int(min(per_repo.values())))
     high = float(-int(-max(per_repo.values()) // 1))
     needed = {f"{name} ({r:g}×)": r for name, r in per_repo.items()}

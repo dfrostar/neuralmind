@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 46–263× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 45–246× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 
@@ -91,7 +91,7 @@ Before v4.5.0 every repo was divided by a fixed 50,000-token guess. The
 the headline. "Questions" reads `project eval` when the repo has a
 `.neuralmind.eval.yaml` — see [Step 3d](#step-3d--score-it-against-your-own-questions-neuralmind-eval).
 
-The public benchmark's 45.0× on `requests` is a different measurement — its
+The public benchmark's 45.3× on `requests` is a different measurement — its
 own 14 questions, against non-test source only — so the two numbers don't
 compare directly.
 
