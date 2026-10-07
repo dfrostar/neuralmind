@@ -1,0 +1,71 @@
+name: Build VS Code extension
+
+# Build-only gate for the VS Code extension under editors/vscode/.
+#
+# Why this exists: until 2026-10-07 nothing in CI compiled the extension. It is
+# TypeScript (`npm run compile` = `tsc -p ./`) and has no test script, so a type
+# error in editors/vscode/src/*.ts merged unnoticed and surfaced only when
+# someone next built the extension by hand. The stdlib-only pytest guards that
+# read its source (e.g. tests/test_vscode_extension_spawn.py) check patterns in
+# the code; they do not compile it.
+#
+# Same shape as site-build.yml: it builds and stops. No secrets, no packaging,
+# no publish step — a PR-triggered job has nothing to guard.
+#
+# `tsc -p ./` type-checks the whole project before emitting, and the
+# tsconfig's `strict: true` applies, so a successful compile is the check.
+
+on:
+  pull_request:
+    paths:
+      - 'editors/vscode/**'
+      - '.github/workflows/vscode-extension-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'editors/vscode/**'
+      - '.github/workflows/vscode-extension-build.yml'
+
+# A newer push to the same ref supersedes the older build.
+concurrency:
+  group: vscode-extension-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Named explicitly: GitHub labels the check by JOB name, not workflow name,
+    # so this would otherwise show as a bare "build" beside the site's build.
+    name: Build VS Code extension (tsc)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Confirm the compile produced the entry point
+        # package.json's "main" is ./out/extension.js. A tsconfig change that
+        # moves outDir or narrows "include" can compile cleanly and still ship
+        # an extension that fails to activate. Fail here instead.
+        run: |
+          test -f out/extension.js || {
+            echo "::error::editors/vscode/out/extension.js missing — package.json \"main\" points at a file the compile did not produce"
+            exit 1
+          }
+          echo "Compiled $(find out -name '*.js' | wc -l) JS file(s)."
