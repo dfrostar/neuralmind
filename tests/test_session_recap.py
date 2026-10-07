@@ -548,14 +548,24 @@ def test_a_repeated_session_start_gets_the_same_record(tmp_path):
     assert _start(tmp_path, "b", source="compact") == first
 
 
-def test_no_learn_recalls_without_spending_the_marker(tmp_path, monkeypatch):
-    _prompt(tmp_path, "a", "migrate the scheduler to asyncio")
+def test_no_learn_has_no_new_id_fallback(tmp_path, monkeypatch):
+    # Under NO_LEARN this session's PreCompact wrote no marker, so the one
+    # marked record ("a") may be another session's: recall nothing.
+    _prompt(tmp_path, "a", "session a's task")
     _compact(tmp_path, "a")
     record = tmp_path / ".neuralmind" / "recaps" / "a.jsonl"
     before = record.read_text()
     monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
-    assert "migrate the scheduler" in _start(tmp_path, "b", source="compact")
+    _compact(tmp_path, "b")
+    assert _start(tmp_path, "b-after", source="compact") == ""
     assert record.read_text() == before
+
+
+def test_no_learn_still_gives_a_session_its_own_record(tmp_path, monkeypatch):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "now")
+    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
+    assert "migrate the scheduler" in _start(tmp_path, "now", source="compact")
 
 
 def test_compaction_header_says_prompts_are_clipped(tmp_path):
