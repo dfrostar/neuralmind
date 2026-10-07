@@ -267,7 +267,7 @@ read-only. hit@5 / MRR, from the scorer `neuralmind eval` uses:
 
 | Question set | Index | Before | After | Tokens |
 |---|---|---:|---:|---:|
-| 14 Click questions, **the set this was tuned on** | `click` @ `2247b35`, whole repository | 64% / 0.49 | **100% / 0.80** | +1.8% |
+| 14 Click questions, **the set this was tuned on** ([`bench/retrieval/roles-v4.10/click-2247b35.md`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/click-2247b35.md)) | `click` @ `2247b35`, whole repository | 64% / 0.49 | **100% / 0.80** | +1.8% |
 | 30 pre-registered questions per repo, **held out** ([`bench/retrieval/roles-v4.10/full-repo`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/full-repo/report.md)) | `requests`, `click`, `flask`, `rich` at the public benchmark's commits, whole repository | 77.5% / 0.615 | **79.2% / 0.672** | +1.6% |
 | the same 30, this repository, **held out** ([`bench/retrieval/roles-v4.10/source-dir`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/roles-v4.10/source-dir/report.md)) | `neuralmind`, docs indexed | 57% / 0.45 | **70% / 0.55** | +1.8% |
 | the same 30 per repo | `requests`, `click`, `flask`, `rich`, source directory only | identical | identical | identical |

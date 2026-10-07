@@ -1,0 +1,399 @@
+{
+  "configs": {
+    "baseline": {},
+    "v45_bm25": {
+      "NEURALMIND_BM25_UNIFIED": "0"
+    },
+    "per_file": {
+      "NEURALMIND_L3_PER_FILE": "2"
+    },
+    "handoff": {
+      "NEURALMIND_DOC_HANDOFF": "1"
+    },
+    "hub": {
+      "NEURALMIND_HUB_DAMPEN": "1"
+    },
+    "code_bm25": {
+      "NEURALMIND_BM25_CODE": "1"
+    },
+    "bm25_off": {
+      "NEURALMIND_BM25": "0"
+    },
+    "intent": {
+      "NEURALMIND_INTENT_RULES": "1"
+    },
+    "bm25_unified": {
+      "NEURALMIND_BM25_UNIFIED": "1"
+    },
+    "intent_pool": {
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "unified_intent_pool": {
+      "NEURALMIND_BM25_UNIFIED": "1",
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "roles_off": {
+      "NEURALMIND_L3_ROLES": "0"
+    },
+    "all": {
+      "NEURALMIND_L3_PER_FILE": "2",
+      "NEURALMIND_DOC_HANDOFF": "1",
+      "NEURALMIND_HUB_DAMPEN": "1",
+      "NEURALMIND_BM25_CODE": "1",
+      "NEURALMIND_INTENT_RULES": "1"
+    }
+  },
+  "results": {
+    "requests": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.6,
+        "hit_at_5": 0.8333,
+        "mrr": 0.7167,
+        "avg_tokens": 1150.2,
+        "ranks": [
+          1,
+          null,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          null,
+          1,
+          1,
+          2,
+          2,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "roles_off": {
+        "n": 30,
+        "hit_at_1": 0.5667,
+        "hit_at_5": 0.8333,
+        "mrr": 0.6889,
+        "avg_tokens": 1150.3,
+        "ranks": [
+          1,
+          null,
+          1,
+          null,
+          1,
+          1,
+          1,
+          2,
+          2,
+          1,
+          null,
+          1,
+          1,
+          2,
+          3,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "click": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.7,
+        "hit_at_5": 0.8333,
+        "mrr": 0.7556,
+        "avg_tokens": 866.9,
+        "ranks": [
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          3,
+          null,
+          1,
+          1,
+          3,
+          1,
+          1,
+          null,
+          1
+        ]
+      },
+      "roles_off": {
+        "n": 30,
+        "hit_at_1": 0.5333,
+        "hit_at_5": 0.7667,
+        "mrr": 0.6417,
+        "avg_tokens": 864.2,
+        "ranks": [
+          2,
+          2,
+          1,
+          null,
+          1,
+          2,
+          2,
+          1,
+          1,
+          null,
+          1,
+          2,
+          1,
+          null,
+          2,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          4,
+          null,
+          1,
+          1,
+          null,
+          1,
+          1,
+          null,
+          1
+        ]
+      }
+    },
+    "flask": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.6333,
+        "hit_at_5": 0.8333,
+        "mrr": 0.7194,
+        "avg_tokens": 965.5,
+        "ranks": [
+          1,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          1,
+          4,
+          1,
+          1,
+          2,
+          1,
+          null,
+          null,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          null,
+          null
+        ]
+      },
+      "roles_off": {
+        "n": 30,
+        "hit_at_1": 0.5,
+        "hit_at_5": 0.8333,
+        "mrr": 0.6472,
+        "avg_tokens": 931.3,
+        "ranks": [
+          1,
+          2,
+          1,
+          1,
+          null,
+          3,
+          1,
+          1,
+          2,
+          2,
+          4,
+          1,
+          1,
+          2,
+          1,
+          null,
+          null,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          null,
+          null
+        ]
+      }
+    },
+    "rich": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.3667,
+        "hit_at_5": 0.6667,
+        "mrr": 0.4972,
+        "avg_tokens": 972.3,
+        "ranks": [
+          null,
+          2,
+          null,
+          1,
+          2,
+          1,
+          null,
+          2,
+          1,
+          1,
+          null,
+          4,
+          1,
+          2,
+          null,
+          null,
+          1,
+          2,
+          1,
+          null,
+          1,
+          3,
+          1,
+          3,
+          1,
+          null,
+          1,
+          2,
+          null,
+          null
+        ]
+      },
+      "roles_off": {
+        "n": 30,
+        "hit_at_1": 0.3667,
+        "hit_at_5": 0.6667,
+        "mrr": 0.4806,
+        "avg_tokens": 947.5,
+        "ranks": [
+          null,
+          3,
+          null,
+          1,
+          2,
+          1,
+          null,
+          2,
+          1,
+          1,
+          null,
+          4,
+          1,
+          2,
+          null,
+          null,
+          1,
+          3,
+          1,
+          null,
+          1,
+          3,
+          1,
+          3,
+          1,
+          null,
+          1,
+          3,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "gates": [
+    {
+      "config": "roles_off",
+      "mean_hit_at_5_delta": -0.0166,
+      "repos_improved": 0,
+      "worst_repo_delta_questions": -2,
+      "per_repo_delta_questions": {
+        "requests": 0,
+        "click": -2,
+        "flask": 0,
+        "rich": 0
+      },
+      "mean_token_rise": -0.016,
+      "checks": {
+        "mean hit@5 rises": false,
+        "improves \u22653 repos": false,
+        "no repo drops >1 question": false,
+        "tokens \u2264 +10%": true
+      },
+      "keep": false
+    }
+  ],
+  "public": {},
+  "baseline_reproduced": {
+    "requests": true,
+    "click": true,
+    "flask": true,
+    "rich": true
+  }
+}
