@@ -78,17 +78,48 @@ def _env_float(name: str, default: float) -> float:
 _RATIONALE_SUFFIX = "__rationale"
 
 
-def _synapse_node(node_id: str) -> str:
+def _synapse_node(node_id: str, owners: dict[str, str] | None = None) -> str:
     """The node a search hit stands for in the synapse graph.
 
-    ``<id>__rationale`` holds ``<id>``'s docstring or comment, so it is often
-    the closest semantic match to a prompt. Synapses form between the code
-    nodes the agent reads and edits, though, so the rationale node has no
-    edges: seeding from it recalls nothing.
+    A rationale node holds a symbol's docstring or comment, so it is often the
+    closest semantic match to a prompt. Synapses form between the code nodes
+    the agent reads and edits, though, so the rationale node has no edges:
+    seeding from it recalls nothing. ``owners`` (from
+    :func:`_rationale_owners`) maps a rationale to the node its
+    ``rationale_for`` edge describes, whatever its id: graphify names them
+    ``<id>_rationale`` or ``<file>_rationale_<n>``. Without an entry, the
+    built-in generator's ``<id>__rationale`` suffix is stripped.
     """
+    if owners and node_id in owners:
+        return owners[node_id]
     if node_id.endswith(_RATIONALE_SUFFIX) and len(node_id) > len(_RATIONALE_SUFFIX):
         return node_id[: -len(_RATIONALE_SUFFIX)]
     return node_id
+
+
+def _rationale_owners(mind: Any) -> dict[str, str]:
+    """Rationale node id -> the node it describes, from ``mind``'s graph edges.
+
+    Built once per loaded edge list and kept on ``mind``.
+    """
+    edges = getattr(getattr(mind, "embedder", None), "edges", None) or []
+    cached = getattr(mind, "_rationale_owners_cache", None)
+    if cached is not None and cached[0] is edges:
+        return cached[1]
+    owners: dict[str, str] = {}
+    for edge in edges:
+        if not isinstance(edge, dict) or edge.get("relation") != "rationale_for":
+            continue
+        src = edge.get("_src") or edge.get("source")
+        tgt = edge.get("_tgt") or edge.get("target")
+        if src and tgt:
+            owners.setdefault(str(src), str(tgt))
+    try:
+        # Holding the list keeps the identity check above sound.
+        mind._rationale_owners_cache = (edges, owners)
+    except AttributeError:
+        pass
+    return owners
 
 
 def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
@@ -2458,11 +2489,12 @@ class NeuralMind:
             hits = self.embedder.search(query, n=4)
         except Exception:
             return [], 0.0
+        owners = _rationale_owners(self)
         seeds: dict[str, float] = {}
         for hit in hits:
             if not hit.get("id"):
                 continue
-            node_id = _synapse_node(str(hit["id"]))
+            node_id = _synapse_node(str(hit["id"]), owners)
             score = float(hit.get("score", 1.0))
             # A code node and its own rationale can both match: one seed.
             seeds[node_id] = max(score, seeds.get(node_id, score))

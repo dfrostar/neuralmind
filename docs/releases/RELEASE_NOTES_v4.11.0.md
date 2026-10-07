@@ -52,7 +52,9 @@ Two separate problems:
   synapses form between the code nodes the agent reads and edits, so the
   rationale node has no edges, and recall from it returned nothing. In this
   store, 5 of the 4,826 nodes with synapse edges were rationale nodes. Recall
-  now seeds from the code node a rationale belongs to. This also changes what the
+  now seeds from the code node a rationale belongs to, found through its
+  `rationale_for` edge, so a graphify graph's rationale ids (`<id>_rationale`,
+  `<file>_rationale_<n>`) map too. This also changes what the
   MCP `neuralmind_synaptic_neighbors` tool returns.
 - **No relevance gate.** Fixing the seeding alone made recall fire on every
   off-topic prompt too. The hook now abstains when the prompt's best match in
