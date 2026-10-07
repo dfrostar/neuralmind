@@ -100,23 +100,38 @@ def _synapse_node(node_id: str, owners: dict[str, str] | None = None) -> str:
 def _rationale_owners(mind: Any) -> dict[str, str]:
     """Rationale node id -> the node it describes, from ``mind``'s graph edges.
 
-    Built once per loaded edge list and kept on ``mind``.
+    A ``rationale_for`` edge runs rationale -> code in the graphs NeuralMind
+    and graphify write, but either orientation is accepted (as in
+    ``probe.extract_rationales``): the endpoint whose node is a rationale is
+    the key. With no node data for either end, the edge's own direction is
+    used. Built once per loaded graph and kept on ``mind``.
     """
-    edges = getattr(getattr(mind, "embedder", None), "edges", None) or []
+    embedder = getattr(mind, "embedder", None)
+    edges = getattr(embedder, "edges", None)
+    nodes = getattr(embedder, "nodes", None)
     cached = getattr(mind, "_rationale_owners_cache", None)
-    if cached is not None and cached[0] is edges:
-        return cached[1]
+    if cached is not None and cached[0] is edges and cached[1] is nodes:
+        return cached[2]
+    rationales = {
+        str(n.get("id"))
+        for n in nodes or ()
+        if isinstance(n, dict) and n.get("file_type") == "rationale"
+    }
     owners: dict[str, str] = {}
-    for edge in edges:
+    for edge in edges or ():
         if not isinstance(edge, dict) or edge.get("relation") != "rationale_for":
             continue
         src = edge.get("_src") or edge.get("source")
         tgt = edge.get("_tgt") or edge.get("target")
-        if src and tgt:
-            owners.setdefault(str(src), str(tgt))
+        if not (src and tgt):
+            continue
+        src, tgt = str(src), str(tgt)
+        if tgt in rationales and src not in rationales:
+            src, tgt = tgt, src
+        owners.setdefault(src, tgt)
     try:
-        # Holding the list keeps the identity check above sound.
-        mind._rationale_owners_cache = (edges, owners)
+        # Holding both lists keeps the identity check above sound.
+        mind._rationale_owners_cache = (edges, nodes, owners)
     except AttributeError:
         pass
     return owners
