@@ -71,6 +71,9 @@ keywords = [
     "hybrid-bm25",
     "pre-registered-eval",
     "retrieval-ab-testing",
+    "code-first-ranking",
+    "test-aware-retrieval",
+    "whole-repo-eval",
     "read-deduplication",
     "decision-invalidation",
     "memory-governance",
@@ -82,9 +85,6 @@ keywords = [
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",
-    "code-first-ranking",
-    "test-aware-retrieval",
-    "whole-repo-eval",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
