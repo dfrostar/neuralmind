@@ -49,6 +49,9 @@ PUBLISHED_FILES = (
     # still carrying two superseded magnitudes and "no code leaves the machine"
     # long after every gated surface had been corrected.
     "docs/llms.txt",
+    # The Hermes plugin catalog renders this as the plugin's page, and it
+    # carries the plugin's privacy disclosures.
+    "neuralmind/hermes_plugin/README.md",
 )
 PUBLISHED_GLOBS = (
     "docs/comparisons/*.md",

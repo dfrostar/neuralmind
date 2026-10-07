@@ -5318,19 +5318,48 @@ def cmd_install_hermes_plugin(args):
             print(f"✓ Removed the NeuralMind plugin from {result['path']}{profile}")
         else:
             print(f"No NeuralMind plugin at {result['path']}{profile}")
-        if not result["initialised"]:
-            pass  # no Hermes config there, so nothing was enabled to disable
-        elif result["disabled"] is None and result["removed"]:
-            print("  `hermes` isn't on PATH: run `hermes plugins disable neuralmind` yourself.")
-        elif result["disabled"] is False:
-            print("  ⚠ `hermes plugins disable neuralmind` failed; run it yourself.")
+        if not result["initialised"] or not result["removed"]:
+            pass  # no Hermes config there, or nothing was installed
+        elif result["forgotten"] is True:
+            print("  Hermes's config no longer lists it.")
+        elif result["forgotten"] is None and result["disabled"] is None:
+            print(
+                f"  `hermes` isn't on PATH, so {home / 'config.yaml'} still names neuralmind "
+                "under plugins:. Delete those entries if you want them gone."
+            )
+        elif result["disabled"] is True:
+            print(
+                "  Disabled in Hermes (Hermes won't remove a symlinked plugin itself)."
+                if result["forgotten"] is None
+                else "  ⚠ `hermes plugins remove neuralmind` failed, so it was disabled in "
+                "Hermes instead and stays on its plugins.disabled list."
+            )
+        else:
+            print(
+                "  ⚠ Hermes couldn't remove or disable it; check `hermes plugins list` and "
+                f"the plugins: section of {home / 'config.yaml'}."
+            )
         return
     try:
         result = install(args.project_path, home=home, enable=not args.no_enable, unpin=args.unpin)
     except (FileNotFoundError, FileExistsError) as exc:
         print(f"✗ {exc}")
         sys.exit(1)
-    print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
+    if result["managed"]:
+        print(f"✓ NeuralMind plugin configured at {result['path']}{profile}")
+        print(
+            "  Hermes installed this plugin, so its code is Hermes's to update "
+            "(`hermes plugins update neuralmind`); only its settings were written."
+        )
+    elif result["managed"] is None:
+        print(f"✓ NeuralMind plugin configured at {result['path']}{profile}")
+        print(
+            f"  ⚠ Couldn't read Hermes's install records ({home / 'plugins' / '.install-metadata.json'}), "
+            "so the plugin's code was left untouched and only its settings were written. "
+            "Fix or delete that file, then run this again to update the code."
+        )
+    else:
+        print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
     if result["project"]:
         kept = "" if args.project_path else " (kept from the earlier install; --unpin clears it)"
         print(f"  Project: {result['project']}{kept}")
@@ -5361,11 +5390,17 @@ def cmd_install_hermes_plugin(args):
         print("  ⚠ `hermes plugins enable neuralmind` failed; run it yourself.")
     elif not args.no_enable:
         print("  `hermes` isn't on PATH: run `hermes plugins enable neuralmind` yourself.")
-    print(
-        "  Each Hermes turn now gets NeuralMind's related files and decisions, and a "
-        "session's first turn gets the recap of the previous one. Start a new Hermes "
-        "session (restart the gateway if it's running) to load it."
+    what = (
+        "NeuralMind's related files and decisions, and a session's first turn gets the "
+        "recap of the previous one"
     )
+    if result["enabled"] is True:
+        print(
+            f"  Each Hermes turn now gets {what}. Start a new Hermes session (restart the "
+            "gateway if it's running) to load it."
+        )
+    else:
+        print(f"  Once it's enabled, each Hermes turn gets {what}.")
 
 
 def cmd_install_hooks(args):
@@ -7835,7 +7870,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Forget the pinned project, so the plugin follows the directory Hermes works in",
     )
-    hermes_p.add_argument("--uninstall", action="store_true", help="Disable and remove the plugin")
+    hermes_p.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="Remove the plugin and its entries in Hermes's config (hermes plugins remove)",
+    )
     hermes_p.add_argument(
         "--no-enable",
         action="store_true",

@@ -1,8 +1,8 @@
 """NeuralMind for Hermes-Agent — code memory injected into each turn, no tool call.
 
-A Hermes plugin (``~/.hermes/plugins/neuralmind/``, installed and enabled by
-``neuralmind install-hermes-plugin``). It gives Hermes what NeuralMind's Claude
-Code hooks give Claude Code:
+A Hermes plugin (``~/.hermes/plugins/neuralmind/``), installed and enabled by
+``neuralmind install-hermes-plugin``, or by Hermes from a clone of this
+directory. It gives Hermes what NeuralMind's Claude Code hooks give Claude Code:
 
 - ``pre_llm_call`` (once per turn, before the model runs): the files and
   decisions related to the user's message, from NeuralMind's synapse layer,
@@ -12,29 +12,36 @@ Code hooks give Claude Code:
 - ``post_tool_call`` on ``write_file`` and ``patch``: the edited file is
   recorded, for the next session's recap and for the synapse layer.
 
-It is a thin, stdlib-only shim. Each action runs ``python -m neuralmind _hook
-<action>`` with the same JSON payload Claude Code sends, so Hermes gets the
-same behavior, toggles (``NEURALMIND_BYPASS``, ``NEURALMIND_SYNAPSE_INJECT``,
+It is a thin, stdlib-only shim. Each action runs ``neuralmind _hook <action>``
+with the same JSON payload Claude Code sends, so Hermes gets the same behavior,
+toggles (``NEURALMIND_BYPASS``, ``NEURALMIND_SYNAPSE_INJECT``,
 ``NEURALMIND_SESSION_RECAP`` …) and fail-open guarantees, and NeuralMind does
-not need to be installed in Hermes's own environment.
+not need to be installed in Hermes's own environment. Which NeuralMind: the
+Python interpreter ``install-hermes-plugin`` recorded, else the ``neuralmind``
+command on PATH, else Hermes's own Python.
 
 Which project: ``NEURALMIND_PROJECT``, else the ``project`` saved at install,
 else Hermes's ``TERMINAL_CWD`` (or, only when that's unset, the current
 directory) — and only one where ``neuralmind build`` has run. Anything else,
 and the plugin does nothing.
 Everything fails open: an error or a timeout (``NEURALMIND_HERMES_TIMEOUT``,
-default 8 seconds) means no context, never a broken turn.
+default 8 seconds) means no context, never a broken turn. When NeuralMind can't
+be run, is too old or times out, the plugin says so once per process in
+Hermes's log (``hermes logs --level WARNING``).
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
 import threading
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 CONFIG_FILENAME = "config.json"
 TIMEOUT_ENV = "NEURALMIND_HERMES_TIMEOUT"
@@ -78,12 +85,88 @@ def _config() -> dict:
         return {}
 
 
-def _python() -> str:
-    """The interpreter that has NeuralMind installed (recorded at install)."""
+def _python() -> str | None:
+    """The interpreter that has NeuralMind installed, if the installer recorded one."""
     python = _config().get("python")
     if isinstance(python, str) and python and Path(python).exists():
         return python
-    return sys.executable
+    return None
+
+
+def _on_path(name: str = "neuralmind") -> str | None:
+    """The ``name`` command on PATH, looked up in absolute PATH entries only.
+
+    ``shutil.which`` also searches the working directory (on Windows, first),
+    where a served repository could put a ``neuralmind`` of its own.
+    """
+    suffixes = (".exe",) if sys.platform == "win32" else ("",)
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not entry or not os.path.isabs(entry):
+            continue
+        for suffix in suffixes:
+            candidate = os.path.join(entry, name + suffix)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
+
+
+def _command(action: str) -> list[str]:
+    """The command that runs one NeuralMind hook action.
+
+    The interpreter ``install-hermes-plugin`` recorded; else, as for a plugin
+    Hermes installed from a clone, the ``neuralmind`` command on PATH; else
+    Hermes's own Python, in case NeuralMind is installed alongside Hermes.
+    """
+    python = _python()
+    if python:
+        return [python, "-m", "neuralmind", "_hook", action]
+    script = _on_path()
+    if script:
+        return [script, "_hook", action]
+    return [sys.executable, "-m", "neuralmind", "_hook", action]
+
+
+_WARNED: set[str] = set()
+
+MIN_NEURALMIND = (4, 9)
+_INSTALL_HINT = (
+    "Install NeuralMind 4.9 or later so the `neuralmind` command is on Hermes's PATH, "
+    "or run `neuralmind install-hermes-plugin` to point the plugin at it."
+)
+_version_checked = False
+
+
+def _warn_once(kind: str, message: str, *args: object) -> None:
+    """Log one warning per kind and process; the plugin itself still fails open."""
+    if kind not in _WARNED:
+        _WARNED.add(kind)
+        logger.warning("NeuralMind plugin: " + message, *args)
+
+
+def _check_version(prefix: list[str]) -> None:
+    """Warn if the NeuralMind found is too old: an old one still answers, without a recap."""
+    try:
+        done = subprocess.run(
+            [*prefix, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=_timeout(),
+            env=_child_env(),
+            cwd=str(_HERE),
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            check=False,
+        )
+        found = re.search(r"(\d+)\.(\d+)\.\d+", done.stdout)
+        if found and (int(found.group(1)), int(found.group(2))) < MIN_NEURALMIND:
+            _warn_once(
+                "version",
+                "%s is NeuralMind %s, too old for this plugin: turns get no session recap. %s",
+                prefix[0],
+                found.group(0),
+                _INSTALL_HINT,
+            )
+    except Exception:
+        pass
 
 
 def _project() -> Path | None:
@@ -114,8 +197,9 @@ def _timeout() -> float:
 
 
 # Hermes's launcher points PYTHONPATH at its own source and site-packages. A
-# child running NeuralMind's interpreter would import those first, fail, and
-# (failing open) return nothing — so the child gets a clean Python setup.
+# child running NeuralMind's interpreter (or its `neuralmind` script) would
+# import those first, fail, and (failing open) return nothing — so the child
+# gets a clean Python setup.
 _PYTHON_ENV = ("PYTHONPATH", "PYTHONHOME", "PYTHONSAFEPATH", "PYTHONSTARTUP", "VIRTUAL_ENV")
 
 
@@ -131,19 +215,54 @@ def _child_env() -> dict:
 
 def _run(action: str, payload: dict) -> str:
     """Run one NeuralMind hook action; return its additionalContext, or ""."""
+    global _version_checked
     try:
-        done = subprocess.run(
-            [_python(), "-m", "neuralmind", "_hook", action],
-            input=json.dumps(payload),
-            capture_output=True,
-            text=True,
-            timeout=_timeout(),
-            env=_child_env(),
-            cwd=str(_HERE),
-            # Windows: no console window flashing up when Hermes runs windowless.
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            check=False,
-        )
+        command = _command(action)
+        if not _version_checked:  # once per process, off the turn's path
+            _version_checked = True
+            try:
+                threading.Thread(target=_check_version, args=(command[:-2],), daemon=True).start()
+            except Exception:  # e.g. no thread to spare: skip the diagnostic, not the hook
+                pass
+        try:
+            done = subprocess.run(
+                command,
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                timeout=_timeout(),
+                env=_child_env(),
+                cwd=str(_HERE),
+                # Windows: no console window flashing up when Hermes runs windowless.
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            _warn_once(
+                "timeout",
+                "`neuralmind _hook %s` took longer than %ss and was stopped, so its result "
+                "was left out. Set %s higher if this keeps happening.",
+                action,
+                _timeout(),
+                TIMEOUT_ENV,
+            )
+            return ""
+        except OSError as exc:
+            _warn_once("start", "couldn't run %s (%s). %s", command[0], exc, _INSTALL_HINT)
+            return ""
+        # `neuralmind _hook` exits 0 whatever happens inside it, so any other
+        # status means NeuralMind itself didn't start: not installed, or too old.
+        if done.returncode != 0:
+            detail = (done.stderr or "").strip().splitlines()
+            _warn_once(
+                "exit",
+                "`%s` exited with status %s (%s). %s",
+                " ".join(command),
+                done.returncode,
+                detail[-1] if detail else "no output",
+                _INSTALL_HINT,
+            )
+            return ""
         if not done.stdout.strip():
             return ""
         response = json.loads(done.stdout)
