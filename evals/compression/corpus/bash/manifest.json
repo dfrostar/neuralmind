@@ -1,5 +1,5 @@
 {
-  "_about": "Real command outputs replayed by evals/compression/run.py. Captured with evals/compression/capture_bash.py; cwd labels: repo = this repository, site = its site/ directory, scratch = a temp dir holding the generated inventory module and its tests, anything else = that public-benchmark repo at its pinned commit. must_keep patterns are pre-registered per output type.",
+  "_about": "Real command outputs replayed by evals/compression/run.py. Captured with evals/compression/capture_bash.py; cwd labels: repo = this repository, site = its site/ directory, scratch = a temp dir holding the generated inventory module, its tests and a requirements file, anything else = that public-benchmark repo at its pinned commit. must_keep patterns and the content/noisy-log kind are pre-registered per output type. captured_on and tool_versions describe every entry that doesn't carry its own.",
   "captured_on": "2026-09-28",
   "tool_versions": {
     "python": "3.11.15",
@@ -26,7 +26,8 @@
       "stderr_file": null,
       "must_keep": [
         "\\d+ passed"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "pytest-quiet-pass",
@@ -39,7 +40,8 @@
       "must_keep": [
         "\\d+ passed",
         "\\[\\s*\\d+%\\]"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "pytest-failures",
@@ -53,7 +55,8 @@
         "^E\\s",
         "^FAILED ",
         "\\d+ failed"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "pytest-collect",
@@ -66,7 +69,8 @@
       "must_keep": [
         "::",
         "tests? collected"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "ruff-lint",
@@ -80,7 +84,8 @@
         "^[A-Z]+\\d+ ",
         "^\\s*--> ",
         "Found \\d+ errors?"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "mypy-strict",
@@ -93,7 +98,8 @@
       "must_keep": [
         ": error: ",
         "Found \\d+ errors?"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "python-crash",
@@ -106,7 +112,8 @@
       "must_keep": [
         "^Traceback",
         "^[\\w.]+(Error|Exception): "
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "pip-list",
@@ -118,7 +125,8 @@
       "stderr_file": null,
       "must_keep": [
         "^[A-Za-z0-9_.\\-]+\\s+\\d"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "next-build",
@@ -131,7 +139,8 @@
       "must_keep": [
         "^[\u251c\u2514\u250c]\\s",
         "Compiled successfully|Generating static pages"
-      ]
+      ],
+      "kind": "noisy-log"
     },
     {
       "id": "neuralmind-build",
@@ -143,7 +152,8 @@
       "stderr_file": "neuralmind-build.stderr.txt",
       "must_keep": [
         "(?i)\\b(nodes?|edges?|built|complete|success)\\b"
-      ]
+      ],
+      "kind": "noisy-log"
     },
     {
       "id": "git-log-stat",
@@ -156,7 +166,8 @@
       "must_keep": [
         "^commit [0-9a-f]{40}",
         "files? changed"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "git-diff",
@@ -169,7 +180,8 @@
       "must_keep": [
         "^@@",
         "^[+-](?![+-])"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "grep-defs",
@@ -181,7 +193,8 @@
       "stderr_file": null,
       "must_keep": [
         "^\\S+:\\d+:"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "find-files",
@@ -193,7 +206,8 @@
       "stderr_file": null,
       "must_keep": [
         "\\.py$"
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "cat-source",
@@ -205,7 +219,8 @@
       "stderr_file": null,
       "must_keep": [
         "^\\s*(async\\s+)?def |^\\s*class "
-      ]
+      ],
+      "kind": "content"
     },
     {
       "id": "ls-long",
@@ -217,7 +232,74 @@
       "stderr_file": null,
       "must_keep": [
         "^[-dl][rwx-]{9}"
-      ]
+      ],
+      "kind": "content"
+    },
+    {
+      "id": "pip-install-requirements",
+      "category": "install log (fresh environment)",
+      "kind": "noisy-log",
+      "cwd": "scratch",
+      "command": "python -m pip install -r requirements.txt",
+      "exit_code": 0,
+      "stdout_file": "pip-install-requirements.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "(?i)^\\s*(error|warning|deprecation)\\b",
+        "^\\s*Successfully (installed|uninstalled|built)\\b",
+        ", but you have ",
+        "^Requirement already satisfied: (?!.*\\(from [^-])"
+      ],
+      "captured_on": "2026-10-03",
+      "platform": "Darwin arm64",
+      "tool_versions": {
+        "python": "3.11.16",
+        "pip": "pip 26.2.1"
+      }
+    },
+    {
+      "id": "pip-install-editable",
+      "category": "install log (editable, dependencies present)",
+      "kind": "noisy-log",
+      "cwd": "repo",
+      "command": "python -m pip install -e '.[dev]'",
+      "exit_code": 0,
+      "stdout_file": "pip-install-editable.stdout.txt",
+      "stderr_file": "pip-install-editable.stderr.txt",
+      "must_keep": [
+        "(?i)^\\s*(error|warning|deprecation)\\b",
+        "^\\s*Successfully (installed|uninstalled|built)\\b",
+        ", but you have ",
+        "^Requirement already satisfied: (?!.*\\(from [^-])"
+      ],
+      "captured_on": "2026-10-03",
+      "platform": "Darwin arm64",
+      "tool_versions": {
+        "python": "3.11.16",
+        "pip": "pip 24.0"
+      }
+    },
+    {
+      "id": "pip-install-satisfied",
+      "category": "install log (already installed)",
+      "kind": "noisy-log",
+      "cwd": "repo",
+      "command": "python -m pip install pytest",
+      "exit_code": 0,
+      "stdout_file": "pip-install-satisfied.stdout.txt",
+      "stderr_file": "pip-install-satisfied.stderr.txt",
+      "must_keep": [
+        "(?i)^\\s*(error|warning|deprecation)\\b",
+        "^\\s*Successfully (installed|uninstalled|built)\\b",
+        ", but you have ",
+        "^Requirement already satisfied: (?!.*\\(from [^-])"
+      ],
+      "captured_on": "2026-10-03",
+      "platform": "Darwin arm64",
+      "tool_versions": {
+        "python": "3.11.16",
+        "pip": "pip 24.0"
+      }
     }
   ]
 }

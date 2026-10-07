@@ -52,6 +52,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_TAG }}
+          # Push to main with the write-enabled deploy key: the ruleset on main
+          # requires PRs and passing CI, and a deploy key is its only bypass
+          # (GitHub won't accept the Actions app as a bypass actor on a
+          # personal-account repo). Unset (forks), checkout falls back to
+          # GITHUB_TOKEN as before.
+          ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -131,7 +137,10 @@ jobs:
             echo "SBOM for ${TAG} already published — nothing to commit."
             exit 0
           fi
-          git commit -m "chore(sbom): publish ${ASSET} to the site"
+          # [skip ci]: a deploy-key push starts workflows, which a
+          # GITHUB_TOKEN push never did. This job dispatches the site deploy
+          # itself, so keep the push from starting CI or a second deploy.
+          git commit -m "chore(sbom): publish ${ASSET} to the site [skip ci]"
           for attempt in 1 2 3; do
             if git push origin sbom-publish:main; then
               exit 0

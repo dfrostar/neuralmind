@@ -85,6 +85,9 @@ keywords = [
     "compaction-recovery",
     "context-compaction",
     "recall-relevance-gating",
+    "posttooluse-hook",
+    "updated-tool-output",
+    "noisy-log-trimming",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

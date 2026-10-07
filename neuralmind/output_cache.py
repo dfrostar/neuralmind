@@ -24,10 +24,16 @@ Design:
   a plaintext file. Opt out with ``NEURALMIND_OUTPUT_REDACT=0``.
 - **Fail-open.** Cache failures never disrupt the hook; they just
   leave ``neuralmind last`` empty.
+
+The opt-in Bash replacement (``NEURALMIND_BASH_REPLACE=1``) also keeps each
+output it trims in a file of its own (:func:`archive_output`), because a
+single slot can be overwritten by the next — or a parallel — Bash call before
+Claude asks for what was elided.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -40,6 +46,9 @@ from .storage_guard import StorageNotVerifiedError, enforce_storage_policy
 
 CACHE_FILENAME = "last_output.json"
 DEFAULT_MAX_BYTES = int(os.environ.get("NEURALMIND_OUTPUT_CACHE_MAX", str(2 * 1024 * 1024)))
+ARCHIVE_DIRNAME = "bash_outputs"
+# Full outputs the archive keeps; writing one more deletes the oldest.
+ARCHIVE_KEEP = 20
 
 
 def cache_path(project_path: str | Path) -> Path:
@@ -59,6 +68,44 @@ def _truncate_keep_ends(text: str, budget: int) -> str:
     tail = text[-(budget - keep) :]
     dropped = len(text) - len(head) - len(tail)
     return head + f"\n\n[... {dropped} bytes elided by output cache ...]\n\n" + tail
+
+
+def _scrub(stdout: str, stderr: str, command: str) -> tuple[str, str, str, list[str]]:
+    """Redact credentials (unless ``NEURALMIND_OUTPUT_REDACT=0``); return the kinds redacted."""
+    redacted_kinds: list[str] = []
+    if os.environ.get("NEURALMIND_OUTPUT_REDACT") != "0":
+        stdout, out_hits = redact_text(stdout)
+        stderr, err_hits = redact_text(stderr)
+        command, cmd_hits = redact_text(command)
+        redacted_kinds = sorted({m.kind for m in (*out_hits, *err_hits, *cmd_hits)})
+    return stdout, stderr, command, redacted_kinds
+
+
+def _scrub_and_cap(
+    stdout: str, stderr: str, command: str, max_bytes: int | None
+) -> tuple[str, str, str, list[str]]:
+    """Redact credentials, then cap the size; return the kinds redacted."""
+    # Strip credentials *before* truncation so a secret can never survive
+    # in a kept head/tail slice, and before the size math so the budget is
+    # computed against what actually gets written.
+    stdout, stderr, command, redacted_kinds = _scrub(stdout, stderr, command)
+
+    cap = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
+    total = len(stdout) + len(stderr)
+    if total > cap:
+        # Split budget proportionally; floor each side at 1 KB so a
+        # 99% stderr / 1% stdout payload still leaves room for the
+        # smaller stream's framing.
+        if stdout and stderr:
+            stdout_budget = max(1024, int(cap * len(stdout) / total))
+            stderr_budget = max(1024, cap - stdout_budget)
+        elif stdout:
+            stdout_budget, stderr_budget = cap, 0
+        else:
+            stdout_budget, stderr_budget = 0, cap
+        stdout = _truncate_keep_ends(stdout, stdout_budget)
+        stderr = _truncate_keep_ends(stderr, stderr_budget)
+    return stdout, stderr, command, redacted_kinds
 
 
 def write_last_output(
@@ -83,31 +130,7 @@ def write_last_output(
     except StorageNotVerifiedError:
         return None
 
-    # Strip credentials *before* truncation so a secret can never survive
-    # in a kept head/tail slice, and before the size math so the budget is
-    # computed against what actually gets written.
-    redacted_kinds: list[str] = []
-    if os.environ.get("NEURALMIND_OUTPUT_REDACT") != "0":
-        stdout, out_hits = redact_text(stdout)
-        stderr, err_hits = redact_text(stderr)
-        command, cmd_hits = redact_text(command)
-        redacted_kinds = sorted({m.kind for m in (*out_hits, *err_hits, *cmd_hits)})
-
-    cap = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
-    total = len(stdout) + len(stderr)
-    if total > cap:
-        # Split budget proportionally; floor each side at 1 KB so a
-        # 99% stderr / 1% stdout payload still leaves room for the
-        # smaller stream's framing.
-        if stdout and stderr:
-            stdout_budget = max(1024, int(cap * len(stdout) / total))
-            stderr_budget = max(1024, cap - stdout_budget)
-        elif stdout:
-            stdout_budget, stderr_budget = cap, 0
-        else:
-            stdout_budget, stderr_budget = 0, cap
-        stdout = _truncate_keep_ends(stdout, stdout_budget)
-        stderr = _truncate_keep_ends(stderr, stderr_budget)
+    stdout, stderr, command, redacted_kinds = _scrub_and_cap(stdout, stderr, command, max_bytes)
 
     payload = {
         "ts": time.time(),
@@ -178,3 +201,107 @@ def read_last_output(project_path: str | Path) -> dict | None:
             kinds.update(m.kind for m in hits)
     data["redacted"] = sorted(kinds)
     return data
+
+
+def _archive_target(project_path: str | Path, command: str, stdout: str, stderr: str) -> Path:
+    digest = hashlib.sha256("\x00".join((command, stdout, stderr)).encode("utf-8"))
+    return (
+        Path(project_path).resolve()
+        / ".neuralmind"
+        / ARCHIVE_DIRNAME
+        / f"{digest.hexdigest()[:16]}.txt"
+    )
+
+
+def archive_path(project_path: str | Path, stdout: str, stderr: str, command: str = "") -> Path:
+    """Where :func:`archive_output` keeps this output.
+
+    Named by a hash of the command and output as archived, credentials
+    already redacted: the replaced result shows this name, and a hash of the
+    raw text would let anyone who sees it test guesses at a secret in it. The
+    path is known before anything is written, and the same output always
+    maps to the same file.
+    """
+    stdout, stderr, command, _ = _scrub(stdout, stderr, command)
+    return _archive_target(project_path, command, stdout, stderr)
+
+
+def archive_output(
+    project_path: str | Path,
+    stdout: str,
+    stderr: str,
+    command: str = "",
+    max_bytes: int | None = None,
+) -> Path | None:
+    """Keep one Bash call's full output in a file of its own, for Claude to Read.
+
+    The opt-in Bash replacement names this file in the output it hands Claude,
+    so the lines it elided stay one Read away. Redacted like the cache; the
+    newest ``ARCHIVE_KEEP`` files are kept. Never cut: an output over the
+    cache's size cap (``NEURALMIND_OUTPUT_CACHE_MAX``) isn't archived at all,
+    since a head-and-tail copy couldn't hold the lines the replacement
+    elides. Returns ``None`` then, when the cache is disabled
+    (``NEURALMIND_OUTPUT_CACHE=0``) or when the write fails, and a caller must
+    leave the output whole: nothing would hold the rest.
+    """
+    if os.environ.get("NEURALMIND_OUTPUT_CACHE") == "0":
+        return None
+    # Command output is the most sensitive thing NeuralMind stores; never put
+    # it on a volume a require_encrypted_storage project hasn't verified.
+    try:
+        enforce_storage_policy(project_path)
+    except StorageNotVerifiedError:
+        return None
+    stdout, stderr, command, redacted_kinds = _scrub(stdout, stderr, command)
+    cap = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
+    if len(stdout) + len(stderr) > cap:
+        return None
+    target = _archive_target(project_path, command, stdout, stderr)
+
+    # The same layout `neuralmind last` prints.
+    parts = [f"# command: {command[:500]}"]
+    if redacted_kinds:
+        parts.append(
+            f"# redacted: {', '.join(redacted_kinds)} (re-run the command to see real values)"
+        )
+    parts.append("")
+    if stdout:
+        parts.append(stdout.rstrip())
+    if stderr:
+        if stdout:
+            parts.append("")
+        parts += ["[stderr]", stderr.rstrip()]
+    text = "\n".join(parts) + "\n"
+
+    try:
+        ensure_state_dir(project_path)
+        target.parent.mkdir(exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".archive.", suffix=".tmp", dir=str(target.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.replace(tmp, target)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            return None
+        _prune_archive(target)
+        return target
+    except Exception:
+        return None
+
+
+def _prune_archive(newest: Path) -> None:
+    """Keep ``newest`` and the ``ARCHIVE_KEEP - 1`` most recent others; delete the rest."""
+    try:
+        others = sorted(
+            (p for p in newest.parent.glob("*.txt") if p != newest),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for stale in others[ARCHIVE_KEEP - 1 :]:
+            stale.unlink(missing_ok=True)
+    except OSError:
+        pass

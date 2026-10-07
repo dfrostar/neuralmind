@@ -130,7 +130,11 @@ allowlist in the same change.
   prompt-time recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory
   export. The Read/Bash/Grep PostToolUse hooks inject nothing:
   Claude Code adds `additionalContext` beside a tool result rather
-  than replacing it (see `docs/benchmarks/compression.md`).
+  than replacing it (see `docs/benchmarks/compression.md`). The one
+  exception is opt-in: `NEURALMIND_BASH_REPLACE=1` replaces allowlisted
+  noisy logs via `updatedToolOutput`, and any change to it must keep
+  the benchmark's retention gates passing
+  (`tests/test_compression_benchmark.py`).
 
 ## Commercial terms — single source of truth
 
