@@ -5329,19 +5329,48 @@ def cmd_install_hermes_plugin(args):
             print(f"✓ Removed the NeuralMind plugin from {result['path']}{profile}")
         else:
             print(f"No NeuralMind plugin at {result['path']}{profile}")
-        if not result["initialised"]:
-            pass  # no Hermes config there, so nothing was enabled to disable
-        elif result["disabled"] is None and result["removed"]:
-            print("  `hermes` isn't on PATH: run `hermes plugins disable neuralmind` yourself.")
-        elif result["disabled"] is False:
-            print("  ⚠ `hermes plugins disable neuralmind` failed; run it yourself.")
+        if not result["initialised"] or not result["removed"]:
+            pass  # no Hermes config there, or nothing was installed
+        elif result["forgotten"] is True:
+            print("  Hermes's config no longer lists it.")
+        elif result["forgotten"] is None and result["disabled"] is None:
+            print(
+                f"  `hermes` isn't on PATH, so {home / 'config.yaml'} still names neuralmind "
+                "under plugins:. Delete those entries if you want them gone."
+            )
+        elif result["disabled"] is True:
+            print(
+                "  Disabled in Hermes (Hermes won't remove a symlinked plugin itself)."
+                if result["forgotten"] is None
+                else "  ⚠ `hermes plugins remove neuralmind` failed, so it was disabled in "
+                "Hermes instead and stays on its plugins.disabled list."
+            )
+        else:
+            print(
+                "  ⚠ Hermes couldn't remove or disable it; check `hermes plugins list` and "
+                f"the plugins: section of {home / 'config.yaml'}."
+            )
         return
     try:
         result = install(args.project_path, home=home, enable=not args.no_enable, unpin=args.unpin)
     except (FileNotFoundError, FileExistsError) as exc:
         print(f"✗ {exc}")
         sys.exit(1)
-    print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
+    if result["managed"]:
+        print(f"✓ NeuralMind plugin configured at {result['path']}{profile}")
+        print(
+            "  Hermes installed this plugin, so its code is Hermes's to update "
+            "(`hermes plugins update neuralmind`); only its settings were written."
+        )
+    elif result["managed"] is None:
+        print(f"✓ NeuralMind plugin configured at {result['path']}{profile}")
+        print(
+            f"  ⚠ Couldn't read Hermes's install records ({home / 'plugins' / '.install-metadata.json'}), "
+            "so the plugin's code was left untouched and only its settings were written. "
+            "Fix or delete that file, then run this again to update the code."
+        )
+    else:
+        print(f"✓ NeuralMind plugin installed at {result['path']}{profile}")
     if result["project"]:
         kept = "" if args.project_path else " (kept from the earlier install; --unpin clears it)"
         print(f"  Project: {result['project']}{kept}")
@@ -5372,11 +5401,17 @@ def cmd_install_hermes_plugin(args):
         print("  ⚠ `hermes plugins enable neuralmind` failed; run it yourself.")
     elif not args.no_enable:
         print("  `hermes` isn't on PATH: run `hermes plugins enable neuralmind` yourself.")
-    print(
-        "  Each Hermes turn now gets NeuralMind's related files and decisions, and a "
-        "session's first turn gets the recap of the previous one. Start a new Hermes "
-        "session (restart the gateway if it's running) to load it."
+    what = (
+        "NeuralMind's related files and decisions, and a session's first turn gets the "
+        "recap of the previous one"
     )
+    if result["enabled"] is True:
+        print(
+            f"  Each Hermes turn now gets {what}. Start a new Hermes session (restart the "
+            "gateway if it's running) to load it."
+        )
+    else:
+        print(f"  Once it's enabled, each Hermes turn gets {what}.")
 
 
 def cmd_install_hooks(args):
@@ -6216,30 +6251,30 @@ def _version_string() -> str:
     return base
 
 
-class _IntermixedArgumentParser(argparse.ArgumentParser):
-    """A subcommand parser whose positionals may follow its options.
+class _PathAfterOptionsParser(argparse.ArgumentParser):
+    """A subcommand parser whose optional project path may follow its options.
 
-    ``decisions restore <id> --commit X <path>``: before Python 3.13, argparse
-    matched an optional trailing positional (``project_path``, nargs="?")
-    together with the required one before it, giving it nothing, so the path
-    after ``--commit X`` was left over: "unrecognized arguments". Parsing
-    intermixed reads the options first, then all the positionals in order,
-    which is what 3.13 does. Only for parsers with no subcommands of their own:
-    argparse can't parse those intermixed, so they parse as usual.
+    ``decisions restore <id> --commit X <path>``: argparse matched the optional
+    trailing positional (``project_path``, nargs="?") together with the
+    required one before it, giving it nothing because an option came next, so
+    the path after ``--commit X`` was left over: "unrecognized arguments".
+    Python 3.12.7 and 3.13.1 fixed that: a positional that would match nothing
+    just before an option is left until after it. This applies the same rule on
+    the versions without the fix (3.10, 3.11, 3.12.0 to 3.12.6 and 3.13.0), so
+    every version parses these lines alike, ``--`` included. Parsing intermixed
+    would also take the path, but before 3.12.8 and 3.13.1 it ignores ``--``.
     """
 
-    _intermixing = False
+    if sys.version_info < (3, 12, 7) or sys.version_info[:3] == (3, 13, 0):
 
-    def parse_known_args(self, args=None, namespace=None):
-        if self._intermixing or self._subparsers is not None:
-            return super().parse_known_args(args, namespace)
-        # parse_known_intermixed_args calls back into parse_known_args on
-        # Python < 3.13; those inner passes take the plain path above.
-        self._intermixing = True
-        try:
-            return self.parse_known_intermixed_args(args, namespace)
-        finally:
-            self._intermixing = False
+        def _match_arguments_partial(self, actions, arg_strings_pattern):
+            result = super()._match_arguments_partial(actions, arg_strings_pattern)
+            # One pattern group per positional, so the match ends at the sum.
+            end = sum(result)
+            if end < len(arg_strings_pattern) and arg_strings_pattern[end] == "O":
+                while result and not result[-1]:
+                    result.pop()
+            return result
 
 
 def _existing_project_dir(value: str) -> str:
@@ -7038,7 +7073,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Inspect, reset, export, or import learned synapse memory by namespace",
     )
     memory_sub = memory_p.add_subparsers(
-        dest="memory_cmd", required=True, parser_class=_IntermixedArgumentParser
+        dest="memory_cmd", required=True, parser_class=_PathAfterOptionsParser
     )
 
     # feedback command — explicit good/bad adjustment of last-reinforced edges
@@ -7152,10 +7187,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Persistent decision memory with commit-level invalidation",
     )
     decisions_sub = decisions_p.add_subparsers(
-        dest="decisions_cmd", required=True, parser_class=_IntermixedArgumentParser
+        dest="decisions_cmd", required=True, parser_class=_PathAfterOptionsParser
     )
 
-    d_record = decisions_sub.add_parser("record", help="Store an architecture decision")
+    # A list option takes every value up to the next option, path included.
+    list_then_path = (
+        "A list option such as --evidence takes every value up to the next option, "
+        "so put -- between it and a project path that follows: "
+        "--evidence proof.md -- PATH"
+    )
+    d_record = decisions_sub.add_parser(
+        "record", help="Store an architecture decision", epilog=list_then_path
+    )
     d_record.add_argument("--title", required=True, help="Decision title")
     d_record.add_argument("--rationale", required=True, help="Why this decision was made")
     d_record.add_argument("--commit", help="Git commit SHA (defaults to HEAD)")
@@ -7195,7 +7238,9 @@ def build_parser() -> argparse.ArgumentParser:
     d_query.add_argument("project_path", nargs="?", default=".", type=_existing_project_dir)
     d_query.set_defaults(func=cmd_decisions_query)
 
-    d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
+    d_amend = decisions_sub.add_parser(
+        "amend", help="Add to existing decision", epilog=list_then_path
+    )
     d_amend.add_argument("decision_id", help="Decision ID to amend")
     d_amend.add_argument("--rationale", help="Updated rationale")
     d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
@@ -7836,7 +7881,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Forget the pinned project, so the plugin follows the directory Hermes works in",
     )
-    hermes_p.add_argument("--uninstall", action="store_true", help="Disable and remove the plugin")
+    hermes_p.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="Remove the plugin and its entries in Hermes's config (hermes plugins remove)",
+    )
     hermes_p.add_argument(
         "--no-enable",
         action="store_true",

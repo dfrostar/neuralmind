@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.10.0 — Prompt recall that stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
+### v4.11.0 — Prompt recall that stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
 Prompt-time recall used to add up to eight code nodes to almost any prompt,
 "thanks!" included, while missing most prompts that were about the code: their
@@ -53,7 +53,54 @@ latest prompts and edited files back, verbatim, alongside the compaction
 summary. Whether either change improves answers isn't measured.
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [`NEURALMIND_RECALL_MIN_SIMILARITY`](CLI-Reference#environment-variables) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md).
+
+### v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work (October 2026)
+
+The Hermes plugin's directory now carries its own `plugin.yaml` (declaring
+`requires_hermes: ">=0.21.5"`) and a
+[README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+that lists what it reads, writes and sends. So Hermes can install it from a
+clone of this repository,
+`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`,
+and Hermes's catalog check, `hermes plugins validate`, passes. Installed that
+way, the plugin runs the `neuralmind` command on Hermes's PATH (absolute PATH
+entries only); `neuralmind install-hermes-plugin` on a plugin Hermes installed
+writes only the interpreter and the project. When the plugin can't start
+NeuralMind, finds one older than 4.9 (which answers without the session
+recap), or a call times out, it logs one warning per Hermes process naming the
+fix: `hermes logs --level WARNING | grep -i neuralmind`. Fixed:
+`install-hermes-plugin --uninstall` disabled the plugin before removing it,
+which left it on Hermes's disabled list, so installing it again left it off;
+it now runs `hermes plugins remove neuralmind`, which drops its entries from
+`config.yaml`. Tested against Hermes v0.21.5 in live `hermes chat` sessions.
+[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
+
+### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
+
+v4.9.1 let six `decisions` and `memory` subcommands take the project path
+after their options, but on Python 3.10, 3.11, 3.12 before 3.12.8 and 3.13.0
+`--` could stop ending their options: `decisions query -- -q .` failed. `--` works again, the path can still follow the options, and every
+supported Python parses these lines the same way. A path after a list option
+such as `--evidence` needs `--` before it, which `record --help` and
+`amend --help` now say.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.2.md).
+
+### v4.9.1 — The last four fixes from the v4.8.2 bug hunt (October 2026)
+
+`neuralmind feedback good|bad` with query memory off no longer adjusts an
+older query recorded before memory went off; it exits 1, names that query and
+says how to turn memory back on. The "LTP-protected" edge count in `status`,
+`synapse stats` and the dashboard uses decay's own rule, so expect a lower
+number. `neuralmind validate` stops reporting the prose path's query nodes,
+now written `query:<term>`, as stale. And the `decisions` and `memory`
+subcommands accept the project path after their options (`decisions restore
+<id> --commit SHA <path>`) on every supported Python; on 3.10, 3.11, 3.12
+before 3.12.7 and 3.13.0 that failed. (On those versions, and on 3.12.7, `--`
+could stop ending their options; v4.9.2 fixes that.) None of the four lose
+data.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md).
 
 ### v4.9.0 — Hermes-Agent gets NeuralMind's context in every turn, without a tool call (October 2026)
 

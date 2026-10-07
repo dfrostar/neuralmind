@@ -199,9 +199,9 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v4100">
-            <h2>What&rsquo;s New in v4.10.0 &mdash; prompt recall that stays quiet when the prompt isn&rsquo;t about the code, and a session&rsquo;s own record back after compaction</h2>
-            <p><strong>Prompt-time recall used to add up to eight code nodes to almost any prompt, &ldquo;thanks!&rdquo; and &ldquo;what&rsquo;s the capital of France&rdquo; included, while missing most prompts that were about the code. And compaction dropped what NeuralMind had already recorded about the session.</strong> v4.10.0 fixes both, through the hooks it already installs.</p>
+        <div class="container" id="whats-new-v4110">
+            <h2>What&rsquo;s New in v4.11.0 &mdash; prompt recall that stays quiet when the prompt isn&rsquo;t about the code, and a session&rsquo;s own record back after compaction</h2>
+            <p><strong>Prompt-time recall used to add up to eight code nodes to almost any prompt, &ldquo;thanks!&rdquo; and &ldquo;what&rsquo;s the capital of France&rdquo; included, while missing most prompts that were about the code. And compaction dropped what NeuralMind had already recorded about the session.</strong> v4.11.0 fixes both, through the hooks it already installs.</p>
             <ul>
                 <li><strong>Recall seeds from the code, not the docstring</strong> &mdash; a prompt&rsquo;s best semantic match is often a function&rsquo;s rationale node (its docstring), which has no synapse edges, so recall from it returned nothing. Recall now starts from the code node the rationale belongs to. The MCP <code>neuralmind_synaptic_neighbors</code> tool gets the same fix</li>
                 <li><strong>A relevance gate</strong> &mdash; the <code>UserPromptSubmit</code> hook (and the Hermes plugin, which runs the same action) adds nothing when the prompt&rsquo;s best match in the code scores below <code>NEURALMIND_RECALL_MIN_SIMILARITY</code> (default 0.35; <code>0</code> never abstains)</li>
@@ -210,7 +210,34 @@
                 <li><strong>The session&rsquo;s own record after compaction</strong> &mdash; Claude Code&rsquo;s compaction summary paraphrases. After a compaction, <code>SessionStart</code> now gives the session its own first prompt, latest prompts and edited files back, verbatim, alongside that summary. <code>PreCompact</code> marks the session, so it works even if the session returns under a new id; a session that wasn&rsquo;t compacted is never recalled this way</li>
                 <li><strong>Not measured</strong> &mdash; whether either change improves the agent&rsquo;s answers</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md">v4.11.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4100">
+            <h2>What&rsquo;s New in v4.10.0 &mdash; Hermes can install the NeuralMind plugin itself, and the plugin says why when it can&rsquo;t work</h2>
+            <p><strong>v4.9.0&rsquo;s Hermes plugin could only be installed by NeuralMind&rsquo;s own command, did nothing without saying why when it couldn&rsquo;t run NeuralMind, and couldn&rsquo;t be reinstalled after an uninstall without enabling it again by hand.</strong> v4.10.0 fixes all three.</p>
+            <ul>
+                <li><strong>Hermes can install it</strong> &mdash; the plugin&rsquo;s directory carries its own <code>plugin.yaml</code> (with <code>requires_hermes: "&gt;=0.21.5"</code>) and a <a href="https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md">README</a> that lists what it reads, writes and sends, so <code>hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable</code> installs it from a clone of this repository, and Hermes&rsquo;s catalog check, <code>hermes plugins validate</code>, passes. Hermes then owns the code: <code>hermes plugins update neuralmind</code> updates it</li>
+                <li><strong>It finds NeuralMind on PATH</strong> &mdash; without an interpreter recorded by <code>neuralmind install-hermes-plugin</code>, the plugin runs the <code>neuralmind</code> command on Hermes&rsquo;s PATH, looked up in absolute PATH entries only, so a repository can&rsquo;t supply its own. Where Hermes&rsquo;s PATH doesn&rsquo;t include it (a gateway run as a service, Hermes Desktop), <code>neuralmind install-hermes-plugin</code> on a plugin Hermes installed writes only the interpreter and the project, and leaves the code alone</li>
+                <li><strong>It says why</strong> &mdash; when it can&rsquo;t start NeuralMind, finds one older than 4.9 (which answers without the session recap), or a call times out, the plugin logs one warning per Hermes process naming the fix: <code>hermes logs --level WARNING | grep -i neuralmind</code>. The turn still goes ahead without NeuralMind&rsquo;s context, as before</li>
+                <li><strong>Fixed: a reinstall after an uninstall stayed off</strong> &mdash; <code>neuralmind install-hermes-plugin --uninstall</code> disabled the plugin before removing it, which left it on Hermes&rsquo;s <code>plugins.disabled</code> list, so installing it again left it disabled. It now runs <code>hermes plugins remove neuralmind</code>, which drops the plugin&rsquo;s entries from <code>config.yaml</code>, and a fresh install enables it whatever an earlier one left behind. The install also stopped saying each turn now gets NeuralMind&rsquo;s context when the plugin wasn&rsquo;t enabled</li>
+                <li><strong>Tested live</strong> &mdash; against Hermes v0.21.5 (a 0.21.5+5355 main-branch build) in live <code>hermes chat</code> sessions: the first-turn recap, recall, edits made with <code>patch</code> and <code>write_file</code>, a resumed session, a subagent, a directory that hasn&rsquo;t been built, both ways of installing, and uninstalling. What the context changes in Hermes&rsquo;s answers still isn&rsquo;t measured</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md">v4.10.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/hermes-agent.md">Hermes-Agent with code memory in every turn &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v492">
+            <h2>What&rsquo;s New in v4.9.2 &mdash; <code>--</code> works again in the decisions and memory subcommands</h2>
+            <p><strong>A v4.9.1 regression in argument parsing.</strong> v4.9.1 let six <code>decisions</code> and <code>memory</code> subcommands take the project path after their options, but on Python 3.10, 3.11, 3.12 before 3.12.8 and 3.13.0 <code>--</code> could stop ending their options.</p>
+            <ul>
+                <li><strong><code>--</code> ends the options again</strong> &mdash; <code>decisions query -- -q .</code> searches for &ldquo;-q&rdquo;, and the path can still follow the options, with or without <code>--</code>, on every supported Python</li>
+                <li><strong>A path after a list option goes after <code>--</code></strong> &mdash; <code>--evidence proof.md -- &lt;path&gt;</code>; without it the path is read as more evidence, which <code>record --help</code> and <code>amend --help</code> now say</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.2.md">v4.9.2 release notes</a></p>
         </div>
     </section>
 
@@ -222,7 +249,7 @@
                 <li><strong><code>feedback</code> won&rsquo;t adjust a query from before memory went off</strong> &mdash; with query memory off it exits 1, names the last recorded query, and changes nothing</li>
                 <li><strong>&ldquo;LTP-protected&rdquo; counts the edges decay protects</strong> &mdash; <code>status</code>, <code>synapse stats</code> and the dashboard no longer count penalized or ephemeral edges, and agree with <code>SYNAPSE_MEMORY.md</code></li>
                 <li><strong><code>validate</code> stops flagging the prose path&rsquo;s query nodes</strong> &mdash; they&rsquo;re written as <code>query:&lt;term&gt;</code>, which no graph id can be; a deleted real node is still reported</li>
-                <li><strong>The project path can come after options</strong> &mdash; <code>decisions restore &lt;id&gt; --commit SHA &lt;path&gt;</code> and five other <code>decisions</code> and <code>memory</code> subcommands work on Python 3.10&ndash;3.12</li>
+                <li><strong>The project path can come after options</strong> &mdash; <code>decisions restore &lt;id&gt; --commit SHA &lt;path&gt;</code> and five other <code>decisions</code> and <code>memory</code> subcommands now work on every supported Python; 3.10, 3.11, 3.12 before 3.12.7 and 3.13.0 rejected the path there</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.9.1.md">v4.9.1 release notes</a></p>
         </div>

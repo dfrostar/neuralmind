@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.9.2](https://github.com/dfrostar/neuralmind/compare/v4.9.1...v4.9.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **cli:** keep "--" working with the project path after options ([#601](https://github.com/dfrostar/neuralmind/issues/601)) ([83aa5b4](https://github.com/dfrostar/neuralmind/commit/83aa5b4a6d9dda500b585216e67e5bdca5ad9a97))
+
+## [4.9.1](https://github.com/dfrostar/neuralmind/compare/v4.9.0...v4.9.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* the last four bug-hunt fixes: feedback with memory off, LTP counts, prose query nodes, path after options ([#595](https://github.com/dfrostar/neuralmind/issues/595)) ([62a38fa](https://github.com/dfrostar/neuralmind/commit/62a38fa878d590926480beeecf162be7b06ca239))
+
 ## [4.9.0](https://github.com/dfrostar/neuralmind/compare/v4.8.2...v4.9.0) (2026-10-06)
 
 

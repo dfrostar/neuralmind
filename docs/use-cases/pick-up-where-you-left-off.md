@@ -128,7 +128,7 @@ last session covered.
 | Fresh start | Yes |
 | After `/clear` | Yes |
 | Resumed (`--resume`, `--continue`) | No: the conversation is already there |
-| After compaction | This session's own record instead (v4.10.0+; see below) |
+| After compaction | This session's own record instead (v4.11.0+; see below) |
 | The previous session was last active more than 14 days ago | No (see `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`) |
 | No earlier session recorded in this project | No |
 
@@ -141,7 +141,7 @@ other than the new one, whichever agent ran it. Claude Code and Hermes write
 to the same `.neuralmind/recaps/`, so a Hermes session can start with what the
 last Claude Code session in the project did, and the other way round.
 
-### After compaction (v4.10.0+)
+### After compaction (v4.11.0+)
 
 When a long Claude Code session compacts, the model rewrites the conversation
 so far as a summary. Summaries paraphrase, and the details that go first are

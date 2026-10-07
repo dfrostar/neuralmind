@@ -55,6 +55,16 @@ path or `--unpin` (see [section 5](#5-which-project-a-session-belongs-to)).
 It doesn't re-enable a plugin you turned off with
 `hermes plugins disable neuralmind`: it says so and leaves it disabled.
 
+*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
+repository: `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
+Then Hermes owns the code (`hermes plugins update neuralmind` updates it), and
+the plugin runs the `neuralmind` command it finds on Hermes's PATH. Where
+Hermes's PATH doesn't include it (a gateway run as a service, Hermes Desktop),
+also run `neuralmind install-hermes-plugin`, which on a plugin Hermes installed
+writes only `config.json`. The plugin's
+[README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+lists what it reads, writes and sends.
+
 Start a new Hermes session, or restart the gateway if it's running, to load it.
 
 The build matters: the plugin serves only a project where `neuralmind build`
@@ -101,7 +111,7 @@ user's message and adds what comes back. It's the same block Claude Code's
 - **Associative recall:** the code nodes the synapse layer has learned go with
   the ones your message matches, ranked by spreading activation. Left out
   when the message matches the code poorly, such as "yes" or a question about
-  something else (v4.10.0+, `NEURALMIND_RECALL_MIN_SIMILARITY`).
+  something else (v4.11.0+, `NEURALMIND_RECALL_MIN_SIMILARITY`).
 - **Decision provenance:** recorded decisions (`Decision:` git trailers) whose
   subjects the message mentions.
 
@@ -293,18 +303,23 @@ from, or the gateway's service environment.
   and put their edited files' paths into its synapse store, from where
   `neuralmind memory publish` can carry them into the committed team-memory
   bundle.
-- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
-  calling its plugin loader and hook dispatch directly, not yet in a live
-  Hermes conversation. It relies on `pre_llm_call` accepting
-  `{"context": ...}`, which that version documents.
+- **Tested against Hermes v0.21.5** (a 0.21.5+5355 main-branch build), in
+  live `hermes chat` sessions and through its plugin loader and hook
+  dispatch, and `hermes plugins validate` passes. The manifest's
+  `requires_hermes: ">=0.21.5"` makes an older Hermes skip it. It relies on
+  `pre_llm_call` accepting `{"context": ...}`, which that version documents.
 - **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
-  re-run `neuralmind install-hermes-plugin` after upgrading.
+  re-run `neuralmind install-hermes-plugin` after upgrading. A plugin Hermes
+  installed is updated with `hermes plugins update neuralmind`.
 - **Not measured.** We haven't measured what the context changes in Hermes's
   answers.
 - **The interpreter is recorded at install.** The plugin runs NeuralMind with
   the Python that ran `install-hermes-plugin`, so NeuralMind doesn't have to be
   installed in Hermes's own environment. If you move or recreate that
-  environment, re-run the install; until you do, the plugin may add nothing.
+  environment, re-run the install; until you do, the plugin (v4.10.0+) runs
+  the `neuralmind` command on Hermes's PATH, if there is one. When it can't run
+  NeuralMind, finds one older than 4.9, or a call times out, it logs a warning
+  naming the fix: `hermes logs --level WARNING | grep -i neuralmind`.
 - **An edit made just before Hermes exits can be missed.** Recording runs on a
   background thread, which doesn't keep Hermes open.
 - **It goes to your model provider, and stays in Hermes's session history.**
@@ -321,9 +336,11 @@ from, or the gateway's service environment.
 neuralmind install-hermes-plugin --uninstall
 ```
 
-This disables the plugin in Hermes and removes its directory; if
-`plugins/neuralmind` is a symlink, it removes the link, never what it points
-to. Pass `--hermes-home` if you installed it into a home other than the
+*(v4.10.0+)* This runs `hermes plugins remove neuralmind`, which removes the
+plugin's directory and its entries in Hermes's `config.yaml`, so installing it again
+later turns it back on. If `plugins/neuralmind` is a symlink, it disables the
+plugin in Hermes and removes the link, never what it points to. Pass
+`--hermes-home` if you installed it into a home other than the
 default, or have switched Hermes profiles since. The project's session records
 stay in `.neuralmind/recaps/`; `neuralmind recap --clear` deletes them.
 

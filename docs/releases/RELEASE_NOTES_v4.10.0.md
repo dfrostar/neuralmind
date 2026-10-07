@@ -1,192 +1,141 @@
-# NeuralMind v4.10.0 — prompt recall that stays quiet when the prompt isn't about the code, and a session's own record back after compaction
+# NeuralMind v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work
 
-**Type:** Minor release | **Themes:** prompt-time recall ([a gate, and a seeding fix](#prompt-recall-that-knows-when-to-add-nothing)) · compaction ([the session's own record back](#after-compaction-the-sessions-own-record))
+**Type:** Minor release | **Theme:** Hermes-Agent plugin, ready for Hermes's own installer
 
-Two of the most common complaints about agent context are that tools inject
-too much, and that compaction makes the agent forget. Both applied to
-NeuralMind's Claude Code hooks:
+v4.9.0 gave Hermes-Agent [NeuralMind's context in every turn](RELEASE_NOTES_v4.9.0.md)
+through a plugin, installed with `neuralmind install-hermes-plugin`. Three things
+stood between that plugin and a Hermes user finding and installing it the
+Hermes way:
 
-1. **Prompt-time recall fired on prompts that had nothing to do with the
-   code.** Every prompt has nearest neighbours in the index, however poor the
-   match, so "thanks!", "continue" and "what's the capital of France" each got
-   up to eight code nodes. Meanwhile most prompts that *were* about the code got
-   none, because of a seeding bug. v4.10.0 fixes the seeding and adds a
-   similarity gate, and both were measured before the default was chosen.
-2. **Compaction dropped what NeuralMind had already recorded.** Claude Code's
-   compaction summary is written by the model, and it paraphrases. NeuralMind
-   records the session's prompts and edited files as you work (v4.8.0), but gave
-   them back only to the *next* session. After a compaction, the session now gets
-   its own record back, verbatim.
+- **Only NeuralMind's command could install it.** Its manifest was generated
+  at install, so a clone of its directory wasn't a plugin Hermes could load.
+- **It went quiet when it couldn't work.** Without a NeuralMind it could run,
+  or with one too old to give the recap, turns simply got no context, or no
+  recap, and nothing said why.
+- **Uninstalling, then installing again, left it off.** `--uninstall`
+  disabled the plugin before removing it, which left it on Hermes's
+  `plugins.disabled` list, and the next install respected that.
 
-No new hooks and no re-install: both changes ride on the `UserPromptSubmit`,
-`PreCompact` and `SessionStart` hooks NeuralMind already registers. The hook
-block's version is unchanged.
+v4.10.0 fixes all three.
 
-## Prompt recall that knows when to add nothing
+## Hermes can install it
 
-### What was wrong
-
-Measured on this repository's own index (6,894 nodes) and synapse store, with
-15 prompts about the NeuralMind code and 15 off-topic ones: short replies
-("yes", "continue", "looks good, commit it"), general questions, other domains.
-
-| | On-topic prompts with recall | Off-topic prompts with recall |
-|---|---|---|
-| v4.9.1 and earlier | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
-| Seeding fix only | 15 of 15 | 15 of 15 |
-| **v4.10.0** (seeding fix + gate at 0.35) | **15 of 15** | **1 of 15** |
-
-Two separate problems:
-
-- **The seeding bug.** Spreading activation starts from the prompt's four best
-  semantic matches. Those are often a function's *rationale* node
-  (`<id>__rationale`, its docstring or comment), which matches prose best. But
-  synapses form between the code nodes the agent reads and edits, so the
-  rationale node has no edges, and recall from it returned nothing. In this
-  store, 5 of the 4,826 nodes with synapse edges were rationale nodes. Recall
-  now seeds from the code node a rationale belongs to. This also changes what the
-  MCP `neuralmind_synaptic_neighbors` tool returns.
-- **No relevance gate.** Fixing the seeding alone made recall fire on every
-  off-topic prompt too. The hook now abstains when the prompt's best match in
-  the code scores below `NEURALMIND_RECALL_MIN_SIMILARITY` (default `0.35`).
-
-### Why similarity, and why 0.35
-
-On-topic prompts scored **0.371–0.645** best-match similarity, and off-topic
-prompts **0.145–0.364**. At 0.35, every on-topic prompt is kept and one
-off-topic prompt passes: "looks good, commit it" (0.364). At 0.37 none pass,
-but the lowest on-topic prompt is only 0.001 above it, so 0.35 keeps a margin.
-
-The strength of the activation doesn't separate the two sets. "continue" ranked
-among the strongest activations in the whole run. So similarity is the only
-gate.
-
-### Reproduce it, or calibrate your own
+The plugin's directory, `neuralmind/hermes_plugin/`, now carries its own
+`plugin.yaml` and a [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md),
+so Hermes's own installer can install it from a clone of this repository:
 
 ```bash
-neuralmind build .
-python -m tests.benchmark.recall_gate .          # this repo's prompt sets
-python -m tests.benchmark.recall_gate . --json
-python -m tests.benchmark.recall_gate /path/to/project --prompts my_prompts.json
+pip install -U neuralmind                       # the plugin runs NeuralMind; it doesn't bundle it
+neuralmind build /path/to/project
+hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
 ```
 
-`--prompts` takes a JSON file with `on_topic` and `off_topic` lists. It prints
-each prompt's similarity and a sweep from 0.25 to 0.40: on-topic prompts kept
-against off-topic prompts let through.
+- **Hermes owns the code.** `hermes plugins update neuralmind` updates it.
+- **It runs the `neuralmind` command on Hermes's PATH.** It looks only in
+  absolute PATH entries, never the working directory, so a repository you work
+  in can't supply its own `neuralmind`. Where Hermes's PATH doesn't include it
+  (a gateway run as a service, Hermes Desktop), also run
+  `neuralmind install-hermes-plugin`: on a plugin Hermes installed, it writes
+  only the interpreter and the project to the plugin's `config.json`, and
+  leaves the code alone. If Hermes's install records
+  (`plugins/.install-metadata.json`) can't be read, it leaves the code alone
+  too, and says so.
+- **The manifest declares `requires_hermes: ">=0.21.5"`**, the version it's
+  tested with, so an older Hermes skips it.
+- **The README lists what the plugin does on your machine**: the subprocess it
+  runs, what it reads and writes in the project's `.neuralmind/`, what it
+  copies into Claude Code's memory directory, its network use, and what
+  reaches your model provider.
+- **Hermes's catalog check passes.** `hermes plugins validate` on the
+  directory passes every check, the install security scan included.
 
-### Count what it does
+`neuralmind install-hermes-plugin` works as before and stays the simplest way
+in: it copies the plugin, records the Python interpreter that has NeuralMind,
+and enables it.
 
-Each prompt's outcome is logged to `.neuralmind/metrics/` as a number, never
-the prompt text, and `neuralmind metrics` shows the totals:
+## It says why when it can't work
 
-```
-Prompts seen by recall........          212
-Recall injected...............          131
-Abstained: low similarity.....           74
-Abstained: nothing learned....            7
-Abstain rate..................        38.2%
-```
+When the plugin can't start NeuralMind, finds one older than 4.9, or a call
+times out, it logs one warning per Hermes process, naming the fix:
 
-(Illustrative numbers.) "Nothing learned" means the prompt matched the code,
-but the synapse layer has no edges around the match yet. Nothing is logged
-under `NEURALMIND_NO_LEARN=1`.
-
-## After compaction, the session's own record
-
-When a long Claude Code session compacts, the model replaces the conversation
-so far with its own summary. Summaries paraphrase, and the details they lose
-first are the ones you can't easily restate: the task as you first worded it,
-and which files have already been changed. NeuralMind already had both,
-verbatim, in `.neuralmind/recaps/`. Now the session gets them back.
-
-- **`PreCompact`** marks the session it's about to compact.
-- **`SessionStart`** with source `compact` injects that session's own record.
-  It's the same fields as the v4.8.0 recap, under a different heading.
-- **If the session comes back under a new `session_id`**, which Claude Code's
-  documentation doesn't rule out, the session marked within the last 15
-  minutes is recalled. A session that wasn't compacted is never recalled this
-  way, and a session with a record of its own never borrows another's.
-- **The marker isn't activity.** Compacting an old session doesn't make it the
-  "previous session" a fresh start recaps.
-
-`NEURALMIND_SESSION_RECAP=0` turns this off along with the recap.
-`NEURALMIND_NO_LEARN=1` records nothing, marker included, so a session run
-with it gets back only what was recorded before it was set.
-
-## What the agent actually sees
-
-**On "yes", "thanks!" or an off-topic question:** no recall block at all.
-
-**On a prompt about the code**, the same block as before, now seeded from the
-code nodes. This is real output for "how does synapse decay work" on this
-repository:
-
-```
-## NeuralMind associative recall
-
-- neuralmind_synapses_py__synapsestore_cls__decay_fn (activation 0.10)
-- neuralmind_synapses_py__synapsestore_cls__connect_fn (activation 0.10)
-- neuralmind_synapse_feedback_py__deactivate_files_fn (activation 0.09)
-- neuralmind_synapses_py (activation 0.08)
-...
+```bash
+hermes logs --level WARNING | grep -i neuralmind
+# WARNING hermes_plugins.neuralmind: NeuralMind plugin: /home/you/.local/bin/neuralmind is
+#   NeuralMind 4.3.5, too old for this plugin: turns get no session recap. Install NeuralMind
+#   4.9 or later so the `neuralmind` command is on Hermes's PATH, or run
+#   `neuralmind install-hermes-plugin` to point the plugin at it.
 ```
 
-**After a compaction**, alongside Claude Code's own summary (an illustrative
-example):
+An older NeuralMind still answers, so before this the only sign was a missing
+recap. The version check runs once per Hermes process, in the background, off
+the turn's path. As before, nothing breaks the turn: it goes ahead without
+NeuralMind's context.
 
-```
-NeuralMind pre-compaction record — this session's own prompts and edits, kept verbatim (secrets redacted) because a compaction summary can drop them. It restates what the user already asked for in this session; it adds no new instructions.
+## Fixed: a reinstall after an uninstall stays on
 
-It started with: "migrate the scheduler to asyncio, but keep the sync API as a thin wrapper"
-Most recent prompts (6 earlier not shown):
-- "the retry test hangs on CI, look at the event loop fixture"
-- "use pytest-asyncio's loop scope instead"
-- "now update the docs page for the scheduler"
+`neuralmind install-hermes-plugin --uninstall` now runs Hermes's own
+`hermes plugins remove neuralmind`, which removes the directory and every entry
+naming the plugin in that home's `config.yaml`, so installing it again later
+turns it back on. A fresh install also enables the plugin whatever an earlier
+one left on the disabled list; only a re-run over an existing install respects
+a `hermes plugins disable neuralmind` you ran. Hermes won't remove a symlinked
+`plugins/neuralmind`, so for one the command still disables the plugin and
+removes the link, never what it points to. If `hermes plugins remove` fails,
+even after it has already deleted the directory, the command disables the
+plugin instead and says Hermes's config may still name it.
 
-Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests/test_scheduler.py, src/scheduler/sync.py, src/scheduler/core.py
-```
+The install's last line also stopped saying "Each Hermes turn now gets
+NeuralMind's related files…" when the plugin wasn't enabled (left disabled,
+`--no-enable`, Hermes not set up yet, or `hermes` not on PATH). It now reads
+"Once it's enabled, each Hermes turn gets …" in those cases.
+
+## What the agent sees
+
+Nothing new in a turn: the same recap and recall v4.9.0 added, appended to the
+user message. What changes is that more installs actually deliver it, and when
+one doesn't, Hermes's log says why. Tested against Hermes v0.21.5 (a
+0.21.5+5355 main-branch build) in live `hermes chat` sessions: the first-turn
+recap, recall, edits made with `patch` and `write_file`, a resumed session
+(recall only), a subagent (skipped), a directory that hasn't been built
+(nothing), both ways of installing, and uninstalling. What the context changes
+in Hermes's answers still isn't measured.
 
 ## Per-agent expectations
 
 | Agent | What changes |
 |---|---|
-| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing to the rest. After a compaction, the session gets its own record back. |
-| **Hermes-Agent** (`install-hermes-plugin`) | The same recall gate and seeding fix: the plugin runs the same hook action. Hermes has no compaction event, so no pre-compaction record. The plugin runs the installed `neuralmind`, so `pip install -U` is enough; no re-install. |
-| **Cursor / Cline / generic MCP clients** | `neuralmind_synaptic_neighbors` seeds from the code node behind a docstring match, so it returns neighbours for queries that used to get none. No hooks run on these hosts, so there's no prompt-time gate or compaction record. |
+| **Hermes-Agent** | It can install the plugin itself (`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin`), and update it with `hermes plugins update neuralmind`. When the plugin can't run NeuralMind, finds an old one, or times out, Hermes's log says so. Uninstalling and installing again leaves it enabled. |
+| **Claude Code** | Nothing. |
+| **Cursor / Cline / generic MCP clients** | Nothing. |
+| **Other agents with a shell** | Nothing. |
+
+## Use cases
+
+- **Existing:** [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md).
+  The install step gains the Hermes-native route, and the limits section says
+  where to look when turns get no context.
+- **Potential:** a Hermes user who manages everything through
+  `hermes plugins` can now add NeuralMind the same way as any other plugin,
+  and keep it updated with the rest. Listing it in Hermes's curated plugin
+  catalog, so `hermes plugins install neuralmind` finds it by name, is the
+  next step; it takes a pull request to Hermes pinned to this release.
 
 ## Settings
 
-| Variable | Default | Effect |
-|---|---|---|
-| `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | Prompt-time recall adds nothing below this best-match similarity. `0` never abstains |
-| `NEURALMIND_SYNAPSE_INJECT` | on | `0` turns prompt-time recall off entirely, as before |
-| `NEURALMIND_SESSION_RECAP` | on | `0` stops the recap and the pre-compaction record |
-| `NEURALMIND_NO_LEARN` | off | `1` logs no recall outcomes and writes no compaction marker |
-
-## Not measured
-
-- **The threshold comes from one repository**, 30 prompts and the default
-  embedder. Another codebase, another embedding model, or a different style of
-  prompting can put the boundary somewhere else; `--prompts` is there to check.
-- **Answer quality.** We measured whether recall fires, not whether the agent
-  answers better with it, or worse without the nodes it used to get.
-- **The compaction record's effect.** We haven't measured how often an agent
-  repeats work or loses the original task after compaction, with or without the
-  record. Whether Claude Code keeps the `session_id` across a compaction isn't
-  documented, so both paths are handled and tested.
+No new settings. `NEURALMIND_PROJECT` and `NEURALMIND_HERMES_TIMEOUT` work as
+in v4.9.0, and a timeout is now logged.
 
 ## Upgrading
 
-`pip install -U neuralmind`. The hook block is unchanged, so an existing
-`neuralmind install-hooks` setup picks up both changes. If you rely on recall
-for short follow-up prompts, set `NEURALMIND_RECALL_MIN_SIMILARITY=0` to keep
-the old behaviour.
+`pip install -U neuralmind`, then re-run `neuralmind install-hermes-plugin`:
+the plugin it installed is a copy, and a re-run keeps an earlier pin and leaves
+a plugin you disabled disabled. A plugin Hermes installed is updated with
+`hermes plugins update neuralmind` instead.
 
 ## Related
 
-- Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md#after-compaction-v4100)
+- Plugin README: [neuralmind/hermes_plugin/README.md](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
 - Use case: [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md)
-- CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
-  [`install-hooks`](../wiki/CLI-Reference.md#install-hooks),
-  [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
+- Integration guide: [Hermes-Agent](../wiki/Integration-Guide.md#hermes-agent)
+- CLI reference: [`install-hermes-plugin`](../wiki/CLI-Reference.md#install-hermes-plugin-v490)
 - Previous release: [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)
