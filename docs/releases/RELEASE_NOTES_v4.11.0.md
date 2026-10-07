@@ -128,7 +128,7 @@ what was recorded before it was set.
 
 ## What the agent actually sees
 
-**On "yes", "thanks!" or an off-topic question:** no recall block at all.
+**On "yes", "thanks!" or an off-topic question:** no recall block, as long as its best match scores below the cutoff. In the measurement, 14 of the 15 off-topic prompts did; "looks good, commit it" (0.364) still got one.
 
 **On a prompt about the code**, the same block as before, now seeded from the
 code nodes. This is real output for "how does synapse decay work" on this
@@ -163,7 +163,7 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 
 | Agent | What changes |
 |---|---|
-| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing to the rest. After a compaction, the session gets its own record back. |
+| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing when the best match scores below the cutoff (most off-topic prompts; 1 of 15 measured still got recall). After a compaction, the session gets its own record back. |
 | **Hermes-Agent** (`install-hermes-plugin`) | The same recall gate and seeding fix: the plugin runs the same hook action. Hermes has no compaction event, so no pre-compaction record. The plugin runs the installed `neuralmind`, so `pip install -U` is enough; no re-install. |
 | **Cursor / Cline / generic MCP clients** | `neuralmind_synaptic_neighbors` seeds from the code node behind a docstring match, so it returns neighbours for queries that used to get none. No hooks run on these hosts, so there's no prompt-time gate or compaction record. |
 
