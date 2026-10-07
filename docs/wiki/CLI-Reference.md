@@ -2166,7 +2166,8 @@ the session it compacts, so if the session comes back under a new
 `session_id`, the one marked in the last 15 minutes is recalled, if only one
 was; with two, neither is. Recalling it spends its marker, so the same session
 compacting again under another new id still gets its record. A session that
-wasn't compacted is never recalled this way. `NEURALMIND_SESSION_RECAP=0`
+wasn't compacted is never recalled this way, and under `NEURALMIND_NO_LEARN=1`
+(no marker written) there is no new-id fallback. `NEURALMIND_SESSION_RECAP=0`
 turns this off too.
 
 ```bash

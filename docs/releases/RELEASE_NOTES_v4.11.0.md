@@ -270,7 +270,9 @@ session gets them back.
 
 `NEURALMIND_SESSION_RECAP=0` turns this off along with the recap.
 `NEURALMIND_NO_LEARN=1` records nothing, marker included, so a session run
-with it gets back only what was recorded before it was set.
+with it gets back only what was recorded under its own id before it was set.
+It never falls back to a marked record under a new id: with its own marker
+missing, that record could be another session's.
 
 ## What the agent actually sees
 

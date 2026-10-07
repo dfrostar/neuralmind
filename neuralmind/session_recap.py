@@ -440,10 +440,13 @@ def compaction_recap(
     show.
 
     Recalling a marked record spends its marker (a ``recovered`` entry naming
-    the new id, unless recording is off), so when the same session compacts
-    again under yet another id within the window, only its newest marker
-    counts. The new id gets the same record again if SessionStart repeats
-    before its first prompt.
+    the new id), so when the same session compacts again under yet another id
+    within the window, only its newest marker counts. The new id gets the same
+    record again if SessionStart repeats before its first prompt.
+
+    With recording off (``NEURALMIND_NO_LEARN=1``) there is no new-id
+    fallback: this session's own PreCompact wrote no marker, so the one
+    marked record could be another session's.
     """
     try:
         directory = _recaps_dir(project_path)
@@ -455,6 +458,8 @@ def compaction_recap(
                 return ""
             record = _load(own)
             return render_compaction_recap(record) if record else ""
+        if not _recording_enabled():
+            return ""
         now = time.time() if now is None else now
         stem = _file_stem(session_id)
         marked = []
@@ -469,11 +474,10 @@ def compaction_recap(
         if len(marked) != 1:
             return ""
         path, record = marked[0]
-        if _recording_enabled():
-            try:
-                _write_entry(path, {"kind": "recovered", "by": stem, "ts": now}, create=False)
-            except OSError:
-                pass  # pruned meanwhile: the recap below still stands
+        try:
+            _write_entry(path, {"kind": "recovered", "by": stem, "ts": now}, create=False)
+        except OSError:
+            pass  # pruned meanwhile: the recap below still stands
         return render_compaction_recap(record)
     except Exception:
         return ""

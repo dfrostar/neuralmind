@@ -98,7 +98,8 @@ def measure(project: str, on_topic: list[str], off_topic: list[str]) -> dict:
                 {
                     "set": label,
                     "prompt": prompt,
-                    "similarity": round(result.similarity, 4),
+                    # Raw, as the hook compares it; rounded only when printed.
+                    "similarity": result.similarity,
                     "would_inject": result.count,
                 }
             )
