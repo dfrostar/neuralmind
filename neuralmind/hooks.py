@@ -680,12 +680,6 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         # normalize any runaway hub nodes — keeps retrieval balanced
         # across sessions.
         cwd = payload.get("cwd") or os.getcwd()
-        # Mark the session being compacted, so the SessionStart that follows
-        # can recall its record even if it arrives under a new session_id.
-        # Gated on its own (NEURALMIND_SESSION_RECAP, NEURALMIND_NO_LEARN).
-        from .session_recap import record_compaction
-
-        record_compaction(cwd, payload.get("session_id") or "")
         if _learning_disabled():
             return 0
         # Compaction drops earlier tool results from the context, so the
