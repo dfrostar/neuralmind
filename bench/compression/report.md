@@ -1,6 +1,6 @@
 # Tool-output compression benchmark
 
-Generated 2026-10-06 with NeuralMind 4.8.2 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
+Generated 2026-10-07 with NeuralMind 4.9.2 · tokenizer: tiktoken o200k_base · tool_response shapes: @anthropic-ai/claude-agent-sdk 0.3.283 sdk-tools.d.ts (Claude Code 2.1.283) · hook protocol per https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/tools-reference (read 2026-09-28).
 
 Reproduce: `python -m evals.compression.run --out bench/compression`. Method and caveats: [docs/benchmarks/compression.md](../../docs/benchmarks/compression.md).
 
@@ -75,7 +75,7 @@ Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claud
 | `find-files` (file listing) | content | 0 | PostToolUse | no | 395 | 395 (+0.0%) | 395 (+0.0%) | — | 395 | 100% |
 | `cat-source` (file dump) | content | 0 | PostToolUse | no | 458 | 458 (+0.0%) | 458 (+0.0%) | — | 1,734 | 13% |
 | `ls-long` (directory listing) | content | 0 | PostToolUse | no | 2,058 | 2,058 (+0.0%) | 2,058 (+0.0%) | — | 161 | 5% |
-| `pip-install-requirements` (install log (fresh environment)) | noisy-log | 0 | PostToolUse | no | 2,225 | 2,225 (+0.0%) | 351 (-84.2%), replaced | 100% | 343 | 100% |
+| `pip-install-from-file` (install log (fresh environment)) | noisy-log | 0 | PostToolUse | no | 2,225 | 2,225 (+0.0%) | 351 (-84.2%), replaced | 100% | 343 | 100% |
 | `pip-install-editable` (install log (editable, dependencies present)) | noisy-log | 0 | PostToolUse | no | 4,720 | 4,720 (+0.0%) | 164 (-96.5%), replaced | 100% | 150 | 67% |
 | `pip-install-satisfied` (install log (already installed)) | noisy-log | 0 | PostToolUse | no | 200 | 200 (+0.0%) | 126 (-37.0%), replaced | 100% | 203 | 100% |
 
