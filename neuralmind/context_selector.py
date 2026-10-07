@@ -382,6 +382,9 @@ class ContextSelector:
         # to the embedder instead of three.
         self._query_search_cache: dict[str, list[dict]] = {}
         self._query_search_max_n = 10
+        # L2 cluster summaries sorted by role, per (cluster, kinds asked);
+        # None until first used, and reset when the index changes.
+        self._role_summary_cache: dict[tuple[int, frozenset[str]], dict] | None = None
 
     # RRF constant — rank 60 contribution = 1/61 ≈ 0.016.  Lower values
     # weight the top positions more aggressively; 60 is the de-facto standard.
@@ -902,12 +905,14 @@ class ContextSelector:
         renders exactly what it did. The sort is stable, and the result is
         cached per cluster until the index changes.
         """
-        cache = getattr(self, "_role_summary_cache", None)
+        cache = self._role_summary_cache
         if cache is None:
-            cache = self._role_summary_cache = {}
+            cache = {}
+            self._role_summary_cache = cache
         key = (comm_id, asked)
-        if key in cache:
-            return cache[key]
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
         order = {l3_slots.SOURCE: 0, l3_slots.SUPPORT: 1, l3_slots.DOC: 2}
 
         def rank(node: dict) -> int:
