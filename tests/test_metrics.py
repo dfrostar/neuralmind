@@ -194,6 +194,20 @@ class TestMetricsCollector(unittest.TestCase):
         collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
         self.assertLessEqual(len(today.read_text().splitlines()), 1001)
 
+    def test_rotation_brings_a_file_of_large_records_under_the_cap(self) -> None:
+        collector = MetricsCollector(self.project, max_bytes=4000)
+        metrics = self.project / ".neuralmind" / "metrics"
+        metrics.mkdir(parents=True)
+        today = metrics / f"metrics_{time.strftime('%Y-%m-%d')}.jsonl"
+        big = json.dumps({"event": "query", "query": "x" * 1500, "ts": time.time()})
+        today.write_text("".join(f"{big}\n" for _ in range(10)))
+        collector.rotate()
+        self.assertLessEqual(today.stat().st_size, 2000)
+        # The newest whole records are the ones kept.
+        lines = today.read_text().splitlines()
+        self.assertTrue(lines)
+        self.assertTrue(all(json.loads(line)["query"] == "x" * 1500 for line in lines))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
