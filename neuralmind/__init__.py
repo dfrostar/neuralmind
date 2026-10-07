@@ -2,6 +2,9 @@ import logging
 import os
 import warnings
 
+# Disable ONNX Runtime telemetry before any backend can initialize it.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
+
 # Mute ChromaDB telemetry and Pydantic warnings.
 #
 # ChromaDB 0.6.x has a posthog signature mismatch that spams stderr with

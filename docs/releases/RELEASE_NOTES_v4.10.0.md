@@ -295,6 +295,20 @@ a plugin you disabled disabled. A plugin Hermes installed is updated with
 `hermes plugins update neuralmind` instead. `NEURALMIND_BASH_REPLACE` needs no
 hook reinstall: the registered `compress-bash` hook reads it on every call.
 
+## Privacy: ONNX Runtime telemetry
+
+NeuralMind runs its embedding model with ONNX Runtime, and ONNX Runtime has
+telemetry of its own. Its official builds turn it on by default, uploading
+usage events to Microsoft from Linux and macOS (version 1.30's privacy notes
+say so; we haven't checked when that started). So a NeuralMind process could
+send ONNX Runtime's telemetry even though NeuralMind itself sends none. From
+this release, importing NeuralMind sets `ORT_DISABLE_TELEMETRY=1`, ONNX
+Runtime's switch for turning that off, before the runtime starts. A test
+checks that the variable is set and that `onnxruntime` isn't loaded by the
+import itself. It overrides a value you set yourself. On Windows, ONNX Runtime
+writes trace events to ETW instead, which are recorded only when a Windows
+trace session is collecting them; the variable doesn't change that.
+
 ## Related
 
 - Plugin README: [neuralmind/hermes_plugin/README.md](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
