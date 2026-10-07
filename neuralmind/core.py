@@ -151,13 +151,16 @@ def _spread_with_aliases(
     neighbour's higher activation keeps those edges reachable without
     applying one semantic hit's energy twice.
     """
-    ranked = store.spread(list(seeds.items()), depth=depth, top_k=top_k)
     if not aliases:
-        return ranked
-    merged = dict(ranked)
-    for node_id, energy in store.spread(list(aliases.items()), depth=depth, top_k=top_k):
-        if node_id not in seeds and node_id not in aliases:
-            merged[node_id] = max(energy, merged.get(node_id, 0.0))
+        return store.spread(list(seeds.items()), depth=depth, top_k=top_k)
+    # Each spread can reach the other's seeds; neither is a neighbour.
+    merged: dict[str, float] = {}
+    for own, other in ((seeds, aliases), (aliases, seeds)):
+        for node_id, energy in store.spread(
+            list(own.items()), depth=depth, top_k=top_k + len(other)
+        ):
+            if node_id not in other:
+                merged[node_id] = max(energy, merged.get(node_id, 0.0))
     return sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
 
 
