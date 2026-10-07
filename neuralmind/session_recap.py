@@ -258,7 +258,7 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
     files: list[str] = []
     last_ts = 0.0
     compacted_ts = 0.0
-    recovered_ts = 0.0
+    marker_active = False
     recovered_by = ""
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -272,18 +272,20 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
             ts = float(entry.get("ts") or 0)
         except (ValueError, TypeError):  # JSONDecodeError is a ValueError
             continue
+        # Compaction entries go by the order they were appended, not their
+        # timestamps, which can tie on a coarse clock or step back; the
+        # timestamp only dates a marker for the expiry window.
         if entry.get("kind") == "compact":
             # A marker, not activity: it must not make an old session look
             # like the one the user was last working in.
-            compacted_ts = max(compacted_ts, ts)
+            compacted_ts, marker_active = ts, True
             continue
         if entry.get("kind") == "recovered":
-            # A session that came back under a new id took this record back
-            # (see compaction_recap). Not activity either.
-            if ts >= recovered_ts:
-                recovered_ts = ts
-                by = entry.get("by")
-                recovered_by = by if isinstance(by, str) else ""
+            # A session took this record back after its compaction (see
+            # compaction_recap), spending the marker. Not activity either.
+            marker_active = False
+            by = entry.get("by")
+            recovered_by = by if isinstance(by, str) else ""
             continue
         last_ts = max(last_ts, ts)
         if entry.get("kind") == "prompt" and isinstance(entry.get("text"), str):
@@ -295,7 +297,7 @@ def _load(path: Path, keep_empty: bool = False) -> dict | None:
             files.append(entry["path"])
     if not (prompts or files or keep_empty):
         return None
-    if recovered_ts >= compacted_ts:
+    if not marker_active:
         # No marker, or one already spent: a later compaction of the session
         # that took this record back must find only its own marker.
         compacted_ts = 0.0
@@ -514,7 +516,8 @@ def compaction_recap(
         marked = [
             (path, loaded)
             for path, loaded in records.values()
-            if now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS
+            # 0.0 means no live marker, never "marked at the epoch".
+            if loaded["compacted_ts"] and now - loaded["compacted_ts"] <= COMPACT_WINDOW_SECONDS
         ]
         if len(marked) != 1:
             return ""
