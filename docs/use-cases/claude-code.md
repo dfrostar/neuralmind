@@ -26,7 +26,7 @@ That gives the agent ~400 tokens of architecture/cluster context instead of 50K 
 
 With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.8.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
 
-**Every prompt about the code** also arrives with a short block naming the files it matches, with their symbols and line numbers, code in other files the synapse graph links to them, and matching docs *(v4.10.0+)*. That starts with the first prompt after `neuralmind build`, so it helps most in a repository you've just cloned. In a fresh index of [Click](https://github.com/pallets/click), "which files in this repo handle parsing command-line options?" arrives with:
+**Every prompt about the code** also arrives with a short block naming the files it matches, with their symbols and line numbers, code in other files the synapse graph links to them, and matching docs *(v4.11.0+)*. That starts with the first prompt after `neuralmind build`, so it helps most in a repository you've just cloned. In a fresh index of [Click](https://github.com/pallets/click), "which files in this repo handle parsing command-line options?" arrives with:
 
 ```
 ## NeuralMind associative recall
@@ -55,9 +55,33 @@ Returns ~800–1,100 tokens with the right clusters and search hits.
 neuralmind_skeleton(project_path=".", file_path="src/auth/handlers.py")
 ```
 
-Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.8% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
+Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.7% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
 
-**Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing.
+**Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output by default: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing. The one exception is opt-in and narrow: [trimming install logs](#trim-noisy-install-logs-opt-in-v4100).
+
+## Trim noisy install logs *(opt-in, v4.10.0+)*
+
+An agent setting up a project runs `pip install -r requirements.txt` or `pip install -e ".[dev]"` and gets dozens of `Collecting`, `Downloading` and `Requirement already satisfied` lines, when what it needs is the `Successfully installed …` line and any warnings. Turn on the replacement in the project's `.claude/settings.json`:
+
+```json
+{
+  "env": { "NEURALMIND_BASH_REPLACE": "1" }
+}
+```
+
+What Claude then sees for a fresh install, instead of 77 lines:
+
+```
+[neuralmind: 74 progress lines elided: Collecting ×24, Downloading ×48, progress bar ×2]
+Installing collected packages: urllib3, typing-extensions, pygments, …
+Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.4 … requests-2.32.3 rich-13.9.4 …
+[neuralmind: pip install progress lines elided where marked; every other line is verbatim. Full output: /path/to/project/.neuralmind/bash_outputs/33026abbedf96248.txt]
+```
+
+- **Only `pip install` and `neuralmind build`**, run on their own (`cd`, `source .venv/bin/activate` or variable assignments before them are fine). A pipe, a redirect or a second command (`pip install x && pytest`) leaves the output whole, and so does every other command: test runs, diffs, file dumps and search results are never touched.
+- **Only progress lines go.** Every other line is passed through verbatim, and a line that mentions an error, warning, failure or deprecation is never removed. A failed install fires `PostToolUseFailure`, which no hook can shrink, so a failure reaches Claude exactly as Claude Code delivers it.
+- **The rest is one Read away.** The full output (credentials redacted) is kept in its own file, and the result ends with its path. Asked about a line that was elided, Claude reads that file.
+- **Measured, gated, and small:** on the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md#the-opt-in-replacement-noisy-logs-only)'s five noisy logs it cuts 81.9% of the tokens (per call: mean −54.8%, from 0% for the `next build` log it leaves alone to −96.5%), with every must-keep line kept. CI fails the build if a replaced call keeps under 95% of them or if any other kind of output is replaced. Five commands from two tools is a small sample.
 
 ## What changes for you
 
@@ -68,7 +92,7 @@ Returns the function list, rationales, call graph, and cross-file edges. Across 
 | Every commit drifts the index | `post-commit` hook rebuilds incrementally |
 | An eleventh handler quietly skips the auth check the other ten share *(v3.2.0+)* | `pre-commit` drift guard flags it before the commit lands |
 | "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
-| The first question in a repo you just cloned starts with a search *(v4.10.0+)* | The prompt arrives with the files, symbols and line numbers it matches |
+| The first question in a repo you just cloned starts with a search *(v4.11.0+)* | The prompt arrives with the files, symbols and line numbers it matches |
 
 ## Predict the next file *(v0.11.0+)*
 
@@ -219,7 +243,7 @@ Claude Code; prefixing one command inside a session doesn't reach them.
 
 ## Expected savings
 
-NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 46–263× smaller than pasting every source file, at 95% mean gold-file recall.
+NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output by default, and the opt-in install-log trimming above is measured on its own ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 46–263× smaller than pasting every source file, at 95% mean gold-file recall.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

@@ -504,3 +504,21 @@ def test_recap_is_chosen_by_recorded_activity_not_mtime(tmp_path):
     )
     _age(recaps / "fresh.jsonl", 600)
     assert '"the session that really ran last"' in _start(tmp_path, "new")
+
+
+def test_compaction_under_a_new_id_with_two_marked_sessions_recalls_neither(tmp_path):
+    # Nothing links the new id to either marked session, so neither's prompts
+    # are injected as this session's own.
+    _prompt(tmp_path, "a", "session a's task")
+    _prompt(tmp_path, "b", "session b's task")
+    _compact(tmp_path, "a")
+    _compact(tmp_path, "b")
+    assert _start(tmp_path, "a-after", source="compact") == ""
+
+
+def test_compaction_header_says_prompts_are_clipped(tmp_path):
+    _prompt(tmp_path, "now", "x" * (session_recap.PROMPT_CHARS + 50))
+    _compact(tmp_path, "now")
+    recap = _start(tmp_path, "now", source="compact")
+    assert "verbatim" not in recap
+    assert f"up to {session_recap.PROMPT_CHARS} characters" in recap

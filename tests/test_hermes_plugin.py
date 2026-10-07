@@ -10,14 +10,22 @@ so the tests call them the same way. One round trip runs the real
 from __future__ import annotations
 
 import json
+import logging
+import os
+import re
+import shutil
 import sys
 import threading
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from neuralmind import hermes_install
 from neuralmind import hermes_plugin as plugin
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_SOURCE = Path(plugin.__file__).parent
 
 
 def _built(path: Path) -> Path:
@@ -34,6 +42,9 @@ def _isolate(monkeypatch, tmp_path):
     monkeypatch.setattr(plugin, "_config", dict)
     monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", {})
     monkeypatch.setattr(plugin, "_SUBAGENT_TASKS", {})
+    monkeypatch.setattr(plugin, "_WARNED", set())
+    # The once-per-process version check runs its own subprocess; tested below.
+    monkeypatch.setattr(plugin, "_version_checked", True)
     monkeypatch.chdir(tmp_path)
 
 
@@ -297,9 +308,9 @@ def test_install_writes_plugin_files(tmp_path):
     target = home / "plugins" / "neuralmind"
     assert result["path"] == target and result["built"] is True and result["enabled"] is None
     assert (target / "__init__.py").read_text() == Path(plugin.__file__).read_text()
-    manifest = (target / "plugin.yaml").read_text()
-    assert "name: neuralmind" in manifest
-    assert "  - pre_llm_call" in manifest and "  - post_tool_call" in manifest
+    # The committed manifest, the one Hermes reads when it installs from a clone.
+    assert (target / "plugin.yaml").read_text() == (PLUGIN_SOURCE / "plugin.yaml").read_text()
+    assert result["managed"] is False
     config = json.loads((target / "config.json").read_text())
     assert config == {"python": sys.executable, "project": str(project.resolve())}
 
@@ -580,6 +591,8 @@ def test_profile_home_is_passed_without_p_default(tmp_path, monkeypatch):
 def test_rerun_does_not_re_enable_a_disabled_plugin(tmp_path, monkeypatch):
     home = tmp_path / "hermes"
     home.mkdir()
+    hermes_install.install(None, home=home, enable=False)  # installed earlier …
+    # … and switched off since with `hermes plugins disable neuralmind`.
     (home / "config.yaml").write_text("plugins:\n  enabled: []\n  disabled:\n    - neuralmind\n")
     monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
 
@@ -744,3 +757,378 @@ def test_edit_recording_thread_is_not_a_daemon(tmp_path, monkeypatch, calls):
     monkeypatch.setattr(threading, "Thread", Recorder)
     plugin.on_post_tool_call(tool_name="write_file", args={"path": "a.py"}, session_id="s1")
     assert seen["daemon"] is False
+
+
+# --- uninstall, reinstall, and plugins Hermes installed ----------------------
+
+
+class FakeHermes:
+    """Records `hermes plugins <action> neuralmind`; `remove` deletes the plugin as Hermes does."""
+
+    def __init__(self, home: Path, fail: tuple[str, ...] = ()):
+        self.home, self.fail, self.actions = home, fail, []
+
+    def __call__(self, command, env, **kwargs):
+        action = command[command.index("plugins") + 1]
+        self.actions.append(action)
+        if action in self.fail:
+            return SimpleNamespace(returncode=1)
+        if action == "remove":
+            shutil.rmtree(self.home / "plugins" / "neuralmind")
+        return SimpleNamespace(returncode=0)
+
+
+def _hermes_home(tmp_path: Path) -> Path:
+    home = tmp_path / "hermes"
+    home.mkdir()
+    (home / "config.yaml").write_text("model: x\n")
+    return home
+
+
+def _with_hermes(monkeypatch, hermes) -> None:
+    monkeypatch.setattr(hermes_install.shutil, "which", lambda name: "/bin/hermes")
+    monkeypatch.setattr(hermes_install.subprocess, "run", hermes)
+
+
+def test_uninstall_removes_through_hermes_so_a_reinstall_is_enabled(tmp_path, monkeypatch):
+    home = _hermes_home(tmp_path)
+    hermes = FakeHermes(home)
+    _with_hermes(monkeypatch, hermes)
+    hermes_install.install(None, home=home)
+    result = hermes_install.uninstall(home)
+    assert result["removed"] is True and result["forgotten"] is True
+    # `hermes plugins remove` drops the plugin's config entries; `disable` would
+    # have left it on plugins.disabled, and a reinstall would have stayed off.
+    assert hermes.actions == ["enable", "remove"]
+    # A fresh install enables it even if an earlier uninstall left it disabled.
+    (home / "config.yaml").write_text("plugins:\n  enabled: []\n  disabled:\n    - neuralmind\n")
+    result = hermes_install.install(None, home=home)
+    assert result["enabled"] is True and result["disabled_by_user"] is False
+    assert hermes.actions[-1] == "enable"
+
+
+def test_uninstall_disables_when_hermes_cannot_remove(tmp_path, monkeypatch):
+    home = _hermes_home(tmp_path)
+    hermes_install.install(None, home=home, enable=False)
+    hermes = FakeHermes(home, fail=("remove",))
+    _with_hermes(monkeypatch, hermes)
+    result = hermes_install.uninstall(home)
+    assert hermes.actions == ["remove", "disable"]
+    assert result["forgotten"] is False and result["disabled"] is True
+    assert result["removed"] is True and not (home / "plugins" / "neuralmind").exists()
+
+
+def test_uninstall_reports_a_remove_that_failed_after_deleting_the_plugin(tmp_path, monkeypatch):
+    # Hermes deletes the plugin tree before its config bookkeeping, so `remove`
+    # can fail with the directory already gone; the config may still name it.
+    home = _hermes_home(tmp_path)
+    hermes_install.install(None, home=home, enable=False)
+    actions = []
+
+    def hermes(command, env, **kwargs):
+        action = command[command.index("plugins") + 1]
+        actions.append(action)
+        if action == "remove":
+            shutil.rmtree(home / "plugins" / "neuralmind")
+            return SimpleNamespace(returncode=1)
+        return SimpleNamespace(returncode=0)
+
+    _with_hermes(monkeypatch, hermes)
+    result = hermes_install.uninstall(home)
+    assert actions == ["remove", "disable"]
+    assert result["removed"] is True
+    assert result["forgotten"] is False and result["disabled"] is True
+
+
+def test_uninstall_of_a_symlink_disables_it_and_unlinks(tmp_path, monkeypatch):
+    # `hermes plugins remove` resolves the link and refuses a target outside
+    # its plugins directory, so the link is disabled in Hermes and unlinked here.
+    home = _hermes_home(tmp_path)
+    (home / "plugins").mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "keep.txt").write_text("x")
+    try:
+        (home / "plugins" / "neuralmind").symlink_to(elsewhere, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    hermes = FakeHermes(home)
+    _with_hermes(monkeypatch, hermes)
+    result = hermes_install.uninstall(home)
+    assert hermes.actions == ["disable"]
+    assert result["removed"] is True and result["disabled"] is True
+    assert not (home / "plugins" / "neuralmind").exists() and (elsewhere / "keep.txt").exists()
+
+
+def test_install_into_a_plugin_hermes_installed_writes_only_settings(tmp_path):
+    home = tmp_path / "hermes"
+    target = home / "plugins" / "neuralmind"
+    target.mkdir(parents=True)
+    (target / "__init__.py").write_text("# Hermes's pinned copy\n")
+    (home / "plugins" / ".install-metadata.json").write_text(
+        json.dumps({"neuralmind": {"source": "https://github.com/dfrostar/neuralmind.git"}})
+    )
+    project = _built(tmp_path / "proj")
+    result = hermes_install.install(str(project), home=home, enable=False)
+    assert result["managed"] is True
+    assert (target / "__init__.py").read_text() == "# Hermes's pinned copy\n"
+    assert not (target / "plugin.yaml").exists()
+    config = json.loads((target / "config.json").read_text())
+    assert config == {"python": sys.executable, "project": str(project.resolve())}
+
+
+@pytest.mark.parametrize("records", ["{not json", "[]"])
+def test_unreadable_install_records_leave_the_code_alone(tmp_path, capsys, monkeypatch, records):
+    # A malformed record file is no evidence of a manual install: Hermes may
+    # own this checkout, so only the settings are written.
+    from neuralmind.cli import main
+
+    home = tmp_path / "hermes"
+    target = home / "plugins" / "neuralmind"
+    target.mkdir(parents=True)
+    (target / "__init__.py").write_text("# Hermes's pinned copy\n")
+    (home / "plugins" / ".install-metadata.json").write_text(records)
+    assert hermes_install.managed_by_hermes(home) is None
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["neuralmind", "install-hermes-plugin", "--hermes-home", str(home), "--no-enable"],
+    )
+    main()
+    assert (target / "__init__.py").read_text() == "# Hermes's pinned copy\n"
+    assert not (target / "plugin.yaml").exists() and (target / "config.json").is_file()
+    assert "Couldn't read Hermes's install records" in capsys.readouterr().out
+
+
+def test_absent_install_records_mean_a_manual_install(tmp_path):
+    home = tmp_path / "hermes"
+    (home / "plugins").mkdir(parents=True)
+    assert hermes_install.managed_by_hermes(home) is False
+    (home / "plugins" / ".install-metadata.json").write_text(json.dumps({"other": {}}))
+    assert hermes_install.managed_by_hermes(home) is False
+
+
+def test_cli_says_turns_get_context_only_once_enabled(tmp_path, capsys, monkeypatch):
+    from neuralmind.cli import main
+
+    home = _hermes_home(tmp_path)
+    hermes_install.install(None, home=home, enable=False)
+    (home / "config.yaml").write_text("plugins:\n  enabled: []\n  disabled:\n    - neuralmind\n")
+    _with_hermes(monkeypatch, FakeHermes(home, fail=("enable",)))
+    monkeypatch.setattr(
+        sys, "argv", ["neuralmind", "install-hermes-plugin", "--hermes-home", str(home)]
+    )
+    main()
+    out = capsys.readouterr().out
+    assert "Left disabled" in out
+    assert "now gets" not in out and "Once it's enabled, each Hermes turn gets" in out
+
+
+def test_cli_uninstall_reports_that_hermes_forgot_it(tmp_path, capsys, monkeypatch):
+    from neuralmind.cli import main
+
+    home = _hermes_home(tmp_path)
+    hermes_install.install(None, home=home, enable=False)
+    _with_hermes(monkeypatch, FakeHermes(home))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["neuralmind", "install-hermes-plugin", "--uninstall", "--hermes-home", str(home)],
+    )
+    main()
+    out = capsys.readouterr().out
+    assert "Removed the NeuralMind plugin" in out and "no longer lists it" in out
+
+
+# --- the committed manifest Hermes installs from -----------------------------
+
+
+def _manifest() -> dict:
+    import yaml
+
+    return yaml.safe_load((PLUGIN_SOURCE / "plugin.yaml").read_text(encoding="utf-8"))
+
+
+def test_manifest_declares_exactly_the_hooks_register_wires():
+    # Hermes's catalog validation fails an entry whose declared capabilities
+    # don't match what register() wires.
+    registered = []
+
+    class Ctx:
+        def register_hook(self, name, callback):
+            registered.append(name)
+
+    plugin.register(Ctx())
+    manifest = _manifest()
+    assert manifest["name"] == hermes_install.PLUGIN_NAME
+    assert sorted(manifest["provides_hooks"]) == sorted(registered)
+    assert not manifest.get("provides_tools")
+
+
+def test_manifest_requires_a_semver_hermes_floor():
+    # Hermes skips a plugin whose floor is newer than it, and the catalog
+    # rejects a CalVer date there.
+    assert re.fullmatch(r">=\d+\.\d+\.\d+", _manifest()["requires_hermes"])
+
+
+def test_manifest_version_tracks_the_release():
+    from neuralmind import __version__
+
+    rel = "neuralmind/hermes_plugin/plugin.yaml"
+    lines = (REPO_ROOT / rel).read_text(encoding="utf-8").splitlines()
+    (version_line,) = [line for line in lines if line.startswith("version:")]
+    # release-please's generic updater bumps only an annotated line.
+    assert "x-release-please-version" in version_line
+    released = json.loads((REPO_ROOT / ".release-please-manifest.json").read_text())["."]
+    assert _manifest()["version"] == __version__ == released
+    config = json.loads((REPO_ROOT / "release-please-config.json").read_text())
+    assert rel in config["packages"]["."]["extra-files"]
+
+
+# --- finding NeuralMind --------------------------------------------------------
+
+
+def test_command_prefers_the_recorded_interpreter_then_path_then_hermes_python(monkeypatch):
+    monkeypatch.setattr(plugin, "_python", lambda: "/venv/bin/python")
+    monkeypatch.setattr(plugin, "_on_path", lambda name="neuralmind": "/opt/bin/neuralmind")
+    assert plugin._command("prompt-submit") == [
+        "/venv/bin/python",
+        "-m",
+        "neuralmind",
+        "_hook",
+        "prompt-submit",
+    ]
+    monkeypatch.setattr(plugin, "_python", lambda: None)
+    assert plugin._command("prompt-submit") == ["/opt/bin/neuralmind", "_hook", "prompt-submit"]
+    monkeypatch.setattr(plugin, "_on_path", lambda name="neuralmind": None)
+    assert plugin._command("prompt-submit")[:3] == [sys.executable, "-m", "neuralmind"]
+
+
+def _script(directory: Path) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    script = directory / ("neuralmind.exe" if sys.platform == "win32" else "neuralmind")
+    script.write_text("#!/bin/sh\n")
+    script.chmod(0o755)
+    return script
+
+
+def test_path_lookup_never_uses_the_working_directory(tmp_path, monkeypatch):
+    # A served repository could carry a `neuralmind` of its own, which
+    # shutil.which finds through an empty or relative PATH entry (and on
+    # Windows, in the working directory first).
+    repo = tmp_path / "repo"
+    _script(repo)
+    _script(repo / "bin")
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("PATH", os.pathsep.join(["", ".", "bin"]))
+    assert plugin._on_path() is None
+    installed = _script(tmp_path / "venv" / "bin")
+    monkeypatch.setenv("PATH", os.pathsep.join([".", str(installed.parent)]))
+    assert plugin._on_path() == str(installed)
+
+
+def test_real_round_trip_through_the_neuralmind_command_on_path(tmp_path, monkeypatch):
+    """As in a plugin Hermes installed: no recorded interpreter, `neuralmind` on PATH."""
+    bin_dir = Path(sys.executable).parent
+    script = bin_dir / ("neuralmind.exe" if sys.platform == "win32" else "neuralmind")
+    if not script.is_file():
+        pytest.skip("no neuralmind console script next to this interpreter")
+    _built(tmp_path)
+    monkeypatch.setattr(plugin, "_python", lambda: None)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    assert plugin._command("prompt-submit")[0] == str(script)
+    for var in ("NEURALMIND_SYNAPSE_INJECT", "NEURALMIND_SYNAPSE_EXPORT"):
+        monkeypatch.setenv(var, "0")
+    monkeypatch.setenv(plugin.TIMEOUT_ENV, "60")
+    plugin.on_pre_llm_call(session_id="h1", user_message="add retry logic", is_first_turn=True)
+    second = plugin.on_pre_llm_call(session_id="h2", user_message="go on", is_first_turn=True)
+    assert second is not None and '"add retry logic"' in second["context"]
+
+
+# --- telling the user when NeuralMind can't run -------------------------------
+
+
+def _plugin_warnings(caplog) -> list[str]:
+    return [r.getMessage() for r in caplog.records if r.name == plugin.logger.name]
+
+
+def test_neuralmind_that_cannot_be_found_is_logged_once(monkeypatch, caplog):
+    monkeypatch.setattr(plugin, "_command", lambda action: ["/nonexistent/neuralmind"])
+    with caplog.at_level(logging.WARNING, logger=plugin.logger.name):
+        assert plugin._run("prompt-submit", {}) == ""
+        assert plugin._run("session-start", {}) == ""
+    (message,) = _plugin_warnings(caplog)
+    assert "/nonexistent/neuralmind" in message and "install-hermes-plugin" in message
+
+
+def test_neuralmind_that_exits_with_an_error_is_logged_with_it(monkeypatch, caplog):
+    failing = [sys.executable, "-c", "import sys; sys.exit('No module named neuralmind')"]
+    monkeypatch.setattr(plugin, "_command", lambda action: failing)
+    with caplog.at_level(logging.WARNING, logger=plugin.logger.name):
+        assert plugin._run("prompt-submit", {}) == ""
+    (message,) = _plugin_warnings(caplog)
+    assert "No module named neuralmind" in message and "install-hermes-plugin" in message
+
+
+def test_a_timeout_is_logged_with_the_setting_to_raise(monkeypatch, caplog):
+    slow = [sys.executable, "-c", "import time; time.sleep(30)"]
+    monkeypatch.setattr(plugin, "_command", lambda action: slow)
+    monkeypatch.setenv(plugin.TIMEOUT_ENV, "0.5")
+    with caplog.at_level(logging.WARNING, logger=plugin.logger.name):
+        assert plugin._run("prompt-submit", {}) == ""
+    (message,) = _plugin_warnings(caplog)
+    assert "took longer than 0.5s" in message and plugin.TIMEOUT_ENV in message
+
+
+def _reports(version: str) -> list[str]:
+    # `<prefix> --version`: the -c script ignores the extra argument.
+    return [sys.executable, "-c", f"print('neuralmind {version}')"]
+
+
+def test_a_neuralmind_too_old_for_the_recap_is_logged(caplog):
+    with caplog.at_level(logging.WARNING, logger=plugin.logger.name):
+        plugin._check_version(_reports("4.3.5"))
+        plugin._check_version(_reports("4.9.0"))
+        plugin._check_version(_reports("5.0.1"))
+    (message,) = _plugin_warnings(caplog)
+    assert "NeuralMind 4.3.5" in message and "no session recap" in message
+
+
+def test_a_version_check_that_cannot_start_still_runs_the_hook(monkeypatch):
+    # Thread.start() raises when the process can't create another thread; the
+    # optional diagnostic must not cost the turn its context.
+    class NoThreads:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self):
+            raise RuntimeError("can't start new thread")
+
+    hook_output = {"hookSpecificOutput": {"additionalContext": "related files"}}
+    monkeypatch.setattr(plugin, "_version_checked", False)
+    monkeypatch.setattr(threading, "Thread", NoThreads)
+    monkeypatch.setattr(plugin, "_command", lambda action: ["/opt/bin/neuralmind", "_hook", action])
+    monkeypatch.setattr(
+        plugin.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=0, stdout=json.dumps(hook_output), stderr=""),
+    )
+    assert plugin._run("prompt-submit", {}) == "related files"
+
+
+def test_the_version_is_checked_once_per_process_in_the_background(monkeypatch):
+    started = []
+
+    class Recorder:
+        def __init__(self, target, args=(), daemon=None):
+            started.append((target, args, daemon))
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(plugin, "_version_checked", False)
+    monkeypatch.setattr(threading, "Thread", Recorder)
+    monkeypatch.setattr(plugin, "_command", lambda action: ["/opt/bin/neuralmind", "_hook", action])
+    plugin._run("session-start", {})
+    plugin._run("prompt-submit", {})
+    assert started == [(plugin._check_version, (["/opt/bin/neuralmind"],), True)]

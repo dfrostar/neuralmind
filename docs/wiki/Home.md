@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.10.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
+### v4.11.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
 Prompt-time recall used to add up to eight code nodes to almost any prompt,
 "thanks!" included, while missing most prompts that were about the code: their
@@ -55,10 +55,46 @@ ids instead; on fresh indexes it now names a file that answers the prompt for
 14 of 14 Click prompts and 14 of 15 held-out prompts about this repository
 (v4.9.2: 3 and 4), and `python -m tests.benchmark.prompt_recall` reproduces
 that. After Claude Code compacts a session, the session also gets its own
-first prompt, latest prompts and edited files back, verbatim, alongside the
-compaction summary. Whether these changes improve answers isn't measured.
+first prompt, latest prompts (as written, up to 200 characters each) and
+edited files back, alongside the compaction summary. Whether these changes
+improve answers isn't measured.
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [`NEURALMIND_RECALL_MIN_SIMILARITY`](CLI-Reference#environment-variables) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md).
+
+### v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work (October 2026)
+
+The Hermes plugin's directory now carries its own `plugin.yaml` (declaring
+`requires_hermes: ">=0.21.5"`) and a
+[README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+that lists what it reads, writes and sends. So Hermes can install it from a
+clone of this repository,
+`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`,
+and Hermes's catalog check, `hermes plugins validate`, passes. Installed that
+way, the plugin runs the `neuralmind` command on Hermes's PATH (absolute PATH
+entries only); `neuralmind install-hermes-plugin` on a plugin Hermes installed
+writes only the interpreter and the project. When the plugin can't start
+NeuralMind, finds one older than 4.9 (which answers without the session
+recap), or a call times out, it logs one warning per Hermes process naming the
+fix: `hermes logs --level WARNING | grep -i neuralmind`. Fixed:
+`install-hermes-plugin --uninstall` disabled the plugin before removing it,
+which left it on Hermes's disabled list, so installing it again left it off;
+it now runs `hermes plugins remove neuralmind`, which drops its entries from
+`config.yaml`. Tested against Hermes v0.21.5 in live `hermes chat` sessions.
+[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490).
+
+Also in v4.10.0, opt-in for Claude Code: NeuralMind's PostToolUse hooks inject
+nothing by default, because Claude Code adds `additionalContext` next to a tool
+result instead of replacing it. With `NEURALMIND_BASH_REPLACE=1`, the Bash
+hook replaces one kind of output through `updatedToolOutput`: `pip install`
+and `neuralmind build` run on their own reach Claude with their progress lines elided and every other line verbatim,
+and a line mentioning an error, warning, failure or deprecation is never
+removed. The full output, credentials redacted, is kept under
+`.neuralmind/bash_outputs/`, and the replaced result ends with its path. Every
+other command, failed commands, and Read and Grep results are never replaced.
+The [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)
+gates it in CI on keeping the pre-registered must-keep lines. Walkthrough:
+[Trim noisy install logs](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md).
 
 ### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)

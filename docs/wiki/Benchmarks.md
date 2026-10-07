@@ -234,7 +234,7 @@ Full table, interpretation, and a step-by-step recipe for the same
 before/after measurement on your own refactor:
 [Measure memory across a major refactor](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
 
-## Tool-output compression (measured, and withdrawn)
+## Tool-output compression (measured, withdrawn, and one opt-in)
 
 Through v4.4.0, `install-hooks` registered PostToolUse hooks that handed Claude
 compressed copies of `Read`, `Bash` and `Grep` output. The
@@ -249,10 +249,25 @@ protocol does.
 | Read (136 whole files) | 597,002 | +0.0% (never fired) | +0.0% |
 
 Claude Code adds a hook's `additionalContext` next to the tool result rather
-than replacing it, so the copies cost tokens. The hooks now inject nothing. The
-compressors themselves would cut 66–87% if they replaced a result, but they
-keep 0% of a file's source lines and 0% of a diff's changed lines. CI
-recomputes the Bash results on every PR (`tests/test_compression_benchmark.py`).
+than replacing it, so the copies cost tokens. From v4.5.0 the hooks inject
+nothing by default. The compressors themselves would cut 70–87% if they replaced a result,
+but they keep 0% of a file's source lines and 0% of a diff's changed lines.
+
+The one replacement that ships is opt-in (`NEURALMIND_BASH_REPLACE=1`, v4.10.0+)
+and narrow: it removes the progress lines of `pip install` and
+`neuralmind build` output through `updatedToolOutput`, and nothing else.
+
+| Bash calls (current corpus) | Calls | Replaced | Tokens, no hook | Tokens, opt-in |
+|---|---:|---:|---:|---:|
+| Noisy logs (installs, builds) | 5 | 4 | 8,253 | 1,490 (−81.9%) |
+| Content (tests, diagnostics, diffs, listings, files, searches) | 14 | 0 | 31,473 | 31,473 (+0.0%) |
+
+Per noisy-log call: mean −54.8%, from 0% (`next build`, not on the allowlist)
+to −96.5%. Every must-keep line of the replaced calls reaches Claude. CI
+recomputes the Bash results on every PR and fails if a replaced call keeps
+under 95% of its must-keep lines, if a content output, Read or Grep result is
+replaced, or if any call costs more tokens than with no hook
+(`tests/test_compression_benchmark.py`).
 
 ## What we *don't* claim
 

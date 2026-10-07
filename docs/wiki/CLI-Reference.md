@@ -2071,8 +2071,13 @@ atomic temp-file + rename writes). `neuralmind last` surfaces it. A call
 Claude Code reports as failed (a non-zero exit, other than exit 1 from
 `grep`, `find`, `diff` and a few others) fires `PostToolUseFailure`
 instead, so its output isn't cached. Despite
-its name, the hook no longer returns compressed output to Claude
+its name, the hook returns nothing to Claude by default
 ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)), so this is the output Claude already saw.
+With `NEURALMIND_BASH_REPLACE=1` it does replace an allowlisted noisy log
+(`pip install`, `neuralmind build`) with its progress lines elided; the
+replaced result names a file of its own under `.neuralmind/bash_outputs/`
+holding the full output, which a later Bash call can't overwrite the way it
+overwrites this single slot.
 
 ```bash
 neuralmind last [project_path] [--json]
@@ -2151,14 +2156,15 @@ files, most recent first. A resumed session doesn't get it: its conversation
 is already there. No model call is involved; `neuralmind recap` prints the
 same block.
 
-*(v4.10.0+)* After a compaction, `SessionStart` (source `compact`) gives the
+*(v4.11.0+)* After a compaction, `SessionStart` (source `compact`) gives the
 session its **own** record back instead, headed "NeuralMind pre-compaction
-record": the same fields, kept verbatim. Claude Code's compaction summary is
+record": the same fields, prompts as written up to 200 characters. Claude Code's compaction summary is
 written by the model and paraphrases, and the task as you first stated it and
 the exact paths already edited are what it tends to drop. `PreCompact` marks
 the session it compacts, so if the session comes back under a new
-`session_id`, the one marked in the last 15 minutes is recalled; a session
-that wasn't compacted is never recalled this way. `NEURALMIND_SESSION_RECAP=0`
+`session_id`, the one marked in the last 15 minutes is recalled, if only one
+was; with two, neither is. A session that wasn't compacted is never recalled
+this way. `NEURALMIND_SESSION_RECAP=0`
 turns this off too.
 
 ```bash
@@ -2223,10 +2229,10 @@ NeuralMind block, leaving any user hooks untouched):
 | Event | What runs | Purpose |
 |-------|-----------|---------|
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
-| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
-| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one; after a compaction, the session's own record *(v4.10.0)* |
-| `UserPromptSubmit` *(v0.4.0)* | Semantic search and one-hop spreading activation from the prompt; prompt record *(v4.8.0)* | Inject, as `additionalContext`, the files the prompt matches with their symbols and lines, code in other files the synapse graph links directly to them, and matching docs *(v4.10.0; before, ranked synapse neighbors as node ids)*, or nothing when the prompt matches the code poorly *(v4.10.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
-| `PreCompact` *(v0.4.0)* | `normalize_hubs()`; compaction marker *(v4.10.0)* | Prevent runaway hub nodes before context compaction; mark the session so the `SessionStart` after it gets its record back |
+| `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing by default ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); opt-in `NEURALMIND_BASH_REPLACE=1` *(v4.10.0)* trims the progress lines of `pip install` and `neuralmind build` output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
+| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one; after a compaction, the session's own record *(v4.11.0)* |
+| `UserPromptSubmit` *(v0.4.0)* | Semantic search and one-hop spreading activation from the prompt; prompt record *(v4.8.0)* | Inject, as `additionalContext`, the files the prompt matches with their symbols and lines, code in other files the synapse graph links directly to them, and matching docs *(v4.11.0; before, ranked synapse neighbors as node ids)*, or nothing when the prompt matches the code poorly *(v4.11.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
+| `PreCompact` *(v0.4.0)* | `normalize_hubs()`; compaction marker *(v4.11.0)* | Prevent runaway hub nodes before context compaction; mark the session so the `SessionStart` after it gets its record back |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 
@@ -2326,13 +2332,22 @@ a user plugin only once it's enabled, but only in a home Hermes has already
 set up (one with a `config.yaml`, `.env` or `state.db`); anywhere else it
 tells you to enable the plugin once Hermes is set up. Re-running updates the
 plugin in place and keeps the project pinned earlier unless you pass a new
-path or `--unpin`. It doesn't re-enable a plugin you turned off with
-`hermes plugins disable neuralmind`: it says so and leaves it disabled.
+path or `--unpin`. A re-run doesn't re-enable a plugin you turned off with
+`hermes plugins disable neuralmind`: it says so and leaves it disabled. *(v4.10.0+)* A
+fresh install (no `plugins/neuralmind` yet) enables it whatever an earlier one left
+on Hermes's disabled list.
+
+*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
+repository: `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
+For a plugin Hermes installed (it keeps an install record in
+`plugins/.install-metadata.json`), this command writes only `config.json` and
+prints `✓ NeuralMind plugin configured at …`: the code is Hermes's to update,
+with `hermes plugins update neuralmind`.
 
 | File | Contents |
 |------|----------|
-| `__init__.py` | The plugin: a stdlib-only shim that runs `python -m neuralmind _hook <action>` |
-| `plugin.yaml` | The manifest Hermes discovers it by; declares `pre_llm_call` and `post_tool_call` |
+| `__init__.py` | The plugin: a stdlib-only shim that runs `neuralmind _hook <action>` |
+| `plugin.yaml` | The manifest Hermes discovers it by, copied from `neuralmind/hermes_plugin/`; declares `pre_llm_call` and `post_tool_call`, and *(v4.10.0+)* `requires_hermes: ">=0.21.5"` |
 | `config.json` | The Python interpreter that ran the install, and the project, if one was given |
 
 It registers two Hermes hooks:
@@ -2357,7 +2372,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
-| `--uninstall` | False | Run `hermes plugins disable neuralmind` and remove the plugin directory; if `plugins/neuralmind` is a symlink, remove the link, never its target |
+| `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
@@ -2395,9 +2410,10 @@ neuralmind install-hermes-plugin /path/to/project
 # A Hermes home other than the default
 neuralmind install-hermes-plugin /path/to/project --hermes-home /opt/hermes
 
-# Disable and remove it
+# Remove it, and its entries in Hermes's config
 neuralmind install-hermes-plugin --uninstall
 # → ✓ Removed the NeuralMind plugin from /Users/you/.hermes/plugins/neuralmind
+# →   Hermes's config no longer lists it.
 ```
 
 Start a new Hermes session, or restart the gateway, to load the plugin. If the
@@ -2408,8 +2424,12 @@ writes the plugin but doesn't enable it: it prints
 `⚠ … has no Hermes config yet, so the plugin isn't enabled` and asks you to
 run `hermes plugins enable neuralmind` once Hermes is set up. If `hermes`
 isn't on `PATH`, or `hermes plugins enable neuralmind` fails, it says so and
-asks you to run that command yourself; `--uninstall` does the same for
-`hermes plugins disable neuralmind`. With no Hermes home it prints
+asks you to run that command yourself. *(v4.10.0+)* Whenever the plugin doesn't
+end up enabled, the last line reads `Once it's enabled, each Hermes turn gets …`.
+Without `hermes` on `PATH`, `--uninstall` still removes the plugin directory
+and says that `config.yaml` still names the plugin; if
+`hermes plugins remove neuralmind` fails, it disables the plugin instead and
+says so. With no Hermes home it prints
 `✗ No Hermes home at …` and exits `1`. It won't write through a symlinked
 `plugins/neuralmind`: it prints `✗ … is a symlink; remove it, then install again.`
 and exits `1`. `--uninstall` removes such a link, never its target.
@@ -2452,9 +2472,11 @@ earlier pin; `--unpin` clears it.
 #### Notes
 
 - **Same behavior and switches as the hooks.** Each action runs
-  `python -m neuralmind _hook <action>` with the payload Claude Code would
-  send, using the interpreter recorded in `config.json`, with Hermes's own
-  Python settings (`PYTHONPATH`, `VIRTUAL_ENV` …) left out of its environment.
+  `neuralmind _hook <action>` with the payload Claude Code would send: through
+  the interpreter recorded in `config.json`, else *(v4.10.0+)* the `neuralmind`
+  command on Hermes's PATH (absolute PATH entries only, so a repository can't supply its
+  own), else Hermes's own Python. Hermes's own Python settings (`PYTHONPATH`,
+  `VIRTUAL_ENV` …) are left out of its environment.
   NeuralMind doesn't have to be installed in Hermes's environment, and
   `NEURALMIND_BYPASS`, `NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP`
   and the rest apply as they do under Claude Code, set in the environment
@@ -2467,6 +2489,10 @@ earlier pin; `--unpin` clears it.
   `NEURALMIND_HERMES_TIMEOUT` below Hermes's `plugins.hook_callback_timeout`
   (default 30 s): if the plugin runs past it, Hermes drops the whole block and
   skips the plugin's per-turn hook for the next 60 seconds.
+- **Says why in Hermes's log** *(v4.10.0+)*. When it can't start NeuralMind, finds one older
+  than 4.9 (which answers without the recap), or a call times out, the plugin
+  logs one warning per Hermes process naming the fix:
+  `hermes logs --level WARNING | grep -i neuralmind`.
 - **Subagents and cron jobs are skipped.** A subagent's message is written by
   its parent agent, and a cron job (Hermes's `cron` platform) runs on a
   schedule. For both, the prompt is neither recorded nor answered with recall,
@@ -2474,13 +2500,18 @@ earlier pin; `--unpin` clears it.
 - **One record for both agents.** Hermes and Claude Code write to the same
   `.neuralmind/recaps/`, so a Hermes session can start with what the last
   Claude Code session in the project did, and the other way round.
-- **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
-  re-run `neuralmind install-hermes-plugin` after upgrading.
-- **Tested against a Hermes v0.21.5 main-branch build** (0.21.5+5355), by
-  calling its plugin loader and hook dispatch directly, not yet in a live
-  Hermes conversation. It relies on `pre_llm_call` accepting
-  `{"context": ...}`, which that version documents. What the context changes
-  in Hermes's answers isn't measured.
+- **Installed by this command, the plugin is a copy.** `pip install -U
+  neuralmind` doesn't update it; re-run `neuralmind install-hermes-plugin`
+  after upgrading. Installed by Hermes, `hermes plugins update neuralmind`
+  updates it.
+- **Tested against Hermes v0.21.5** (a 0.21.5+5355 main-branch build), in live
+  `hermes chat` sessions and through its plugin loader and hook dispatch, and
+  `hermes plugins validate` passes. Hermes older than the manifest's
+  `requires_hermes: ">=0.21.5"` skips it. It relies on `pre_llm_call`
+  accepting `{"context": ...}`, which that version documents. What the
+  context changes in Hermes's answers isn't measured.
+- The plugin's own [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+  lists what it reads, writes and sends.
 - The MCP server and the Hermes skill, which the agent calls itself, are
   covered in [Integration Guide: Hermes-Agent](Integration-Guide.md#hermes-agent).
 
@@ -3785,11 +3816,11 @@ renewed — issue a new one.
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
-| `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
+| `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`) and from the full outputs `NEURALMIND_BASH_REPLACE` keeps (`.neuralmind/bash_outputs/`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
 | `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
-| `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable prompt-time recall in the `UserPromptSubmit` hook (and the Hermes plugin's `pre_llm_call`): the files a prompt matches and the code linked to them *(v4.10.0; before, spreading-activation neighbors)* |
-| `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.10.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
+| `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable prompt-time recall in the `UserPromptSubmit` hook (and the Hermes plugin's `pre_llm_call`): the files a prompt matches and the code linked to them *(v4.11.0; before, spreading-activation neighbors)* |
+| `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.11.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.44.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
@@ -3804,8 +3835,9 @@ renewed — issue a new one.
 | `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
 | `NEURALMIND_ACTOR_EMAIL` | unset | Who `neuralmind team` commands act as when `--admin` is omitted (unset: `unknown`, which no admin list matches), and *(v4.6.0+)* the actor recorded for team-memory audit events (publish, import, review); for those, unset falls back to the repository's `git config user.email`, then the OS user. `NEURALMIND_ACTOR` is an accepted alias. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
-| `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
+| `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. It also turns off `NEURALMIND_BASH_REPLACE`, which never trims an output it has nowhere to keep whole. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
+| `NEURALMIND_BASH_REPLACE` | unset | *(v4.10.0+)* Set to `1` to let the `Bash` PostToolUse hook replace the output of an allowlisted noisy log with its progress lines elided, via `updatedToolOutput`. The allowlist is `pip install` (also `python -m pip install`) and `neuralmind build`, run on their own (after `cd`, `source` or variable assignments at most; any pipe, redirect or second command disqualifies the line). Each run of elided lines becomes one `[neuralmind: N progress lines elided: …]` marker; every other line, and any line mentioning an error, warning, failure or deprecation, reaches Claude as printed. The full output, credentials redacted, is kept in `.neuralmind/bash_outputs/` (newest 20), and the replaced result ends with its path. Other commands, failed commands, and Read and Grep results are never replaced. Measured, with its retention gates, in the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md). Hooks inherit Claude Code's environment, so set it in `.claude/settings.json` (`"env": {"NEURALMIND_BASH_REPLACE": "1"}`) or before launching `claude`. |
 | `NEURALMIND_BASH_SMALL` | `500` | *(v0.10.0+)* Threshold below which `compress_bash()` passes failing output through verbatim. Python API only: the hooks no longer compress tool output. |
 | `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which `compress_bash()` compresses successful output. Python API only: the hooks no longer compress tool output. |
 | `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines `compress_bash()` always keeps verbatim. Python API only: the hooks no longer compress tool output. |

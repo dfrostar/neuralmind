@@ -1,353 +1,286 @@
-# NeuralMind v4.10.0 — prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction
+# NeuralMind v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work
 
-**Type:** Minor release | **Themes:** prompt-time recall ([a gate, and a seeding fix](#prompt-recall-that-knows-when-to-add-nothing); [files and symbols, from the first turn](#prompt-recall-names-files-from-the-first-turn)) · compaction ([the session's own record back](#after-compaction-the-sessions-own-record))
+**Type:** Minor release | **Theme:** Hermes-Agent plugin, ready for Hermes's own installer; and, for Claude Code, an opt-in that trims noisy install logs
 
-Two of the most common complaints about agent context are that tools inject
-too much, and that compaction makes the agent forget. Both applied to
-NeuralMind's Claude Code hooks, and so did a third, that what does get
-injected isn't what the agent needed:
+v4.9.0 gave Hermes-Agent [NeuralMind's context in every turn](RELEASE_NOTES_v4.9.0.md)
+through a plugin, installed with `neuralmind install-hermes-plugin`. Three things
+stood between that plugin and a Hermes user finding and installing it the
+Hermes way:
 
-1. **Prompt-time recall fired on prompts that had nothing to do with the
-   code.** Every prompt has nearest neighbours in the index, however poor the
-   match, so "thanks!", "continue" and "what's the capital of France" each got
-   up to eight code nodes. Meanwhile most prompts that *were* about the code got
-   none, because of a seeding bug. v4.10.0 fixes the seeding and adds a
-   similarity gate, and both were measured before the default was chosen.
-2. **Compaction dropped what NeuralMind had already recorded.** Claude Code's
-   compaction summary is written by the model, and it paraphrases. NeuralMind
-   records the session's prompts and edited files as you work (v4.8.0), but gave
-   them back only to the *next* session. After a compaction, the session now gets
-   its own record back, verbatim.
-3. **On a freshly built project, prompt recall named documentation headings,
-   not code.** Asked which files in Click parse command-line options, it
-   listed eight `docs_*` node ids, six of them at activation 0.00. The block
-   now names the files and symbols the prompt matches, the code linked to them,
-   and matching docs, as paths. It does this for Hermes too, since the plugin
-   runs the same hook action.
+- **Only NeuralMind's command could install it.** Its manifest was generated
+  at install, so a clone of its directory wasn't a plugin Hermes could load.
+- **It went quiet when it couldn't work.** Without a NeuralMind it could run,
+  or with one too old to give the recap, turns simply got no context, or no
+  recap, and nothing said why.
+- **Uninstalling, then installing again, left it off.** `--uninstall`
+  disabled the plugin before removing it, which left it on Hermes's
+  `plugins.disabled` list, and the next install respected that.
 
-No new hooks and no re-install: both changes ride on the `UserPromptSubmit`,
-`PreCompact` and `SessionStart` hooks NeuralMind already registers. The hook
-block's version is unchanged.
+v4.10.0 fixes all three. It also adds an opt-in for Claude Code that trims the
+progress lines of `pip install` and `neuralmind build` output, with the full
+output one Read away: [noisy install logs, trimmed](#what-claude-sees).
 
-## Prompt recall that knows when to add nothing
+## Hermes can install it
 
-### What was wrong
-
-Measured on this repository's own index (6,894 nodes) and synapse store, with
-15 prompts about the NeuralMind code and 15 off-topic ones: short replies
-("yes", "continue", "looks good, commit it"), general questions, other domains.
-
-| | On-topic prompts with recall | Off-topic prompts with recall |
-|---|---|---|
-| v4.9.2 and earlier | 5 of 15 | 10 of 15 (9 of them got all 8 nodes) |
-| Seeding fix only | 15 of 15 | 15 of 15 |
-| **v4.10.0** (seeding fix + gate at 0.35) | **15 of 15** | **1 of 15** |
-
-Two separate problems:
-
-- **The seeding bug.** Spreading activation starts from the prompt's four best
-  semantic matches. Those are often a function's *rationale* node
-  (`<id>__rationale`, its docstring or comment), which matches prose best. But
-  synapses form between the code nodes the agent reads and edits, so the
-  rationale node has no edges, and recall from it returned nothing. In this
-  store, 5 of the 4,826 nodes with synapse edges were rationale nodes. Recall
-  now seeds from the code node a rationale belongs to. This also changes what the
-  MCP `neuralmind_synaptic_neighbors` tool returns.
-- **No relevance gate.** Fixing the seeding alone made recall fire on every
-  off-topic prompt too. The hook now abstains when the prompt's best match in
-  the code scores below `NEURALMIND_RECALL_MIN_SIMILARITY` (default `0.35`).
-
-### Why similarity, and why 0.35
-
-On-topic prompts scored **0.371–0.645** best-match similarity, and off-topic
-prompts **0.145–0.364**. At 0.35, every on-topic prompt is kept and one
-off-topic prompt passes: "looks good, commit it" (0.364). At 0.37 none pass,
-but the lowest on-topic prompt is only 0.001 above it, so 0.35 keeps a margin.
-
-The strength of the activation doesn't separate the two sets. "continue" ranked
-among the strongest activations in the whole run. So similarity is the only
-gate.
-
-### Reproduce it, or calibrate your own
+The plugin's directory, `neuralmind/hermes_plugin/`, now carries its own
+`plugin.yaml` and a [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md),
+so Hermes's own installer can install it from a clone of this repository:
 
 ```bash
-neuralmind build .
-python -m tests.benchmark.recall_gate .          # this repo's prompt sets
-python -m tests.benchmark.recall_gate . --json
-python -m tests.benchmark.recall_gate /path/to/project --prompts my_prompts.json
+pip install -U neuralmind                       # the plugin runs NeuralMind; it doesn't bundle it
+neuralmind build /path/to/project
+hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
 ```
 
-`--prompts` takes a JSON file with `on_topic` and `off_topic` lists. It prints
-each prompt's similarity and a sweep from 0.25 to 0.40: on-topic prompts kept
-against off-topic prompts let through.
+- **Hermes owns the code.** `hermes plugins update neuralmind` updates it.
+- **It runs the `neuralmind` command on Hermes's PATH.** It looks only in
+  absolute PATH entries, never the working directory, so a repository you work
+  in can't supply its own `neuralmind`. Where Hermes's PATH doesn't include it
+  (a gateway run as a service, Hermes Desktop), also run
+  `neuralmind install-hermes-plugin`: on a plugin Hermes installed, it writes
+  only the interpreter and the project to the plugin's `config.json`, and
+  leaves the code alone. If Hermes's install records
+  (`plugins/.install-metadata.json`) can't be read, it leaves the code alone
+  too, and says so.
+- **The manifest declares `requires_hermes: ">=0.21.5"`**, the version it's
+  tested with, so an older Hermes skips it.
+- **The README lists what the plugin does on your machine**: the subprocess it
+  runs, what it reads and writes in the project's `.neuralmind/`, what it
+  copies into Claude Code's memory directory, its network use, and what
+  reaches your model provider.
+- **Hermes's catalog check passes.** `hermes plugins validate` on the
+  directory passes every check, the install security scan included.
 
-### Count what it does
+`neuralmind install-hermes-plugin` works as before and stays the simplest way
+in: it copies the plugin, records the Python interpreter that has NeuralMind,
+and enables it.
 
-Each prompt's outcome is logged to `.neuralmind/metrics/` as a number, never
-the prompt text, and `neuralmind metrics` shows the totals:
+## It says why when it can't work
 
-```
-Prompts seen by recall........          212
-Recall injected...............          131
-Abstained: low similarity.....           81
-Abstained: nothing to name....            0
-Abstain rate..................        38.2%
-```
+When the plugin can't start NeuralMind, finds one older than 4.9, or a call
+times out, it logs one warning per Hermes process, naming the fix:
 
-(Illustrative numbers.) "Nothing to name" means the prompt matched well
-enough, but none of its matches belongs to a file. Since the block names the
-matches themselves ([below](#prompt-recall-names-files-from-the-first-turn)),
-that's rare. Nothing is logged under `NEURALMIND_NO_LEARN=1`.
-
-## Prompt recall names files, from the first turn
-
-### What was wrong
-
-`neuralmind build` doesn't leave the synapse graph empty: it seeds it with the
-code's structural edges (calls, imports, inheritance) and links each doc
-heading to its page. On [Click](https://github.com/pallets/click) (2,801 nodes,
-4,635 seeded edges), "which files in this repo handle parsing command-line
-options?" got this from v4.9.2:
-
-```
-## NeuralMind associative recall
-
-- docs_parameters_md (activation 0.05)
-- docs_arguments_md (activation 0.05)
-- docs_parameters_md__h3 (activation 0.00)
-- docs_parameters_md__h20 (activation 0.00)
-- docs_parameters_md__h32 (activation 0.00)
-- docs_arguments_md__h3 (activation 0.00)
-- docs_arguments_md__h24 (activation 0.00)
-- docs_arguments_md__h64 (activation 0.00)
+```bash
+hermes logs --level WARNING | grep -i neuralmind
+# WARNING hermes_plugins.neuralmind: NeuralMind plugin: /home/you/.local/bin/neuralmind is
+#   NeuralMind 4.3.5, too old for this plugin: turns get no session recap. Install NeuralMind
+#   4.9 or later so the `neuralmind` command is on Hermes's PATH, or run
+#   `neuralmind install-hermes-plugin` to point the plugin at it.
 ```
 
-`src/click/parser.py` and `src/click/core.py` are the answer. In a live Hermes
-turn, that block was all the model got, and it answered from what it already
-knew about Click. Three causes:
+An older NeuralMind still answers, so before this the only sign was a missing
+recap. The version check runs once per Hermes process, in the background, off
+the turn's path. As before, nothing breaks the turn: it goes ahead without
+NeuralMind's context.
 
-- **Recall listed only neighbours.** It searched for the prompt's four nearest
-  nodes and listed what spreading activation reached from them. Spreading
-  activation never returns its seeds, so the code that matched best was never
-  named. `core.py`'s `make_parser()` was the fifth-best match and
-  `parser.py`'s `_OptionParser` the ninth.
-- **Doc headings crowded out code.** Click's docs are thorough, so headings
-  were two of the four nearest nodes, and the only edges a heading has lead to
-  its page and the page's other headings.
-- **Node ids aren't paths.** `src_click_core_py__command_cls__make_parser_fn`
-  still has to be turned into a file to open.
+## Fixed: a reinstall after an uninstall stays on
 
-The seeding fix [above](#prompt-recall-that-knows-when-to-add-nothing) helps
-when a docstring matches best, but on its own it still named neither
-`parser.py` nor `core.py` for this prompt.
+`neuralmind install-hermes-plugin --uninstall` now runs Hermes's own
+`hermes plugins remove neuralmind`, which removes the directory and every entry
+naming the plugin in that home's `config.yaml`, so installing it again later
+turns it back on. A fresh install also enables the plugin whatever an earlier
+one left on the disabled list; only a re-run over an existing install respects
+a `hermes plugins disable neuralmind` you ran. Hermes won't remove a symlinked
+`plugins/neuralmind`, so for one the command still disables the plugin and
+removes the link, never what it points to. If `hermes plugins remove` fails,
+even after it has already deleted the directory, the command disables the
+plugin instead and says Hermes's config may still name it.
 
-### What the agent sees now
+The install's last line also stopped saying "Each Hermes turn now gets
+NeuralMind's related files…" when the plugin wasn't enabled (left disabled,
+`--no-enable`, Hermes not set up yet, or `hermes` not on PATH). It now reads
+"Once it's enabled, each Hermes turn gets …" in those cases.
 
-The same prompt, the same fresh index:
+## Opt-in for Claude Code: noisy install logs, trimmed (`NEURALMIND_BASH_REPLACE=1`)
 
+An opt-in mode in which a PostToolUse hook replaces tool output rather than
+adding to it, for one kind of output only: the progress lines of an install or
+an index build. It is off by default, and the
+[compression benchmark](../benchmarks/compression.md) gates it: every output it
+replaces has to keep the lines pre-registered as the ones a reader needs. With
+the variable unset, the hooks behave exactly as before: they inject nothing.
+
+The earlier hooks returned compressed text as `additionalContext`, which Claude
+Code adds next to the tool result, so they cost tokens. This one returns
+`updatedToolOutput`, which Claude Code uses *instead of* the result. Because a
+replacement can hide what an agent needs, it is narrow on purpose:
+
+- **An allowlist of commands, not a size threshold:** `pip install` (also
+  `python -m pip install`) and `neuralmind build`, run on their own. `cd`,
+  `source .venv/bin/activate` or variable assignments may come first. A pipe, a
+  redirect, `||`, a subshell or a second command (`pip install -e . && pytest`,
+  and anything after the install, even another `pip install`) leaves the
+  output whole, and so does every other command.
+- **Removes known noise, keeps everything else:** only lines matching that
+  tool's progress patterns go (pip's `Collecting`, `Downloading`, progress
+  bars, build steps, and `Requirement already satisfied` for a dependency).
+  Every other line reaches Claude as printed, and a line mentioning an error,
+  warning, failure or deprecation is never removed.
+- **The rest is one Read away:** the full output, credentials redacted, is kept in its
+  own file under `.neuralmind/bash_outputs/` (newest 20), and the replaced
+  result ends with that file's path. A later or parallel Bash call can't
+  overwrite it, unlike the single `neuralmind last` slot, which works as before.
+  If the file can't be written, nothing is replaced.
+- **Leaves Claude Code's own handling alone:** results Claude Code already moved
+  to a file (over about 30,000 characters), interrupted, backgrounded or image
+  results, and results trimming wouldn't shrink pass through untouched. The
+  replacement copies the Bash result and swaps only `stdout` and `stderr`, so it
+  keeps the tool's output shape. A failed command fires `PostToolUseFailure`,
+  which no hook can shrink, so a failure reaches Claude exactly as Claude Code
+  delivers it.
+
+### What Claude sees
+
+A fresh `pip install -r requirements.txt` reaches Claude as 77 lines, mostly
+`Collecting …`, `Downloading …` and progress bars. With the opt-in it is:
+
+```text
+[neuralmind: 74 progress lines elided: Collecting ×24, Downloading ×48, progress bar ×2]
+Installing collected packages: urllib3, typing-extensions, pygments, …
+Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.4 … requests-2.32.3 rich-13.9.4 …
+[neuralmind: pip install progress lines elided where marked; every other line is verbatim. Full output: /path/to/project/.neuralmind/bash_outputs/33026abbedf96248.txt]
 ```
-## NeuralMind associative recall
-
-Code matching this prompt:
-- src/click/core.py: make_parser() L1256, Parameter L2241
-- src/click/parser.py: _OptionParser L224, parse_args() L298
-- examples/repo/repo.py: cli() L44
-- src/click/_termui_impl.py: _less_uses_raw_mode() L520
-Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
-```
-
-- **Code matching this prompt:** up to 4 files, each with up to 3 matching
-  symbols and the line they start on. The hook reads the 16 nearest nodes, not
-  4, and a docstring match counts as its function. Files rank by the summed
-  scores of their matching symbols, so a file with several matches outranks
-  one stray match. Test files come after the code they test, unless the prompt
-  mentions tests, because they repeat the code's vocabulary and match about as
-  well.
-- **Connected to it in the synapse graph:** up to 3 files in other places that
-  the graph links directly to the best match in each listed file: structural
-  edges on a fresh index, co-edits as you work. A hub, like Click's `echo()`
-  that 305 nodes link to, is damped the way spreading activation already damps
-  a hub's outgoing energy, and a link carrying under 5% of the best match's
-  score is dropped. On the fresh Click index this part is empty
-  for this prompt. After five simulated sessions that edited `parser.py`
-  together with `shell_completion.py` and `testing.py`, it reads:
-
-  ```
-  Connected to it in the synapse graph:
-  - src/click/testing.py: ExceptionInfo L29, EchoingStdin L32
-  - src/click/shell_completion.py: shell_complete() L19, CompletionItem L67
-  ```
-
-  v4.9.2 and the seeding fix alone named neither file on that graph.
-- **Docs:** one line, up to 3 documentation files.
-
-A project without code nodes, like a book indexed with `ingest-content`, gets
-its matching documents as the main list. Everything else is as before: the
-heading, the similarity gate, `NEURALMIND_SYNAPSE_INJECT=0`, and the opt-in
-cohesion check (`NEURALMIND_SYNAPSE_OUTLIERS=1`), which now reads the linked
-nodes.
 
 ### Measured
 
-Each prompt has the files that answer it, chosen by reading the code before
-anything ran. A prompt counts as *named* when the block names any of them, and
-*first* when the first code file it lists is one of them. Fresh indexes, no
-usage; tokens are tiktoken `o200k_base`, per injected block.
+On the [compression benchmark](../benchmarks/compression.md), which drives the
+real hook with Claude Code-shaped payloads over a committed corpus of real
+command outputs:
 
-| | Click, 14 prompts: named | first | tokens, mean (max) | NeuralMind, 15 prompts: named | first | tokens, mean (max) |
-|---|---|---|---|---|---|---|
-| v4.9.2 | 3 | 3 | 124 (177) | 4 | 1 | 155 (167), 6 prompts got a block |
-| Seeding fix + gate only | 8 | 7 | 137 (183) | 14 | 6 | 153 (172) |
-| **v4.10.0** | **14** | **11** | **118 (160)** | **14** | **10** | **130 (175)** |
+| Bash calls | Calls | Replaced | Tokens, no hook | Tokens, opt-in | Change |
+|---|---:|---:|---:|---:|---:|
+| Noisy logs (installs, builds) | 5 | 4 | 8,253 | 1,490 | −81.9% |
+| Content (tests, diagnostics, diffs, listings, files, searches) | 14 | 0 | 31,473 | 31,473 | +0.0% |
 
-The Click set is the one the ranking was tuned on (summed scores, tests after
-code). The NeuralMind set, the on-topic prompts of `recall_gate` above at
-commit `edbc239c`, was held out. Its one miss, "fix the claims guard test for
-site numbers", has no test file among its 16 nearest nodes; its best match
-scores 0.375, just over the gate. On the simulated warm Click graph, v4.10.0
-named an answering file for 14 of 14 prompts, against 4 for v4.9.2 and 8 for
-the seeding fix alone.
+- **Per noisy-log call:** mean −54.8%, from −96.5% (`pip install -e ".[dev]"`
+  with its dependencies present) to 0% (`next build`, which isn't on the
+  allowlist).
+- **What survives:** every pre-registered must-keep line of the four replaced
+  calls reaches Claude. Read and Grep results are never replaced.
+- **Gated in CI:** `tests/test_compression_benchmark.py` recomputes the Bash
+  calls on every run. It fails if a replaced call keeps under 95% of its
+  must-keep lines, if any content output, Read or Grep result is replaced, if
+  any call costs more tokens than with no hook, or if a hook response isn't
+  valid JSON.
+- **Checked in Claude Code 2.1.287:** in a headless session, with the variable
+  set only in the project's `.claude/settings.json`, the model received the
+  trimmed result. Asked about an elided line, it read the kept file. These were
+  single runs, a mechanism check rather than a measurement.
+- **Limits:** five commands from two tools is a small corpus. When a task
+  does need an elided line, the follow-up read costs more than the original
+  output did, and the benchmark measures calls, not sessions.
 
-The hook isn't slower. Loading the index, searching and spreading takes a
-median 133–171 ms per prompt across these three indexes, against 132–190 ms
-for the seeding fix alone, on an M3 MacBook (two runs each). Linking one hop
-out instead of two keeps a prompt about a much co-edited file fast: on the
-warm graph the 90th percentile is 154–199 ms, against 278–372 ms. Two hops
-never named an answering file that one hop missed, and on the warm graph they
-lost one (13 of 14). The MCP `neuralmind_synaptic_neighbors` tool still
-spreads two hops and returns node ids.
+### Turning it on
 
-### Reproduce it
+Hooks inherit Claude Code's environment. Set the variable in
+`.claude/settings.json`, or in your shell before launching `claude`:
 
-```bash
-git clone https://github.com/pallets/click
-git -C click checkout 2247b35ea1c47c727d7a06e51fa280e12a863ff6
-neuralmind build click
-python -m tests.benchmark.prompt_recall click --prompts tests/benchmark/prompt_recall_click.json
-# The NeuralMind set, on a built checkout of the commit it names:
-python -m tests.benchmark.prompt_recall . --prompts tests/benchmark/prompt_recall_neuralmind.json -v
+```json
+{
+  "env": { "NEURALMIND_BASH_REPLACE": "1" }
+}
 ```
 
-It runs the hook's own function and reads both the new block and the old
-node-id lines, so `PYTHONPATH=<older checkout> python tests/benchmark/prompt_recall.py …`
-measures an earlier release. `-v` prints every block.
+No reinstall is needed: the registered `compress-bash` hook reads the variable
+on every call. `NEURALMIND_BYPASS=1` still switches off every hook action,
+this one included.
 
-## After compaction, the session's own record
+### Reading a kept output isn't a step between files
 
-When a long Claude Code session compacts, the model replaces the conversation
-so far with its own summary. Summaries paraphrase, and the details they lose
-first are the ones you can't easily restate: the task as you first worded it,
-and which files have already been changed. NeuralMind already had both,
-verbatim, in `.neuralmind/recaps/`. Now the session gets them back.
+The Read hook records which file the agent read after which, for the synapse
+layer. A Read of a file under `.neuralmind/`, such as a full output this opt-in
+kept, is NeuralMind's own state, not the codebase, so it's no longer recorded.
+(The hook reading Claude Code's nested `file.content` payload, which this work
+first fixed, shipped in v4.8.1.)
 
-- **`PreCompact`** marks the session it's about to compact.
-- **`SessionStart`** with source `compact` injects that session's own record.
-  It's the same fields as the v4.8.0 recap, under a different heading.
-- **If the session comes back under a new `session_id`**, which Claude Code's
-  documentation doesn't rule out, the session marked within the last 15
-  minutes is recalled. A session that wasn't compacted is never recalled this
-  way, and a session with a record of its own never borrows another's.
-- **The marker isn't activity.** Compacting an old session doesn't make it the
-  "previous session" a fresh start recaps.
+### New in the repo
 
-`NEURALMIND_SESSION_RECAP=0` turns this off along with the recap.
-`NEURALMIND_NO_LEARN=1` records nothing, marker included, so a session run
-with it gets back only what was recorded before it was set.
+- `evals/compression/run.py` measures a fourth arm, the hooks with the opt-in
+  set, on every Read, Bash and Grep call, and exits non-zero if a gate fails.
+- The Bash corpus gains three real `pip install` logs, and every entry now
+  pre-registers whether it is a `content` output or a `noisy-log`. The install
+  logs' must-keep lines were committed before the trimming code.
+- The benchmark drives the hooks from a directory with a `.neuralmind/`, as
+  they run in a built project. Since v4.8.1 they exit at once anywhere else,
+  so the as-shipped arm had been measuring that early exit (the total, +0.0%,
+  is the same either way). A new gate fails the run if the opt-in replaces
+  none of the noisy logs, which the retention gate alone would have passed.
+- `python -m evals.compression.capture_bash --only <ids>` captures new corpus
+  entries without re-capturing the rest, so existing figures don't move.
+- New `NEURALMIND_BASH_REPLACE` row in the
+  [CLI reference](../wiki/CLI-Reference.md#environment-variables).
 
-## What the agent actually sees
+### Not changed
 
-**On "yes", "thanks!" or an off-topic question:** no recall block at all.
+- The default: with the variable unset, the Read, Bash and Grep hooks inject
+  nothing, and the Bash hook still caches the latest successful output for
+  `neuralmind last`.
+- The compressor functions (`compress_bash`, `compress_read`,
+  `cap_search_results`, `offload_if_large`) stay in the Python API and are
+  still measured as a hypothetical arm. The opt-in doesn't use them: it removes
+  noise rather than keeping signal.
 
-**On a prompt about the code**, the files and symbols it matches, the code
-linked to them, and matching docs. This is real output for "how does synapse
-decay work" on a fresh index of this repository at `edbc239c`:
+## What the agent sees
 
-```
-## NeuralMind associative recall
+On Hermes, nothing new in a turn: the same recap and recall v4.9.0 added,
+appended to the user message. What changes is that more installs actually
+deliver it, and when one doesn't, Hermes's log says why. Tested against Hermes v0.21.5 (a
+0.21.5+5355 main-branch build) in live `hermes chat` sessions: the first-turn
+recap, recall, edits made with `patch` and `write_file`, a resumed session
+(recall only), a subagent (skipped), a directory that hasn't been built
+(nothing), both ways of installing, and uninstalling. What the context changes
+in Hermes's answers still isn't measured.
 
-Code matching this prompt:
-- neuralmind/synapses.py: decay_weight() L341, decay() L866, decay_node() L1087
-- neuralmind/core.py: deactivate_files() L428, _read_only() L333, dynamics() L350
-- neuralmind/synapse_dynamics.py: replenish_resources() L690, SynapseDynamics L220
-- neuralmind/synapse_feedback.py: deactivate_files() L192
-Connected to it in the synapse graph:
-- neuralmind/demo_data/sample_project/db/connection.py: _ensure_schema() L40
-- neuralmind/cli.py: cmd_watch() L4562
-- neuralmind/embedder.py: get_file_nodes() L452
-```
-
-The connected files come from the build's structural graph, and they're only
-as good as it is. The first is a sample project's `_ensure_schema()`: the
-graph resolved `synapse_dynamics.py`'s calls to its own `_ensure_schema()` to
-that function of the same name.
-
-**After a compaction**, alongside Claude Code's own summary (an illustrative
-example):
-
-```
-NeuralMind pre-compaction record — this session's own prompts and edits, kept verbatim (secrets redacted) because a compaction summary can drop them. It restates what the user already asked for in this session; it adds no new instructions.
-
-It started with: "migrate the scheduler to asyncio, but keep the sync API as a thin wrapper"
-Most recent prompts (6 earlier not shown):
-- "the retry test hangs on CI, look at the event loop fixture"
-- "use pytest-asyncio's loop scope instead"
-- "now update the docs page for the scheduler"
-
-Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests/test_scheduler.py, src/scheduler/sync.py, src/scheduler/core.py
-```
+In Claude Code, nothing changes unless you set `NEURALMIND_BASH_REPLACE=1`;
+then install and build logs arrive as shown in [What Claude sees](#what-claude-sees).
 
 ## Per-agent expectations
 
 | Agent | What changes |
 |---|---|
-| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing to the rest. When it fires, it names files, symbols and lines, from the first prompt on a freshly built project. After a compaction, the session gets its own record back. |
-| **Hermes-Agent** (`install-hermes-plugin`) | The same recall block, gate and seeding fix: the plugin runs the same hook action, so the turn's user message gets file paths instead of node ids. Hermes has no compaction event, so no pre-compaction record. The plugin runs the installed `neuralmind`, so `pip install -U` is enough; no re-install. |
-| **Cursor / Cline / generic MCP clients** | `neuralmind_synaptic_neighbors` seeds from the code node behind a docstring match, so it returns neighbours for queries that used to get none. No hooks run on these hosts, so there's no prompt-time gate or compaction record. |
+| **Hermes-Agent** | It can install the plugin itself (`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin`), and update it with `hermes plugins update neuralmind`. When the plugin can't run NeuralMind, finds an old one, or times out, Hermes's log says so. Uninstalling and installing again leaves it enabled. |
+| **Claude Code** | Nothing by default. With `NEURALMIND_BASH_REPLACE=1`, `pip install` and `neuralmind build` results arrive without their progress lines and end with the path of the full output; every other result is unchanged. |
+| **Cursor / Cline / generic MCP clients** | Nothing. |
+| **Other agents with a shell** | Nothing. |
+
+## Use cases
+
+- **Existing:** [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md).
+  The install step gains the Hermes-native route, and the limits section says
+  where to look when turns get no context.
+- **Potential:** a Hermes user who manages everything through
+  `hermes plugins` can now add NeuralMind the same way as any other plugin,
+  and keep it updated with the rest. Listing it in Hermes's curated plugin
+  catalog, so `hermes plugins install neuralmind` finds it by name, is the
+  next step; it takes a pull request to Hermes pinned to this release.
+- **Existing, Claude Code:** [Trim noisy install logs](../use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100).
+  With the opt-in, an install or build log reaches the agent without its
+  progress lines, and the full output is one Read away.
+- **Potential, Claude Code:** a setup or environment-repair session that runs many installs
+  keeps more of its context window for the work. The benchmark measures single
+  calls, not sessions, so what a whole session saves isn't measured.
 
 ## Settings
 
-| Variable | Default | Effect |
-|---|---|---|
-| `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | Prompt-time recall adds nothing below this best-match similarity. `0` never abstains |
-| `NEURALMIND_SYNAPSE_INJECT` | on | `0` turns prompt-time recall off entirely, as before |
-| `NEURALMIND_SESSION_RECAP` | on | `0` stops the recap and the pre-compaction record |
-| `NEURALMIND_NO_LEARN` | off | `1` logs no recall outcomes and writes no compaction marker |
-
-## Not measured
-
-- **The threshold comes from one repository**, 30 prompts and the default
-  embedder. Another codebase, another embedding model, or a different style of
-  prompting can put the boundary somewhere else; `--prompts` is there to check.
-- **Answer quality.** We measured whether recall fires, and whether the block
-  names the files that answer the prompt, not whether the agent answers better
-  with it.
-- **The file ranking comes from one tuning set.** Summed scores and tests after
-  code were chosen on 14 Click prompts and checked on 15 held-out prompts about
-  this repository. Test files are recognised by path (`tests/`, `test_*.py`,
-  `*_test.go`, `*.test.ts` and similar), and a prompt counts as about tests
-  when it says "test", "spec", "pytest" or "unittest".
-- **Learned links were checked on a simulated graph.** Five scripted
-  co-editing sessions on Click, not real use.
-- **The compaction record's effect.** We haven't measured how often an agent
-  repeats work or loses the original task after compaction, with or without the
-  record. Whether Claude Code keeps the `session_id` across a compaction isn't
-  documented, so both paths are handled and tested.
+One new setting, `NEURALMIND_BASH_REPLACE` (unset by default): see
+[Turning it on](#turning-it-on). `NEURALMIND_PROJECT` and
+`NEURALMIND_HERMES_TIMEOUT` work as in v4.9.0, and a timeout is now logged.
 
 ## Upgrading
 
-`pip install -U neuralmind`. The hook block is unchanged, so an existing
-`neuralmind install-hooks` setup picks up all three changes. The recall
-block's heading is unchanged, but its lines are now
-`- <path>: <symbol> L<n>, …` instead of `- <node_id> (activation 0.05)`: a
-script that parsed the old lines needs updating. If you rely on recall for
-short follow-up prompts, set `NEURALMIND_RECALL_MIN_SIMILARITY=0` to keep
-recall on for every prompt.
+`pip install -U neuralmind`, then re-run `neuralmind install-hermes-plugin`:
+the plugin it installed is a copy, and a re-run keeps an earlier pin and leaves
+a plugin you disabled disabled. A plugin Hermes installed is updated with
+`hermes plugins update neuralmind` instead. `NEURALMIND_BASH_REPLACE` needs no
+hook reinstall: the registered `compress-bash` hook reads it on every call.
 
 ## Related
 
-- Use case: [Pick up where you left off](../use-cases/pick-up-where-you-left-off.md#after-compaction-v4100)
+- Plugin README: [neuralmind/hermes_plugin/README.md](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
 - Use case: [Hermes-Agent with code memory in every turn](../use-cases/hermes-agent.md)
-- CLI reference: [`recap`](../wiki/CLI-Reference.md#recap-v480),
-  [`install-hooks`](../wiki/CLI-Reference.md#install-hooks),
-  [Environment Variables](../wiki/CLI-Reference.md#environment-variables)
-- Previous release: [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)
+- Integration guide: [Hermes-Agent](../wiki/Integration-Guide.md#hermes-agent)
+- CLI reference: [`install-hermes-plugin`](../wiki/CLI-Reference.md#install-hermes-plugin-v490)
+- [Compression benchmark](../benchmarks/compression.md)
+- Use case: [Trim noisy install logs (opt-in)](../use-cases/claude-code.md#trim-noisy-install-logs-opt-in-v4100)
+- [CLI reference: `NEURALMIND_BASH_REPLACE`](../wiki/CLI-Reference.md#environment-variables)
+- Previous releases: [v4.9.2](RELEASE_NOTES_v4.9.2.md) · [v4.9.1](RELEASE_NOTES_v4.9.1.md) · [v4.9.0](RELEASE_NOTES_v4.9.0.md)

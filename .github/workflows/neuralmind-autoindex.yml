@@ -45,6 +45,12 @@ jobs:
         with:
           # Fetch all history so the watcher can detect changed files
           fetch-depth: 0
+          # Push to main with the write-enabled deploy key: the ruleset on main
+          # requires PRs and passing CI, and a deploy key is its only bypass
+          # (GitHub won't accept the Actions app as a bypass actor on a
+          # personal-account repo). Unset (forks), checkout falls back to
+          # GITHUB_TOKEN as before.
+          ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
 
       - name: Set up Python
         uses: actions/setup-python@v7

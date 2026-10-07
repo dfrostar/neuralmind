@@ -32,6 +32,21 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Release PRs are opened and updated with GITHUB_TOKEN, whose pushes
+      # don't start workflows, so CI never ran on them and the ruleset on
+      # main (which requires Lint, Type Check and Test) would hold them
+      # forever. workflow_dispatch is exempt from that guard: run CI on the
+      # release branch so its checks attach to the PR's head commit.
+      # prs_created is true when release-please created or updated a PR.
+      - name: Dispatch CI for the release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run ci.yml \
+            --repo "${{ github.repository }}" \
+            --ref "${{ fromJSON(steps.release.outputs.pr).headBranchName }}"
+
       # When a release PR merges, release-please creates the tag with
       # GITHUB_TOKEN, which cannot fire release.yml's push:tags trigger
       # (see comment above). workflow_dispatch IS exempt from that
