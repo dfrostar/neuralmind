@@ -60,6 +60,16 @@ def test_a_code_node_and_its_rationale_are_one_seed(tmp_path):
     assert similarity == 0.6
 
 
+def test_edges_learned_on_a_rationale_id_still_recall(tmp_path):
+    # Query feedback stores raw hit ids, rationale ids included: those edges
+    # must stay reachable once recall also seeds from the owning code node.
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce(["pkg_mod_py__load_fn__rationale", "docs_loading_md"])
+    hits = [{"id": "pkg_mod_py__load_fn__rationale", "score": 0.6}]
+    ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits), "q")
+    assert "docs_loading_md" in [node for node, _ in ranked]
+
+
 def test_no_match_recalls_nothing(tmp_path):
     assert NeuralMind.synaptic_recall(_Mind(_store(tmp_path), []), "q") == ([], 0.0)
 
