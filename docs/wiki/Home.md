@@ -36,13 +36,32 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.10.0 — Opt-in: noisy install and build logs, trimmed (October 2026)
+### v4.10.0 — Hermes can install the NeuralMind plugin itself, and the plugin says why when it can't work (October 2026)
 
-NeuralMind's PostToolUse hooks inject nothing by default, because Claude Code
-adds `additionalContext` next to a tool result instead of replacing it. With
-`NEURALMIND_BASH_REPLACE=1`, the Bash hook replaces one kind of output through
-`updatedToolOutput`: `pip install` and `neuralmind build` run on their own
-reach Claude with their progress lines elided and every other line verbatim,
+The Hermes plugin's directory now carries its own `plugin.yaml` (declaring
+`requires_hermes: ">=0.21.5"`) and a
+[README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
+that lists what it reads, writes and sends. So Hermes can install it from a
+clone of this repository,
+`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`,
+and Hermes's catalog check, `hermes plugins validate`, passes. Installed that
+way, the plugin runs the `neuralmind` command on Hermes's PATH (absolute PATH
+entries only); `neuralmind install-hermes-plugin` on a plugin Hermes installed
+writes only the interpreter and the project. When the plugin can't start
+NeuralMind, finds one older than 4.9 (which answers without the session
+recap), or a call times out, it logs one warning per Hermes process naming the
+fix: `hermes logs --level WARNING | grep -i neuralmind`. Fixed:
+`install-hermes-plugin --uninstall` disabled the plugin before removing it,
+which left it on Hermes's disabled list, so installing it again left it off;
+it now runs `hermes plugins remove neuralmind`, which drops its entries from
+`config.yaml`. Tested against Hermes v0.21.5 in live `hermes chat` sessions.
+[`install-hermes-plugin`](CLI-Reference#install-hermes-plugin-v490).
+
+Also in v4.10.0, opt-in for Claude Code: NeuralMind's PostToolUse hooks inject
+nothing by default, because Claude Code adds `additionalContext` next to a tool
+result instead of replacing it. With `NEURALMIND_BASH_REPLACE=1`, the Bash
+hook replaces one kind of output through `updatedToolOutput`: `pip install`
+and `neuralmind build` run on their own reach Claude with their progress lines elided and every other line verbatim,
 and a line mentioning an error, warning, failure or deprecation is never
 removed. The full output, credentials redacted, is kept under
 `.neuralmind/bash_outputs/`, and the replaced result ends with its path. Every

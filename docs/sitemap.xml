@@ -565,12 +565,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.10.0.html</loc>
-    <lastmod>2026-10-06</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.6.0.html</loc>
     <lastmod>2026-10-04</lastmod>
     <changefreq>yearly</changefreq>
@@ -615,6 +609,12 @@
   <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.1.html</loc>
     <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.10.0.html</loc>
+    <lastmod>2026-10-06</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>

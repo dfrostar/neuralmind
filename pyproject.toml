@@ -78,6 +78,7 @@ keywords = [
     "session-continuity",
     "hermes-agent",
     "hermes-plugin",
+    "hermes-plugin-catalog",
     "semantic-decision-search",
     "decision-memory",
     "hybrid-search",
@@ -237,6 +238,8 @@ include = [
     # ir_meta, synapses.db) are regenerable and must not ship.
     "neuralmind/demo_data/sample_project/.neuralmind/graph.json",
     "neuralmind/web/**",
+    # The Hermes plugin's manifest (install-hermes-plugin copies it) and README.
+    "neuralmind/hermes_plugin/**",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -244,6 +247,7 @@ include = [
     "neuralmind/**/*.py",
     "neuralmind/demo_data/**",
     "neuralmind/web/**",
+    "neuralmind/hermes_plugin/**",
     "scripts/**",
     "docker-compose.yml",
     "README.md",
