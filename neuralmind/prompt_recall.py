@@ -17,11 +17,12 @@ weak on a freshly built index:
 The block now names files, each with its matching symbols and their lines, in
 up to three parts:
 
-- **Code matching this prompt.** A docstring (``__rationale``) node counts as
-  its function. Files rank by the summed scores of their matching symbols, so
-  a file with several matches outranks a single stray one. Test files come
-  after the code they test unless the prompt is about tests: they repeat the
-  code's vocabulary, so they often match as well as the code does.
+- **Code matching this prompt.** A docstring (rationale) node counts as the
+  symbol its ``rationale_for`` edge describes. Files rank by the summed scores
+  of their matching symbols, so a file with several matches outranks a single
+  stray one. Test files come after the code they test unless the prompt is
+  about tests: they repeat the code's vocabulary, so they often match as well
+  as the code does.
 - **Connected to it in the synapse graph.** Code in other files that the
   synapse graph links directly to the listed code: structural edges (calls,
   imports, inheritance) on a fresh index, learned co-activation as the project
@@ -113,10 +114,11 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     is the best match's score over every node type: the value the hook's
     ``NEURALMIND_RECALL_MIN_SIMILARITY`` gate compares.
     """
-    from .core import _synapse_node
+    from .core import _rationale_owners, _synapse_node
 
     hits = mind.embedder.search(prompt, n=SEARCH_N)
     nodes = _node_index(mind)
+    owners = _rationale_owners(mind)
     code: dict[str, float] = {}
     other: dict[str, float] = {}
     info: dict[str, dict] = {}
@@ -127,7 +129,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             continue
         score = float(hit.get("score", 0.0))
         similarity = max(similarity, score)
-        node_id = _synapse_node(str(raw_id))
+        node_id = _synapse_node(str(raw_id), owners)
         node = nodes.get(node_id)
         if node is None:
             node_id = str(raw_id)
@@ -152,7 +154,9 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             nodes[node["id"]] = node
         for nid, _ in spread:
             # Co-editing activates a function's docstring node too: name the function.
-            info.setdefault(nid, nodes.get(_synapse_node(nid)) or nodes.get(nid) or {"id": nid})
+            info.setdefault(
+                nid, nodes.get(_synapse_node(nid, owners)) or nodes.get(nid) or {"id": nid}
+            )
         elsewhere = [(nid, energy) for nid, energy in spread if _path(info[nid]) not in matched]
         linked = _linked(store, elsewhere, LINK_FLOOR * max(score for _, score in seeds))
         result.linked = _by_file(

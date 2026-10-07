@@ -60,8 +60,9 @@ HITS = [
 
 
 class _Embedder:
-    def __init__(self, nodes, hits, extra=None):
+    def __init__(self, nodes, hits, extra=None, edges=()):
         self.nodes = nodes
+        self.edges = list(edges)
         self._hits = [{"id": i, "score": s, "metadata": {}} for i, s in hits]
         self._extra = extra or {}
 
@@ -73,8 +74,8 @@ class _Embedder:
 
 
 class _Mind:
-    def __init__(self, store, hits=HITS, nodes=NODES, extra=None):
-        self.embedder = _Embedder(nodes, hits, extra)
+    def __init__(self, store, hits=HITS, nodes=NODES, extra=None, edges=()):
+        self.embedder = _Embedder(nodes, hits, extra, edges)
         self.synapses = store
 
 
@@ -112,6 +113,20 @@ def test_a_fresh_index_names_the_matching_code_not_doc_headings(tmp_path):
 
 def test_a_docstring_match_names_its_function(tmp_path):
     result = recall(_Mind(None, hits=[(PARSER + "__rationale", 0.6)]), "q")
+    assert [(f.path, f.symbols) for f in result.matches] == [
+        ("src/click/parser.py", ["_OptionParser L224"])
+    ]
+
+
+def test_a_graphify_docstring_match_names_its_function_through_its_edge():
+    # graphify names rationale nodes without the __rationale suffix.
+    rationale = "src_click_parser_py_optionparser_rationale"
+    nodes = NODES + [
+        _node(rationale, "src/click/parser.py", "The option parser…", 224, "rationale")
+    ]
+    edges = [{"relation": "rationale_for", "source": rationale, "target": PARSER}]
+    result = recall(_Mind(None, hits=[(rationale, 0.6)], nodes=nodes, edges=edges), "q")
+    assert result.code
     assert [(f.path, f.symbols) for f in result.matches] == [
         ("src/click/parser.py", ["_OptionParser L224"])
     ]
