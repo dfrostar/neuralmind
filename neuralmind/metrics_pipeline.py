@@ -20,6 +20,11 @@ from typing import Any
 METRICS_DIR_NAME = "metrics"
 METRICS_RETENTION_DAYS = 30
 METRICS_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+# One record's limit. Concurrent hook processes can each pass the size check
+# before either appends, so the daily cap can be overshot by one record per
+# process at once; bounding records keeps that overshoot small without a
+# cross-process lock.
+METRICS_MAX_RECORD_BYTES = 64 * 1024
 
 
 def metrics_dir(project_path: str | Path) -> Path:
@@ -67,12 +72,13 @@ class MetricsCollector:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             line = json.dumps(payload, sort_keys=True) + "\n"
+            record_bytes = len(line.encode("utf-8"))
             new_day = not path.exists()
             size = 0 if new_day else path.stat().st_size
-            if size + len(line.encode("utf-8")) > self.max_bytes:
-                # It would take today's file past the cap. Drop the record
-                # rather than rewrite a file other hook processes may be
-                # appending to.
+            if record_bytes > METRICS_MAX_RECORD_BYTES or size + record_bytes > self.max_bytes:
+                # Too large on its own, or it would take today's file past
+                # the cap. Drop the record rather than rewrite a file other
+                # hook processes may be appending to.
                 return False
             with open(path, "a", encoding="utf-8") as f:
                 f.write(line)
