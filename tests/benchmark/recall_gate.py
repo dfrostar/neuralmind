@@ -77,6 +77,19 @@ OFF_TOPIC = [
 THRESHOLDS = (0.25, 0.30, 0.33, 0.35, 0.37, 0.40)
 
 
+def _injected(rows: list[dict], label: str, threshold: float) -> int:
+    """Prompts in ``label`` the hook would add a block to at ``threshold``.
+
+    As the hook decides: the best match must reach the threshold, and recall
+    must have something to name.
+    """
+    return sum(
+        1
+        for r in rows
+        if r["set"] == label and r["similarity"] >= threshold and r["would_inject"] > 0
+    )
+
+
 def measure(project: str, on_topic: list[str], off_topic: list[str]) -> dict:
     os.environ["NEURALMIND_NO_LEARN"] = "1"
     from neuralmind.core import NeuralMind
@@ -108,12 +121,8 @@ def measure(project: str, on_topic: list[str], off_topic: list[str]) -> dict:
         sweep.append(
             {
                 "threshold": threshold,
-                "on_topic_kept": sum(
-                    1 for r in rows if r["set"] == "on_topic" and r["similarity"] >= threshold
-                ),
-                "off_topic_passed": sum(
-                    1 for r in rows if r["set"] == "off_topic" and r["similarity"] >= threshold
-                ),
+                "on_topic_kept": _injected(rows, "on_topic", threshold),
+                "off_topic_passed": _injected(rows, "off_topic", threshold),
             }
         )
     return {

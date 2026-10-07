@@ -261,9 +261,10 @@ session gets them back.
   documentation doesn't rule out, the session marked within the last 15
   minutes is recalled, if only one was. When two sessions in the project
   compacted in that window, nothing says which one came back, so neither is
-  recalled. Once a new id takes a record back, that record's marker is spent,
-  so the same session compacting again under yet another id within the window
-  still gets its record. A session that wasn't compacted is never recalled
+  recalled. A session that already came back, under its own id or a new one,
+  has spent its marker: it doesn't make a later compaction look ambiguous, and
+  the same session compacting again under yet another id within the window
+  still gets its record, even if it compacts again before its first prompt. A session that wasn't compacted is never recalled
   this way, and a session with a record of its own never borrows another's.
 - **The marker isn't activity.** Compacting an old session doesn't make it the
   "previous session" a fresh start recaps.
