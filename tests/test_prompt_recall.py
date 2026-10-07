@@ -124,6 +124,19 @@ def test_linked_code_skips_files_that_already_matched(tmp_path):
     assert result.linked_ids == [RESOLVE]
 
 
+def test_a_match_past_the_listed_files_can_still_be_linked(tmp_path):
+    # Five code files match, the block lists four, and the fifth is linked to
+    # the best: it belongs under "connected", not in neither section.
+    ids = [f"pkg_{c}_py__fn_{c}_fn" for c in "abcde"]
+    nodes = [_node(i, f"pkg/{c}.py", f"fn_{c}()", 10) for i, c in zip(ids, "abcde")]
+    hits = [(i, 0.6 - n / 100) for n, i in enumerate(ids)]
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce((ids[0], ids[4]), namespace=SHARED_NAMESPACE)
+    result = recall(_Mind(store, hits=hits, nodes=nodes), "q")
+    assert [f.path for f in result.matches] == ["pkg/a.py", "pkg/b.py", "pkg/c.py", "pkg/d.py"]
+    assert [f.path for f in result.linked] == ["pkg/e.py"]
+
+
 def test_a_learned_association_is_linked(tmp_path):
     store = _store(tmp_path)
     for _ in range(4):

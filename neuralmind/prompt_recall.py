@@ -140,7 +140,8 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     primary, secondary = (code, other) if code else (other, {})
     tests_last = not _TEST_PROMPT.search(prompt)
     result.matches = _by_file(primary, info, MATCH_FILES, tests_last=tests_last)
-    matched = {_path(info.get(nid)) for nid in primary}
+    # Only the files the block lists: a match past MATCH_FILES can still be linked.
+    matched = {entry.path for entry in result.matches}
 
     seeds = _seeds(primary, info, result.matches)
     store = getattr(mind, "synapses", None)
