@@ -219,11 +219,15 @@ jobs:
           # Importing the module is not starting the server: mcp 2.0.0 removed
           # the decorator API and `neuralmind-mcp` crashed on every fresh
           # install for three weeks while the step above stayed green. This
-          # spawns the real entry point and speaks JSON-RPC to it. The script
-          # starts the server outside the checkout, and --require-wheel fails
-          # the step unless that server imports neuralmind from the venv's
-          # site-packages rather than ./neuralmind/.
-          python scripts/mcp_stdio_smoke.py --require-wheel
+          # spawns the real entry point and speaks JSON-RPC to it:
+          # --entry-point runs the venv's `neuralmind-mcp` console script, the
+          # command MCP clients are configured with, so a [project.scripts]
+          # entry naming a missing function fails here (`command -v` above
+          # only finds the file). The smoke script starts the server outside
+          # the checkout, and --require-wheel fails the step unless that
+          # server imports neuralmind from the venv's site-packages rather
+          # than ./neuralmind/.
+          python scripts/mcp_stdio_smoke.py --require-wheel --entry-point
 
       - name: CLI smoke test
         run: |

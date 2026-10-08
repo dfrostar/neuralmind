@@ -36,6 +36,17 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.11.1 — No turbovec store on a ChromaDB project (October 2026)
+
+`neuralmind build` and `neuralmind doctor` check whether the turbovec index
+was quarantined, and both opened the turbovec store to do it, whatever the
+backend. So on a project with ChromaDB pinned (`backend: graph` or `chroma`),
+every build left an empty `.neuralmind/neuralmind_turbovec/store.sqlite`
+behind, and `doctor` called it "Index version compatible". Both checks now
+run only on turbovec projects; elsewhere `doctor` reports the check as not
+applicable.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md).
+
 ### v4.11.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
 Prompt-time recall used to add up to eight code nodes to almost any prompt,
