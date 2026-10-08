@@ -32,8 +32,9 @@ up to three parts:
   the strongest seed is dropped.
 - **Docs:** one line naming the documentation files that match.
 
-A project without code nodes (a book, a docs repository) gets its document
-matches as the main list instead. Nothing here writes to the index.
+When none of a prompt's matches is code (a book, a docs repository, or a
+question only the docs answer), its document matches are the main list
+instead. Nothing here writes to the index.
 """
 
 from __future__ import annotations

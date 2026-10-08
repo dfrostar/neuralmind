@@ -191,8 +191,9 @@ Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
   v4.9.2 and the seeding fix alone named neither file on that graph.
 - **Docs:** one line, up to 3 documentation files.
 
-A project without code nodes, like a book indexed with `ingest-content`, gets
-its matching documents as the main list. Everything else is as before: the
+When none of a prompt's matches is code (a book indexed with
+`ingest-content`, or a question only the docs answer), its matching documents
+are the main list. Everything else is as before: the
 heading, the similarity gate, `NEURALMIND_SYNAPSE_INJECT=0`, and the opt-in
 cohesion check (`NEURALMIND_SYNAPSE_OUTLIERS=1`), which now reads the linked
 nodes.

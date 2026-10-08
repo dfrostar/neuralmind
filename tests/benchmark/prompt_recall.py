@@ -84,8 +84,24 @@ def _named_files(block: str, id_to_file: dict[str, str]) -> list[str]:
     return files
 
 
+# Every document format NeuralMind indexes (``ingest-content``, the docs scope).
+_DOC_SUFFIXES = (
+    ".md",
+    ".markdown",
+    ".mkd",
+    ".mdx",
+    ".rst",
+    ".txt",
+    ".text",
+    ".org",
+    ".adoc",
+    ".pdf",
+    ".html",
+)
+
+
 def _is_doc(path: str) -> bool:
-    return path.lower().endswith((".md", ".rst", ".txt", ".html", ".mdx"))
+    return path.lower().endswith(_DOC_SUFFIXES)
 
 
 def measure(project: str, prompts: list[dict]) -> dict:

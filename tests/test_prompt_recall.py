@@ -384,7 +384,7 @@ def test_tests_follow_the_code_unless_the_prompt_is_about_tests():
     assert paths == ["tests/test_parser.py", "src/click/parser.py"]
 
 
-def test_a_project_without_code_lists_its_document_matches(tmp_path):
+def test_a_prompt_matching_no_code_lists_its_document_matches(tmp_path):
     mind = _Mind(_store(tmp_path), hits=[(OPTIONS_H, 0.6), (ESCAPES_H, 0.5)])
     block = format_block(recall(mind, "q"))
     assert "Files matching this prompt:\n- docs/parameters.md: Options L10" in block

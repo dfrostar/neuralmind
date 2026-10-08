@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.benchmark.prompt_recall import _named_files
+from tests.benchmark.prompt_recall import _is_doc, _named_files
 
 
 def test_the_docs_line_counts_as_named():
@@ -28,3 +28,9 @@ def test_the_docs_line_counts_as_named():
 def test_the_old_node_id_format_still_maps_to_files():
     block = "- pkg_mod_py__load_fn (activation 0.05)"
     assert _named_files(block, {"pkg_mod_py__load_fn": "pkg/mod.py"}) == ["pkg/mod.py"]
+
+
+def test_every_indexed_document_format_counts_as_a_doc():
+    for path in ("book/ch1.markdown", "notes.mkd", "a.text", "todo.org", "spec.pdf", "README.MD"):
+        assert _is_doc(path), path
+    assert not _is_doc("src/click/core.py")
