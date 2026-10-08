@@ -149,7 +149,7 @@ def _spread_with_aliases(
     ``aliases`` maps a seed to its rationale ids and their scores. Query
     feedback stores raw search-hit ids, so a rationale node can carry learned
     edges of its own. A seed and its aliases reach each neighbour with the
-    higher of their two activations, not the sum, so one semantic hit's energy
+    highest of their activations, not the sum, so one semantic hit's energy
     isn't applied twice; contributions from different seeds still add up, as
     in one spread.
     """
@@ -173,9 +173,11 @@ def _spread_with_aliases(
     for nid, own in aliases.items():
         if nid not in seeds or not own:
             continue
+        # Each alias on its own: two rationale ids of one symbol are still one hit.
         best = dict(store.spread([(nid, seeds[nid])], depth=depth, top_k=uncut))
-        for node_id, energy in store.spread(list(own.items()), depth=depth, top_k=uncut):
-            best[node_id] = max(energy, best.get(node_id, 0.0))
+        for alias in own.items():
+            for node_id, energy in store.spread([alias], depth=depth, top_k=uncut):
+                best[node_id] = max(energy, best.get(node_id, 0.0))
         add(list(best.items()))
     return sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
 

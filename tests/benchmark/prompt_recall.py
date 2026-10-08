@@ -106,6 +106,9 @@ def _is_doc(path: str) -> bool:
 
 def measure(project: str, prompts: list[dict]) -> dict:
     os.environ["NEURALMIND_NO_LEARN"] = "1"
+    # The committed figures are for the default block: drop the caller's overrides.
+    for name in ("NEURALMIND_RECALL_MIN_SIMILARITY", "NEURALMIND_SYNAPSE_OUTLIERS"):
+        os.environ.pop(name, None)
     from neuralmind import hooks
     from neuralmind.core import NeuralMind
 
