@@ -174,8 +174,9 @@ Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
   mentions tests, because they repeat the code's vocabulary and match about as
   well.
 - **Connected to it in the synapse graph:** up to 3 files in other places that
-  the graph links directly to the best match in each listed file: structural
-  edges on a fresh index, co-edits as you work. A hub, like Click's `echo()`
+  the graph links directly to the listed code: it spreads from up to 4 of the
+  listed files' matches, each file's best first, then their next best.
+  Structural edges on a fresh index, co-edits as you work. A hub, like Click's `echo()`
   that 305 nodes link to, is damped the way spreading activation already damps
   a hub's outgoing energy, and a link carrying under 5% of the best match's
   score is dropped. On the fresh Click index this part is empty

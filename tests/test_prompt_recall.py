@@ -306,6 +306,20 @@ def test_every_listed_file_seeds_the_links(tmp_path):
     assert [f.path for f in result.linked] == ["src/click/testing.py"]
 
 
+def test_a_listed_files_next_best_match_seeds_too(tmp_path):
+    # One file listed: its second match fills a seed slot, as documented.
+    nodes = [
+        _node(f"src_click_core_py__f{i}_fn", "src/click/core.py", f"f{i}()", i) for i in range(2)
+    ]
+    nodes += [n for n in NODES if n["id"] == RUNNER]
+    store = SynapseStore(tmp_path / "synapses.db")
+    store.reinforce([nodes[1]["id"], RUNNER])
+    hits = [(nodes[0]["id"], 0.6), (nodes[1]["id"], 0.5)]
+    result = recall(_Mind(store, hits=hits, nodes=nodes), "q")
+    assert [f.path for f in result.matches] == ["src/click/core.py"]
+    assert [f.path for f in result.linked] == ["src/click/testing.py"]
+
+
 def test_a_listed_files_own_links_dont_crowd_out_the_rest(tmp_path):
     # Co-editing links every node of a file to every other.
     own = [f"src_click_parser_py__f{i}_fn" for i in range(40)]
