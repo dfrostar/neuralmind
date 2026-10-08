@@ -2156,13 +2156,14 @@ def cmd_metrics(args):
     project_path = Path(getattr(args, "project_path", ".")).resolve()
     days = getattr(args, "days", 7)
     collector = MetricsCollector(project_path)
-    summary = collector.summarize(days=days, event_type="query")
+    summary = collector.summarize(days=days)
+    recall = summary.get("recall")
 
     if getattr(args, "json", False):
         print(json.dumps(summary, indent=2))
         return
 
-    if not summary or summary.get("n_events", 0) == 0:
+    if not summary or (summary.get("n_events", 0) == 0 and not recall):
         print(f"No metrics data for {project_path.name} (last {days} days)")
         print(f"Metrics dir: {collector.project_path}/.neuralmind/metrics/")
         print("Run some queries to populate metrics.")
@@ -2191,6 +2192,14 @@ def cmd_metrics(args):
     if builds:
         print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
         print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
+
+    if recall:
+        outcomes = recall.get("outcomes", {})
+        print(f"{'Prompts seen by recall':.<30} {recall.get('n_prompts', 0):>12,}")
+        print(f"{'Recall injected':.<30} {recall.get('n_injected', 0):>12,}")
+        print(f"{'Abstained: low similarity':.<30} {outcomes.get('low_similarity', 0):>12,}")
+        print(f"{'Abstained: nothing learned':.<30} {outcomes.get('no_neighbors', 0):>12,}")
+        print(f"{'Abstain rate':.<30} {recall.get('abstain_rate', 0) * 100:>11.1f}%")
 
 
 def cmd_validate(args):
@@ -4708,6 +4717,7 @@ def cmd_daemon(args):
     import time
 
     from neuralmind import daemon as daemon_mod
+    from neuralmind.child_python import HAS_SAFE_PATH, python_argv, python_env
     from neuralmind.daemon_client import connect
 
     action = args.action
@@ -4766,16 +4776,13 @@ def cmd_daemon(args):
         log_dir = Path.home() / ".neuralmind"
         log_dir.mkdir(parents=True, exist_ok=True)
         log = open(log_dir / "daemon.log", "ab")  # noqa: SIM115 - lifetime is the child's
-        cmd = [
-            sys.executable,
-            "-m",
-            "neuralmind.daemon",
-            "--host",
-            args.host,
-            "--port",
-            str(args.port),
-        ]
-        subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
+        cmd = python_argv("-m", "neuralmind.daemon", "--host", args.host, "--port", str(args.port))
+        # On 3.10 (no -P) the daemon starts in its own state directory, which
+        # holds no Python modules: it outlives any temporary one.
+        cwd = None if HAS_SAFE_PATH else log_dir
+        subprocess.Popen(
+            cmd, stdout=log, stderr=log, start_new_session=True, cwd=cwd, env=python_env()
+        )
         for _ in range(50):  # up to ~5s for it to come up
             client = connect()
             if client is not None:

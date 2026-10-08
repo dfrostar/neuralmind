@@ -32,11 +32,12 @@ import logging
 import random
 import re
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from .child_python import python_argv, python_cwd, python_env
 
 log = logging.getLogger(__name__)
 
@@ -978,12 +979,15 @@ class DocEvolver:
             file_path.write_text(patched_content, encoding="utf-8")
 
             # Rebuild index with patched content
-            build_result = subprocess.run(
-                [sys.executable, "-m", "neuralmind.cli", "build", str(self.project_path)],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
+            with python_cwd() as cwd:
+                build_result = subprocess.run(
+                    python_argv("-m", "neuralmind.cli", "build", str(self.project_path)),
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=cwd,
+                    env=python_env(),
+                )
             if build_result.returncode != 0:
                 log.warning("neuralmind build failed: %s", build_result.stderr)
                 return 0.0
@@ -1030,20 +1034,17 @@ class DocEvolver:
 
         # Shell out to neuralmind query
         try:
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "neuralmind.cli",
-                    "query",
-                    str(self.project_path),
-                    query,
-                    "--json",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
+            with python_cwd() as cwd:
+                result = subprocess.run(
+                    python_argv(
+                        "-m", "neuralmind.cli", "query", str(self.project_path), query, "--json"
+                    ),
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=cwd,
+                    env=python_env(),
+                )
             if result.returncode != 0:
                 log.warning("neuralmind query failed: %s", result.stderr)
                 return []

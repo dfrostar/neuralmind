@@ -199,8 +199,19 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v4101">
-            <h2>What&rsquo;s New in v4.10.1 &mdash; <code>query</code> finds the project&rsquo;s code, not its tests, examples and docs</h2>
+        <div class="container" id="whats-new-v4110">
+            <h2>What&rsquo;s New in v4.11.0 &mdash; prompt recall that stays quiet when the prompt isn&rsquo;t about the code, and a session&rsquo;s own record back after compaction</h2>
+            <p><strong>Prompt-time recall used to add up to eight code nodes to almost any prompt, &ldquo;thanks!&rdquo; and &ldquo;what&rsquo;s the capital of France&rdquo; included, while missing most prompts that were about the code. And compaction dropped what NeuralMind had already recorded about the session.</strong> v4.11.0 fixes both, through the hooks it already installs.</p>
+            <ul>
+                <li><strong>Recall seeds from the code, not the docstring</strong> &mdash; a prompt&rsquo;s best semantic match is often a function&rsquo;s rationale node (its docstring), which has no synapse edges, so recall from it returned nothing. Recall now starts from the code node the rationale belongs to. The MCP <code>neuralmind_synaptic_neighbors</code> tool gets the same fix</li>
+                <li><strong>A relevance gate</strong> &mdash; the <code>UserPromptSubmit</code> hook (and the Hermes plugin, which runs the same action) adds nothing when the prompt&rsquo;s best match in the code scores below <code>NEURALMIND_RECALL_MIN_SIMILARITY</code> (default 0.35; <code>0</code> never abstains)</li>
+                <li><strong>Measured before the default was set</strong> &mdash; on this repository&rsquo;s own index, 15 prompts about the code and 15 off-topic ones went from 5/15 and 10/15 getting recall to 15/15 and 1/15. On-topic prompts scored 0.371&ndash;0.645, off-topic 0.145&ndash;0.364; activation strength didn&rsquo;t separate them. One repository and 30 prompts: from a source checkout, <code>python -m tests.benchmark.recall_gate</code> reproduces the 15/15 and 1/15, and <code>--prompts</code> calibrates your own</li>
+                <li><strong>Counted</strong> &mdash; <code>neuralmind metrics</code> shows how often recall injected, abstained on a poor match, or had nothing learned around the match. Numbers only, no prompt text</li>
+                <li><strong>The session&rsquo;s own record after compaction</strong> &mdash; Claude Code&rsquo;s compaction summary paraphrases. After a compaction, <code>SessionStart</code> now gives the session its own first prompt, latest prompts (as written, up to 200 characters each) and edited files back, alongside that summary. The record is found by the session&rsquo;s own id: a session that comes back under a different id gets none rather than a guess</li>
+                <li><strong>Not measured</strong> &mdash; whether either change improves the agent&rsquo;s answers</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md">v4.11.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
+            <h3 id="whats-new-v4110-roles">Also in v4.11.0 &mdash; <code>query</code> finds the project&rsquo;s code, not its tests, examples and docs</h3>
             <p><strong><code>neuralmind build .</code> indexes a checkout from its root, so a repository&rsquo;s tests, example scripts and docs competed with its code for the four search results <code>query</code> returns, and often took all four.</strong> Asked which files in Click parse command-line options, <code>query</code> returned an example script, a test docstring and a doc heading, and listed <code>examples/imagepipe</code> and <code>examples/inout</code> as the relevant code; <code>core.py</code> waited at search ranks 5 and 8.</p>
             <ul>
                 <li><strong>The project&rsquo;s code is owed slots</strong> &mdash; when fewer than two of the four hits are the project&rsquo;s code (one for a docs question) and ranks 5&ndash;10 of the same search hold some, the weakest test, example or doc hits give their slots to it. It swaps hits, never adds one</li>
@@ -208,7 +219,7 @@
                 <li><strong>L2 lists a cluster&rsquo;s own code first</strong> &mdash; it used to list a cluster&rsquo;s first members by path, so <code>examples/</code> came before <code>src/</code></li>
                 <li><strong>Measured, losses published</strong> &mdash; on 14 Click questions (the set it was tuned on) an answering file is in the results for 14, up from 9; held-out results are in the release notes. An index of a library&rsquo;s source directory alone ranks exactly as before, so the public benchmark is unchanged. <code>NEURALMIND_L3_ROLES=0</code> turns it off</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.1.md">v4.10.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#query-finds-the-projects-code-not-its-tests-examples-and-docs">v4.11.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a></p>
         </div>
     </section>
 

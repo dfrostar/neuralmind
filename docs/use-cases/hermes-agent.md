@@ -109,7 +109,9 @@ user's message and adds what comes back. It's the same block Claude Code's
 `UserPromptSubmit` hook adds, in two parts, either of which can be missing:
 
 - **Associative recall:** the code nodes the synapse layer has learned go with
-  the ones your message matches, ranked by spreading activation.
+  the ones your message matches, ranked by spreading activation. Left out
+  when the message matches the code poorly, such as "yes" or a question about
+  something else (v4.11.0+, `NEURALMIND_RECALL_MIN_SIMILARITY`).
 - **Decision provenance:** recorded decisions (`Decision:` git trailers) whose
   subjects the message mentions.
 

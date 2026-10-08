@@ -2,7 +2,8 @@
 F3 — Tool-use metrics pipeline.
 
 Continuous JSONL logging: per-query latency, retrieval reuse rate,
-tool-call success rate, per-query token cost, synapse activation counts.
+tool-call success rate, per-query token cost, synapse activation counts,
+and how often prompt-time recall injected or abstained.
 Bounded retention in `.neuralmind/metrics/`.
 Feeds C1 fitness + E1 scoring.
 
@@ -12,13 +13,58 @@ Local-first. Stdlib-only. Fail-open.
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
 from pathlib import Path
 from typing import Any
 
+from .recent_queries import _lock_byte0, _unlock_byte0
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+
 METRICS_DIR_NAME = "metrics"
 METRICS_RETENTION_DAYS = 30
 METRICS_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+# One record's limit. The size check and the append share a best-effort
+# cross-process lock; if it can't be had in time the record is appended
+# anyway, so this bounds how far concurrent hook processes can overshoot the
+# daily cap.
+METRICS_MAX_RECORD_BYTES = 64 * 1024
+
+# Serializes appends within this process. Every hook process appends to the
+# same daily file, and Windows' CRT implements append mode as seek-to-end +
+# write, so two handles writing at once can interleave and lose records.
+_APPEND_LOCK = threading.Lock()
+
+
+def _lock_file(fd: int) -> bool:
+    """Best-effort cross-process lock on *fd*: flock on POSIX, byte 0 on Windows.
+
+    Non-blocking with a short retry, so a stuck holder never stalls a hook.
+    """
+    if fcntl is None:
+        return _lock_byte0(fd)
+    for _ in range(50):  # ~50ms worst case
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            time.sleep(0.001)
+    return False
+
+
+def _unlock_file(fd: int) -> None:
+    if fcntl is None:
+        _unlock_byte0(fd)
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
 
 
 def metrics_dir(project_path: str | Path) -> Path:
@@ -65,11 +111,35 @@ class MetricsCollector:
         try:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(payload, sort_keys=True) + "\n")
-            return True
+            encoded = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+            if len(encoded) > min(METRICS_MAX_RECORD_BYTES, self.max_bytes):
+                return False
+            new_day = not path.exists()
+            with _APPEND_LOCK:
+                # O_BINARY: Windows would otherwise write "\r\n", past the bytes counted.
+                flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0)
+                fd = os.open(str(path), flags, 0o644)
+                locked = False
+                try:
+                    locked = _lock_file(fd)
+                    # Checked under the lock, against what other processes
+                    # have committed. A record that would take today's file
+                    # past the cap is dropped rather than rewrite a file
+                    # other hook processes are appending to.
+                    if os.fstat(fd).st_size + len(encoded) > self.max_bytes:
+                        return False
+                    os.write(fd, encoded)
+                finally:
+                    if locked:
+                        _unlock_file(fd)
+                    os.close(fd)
         except Exception:
             return False
+        if new_day:
+            # Once a day, when its file is started: the retention limits
+            # apply without a separate cleanup step.
+            self.rotate()
+        return True
 
     def log_query_metrics(
         self,
@@ -99,6 +169,29 @@ class MetricsCollector:
             }
         )
 
+    def log_recall_metrics(
+        self,
+        *,
+        outcome: str,
+        injected: int,
+        similarity: float,
+    ) -> bool:
+        """Log one prompt-time recall: ``injected``, or why it abstained.
+
+        ``outcome`` is ``injected``, ``low_similarity`` (the prompt didn't
+        match the code well enough) or ``no_neighbors`` (nothing learned
+        around the match yet). No prompt text is kept.
+        """
+        return self._append(
+            {
+                "event": "recall",
+                "ts": time.time(),
+                "outcome": outcome,
+                "injected": injected,
+                "similarity": round(similarity, 4),
+            }
+        )
+
     def log_build_metrics(
         self,
         *,
@@ -123,6 +216,9 @@ class MetricsCollector:
         """
         Purge metrics files older than retention_days and truncate
         files exceeding max_bytes. Returns count of removed files.
+
+        Today's file is never rewritten: hook processes append to it
+        concurrently, so it is capped by ``_append`` refusing records instead.
         """
         if self.project_path is None:
             return 0
@@ -131,6 +227,7 @@ class MetricsCollector:
             return 0
 
         removed = 0
+        today = _metrics_file(self.project_path).name
         cutoff_ts = time.time() - (self.retention_days * 86400)
         cutoff_day = time.strftime("%Y-%m-%d", time.gmtime(cutoff_ts))
 
@@ -140,17 +237,45 @@ class MetricsCollector:
                 if day_str < cutoff_day:
                     f.unlink()
                     removed += 1
-                elif f.stat().st_size > self.max_bytes:
-                    # Truncate to half max_bytes, keeping recent lines
-                    lines = f.read_text(encoding="utf-8").splitlines()
-                    keep = lines[-1000:] if len(lines) > 1000 else lines
-                    f.write_text(
-                        "\n".join(keep) + "\n" if keep else "",
-                        encoding="utf-8",
-                    )
+                elif f.name != today and f.stat().st_size > self.max_bytes:
+                    self._truncate(f)
         except Exception:
             pass
         return removed
+
+    def _truncate(self, path: Path) -> None:
+        """Keep the newest whole records that fit in half the cap (at most 1,000).
+
+        The file ends up well under the cap even when single records are
+        large. The read and the rewrite hold the append lock, so a hook still
+        appending to yesterday's file at midnight can't land a record between
+        them. Without the lock it isn't truncated; the next rotation tries again.
+        """
+        with _APPEND_LOCK:
+            fd = os.open(str(path), os.O_RDWR | getattr(os, "O_BINARY", 0))
+            locked = False
+            try:
+                locked = _lock_file(fd)
+                if not locked:
+                    return
+                with os.fdopen(fd, "r+b", closefd=False) as f:
+                    text = f.read().decode("utf-8")
+                    budget = self.max_bytes // 2
+                    keep: list[str] = []
+                    for line in reversed(text.splitlines()):
+                        size = len(line.encode("utf-8")) + 1
+                        if size > budget or len(keep) >= 1000:
+                            break
+                        keep.append(line)
+                        budget -= size
+                    keep.reverse()
+                    f.seek(0)
+                    f.truncate()
+                    f.write(("\n".join(keep) + "\n" if keep else "").encode("utf-8"))
+            finally:
+                if locked:
+                    _unlock_file(fd)
+                os.close(fd)
 
     def summarize(
         self,
@@ -195,6 +320,7 @@ class MetricsCollector:
         # Aggregate query events
         query_events = [e for e in events if e.get("event") == "query"]
         build_events = [e for e in events if e.get("event") == "build"]
+        recall_events = [e for e in events if e.get("event") == "recall"]
 
         summary: dict[str, Any] = {"days": days, "n_events": len(events)}
 
@@ -223,6 +349,19 @@ class MetricsCollector:
             summary["builds"] = {
                 "n_builds": len(build_events),
                 "mean_duration_s": round(sum(durations) / len(durations), 2) if durations else 0,
+            }
+
+        if recall_events:
+            outcomes: dict[str, int] = {}
+            for e in recall_events:
+                key = str(e.get("outcome", "unknown"))
+                outcomes[key] = outcomes.get(key, 0) + 1
+            injected = outcomes.get("injected", 0)
+            summary["recall"] = {
+                "n_prompts": len(recall_events),
+                "n_injected": injected,
+                "abstain_rate": round(1 - injected / len(recall_events), 4),
+                "outcomes": outcomes,
             }
 
         return summary

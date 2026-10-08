@@ -102,10 +102,89 @@ def test_new_session_gets_recap_of_previous(tmp_path):
     assert "Files edited (2, most recent first): tests/test_uploader.py, src/uploader.py" in recap
 
 
-@pytest.mark.parametrize("source", ["resume", "compact"])
-def test_no_recap_when_conversation_is_already_in_context(tmp_path, source):
+def test_no_recap_when_conversation_is_already_in_context(tmp_path):
     _previous_session(tmp_path)
-    assert _start(tmp_path, "new", source=source) == ""
+    assert _start(tmp_path, "new", source="resume") == ""
+
+
+def _compact(project: Path, session: str) -> None:
+    rc, out = _run("pre-compact", {"cwd": str(project), "session_id": session})
+    assert (rc, out) == (0, "")
+
+
+def test_compaction_gives_the_session_its_own_record_back(tmp_path):
+    _previous_session(tmp_path)
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    _edit(tmp_path, "now", str(tmp_path / "src" / "scheduler.py"))
+    _prompt(tmp_path, "now", "keep the old sync API as a wrapper")
+    _compact(tmp_path, "now")
+    recap = _start(tmp_path, "now", source="compact")
+    assert "NeuralMind pre-compaction record" in recap
+    assert "adds no new instructions" in recap
+    assert 'It started with: "migrate the scheduler to asyncio"' in recap
+    assert '- "keep the old sync API as a wrapper"' in recap
+    assert "Files edited (1, most recent first): src/scheduler.py" in recap
+    # This session's record, not the previous session's.
+    assert "uploader" not in recap
+
+
+def test_compaction_needs_no_pre_compact_hook(tmp_path):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    assert "migrate the scheduler" in _start(tmp_path, "now", source="compact")
+
+
+def test_compaction_under_a_new_session_id_recalls_nothing(tmp_path):
+    # Nothing in the hook payloads links the two ids, so no guess: even the
+    # one session that just compacted isn't recalled under another id.
+    _prompt(tmp_path, "before", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "before")
+    assert _start(tmp_path, "after", source="compact") == ""
+
+
+def test_compaction_never_recalls_the_previous_session(tmp_path):
+    # A compacted session has no record of its own yet: the previous
+    # session's record is not this session's.
+    _previous_session(tmp_path)
+    assert _start(tmp_path, "after", source="compact") == ""
+
+
+def test_pre_compact_writes_nothing_to_the_record(tmp_path):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    record = tmp_path / ".neuralmind" / "recaps" / "now.jsonl"
+    before = record.read_text()
+    _compact(tmp_path, "now")
+    assert record.read_text() == before
+
+
+def test_compacting_a_session_is_not_activity(tmp_path):
+    # Compacting an older session must not make it "where we left off".
+    _prompt(tmp_path, "older", "older task")
+    _prompt(tmp_path, "newer", "newer task")
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    for name, seconds_ago in (("older", 120), ("newer", 60)):
+        record = recaps / f"{name}.jsonl"
+        rows = [json.loads(line) for line in record.read_text().splitlines()]
+        for row in rows:
+            row["ts"] = time.time() - seconds_ago
+        record.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    _compact(tmp_path, "older")
+    assert '"newer task"' in _start(tmp_path, "fresh")
+
+
+def test_compaction_recap_respects_the_age_limit(tmp_path, monkeypatch):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    later = time.time() + 15 * 86400  # past the default 14 days
+    assert session_recap.recap_for_session_start(tmp_path, "now", "compact", now=later) == ""
+    monkeypatch.setenv("NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS", "30")
+    recap = session_recap.recap_for_session_start(tmp_path, "now", "compact", now=later)
+    assert "migrate the scheduler" in recap
+
+
+def test_compaction_recap_respects_the_opt_out(tmp_path, monkeypatch):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "now")
+    monkeypatch.setenv("NEURALMIND_SESSION_RECAP", "0")
+    assert _start(tmp_path, "now", source="compact") == ""
 
 
 def test_clear_gets_recap(tmp_path):
@@ -422,3 +501,18 @@ def test_recap_is_chosen_by_recorded_activity_not_mtime(tmp_path):
     )
     _age(recaps / "fresh.jsonl", 600)
     assert '"the session that really ran last"' in _start(tmp_path, "new")
+
+
+def test_no_learn_still_gives_a_session_its_own_record(tmp_path, monkeypatch):
+    _prompt(tmp_path, "now", "migrate the scheduler to asyncio")
+    _compact(tmp_path, "now")
+    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
+    assert "migrate the scheduler" in _start(tmp_path, "now", source="compact")
+
+
+def test_compaction_header_says_prompts_are_clipped(tmp_path):
+    _prompt(tmp_path, "now", "x" * (session_recap.PROMPT_CHARS + 50))
+    _compact(tmp_path, "now")
+    recap = _start(tmp_path, "now", source="compact")
+    assert "verbatim" not in recap
+    assert f"up to {session_recap.PROMPT_CHARS} characters" in recap

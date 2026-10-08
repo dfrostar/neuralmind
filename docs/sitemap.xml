@@ -643,6 +643,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.11.0.html</loc>
+    <lastmod>2026-10-06</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.8.2.html</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>yearly</changefreq>
@@ -650,13 +656,13 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/pick-up-where-you-left-off.html</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/hermes-agent.html</loc>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
