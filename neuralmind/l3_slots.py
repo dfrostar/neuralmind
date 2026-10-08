@@ -21,7 +21,7 @@ is behind its own flag, and kept on by default only if the multi-repo eval
 
 With every flag unset, nothing here runs and L3 is unchanged.
 
-One pass is on by default (v4.11.0): **roles**, at the end of this module.
+One pass is on by default (v4.11.1): **roles**, at the end of this module.
 Indexed from its root, a repository's tests, examples and docs compete with
 its own code for the four slots, and they often win: a test repeats the
 names of the code it tests, an example script uses the very words of a
@@ -143,7 +143,7 @@ def intent_pool_enabled() -> bool:
 
 
 def roles_enabled() -> bool:
-    """On by default since v4.11.0; ``NEURALMIND_L3_ROLES=0`` restores v4.10.0."""
+    """On by default since v4.11.1; ``NEURALMIND_L3_ROLES=0`` restores v4.11.0."""
     return os.environ.get(ROLES_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
 
 
@@ -661,7 +661,7 @@ def unified_bm25_index(
 
 
 # --------------------------------------------------------------------------- #
-# Roles: the project's code, the code that exercises it, and prose (v4.11.0)
+# Roles: the project's code, the code that exercises it, and prose (v4.11.1)
 # --------------------------------------------------------------------------- #
 SOURCE, SUPPORT, DOC = "source", "support", "doc"
 

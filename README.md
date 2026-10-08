@@ -22,7 +22,7 @@ that publishes every miss.
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
 > - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook; on Hermes-Agent, the plugin's `pre_llm_call` hook, v4.9.0+): from the first prompt on a fresh index, the files and symbols the prompt matches, with line numbers, and code the synapse graph links to them; and adds nothing when the prompt's best match in the code scores below a cutoff, which most replies like "yes" and off-topic questions do (v4.11.0+)
 > - Gets its own first prompt, latest prompts and edited files back after Claude Code compacts the session, prompts as written up to 200 characters (v4.11.0+)
-> - Queries your codebase in ~800 tokens instead of ~50,000, with the project's own code ahead of its tests, examples and docs (v4.11.0+)
+> - Queries your codebase in ~800 tokens instead of ~50,000, with the project's own code ahead of its tests, examples and docs (v4.11.1+)
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)

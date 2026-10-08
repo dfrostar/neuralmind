@@ -208,6 +208,15 @@
                 <li><strong>Turbovec projects are checked as before</strong> &mdash; a quarantined <code>index.tvim.stale</code> still warns at build time and fails the doctor check</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md">v4.11.1 release notes</a></p>
+            <h3 id="whats-new-v4111-roles">Also in v4.11.1 &mdash; <code>query</code> finds the project&rsquo;s code, not its tests, examples and docs</h3>
+            <p><strong><code>neuralmind build .</code> indexes a checkout from its root, so a repository&rsquo;s tests, example scripts and docs competed with its code for the four search results <code>query</code> returns, and often took all four.</strong> Asked which files in Click parse command-line options, <code>query</code> returned an example script, a test docstring and a doc heading, and listed <code>examples/imagepipe</code> and <code>examples/inout</code> as the relevant code; <code>core.py</code> waited at search ranks 5 and 8.</p>
+            <ul>
+                <li><strong>The project&rsquo;s code is owed slots</strong> &mdash; when fewer than two of the four hits are the project&rsquo;s code (one for a docs question) and ranks 5&ndash;10 of the same search hold some, the weakest test, example or doc hits give their slots to it. It swaps hits, never adds one</li>
+                <li><strong>Tests and examples count a third</strong> &mdash; unless the question asks about them; docs count a third when the question asks for code. Tests and examples are recognised by layout (<code>tests/</code>, <code>examples/</code>, <code>test_*.py</code>, <code>*_test.go</code>, <code>*.test.ts</code> &hellip;)</li>
+                <li><strong>L2 lists a cluster&rsquo;s own code first</strong> &mdash; it used to list a cluster&rsquo;s first members by path, so <code>examples/</code> came before <code>src/</code></li>
+                <li><strong>Measured, losses published</strong> &mdash; on 14 Click questions (the set it was tuned on) an answering file is in the results for 14, up from 9; held-out results are in the release notes. An index of a library&rsquo;s source directory alone ranks exactly as before, so the public benchmark is unchanged. <code>NEURALMIND_L3_ROLES=0</code> turns it off</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md#query-finds-the-projects-code-not-its-tests-examples-and-docs">v4.11.1 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a></p>
         </div>
     </section>
 
@@ -225,15 +234,6 @@
                 <li><strong>Not measured</strong> &mdash; whether these changes improve the agent&rsquo;s answers</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md">v4.11.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md">Pick up where you left off &rarr;</a></p>
-            <h3 id="whats-new-v4110-roles">Also in v4.11.0 &mdash; <code>query</code> finds the project&rsquo;s code, not its tests, examples and docs</h3>
-            <p><strong><code>neuralmind build .</code> indexes a checkout from its root, so a repository&rsquo;s tests, example scripts and docs competed with its code for the four search results <code>query</code> returns, and often took all four.</strong> Asked which files in Click parse command-line options, <code>query</code> returned an example script, a test docstring and a doc heading, and listed <code>examples/imagepipe</code> and <code>examples/inout</code> as the relevant code; <code>core.py</code> waited at search ranks 5 and 8.</p>
-            <ul>
-                <li><strong>The project&rsquo;s code is owed slots</strong> &mdash; when fewer than two of the four hits are the project&rsquo;s code (one for a docs question) and ranks 5&ndash;10 of the same search hold some, the weakest test, example or doc hits give their slots to it. It swaps hits, never adds one</li>
-                <li><strong>Tests and examples count a third</strong> &mdash; unless the question asks about them; docs count a third when the question asks for code. Tests and examples are recognised by layout (<code>tests/</code>, <code>examples/</code>, <code>test_*.py</code>, <code>*_test.go</code>, <code>*.test.ts</code> &hellip;)</li>
-                <li><strong>L2 lists a cluster&rsquo;s own code first</strong> &mdash; it used to list a cluster&rsquo;s first members by path, so <code>examples/</code> came before <code>src/</code></li>
-                <li><strong>Measured, losses published</strong> &mdash; on 14 Click questions (the set it was tuned on) an answering file is in the results for 14, up from 9; held-out results are in the release notes. An index of a library&rsquo;s source directory alone ranks exactly as before, so the public benchmark is unchanged. <code>NEURALMIND_L3_ROLES=0</code> turns it off</li>
-            </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#query-finds-the-projects-code-not-its-tests-examples-and-docs">v4.11.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md">A/B-test a ranking change on your own repo &rarr;</a></p>
         </div>
     </section>
 

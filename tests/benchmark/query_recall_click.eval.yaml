@@ -1,9 +1,9 @@
 # pallets/click @ 2247b35ea1c47c727d7a06e51fa280e12a863ff6, indexed from the repository root
 # (docs/, examples/ and tests/ included), for `neuralmind query`. The 14 prompts and
 # their gold files are PR #607's tests/benchmark/prompt_recall_click.json, whose expected
-# files were chosen by reading the code before any run. The v4.11.0 L3 roles pass was
+# files were chosen by reading the code before any run. The v4.11.1 L3 roles pass was
 # tuned on this set, so it is not held out; the held-out evidence is
-# `python -m evals.retrieval.run --full-repo` (bench/retrieval/roles-v4.11.0/).
+# `python -m evals.retrieval.run --full-repo` (bench/retrieval/roles-v4.11.1/).
 #
 #   git clone https://github.com/pallets/click
 #   git -C click checkout 2247b35ea1c47c727d7a06e51fa280e12a863ff6

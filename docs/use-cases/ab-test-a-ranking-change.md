@@ -63,7 +63,7 @@ neuralmind eval .                                          # today's default —
 NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0's keyword index
 NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # at most two L3 hits per file
 NEURALMIND_DOC_HANDOFF=1 neuralmind eval . --no-history    # a doc that names code pulls that code in
-NEURALMIND_L3_ROLES=0 neuralmind eval . --no-history       # v4.10.0's ranking: tests, examples and docs compete with the code as equals
+NEURALMIND_L3_ROLES=0 neuralmind eval . --no-history       # v4.11.0's ranking: tests, examples and docs compete with the code as equals
 neuralmind eval . --no-history                             # the baseline again: it should match the first run
 ```
 
@@ -88,7 +88,7 @@ The flags you can try, and what they did on v4.6.0's eval:
 | `NEURALMIND_INTENT_RULES=1` | "how does X… / where is X… / which X is…" → code intent | moved MRR (0.654 → 0.672), never hit@5 |
 | `NEURALMIND_INTENT_POOL=1` (with `NEURALMIND_INTENT_RULES=1`) | intent ranks all 10 candidates | `click` −8 questions (vs v4.5.0) |
 | `NEURALMIND_BM25_CODE=1` | a separate code-only keyword list | `rich` −4, `click` −3 on v4.6.0 |
-| `NEURALMIND_L3_ROLES=0` | turns off v4.11.0's roles pass (on by default), which ranks the project's code above its tests, examples and docs | measured in v4.11.0 against this setting: see the [release notes](../releases/RELEASE_NOTES_v4.11.0.md#measured-roles-on-vs-off) |
+| `NEURALMIND_L3_ROLES=0` | turns off v4.11.1's roles pass (on by default), which ranks the project's code above its tests, examples and docs | measured in v4.11.1 against this setting: see the [release notes](../releases/RELEASE_NOTES_v4.11.1.md#measured-roles-on-vs-off) |
 
 A flag that lost across six repositories can still win on yours — the doc
 hand-off, for one, helped only where the docs name code: against v4.5.0 it
@@ -141,8 +141,8 @@ NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --private ~/work/your-rep
   benchmark does, so its tests, examples and docs never compete with the
   library code. `--full-repo` indexes the whole checkout, as
   `neuralmind build .` would, and prefixes the gold paths with the source
-  directory (v4.11.0+). A ranking change can win one way and lose the other:
-  v4.11.0's roles pass changes nothing on the source directories and lifts
+  directory (v4.11.1+). A ranking change can win one way and lose the other:
+  v4.11.1's roles pass changes nothing on the source directories and lifts
   `click` on the whole checkout.
 - **It applies the keep rule for you.** Two rows from v4.6.0's run
   ([`bench/retrieval/vs-v4.5`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.5/report.md)):
