@@ -55,6 +55,8 @@ FLAGS = (
     "NEURALMIND_CODE_SIGNAL_CAP",
     "NEURALMIND_AUTO_INTENT_BOOST",
     "NEURALMIND_QUERY_LAYERS",
+    "NEURALMIND_L3_FILE_DECAY",
+    "NEURALMIND_TEST_FILE_FACTOR",
     "NEURALMIND_L3_PER_FILE",
     "NEURALMIND_DOC_HANDOFF",
     "NEURALMIND_HUB_DAMPEN",
@@ -92,6 +94,8 @@ CONFIGS: dict[str, dict[str, str]] = {
     "code_signal": {"NEURALMIND_CODE_SIGNAL_CAP": "10"},
     "auto_intent": {"NEURALMIND_AUTO_INTENT_BOOST": "1"},
     "l3_only": {"NEURALMIND_QUERY_LAYERS": "L0,L3"},
+    "no_diversity": {"NEURALMIND_L3_FILE_DECAY": "1"},
+    "tests_equal": {"NEURALMIND_TEST_FILE_FACTOR": "1"},
     "all": {
         "NEURALMIND_L3_PER_FILE": "2",
         "NEURALMIND_DOC_HANDOFF": "1",

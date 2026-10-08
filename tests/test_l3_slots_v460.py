@@ -35,6 +35,10 @@ def _clean_flags(monkeypatch):
     # (eight since v4.12) is covered in test_context_selector.
     monkeypatch.setenv("NEURALMIND_L3_K", "4")
     monkeypatch.delenv("NEURALMIND_AUTO_INTENT_BOOST", raising=False)
+    # v4.12's file diversity and test demotion re-order the pool before the
+    # cut; they are covered in test_l3_ranking_v412.
+    monkeypatch.setenv("NEURALMIND_L3_FILE_DECAY", "1")
+    monkeypatch.setenv("NEURALMIND_TEST_FILE_FACTOR", "1")
 
 
 def hit(nid, sf, score, file_type="code", label=None, document=""):

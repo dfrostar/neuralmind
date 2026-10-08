@@ -20,6 +20,7 @@ Token Budget Management:
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -226,6 +227,71 @@ def _env_number(name: str, default, cast=float):
         return default
 
 
+_TEST_DIRS = frozenset({"tests", "test", "__tests__", "spec", "specs", "testing"})
+_TEST_QUERY = re.compile(r"\b(tests?|testing|spec|specs|fixtures?|pytest|unittest)\b", re.I)
+
+
+def _is_test_file(path: str) -> bool:
+    """``tests/test_x.py``, ``pkg/x_test.go``, ``src/x.spec.ts`` and the like."""
+    parts = path.replace("\\", "/").lower().split("/")
+    name = parts[-1]
+    if any(p in _TEST_DIRS for p in parts[:-1]):
+        return True
+    stem = name.rsplit(".", 1)[0]
+    return (
+        stem.startswith("test_")
+        or stem.endswith(("_test", "_tests", ".test", ".spec", "_spec"))
+        or stem in ("conftest", "tests")
+    )
+
+
+def _demote_tests(results: list[dict], query: str, factor: float) -> list[dict]:
+    """Scale test-file hits by ``factor`` unless the question is about tests.
+
+    A test names the same functions as the code it tests, so on a large repo
+    with its tests indexed they took up to seven of the eight L3 slots on
+    "how does X work" questions. ``factor >= 1`` returns the list unchanged.
+    """
+    if factor >= 1.0 or not results or _TEST_QUERY.search(query or ""):
+        return results
+    out = []
+    for r in results:
+        if _is_test_file(_module_of(r)):
+            r = dict(r)
+            r["score"] = float(r.get("score") or 0.0) * factor
+            r["_test_file"] = True
+        out.append(r)
+    out.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
+    return out
+
+
+def _diversify_files(results: list[dict], decay: float) -> list[dict]:
+    """Re-rank so each further hit from an already-represented file counts less.
+
+    The k-th hit from a file (k = 0 for its first) keeps ``decay ** k`` of its
+    score, then the list is re-sorted. A file's best hit is never touched, so
+    the top result and every file's first appearance keep their rank; what
+    moves is the fourth helper from ``users/crud.py`` making room for the
+    ``db/connection.py`` hit a "how are users stored" question also needs.
+    ``decay >= 1`` returns the list unchanged.
+    """
+    if decay >= 1.0 or not results:
+        return results
+    seen: dict[str, int] = {}
+    scored = []
+    for order, r in enumerate(results):
+        f = _module_of(r)
+        k = seen.get(f, 0)
+        seen[f] = k + 1
+        if k:
+            r = dict(r)
+            r["score"] = float(r.get("score") or 0.0) * decay**k
+            r["_file_repeat"] = k
+        scored.append((float(r.get("score") or 0.0), -order, r))
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return [r for _, _, r in scored]
+
+
 def _collapse_duplicates(results: list[dict]) -> list[dict]:
     """Drop hits that repeat an earlier hit's text in the same file.
 
@@ -306,6 +372,19 @@ class ContextSelector:
     # NEURALMIND_L3_K / NEURALMIND_L3_POOL override.
     L3_K = 8
     L3_POOL = 20
+    # Each further hit from a file already in L3 keeps this fraction of its
+    # score per repeat (see _diversify_files): eight hits from one file left
+    # no room for the second file a "how are users stored" question needs.
+    # 0.6 took the self-benchmark's cross-file queries from 0.82 to 0.95 of
+    # their files, gained a retrieval-eval question and lost none, and took
+    # public recall to 100%. NEURALMIND_L3_FILE_DECAY overrides; 1 turns it off.
+    L3_FILE_DECAY = 0.6
+    # Test-file hits keep this fraction of their score unless the question is
+    # about tests (see _demote_tests). On this repository's retrieval eval,
+    # with its tests indexed, 0.5 took MRR from 0.54 to 0.63 and hit@5 from
+    # 77% to 80% with nothing lost elsewhere. NEURALMIND_TEST_FILE_FACTOR
+    # overrides; 1 turns it off.
+    TEST_FILE_FACTOR = 0.5
 
     # Synapse-driven recall (see _apply_synapse_boost / get_l2_context):
     # number of top hits used to seed spreading activation, how strongly
@@ -1812,7 +1891,13 @@ class ContextSelector:
 
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)
-        ranked_pool = _collapse_duplicates(results)
+        results = _demote_tests(
+            results, query, _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR)
+        )
+        ranked_pool = _diversify_files(
+            _collapse_duplicates(results),
+            _env_number("NEURALMIND_L3_FILE_DECAY", self.L3_FILE_DECAY),
+        )
         results = ranked_pool[:n]
 
         # Fold in the static structural graph first: pull a query hit's
