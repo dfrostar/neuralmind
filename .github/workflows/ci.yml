@@ -162,8 +162,13 @@ jobs:
           # backend (top-level `import chromadb`), which is an opt-in extra as of
           # v0.29.0. The default install must work without it.
           python -c "
+          import os, sysconfig
           import neuralmind
-          assert 'site-packages' in neuralmind.__file__, neuralmind.__file__
+          # The interpreter's own install dirs, not a 'site-packages' substring:
+          # Debian-family Pythons install to dist-packages.
+          origin = os.path.realpath(neuralmind.__file__)
+          roots = [os.path.realpath(p) for p in (sysconfig.get_path(k) for k in ('purelib', 'platlib')) if p]
+          assert any(origin.startswith(root + os.sep) for root in roots), (origin, roots)
           import neuralmind.cli
           import neuralmind.core
           import neuralmind.config

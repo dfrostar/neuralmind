@@ -54,6 +54,9 @@ def test_mcp_server_answers_initialize_list_and_call_over_stdio(
 
     smoke = _load_smoke()
     summary = smoke.run_smoke(timeout=90.0, project_path=str(temp_project))
+    # An empty origin would resolve to the working directory and fail below
+    # with a misleading path.
+    assert summary["neuralmind_origin"], summary
     origin = Path(summary["neuralmind_origin"]).resolve()
     assert not origin.is_relative_to(tmp_path.resolve()), origin
     assert summary["tool_count"] >= 20
@@ -111,3 +114,14 @@ def test_validate_tool_arguments_restores_schema_checks():
     # The pre-existing project_path message is preserved verbatim.
     reply = json.loads(handle_tool_call("neuralmind_query", {"question": "q"}))
     assert reply == {"error": "project_path is required", "code": "invalid_request"}
+
+
+def test_site_packages_check_skips_a_scheme_path_that_is_none(monkeypatch):
+    smoke = _load_smoke()
+    purelib = sysconfig.get_path("purelib")
+    real = sysconfig.get_path
+    monkeypatch.setattr(
+        smoke.sysconfig, "get_path", lambda key: None if key == "platlib" else real(key)
+    )
+    assert smoke._in_site_packages(str(Path(purelib) / "neuralmind" / "__init__.py"))
+    assert not smoke._in_site_packages(str(Path.cwd() / "neuralmind" / "__init__.py"))

@@ -73,10 +73,9 @@ def _in_site_packages(path: str) -> bool:
     if not path:
         return False
     resolved = Path(path).resolve()
-    return any(
-        resolved.is_relative_to(Path(sysconfig.get_path(key)).resolve())
-        for key in ("purelib", "platlib")
-    )
+    # A scheme can lack one of the two (get_path returns None): skip it.
+    roots = [sysconfig.get_path(key) for key in ("purelib", "platlib")]
+    return any(resolved.is_relative_to(Path(root).resolve()) for root in roots if root)
 
 
 def run_smoke(
