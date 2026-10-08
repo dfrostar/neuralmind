@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from tests.benchmark.prompt_recall import _code_files, _is_doc, _named_files
 
 
@@ -48,3 +51,25 @@ def test_the_index_decides_which_named_files_are_code():
         "src/app.py": True,
         "README.md": False,
     }
+
+
+def test_the_release_notes_table_is_the_committed_results():
+    # Each "Measured" row in the v4.11.0 notes must be what the committed runs say.
+    root = Path(__file__).resolve().parents[1]
+    data = json.loads((root / "tests/benchmark/prompt_recall_results.json").read_text("utf-8"))
+    notes = (root / "docs/releases/RELEASE_NOTES_v4.11.0.md").read_text("utf-8")
+
+    def cells(report):
+        named, first = report["named"], report["first"]
+        tokens = f"{round(report['mean_tokens_injected'])} ({report['max_tokens']})"
+        if report["injected"] < report["n"]:
+            tokens += f", {report['injected']} prompts got a block"
+        return [str(named), str(first), tokens]
+
+    sets = data["sets"]
+    for label in sets["click"]["runs"]:
+        row = cells(sets["click"]["runs"][label]) + cells(sets["neuralmind"]["runs"][label])
+        name = label
+        if label == "v4.11.0":
+            name, row = f"**{name}**", [f"**{c}**" for c in row]
+        assert "| " + " | ".join([name, *row]) + " |" in notes, label

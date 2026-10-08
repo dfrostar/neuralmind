@@ -1,0 +1,1534 @@
+{
+  "about": "Raw output of tests/benchmark/prompt_recall.py --json behind the 'Measured' table in docs/releases/RELEASE_NOTES_v4.11.0.md. One fresh index per prompt set, built by v4.11.0 (built-in graph, TurboVec + all-MiniLM-L6-v2), no usage; each run is that release's hook on the same index (its checkout first on PYTHONPATH). 'Seeding fix + gate only' is commit 2286c9c (#602). Measured 2026-10-08, Linux, Python 3.11.",
+  "sets": {
+    "click": {
+      "repo": "https://github.com/pallets/click",
+      "commit": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
+      "prompts": "tests/benchmark/prompt_recall_click.json",
+      "runs": {
+        "v4.9.2": {
+          "tokenizer": "o200k_base",
+          "n": 14,
+          "named": 3,
+          "first": 3,
+          "injected": 14,
+          "mean_tokens_injected": 124.0,
+          "max_tokens": 177,
+          "rows": [
+            {
+              "prompt": "which files in this repo handle parsing command-line options?",
+              "expect": [
+                "src/click/parser.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/parameters.md",
+                "docs/arguments.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 112,
+              "block": "## NeuralMind associative recall\n\n- docs_parameters_md (activation 0.05)\n- docs_arguments_md (activation 0.05)\n- docs_parameters_md__h3 (activation 0.00)\n- docs_parameters_md__h20 (activation 0.00)\n- docs_parameters_md__h32 (activation 0.00)\n- docs_arguments_md__h3 (activation 0.00)\n- docs_arguments_md__h24 (activation 0.00)\n- docs_arguments_md__h64 (activation 0.00)"
+            },
+            {
+              "prompt": "where is shell completion implemented?",
+              "expect": [
+                "src/click/shell_completion.py"
+              ],
+              "files": [
+                "docs/api.md",
+                "docs/shell-completion.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 120,
+              "block": "## NeuralMind associative recall\n\n- docs_api_md (activation 0.06)\n- docs_shell_completion_md__h3 (activation 0.06)\n- docs_shell_completion_md__h21 (activation 0.06)\n- docs_shell_completion_md__h139 (activation 0.06)\n- docs_shell_completion_md__h166 (activation 0.06)\n- docs_shell_completion_md__h191 (activation 0.06)\n- docs_api_md__h1 (activation 0.01)\n- docs_api_md__h14 (activation 0.01)"
+            },
+            {
+              "prompt": "how do I make an option prompt for a password?",
+              "expect": [
+                "src/click/core.py",
+                "src/click/termui.py",
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "docs/option-decorators.md",
+                "src/click/__init__.py",
+                "tests/typing/typing_password_option.py",
+                "src/click/core.py",
+                "tests/test_context.py",
+                "src/click/utils.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 123,
+              "block": "## NeuralMind associative recall\n\n- src_click_decorators_py (activation 0.06)\n- docs_option_decorators_md (activation 0.06)\n- src_click_decorators_py__option_fn (activation 0.06)\n- src_click_init_py (activation 0.06)\n- tests_typing_typing_password_option_py__encrypt_fn (activation 0.05)\n- src_click_core_py (activation 0.01)\n- tests_test_context_py (activation 0.01)\n- src_click_utils_0e394371_py (activation 0.01)"
+            },
+            {
+              "prompt": "how does click decide the order parameters are processed?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/click-concepts.md",
+                "docs/options.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 114,
+              "block": "## NeuralMind associative recall\n\n- docs_click_concepts_md (activation 0.12)\n- docs_options_md (activation 0.05)\n- docs_options_md__h3 (activation 0.00)\n- docs_options_md__h26 (activation 0.00)\n- docs_options_md__h98 (activation 0.00)\n- docs_options_md__h127 (activation 0.00)\n- docs_options_md__h145 (activation 0.00)\n- docs_options_md__h168 (activation 0.00)"
+            },
+            {
+              "prompt": "how can I test a click command and capture its output?",
+              "expect": [
+                "src/click/testing.py"
+              ],
+              "files": [
+                "docs/quickstart.md",
+                "docs/testing.md",
+                "docs/unicode-support.md",
+                "docs/why.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 118,
+              "block": "## NeuralMind associative recall\n\n- docs_quickstart_md (activation 0.06)\n- docs_testing_md (activation 0.05)\n- docs_unicode_support_md (activation 0.05)\n- docs_why_md (activation 0.05)\n- docs_quickstart_md__h1 (activation 0.00)\n- docs_quickstart_md__h6 (activation 0.00)\n- docs_quickstart_md__h16 (activation 0.00)\n- docs_quickstart_md__h73 (activation 0.00)"
+            },
+            {
+              "prompt": "where are the built-in parameter types like IntRange and Choice defined?",
+              "expect": [
+                "src/click/types.py"
+              ],
+              "files": [
+                "docs/parameter-types.md",
+                "docs/option-decorators.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 122,
+              "block": "## NeuralMind associative recall\n\n- docs_parameter_types_md (activation 0.05)\n- docs_option_decorators_md (activation 0.05)\n- docs_parameter_types_md__h18 (activation 0.00)\n- docs_parameter_types_md__h22 (activation 0.00)\n- docs_parameter_types_md__h81 (activation 0.00)\n- docs_parameter_types_md__h109 (activation 0.00)\n- docs_parameter_types_md__h158 (activation 0.00)\n- docs_parameter_types_md__h208 (activation 0.00)"
+            },
+            {
+              "prompt": "how does the help page get formatted and wrapped?",
+              "expect": [
+                "src/click/formatting.py",
+                "src/click/_textwrap.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/commands-and-groups.md",
+                "docs/documentation.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 127,
+              "block": "## NeuralMind associative recall\n\n- docs_commands_and_groups_md (activation 0.05)\n- docs_documentation_md (activation 0.05)\n- docs_commands_and_groups_md__h1 (activation 0.00)\n- docs_commands_and_groups_md__h18 (activation 0.00)\n- docs_commands_and_groups_md__h20 (activation 0.00)\n- docs_commands_and_groups_md__h37 (activation 0.00)\n- docs_commands_and_groups_md__h55 (activation 0.00)\n- docs_commands_and_groups_md__h72 (activation 0.00)"
+            },
+            {
+              "prompt": "how are environment variables mapped to options?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/prompts.md",
+                "docs/options.md",
+                "docs/documentation.md",
+                "docs/commands-and-groups.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 114,
+              "block": "## NeuralMind associative recall\n\n- docs_prompts_md (activation 0.06)\n- docs_options_md (activation 0.06)\n- docs_documentation_md (activation 0.05)\n- docs_commands_and_groups_md (activation 0.05)\n- docs_prompts_md__h1 (activation 0.01)\n- docs_prompts_md__h21 (activation 0.01)\n- docs_prompts_md__h71 (activation 0.01)\n- docs_prompts_md__h87 (activation 0.01)"
+            },
+            {
+              "prompt": "how does click show a progress bar?",
+              "expect": [
+                "src/click/termui.py",
+                "src/click/_termui_impl.py"
+              ],
+              "files": [
+                "src/click/_termui_impl.py",
+                "examples/termui/termui.py",
+                "tests/test_termui.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 177,
+              "block": "## NeuralMind associative recall\n\n- src_click_termui_impl_py__progressbar_cls__update_fn (activation 0.09)\n- src_click_termui_impl_py__progressbar_cls__render_progress_fn (activation 0.08)\n- src_click_termui_impl_py__progressbar_cls__format_progress_line_fn (activation 0.08)\n- examples_termui_termui_py__progress_fn (activation 0.07)\n- src_click_termui_impl_py__progressbar_cls__generator_fn (activation 0.07)\n- src_click_termui_impl_py__progressbar_cls__render_finish_fn (activation 0.07)\n- tests_test_termui_py__test_progressbar_lands_on_final_position_fn (activation 0.06)\n- src_click_termui_impl_py__progressbar_cls__make_step_fn (activation 0.06)"
+            },
+            {
+              "prompt": "what exception is raised for a missing required argument and how is it displayed?",
+              "expect": [
+                "src/click/exceptions.py"
+              ],
+              "files": [
+                "tests/test_arguments.py",
+                "src/click/core.py",
+                "src/click/decorators.py",
+                "src/click/utils.py",
+                "tests/test_options.py",
+                "docs/exceptions.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 134,
+              "block": "## NeuralMind associative recall\n\n- tests_test_arguments_py (activation 0.09)\n- src_click_core_py__context_cls__invoke_fn (activation 0.09)\n- src_click_core_py__parameter_cls__process_value_fn (activation 0.05)\n- src_click_core_py__group_cls__command_fn (activation 0.05)\n- src_click_decorators_py__argument_fn (activation 0.05)\n- src_click_utils_0e394371_py__echo_fn (activation 0.05)\n- tests_test_options_py (activation 0.04)\n- docs_exceptions_md (activation 0.04)"
+            },
+            {
+              "prompt": "how do command groups dispatch to subcommands?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/commands.md",
+                "docs/commands-and-groups.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 114,
+              "block": "## NeuralMind associative recall\n\n- docs_commands_md (activation 0.12)\n- docs_commands_and_groups_md (activation 0.12)\n- docs_commands_md__h1 (activation 0.01)\n- docs_commands_md__h48 (activation 0.01)\n- docs_commands_md__h99 (activation 0.01)\n- docs_commands_md__h177 (activation 0.01)\n- docs_commands_md__h294 (activation 0.01)\n- docs_commands_md__h354 (activation 0.01)"
+            },
+            {
+              "prompt": "how does click open files lazily for File parameters?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/types.py"
+              ],
+              "files": [
+                "docs/handling-files.md",
+                "docs/utils.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 118,
+              "block": "## NeuralMind associative recall\n\n- docs_handling_files_md (activation 0.11)\n- docs_utils_md (activation 0.05)\n- docs_handling_files_md__h13 (activation 0.01)\n- docs_handling_files_md__h47 (activation 0.01)\n- docs_utils_md__h1 (activation 0.00)\n- docs_utils_md__h9 (activation 0.00)\n- docs_utils_md__h50 (activation 0.00)\n- docs_utils_md__h86 (activation 0.00)"
+            },
+            {
+              "prompt": "where does echo handle colors on windows?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/_compat.py",
+                "src/click/_winconsole.py"
+              ],
+              "files": [
+                "docs/utils.md",
+                "src/click/utils.py",
+                "tests/test_utils/test_echo.py",
+                "src/click/termui.py",
+                "docs/quickstart.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 122,
+              "block": "## NeuralMind associative recall\n\n- docs_utils_md (activation 0.09)\n- src_click_utils_0e394371_py__echo_fn (activation 0.05)\n- tests_test_utils_test_echo_py (activation 0.04)\n- src_click_termui_py__style_fn (activation 0.04)\n- docs_quickstart_md (activation 0.04)\n- docs_utils_md__h1 (activation 0.01)\n- docs_utils_md__h86 (activation 0.01)\n- docs_utils_md__h137 (activation 0.01)"
+            },
+            {
+              "prompt": "how does the decorator stack attach params to a function?",
+              "expect": [
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "docs/quickstart.md",
+                "docs/commands.md",
+                "docs/parameters.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 121,
+              "block": "## NeuralMind associative recall\n\n- docs_quickstart_md (activation 0.06)\n- docs_commands_md (activation 0.05)\n- docs_parameters_md (activation 0.05)\n- docs_quickstart_md__h1 (activation 0.01)\n- docs_quickstart_md__h6 (activation 0.01)\n- docs_quickstart_md__h16 (activation 0.01)\n- docs_quickstart_md__h39 (activation 0.01)\n- docs_quickstart_md__h73 (activation 0.01)"
+            }
+          ]
+        },
+        "Seeding fix + gate only": {
+          "tokenizer": "o200k_base",
+          "n": 14,
+          "named": 8,
+          "first": 7,
+          "injected": 14,
+          "mean_tokens_injected": 136.7,
+          "max_tokens": 183,
+          "rows": [
+            {
+              "prompt": "which files in this repo handle parsing command-line options?",
+              "expect": [
+                "src/click/parser.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "tests/test_termui.py",
+                "src/click/_termui_impl.py",
+                "docs/parameters.md",
+                "examples/repo/repo.py",
+                "docs/arguments.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 121,
+              "block": "## NeuralMind associative recall\n\n- tests_test_termui_py (activation 0.05)\n- src_click_termui_impl_py__pipepager_fn (activation 0.05)\n- docs_parameters_md (activation 0.05)\n- examples_repo_repo_py (activation 0.05)\n- examples_repo_repo_py__repo_cls__set_config_fn (activation 0.05)\n- docs_arguments_md (activation 0.05)\n- examples_repo_repo_py__setuser_fn (activation 0.01)\n- examples_repo_repo_py__repo_cls (activation 0.01)"
+            },
+            {
+              "prompt": "where is shell completion implemented?",
+              "expect": [
+                "src/click/shell_completion.py"
+              ],
+              "files": [
+                "src/click/shell_completion.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 161,
+              "block": "## NeuralMind associative recall\n\n- src_click_shell_completion_py (activation 0.14)\n- src_click_shell_completion_py__shellcomplete_cls (activation 0.14)\n- src_click_shell_completion_py__bashcomplete_cls__check_version_fn (activation 0.07)\n- src_click_shell_completion_py__bashcomplete_cls__source_fn (activation 0.07)\n- src_click_shell_completion_py__bashcomplete_cls__name_sym (activation 0.06)\n- src_click_shell_completion_py__bashcomplete_cls__source_template_sym (activation 0.06)\n- src_click_shell_completion_py__bashcomplete_cls__get_completion_args_fn (activation 0.06)\n- src_click_shell_completion_py__bashcomplete_cls__format_completion_fn (activation 0.06)"
+            },
+            {
+              "prompt": "how do I make an option prompt for a password?",
+              "expect": [
+                "src/click/core.py",
+                "src/click/termui.py",
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "docs/option-decorators.md",
+                "src/click/__init__.py",
+                "tests/typing/typing_password_option.py",
+                "src/click/core.py",
+                "tests/test_context.py",
+                "src/click/utils.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 123,
+              "block": "## NeuralMind associative recall\n\n- src_click_decorators_py (activation 0.06)\n- src_click_decorators_py__option_fn (activation 0.06)\n- docs_option_decorators_md (activation 0.06)\n- src_click_init_py (activation 0.06)\n- tests_typing_typing_password_option_py__encrypt_fn (activation 0.05)\n- src_click_core_py (activation 0.01)\n- tests_test_context_py (activation 0.01)\n- src_click_utils_0e394371_py (activation 0.01)"
+            },
+            {
+              "prompt": "how does click decide the order parameters are processed?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/click-concepts.md",
+                "docs/options.md",
+                "src/click/core.py",
+                "tests/test_commands.py",
+                "src/click/__init__.py",
+                "src/click/exceptions.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 120,
+              "block": "## NeuralMind associative recall\n\n- docs_click_concepts_md (activation 0.12)\n- docs_options_md (activation 0.05)\n- src_click_core_py (activation 0.05)\n- src_click_core_py__command_cls__parse_args_fn (activation 0.05)\n- tests_test_commands_py__test_iter_params_for_processing_fn (activation 0.05)\n- src_click_core_py__command_cls (activation 0.01)\n- src_click_init_py (activation 0.01)\n- src_click_exceptions_py (activation 0.01)"
+            },
+            {
+              "prompt": "how can I test a click command and capture its output?",
+              "expect": [
+                "src/click/testing.py"
+              ],
+              "files": [
+                "docs/quickstart.md",
+                "docs/testing.md",
+                "docs/unicode-support.md",
+                "docs/why.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 118,
+              "block": "## NeuralMind associative recall\n\n- docs_quickstart_md (activation 0.06)\n- docs_testing_md (activation 0.05)\n- docs_unicode_support_md (activation 0.05)\n- docs_why_md (activation 0.05)\n- docs_quickstart_md__h1 (activation 0.00)\n- docs_quickstart_md__h6 (activation 0.00)\n- docs_quickstart_md__h16 (activation 0.00)\n- docs_quickstart_md__h73 (activation 0.00)"
+            },
+            {
+              "prompt": "where are the built-in parameter types like IntRange and Choice defined?",
+              "expect": [
+                "src/click/types.py"
+              ],
+              "files": [
+                "src/click/core.py"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 149,
+              "block": "## NeuralMind associative recall\n\n- src_click_core_py (activation 0.10)\n- src_click_core_py__parameter_cls (activation 0.10)\n- src_click_core_py__option_cls__init_fn (activation 0.06)\n- src_click_core_py__option_cls__resolve_lazy_default_fn (activation 0.05)\n- src_click_core_py__option_cls__prompt_for_value_fn (activation 0.05)\n- src_click_core_py__option_cls__consume_value_fn (activation 0.05)\n- src_click_core_py__option_cls__infer_flag_kind_fn (activation 0.05)\n- src_click_core_py__option_cls__pick_type_fn (activation 0.05)"
+            },
+            {
+              "prompt": "how does the help page get formatted and wrapped?",
+              "expect": [
+                "src/click/formatting.py",
+                "src/click/_textwrap.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "src/click/core.py",
+                "tests/test_context.py",
+                "src/click/utils.py",
+                "src/click/exceptions.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 155,
+              "block": "## NeuralMind associative recall\n\n- src_click_decorators_py__option_fn (activation 0.06)\n- src_click_core_py__context_cls__exit_de3ac217_fn (activation 0.06)\n- tests_test_context_py__test_no_state_leaks_fn (activation 0.06)\n- src_click_core_py__context_cls (activation 0.06)\n- src_click_utils_0e394371_py__echo_fn (activation 0.06)\n- src_click_decorators_py (activation 0.05)\n- src_click_core_py__command_cls__get_help_fn (activation 0.05)\n- src_click_exceptions_py__noargsishelperror_cls__init_fn (activation 0.05)"
+            },
+            {
+              "prompt": "how are environment variables mapped to options?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/prompts.md",
+                "docs/options.md",
+                "docs/documentation.md",
+                "docs/commands-and-groups.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 114,
+              "block": "## NeuralMind associative recall\n\n- docs_prompts_md (activation 0.06)\n- docs_options_md (activation 0.06)\n- docs_documentation_md (activation 0.05)\n- docs_commands_and_groups_md (activation 0.05)\n- docs_prompts_md__h1 (activation 0.01)\n- docs_prompts_md__h21 (activation 0.01)\n- docs_prompts_md__h71 (activation 0.01)\n- docs_prompts_md__h87 (activation 0.01)"
+            },
+            {
+              "prompt": "how does click show a progress bar?",
+              "expect": [
+                "src/click/termui.py",
+                "src/click/_termui_impl.py"
+              ],
+              "files": [
+                "src/click/_termui_impl.py",
+                "examples/termui/termui.py",
+                "tests/test_termui.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 177,
+              "block": "## NeuralMind associative recall\n\n- src_click_termui_impl_py__progressbar_cls__update_fn (activation 0.09)\n- src_click_termui_impl_py__progressbar_cls__render_progress_fn (activation 0.08)\n- src_click_termui_impl_py__progressbar_cls__format_progress_line_fn (activation 0.08)\n- examples_termui_termui_py__progress_fn (activation 0.07)\n- src_click_termui_impl_py__progressbar_cls__generator_fn (activation 0.07)\n- src_click_termui_impl_py__progressbar_cls__render_finish_fn (activation 0.07)\n- tests_test_termui_py__test_progressbar_lands_on_final_position_fn (activation 0.06)\n- src_click_termui_impl_py__progressbar_cls__make_step_fn (activation 0.06)"
+            },
+            {
+              "prompt": "what exception is raised for a missing required argument and how is it displayed?",
+              "expect": [
+                "src/click/exceptions.py"
+              ],
+              "files": [
+                "tests/test_arguments.py",
+                "src/click/core.py",
+                "src/click/decorators.py",
+                "src/click/utils.py",
+                "tests/test_options.py",
+                "docs/exceptions.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 134,
+              "block": "## NeuralMind associative recall\n\n- tests_test_arguments_py (activation 0.09)\n- src_click_core_py__context_cls__invoke_fn (activation 0.09)\n- src_click_core_py__parameter_cls__process_value_fn (activation 0.05)\n- src_click_core_py__group_cls__command_fn (activation 0.05)\n- src_click_decorators_py__argument_fn (activation 0.05)\n- src_click_utils_0e394371_py__echo_fn (activation 0.05)\n- tests_test_options_py (activation 0.04)\n- docs_exceptions_md (activation 0.04)"
+            },
+            {
+              "prompt": "how do command groups dispatch to subcommands?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "docs/commands.md",
+                "docs/commands-and-groups.md"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 114,
+              "block": "## NeuralMind associative recall\n\n- docs_commands_md (activation 0.12)\n- docs_commands_and_groups_md (activation 0.12)\n- docs_commands_md__h1 (activation 0.01)\n- docs_commands_md__h48 (activation 0.01)\n- docs_commands_md__h99 (activation 0.01)\n- docs_commands_md__h177 (activation 0.01)\n- docs_commands_md__h294 (activation 0.01)\n- docs_commands_md__h354 (activation 0.01)"
+            },
+            {
+              "prompt": "how does click open files lazily for File parameters?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/types.py"
+              ],
+              "files": [
+                "docs/handling-files.md",
+                "src/click/utils.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 183,
+              "block": "## NeuralMind associative recall\n\n- docs_handling_files_md (activation 0.11)\n- src_click_utils_0e394371_py__lazyfile_cls__close_intelligently_fn (activation 0.06)\n- src_click_utils_0e394371_py__lazyfile_cls__exit_fn (activation 0.06)\n- src_click_utils_0e394371_py (activation 0.05)\n- src_click_utils_0e394371_py__lazyfile_cls__name_sym (activation 0.05)\n- src_click_utils_0e394371_py__lazyfile_cls__mode_sym (activation 0.05)\n- src_click_utils_0e394371_py__lazyfile_cls__encoding_sym (activation 0.05)\n- src_click_utils_0e394371_py__lazyfile_cls__errors_sym (activation 0.05)"
+            },
+            {
+              "prompt": "where does echo handle colors on windows?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/_compat.py",
+                "src/click/_winconsole.py"
+              ],
+              "files": [
+                "docs/utils.md",
+                "src/click/utils.py",
+                "tests/test_utils/test_echo.py",
+                "src/click/termui.py",
+                "docs/quickstart.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 122,
+              "block": "## NeuralMind associative recall\n\n- docs_utils_md (activation 0.09)\n- src_click_utils_0e394371_py__echo_fn (activation 0.05)\n- tests_test_utils_test_echo_py (activation 0.04)\n- src_click_termui_py__style_fn (activation 0.04)\n- docs_quickstart_md (activation 0.04)\n- docs_utils_md__h1 (activation 0.01)\n- docs_utils_md__h86 (activation 0.01)\n- docs_utils_md__h137 (activation 0.01)"
+            },
+            {
+              "prompt": "how does the decorator stack attach params to a function?",
+              "expect": [
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "docs/quickstart.md",
+                "docs/commands.md",
+                "src/click/core.py",
+                "tests/typing/typing_aliased_group.py",
+                "docs/parameters.md",
+                "src/click/__init__.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 123,
+              "block": "## NeuralMind associative recall\n\n- src_click_decorators_py (activation 0.06)\n- docs_quickstart_md (activation 0.06)\n- docs_commands_md (activation 0.05)\n- src_click_core_py__group_cls__command_fn (activation 0.05)\n- tests_typing_typing_aliased_group_py__pop_fn (activation 0.05)\n- docs_parameters_md (activation 0.05)\n- src_click_decorators_py__group_fn (activation 0.01)\n- src_click_init_py (activation 0.01)"
+            }
+          ]
+        },
+        "v4.11.0": {
+          "tokenizer": "o200k_base",
+          "n": 14,
+          "named": 14,
+          "first": 11,
+          "injected": 14,
+          "mean_tokens_injected": 119.7,
+          "max_tokens": 173,
+          "rows": [
+            {
+              "prompt": "which files in this repo handle parsing command-line options?",
+              "expect": [
+                "src/click/parser.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/core.py",
+                "src/click/parser.py",
+                "examples/repo/repo.py",
+                "src/click/_termui_impl.py",
+                "docs/parameters.md",
+                "docs/arguments.md",
+                "docs/complex.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 98,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/core.py: make_parser() L1256, Parameter L2241\n- src/click/parser.py: _OptionParser L224, parse_args() L298\n- examples/repo/repo.py: cli() L44\n- src/click/_termui_impl.py: _less_uses_raw_mode() L520\nDocs: docs/parameters.md, docs/arguments.md, docs/complex.md"
+            },
+            {
+              "prompt": "where is shell completion implemented?",
+              "expect": [
+                "src/click/shell_completion.py"
+              ],
+              "files": [
+                "src/click/shell_completion.py",
+                "tests/test_shell_completion.py",
+                "docs/api.md",
+                "docs/shell-completion.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 84,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/shell_completion.py: BashComplete L389, ZshComplete L448, add_completion_class() L565\nConnected to it in the synapse graph:\n- tests/test_shell_completion.py: test_add_completion_class() L516, test_add_completion_class_with_name() L536\nDocs: docs/api.md, docs/shell-completion.md"
+            },
+            {
+              "prompt": "how do I make an option prompt for a password?",
+              "expect": [
+                "src/click/core.py",
+                "src/click/termui.py",
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "tests/test_options.py",
+                "tests/typing/typing_password_option.py",
+                "tests/test_termui.py",
+                "src/click/__init__.py",
+                "src/click/types.py",
+                "docs/option-decorators.md",
+                "docs/prompts.md",
+                "docs/options.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 154,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/decorators.py: password_option() L404\n- tests/test_options.py: test_option_prompt_still_guards_against_a_nameless_option() L1533, test_string_show_default_shows_custom_string_in_prompt() L1649, test_callback_validates_prompt() L1053\n- tests/typing/typing_password_option.py: encrypt() L10\n- tests/test_termui.py: _PasswordLengthType L1749\nConnected to it in the synapse graph:\n- src/click/__init__.py\n- src/click/types.py: ParamType L65\nDocs: docs/option-decorators.md, docs/prompts.md, docs/options.md"
+            },
+            {
+              "prompt": "how does click decide the order parameters are processed?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/parser.py",
+                "src/click/core.py",
+                "tests/test_commands.py",
+                "docs/click-concepts.md",
+                "docs/options.md",
+                "docs/parameters.md"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 86,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/parser.py: add_argument() L290, parse_args() L298\n- src/click/core.py: iter_params_for_processing() L172\nConnected to it in the synapse graph:\n- tests/test_commands.py: test_iter_params_for_processing() L401\nDocs: docs/click-concepts.md, docs/options.md, docs/parameters.md"
+            },
+            {
+              "prompt": "how can I test a click command and capture its output?",
+              "expect": [
+                "src/click/testing.py"
+              ],
+              "files": [
+                "src/click/testing.py",
+                "docs/quickstart.md",
+                "docs/testing.md",
+                "docs/unicode-support.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 46,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/testing.py: CliRunner L317, echo_stdin L356\nDocs: docs/quickstart.md, docs/testing.md, docs/unicode-support.md"
+            },
+            {
+              "prompt": "where are the built-in parameter types like IntRange and Choice defined?",
+              "expect": [
+                "src/click/types.py"
+              ],
+              "files": [
+                "src/click/core.py",
+                "src/click/types.py",
+                "tests/typing/typing_options.py",
+                "tests/test_options.py",
+                "src/click/__init__.py",
+                "docs/parameter-types.md",
+                "docs/option-decorators.md",
+                "docs/commands-and-groups.md"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 116,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/core.py: Argument L3894, Option L3057, Parameter L2241\n- src/click/types.py: shell_complete() L495\n- tests/typing/typing_options.py\n- tests/test_options.py: test_option_name_case_variants_share_one_parameter() L1479\nConnected to it in the synapse graph:\n- src/click/__init__.py\nDocs: docs/parameter-types.md, docs/option-decorators.md, docs/commands-and-groups.md"
+            },
+            {
+              "prompt": "how does the help page get formatted and wrapped?",
+              "expect": [
+                "src/click/formatting.py",
+                "src/click/_textwrap.py",
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/core.py",
+                "src/click/formatting.py",
+                "src/click/decorators.py",
+                "tests/test_formatting.py",
+                "src/click/exceptions.py",
+                "src/click/utils.py",
+                "tests/test_custom_classes.py",
+                "docs/commands-and-groups.md",
+                "docs/documentation.md",
+                "CHANGES.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 160,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/core.py: get_help() L865, format_help_text() L1307, format_help() L1288\n- src/click/formatting.py: HelpFormatter L110, wrap_text() L31\n- src/click/decorators.py: help_option() L603\n- tests/test_formatting.py: test_formatting_usage_custom_help() L236\nConnected to it in the synapse graph:\n- src/click/exceptions.py: __init__() L335\n- src/click/utils.py: echo() L240\n- tests/test_custom_classes.py: test_context_formatter_class() L47\nDocs: docs/commands-and-groups.md, docs/documentation.md, CHANGES.md"
+            },
+            {
+              "prompt": "how are environment variables mapped to options?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/core.py",
+                "src/click/types.py",
+                "tests/test_options.py",
+                "tests/test_arguments.py",
+                "src/click/utils.py",
+                "src/click/decorators.py",
+                "docs/prompts.md",
+                "docs/options.md",
+                "docs/documentation.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 152,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/core.py: resolve_envvar_value() L3748, value_from_envvar() L3772, Option L3057\n- src/click/types.py: OptionHelpExtra L1433\n- tests/test_options.py: test_auto_envvar_uses_the_transformed_name() L856, test_show_envvar() L998\n- tests/test_arguments.py: test_argument_explicit_envvar_case_sensitivity() L430\nConnected to it in the synapse graph:\n- src/click/utils.py: echo() L240\n- src/click/decorators.py: argument() L324\nDocs: docs/prompts.md, docs/options.md, docs/documentation.md"
+            },
+            {
+              "prompt": "how does click show a progress bar?",
+              "expect": [
+                "src/click/termui.py",
+                "src/click/_termui_impl.py"
+              ],
+              "files": [
+                "src/click/_termui_impl.py",
+                "src/click/termui.py",
+                "examples/termui/termui.py",
+                "tests/test_termui.py",
+                "src/click/globals.py",
+                "tests/typing/typing_progressbar.py",
+                "docs/utils.md",
+                "CHANGES.md",
+                "docs/advanced.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 173,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/_termui_impl.py: ProgressBar L43, render_progress() L250, format_progress_line() L223\n- src/click/termui.py: progressbar() L403\n- examples/termui/termui.py: progress() L38\n- tests/test_termui.py: test_progressbar_format_bar() L186, test_progressbar_format_progress_line() L203, test_progressbar_format_progress_line_with_show_func() L217\nConnected to it in the synapse graph:\n- src/click/globals.py: resolve_color_default() L54\n- tests/typing/typing_progressbar.py: test_length_is_int() L9, test_generic_on_iterable() L20\nDocs: docs/utils.md, CHANGES.md, docs/advanced.md"
+            },
+            {
+              "prompt": "what exception is raised for a missing required argument and how is it displayed?",
+              "expect": [
+                "src/click/exceptions.py"
+              ],
+              "files": [
+                "src/click/exceptions.py",
+                "src/click/shell_completion.py",
+                "tests/test_arguments.py",
+                "tests/test_options.py",
+                "src/click/core.py",
+                "docs/exceptions.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 138,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/exceptions.py: MissingParameter L159, UsageError L68, BadArgumentUsage L323\n- src/click/shell_completion.py: _is_incomplete_argument() L639\n- tests/test_arguments.py: test_required_argument() L635, test_implicit_non_required() L650, test_argument_requires_its_one_declaration() L192\n- tests/test_options.py: test_missing_required_flag() L1131\nConnected to it in the synapse graph:\n- src/click/core.py: process_value() L2802, get_parameter_source() L970\nDocs: docs/exceptions.md"
+            },
+            {
+              "prompt": "how do command groups dispatch to subcommands?",
+              "expect": [
+                "src/click/core.py"
+              ],
+              "files": [
+                "src/click/core.py",
+                "examples/aliases/aliases.py",
+                "examples/complex/complex/cli.py",
+                "tests/typing/typing_aliased_group.py",
+                "docs/commands.md",
+                "docs/commands-and-groups.md",
+                "docs/quickstart.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 99,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/core.py: Group L1703\nConnected to it in the synapse graph:\n- examples/aliases/aliases.py: AliasedGroup L37\n- examples/complex/complex/cli.py: ComplexCLI L31\n- tests/typing/typing_aliased_group.py: AliasedGroup L10\nDocs: docs/commands.md, docs/commands-and-groups.md, docs/quickstart.md"
+            },
+            {
+              "prompt": "how does click open files lazily for File parameters?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/types.py"
+              ],
+              "files": [
+                "src/click/utils.py",
+                "src/click/_compat.py",
+                "tests/test_utils/test_open_file.py",
+                "docs/handling-files.md",
+                "docs/utils.md",
+                "docs/why.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 108,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/utils.py: _LazyFile L103, open_file() L381, close_intelligently() L176\nConnected to it in the synapse graph:\n- src/click/_compat.py: open_stream() L374, close() L466\n- tests/test_utils/test_open_file.py: test_open_file() L11, test_open_file_pathlib_dash() L32\nDocs: docs/handling-files.md, docs/utils.md, docs/why.md"
+            },
+            {
+              "prompt": "where does echo handle colors on windows?",
+              "expect": [
+                "src/click/utils.py",
+                "src/click/_compat.py",
+                "src/click/_winconsole.py"
+              ],
+              "files": [
+                "examples/colors/colors.py",
+                "src/click/testing.py",
+                "examples/termui/termui.py",
+                "tests/test_utils/test_echo.py",
+                "src/click/termui.py",
+                "src/click/utils.py",
+                "docs/utils.md",
+                "docs/quickstart.md",
+                "CHANGES.md"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 133,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- examples/colors/colors.py: cli() L25, all_colors L4\n- src/click/testing.py: EchoingStdin L32\n- examples/termui/termui.py: colordemo() L15\n- tests/test_utils/test_echo.py: test_echo_color_flag() L61, test_echo_no_streams() L46\nConnected to it in the synapse graph:\n- src/click/termui.py: style() L641\n- src/click/utils.py: echo() L240\nDocs: docs/utils.md, docs/quickstart.md, CHANGES.md"
+            },
+            {
+              "prompt": "how does the decorator stack attach params to a function?",
+              "expect": [
+                "src/click/decorators.py"
+              ],
+              "files": [
+                "src/click/decorators.py",
+                "src/click/globals.py",
+                "tests/test_arguments.py",
+                "tests/test_formatting.py",
+                "docs/quickstart.md",
+                "docs/commands.md",
+                "docs/parameters.md"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 129,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- src/click/decorators.py: command() L138, option() L352, argument() L324\nConnected to it in the synapse graph:\n- src/click/globals.py: get_current_context() L13\n- tests/test_arguments.py: test_nested_subcommand_help() L1133, test_subcommand_help() L1114\n- tests/test_formatting.py: test_formatting_usage_error_help_hint() L285, test_wrapping_long_options_strings() L55\nDocs: docs/quickstart.md, docs/commands.md, docs/parameters.md"
+            }
+          ]
+        }
+      }
+    },
+    "neuralmind": {
+      "repo": "https://github.com/dfrostar/neuralmind",
+      "commit": "edbc239c85ab3e1a529fb95298d76a05f1de925e",
+      "prompts": "tests/benchmark/prompt_recall_neuralmind.json",
+      "runs": {
+        "v4.9.2": {
+          "tokenizer": "o200k_base",
+          "n": 15,
+          "named": 4,
+          "first": 1,
+          "injected": 6,
+          "mean_tokens_injected": 155.0,
+          "max_tokens": 167,
+          "rows": [
+            {
+              "prompt": "how does synapse decay work",
+              "expect": [
+                "neuralmind/synapses.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "where is the PreCompact hook handled",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "add a threshold to the spreading activation recall in the prompt-submit hook",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/hooks.py",
+                "neuralmind/core.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 152,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.04)\n- neuralmind_hooks_py (activation 0.04)\n- neuralmind_hooks_py__run_action_fn (activation 0.04)\n- neuralmind_hooks_py__cohesion_block_fn (activation 0.04)\n- neuralmind_core_py__neuralmind_cls__synaptic_neighbors_fn (activation 0.03)\n- neuralmind_core_py__neuralmind_cls__load_existing_index_fn (activation 0.03)\n- neuralmind_hooks_py__reset_read_dedup_fn (activation 0.01)\n- neuralmind_hooks_py__dedup_read_fn (activation 0.01)"
+            },
+            {
+              "prompt": "why does the session recap skip resumed sessions",
+              "expect": [
+                "neuralmind/session_recap.py"
+              ],
+              "files": [
+                "neuralmind/session_recap.py",
+                "neuralmind/cli.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 148,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_session_recap_py (activation 0.10)\n- neuralmind_session_recap_py__recaps_dir_fn (activation 0.08)\n- neuralmind_session_recap_py__latest_recap_fn (activation 0.06)\n- neuralmind_session_recap_py__recap_enabled_fn (activation 0.05)\n- neuralmind_session_recap_py__records_fn (activation 0.05)\n- neuralmind_session_recap_py__recording_enabled_fn (activation 0.05)\n- neuralmind_session_recap_py__prune_fn (activation 0.05)\n- neuralmind_cli_py__cmd_recap_fn (activation 0.04)"
+            },
+            {
+              "prompt": "fix the claims guard test for site numbers",
+              "expect": [
+                "tests/test_site_claims.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "the hermes plugin isn't injecting context, debug it",
+              "expect": [
+                "neuralmind/hermes_plugin/__init__.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "how are team memory bundles imported on session start",
+              "expect": [
+                "neuralmind/team_memory.py"
+              ],
+              "files": [
+                "evals/onboarding/harness.py",
+                "neuralmind/team_memory.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 167,
+              "block": "## NeuralMind associative recall\n\n- evals_onboarding_harness_py__seedhistory_cls (activation 0.04)\n- evals_onboarding_harness_py__onboardingreport_cls (activation 0.04)\n- neuralmind_team_memory_py (activation 0.04)\n- evals_onboarding_harness_py (activation 0.01)\n- evals_onboarding_harness_py__seedhistory_cls__fixture_sym (activation 0.00)\n- evals_onboarding_harness_py__seedhistory_cls__repeats_sym (activation 0.00)\n- evals_onboarding_harness_py__seedhistory_cls__total_activations_fn (activation 0.00)\n- evals_onboarding_harness_py__onboardingreport_cls__fixture_sym (activation 0.00)"
+            },
+            {
+              "prompt": "what does fit_to_budget trim first",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [
+                "neuralmind/context_budget.py",
+                "evals/faithfulness/harness.py"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 145,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_context_budget_py (activation 0.04)\n- neuralmind_context_budget_py__fit_layers_fn (activation 0.04)\n- evals_faithfulness_harness_py__count_tokens_fn (activation 0.04)\n- neuralmind_context_budget_py__split_layers_fn (activation 0.04)\n- neuralmind_context_budget_py__join_layers_fn (activation 0.04)\n- neuralmind_context_budget_py__estimate_context_tokens_fn (activation 0.01)\n- neuralmind_context_budget_py__find_line_start_fn (activation 0.01)\n- neuralmind_context_budget_py__shrink_section_fn (activation 0.01)"
+            },
+            {
+              "prompt": "make the MCP query tool report a stale index",
+              "expect": [
+                "neuralmind/mcp_server.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "the decision store marks decisions stale on commit, where is that",
+              "expect": [
+                "neuralmind/memory/invalidate.py",
+                "neuralmind/memory/store.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "rename synaptic_neighbors to associative_recall everywhere",
+              "expect": [
+                "neuralmind/core.py",
+                "neuralmind/mcp_server.py",
+                "neuralmind/synapse_client.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "how is the bash output cache redacted",
+              "expect": [
+                "neuralmind/output_cache.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "explain the L0 L1 L2 L3 context layers",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [],
+              "named": false,
+              "first": false,
+              "tokens": 0,
+              "block": ""
+            },
+            {
+              "prompt": "why did the public benchmark recall drop on rich",
+              "expect": [
+                "evals/public/run.py",
+                "evals/public/judge.py",
+                "evals/public/backends.py"
+              ],
+              "files": [
+                "scripts/check_public_bench_drift.py"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 159,
+              "block": "## NeuralMind associative recall\n\n- scripts_check_public_bench_drift_py (activation 0.03)\n- scripts_check_public_bench_drift_py__root_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__committed_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__cost_tolerance_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__epsilon_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__regenerate_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__numbers_sym (activation 0.00)\n- scripts_check_public_bench_drift_py__extract_fn (activation 0.00)"
+            },
+            {
+              "prompt": "add a new env var to disable the read dedup",
+              "expect": [
+                "neuralmind/read_dedup.py",
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/hooks.py",
+                "neuralmind/read_dedup.py",
+                "neuralmind/tier2/audit.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 159,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.04)\n- neuralmind_hooks_py__dedup_read_fn (activation 0.04)\n- neuralmind_read_dedup_py (activation 0.04)\n- neuralmind_tier2_audit_py__auditlog_cls__count_fn (activation 0.04)\n- neuralmind_read_dedup_py__find_read_text_fn (activation 0.01)\n- neuralmind_read_dedup_py__read_view_fn (activation 0.01)\n- neuralmind_read_dedup_py__content_hash_fn (activation 0.01)\n- neuralmind_read_dedup_py__dedup_stub_fn (activation 0.01)"
+            }
+          ]
+        },
+        "Seeding fix + gate only": {
+          "tokenizer": "o200k_base",
+          "n": 15,
+          "named": 14,
+          "first": 6,
+          "injected": 15,
+          "mean_tokens_injected": 153.1,
+          "max_tokens": 172,
+          "rows": [
+            {
+              "prompt": "how does synapse decay work",
+              "expect": [
+                "neuralmind/synapses.py"
+              ],
+              "files": [
+                "neuralmind/synapses.py",
+                "neuralmind/memory/store.py",
+                "neuralmind/synapse_feedback.py",
+                "neuralmind/synapse_dynamics.py",
+                "neuralmind/demo_data/sample_project/db/connection.py",
+                "neuralmind/synapse_client.py",
+                "neuralmind/core.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 158,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_synapses_py__synapsestore_cls__decay_node_fn (activation 0.06)\n- neuralmind_memory_store_py__decisionstore_cls__connect_fn (activation 0.06)\n- neuralmind_synapse_feedback_py__deactivate_files_fn (activation 0.05)\n- neuralmind_synapse_dynamics_py__synapsedynamics_cls (activation 0.05)\n- neuralmind_demo_data_sample_project_db_connection_py__ensure_schema_fn (activation 0.05)\n- neuralmind_synapses_py (activation 0.05)\n- neuralmind_synapse_client_py__synapseclient_cls (activation 0.05)\n- neuralmind_core_py__neuralmind_cls (activation 0.05)"
+            },
+            {
+              "prompt": "where is the PreCompact hook handled",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/hooks.py",
+                "evals/compression/run.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 138,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.14)\n- neuralmind_hooks_py (activation 0.11)\n- evals_compression_run_py (activation 0.06)\n- neuralmind_hooks_py__record_tool_transition_fn (activation 0.05)\n- neuralmind_hooks_py__learning_disabled_fn (activation 0.05)\n- neuralmind_hooks_py__dedup_read_fn (activation 0.05)\n- neuralmind_hooks_py__reset_read_dedup_fn (activation 0.05)\n- neuralmind_hooks_py__emit_for_event_fn (activation 0.05)"
+            },
+            {
+              "prompt": "add a threshold to the spreading activation recall in the prompt-submit hook",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/hooks.py",
+                "neuralmind/config.py",
+                "neuralmind/session_recap.py",
+                "neuralmind/synapse_dynamics.py",
+                "neuralmind/core.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 154,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_hooks_py__run_action_fn (activation 0.08)\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.05)\n- neuralmind_hooks_py (activation 0.04)\n- neuralmind_session_recap_py (activation 0.04)\n- neuralmind_synapse_dynamics_py__synapsedynamics_cls__apply_sampl_depression_fn (activation 0.04)\n- neuralmind_session_recap_py__recording_enabled_fn (activation 0.04)\n- neuralmind_session_recap_py__clip_fn (activation 0.04)\n- neuralmind_core_py__neuralmind_cls__synaptic_neighbors_fn (activation 0.04)"
+            },
+            {
+              "prompt": "why does the session recap skip resumed sessions",
+              "expect": [
+                "neuralmind/session_recap.py"
+              ],
+              "files": [
+                "neuralmind/session_recap.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 153,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_session_recap_py__recaps_dir_fn (activation 0.19)\n- neuralmind_session_recap_py__records_fn (activation 0.15)\n- neuralmind_session_recap_py__render_recap_fn (activation 0.11)\n- neuralmind_session_recap_py__prune_fn (activation 0.11)\n- neuralmind_session_recap_py__recap_enabled_fn (activation 0.11)\n- neuralmind_session_recap_py__recording_enabled_fn (activation 0.11)\n- neuralmind_session_recap_py__file_stem_fn (activation 0.11)\n- neuralmind_session_recap_py__mtime_fn (activation 0.11)"
+            },
+            {
+              "prompt": "fix the claims guard test for site numbers",
+              "expect": [
+                "tests/test_site_claims.py"
+              ],
+              "files": [
+                "neuralmind/demo_data/sample_project/auth/jwt_utils.py",
+                "neuralmind/config.py",
+                "site/src/components/sections/Benchmarks.tsx",
+                "neuralmind/_demo_report.py",
+                "neuralmind/demo_data/sample_project/auth/handlers.py"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 172,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_demo_data_sample_project_auth_jwt_utils_py (activation 0.03)\n- neuralmind_demo_data_sample_project_auth_jwt_utils_py__sign_fn (activation 0.03)\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.03)\n- neuralmind_demo_data_sample_project_auth_jwt_utils_py__b64url_decode_fn (activation 0.03)\n- site_src_components_sections_benchmarks_tsx (activation 0.03)\n- neuralmind_demo_report_py__charapproxencoding_cls__encode_fn (activation 0.03)\n- neuralmind_demo_data_sample_project_auth_handlers_py__verify_session_fn (activation 0.03)\n- neuralmind_demo_data_sample_project_auth_handlers_py__refresh_session_fn (activation 0.03)"
+            },
+            {
+              "prompt": "the hermes plugin isn't injecting context, debug it",
+              "expect": [
+                "neuralmind/hermes_plugin/__init__.py"
+              ],
+              "files": [
+                "neuralmind/hermes_plugin/__init__.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 162,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_hermes_plugin_init_py__project_fn (activation 0.13)\n- neuralmind_hermes_plugin_init_py__remember_fn (activation 0.13)\n- neuralmind_hermes_plugin_init_py__text_fn (activation 0.12)\n- neuralmind_hermes_plugin_init_py__on_post_tool_call_fn (activation 0.12)\n- neuralmind_hermes_plugin_init_py__norm_fn (activation 0.08)\n- neuralmind_hermes_plugin_init_py__run_fn (activation 0.08)\n- neuralmind_hermes_plugin_init_py__matches_any_fn (activation 0.08)\n- neuralmind_hermes_plugin_init_py__config_fn (activation 0.08)"
+            },
+            {
+              "prompt": "how are team memory bundles imported on session start",
+              "expect": [
+                "neuralmind/team_memory.py"
+              ],
+              "files": [
+                "neuralmind/team_memory.py",
+                "neuralmind/config.py",
+                "neuralmind/contribution_scoring.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 155,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_team_memory_py (activation 0.11)\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.08)\n- neuralmind_team_memory_py__pair_fn (activation 0.06)\n- neuralmind_team_memory_py__retracted_pairs_fn (activation 0.06)\n- neuralmind_team_memory_py__drop_from_pending_review_fn (activation 0.06)\n- neuralmind_team_memory_py__add_to_pending_review_fn (activation 0.05)\n- neuralmind_contribution_scoring_py__contributionqualityscorer_cls__score_bundle_fn (activation 0.05)\n- neuralmind_team_memory_py__team_bundle_path_fn (activation 0.05)"
+            },
+            {
+              "prompt": "what does fit_to_budget trim first",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [
+                "neuralmind/context_budget.py",
+                "evals/faithfulness/harness.py",
+                "neuralmind/context_selector.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 155,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_context_budget_py__fit_layers_fn (activation 0.09)\n- neuralmind_context_budget_py__split_layers_fn (activation 0.08)\n- evals_faithfulness_harness_py__count_tokens_fn (activation 0.06)\n- neuralmind_context_budget_py (activation 0.06)\n- evals_faithfulness_harness_py (activation 0.05)\n- neuralmind_context_selector_py__contextselector_cls__estimate_tokens_fn (activation 0.05)\n- neuralmind_context_selector_py__contextselector_cls__count_prefix_fn (activation 0.05)\n- evals_faithfulness_harness_py__truncate_to_tokens_fn (activation 0.05)"
+            },
+            {
+              "prompt": "make the MCP query tool report a stale index",
+              "expect": [
+                "neuralmind/mcp_server.py"
+              ],
+              "files": [
+                "neuralmind/core.py",
+                "neuralmind/memory/mcp_tools.py",
+                "neuralmind/config.py",
+                "neuralmind/baseline.py",
+                "neuralmind/mcp_server.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 151,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_core_py__neuralmind_cls (activation 0.11)\n- neuralmind_memory_mcp_tools_py (activation 0.10)\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.09)\n- neuralmind_memory_mcp_tools_py__get_decision_store_fn (activation 0.09)\n- neuralmind_memory_mcp_tools_py__handle_tool_call_fn (activation 0.08)\n- neuralmind_baseline_py__resolve_fn (activation 0.06)\n- neuralmind_core_py__neuralmind_cls__retrieval_probe_fn (activation 0.06)\n- neuralmind_mcp_server_py (activation 0.06)"
+            },
+            {
+              "prompt": "the decision store marks decisions stale on commit, where is that",
+              "expect": [
+                "neuralmind/memory/invalidate.py",
+                "neuralmind/memory/store.py"
+              ],
+              "files": [
+                "neuralmind/memory/invalidate.py",
+                "neuralmind/daemon.py",
+                "neuralmind/baseline.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 165,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_memory_invalidate_py__get_current_commit_fn (activation 0.18)\n- neuralmind_memory_invalidate_py__invalidationengine_cls__scan_fn (activation 0.16)\n- neuralmind_memory_invalidate_py__invalidationengine_cls (activation 0.13)\n- neuralmind_memory_invalidate_py__invalidationengine_cls__cascade_invalidation_fn (activation 0.08)\n- neuralmind_daemon_py__jobmanager_cls__list_fn (activation 0.08)\n- neuralmind_baseline_py__resolve_fn (activation 0.08)\n- neuralmind_memory_invalidate_py__get_changed_files_fn (activation 0.07)\n- neuralmind_memory_invalidate_py__committed_blob_ids_fn (activation 0.07)"
+            },
+            {
+              "prompt": "rename synaptic_neighbors to associative_recall everywhere",
+              "expect": [
+                "neuralmind/core.py",
+                "neuralmind/mcp_server.py",
+                "neuralmind/synapse_client.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/cli.py",
+                "neuralmind/core.py",
+                "neuralmind/mcp_server.py",
+                "neuralmind/__init__.py",
+                "neuralmind/synapses.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 127,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.07)\n- neuralmind_cli_py (activation 0.06)\n- neuralmind_core_py (activation 0.06)\n- neuralmind_mcp_server_py (activation 0.06)\n- neuralmind_init_py (activation 0.06)\n- neuralmind_synapses_py (activation 0.05)\n- neuralmind_mcp_server_py__handle_tool_call_fn (activation 0.05)\n- neuralmind_mcp_server_py__get_mind_fn (activation 0.05)"
+            },
+            {
+              "prompt": "how is the bash output cache redacted",
+              "expect": [
+                "neuralmind/output_cache.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/output_cache.py",
+                "neuralmind/secret_scan.py",
+                "neuralmind/memory/store.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 149,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.21)\n- neuralmind_output_cache_py__cache_path_fn (activation 0.18)\n- neuralmind_output_cache_py (activation 0.17)\n- neuralmind_secret_scan_py__redact_text_fn (activation 0.16)\n- neuralmind_secret_scan_py__scan_text_fn (activation 0.08)\n- neuralmind_secret_scan_py__redact_if_enabled_fn (activation 0.06)\n- neuralmind_memory_store_py__decisionstore_cls__update_fn (activation 0.06)\n- neuralmind_output_cache_py__truncate_keep_ends_fn (activation 0.06)"
+            },
+            {
+              "prompt": "explain the L0 L1 L2 L3 context layers",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/modularity.py",
+                "neuralmind/context_budget.py",
+                "neuralmind/context_selector.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 158,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.06)\n- neuralmind_modularity_py__detect_structural_communities_fn (activation 0.05)\n- neuralmind_context_budget_py (activation 0.05)\n- neuralmind_modularity_py__louvain_clustering_fn (activation 0.05)\n- neuralmind_context_selector_py__contextselector_cls__fit_to_budget_fn (activation 0.05)\n- neuralmind_modularity_py__build_adjacency_fn (activation 0.05)\n- neuralmind_context_budget_py__find_line_start_fn (activation 0.04)\n- neuralmind_context_budget_py__trim_context_to_budget_fn (activation 0.04)"
+            },
+            {
+              "prompt": "why did the public benchmark recall drop on rich",
+              "expect": [
+                "evals/public/run.py",
+                "evals/public/judge.py",
+                "evals/public/backends.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "evals/public/judge.py",
+                "evals/onboarding/harness.py",
+                "evals/public/backends.py",
+                "evals/public/run.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 143,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.05)\n- evals_public_judge_py__text_of_fn (activation 0.04)\n- evals_onboarding_harness_py (activation 0.04)\n- evals_onboarding_harness_py__neuralmind_providers_fn (activation 0.04)\n- evals_public_judge_py__judge_answer_fn (activation 0.04)\n- evals_public_judge_py__available_fn (activation 0.04)\n- evals_public_backends_py (activation 0.04)\n- evals_public_run_py (activation 0.04)"
+            },
+            {
+              "prompt": "add a new env var to disable the read dedup",
+              "expect": [
+                "neuralmind/read_dedup.py",
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/config.py",
+                "neuralmind/hooks.py",
+                "neuralmind/read_dedup.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 156,
+              "block": "## NeuralMind associative recall\n\n- neuralmind_config_py__localmodelsconfig_cls__get_fn (activation 0.15)\n- neuralmind_hooks_py__dedup_read_fn (activation 0.10)\n- neuralmind_read_dedup_py__read_view_fn (activation 0.06)\n- neuralmind_read_dedup_py__content_hash_fn (activation 0.05)\n- neuralmind_read_dedup_py__dedup_stub_fn (activation 0.05)\n- neuralmind_hooks_py__run_action_fn (activation 0.05)\n- neuralmind_read_dedup_py__min_chars_sym (activation 0.05)\n- neuralmind_read_dedup_py__max_age_secs_sym (activation 0.05)"
+            }
+          ]
+        },
+        "v4.11.0": {
+          "tokenizer": "o200k_base",
+          "n": 15,
+          "named": 14,
+          "first": 10,
+          "injected": 15,
+          "mean_tokens_injected": 131.7,
+          "max_tokens": 189,
+          "rows": [
+            {
+              "prompt": "how does synapse decay work",
+              "expect": [
+                "neuralmind/synapses.py"
+              ],
+              "files": [
+                "neuralmind/synapses.py",
+                "neuralmind/core.py",
+                "neuralmind/synapse_dynamics.py",
+                "neuralmind/synapse_feedback.py",
+                "neuralmind/demo_data/sample_project/db/connection.py",
+                "neuralmind/cli.py",
+                "neuralmind/embedder.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 153,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/synapses.py: decay_weight() L341, decay() L866, decay_node() L1087\n- neuralmind/core.py: deactivate_files() L428, _read_only() L333, dynamics() L350\n- neuralmind/synapse_dynamics.py: replenish_resources() L690, SynapseDynamics L220\n- neuralmind/synapse_feedback.py: deactivate_files() L192\nConnected to it in the synapse graph:\n- neuralmind/demo_data/sample_project/db/connection.py: _ensure_schema() L40\n- neuralmind/cli.py: cmd_watch() L4562\n- neuralmind/embedder.py: get_file_nodes() L452"
+            },
+            {
+              "prompt": "where is the PreCompact hook handled",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/hooks.py",
+                "evals/compression/run.py",
+                "evals/compression/__init__.py",
+                "scripts/demo.py",
+                "neuralmind/synapses.py",
+                "neuralmind/namespaces.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 118,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/hooks.py: _open_synapses() L673, _run_action() L393, _stale_decision_context() L890\n- evals/compression/run.py: apply_response() L217\n- evals/compression/__init__.py\n- scripts/demo.py: _check_prereqs() L38\nConnected to it in the synapse graph:\n- neuralmind/synapses.py: default_db_path() L2600\n- neuralmind/namespaces.py: resolve_namespace() L169"
+            },
+            {
+              "prompt": "add a threshold to the spreading activation recall in the prompt-submit hook",
+              "expect": [
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/synapse_dynamics.py",
+                "neuralmind/hooks.py",
+                "neuralmind/session_recap.py",
+                "neuralmind/mcp_server.py",
+                "neuralmind/core.py",
+                "neuralmind/secret_scan.py",
+                "neuralmind/metrics_pipeline.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 154,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/synapse_dynamics.py: spread_and_depress() L935, spread() L283, reinforce_with_stc() L459\n- neuralmind/hooks.py: _spread_for_prompt() L692, _decisions_for_prompt() L755\n- neuralmind/session_recap.py: record_prompt() L194\n- neuralmind/mcp_server.py: tool_synaptic_neighbors() L363\nConnected to it in the synapse graph:\n- neuralmind/core.py: synaptic_neighbors() L2417, _load_existing_index() L1969\n- neuralmind/secret_scan.py: redact_text() L681\n- neuralmind/metrics_pipeline.py: _append() L61"
+            },
+            {
+              "prompt": "why does the session recap skip resumed sessions",
+              "expect": [
+                "neuralmind/session_recap.py"
+              ],
+              "files": [
+                "neuralmind/session_recap.py",
+                "neuralmind/onnx_embedder.py",
+                "neuralmind/hooks.py",
+                "neuralmind/fitness.py",
+                "neuralmind/cli.py",
+                "neuralmind/project_registry.py",
+                "neuralmind/bge_embedder.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 140,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/session_recap.py: latest_recap() L320, recap_for_session_start() L359, clear_recaps() L379\n- neuralmind/onnx_embedder.py: _session_factory() L181\n- neuralmind/hooks.py: _recent_session_events() L974\n- neuralmind/fitness.py: session_health_from_events() L226\nConnected to it in the synapse graph:\n- neuralmind/cli.py: cmd_recap() L5216\n- neuralmind/project_registry.py: _load() L32\n- neuralmind/bge_embedder.py: _resolve_model_dir() L59"
+            },
+            {
+              "prompt": "fix the claims guard test for site numbers",
+              "expect": [
+                "tests/test_site_claims.py"
+              ],
+              "files": [
+                "neuralmind/demo_data/sample_project/auth/jwt_utils.py",
+                "site/src/app/security/page.tsx",
+                "scripts/check_public_bench_drift.py",
+                "neuralmind/mcp_security.py",
+                "neuralmind/demo_data/sample_project/auth/handlers.py",
+                "neuralmind/_demo_report.py"
+              ],
+              "named": false,
+              "first": false,
+              "tokens": 140,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/demo_data/sample_project/auth/jwt_utils.py: decode_token() L33, encode_token() L15\n- site/src/app/security/page.tsx: sbomUrl L56, releaseDate L53\n- scripts/check_public_bench_drift.py: Numbers L52, compare() L75\n- neuralmind/mcp_security.py: IdentityDeniedError L137, PolicyConfigError L145\nConnected to it in the synapse graph:\n- neuralmind/demo_data/sample_project/auth/handlers.py: verify_session() L37, refresh_session() L45\n- neuralmind/_demo_report.py: encode() L66"
+            },
+            {
+              "prompt": "the hermes plugin isn't injecting context, debug it",
+              "expect": [
+                "neuralmind/hermes_plugin/__init__.py"
+              ],
+              "files": [
+                "neuralmind/hermes_plugin/__init__.py",
+                "neuralmind/hermes_install.py",
+                "evals/faithfulness/runner.py",
+                "neuralmind/cli.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 111,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/hermes_plugin/__init__.py: register() L355, on_pre_llm_call() L171, _failed() L271\n- neuralmind/hermes_install.py: uninstall() L179, hermes_home() L55, _hermes() L86\nConnected to it in the synapse graph:\n- evals/faithfulness/runner.py: _run() L399\n- neuralmind/cli.py: cmd_install_hermes_plugin() L5309"
+            },
+            {
+              "prompt": "how are team memory bundles imported on session start",
+              "expect": [
+                "neuralmind/team_memory.py"
+              ],
+              "files": [
+                "neuralmind/team_memory.py",
+                "evals/onboarding/harness.py",
+                "neuralmind/session_summaries.py",
+                "neuralmind/context_budget.py",
+                "neuralmind/synapses.py",
+                "neuralmind/contribution_scoring.py",
+                "neuralmind/peer_review.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 148,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/team_memory.py: maybe_import_team_memory() L508, _TEAM_BUNDLE_CAP L76, team_bundle_path() L237\n- evals/onboarding/harness.py: sessions L67, seed_sessions L346, SeedHistory L62\n- neuralmind/session_summaries.py: SessionSummaryConfig L91\n- neuralmind/context_budget.py: SessionBudget L122\nConnected to it in the synapse graph:\n- neuralmind/synapses.py: import_edges() L2496, get_meta() L549\n- neuralmind/contribution_scoring.py: score_bundle() L151\n- neuralmind/peer_review.py: decide() L65"
+            },
+            {
+              "prompt": "what does fit_to_budget trim first",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [
+                "neuralmind/context_budget.py",
+                "evals/faithfulness/harness.py",
+                "neuralmind/context_selector.py",
+                "evals/public/card.py",
+                "evals/retrieval/run.py",
+                "neuralmind/core.py",
+                "neuralmind/daemon.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 138,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/context_budget.py: trim_context_to_budget() L301, TRIM_ORDER L196, fit_layers() L263\n- evals/faithfulness/harness.py: naive_context() L104, _truncate_to_tokens() L65\n- neuralmind/context_selector.py: fit_to_budget() L2341\n- evals/public/card.py: fmt_ratio() L38\nConnected to it in the synapse graph:\n- evals/retrieval/run.py: render() L294\n- neuralmind/core.py: _run_query() L2098\n- neuralmind/daemon.py: list() L301"
+            },
+            {
+              "prompt": "make the MCP query tool report a stale index",
+              "expect": [
+                "neuralmind/mcp_server.py"
+              ],
+              "files": [
+                "neuralmind/mcp_server.py",
+                "neuralmind/team_staleness.py",
+                "neuralmind/core.py",
+                "neuralmind/memory/mcp_tools.py",
+                "neuralmind/freshness.py",
+                "neuralmind/memory/store.py",
+                "evals/retrieval/run.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 189,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/mcp_server.py: _freshness_line() L130, tool_stats() L248, tool_synapse_decay() L451\n- neuralmind/team_staleness.py: run_staleness_pass() L183, detect_stale_in_store() L95, stale_threshold() L75\n- neuralmind/core.py: _ensure_built() L1907, _graph_stats_dirty() L1894\n- neuralmind/memory/mcp_tools.py: tool_audit_decisions() L87, tool_memory_search() L223\nConnected to it in the synapse graph:\n- neuralmind/freshness.py: graph_freshness() L420, one_line() L171\n- neuralmind/memory/store.py: audit() L1285, list_all() L1326\n- evals/retrieval/run.py: build() L179"
+            },
+            {
+              "prompt": "the decision store marks decisions stale on commit, where is that",
+              "expect": [
+                "neuralmind/memory/invalidate.py",
+                "neuralmind/memory/store.py"
+              ],
+              "files": [
+                "neuralmind/memory/invalidate.py",
+                "neuralmind/memory/store.py",
+                "neuralmind/cli.py",
+                "neuralmind/hooks.py",
+                "neuralmind/baseline.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 130,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/memory/invalidate.py: invalidate_decision() L395, scan() L336, _carried_by_commit() L522\n- neuralmind/memory/store.py: mark_stale() L692, restore() L721, audit() L1285\n- neuralmind/cli.py: cmd_decisions_scan() L3319, cmd_decisions_invalidate() L3303\n- neuralmind/hooks.py: _stale_decision_context() L890\nConnected to it in the synapse graph:\n- neuralmind/baseline.py: resolve() L165"
+            },
+            {
+              "prompt": "rename synaptic_neighbors to associative_recall everywhere",
+              "expect": [
+                "neuralmind/core.py",
+                "neuralmind/mcp_server.py",
+                "neuralmind/synapse_client.py"
+              ],
+              "files": [
+                "neuralmind/structural.py",
+                "neuralmind/synapse_dynamics.py",
+                "neuralmind/synapse_client.py",
+                "neuralmind/cohesion.py",
+                "neuralmind/drift.py",
+                "neuralmind/__init__.py",
+                "neuralmind/core.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 110,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/structural.py: recall() L209, DEFAULT_RECALL_TOP_K L100\n- neuralmind/synapse_dynamics.py: apply_sampl_depression() L573\n- neuralmind/synapse_client.py: synaptic_neighbors() L94, activate() L39\n- neuralmind/cohesion.py\nConnected to it in the synapse graph:\n- neuralmind/drift.py\n- neuralmind/__init__.py\n- neuralmind/core.py"
+            },
+            {
+              "prompt": "how is the bash output cache redacted",
+              "expect": [
+                "neuralmind/output_cache.py"
+              ],
+              "files": [
+                "neuralmind/output_cache.py",
+                "evals/compression/capture_bash.py",
+                "neuralmind/compressors.py",
+                "neuralmind/cli.py",
+                "neuralmind/secret_scan.py",
+                "neuralmind/memory/store.py",
+                "evals/public/run.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 134,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/output_cache.py: read_last_output() L147, write_last_output() L64\n- evals/compression/capture_bash.py: _scrub() L363, capture() L379\n- neuralmind/compressors.py: _format_bash() L203, compress_bash() L59\n- neuralmind/cli.py: cmd_last() L5256\nConnected to it in the synapse graph:\n- neuralmind/secret_scan.py: redact_text() L681\n- neuralmind/memory/store.py: update() L621\n- evals/public/run.py"
+            },
+            {
+              "prompt": "explain the L0 L1 L2 L3 context layers",
+              "expect": [
+                "neuralmind/context_selector.py"
+              ],
+              "files": [
+                "neuralmind/context_selector.py",
+                "neuralmind/context_budget.py",
+                "neuralmind/memory/__init__.py",
+                "neuralmind/modularity.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 89,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/context_selector.py: __init__() L282, get_l1_summary() L738, ContextResult L62\n- neuralmind/context_budget.py: split_layers() L207, trim_context_to_budget() L301\n- neuralmind/memory/__init__.py: escalation_rate() L308, wakeup_only_rate() L370\n- neuralmind/modularity.py"
+            },
+            {
+              "prompt": "why did the public benchmark recall drop on rich",
+              "expect": [
+                "evals/public/run.py",
+                "evals/public/judge.py",
+                "evals/public/backends.py"
+              ],
+              "files": [
+                "evals/onboarding/harness.py",
+                "evals/faithfulness/harness.py",
+                "evals/public/judge.py",
+                "neuralmind/ragas.py",
+                "evals/public/backends.py",
+                "evals/public/run.py",
+                "neuralmind/context_selector.py"
+              ],
+              "named": true,
+              "first": false,
+              "tokens": 113,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- evals/onboarding/harness.py: _query_retrieval() L156, OnboardingResult L227\n- evals/faithfulness/harness.py: faithfulness_delta() L270\n- evals/public/judge.py\n- neuralmind/ragas.py: fact_recall() L60\nConnected to it in the synapse graph:\n- evals/public/backends.py\n- evals/public/run.py\n- neuralmind/context_selector.py: get_l3_search() L1658"
+            },
+            {
+              "prompt": "add a new env var to disable the read dedup",
+              "expect": [
+                "neuralmind/read_dedup.py",
+                "neuralmind/hooks.py"
+              ],
+              "files": [
+                "neuralmind/read_dedup.py",
+                "neuralmind/hooks.py",
+                "neuralmind/cli.py",
+                "neuralmind/tier2/audit.py"
+              ],
+              "named": true,
+              "first": true,
+              "tokens": 108,
+              "block": "## NeuralMind associative recall\n\nCode matching this prompt:\n- neuralmind/read_dedup.py: replace_read_text() L121, find_read_text() L104, reads L82\n- neuralmind/hooks.py: _load_settings() L236, _reset_read_dedup() L821, _dedup_read() L776\n- neuralmind/cli.py: _env_int_option() L3484\nConnected to it in the synapse graph:\n- neuralmind/tier2/audit.py: count() L453"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

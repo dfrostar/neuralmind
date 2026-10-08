@@ -210,7 +210,13 @@ usage; tokens are tiktoken `o200k_base`, per injected block.
 |---|---|---|---|---|---|---|
 | v4.9.2 | 3 | 3 | 124 (177) | 4 | 1 | 155 (167), 6 prompts got a block |
 | Seeding fix + gate only | 8 | 7 | 137 (183) | 14 | 6 | 153 (172) |
-| **v4.11.0** | **14** | **11** | **118 (160)** | **14** | **10** | **130 (175)** |
+| **v4.11.0** | **14** | **11** | **120 (173)** | **14** | **10** | **132 (189)** |
+
+The raw runs behind this table, every block included, are in
+[`tests/benchmark/prompt_recall_results.json`](https://github.com/dfrostar/neuralmind/blob/main/tests/benchmark/prompt_recall_results.json):
+one fresh index per set, built by v4.11.0, with each release's hook run on it.
+The warm-graph and timing figures below come from runs whose data isn't
+committed.
 
 The Click set is the one the ranking was tuned on (summed scores, tests after
 code). The NeuralMind set, the on-topic prompts of `recall_gate` above at
