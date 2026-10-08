@@ -296,6 +296,25 @@ class TestMetricsCollector(unittest.TestCase):
         self.assertEqual(json.loads(lines[-1]), {"event": "late"})
         self.assertLessEqual(past.stat().st_size, 2000)
 
+    def test_rotation_leaves_a_file_it_cant_lock_for_the_next_one(self) -> None:
+        from unittest import mock
+
+        from neuralmind import metrics_pipeline
+
+        collector = MetricsCollector(self.project, max_bytes=4000)
+        metrics = self.project / ".neuralmind" / "metrics"
+        metrics.mkdir(parents=True)
+        yesterday = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))
+        past = metrics / f"metrics_{yesterday}.jsonl"
+        big = json.dumps({"event": "query", "query": "x" * 1500})
+        past.write_text("".join(f"{big}\n" for _ in range(10)))
+        before = past.read_text()
+        with mock.patch.object(metrics_pipeline, "_lock_file", lambda fd: False):
+            collector.rotate()
+        self.assertEqual(past.read_text(), before)
+        collector.rotate()
+        self.assertLessEqual(past.stat().st_size, 2000)
+
     def test_concurrent_processes_lose_and_tear_no_records(self) -> None:
         import os
         import subprocess
