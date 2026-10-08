@@ -75,6 +75,95 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+_RATIONALE_SUFFIX = "__rationale"
+
+
+def _synapse_node(node_id: str, owners: dict[str, str] | None = None) -> str:
+    """The node a search hit stands for in the synapse graph.
+
+    A rationale node holds a symbol's docstring or comment, so it is often the
+    closest semantic match to a prompt. Synapses form between the code nodes
+    the agent reads and edits, though, so the rationale node has no edges:
+    seeding from it recalls nothing. ``owners`` (from
+    :func:`_rationale_owners`) maps a rationale to the node its
+    ``rationale_for`` edge describes, whatever its id: graphify names them
+    ``<id>_rationale`` or ``<file>_rationale_<n>``. Without an entry, the
+    built-in generator's ``<id>__rationale`` suffix is stripped.
+    """
+    if owners and node_id in owners:
+        return owners[node_id]
+    if node_id.endswith(_RATIONALE_SUFFIX) and len(node_id) > len(_RATIONALE_SUFFIX):
+        return node_id[: -len(_RATIONALE_SUFFIX)]
+    return node_id
+
+
+def _rationale_owners(mind: Any) -> dict[str, str]:
+    """Rationale node id -> the node it describes, from ``mind``'s graph edges.
+
+    A ``rationale_for`` edge runs rationale -> code in the graphs NeuralMind
+    and graphify write, but either orientation is accepted (as in
+    ``probe.extract_rationales``): the endpoint whose node is a rationale is
+    the key. With no node data for either end, the edge's own direction is
+    used. Built once per loaded graph and kept on ``mind``.
+    """
+    embedder = getattr(mind, "embedder", None)
+    edges = getattr(embedder, "edges", None)
+    nodes = getattr(embedder, "nodes", None)
+    cached = getattr(mind, "_rationale_owners_cache", None)
+    if cached is not None and cached[0] is edges and cached[1] is nodes:
+        return cached[2]
+    rationales = {
+        str(n.get("id"))
+        for n in nodes or ()
+        if isinstance(n, dict) and n.get("file_type") == "rationale"
+    }
+    owners: dict[str, str] = {}
+    for edge in edges or ():
+        if not isinstance(edge, dict) or edge.get("relation") != "rationale_for":
+            continue
+        src = edge.get("_src") or edge.get("source")
+        tgt = edge.get("_tgt") or edge.get("target")
+        if not (src and tgt):
+            continue
+        src, tgt = str(src), str(tgt)
+        if tgt in rationales and src not in rationales:
+            src, tgt = tgt, src
+        owners.setdefault(src, tgt)
+    try:
+        # Holding both lists keeps the identity check above sound.
+        mind._rationale_owners_cache = (edges, nodes, owners)
+    except AttributeError:
+        pass
+    return owners
+
+
+def _spread_with_aliases(
+    store: Any,
+    seeds: dict[str, float],
+    aliases: dict[str, float],
+    depth: int,
+    top_k: int,
+) -> list[tuple[str, float]]:
+    """Spread from ``seeds``, and from the rationale ids behind them.
+
+    Query feedback stores raw search-hit ids, so a rationale node can carry
+    learned edges of its own. Spreading from it separately and keeping each
+    neighbour's higher activation keeps those edges reachable without
+    applying one semantic hit's energy twice.
+    """
+    if not aliases:
+        return store.spread(list(seeds.items()), depth=depth, top_k=top_k)
+    # Each spread can reach the other's seeds; neither is a neighbour.
+    merged: dict[str, float] = {}
+    for own, other in ((seeds, aliases), (aliases, seeds)):
+        for node_id, energy in store.spread(
+            list(own.items()), depth=depth, top_k=top_k + len(other)
+        ):
+            if node_id not in other:
+                merged[node_id] = max(energy, merged.get(node_id, 0.0))
+    return sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
+
+
 def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     """Validate a project's canonical IR without standing up a vector backend.
 
@@ -2423,18 +2512,42 @@ class NeuralMind:
         matches for the query, then propagates through the learned synapse
         graph. Empty list when synapses haven't accumulated any edges yet.
         """
+        return self.synaptic_recall(query, depth=depth, top_k=top_k)[0]
+
+    def synaptic_recall(
+        self, query: str, depth: int = 2, top_k: int = 10
+    ) -> tuple[list[tuple[str, float]], float]:
+        """:meth:`synaptic_neighbors`, plus how well ``query`` matched the code.
+
+        The second value is the similarity of the best semantic match (0.0
+        when nothing matched). Spreading activation from a poor match only
+        spreads noise, so the prompt-time hook abstains below a threshold.
+        """
         store = self.synapses
         if store is None:
-            return []
+            return [], 0.0
         self._ensure_built()
         try:
             hits = self.embedder.search(query, n=4)
         except Exception:
-            return []
-        seeds = [(str(hit["id"]), float(hit.get("score", 1.0))) for hit in hits if hit.get("id")]
+            return [], 0.0
+        owners = _rationale_owners(self)
+        seeds: dict[str, float] = {}
+        aliases: dict[str, float] = {}
+        for hit in hits:
+            if not hit.get("id"):
+                continue
+            raw_id = str(hit["id"])
+            node_id = _synapse_node(raw_id, owners)
+            score = float(hit.get("score", 1.0))
+            # A code node and its own rationale can both match: one seed.
+            seeds[node_id] = max(score, seeds.get(node_id, score))
+            if raw_id != node_id:
+                aliases[raw_id] = max(score, aliases.get(raw_id, score))
         if not seeds:
-            return []
-        return store.spread(seeds, depth=depth, top_k=top_k)
+            return [], 0.0
+        ranked = _spread_with_aliases(store, seeds, aliases, depth=depth, top_k=top_k)
+        return ranked, max(seeds.values())
 
     # ----------------------------------------------------------------- #
     # Structural graph (calls / inherits / imports — precise, day-one)

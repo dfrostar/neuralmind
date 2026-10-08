@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sys
 from pathlib import Path
@@ -570,7 +571,8 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         # auto-memory system picks it up on this very session.
         cwd = payload.get("cwd") or os.getcwd()
         # Session recap: on a fresh or cleared session, say where the
-        # previous one left off. Emitted first; nothing below writes stdout.
+        # previous one left off; after a compaction, give this session its
+        # own record back. Emitted first; nothing below writes stdout.
         from .session_recap import recap_for_session_start
 
         recap = recap_for_session_start(
@@ -714,13 +716,57 @@ def _open_synapses(project_path: str):
         return None
 
 
+# Prompt-time recall abstains when the prompt's best semantic match in the
+# code scores below this similarity: "yes", "continue" or a question about
+# something else entirely still has 4 nearest neighbours, and spreading
+# activation from them injects nodes that have nothing to do with the prompt.
+# Measured 2026-10-06 on this repository's own index (6,894 nodes, the default
+# ONNX embedder): 15 prompts about the code scored 0.371-0.645, and 15 off-topic
+# prompts 0.145-0.364, with only "looks good, commit it" above 0.35. Activation
+# energy didn't separate the two sets, so similarity is the only gate.
+# Reproduce: python -m tests.benchmark.recall_gate <project>
+RECALL_MIN_SIMILARITY_ENV = "NEURALMIND_RECALL_MIN_SIMILARITY"
+DEFAULT_RECALL_MIN_SIMILARITY = 0.35
+
+
+def _recall_min_similarity() -> float:
+    """The abstain threshold; unset or malformed means the default, 0 never abstains."""
+    try:
+        value = float(os.environ[RECALL_MIN_SIMILARITY_ENV])
+    except (KeyError, ValueError):
+        return DEFAULT_RECALL_MIN_SIMILARITY
+    # NaN compares false with everything, so it would never abstain.
+    return value if math.isfinite(value) else DEFAULT_RECALL_MIN_SIMILARITY
+
+
+def _log_recall(project_path: str, outcome: str, injected: int, similarity: float) -> None:
+    """Record one prompt's recall outcome for ``neuralmind metrics``. Numbers only.
+
+    Skipped under ``NEURALMIND_NO_LEARN=1``, which promises an eval run
+    writes nothing. Fail-open.
+    """
+    if _learning_disabled():
+        return
+    try:
+        from .metrics_pipeline import MetricsCollector
+
+        MetricsCollector(project_path).log_recall_metrics(
+            outcome=outcome, injected=injected, similarity=similarity
+        )
+    except Exception:
+        pass
+
+
 def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
     """Run spreading activation for a prompt and format it as injected context.
 
-    Returns an empty string when the synapse graph has no learned edges
-    yet (cold start) or when anything goes wrong — hooks must fail open.
-    Suppresses any incidental stdout/stderr from the embedder so the
-    hook's stdout stays reserved for the JSON response we may emit.
+    Returns an empty string when the prompt doesn't match the code well
+    enough to recall from (see ``DEFAULT_RECALL_MIN_SIMILARITY``), when the
+    synapse graph has no learned edges yet (cold start), or when anything goes
+    wrong — hooks must fail open. Each outcome in a built project is logged to
+    the local metrics. Suppresses any incidental stdout/stderr from the
+    embedder so the hook's stdout stays reserved for the JSON response we may
+    emit.
     """
     import contextlib
     import io
@@ -731,12 +777,19 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             mind = NeuralMind(project_path)
             # Recall reads an existing index; it never builds one. Without
-            # this, synaptic_neighbors() falls through to a first-run build.
+            # this, synaptic_recall() falls through to a first-run build.
             if not mind._load_existing_index():
                 return ""
-            ranked = mind.synaptic_neighbors(prompt, depth=2, top_k=top_k)
+            ranked, similarity = mind.synaptic_recall(prompt, depth=2, top_k=top_k)
     except Exception:
         return ""
+    threshold = _recall_min_similarity()
+    # 0 (or below) never abstains: a match score can be negative.
+    if threshold > 0 and similarity < threshold:
+        ranked, outcome = [], "low_similarity"
+    else:
+        outcome = "injected" if ranked else "no_neighbors"
+    _log_recall(project_path, outcome, len(ranked), similarity)
     if not ranked:
         return ""
     lines = ["## NeuralMind associative recall", ""]

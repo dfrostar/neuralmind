@@ -6,6 +6,8 @@ import io
 import json
 import sys
 
+import pytest
+
 from neuralmind.hooks import _hook_block, install_hooks, run_hook
 from neuralmind.synapses import SynapseStore, default_db_path
 
@@ -144,6 +146,105 @@ def test_prompt_submit_empty_prompt_is_skipped(tmp_path):
     rc, captured = _run("prompt-submit", {"cwd": str(tmp_path), "prompt": ""})
     assert rc == 0
     assert captured == ""
+
+
+class _StubMind:
+    """Stands in for NeuralMind in the prompt-submit hook: a built index whose
+    recall returns ``RESULT`` = (ranked, best-match similarity)."""
+
+    RESULT: tuple = ([], 0.0)
+
+    def __init__(self, project_path):
+        pass
+
+    def _load_existing_index(self):
+        return True
+
+    def synaptic_recall(self, prompt, depth=2, top_k=8):
+        return self.RESULT
+
+
+def _recall(tmp_path, monkeypatch, ranked, similarity) -> str:
+    import neuralmind.core
+
+    # Hooks act only in a project with a NeuralMind directory.
+    (tmp_path / ".neuralmind").mkdir(exist_ok=True)
+    monkeypatch.setenv("NEURALMIND_PROVENANCE_INJECT", "0")
+    monkeypatch.setenv("NEURALMIND_SESSION_RECAP", "0")
+    monkeypatch.setattr(_StubMind, "RESULT", (ranked, similarity))
+    monkeypatch.setattr(neuralmind.core, "NeuralMind", _StubMind)
+    rc, out = _run("prompt-submit", {"cwd": str(tmp_path), "prompt": "yes"})
+    assert rc == 0
+    return json.loads(out)["hookSpecificOutput"]["additionalContext"] if out else ""
+
+
+def _recall_outcomes(tmp_path) -> list[str]:
+    return [
+        json.loads(line)["outcome"]
+        for f in sorted((tmp_path / ".neuralmind" / "metrics").glob("*.jsonl"))
+        for line in f.read_text().splitlines()
+    ]
+
+
+_RANKED = [("pkg_mod_py__save_fn", 0.12), ("pkg_mod_py", 0.08)]
+
+
+def test_prompt_recall_injects_on_a_good_match(tmp_path, monkeypatch):
+    context = _recall(tmp_path, monkeypatch, _RANKED, 0.6)
+    assert "## NeuralMind associative recall" in context
+    assert "pkg_mod_py__save_fn" in context
+    assert _recall_outcomes(tmp_path) == ["injected"]
+
+
+def test_prompt_recall_abstains_on_a_poor_match(tmp_path, monkeypatch):
+    # Nearest neighbours always exist; a weak best match means none apply.
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""
+    assert _recall_outcomes(tmp_path) == ["low_similarity"]
+
+
+def test_prompt_recall_with_nothing_learned_is_logged(tmp_path, monkeypatch):
+    assert _recall(tmp_path, monkeypatch, [], 0.6) == ""
+    assert _recall_outcomes(tmp_path) == ["no_neighbors"]
+
+
+def test_the_default_cutoff_is_the_measured_0_35(tmp_path, monkeypatch):
+    # The release notes calibrate the default at 0.35: just below abstains,
+    # 0.35 itself injects.
+    monkeypatch.delenv("NEURALMIND_RECALL_MIN_SIMILARITY", raising=False)
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.349) == ""
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.35)
+
+
+def test_prompt_recall_threshold_is_configurable(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "0")
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.2)
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "0.9")
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.6) == ""
+
+
+def test_a_zero_threshold_never_abstains_even_on_a_negative_score(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "0")
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, -0.1)
+
+
+def test_malformed_threshold_falls_back_to_default(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "high")
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.6)
+
+
+@pytest.mark.parametrize("value", ["nan", "NaN", "inf", "-inf"])
+def test_non_finite_threshold_falls_back_to_default(tmp_path, monkeypatch, value):
+    # NaN compares false with every similarity, so it would never abstain.
+    monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", value)
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.2) == ""
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.6)
+
+
+def test_no_learn_logs_no_recall_metrics(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.6)
+    assert not (tmp_path / ".neuralmind" / "metrics").exists()
 
 
 def test_unknown_action_is_noop(tmp_path):

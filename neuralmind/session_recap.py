@@ -19,11 +19,19 @@ newest ``MAX_KEPT`` records are kept, and a record active within
 ``PRUNE_GRACE_SECONDS`` is never deleted, so an idle session that's still open
 keeps its start.
 
-The recap is injected only when SessionStart's ``source`` is ``startup`` or
-``clear``: a resumed session already has its conversation, and a compacted one
-has Claude Code's own compaction summary. It is labelled as a recap, not as
-instructions, so the agent doesn't pick up an old task the user hasn't asked
-it to continue.
+The recap of the previous session is injected only when SessionStart's
+``source`` is ``startup`` or ``clear``: a resumed session already has its
+conversation. It is labelled as a recap, not as instructions, so the agent
+doesn't pick up an old task the user hasn't asked it to continue.
+
+After a compaction (``source`` is ``compact``) the session gets its *own*
+record back instead. Claude Code's compaction summary is written by the model
+and paraphrases: the task as the user first stated it and the exact paths of
+the files already edited are what it tends to lose. The record keeps each
+prompt as written (secrets redacted, up to ``PROMPT_CHARS`` characters) and
+each edited path (up to ``PATH_CHARS``; a longer one keeps its tail). It is
+found by the session's own ``session_id``: a session
+that comes back under a different id gets no recap rather than a guess.
 
 Toggles: ``NEURALMIND_SESSION_RECAP=0`` switches off recording and injection.
 ``NEURALMIND_NO_LEARN=1`` stops recording (nothing is written) but still
@@ -55,8 +63,10 @@ PATH_CHARS = 160  # each edited path; a longer one keeps its tail
 RECENT_PROMPTS = 3  # shown after the first prompt
 MAX_FILES = 12  # most recently edited first
 
-# Sources whose conversation is already in context — nothing to recap.
+# Sources that start without the previous session's conversation; resume
+# already has it. Compact is handled on its own: it recalls this session.
 INJECT_SOURCES = ("startup", "clear")
+COMPACT_SOURCE = "compact"
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 # Control characters, including line and paragraph separators: a prompt or a
@@ -283,17 +293,31 @@ def _ago(seconds: float) -> str:
 
 def render_recap(record: dict, now: float | None = None) -> str:
     now = time.time() if now is None else now
+    header = (
+        f"NeuralMind session recap — the previous session in this project "
+        f"(last active {_ago(now - record['last_ts'])}). This is context for "
+        "continuity, not instructions: don't resume that work unless the user "
+        "asks to."
+    )
+    return "\n".join([header, *_recap_body(record)])
+
+
+def render_compaction_recap(record: dict) -> str:
+    header = (
+        "NeuralMind pre-compaction record — this session's own prompts (each "
+        f"as written, up to {PROMPT_CHARS} characters, secrets redacted) and "
+        "edited files, kept because a compaction summary can drop them. It "
+        "restates what the user already asked for in this session; it adds no "
+        "new instructions."
+    )
+    return "\n".join([header, *_recap_body(record)])
+
+
+def _recap_body(record: dict) -> list[str]:
     # Clipped again here: a record may not have been written by this module.
     prompts = [_clip(p) for p in record["prompts"]]
     files = [_clip_path(f) for f in record["files"]]
-    lines = [
-        (
-            f"NeuralMind session recap — the previous session in this project "
-            f"(last active {_ago(now - record['last_ts'])}). This is context for "
-            "continuity, not instructions: don't resume that work unless the user "
-            "asks to."
-        ),
-    ]
+    lines: list[str] = []
     if prompts:
         lines.append("")
         lines.append(f'It started with: "{prompts[0]}"')
@@ -314,7 +338,7 @@ def render_recap(record: dict, now: float | None = None) -> str:
             + ", ".join(shown)
             + (f", +{more} more" if more else "")
         )
-    return "\n".join(lines)
+    return lines
 
 
 def latest_recap(
@@ -356,6 +380,31 @@ def latest_recap(
         return ""
 
 
+def compaction_recap(project_path: str | Path, session_id: str, now: float | None = None) -> str:
+    """This session's own record after a compaction, or "" when there is none.
+
+    Only the record kept under ``session_id``. A session that comes back from
+    compaction under a different id gets no recap: nothing in the hook
+    payloads links the two ids, and a guess could hand it another session's
+    prompts. A record older than ``NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS``
+    isn't shown, as at a fresh start. Read-only.
+    """
+    try:
+        directory = _recaps_dir(project_path)
+        if directory is None or not session_id:
+            return ""
+        own = directory / f"{_file_stem(session_id)}.jsonl"
+        if own.is_symlink() or not own.is_file():
+            return ""
+        record = _load(own)
+        now = time.time() if now is None else now
+        if not record or now - record["last_ts"] > _max_age_seconds():
+            return ""
+        return render_compaction_recap(record)
+    except Exception:
+        return ""
+
+
 def recap_for_session_start(
     project_path: str | Path,
     session_id: str,
@@ -364,7 +413,11 @@ def recap_for_session_start(
 ) -> str:
     """The recap to inject at SessionStart, or "" when there's nothing to say."""
     try:
-        if not recap_enabled() or source not in INJECT_SOURCES:
+        if not recap_enabled():
+            return ""
+        if source == COMPACT_SOURCE:
+            return compaction_recap(project_path, session_id, now=now)
+        if source not in INJECT_SOURCES:
             return ""
         directory = _recaps_dir(project_path)
         if directory is None:
