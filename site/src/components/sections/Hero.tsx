@@ -15,7 +15,7 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
     { label: 'Gold-file recall', value: '95%', evidence: 'mean; 85.71–100% per repo', figure: true },
-    { label: 'Fewer tokens', value: '46–263×', evidence: 'than pasting every source file', figure: true },
+    { label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file', figure: true },
     { label: 'Pre-registered queries', value: '40', evidence: '4 public repos, every miss published', figure: true },
     { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
 ];
@@ -78,7 +78,7 @@ export default function Hero() {
                             NeuralMind maps your repo, learns which files belong together as you
                             work, and hands your agent the right code first —{' '}
                             <span className="text-slate-100 font-medium">95% mean gold-file recall at
-                            46–263× fewer tokens</span> than pasting every source file, on a
+                            45–246× fewer tokens</span> than pasting every source file, on a
                             public 40-query benchmark. No telemetry. MIT core.
                         </p>
 

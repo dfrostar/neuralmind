@@ -850,15 +850,16 @@ learning can't be a fixed, reproducible public number; its lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running on the same
-machine matches the published table to the token. Across machines, recall,
-found-rate and MRR have matched exactly, while token counts differed slightly
-on some CI runners (up to 1.3% on a per-repo mean so far);
+machine matches the published table to the token. Across machines, recall and
+found-rate have matched exactly, while token counts differ slightly on the
+GitHub-hosted CI runners without AVX-512 (up to 0.8% on a per-repo mean for the
+current run; an Apple M3, also without AVX-512, matched exactly);
 `NEURALMIND_ORT_THREADS=1` matches CI's configuration — see
 [how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 
 **Honest headline:** against what agents actually do today — paste files or grep
 — NeuralMind reaches **85.71–100% gold-file recall (95% mean, 92.5% found-rate)
-at 46–263× fewer tokens** than pasting every source file, and beats `ripgrep` on
+at 45–246× fewer tokens** than pasting every source file, and beats `ripgrep` on
 cost on every repo; on recall it's ahead on 3 of 4 repos and ties exactly on the
 fourth. The benchmark also reports, without hiding it, that a well-tuned vector
 RAG matches or beats it at *findability* on every repo (and cheaper on raw
