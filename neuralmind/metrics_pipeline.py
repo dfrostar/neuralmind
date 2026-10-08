@@ -249,13 +249,15 @@ class MetricsCollector:
         The file ends up well under the cap even when single records are
         large. The read and the rewrite hold the append lock, so a hook still
         appending to yesterday's file at midnight can't land a record between
-        them.
+        them. Without the lock it isn't truncated; the next rotation tries again.
         """
         with _APPEND_LOCK:
             fd = os.open(str(path), os.O_RDWR | getattr(os, "O_BINARY", 0))
             locked = False
             try:
                 locked = _lock_file(fd)
+                if not locked:
+                    return
                 with os.fdopen(fd, "r+b", closefd=False) as f:
                     text = f.read().decode("utf-8")
                     budget = self.max_bytes // 2
