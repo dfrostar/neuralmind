@@ -9,6 +9,7 @@
   "ratios": [
     {
       "value": 45,
+      "range_endpoint": true,
       "context": "Low end of 'fewer tokens than pasting whole files' across the 40-query public benchmark: requests, at 45.3x, rounded down — the range is quoted rounded outward (also quoted per-repo as 45.3x). Runners without AVX-512 measure requests at 45.5x; the rounded range is the same.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
@@ -16,6 +17,7 @@
     },
     {
       "value": 246,
+      "range_endpoint": true,
       "context": "High end of the same range (rich, at 245.2x, rounded up).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
@@ -202,7 +204,7 @@
     {
       "claim": "93.75% mean gold-file recall / 85-100% per repo / 90% found-rate / 4 of 40 misses / 45-261x (or the per-repo 45.0x, 110.4x, 81.6x, 260.7x)",
       "why": "Superseded 2026-10-01 for v4.6.0, when bench/public/results.json was regenerated. Those figures were correct for the v4.3.4 run they came from and stay in the dated release notes and CHANGELOG.md as history, but they are no longer the current measurement: the v4.6.0 run measured 95% (query-weighted), 85.71-100% per repo, 92.5% found-rate, 3 of 40 misses, 46-263x, itself superseded 2026-10-07 (next entry). Their ratio entries were removed from `ratios` and are recorded only here; the site no longer quotes them, and must not. 45.0x is left out of this entry's `ratios`: 45 is the current range's low end, so a number can't tell them apart.",
-      "ratios": [261, 110.4, 81.6, 260.7]
+      "ratios": [45, 261, 110.4, 81.6, 260.7]
     },
     {
       "claim": "46-263x fewer tokens on the public benchmark (or the per-repo 46.6x requests, 121.7x click, 78.0x flask, 262.1x rich)",

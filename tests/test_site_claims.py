@@ -150,18 +150,26 @@ def _exempt(lines: list[str], index: int) -> bool:
     return any(ALLOW_MARKER in line for line in window)
 
 
+def _ratio_claims_in(line: str) -> list[tuple[bool, float]]:
+    """Return (is_range_endpoint, ratio) for every ratio claim on *line*."""
+    found: list[tuple[bool, float]] = []
+    consumed = line
+    for m in RANGE_RE.finditer(line):
+        found.append((True, float(m.group(1))))
+        found.append((True, float(m.group(2))))
+        consumed = consumed.replace(m.group(0), " ")
+    for m in SINGLE_RE.finditer(consumed):
+        found.append((False, float(m.group(1))))
+    return found
+
+
 def _ratios_in(text: str) -> list[tuple[int, float]]:
     """Return (lineno, ratio) for every ratio claim in *text*."""
-    found: list[tuple[int, float]] = []
-    for lineno, line in enumerate(text.splitlines(), start=1):
-        consumed = line
-        for m in RANGE_RE.finditer(line):
-            found.append((lineno, float(m.group(1))))
-            found.append((lineno, float(m.group(2))))
-            consumed = consumed.replace(m.group(0), " ")
-        for m in SINGLE_RE.finditer(consumed):
-            found.append((lineno, float(m.group(1))))
-    return found
+    return [
+        (lineno, ratio)
+        for lineno, line in enumerate(text.splitlines(), start=1)
+        for _, ratio in _ratio_claims_in(line)
+    ]
 
 
 def test_every_site_ratio_has_provenance() -> None:
@@ -182,10 +190,18 @@ def test_every_site_ratio_has_provenance() -> None:
     )
 
 
-def _superseded_ratios() -> dict[float, str]:
+def _superseded_ratios(*, point: bool = False) -> dict[float, str]:
     """Ratios a regenerated benchmark replaced, from the ``ratios`` lists in
-    ``unsourced_do_not_use``, minus any value that is canon again."""
-    allowed = _allowed_ratios()
+    ``unsourced_do_not_use``, minus any value that is canon again.
+
+    With *point*, for a ratio quoted on its own rather than as a range's end:
+    a value that is canon only as a rounded range endpoint (``range_endpoint``)
+    doesn't count as canon then. The range's low end, 45, is v4.3.4's 45.0×
+    for requests in number only; quoted on its own it is that replaced
+    measurement, and the current one is 45.3×.
+    """
+    canon = _claims()["ratios"]
+    allowed = {float(e["value"]) for e in canon if not (point and e.get("range_endpoint"))}
     return {
         float(value): entry["claim"]
         for entry in _claims()["unsourced_do_not_use"]
@@ -203,17 +219,19 @@ def test_site_does_not_quote_superseded_ratios() -> None:
     check reads every page under site/src.
     """
     superseded = _superseded_ratios()
+    superseded_points = _superseded_ratios(point=True)
     violations: list[str] = []
     for path in _site_files():
         lines = _prose(path).splitlines()
         for index, line in enumerate(lines):
             if _exempt(lines, index):
                 continue
-            for _, ratio in _ratios_in(line):
-                if ratio in superseded:
+            for endpoint, ratio in _ratio_claims_in(line):
+                replaced = superseded if endpoint else superseded_points
+                if ratio in replaced:
                     rel = path.relative_to(REPO_ROOT)
                     violations.append(
-                        f"{rel}:{index + 1}: {ratio:g}× — replaced: {superseded[ratio]}"
+                        f"{rel}:{index + 1}: {ratio:g}× — replaced: {replaced[ratio]}"
                     )
     assert not violations, (
         "The site quotes a ratio that a regenerated run replaced. Quote the "
@@ -229,13 +247,20 @@ def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
         "ratio: '78.0×',",
     ):
         assert any(r in superseded for _, r in _ratios_in(line)), line
-    # A value that is canon again is no longer treated as replaced: v4.3.4's
-    # 45.0× for requests is numerically the current range's low end.
+    # A value that is canon again is no longer treated as replaced as a range
+    # endpoint: v4.3.4's 45.0× for requests is numerically the current range's
+    # low end.
     assert 45.0 not in superseded and 45.0 in _allowed_ratios()
     current = (
         "{ label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file' },"
     )
     assert not any(r in superseded for _, r in _ratios_in(current))
+    # Quoted on its own, though, it is still the replaced requests figure.
+    points = _superseded_ratios(point=True)
+    stale = "(The public benchmark’s 45.0× on the same repo is a different measurement"
+    assert any(not end and r in points for end, r in _ratio_claims_in(stale))
+    fresh = "(The public benchmark’s 45.3× on the same repo is a different measurement"
+    assert not any(r in points for _, r in _ratio_claims_in(fresh))
 
 
 def test_site_does_not_name_private_projects() -> None:
