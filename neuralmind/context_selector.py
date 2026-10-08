@@ -1014,9 +1014,15 @@ class ContextSelector:
         parts = ["## Relevant Code Areas", ""]
         loaded_communities = []
 
+        # No per-cluster cap: the pool already bounds L2 to the candidates L3
+        # left out (12 by default), and the token budget truncates the rest.
+        # The old cap of seven cut the depth file diversity hands down: when L3
+        # spends slots on other files, the top file's remaining candidates move
+        # here, and on the faithfulness fixture the cap dropped the user
+        # record's fields (fact recall 0.839 uncapped, 0.788 capped).
         for comm_id, score in top_communities:
             loaded_communities.append(comm_id)
-            members = by_community.get(comm_id, [])[:7]
+            members = by_community.get(comm_id, [])
             if not members:
                 continue
             parts.append(f"### Cluster {comm_id} (relevance: {score:.2f})")
