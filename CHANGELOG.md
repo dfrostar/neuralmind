@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.11.0](https://github.com/dfrostar/neuralmind/compare/v4.10.0...v4.11.0) (2026-10-08)
+
+
+### Features
+
+* **hooks:** prompt recall stays quiet off-topic, and a session gets its own record back after compaction ([#602](https://github.com/dfrostar/neuralmind/issues/602)) ([2286c9c](https://github.com/dfrostar/neuralmind/commit/2286c9c0514861e5c1467aa90c8f0a80c0c257c1))
+
+
+### Bug Fixes
+
+* child Python processes no longer import from the working directory ([#613](https://github.com/dfrostar/neuralmind/issues/613)) ([4b26435](https://github.com/dfrostar/neuralmind/commit/4b2643584fb3fe8cc77b1b146a2ff3f22fcb9b56))
+* **docs:** regenerate the public benchmark at v4.10.0 (45–246×) and refresh every surface ([#614](https://github.com/dfrostar/neuralmind/issues/614)) ([b9bc440](https://github.com/dfrostar/neuralmind/commit/b9bc440a40c8d6215b4c4d11cc83d96954812d21))
+* **hooks:** prompt recall names the files a prompt is about, from the first turn ([#607](https://github.com/dfrostar/neuralmind/issues/607)) ([459b53a](https://github.com/dfrostar/neuralmind/commit/459b53ab88542fe0d0a404940a7212ec49389683))
+
 ## [4.10.0](https://github.com/dfrostar/neuralmind/compare/v4.9.2...v4.10.0) (2026-10-07)
 
 
