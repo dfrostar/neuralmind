@@ -50,7 +50,7 @@ getting recall to 15/15 and 1/15; that's one repository and 30 prompts, and
 the 15/15 and 1/15 or calibrates your own.
 `neuralmind metrics` counts how often recall injected or abstained. When it
 fires, the block names files, symbols and lines: the code the prompt matches,
-code in other files the synapse graph links directly to it, and matching docs.
+other files, mostly code, that the synapse graph links directly to it, and matching docs.
 On a freshly built project it used to list doc headings' neighbours as node
 ids instead; on fresh indexes it now names a file that answers the prompt for
 14 of 14 Click prompts and 14 of 15 held-out prompts about this repository

@@ -238,6 +238,27 @@ def test_a_negative_match_doesnt_count_against_its_file():
     ]
 
 
+def test_a_large_matched_file_cant_crowd_out_other_files(tmp_path):
+    # 300 co-edited nodes in parser.py, each more strongly linked than
+    # CliRunner: the 256-candidate cut comes after they're dropped.
+    store = SynapseStore(tmp_path / "synapses.db")
+    crowd = [f"src_click_parser_py__f{i}_fn" for i in range(300)]
+    nodes = NODES + [_node(nid, "src/click/parser.py", f"f{i}()", i) for i, nid in enumerate(crowd)]
+    for nid in crowd:
+        store.reinforce([PARSER, nid])
+        store.reinforce([PARSER, nid])
+    store.reinforce([PARSER, RUNNER])
+    result = recall(_Mind(store, hits=[(PARSER, 0.6)], nodes=nodes), "q")
+    assert "src/click/testing.py" in [f.path for f in result.linked]
+
+
+def test_a_path_keeps_its_ordinary_whitespace():
+    spaced = "src_my_file_py__run_fn"
+    nodes = NODES + [_node(spaced, "src/my  file.py", "run()", 3)]
+    result = recall(_Mind(None, hits=[(spaced, 0.6)], nodes=nodes), "q")
+    assert [f.path for f in result.matches] == ["src/my  file.py"]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.

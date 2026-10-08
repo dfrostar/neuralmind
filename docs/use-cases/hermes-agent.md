@@ -109,7 +109,7 @@ user's message and adds what comes back. It's the same block Claude Code's
 `UserPromptSubmit` hook adds, in two parts, either of which can be missing:
 
 - **Associative recall:** the files your message matches, with their symbols
-  and line numbers; code in other files the synapse graph links directly to
+  and line numbers; other files, mostly code, that the synapse graph links directly to
   them; and a line of matching docs (v4.11.0+; before, the synapse graph's
   neighbours of the matches, as node ids). Left out when the message matches
   the code poorly, such as "yes" or a question about something else (v4.11.0+,

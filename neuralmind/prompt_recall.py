@@ -23,8 +23,9 @@ up to three parts:
   stray one. Test files come after the code they test unless the prompt is
   about tests: they repeat the code's vocabulary, so they often match as well
   as the code does.
-- **Connected to it in the synapse graph.** Code in other files that the
-  synapse graph links directly to the listed code: structural edges (calls,
+- **Connected to it in the synapse graph.** Other files that the synapse
+  graph links directly to the listed code, mostly code, though a doc that is
+  edited with it (a runbook, say) can appear: structural edges (calls,
   imports, inheritance) on a fresh index, learned co-activation as the project
   is used. A hub's activation is damped the way :meth:`SynapseStore.spread`
   damps a hub's outgoing activation, and anything left below ``LINK_FLOOR`` of
@@ -53,9 +54,9 @@ SEED_K = 4
 # a much co-edited file reads the edges of its ~200 neighbours: 0.44 s against
 # 0.03 s at depth 1, for each prompt that seeds there (Click, 2026-10-06).
 SPREAD_DEPTH = 1
-# Spreading-activation results to read. The ones in files already listed are
-# dropped next, and co-editing links every node in a file to every other, so a
-# listed file's own nodes can fill a short list by themselves.
+# Spreading-activation results to keep, counted after the ones in files already
+# listed are dropped: co-editing links every node in a file to every other, so
+# a large listed file's own nodes would fill the list by themselves.
 SPREAD_CANDIDATES = 256
 # Linked node ids the opt-in cohesion check reads (the old list's length).
 COHESION_CLUSTER = 8
@@ -74,7 +75,9 @@ LINK_FLOOR = 0.05
 LABEL_MAX = 60
 # Control characters, including line and paragraph separators: a path or label
 # containing one could otherwise forge extra lines in the injected block.
-_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+_CONTROL_RUN = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]+")
+# spread() costs the walk, not the cut: read every result, then cut.
+_UNCUT = 1 << 30
 
 # The node types a graph marks code with: the built-in generator's "code", and
 # the older per-symbol types (TurboVecEmbedder.SCOPE_FILTERS["code"]).
@@ -164,9 +167,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         # spread from it too, at its own score, without counting its symbol's
         # score twice.
         aliases = {nid: rationale_ids[nid] for nid, _ in seeds if nid in rationale_ids}
-        spread = _spread_with_aliases(
-            store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES
-        )
+        spread = _spread_with_aliases(store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=_UNCUT)
         missing = [nid for nid, _ in spread if nid not in nodes]
         for node in _fetch(mind, missing):
             nodes[node["id"]] = node
@@ -176,6 +177,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
                 nid, nodes.get(_synapse_node(nid, owners)) or nodes.get(nid) or {"id": nid}
             )
         elsewhere = [(nid, energy) for nid, energy in spread if _path(info[nid]) not in matched]
+        elsewhere = elsewhere[:SPREAD_CANDIDATES]
         linked = _linked(store, elsewhere, LINK_FLOOR * max(score for _, score in seeds))
         linked = _one_per_symbol(linked, owners, nodes, info)
         result.linked = _by_file(
@@ -315,7 +317,8 @@ def _path(node: dict | None) -> str:
 
 
 def _one_line(text: str) -> str:
-    return " ".join(_CONTROL.sub(" ", text).split())
+    """Control characters become one space; other whitespace is kept (a path can hold it)."""
+    return _CONTROL_RUN.sub(" ", text).strip()
 
 
 def _file_line(entry: FileRecall) -> str:
@@ -326,7 +329,7 @@ def _file_line(entry: FileRecall) -> str:
 
 def _symbol(node: dict, path: str) -> str:
     """``label Lnn`` for a symbol node; '' for the node that is the file itself."""
-    label = _one_line(str(node.get("label") or ""))
+    label = " ".join(_one_line(str(node.get("label") or "")).split())
     if not label or label == os.path.basename(path):
         return ""
     if len(label) > LABEL_MAX:
