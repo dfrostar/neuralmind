@@ -2025,23 +2025,28 @@ class SynapseStore:
         if not ids or not selected:
             return {}
         ns_marks = ",".join("?" for _ in selected)
-        id_marks = ",".join("?" for _ in ids)
         names = [ns for ns, _ in selected]
+        counts: dict[str, int] = {}
         with self._connect() as conn:
-            cur = conn.execute(
-                f"""
-                SELECT node, COUNT(DISTINCT other) FROM (
-                    SELECT node_a AS node, node_b AS other FROM synapses
-                    WHERE node_a IN ({id_marks}) AND namespace IN ({ns_marks})
-                    UNION ALL
-                    SELECT node_b AS node, node_a AS other FROM synapses
-                    WHERE node_b IN ({id_marks}) AND namespace IN ({ns_marks})
+            # Each id is bound twice: chunks stay under SQLite's variable limit.
+            for start in range(0, len(ids), 400):
+                chunk = ids[start : start + 400]
+                id_marks = ",".join("?" for _ in chunk)
+                cur = conn.execute(
+                    f"""
+                    SELECT node, COUNT(DISTINCT other) FROM (
+                        SELECT node_a AS node, node_b AS other FROM synapses
+                        WHERE node_a IN ({id_marks}) AND namespace IN ({ns_marks})
+                        UNION ALL
+                        SELECT node_b AS node, node_a AS other FROM synapses
+                        WHERE node_b IN ({id_marks}) AND namespace IN ({ns_marks})
+                    )
+                    GROUP BY node
+                    """,
+                    (*chunk, *names, *chunk, *names),
                 )
-                GROUP BY node
-                """,
-                (*ids, *names, *ids, *names),
-            )
-            return {str(node): int(count) for node, count in cur.fetchall()}
+                counts.update((str(node), int(count)) for node, count in cur.fetchall())
+        return counts
 
     def next_likely(
         self,

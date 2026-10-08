@@ -371,6 +371,47 @@ def test_a_hub_is_damped_out(tmp_path):
     assert result.linked_ids == [RESOLVE]
 
 
+class _StubStore:
+    """A synapse store whose one-hop spread and degrees are given."""
+
+    def __init__(self, spread, degrees):
+        self._spread = spread
+        self._degrees = degrees
+
+    def spread(self, seeds, depth, top_k):
+        return self._spread[:top_k]
+
+    def degrees(self, node_ids):
+        return {n: self._degrees[n] for n in node_ids if n in self._degrees}
+
+
+def test_the_candidate_cap_counts_after_hub_damping(monkeypatch):
+    # Three hubs outrank CliRunner on raw activation; damped, they fall below it.
+    monkeypatch.setattr(prompt_recall, "SPREAD_CANDIDATES", 2)
+    hubs = [f"src_click_hub{i}_py__h_fn" for i in range(3)]
+    nodes = [n for n in NODES if n["id"] in (PARSER, RUNNER)]
+    nodes += [_node(h, f"src/click/hub{i}.py", "h()", 1) for i, h in enumerate(hubs)]
+    spread = [(h, 0.5) for h in hubs] + [(RUNNER, 0.3)]
+    store = _StubStore(spread, dict.fromkeys(hubs, 5000))
+    result = recall(_Mind(store, hits=[(PARSER, 0.6)], nodes=nodes), "q")
+    assert result.linked[0].path == "src/click/testing.py"
+
+
+def test_nodes_missing_from_the_graph_are_fetched_in_bounded_chunks(monkeypatch):
+    monkeypatch.setattr(prompt_recall, "SPREAD_CANDIDATES", 3)
+    monkeypatch.setattr(prompt_recall, "FETCH_CHUNK", 4)
+    far = [f"content_note_{i}" for i in range(1000)]
+    extra = {nid: {"source_file": f"notes/{nid}.md", "label": nid} for nid in far}
+    spread = [(nid, 0.5 - i * 1e-4) for i, nid in enumerate(far)]
+    mind = _Mind(_StubStore(spread, {}), hits=[(PARSER, 0.6)], extra=extra)
+    asked = []
+    fetch = mind.embedder.get_nodes_by_ids
+    mind.embedder.get_nodes_by_ids = lambda ids: asked.append(list(ids)) or fetch(ids)
+    result = recall(mind, "q")
+    assert asked == [far[:4]]
+    assert [f.path for f in result.linked] == [f"notes/{n}.md" for n in far[:3]]
+
+
 def test_a_file_with_several_matches_outranks_a_stray_one():
     stray = "examples_repo_repo_py__cli_fn"
     nodes = [n for n in NODES if n["id"] in (MAKE_PARSER, ADD_TO_PARSER)]

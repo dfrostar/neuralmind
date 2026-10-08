@@ -55,10 +55,13 @@ SEED_K = 4
 # a much co-edited file reads the edges of its ~200 neighbours: 0.44 s against
 # 0.03 s at depth 1, for each prompt that seeds there (Click, 2026-10-06).
 SPREAD_DEPTH = 1
-# Spreading-activation results to keep, counted after the ones in files already
-# listed are dropped: co-editing links every node in a file to every other, so
-# a large listed file's own nodes would fill the list by themselves.
+# Spreading-activation results to keep, counted after hub damping and after the
+# ones in files already listed are dropped: co-editing links every node in a
+# file to every other, so a large listed file's own nodes would fill the list
+# by themselves.
 SPREAD_CANDIDATES = 256
+# Nodes the graph file lacks, fetched from the index this many at a time.
+FETCH_CHUNK = 64
 # Linked node ids the opt-in cohesion check reads (the old list's length).
 COHESION_CLUSTER = 8
 MATCH_FILES = 4
@@ -175,17 +178,10 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         # score twice.
         aliases = {nid: rationale_ids[nid] for nid, _ in seeds if nid in rationale_ids}
         spread = _spread_with_aliases(store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=_UNCUT)
-        missing = [nid for nid, _ in spread if nid not in nodes]
-        for node in _fetch(mind, missing):
-            nodes[node["id"]] = node
-        for nid, _ in spread:
-            # Co-editing activates a function's docstring node too: name the function.
-            info.setdefault(
-                nid, nodes.get(_synapse_node(nid, owners)) or nodes.get(nid) or {"id": nid}
-            )
-        elsewhere = [(nid, energy) for nid, energy in spread if _path(info[nid]) not in matched]
-        elsewhere = elsewhere[:SPREAD_CANDIDATES]
-        linked = _linked(store, elsewhere, LINK_FLOOR * max(score for _, score in seeds))
+        floor = LINK_FLOOR * max(score for _, score in seeds)
+        # Damping only lowers an activation: what starts under the floor stays there.
+        ranked = _linked(store, [(nid, e) for nid, e in spread if e >= floor], floor)
+        linked = _outside(mind, ranked, nodes, info, owners, matched)
         linked = _one_per_symbol(linked, owners, nodes, info)
         result.linked = _by_file(
             linked, info, LINKED_FILES, tests_last=tests_last, symbols=LINKED_SYMBOLS
@@ -276,6 +272,44 @@ def _linked(store: Any, spread: list[tuple[str, float]], floor: float) -> dict[s
     ]
     kept = [(nid, energy) for nid, energy in damped if energy >= floor]
     return dict(sorted(kept, key=lambda kv: kv[1], reverse=True))
+
+
+def _outside(
+    mind: Any,
+    ranked: dict[str, float],
+    nodes: dict[str, dict],
+    info: dict[str, dict],
+    owners: dict[str, str],
+    matched: set[str],
+) -> dict[str, float]:
+    """The ``SPREAD_CANDIDATES`` strongest links in files the block doesn't list yet.
+
+    A node the graph file lacks is fetched from the index, ``FETCH_CHUNK`` at a
+    time and only until enough are found: a much-linked seed can reach
+    thousands of nodes, and some backends look each one up separately.
+    """
+    from .core import _synapse_node
+
+    items = list(ranked.items())
+    kept: dict[str, float] = {}
+    for start in range(0, len(items), FETCH_CHUNK):
+        chunk = items[start : start + FETCH_CHUNK]
+        missing = [
+            nid for nid, _ in chunk if nid not in nodes and _synapse_node(nid, owners) not in nodes
+        ]
+        for node in _fetch(mind, missing):
+            nodes[node["id"]] = node
+        for nid, energy in chunk:
+            # Co-editing activates a function's docstring node too: name the function.
+            info.setdefault(
+                nid, nodes.get(_synapse_node(nid, owners)) or nodes.get(nid) or {"id": nid}
+            )
+            path = _path(info[nid])
+            if path and path not in matched:
+                kept[nid] = energy
+                if len(kept) == SPREAD_CANDIDATES:
+                    return kept
+    return kept
 
 
 def _one_per_symbol(
