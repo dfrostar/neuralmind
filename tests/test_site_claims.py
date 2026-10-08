@@ -73,9 +73,13 @@ CLASSNAME_RE = re.compile(r"className=(?:\"[^\"]*\"|'[^']*'|\{[^}]*\})", re.DOTA
 ALLOW_MARKER = "claims-guard:allow"
 
 # Any number immediately preceding a multiplication sign, including both
-# endpoints of a range ("45–257×" yields 45 and 257).
-RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)\s*×")
-SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*×")
+# endpoints of a range ("45–257×" yields 45 and 257). The sign can be written
+# ×, &times;, &#215; or an x right after the number, and the dash as an
+# entity, as in tests/test_docs_claims.py.
+_TIMES = r"(?:\s*(?:×|&times;|&#215;)|x(?![a-z]))"
+_DASH = r"\s*(?:×|&times;|&#215;|x)?\s*(?:–|—|-|&ndash;|&mdash;|&#8211;)\s*"
+RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _DASH + r"(\d+(?:\.\d+)?)" + _TIMES)
+SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _TIMES)
 
 # "100% recall" in any word order within a short window. The public
 # benchmark's mean is 95% and its per-repo floor is 85.71% (click).
@@ -261,6 +265,11 @@ def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
     assert any(not end and r in points for end, r in _ratio_claims_in(stale))
     fresh = "(The public benchmark’s 45.3× on the same repo is a different measurement"
     assert not any(r in points for _, r in _ratio_claims_in(fresh))
+    # The guard reads raw TSX: entity and ASCII spellings count too.
+    for stale_line in ("<p>46&ndash;263&times; fewer tokens</p>", "46-263x fewer tokens"):
+        assert any(r in superseded for _, r in _ratio_claims_in(stale_line)), stale_line
+    for current_line in ("<p>45&ndash;246&times; fewer tokens</p>", "45-246x fewer tokens"):
+        assert not any(r in superseded for _, r in _ratio_claims_in(current_line)), current_line
 
 
 def test_site_does_not_name_private_projects() -> None:
