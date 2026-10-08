@@ -136,7 +136,7 @@ const METHOD = [
     },
     {
         decision: 'Deterministic per machine',
-        why: 'Synapse injection is off, the repos are pinned and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall and found-rate have come back identical. On CPUs without AVX-512, token counts shift slightly, by up to 0.8% on a per-repo mean in this run, and so does the vector-RAG baseline’s MRR on click.',
+        why: 'Synapse injection is off, the repos are pinned and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall and found-rate have come back identical. On the GitHub-hosted CI runners without AVX-512, token counts shift slightly, by up to 0.8% on a per-repo mean in this run, and so does the vector-RAG baseline’s MRR on click; an Apple M3, also without AVX-512, matched the committed run exactly.',
     },
 ];
 

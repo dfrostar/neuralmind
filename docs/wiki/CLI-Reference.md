@@ -851,8 +851,9 @@ measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running on the same
 machine matches the published table to the token. Across machines, recall and
-found-rate have matched exactly, while token counts differ slightly on CPUs
-without AVX-512 (up to 0.8% on a per-repo mean for the current run);
+found-rate have matched exactly, while token counts differ slightly on the
+GitHub-hosted CI runners without AVX-512 (up to 0.8% on a per-repo mean for the
+current run; an Apple M3, also without AVX-512, matched exactly);
 `NEURALMIND_ORT_THREADS=1` matches CI's configuration — see
 [how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 

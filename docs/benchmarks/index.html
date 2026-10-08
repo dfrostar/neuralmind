@@ -191,8 +191,8 @@
 pip install -e . tiktoken
 NEURALMIND_ORT_THREADS=1 python -m evals.public.run">Copy</button>
             <pre><span class="cmt"># Reproduce it yourself — no trust required. Recall and found-rate should match</span>
-<span class="cmt"># the tables above exactly; token counts can differ slightly on CPUs without</span>
-<span class="cmt"># AVX-512 (up to 0.8% on a per-repo mean for this run).</span>
+<span class="cmt"># the tables above exactly; token counts can differ slightly by machine: the</span>
+<span class="cmt"># GitHub-hosted CI runners without AVX-512 land up to 0.8% off on a per-repo mean.</span>
 <span class="kw">git clone</span> https://github.com/dfrostar/neuralmind <span class="kw">&amp;&amp; cd</span> neuralmind
 <span class="kw">pip install</span> -e . tiktoken
 NEURALMIND_ORT_THREADS=1 <span class="kw">python</span> -m evals.public.run</pre>

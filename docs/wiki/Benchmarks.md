@@ -11,8 +11,9 @@ estimate or a real-repo extrapolation, it says so. One labeled exception: the
 one-repo, maintainer-measured case study — reproducible in method, not gated
 in CI. On the public benchmark, "reproducible" means gold-file recall and
 found-rate have come back identical on every machine compared, while for the
-current run per-repo mean tokens differ by up to 0.8% between CPUs with and
-without AVX-512, and so does the vector-RAG baseline's MRR on `click`
+current run per-repo mean tokens differ by up to 0.8% between the GitHub-hosted
+CI runners with and without AVX-512, and so does the vector-RAG baseline's MRR
+on `click` (an Apple M3, also without AVX-512, matched the committed run exactly)
 ([details](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#how-exactly-a-re-run-reproduces)).
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
