@@ -22,9 +22,9 @@ file as a script with that release's checkout first on ``PYTHONPATH``
 Prompt sets (JSON: ``repo``, ``commit``, ``prompts`` of ``{prompt, expect}``):
 
 - ``tests/benchmark/prompt_recall_click.json``: pallets/click at a pinned
-  commit, a project NeuralMind's own docs never tuned against.
+  commit, the set the file ranking was tuned on.
 - ``tests/benchmark/prompt_recall_neuralmind.json``: this repository, at the
-  commit it names.
+  commit it names, held out while the ranking was tuned.
 
 Run it (read-only: learning is off for the run)::
 

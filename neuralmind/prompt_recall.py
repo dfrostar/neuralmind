@@ -163,9 +163,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         # Query feedback can have learned edges on a docstring node's own id:
         # spread from it too, at its own score, without counting its symbol's
         # score twice.
-        aliases = {
-            raw: score for nid, _ in seeds for raw, score in rationale_ids.get(nid, {}).items()
-        }
+        aliases = {nid: rationale_ids[nid] for nid, _ in seeds if nid in rationale_ids}
         spread = _spread_with_aliases(
             store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES
         )
@@ -179,6 +177,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             )
         elsewhere = [(nid, energy) for nid, energy in spread if _path(info[nid]) not in matched]
         linked = _linked(store, elsewhere, LINK_FLOOR * max(score for _, score in seeds))
+        linked = _one_per_symbol(linked, owners, nodes, info)
         result.linked = _by_file(
             linked, info, LINKED_FILES, tests_last=tests_last, symbols=LINKED_SYMBOLS
         )
@@ -253,6 +252,25 @@ def _linked(store: Any, spread: list[tuple[str, float]], floor: float) -> dict[s
     ]
     kept = [(nid, energy) for nid, energy in damped if energy >= floor]
     return dict(sorted(kept, key=lambda kv: kv[1], reverse=True))
+
+
+def _one_per_symbol(
+    linked: dict[str, float], owners: dict[str, str], nodes: dict[str, dict], info: dict[str, dict]
+) -> dict[str, float]:
+    """A function and its docstring node, both linked, count once: at the higher activation.
+
+    Query feedback reinforces raw hit ids, so both can carry edges to a seed;
+    the block shows them as one symbol, and summing them would promote its file.
+    """
+    from .core import _synapse_node
+
+    merged: dict[str, float] = {}
+    for nid, energy in linked.items():
+        owner = _synapse_node(nid, owners)
+        key = owner if owner in nodes else nid
+        info.setdefault(key, nodes.get(key) or info.get(nid) or {"id": key})
+        merged[key] = max(energy, merged.get(key, 0.0))
+    return dict(sorted(merged.items(), key=lambda kv: kv[1], reverse=True))
 
 
 def _hub_factor(degree: int, hub_degree: int) -> float:

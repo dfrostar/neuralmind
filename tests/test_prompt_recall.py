@@ -212,6 +212,23 @@ def test_the_cohesion_ids_are_only_from_the_linked_files_listed(tmp_path):
     assert result.linked_ids == linked[:3]
 
 
+def test_a_linked_function_and_its_docstring_count_once(tmp_path):
+    # CliRunner and its docstring node are both linked to _OptionParser,
+    # each less strongly than _resolve_context(); together they'd outrank it.
+    store = SynapseStore(tmp_path / "synapses.db")
+    for _ in range(3):
+        store.reinforce([PARSER, RESOLVE])
+    for _ in range(2):
+        store.reinforce([PARSER, RUNNER])
+        store.reinforce([PARSER, RUNNER + "__rationale"])
+    result = recall(_Mind(store, hits=[(PARSER, 0.6)]), "q")
+    assert [f.path for f in result.linked] == [
+        "src/click/shell_completion.py",
+        "src/click/testing.py",
+    ]
+    assert result.linked_ids == [RESOLVE, RUNNER]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.
