@@ -83,6 +83,12 @@ _UNCUT = 1 << 30
 # The node types a graph marks code with: the built-in generator's "code", and
 # the older per-symbol types (TurboVecEmbedder.SCOPE_FILTERS["code"]).
 _CODE_TYPES = frozenset({"code", "function", "class", "method", "module"})
+# The types that mark prose (TurboVecEmbedder.SCOPE_FILTERS["content"]). A node
+# of any other type, or none, is code when its file has a code suffix, as the
+# index's own code scope decides.
+_PROSE_TYPES = frozenset(
+    {"document", "rationale", "content", "policy", "sop", "decision", "meeting_note"}
+)
 _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _TEST_STEM = re.compile(r"^tests?$|^test_|_tests?$|Tests?$")
 _TEST_NAME = re.compile(r"\.(test|spec)\.")
@@ -151,7 +157,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             own = rationale_ids.setdefault(node_id, {})
             own[str(raw_id)] = max(score, own.get(str(raw_id), score))
         info[node_id] = node
-        bucket = code if node.get("file_type") in _CODE_TYPES else other
+        bucket = code if is_code_node(node) else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
 
     result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
@@ -211,6 +217,18 @@ def format_block(result: PromptRecall) -> str:
     if result.docs:
         lines.append("Docs: " + ", ".join(result.docs))
     return "\n".join(lines)
+
+
+def is_code_node(node: dict) -> bool:
+    """Whether an index node is code: by its type, else by its file's suffix."""
+    kind = node.get("file_type")
+    if kind in _CODE_TYPES:
+        return True
+    if kind in _PROSE_TYPES:
+        return False
+    from .graphgen import _CODE_SUFFIXES
+
+    return os.path.splitext(str(node.get("source_file") or ""))[1].lower() in _CODE_SUFFIXES
 
 
 def is_test_path(path: str) -> bool:

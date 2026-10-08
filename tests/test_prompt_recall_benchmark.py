@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.benchmark.prompt_recall import _is_doc, _named_files
+from tests.benchmark.prompt_recall import _code_files, _is_doc, _named_files
 
 
 def test_the_docs_line_counts_as_named():
@@ -30,7 +30,21 @@ def test_the_old_node_id_format_still_maps_to_files():
     assert _named_files(block, {"pkg_mod_py__load_fn": "pkg/mod.py"}) == ["pkg/mod.py"]
 
 
-def test_every_indexed_document_format_counts_as_a_doc():
+def test_the_fallback_suffixes_cover_the_ingested_document_formats():
     for path in ("book/ch1.markdown", "notes.mkd", "a.text", "todo.org", "spec.pdf", "README.MD"):
         assert _is_doc(path), path
     assert not _is_doc("src/click/core.py")
+
+
+def test_the_index_decides_which_named_files_are_code():
+    nodes = [
+        {"source_file": "config/settings.yaml", "file_type": "document"},
+        {"source_file": "src/app.py", "file_type": "code"},
+        {"source_file": "src/app.py", "file_type": "rationale"},
+        {"source_file": "README.md", "file_type": "document"},
+    ]
+    assert _code_files(nodes) == {
+        "config/settings.yaml": False,
+        "src/app.py": True,
+        "README.md": False,
+    }

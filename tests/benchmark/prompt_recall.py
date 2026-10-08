@@ -84,7 +84,7 @@ def _named_files(block: str, id_to_file: dict[str, str]) -> list[str]:
     return files
 
 
-# Every document format NeuralMind indexes (``ingest-content``, the docs scope).
+# Document suffixes, for a file the index doesn't list (and older releases).
 _DOC_SUFFIXES = (
     ".md",
     ".markdown",
@@ -104,6 +104,25 @@ def _is_doc(path: str) -> bool:
     return path.lower().endswith(_DOC_SUFFIXES)
 
 
+def _code_files(nodes: list[dict]) -> dict[str, bool]:
+    """Each indexed file, and whether the index holds code for it.
+
+    The index knows a document of any format; the suffix list is only for a
+    release before v4.11.0, which has no ``is_code_node``.
+    """
+    try:
+        from neuralmind.prompt_recall import is_code_node
+    except ImportError:
+        is_code_node = None
+    files: dict[str, bool] = {}
+    for node in nodes:
+        path = str(node.get("source_file") or "")
+        if path:
+            code = is_code_node(node) if is_code_node else not _is_doc(path)
+            files[path] = files.get(path, False) or code
+    return files
+
+
 def measure(project: str, prompts: list[dict]) -> dict:
     os.environ["NEURALMIND_NO_LEARN"] = "1"
     # The committed figures are for the default block: drop the caller's overrides.
@@ -117,12 +136,13 @@ def measure(project: str, prompts: list[dict]) -> dict:
         if not mind._load_existing_index():
             raise SystemExit(f"no index in {project}: run `neuralmind build {project}` first")
     id_to_file = {str(n.get("id")): str(n.get("source_file") or "") for n in mind.embedder.nodes}
+    code_files = _code_files(mind.embedder.nodes)
     tokenizer, count = _tokenizer()
     rows = []
     for item in prompts:
         block = hooks._spread_for_prompt(project, item["prompt"])
         files = _named_files(block, id_to_file)
-        code = [f for f in files if not _is_doc(f)]
+        code = [f for f in files if code_files.get(f, not _is_doc(f))]
         rows.append(
             {
                 "prompt": item["prompt"],

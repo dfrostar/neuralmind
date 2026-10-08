@@ -54,8 +54,8 @@ other files, mostly code, that the synapse graph links directly to it, and match
 On a freshly built project it used to list doc headings' neighbours as node
 ids instead; on fresh indexes it now names a file that answers the prompt for
 14 of 14 Click prompts and 14 of 15 held-out prompts about this repository
-(v4.9.2: 3 and 4), and `python -m tests.benchmark.prompt_recall`, from a source
-checkout, reproduces that. After Claude Code compacts a session, the session also gets its own
+(v4.9.2: 3 and 4), and `tests.benchmark.prompt_recall`, from a source
+checkout, reproduces that ([commands](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#reproduce-it)). After Claude Code compacts a session, the session also gets its own
 first prompt, latest prompts (as written, up to 200 characters each) and
 edited files back, alongside the compaction summary. Whether these changes
 improve answers isn't measured.

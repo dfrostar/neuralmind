@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from neuralmind import prompt_recall
-from neuralmind.prompt_recall import format_block, is_test_path, recall
+from neuralmind.prompt_recall import format_block, is_code_node, is_test_path, recall
 from neuralmind.synapses import SHARED_NAMESPACE, SynapseStore
 
 PARSER = "src_click_parser_py__optionparser_cls"
@@ -454,6 +454,30 @@ def test_a_long_label_is_shortened():
 )
 def test_is_test_path(path, expected):
     assert is_test_path(path) is expected
+
+
+@pytest.mark.parametrize("file_type", ["", "symbol", "unknown"])
+def test_a_generic_type_on_a_code_file_counts_as_code(file_type):
+    # The index's code scope falls back to the suffix for these: so does recall.
+    nodes = [_node(PARSER, "src/click/parser.py", "_OptionParser", 224, file_type)]
+    result = recall(_Mind(None, hits=[(PARSER, 0.6)], nodes=nodes), "q")
+    assert result.code
+    assert [f.path for f in result.matches] == ["src/click/parser.py"]
+
+
+@pytest.mark.parametrize(
+    "node, expected",
+    [
+        ({"file_type": "document", "source_file": "notes.py"}, False),
+        ({"file_type": "rationale", "source_file": "src/a.py"}, False),
+        ({"file_type": "symbol", "source_file": "docs/a.md"}, False),
+        ({"file_type": None, "source_file": "src/a.GO"}, True),
+        ({"file_type": "function"}, True),
+        ({}, False),
+    ],
+)
+def test_is_code_node(node, expected):
+    assert is_code_node(node) is expected
 
 
 @pytest.mark.parametrize("file_type", ["function", "class", "method", "module"])
