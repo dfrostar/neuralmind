@@ -80,3 +80,52 @@ def test_a_fresh_session_per_batch_when_reuse_is_not_safe(monkeypatch, embedder)
     monkeypatch.setenv("NEURALMIND_ORT_SESSION_CACHE", "0")
     embedder.embed([f"text {i}" for i in range(70)])
     assert [s.runs for s in embedder.created] == [1, 1, 1]
+
+
+class _LengthTokenizer:
+    """Right-pads each batch to its longest text; a text's ids are its word lengths."""
+
+    def encode_batch(self, texts):
+        width = max(len(t.split()) for t in texts)
+        out = []
+        for t in texts:
+            ids = [len(w) for w in t.split()]
+            enc = _Enc(width)
+            enc.ids = ids + [0] * (width - len(ids))
+            enc.attention_mask = [1] * len(ids) + [0] * (width - len(ids))
+            out.append(enc)
+        return out
+
+
+class _IdSession:
+    """Each token's hidden state is its id, so a row's mean is a function of its own text."""
+
+    def __init__(self, widths):
+        self.widths = widths
+
+    def run(self, _outputs, feed):
+        ids = feed["input_ids"].astype(np.float32)
+        b, n = ids.shape
+        self.widths.append(n)
+        hidden = np.zeros((b, n, 384), dtype=np.float32)
+        hidden[:, :, 0] = ids
+        hidden[:, :, 1] = 1.0
+        return [hidden]
+
+
+def test_length_sorted_batches_keep_input_order(embedder, monkeypatch):
+    widths: list[int] = []
+    session = _IdSession(widths)
+    embedder.__dict__["_tokenizer"] = _LengthTokenizer()
+    monkeypatch.setattr(embedder, "_session_factory", lambda: session)
+    monkeypatch.setattr(onnx_embedder, "_SORT_WINDOW", 50)
+    # Long and short texts interleaved, across three sort windows.
+    texts = [("word " * (60 if i % 7 == 0 else 1 + i % 5)) + "x" * (1 + i % 9) for i in range(120)]
+
+    batched = embedder.embed(texts)
+    one_by_one = np.vstack([embedder.embed([t]) for t in texts])
+
+    assert np.array_equal(batched, one_by_one)
+    # Sorting kept the long texts together: most batches never pad to 61.
+    first = widths[: len(widths) - len(texts)]
+    assert sum(w == 61 for w in first) <= 3
