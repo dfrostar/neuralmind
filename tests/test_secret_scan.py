@@ -624,6 +624,40 @@ class TestIndexRedactionCoversEveryBackend:
         written = inst._bm25_path.read_text(encoding="utf-8")
         assert ANTHROPIC_KEY not in written, "BM25 persisted the raw credential"
 
+    def test_turbovec_embed_nodes_redacts_prose_bodies(self, monkeypatch, tmp_path):
+        """turbovec's embed_nodes stored a prose node's raw content_text.
+
+        embed_content and the Chroma backend redacted it; embed_nodes, the
+        path ``build`` takes for markdown sections, did not, so the secret
+        reached the SQLite store with redaction switched on.
+        """
+        import numpy as np
+
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+
+        def fake_embed(texts):
+            return np.ones((len(texts), 8), dtype=np.float32)
+
+        be = TurboVecEmbedder(str(tmp_path), db_path=str(tmp_path / "tv"), embed_fn=fake_embed)
+        try:
+            be.nodes = [
+                {
+                    "id": "readme_md__setup_h",
+                    "label": "Setup",
+                    "file_type": "document",
+                    "source_file": "README.md",
+                    "content_text": f"export KEY={ANTHROPIC_KEY}",
+                }
+            ]
+            monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
+            be.embed_nodes()
+            docs = [r[0] for r in be._conn.execute("SELECT document FROM nodes")]
+        finally:
+            be.close()
+        assert docs, "nothing was embedded"
+        assert all(ANTHROPIC_KEY not in d for d in docs), "turbovec stored the raw credential"
+        assert any("[REDACTED:anthropic-api-key]" in d for d in docs)
+
     def test_turbovec_is_covered_not_just_chroma(self, monkeypatch):
         """Pins the specific gap: turbovec is the default, chroma is opt-in."""
         from neuralmind.turbovec_backend import TurboVecEmbedder

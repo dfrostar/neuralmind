@@ -83,7 +83,16 @@ SCHEMA_VERSION = 2
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
-    ".tsx": "typescript",
+    # JSX needs the TSX grammar: the TypeScript one reads ``<div>`` as a type
+    # assertion and loses the component around it.
+    ".tsx": "tsx",
+    # JavaScript is parsed with the TypeScript grammars (a superset of its
+    # syntax), so a JS-only repository gets code nodes instead of being
+    # classified as prose and indexed as an empty project.
+    ".js": "typescript",
+    ".mjs": "typescript",
+    ".cjs": "typescript",
+    ".jsx": "tsx",
     ".go": "go",
     ".rs": "rust",
     ".java": "java",
@@ -144,6 +153,10 @@ def _load_language(name: str):
             import tree_sitter_typescript as ts
 
             return Language(ts.language_typescript())
+        if name == "tsx":
+            import tree_sitter_typescript as ts
+
+            return Language(ts.language_tsx())
         if name == "go":
             import tree_sitter_go as ts
 
@@ -2063,7 +2076,7 @@ def _resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None
                 supers = target_defn.child_by_field_name("superclasses")
                 if name and supers is not None:
                     cid_candidates = b.class_by_name.get(name, [])
-                    cid = next((c for c in cid_candidates if c.startswith(file_id)), None)
+                    cid = next((c for c in cid_candidates if c.startswith(file_id + "__")), None)
                     if cid:
                         for arg in supers.named_children:
                             base = _node_text(arg, src).split(".")[-1].split("[")[0].strip()
@@ -2331,9 +2344,12 @@ def _attach_comment_rationale(
 # --------------------------------------------------------------------------- #
 # TypeScript extractor
 # --------------------------------------------------------------------------- #
+_TS_MODULE_SUFFIXES = (".tsx", ".ts", ".jsx", ".mjs", ".cjs", ".js")
+
+
 def _ts_module_key(rel: str) -> str:
     """``src/db/connection.ts`` → ``src/db/connection`` (extension dropped)."""
-    for suf in (".tsx", ".ts"):
+    for suf in _TS_MODULE_SUFFIXES:
         if rel.endswith(suf):
             return rel[: -len(suf)]
     return rel
@@ -2346,7 +2362,9 @@ def _ts_resolve_import(importing_rel: str, spec: str) -> str | None:
     import posixpath
 
     base = posixpath.dirname(importing_rel)
-    return posixpath.normpath(posixpath.join(base, spec))
+    # ``./db.js`` names db.ts in ESM TypeScript and db.js in JavaScript; both
+    # files are keyed without their extension.
+    return _ts_module_key(posixpath.normpath(posixpath.join(base, spec)))
 
 
 def _ts_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -4453,6 +4471,7 @@ def _php_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_i
 _EXTRACTORS: dict[str, tuple] = {
     "python": (_py_extract_symbols, _py_resolve_edges),
     "typescript": (_ts_extract_symbols, _ts_resolve_edges),
+    "tsx": (_ts_extract_symbols, _ts_resolve_edges),
     "go": (_go_extract_symbols, _go_resolve_edges),
     "rust": (_rust_extract_symbols, _rust_resolve_edges),
     "java": (_java_extract_symbols, _java_resolve_edges),
@@ -4500,7 +4519,7 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
         lang = _SUFFIX_LANG.get(suffix)
         if lang == "python":
             b.file_by_module[_module_dotted(sf)] = nid
-        elif lang == "typescript":
+        elif lang in ("typescript", "tsx"):
             b.file_by_module[_ts_module_key(sf)] = nid
         elif lang == "go":
             seg = posixpath.basename(posixpath.dirname(sf)) or posixpath.basename(sf)

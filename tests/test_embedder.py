@@ -425,17 +425,17 @@ class TestNodeToText:
     """Tests for GraphEmbedder._node_to_text() directly."""
 
     def test_full_node(self, temp_project, sample_graph):
-        """_node_to_text produces text with all fields."""
+        """A symbol embeds as its name and module, without line or cluster numbers."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         node = sample_graph["nodes"][0]
         text = embedder._node_to_text(node)
 
-        assert "Entity: authenticate_user" in text
-        assert "Type: function" in text
-        assert "File: auth/handlers.py" in text
-        assert "Community: 1" in text
+        assert text.splitlines()[0] == "authenticate_user"
+        assert "In module auth.handlers" in text
+        assert "Community" not in text
+        assert "Location" not in text
 
     def test_minimal_node(self, temp_project):
         """_node_to_text handles minimal node with only id."""
@@ -444,28 +444,20 @@ class TestNodeToText:
         embedder = GraphEmbedder(str(temp_project))
         text = embedder._node_to_text({"id": "test_node"})
 
-        assert "Entity: test_node" in text
-        assert "Type: unknown" in text
+        assert text == "test_node"
 
-    def test_node_with_norm_label(self, temp_project):
-        """_node_to_text includes normalized label when different from label."""
+    def test_matches_the_turbovec_backend(self, temp_project, sample_graph):
+        """Both backends embed a node as the same text (neuralmind.node_text)."""
         from neuralmind.embedder import GraphEmbedder
+        from neuralmind.turbovec_backend import TurboVecEmbedder
 
-        embedder = GraphEmbedder(str(temp_project))
-        node = {"id": "n1", "label": "foo", "norm_label": "foo_normalized"}
-        text = embedder._node_to_text(node)
-
-        assert "Normalized: foo_normalized" in text
-
-    def test_node_with_same_norm_label(self, temp_project):
-        """_node_to_text skips norm_label when equal to label."""
-        from neuralmind.embedder import GraphEmbedder
-
-        embedder = GraphEmbedder(str(temp_project))
-        node = {"id": "n1", "label": "foo", "norm_label": "foo"}
-        text = embedder._node_to_text(node)
-
-        assert "Normalized" not in text
+        chroma = GraphEmbedder(str(temp_project))
+        turbo = TurboVecEmbedder(str(temp_project), db_path=str(temp_project / "tv"))
+        try:
+            for node in sample_graph["nodes"]:
+                assert chroma._node_to_text(node) == turbo._node_to_text(node)
+        finally:
+            turbo.close()
 
 
 @pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")

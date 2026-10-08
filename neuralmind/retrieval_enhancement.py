@@ -504,51 +504,69 @@ def extract_code_identifiers(query: str) -> list[str]:
     return identifiers
 
 
+_PROSE_SUFFIXES = (".md", ".markdown", ".txt", ".rst", ".org")
+_IDENT_SPLIT = re.compile(r"[^a-z0-9]+")
+_CAMEL_SPLIT = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+# Ceiling on the code-signal multiplier, 1.0 = no boost (the default). It was
+# 10x over fused scores in [0, 1]: a word of the question in a file name or
+# label outvoted the whole ranking. Off, the retrieval eval's four library
+# repos gained (90.8% -> 92.5% hit@5) and the markdown-heavy one was
+# unchanged; the 0.3x mark-down of a markdown file under a code intent stays.
+# NEURALMIND_CODE_SIGNAL_CAP=N turns the boost back on, up to Nx.
+CODE_SIGNAL_CAP = 1.0
+
+
+def _words(text: str) -> set[str]:
+    """Lower-case words of an identifier or path (camelCase, snake_case, dots)."""
+    return {w for w in _IDENT_SPLIT.split(_CAMEL_SPLIT.sub(" ", text).lower()) if len(w) >= 3}
+
+
 def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
     """Compute a boost score for a result based on code-signal identifiers.
 
-    Returns a multiplier (1.0 = no boost, >1.0 = boost).
-    Uses additive boost for strong matches to overcome large vector score gaps.
+    Returns a multiplier (1.0 = no boost, >1.0 = boost). An identifier counts
+    when it is a whole word of the file's name (not its directory: a package
+    directory named like the project matches every file), of the node's
+    label, or of its document text. A docstring counts as the code it
+    documents; a markdown or text file is a document and is marked down.
     """
     if not identifiers:
         return 1.0
 
     meta = result.get("metadata", {})
-    source_file = meta.get("source_file", "")
-    label = meta.get("label", "")
-    document = result.get("document", "")
+    source_file = meta.get("source_file", "") or ""
+    label = meta.get("label", "") or ""
+    document = result.get("document", "") or ""
     file_type = meta.get("file_type", "")
 
-    # Only boost code files
-    is_doc = file_type in ("rationale", "document") or source_file.endswith(
-        (".md", ".markdown", ".txt", ".rst", ".org")
-    )
-    if is_doc:
+    # Only boost code (docstrings included)
+    if file_type == "document" or source_file.endswith(_PROSE_SUFFIXES):
         return 0.3  # Strongly penalize docs for code-signal queries
 
-    # Check how many identifiers appear in the source file name
-    file_name = source_file.lower().replace("/", "_").replace(".", "_")
-    file_matches = sum(
-        1 for ident in identifiers if ident.lower() in file_name or file_name in ident.lower()
-    )
-
-    # Check how many identifiers appear in the label
-    label_lower = label.lower()
-    label_matches = sum(
-        1 for ident in identifiers if ident.lower() in label_lower or label_lower in ident.lower()
-    )
-
-    # Check how many identifiers appear in the document content
-    doc_lower = document.lower()
-    doc_matches = sum(1 for ident in identifiers if ident.lower() in doc_lower)
+    wanted = {w for ident in identifiers for w in _words(ident)}
+    if not wanted:
+        return 1.0
+    file_words = _words(source_file.replace("\\", "/").rsplit("/", 1)[-1])
+    label_words = _words(label)
+    doc_words = _words(document)
 
     # Weight matches: file name > label > document content
-    total_score = (file_matches * 3.0) + (label_matches * 2.0) + (doc_matches * 0.5)
+    total_score = (
+        len(wanted & file_words) * 3.0
+        + len(wanted & label_words) * 2.0
+        + len(wanted & doc_words) * 0.5
+    )
 
     if total_score > 0:
-        # Use additive boost for strong matches to overcome vector score gaps
-        # Base multiplier 1.0 + additive boost (capped at 10x)
-        return min(10.0, 1.0 + total_score * 1.5)
+        cap = CODE_SIGNAL_CAP
+        raw = os.environ.get("NEURALMIND_CODE_SIGNAL_CAP", "").strip()
+        if raw:
+            try:
+                cap = max(1.0, float(raw))
+            except ValueError:
+                pass
+        return min(cap, 1.0 + total_score * 1.5)
 
     return 1.0
 
@@ -556,11 +574,13 @@ def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
 def apply_code_signal_boost(results: list[dict], identifiers: list[str]) -> list[dict]:
     """Apply code-signal boost to results.
 
-    Mutates results in place. Returns the re-ranked list.
+    Returns a re-ranked list of copies; the input dicts are left untouched
+    (they are the per-query search cache).
     """
     if not identifiers or not results:
         return results
 
+    results = [dict(r) for r in results]
     for result in results:
         boost = compute_code_signal_score(result, identifiers)
         result["score"] = result.get("score", 0.0) * boost
@@ -953,9 +973,16 @@ def _extract_code_snippet(
         source_file = metadata.get("source_file", "")
         document = node.get("document", "")
 
-        # Extract line number from document (format: "Location: L561")
+        # The line number: the graph node's source_location, or, for an index
+        # embedded with the old node text, the document's "Location: L561".
         line_num = None
-        for line in document.split("\n"):
+        for graph_node in getattr(embedder, "nodes", None) or []:
+            if str(graph_node.get("id", "")) == str(node_id):
+                m = re.match(r"L(\d+)", str(graph_node.get("source_location", "") or ""))
+                if m:
+                    line_num = int(m.group(1))
+                break
+        for line in [] if line_num else document.split("\n"):
             if "Location: L" in line:
                 try:
                     # Extract number after 'L'

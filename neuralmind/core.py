@@ -44,7 +44,6 @@ from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .paths import graph_json_path
-from .query_handler import QueryHandler
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
 from .synapse_dynamics import SynapseDynamics
@@ -329,7 +328,6 @@ class NeuralMind:
         self._read_only_synapses: SynapseStore | None = None
         self._synapse_client: SynapseClient | None = None
         self._dynamics: SynapseDynamics | None = None
-        self._query_handler: QueryHandler | None = None
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
         self._head_fingerprint: str | None = None
@@ -468,13 +466,6 @@ class NeuralMind:
         if self._dynamics is None:
             self._dynamics = SynapseDynamics(self.synapses)
         return self._dynamics
-
-    @property
-    def query_handler(self) -> QueryHandler:
-        """Return the query handler, creating it on first use."""
-        if self._query_handler is None:
-            self._query_handler = QueryHandler(self)
-        return self._query_handler
 
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
         """Feed an activation signal into the synapse layer."""

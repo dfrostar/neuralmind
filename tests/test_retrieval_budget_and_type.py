@@ -111,13 +111,19 @@ def test_query_type_changes_the_rendered_context(mind):
 
 
 def test_query_type_matching_the_detected_intent_boosts_once(mind):
+    # Since v4.12 a detected intent doesn't re-weight hits; a requested one
+    # does, once: every code hit scores CODE_BOOST times the unboosted score
+    # (not its square, as when detection and request both applied it).
     auto = mind.query(_CODE_QUESTION, learn=False)
     code = mind.query(_CODE_QUESTION, query_type="code", learn=False)
 
     auto_scores = {h["id"]: h["score"] for h in auto.top_search_hits}
-    code_scores = {h["id"]: h["score"] for h in code.top_search_hits}
-    assert code_scores == pytest.approx(auto_scores)
-    assert code.context == auto.context
+    shared = [h for h in code.top_search_hits if h["id"] in auto_scores]
+    assert shared
+    assert all("_intent_boost" not in h for h in auto.top_search_hits)
+    for h in shared:
+        assert h["_intent_boost"] in _CODE_BOOSTS
+        assert h["score"] == pytest.approx(auto_scores[h["id"]] * h["_intent_boost"])
 
 
 # --------------------------------------------------------------------------- #

@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 import tarfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -44,8 +46,28 @@ _MAX_TOKENS = 256
 _BATCH = 32  # ORT deadlocks on large single-batch runs; 32 is the proven-safe size
 _DOWNLOAD_RETRIES = 3
 
+# One ONNX session per model folder, shared by every embedder in the process
+# where reusing a session is safe (see _session_reuse_safe).
+_SESSIONS: dict[str, object] = {}
+_SESSIONS_LOCK = threading.Lock()
+
 _NM_CACHE = Path.home() / ".cache" / "neuralmind" / "onnx_models" / _MODEL_NAME / "onnx"
 _CHROMA_CACHE = Path.home() / ".cache" / "chroma" / "onnx_models" / _MODEL_NAME / "onnx"
+
+
+def _session_reuse_safe() -> bool:
+    """Whether one ONNX session may serve many ``session.run()`` calls.
+
+    onnxruntime 1.29 on Python 3.14 deadlocks after 2-3 runs on a reused
+    session, so there every batch gets a fresh session. Everywhere else a
+    session is built once per process: creating one costs ~150 ms, against
+    ~3 ms for the run that embeds a query. ``NEURALMIND_ORT_SESSION_CACHE=0``
+    forces a fresh session per batch, ``=1`` forces reuse.
+    """
+    env = os.environ.get("NEURALMIND_ORT_SESSION_CACHE", "").strip()
+    if env in ("0", "1"):
+        return env == "1"
+    return sys.version_info < (3, 14)
 
 
 def _sha256(path: Path) -> str:
@@ -141,7 +163,10 @@ class OnnxMiniLMEmbedder:
         tok = Tokenizer.from_file(str(self._resolve_model_dir() / "tokenizer.json"))
         # sentence-transformers uses 256 even though the HF config says 128.
         tok.enable_truncation(max_length=_MAX_TOKENS)
-        tok.enable_padding(pad_id=0, pad_token="[PAD]", length=_MAX_TOKENS)
+        # Pad to the longest text in each batch, not to a fixed 256: pooling
+        # is attention-masked, so the vectors are the same, and a 15-token
+        # query or a 40-token node no longer pays for 256 tokens of inference.
+        tok.enable_padding(pad_id=0, pad_token="[PAD]")
         return tok
 
     @staticmethod
@@ -178,13 +203,22 @@ class OnnxMiniLMEmbedder:
                 so.inter_op_num_threads = 1
         return so
 
-    def _session_factory(self):
-        """Create an ONNX session.
+    def _session(self):
+        """The process-wide session for this model, when reuse is safe."""
+        key = str(self._resolve_model_dir())
+        with _SESSIONS_LOCK:
+            session = _SESSIONS.get(key)
+            if session is None:
+                session = _SESSIONS[key] = self._session_factory()
+        return session
 
-        Deliberately not cached: onnxruntime 1.29 on Python 3.14 deadlocks
-        after 2-3 ``session.run()`` calls on a reused session (CPU provider,
-        independent of thread count). Callers in long-lived processes fan
-        batches out to subprocesses so each session sees exactly one run.
+    def _session_factory(self):
+        """Create a new ONNX session.
+
+        On Python 3.14, where onnxruntime 1.29 deadlocks after 2-3
+        ``session.run()`` calls on a reused session (CPU provider, independent
+        of thread count), every batch gets its own; elsewhere :meth:`_session`
+        caches one per process (see ``_session_reuse_safe``).
         """
         import onnxruntime as ort
 
@@ -206,18 +240,19 @@ class OnnxMiniLMEmbedder:
     def embed(self, texts: list[str]) -> np.ndarray:
         """Return an ``(n, 384)`` float32 array of unit-normalised embeddings.
 
-        Batched at ``_BATCH``. Safe for a single call per process; for a large
-        corpus callers should fan batches across subprocesses (see
-        ``TurboVecEmbedder._embed_matrix``), because onnxruntime 1.29 on
-        Python 3.14 deadlocks after 2-3 ``session.run()`` calls in one process.
+        Batched at ``_BATCH``. Where session reuse isn't safe (Python 3.14,
+        see ``_session_reuse_safe``) each batch runs on a fresh session, and
+        callers with a large corpus fan batches out to subprocesses (see
+        ``TurboVecEmbedder._embed_matrix``).
         """
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
-        session = self._session_factory()
+        shared = self._session() if _session_reuse_safe() else None
         out: list[np.ndarray] = []
         for i in range(0, len(texts), _BATCH):
+            session = shared if shared is not None else self._session_factory()
             batch = texts[i : i + _BATCH]
-            encoded = [self._tokenizer.encode(d) for d in batch]
+            encoded = self._tokenizer.encode_batch(batch)
             input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
             attention_mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
             onnx_input = {

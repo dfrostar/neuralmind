@@ -47,6 +47,7 @@ import numpy as np
 from .child_python import python_argv, python_cwd, python_env
 from .embedding_backend import EmbeddingBackend
 from .ir import CODE_SCOPE_EXTENSIONS, node_community
+from .node_text import context_for, node_text
 from .paths import graph_json_path, vector_db_path
 from .progress import ProgressReporter, stream_is_tty
 from .secret_scan import redact_if_enabled
@@ -287,18 +288,26 @@ class TurboVecEmbedder(EmbeddingBackend):
     def _embed_matrix(self, texts: list[str]) -> np.ndarray:
         """Embed ``texts`` into an ``(n, dim)`` array.
 
-        Small inputs run in-process. Larger inputs are fanned out across
-        subprocesses (batch = ``_EMBED_BATCH``), because onnxruntime 1.29 on
-        Python 3.14 deadlocks after 2-3 ``session.run()`` calls inside a single
-        process — regardless of thread count, session reuse, or batch size.
-        One process per batch is the only reliable workaround.
+        Runs in-process wherever one ONNX session can be reused (every Python
+        but 3.14, see ``onnx_embedder._session_reuse_safe``). On Python 3.14,
+        where onnxruntime 1.29 deadlocks after 2-3 ``session.run()`` calls
+        inside a single process, MiniLM inputs larger than ``_EMBED_BATCH``
+        are fanned out to one subprocess per batch. Any other embedder (an
+        injected ``embed_fn``) always runs in-process: the subprocess can only
+        build MiniLM, so fanning one out would mix two models' vectors.
         """
+        from .onnx_embedder import OnnxMiniLMEmbedder, _session_reuse_safe
+
         fn = self.embed_fn
         embed = getattr(fn, "embed", None)
         if not callable(embed):
             return fn(texts)
 
-        if len(texts) <= self._EMBED_BATCH:
+        if (
+            len(texts) <= self._EMBED_BATCH
+            or not isinstance(fn, OnnxMiniLMEmbedder)
+            or _session_reuse_safe()
+        ):
             return embed(texts)
 
         import base64
@@ -316,10 +325,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             "    print(json.dumps({'shape':[0,384],'data':''}));sys.exit(0)\n"
             "import numpy as np\n"
             "from neuralmind.onnx_embedder import OnnxMiniLMEmbedder\n"
-            "matrices=[]\n"
-            "for i in range(0,len(texts),32):\n"
-            "    matrices.append(OnnxMiniLMEmbedder().embed(texts[i:i+32]))\n"
-            "m=matrices[0] if len(matrices)==1 else np.concatenate(matrices)\n"
+            "m=OnnxMiniLMEmbedder().embed(texts)\n"
             "print(json.dumps({'shape':list(m.shape),"
             "'data':base64.b64encode(m.astype(np.float32).tobytes()).decode('ascii')}))\n"
         )
@@ -580,28 +586,10 @@ class TurboVecEmbedder(EmbeddingBackend):
         self.edges = self.graph.get("edges", self.graph.get("links", []))
         return True
 
-    # Pure node→text/metadata helpers — kept byte-identical to GraphEmbedder so
-    # embeddings (and therefore the recall comparison) are apples-to-apples.
-    # TODO(#204): if this backend graduates, lift these into a shared mixin
-    # rather than duplicating them across backends.
+    # Node text is shared with GraphEmbedder (neuralmind/node_text.py), so a
+    # node embeds the same on either backend.
     def _node_to_text(self, node: dict) -> str:
-        parts = []
-        label = node.get("label", node.get("id", "unknown"))
-        parts.append(f"Entity: {label}")
-        parts.append(f"Type: {node.get('file_type', 'unknown')}")
-        source_file = node.get("source_file", "")
-        if source_file:
-            parts.append(f"File: {source_file}")
-        source_loc = node.get("source_location", "")
-        if source_loc:
-            parts.append(f"Location: {source_loc}")
-        community = node_community(node)
-        if community >= 0:
-            parts.append(f"Community: {community}")
-        norm_label = node.get("norm_label", "")
-        if norm_label and norm_label != label:
-            parts.append(f"Normalized: {norm_label}")
-        return redact_if_enabled("\n".join(parts))
+        return node_text(node, context_for(self))
 
     def _node_metadata(self, node: dict) -> dict[str, Any]:
         return {
@@ -858,8 +846,15 @@ class TurboVecEmbedder(EmbeddingBackend):
                     continue
                 # For prose nodes, use content_text as the embedding text;
                 # for code nodes, use the standard node-to-text conversion.
+                # Prose bodies are redacted like every other embed path
+                # (embed_content, GraphEmbedder): they reach the vector store
+                # and the BM25 file verbatim otherwise.
                 raw_content_text = node.get("content_text", "")
-                text = raw_content_text if raw_content_text else self._node_to_text(node)
+                text = (
+                    redact_if_enabled(raw_content_text)
+                    if raw_content_text
+                    else self._node_to_text(node)
+                )
                 content_hash = self._content_hash(text)
                 row = self._conn.execute(
                     "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
@@ -1326,8 +1321,9 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         Returns ``(orphans, stored_total)`` for this store (a scoped store is
         compared with the graph nodes in its scope). Only rows ``embed_nodes``
-        wrote are candidates: an ``Entity: ...`` document built from a graph
-        node, or a prose graph node's ``prose_meta``. Rows from
+        wrote are candidates: a ``code`` or ``rationale`` row, an
+        ``Entity: ...`` document built from any other graph node, or a prose
+        graph node's ``prose_meta``. Rows from
         ``embed_content`` (ingested docs, compliance practices) are never
         reported.
         """
@@ -1341,7 +1337,8 @@ class TurboVecEmbedder(EmbeddingBackend):
             prose_expr = "prose_meta IS NOT NULL" if "prose_meta" in cols else "0"
             rows = self._conn.execute(
                 "SELECT node_id, "
-                f"(document LIKE 'Entity: %' OR {prose_expr}) AS from_graph, "
+                "(document LIKE 'Entity: %' OR file_type IN ('code', 'rationale') "
+                f"OR {prose_expr}) AS from_graph, "
                 "COALESCE(content_category, '') AS cc FROM nodes"
             ).fetchall()
         except Exception:

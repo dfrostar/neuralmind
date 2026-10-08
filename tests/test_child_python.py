@@ -140,15 +140,20 @@ def test_relative_path_settings_still_resolve_in_the_child(
     assert done.stdout.strip() == "True"
 
 
-class _ModelFreeEmbedder:
-    """Has ``embed``, so ``_embed_matrix`` sends large inputs to child processes."""
+def _model_free_embedder():
+    """A MiniLM embedder, so ``_embed_matrix`` sends large inputs to child
+    processes where session reuse is off (Python 3.14, or forced as here)."""
+    from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
 
-    dim = 384
+    class _ModelFreeEmbedder(OnnxMiniLMEmbedder):
+        dim = 384
 
-    def embed(self, texts):
-        raise AssertionError("large inputs are embedded in child processes")
+        def embed(self, texts):
+            raise AssertionError("large inputs are embedded in child processes")
 
-    __call__ = embed
+        __call__ = embed
+
+    return _ModelFreeEmbedder()
 
 
 def test_embedding_children_survive_a_shadowing_working_directory(
@@ -159,7 +164,8 @@ def test_embedding_children_survive_a_shadowing_working_directory(
     np = pytest.importorskip("numpy")
     from neuralmind.turbovec_backend import TurboVecEmbedder
 
-    backend = TurboVecEmbedder(str(shadowing_cwd), embed_fn=_ModelFreeEmbedder())
+    monkeypatch.setenv("NEURALMIND_ORT_SESSION_CACHE", "0")
+    backend = TurboVecEmbedder(str(shadowing_cwd), embed_fn=_model_free_embedder())
     real_run = subprocess.run
     children = []
 
