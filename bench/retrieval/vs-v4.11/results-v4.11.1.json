@@ -1,0 +1,261 @@
+{
+  "configs": {
+    "baseline": {},
+    "v45_bm25": {
+      "NEURALMIND_BM25_UNIFIED": "0"
+    },
+    "per_file": {
+      "NEURALMIND_L3_PER_FILE": "2"
+    },
+    "handoff": {
+      "NEURALMIND_DOC_HANDOFF": "1"
+    },
+    "hub": {
+      "NEURALMIND_HUB_DAMPEN": "1"
+    },
+    "code_bm25": {
+      "NEURALMIND_BM25_CODE": "1"
+    },
+    "bm25_off": {
+      "NEURALMIND_BM25": "0"
+    },
+    "intent": {
+      "NEURALMIND_INTENT_RULES": "1"
+    },
+    "bm25_unified": {
+      "NEURALMIND_BM25_UNIFIED": "1"
+    },
+    "intent_pool": {
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "unified_intent_pool": {
+      "NEURALMIND_BM25_UNIFIED": "1",
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "all": {
+      "NEURALMIND_L3_PER_FILE": "2",
+      "NEURALMIND_DOC_HANDOFF": "1",
+      "NEURALMIND_HUB_DAMPEN": "1",
+      "NEURALMIND_BM25_CODE": "1",
+      "NEURALMIND_INTENT_RULES": "1"
+    }
+  },
+  "results": {
+    "requests": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.7667,
+        "hit_at_5": 0.9,
+        "mrr": 0.8167,
+        "avg_tokens": 913.0,
+        "ranks": [
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          3,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      }
+    },
+    "click": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.6667,
+        "hit_at_5": 0.8667,
+        "mrr": 0.7611,
+        "avg_tokens": 720.8,
+        "ranks": [
+          1,
+          2,
+          1,
+          null,
+          1,
+          3,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1
+        ]
+      }
+    },
+    "flask": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.6333,
+        "hit_at_5": 0.8667,
+        "mrr": 0.7306,
+        "avg_tokens": 848.3,
+        "ranks": [
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          null,
+          null,
+          3,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          4,
+          null,
+          null
+        ]
+      }
+    },
+    "rich": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.4333,
+        "hit_at_5": 0.8,
+        "mrr": 0.5917,
+        "avg_tokens": 911.5,
+        "ranks": [
+          null,
+          2,
+          null,
+          1,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1,
+          2,
+          4,
+          1,
+          2,
+          null,
+          null,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          1,
+          3,
+          1,
+          null,
+          3,
+          1,
+          null,
+          2
+        ]
+      }
+    },
+    "neuralmind": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.3667,
+        "hit_at_5": 0.5667,
+        "mrr": 0.4556,
+        "avg_tokens": 1258.6,
+        "ranks": [
+          null,
+          null,
+          3,
+          1,
+          null,
+          2,
+          null,
+          1,
+          1,
+          null,
+          null,
+          1,
+          null,
+          null,
+          null,
+          1,
+          3,
+          2,
+          1,
+          2,
+          2,
+          1,
+          1,
+          null,
+          null,
+          1,
+          1,
+          null,
+          null,
+          1
+        ]
+      }
+    }
+  },
+  "gates": [],
+  "public": {},
+  "baseline_reproduced": {
+    "requests": true,
+    "click": true,
+    "flask": true,
+    "rich": true,
+    "neuralmind": true
+  }
+}

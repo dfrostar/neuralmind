@@ -5,7 +5,7 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 - **Tokenizer:** tiktoken o200k_base
 - **Determinism:** synapse injection OFF and nothing is sampled, so a re-run on the same machine reproduces every number exactly. Across machines, recall and found-rate have matched exactly, while token counts, and now and then MRR, differed slightly between CI runners with and without AVX-512 (see docs/benchmarks/public.md). The synapse *learning* lift is session-dependent and measured separately by the synapse A/B eval — not part of this fixed number.
 - **Correctness oracle:** def-site (gold = symbol definition site)
-- **Baselines:** `full-file` (paste every file), `ripgrep` (keyword → top files), `embedding-rag` (top-k chunks, same encoder), `neuralmind` (progressive disclosure + synapses)
+- **Baselines:** `full-file` (paste every file), `ripgrep` (keyword → top files), `embedding-rag` (top-k entries of the same vector index: names and docstrings, not code bodies), `neuralmind` (progressive disclosure + synapses)
 
 ## requests  `@0e322af877`
 
@@ -15,16 +15,12 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 41729 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 26543  (1.6× fewer) | 0.60 |
-| `embedding-rag` | 1.00 | 100% | 602  (69.3× fewer) | 0.96 |
-| `neuralmind` | 0.96 | 93% | 922  (45.3× fewer) | 0.96 |
+| `embedding-rag` | 1.00 | 100% | 229  (181.9× fewer) | 0.92 |
+| `neuralmind` | 1.00 | 100% | 759  (54.9× fewer) | 0.93 |
 
-**Headline:** NeuralMind reaches **96% gold-file recall** at **45.3× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **54.9× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
-### Where NeuralMind loses
-
-| query | gold | retrieved files |
-|---|---|---|
-| `xfile-status-codes` | models.py, status_codes.py | models.py |
+_No NeuralMind gold-file misses on this repo._
 
 ## click  `@874ca2bc1c`
 
@@ -34,16 +30,12 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 78514 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 45059  (1.7× fewer) | 0.60 |
-| `embedding-rag` | 1.00 | 100% | 645  (121.7× fewer) | 0.69 |
-| `neuralmind` | 0.86 | 86% | 682  (115.2× fewer) | 0.69 |
+| `embedding-rag` | 1.00 | 100% | 220  (357.5× fewer) | 0.86 |
+| `neuralmind` | 1.00 | 100% | 632  (124.2× fewer) | 0.86 |
 
-**Headline:** NeuralMind reaches **86% gold-file recall** at **115.2× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **124.2× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
-### Where NeuralMind loses
-
-| query | gold | retrieved files |
-|---|---|---|
-| `echo-util` | utils.py | termui.py, core.py |
+_No NeuralMind gold-file misses on this repo._
 
 ## flask  `@c12a5d874c`
 
@@ -53,16 +45,16 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 59013 | 1.00 |
 | `ripgrep` | 0.85 | 80% | 26891  (2.2× fewer) | 0.65 |
-| `embedding-rag` | 0.95 | 90% | 671  (87.9× fewer) | 0.72 |
-| `neuralmind` | 0.95 | 90% | 773  (76.3× fewer) | 0.73 |
+| `embedding-rag` | 0.85 | 80% | 272  (217.0× fewer) | 0.74 |
+| `neuralmind` | 0.90 | 90% | 808  (73.1× fewer) | 0.70 |
 
-**Headline:** NeuralMind reaches **95% gold-file recall** at **76.3× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **90% gold-file recall** at **73.1× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 ### Where NeuralMind loses
 
 | query | gold | retrieved files |
 |---|---|---|
-| `xfile-dispatch-context` | app.py, ctx.py | views.py, app.py |
+| `request-wrapper` | wrappers.py | app.py, logging.py, helpers.py, testing.py |
 
 ## rich  `@7f580bdcf0`
 
@@ -72,9 +64,9 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 232483 | 1.00 |
 | `ripgrep` | 1.00 | 100% | 43437  (5.4× fewer) | 0.75 |
-| `embedding-rag` | 1.00 | 100% | 672  (346.1× fewer) | 0.89 |
-| `neuralmind` | 1.00 | 100% | 948  (245.2× fewer) | 0.70 |
+| `embedding-rag` | 1.00 | 100% | 236  (985.5× fewer) | 0.94 |
+| `neuralmind` | 1.00 | 100% | 897  (259.3× fewer) | 0.83 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **245.2× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **259.3× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._

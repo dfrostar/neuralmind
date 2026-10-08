@@ -61,3 +61,33 @@ def test_bootstrap_interval_is_deterministic():
     assert run.bootstrap_ci(diffs) == run.bootstrap_ci(diffs)
     lo, hi = run.bootstrap_ci(diffs)
     assert lo <= sum(diffs) / len(diffs) <= hi
+
+
+def test_compare_pairs_two_runs_by_repo(tmp_path):
+    import json
+
+    def write(name, ranks):
+        payload = {
+            "results": {
+                repo: {
+                    "baseline": {
+                        "n": len(r),
+                        "hit_at_5": sum(1 for x in r if x and x <= 5) / len(r),
+                        "mrr": sum(1 / x for x in r if x) / len(r),
+                        "avg_tokens": 100.0,
+                        "ranks": r,
+                    }
+                }
+                for repo, r in ranks.items()
+            }
+        }
+        path = tmp_path / name
+        path.write_text(json.dumps(payload))
+        return path
+
+    old = write("old.json", {"a": [None] * 10 + [1] * 20, "only-old": [1] * 30})
+    new = write("new.json", {"a": [1] * 30})
+    report = run.compare(old, new)
+    assert "| a |" in report and "only-old" not in report
+    assert "**10 / 0**" in report
+    assert "**passes**" in report

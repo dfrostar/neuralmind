@@ -4,6 +4,7 @@
     python -m evals.retrieval.run --private ~/work/app     # add a private repo (local only)
     python -m evals.retrieval.run --configs baseline,per_file --out bench/retrieval
     python -m evals.retrieval.run --public-benchmark       # also re-run evals.public per config
+    python -m evals.retrieval.run --compare old/results.json new/results.json   # two releases
 
 Every v4.6.0 ranking change sits behind a flag. This harness runs the
 pre-registered questions in ``evals/retrieval/questions/`` (30 per repo,
@@ -445,6 +446,64 @@ def render(
     return "\n".join(lines) + "\n"
 
 
+def compare(old_path: Path, new_path: Path) -> str:
+    """The paired keep rule between two runs' ``baseline`` configurations.
+
+    For comparing releases: run the eval once on each (``--out``), then
+    ``--compare old/results.json new/results.json``. Repos in both are
+    paired question by question.
+    """
+    old = json.loads(Path(old_path).read_text(encoding="utf-8"))["results"]
+    new = json.loads(Path(new_path).read_text(encoding="utf-8"))["results"]
+    paired = {
+        repo: {"baseline": old[repo]["baseline"], "new": new[repo]["baseline"]}
+        for repo in old
+        if repo in new
+    }
+    g = gate(paired, "new")
+
+    def pooled(side: str, key: str) -> float:
+        n = sum(paired[r][side]["n"] for r in paired)
+        return sum(paired[r][side][key] * paired[r][side]["n"] for r in paired) / n
+
+    lines = [
+        f"# Retrieval eval — `{Path(old_path).name}` vs `{Path(new_path).name}`",
+        "",
+        "hit@5 / MRR / avg tokens, 30 questions per repo.",
+        "",
+        "| Repo | old | new |",
+        "|---|---:|---:|",
+    ]
+    for repo, sides in paired.items():
+        cells = [
+            f"{sides[s]['hit_at_5']:.0%} / {sides[s]['mrr']:.2f} / {sides[s]['avg_tokens']:,.0f}"
+            for s in ("baseline", "new")
+        ]
+        lines.append(f"| {repo} | " + " | ".join(cells) + " |")
+    lines.append(
+        f"| **pooled** | **{pooled('baseline', 'hit_at_5'):.1%} / "
+        f"{pooled('baseline', 'mrr'):.3f} / {pooled('baseline', 'avg_tokens'):,.0f}** | "
+        f"**{pooled('new', 'hit_at_5'):.1%} / {pooled('new', 'mrr'):.3f} / "
+        f"{pooled('new', 'avg_tokens'):,.0f}** |"
+    )
+    lo, hi = g["mrr_delta_ci95"]
+    lines += [
+        "",
+        f"hit@5 questions won / lost: **{g['wins']} / {g['losses']}** (exact McNemar "
+        f"p = {g['p_value']:.4f}); per repo: "
+        + ", ".join(f"{r} {d:+d}" for r, d in g["per_repo_delta_questions"].items())
+        + f". Mean MRR change {g['mean_mrr_delta']:+.3f} (paired bootstrap 95% interval "
+        f"[{lo:+.3f}, {hi:+.3f}]); mean tokens {g['mean_token_rise']:+.1%}.",
+        "",
+        "Keep rule: "
+        + ("**passes**" if g["keep"] else "**fails**")
+        + " — "
+        + "; ".join(f"{k}: {'yes' if v else 'no'}" for k, v in g["checks"].items())
+        + ".",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--work-dir", default=".bench-work", help="clones and copies go here")
@@ -456,7 +515,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--out", default="", help="write results.json + report.md here")
     ap.add_argument("--no-build", action="store_true", help="reuse existing indexes")
+    ap.add_argument(
+        "--compare",
+        nargs=2,
+        metavar=("OLD", "NEW"),
+        help="pair two runs' results.json (e.g. two releases) instead of running",
+    )
     args = ap.parse_args(argv)
+    if args.compare:
+        report = compare(Path(args.compare[0]), Path(args.compare[1]))
+        print(report, end="")
+        if args.out:
+            out = Path(args.out)
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "report.md").write_text(report, encoding="utf-8")
+        return 0
 
     work = Path(args.work_dir).resolve()
     work.mkdir(parents=True, exist_ok=True)
