@@ -44,6 +44,7 @@ from typing import Any
 
 import numpy as np
 
+from .child_python import python_argv, python_cwd, python_env
 from .embedding_backend import EmbeddingBackend
 from .ir import node_community
 from .paths import graph_json_path, vector_db_path
@@ -346,25 +347,35 @@ class TurboVecEmbedder(EmbeddingBackend):
         ]
 
         out: list[np.ndarray] = []
-        for batch in batches:
-            proc = subprocess.run(
-                [sys.executable, "-c", child_code],
-                input=json.dumps({"texts": batch}),
-                capture_output=True,
-                text=True,
-                timeout=600,
-            )
-            if proc.returncode != 0:
-                raise RuntimeError(f"onnx_embed failed: {proc.stderr[:500]}")
-            try:
-                payload = json.loads(proc.stdout)
-                raw = base64.b64decode(payload["data"])
-                out.append(np.frombuffer(raw, dtype=np.float32).reshape(payload["shape"]))
-            except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
-                # binascii.Error subclasses ValueError, so it is covered.
-                raise RuntimeError(
-                    f"onnx_embed subprocess returned invalid payload: {exc}"
-                ) from exc
+        # The child runs inside the user's project: python_argv/python_cwd keep
+        # a types.py or enum.py there from shadowing the standard library.
+        with python_cwd() as cwd:
+            env = python_env()
+            for batch in batches:
+                proc = subprocess.run(
+                    python_argv("-c", child_code),
+                    input=json.dumps({"texts": batch}),
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
+                    cwd=cwd,
+                    env=env,
+                )
+                if proc.returncode != 0:
+                    # A traceback ends with the error; its start is only frames.
+                    detail = proc.stderr.strip()
+                    if len(detail) > 500:
+                        detail = "..." + detail[-500:]
+                    raise RuntimeError(f"onnx_embed failed: {detail}")
+                try:
+                    payload = json.loads(proc.stdout)
+                    raw = base64.b64decode(payload["data"])
+                    out.append(np.frombuffer(raw, dtype=np.float32).reshape(payload["shape"]))
+                except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
+                    # binascii.Error subclasses ValueError, so it is covered.
+                    raise RuntimeError(
+                        f"onnx_embed subprocess returned invalid payload: {exc}"
+                    ) from exc
         return np.concatenate(out) if out else np.zeros((0, 384), dtype=np.float32)
 
     @property
