@@ -72,6 +72,9 @@ LINKED_SYMBOLS = 2
 # 0.044) doesn't, nor does an edge that has decayed to a third of its weight.
 LINK_FLOOR = 0.05
 LABEL_MAX = 60
+# Control characters, including line and paragraph separators: a path or label
+# containing one could otherwise forge extra lines in the injected block.
+_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 
 _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _TEST_STEM = re.compile(r"^test_|_test$|Tests?$")
@@ -122,7 +125,8 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     code: dict[str, float] = {}
     other: dict[str, float] = {}
     info: dict[str, dict] = {}
-    rationale_ids: dict[str, set[str]] = {}
+    # A rationale hit's own id and score, by the code node it belongs to.
+    rationale_ids: dict[str, dict[str, float]] = {}
     similarity = 0.0
     for hit in hits or []:
         raw_id = hit.get("id")
@@ -136,7 +140,8 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             node_id = str(raw_id)
             node = nodes.get(node_id) or dict(hit.get("metadata") or {})
         elif node_id != str(raw_id):
-            rationale_ids.setdefault(node_id, set()).add(str(raw_id))
+            own = rationale_ids.setdefault(node_id, {})
+            own[str(raw_id)] = max(score, own.get(str(raw_id), score))
         info[node_id] = node
         bucket = code if node.get("file_type") == "code" else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
@@ -152,11 +157,11 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     store = getattr(mind, "synapses", None)
     if store is not None and seeds:
         # Query feedback can have learned edges on a docstring node's own id:
-        # spread from it too, without counting its symbol's score twice.
-        aliases: dict[str, float] = {}
-        for nid, score in seeds:
-            for raw in rationale_ids.get(nid, ()):
-                aliases[raw] = max(score, aliases.get(raw, score))
+        # spread from it too, at its own score, without counting its symbol's
+        # score twice.
+        aliases = {
+            raw: score for nid, _ in seeds for raw, score in rationale_ids.get(nid, {}).items()
+        }
         spread = _spread_with_aliases(
             store, dict(seeds), aliases, depth=SPREAD_DEPTH, top_k=SPREAD_CANDIDATES
         )
@@ -277,7 +282,11 @@ def _by_file(
 
 
 def _path(node: dict | None) -> str:
-    return str((node or {}).get("source_file") or "")
+    return _one_line(str((node or {}).get("source_file") or ""))
+
+
+def _one_line(text: str) -> str:
+    return " ".join(_CONTROL.sub(" ", text).split())
 
 
 def _file_line(entry: FileRecall) -> str:
@@ -288,12 +297,12 @@ def _file_line(entry: FileRecall) -> str:
 
 def _symbol(node: dict, path: str) -> str:
     """``label Lnn`` for a symbol node; '' for the node that is the file itself."""
-    label = " ".join(str(node.get("label") or "").split())
+    label = _one_line(str(node.get("label") or ""))
     if not label or label == os.path.basename(path):
         return ""
     if len(label) > LABEL_MAX:
         label = label[: LABEL_MAX - 1].rstrip() + "…"
-    location = str(node.get("source_location") or "")
+    location = _one_line(str(node.get("source_location") or ""))
     return f"{label} {location}" if location.startswith("L") else label
 
 
