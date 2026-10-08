@@ -195,6 +195,23 @@ def _displace(results, drop_count):
                 str(survivors[i].get("id") or ""),
             ),
         )
+        # A further hit from a file L3 already shows goes first, whatever its
+        # score: the file spread (_diversify_files) has already ranked it
+        # below a new file's best hit, and evicting a file's only hit instead
+        # drops a module the context then doesn't name. On CI's fixture graph
+        # synapse recall evicted billing/invoices.py that way and lowered the
+        # self-benchmark hit rate (97.4% -> 94.7%).
+        repeat = next(
+            (
+                i
+                for i in order
+                if survivors[i].get("_file_repeat") and covered.get(_module_of(survivors[i]), 0) > 1
+            ),
+            None,
+        )
+        if repeat is not None:
+            dropped.append(survivors.pop(repeat))
+            continue
         # Only rearrange within the band where ranking cannot confidently
         # separate the candidates. Outside it the score is real signal, and
         # trading a materially better hit for coverage costs more facts than
