@@ -1,12 +1,29 @@
 # N-17 Retrieval Resilience — Fail-Loud Index Health, Self-Healing Recovery, and Watch Instance Safety
 
-**Status:** DRAFT for review
+**Status:** DRAFT for review, revision 3 (see the revision history at the end)
 **Date:** 2026-10-08
 **Baseline:** v4.11.0 (`main` @ `ed66521`). Every `file:line` below was checked against that commit.
 **Scope:** the retrieval read path (`search`, `query`, MCP tools), the turbovec index lifecycle, `doctor`, `build`, and `watch` process management.
-**Companions:** none yet. Relates to `PERFORMANCE-FUTURE-PROOFING-SPEC.md` §5 (daemon/latency) and `RETRIEVAL-BENCHMARK-SPEC.md` (retrieval *quality*).
+**Companions:** [`N-18-PERSISTED-VECTORS-SPEC.md`](N-18-PERSISTED-VECTORS-SPEC.md), embedder-free recovery from 1M documents up (split out of this spec as R7).
+**Related:** [`PERFORMANCE-FUTURE-PROOFING-SPEC.md`](PERFORMANCE-FUTURE-PROOFING-SPEC.md) §5 (daemon/latency) and [`RETRIEVAL-BENCHMARK-SPEC.md`](RETRIEVAL-BENCHMARK-SPEC.md) (retrieval *quality*).
 
 > **Scope note.** This spec covers retrieval **availability and truthfulness**. It does not cover retrieval *quality* (ranking, nDCG, relevance grading) — that is N-15's domain.
+
+### Conventions
+
+- **Normative language.** In §3, the key words MUST, MUST NOT, SHOULD and MAY are used as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174), and carry that meaning only in uppercase. Lowercase prose elsewhere is explanatory.
+- **Stable IDs.** Findings (F*n*), gaps (G*n*), requirements (R*n*.*m*) and acceptance criteria (AC*n*) are never renumbered. A requirement that moves or is withdrawn keeps its ID as a pointer (R7, AC20). Implementation PRs and tests cite these IDs, and §5.1 traces each requirement to its evidence, criteria and delivery PR.
+- **Evidence grades.** Every quantitative statement is one of:
+
+  | Grade | Meaning | Example |
+  |---|---|---|
+  | **measured** | Produced by a run whose script is in Appendix A or the repo | turbovec load at 1M = 526 ms |
+  | **derived** | Arithmetic on measured figures, with no run of its own | ≈10 h to re-embed 1M rows at 27 docs/s |
+  | **projected** | Extrapolated beyond what was run; replaced once the tier runs it | 10M SQLite scans (§2.2, footnote 2) |
+  | **hypothesis** | A mechanism consistent with the evidence, not yet confirmed by a test | §2.0 G1–G3, confirmed or refuted by AC0 |
+  | **reported** | Observed in the field incident, not reproduced in CI | F1–F4 |
+
+  This is the same evidence discipline as `site/claims.json`. No figure in this spec is quoted without one of these grades, and a figure here does not become site copy without a `claims.json` entry.
 
 ---
 
@@ -22,7 +39,7 @@ NeuralMind can be simultaneously **"healthy" by every surface it exposes** and *
 
 An agent (or a human) that trusts any of these gets a confident wrong answer: "the codebase does not contain that symbol." That is worse than an error, because it is indistinguishable from a true negative.
 
-This spec specifies the fixes as **seven product-level requirements**. R1–R5 hold regardless of how the index became unusable: version mismatch, corruption, partial write, empty store, or missing directory. R6–R7 make them hold from 10k up to 10M documents (§2.2–§2.3).
+This spec specifies the fixes as **six product-level requirements**. R1–R5 hold regardless of how the index became unusable: version mismatch, corruption, partial write, empty store, or missing directory. R6 makes recovery safe from 100k up to 10M documents (§2.2–§2.3). Making recovery *fast* above 1M needs persisted vectors, which is a separate spec, N-18 (see R7).
 
 ---
 
@@ -45,7 +62,7 @@ The vector index is a turbovec `.tvim` file (`IdMapIndex`) alongside a SQLite ro
 
 `_rebuild_index_from_store()` (`turbovec_backend.py:465-523`) is **a full re-embed, not a vector copy**. SQLite keeps each node's `document` text, not its vector, so the function passes the whole corpus to `_embed_matrix`. Its value is *coverage*: it also restores rows ingested through `embed_content`, which `embed_nodes` cannot rebuild from the graph. It saves no embedding time. When it returns 0, the cause is almost always the embedder itself (no ONNX runtime, no model). The `force=True` fallback calls that same embedder, so it usually fails the same way.
 
-### 2.0 Why the existing recovery did not fire
+### 2.0 Why the existing recovery did not fire *(hypothesis)*
 
 The reproduced build printed `+3 new, =4,471 skipped`. Hash-skipping only happens with `force=False` and a non-`None` index. So in that run `_load_index()` returned a **loadable** index, and neither recovery path ran. The code has three gaps that, together, produce exactly that state:
 
@@ -55,7 +72,7 @@ The reproduced build printed `+3 new, =4,471 skipped`. Hash-skipping only happen
 
 This mechanism is **consistent with the evidence but not yet confirmed** against the incident project. PR 1 (§7) must first reproduce it as a failing test: quarantine → failed rebuild → `embed_content` → `build` → `search` returns `[]`. Fixes land only after that test fails for the right reason. If it reproduces some other way, the requirements below still hold, because they are stated against the observable state, not the path that produced it.
 
-### 2.1 Evidence base
+### 2.1 Evidence base *(reported)*
 
 All findings below were reproduced on the baseline commit against a real 5,780-node project index.
 
@@ -71,7 +88,7 @@ All findings below were reproduced on the baseline commit against a real 5,780-n
 
 **F2, F3 and F7 are the load-bearing defects.** F2 produces a false success on the write path. F3 produces a false failure on the diagnostic path. F7 is the state where both of them happen. Together they make the true state of the index unknowable from the CLI.
 
-### 2.2 Cost at scale (measured)
+### 2.2 Cost at scale *(measured; derived and projected rows marked)*
 
 The incident index held 5,780 nodes. Every requirement below must also hold for far larger corpora, up to **10,000,000 documents**: monorepos, plus `embed_content` docs and compliance libraries. They are tested at four tiers (T0 10k, T1 100k, T2 1M, T3 10M; see §6.1). Measured on a 4-vCPU / 15 GB Linux container, Python 3.13, turbovec 1.1.2, the default `bit_width=4`, 384-dim random unit vectors. The scripts are in Appendix A.
 
@@ -117,7 +134,7 @@ Re-embedding cost per tier at the measured 27 docs/s (arithmetic, not a run):
 What follows from it:
 
 - **Diagnosis is cheap through T1 and has to be designed for T2/T3.** A full health check (load, `len`, filtered store count, uid-set diff) costs about 0.2 s at 100k. At 1M it is ≈2 s. At 10M it is ≈16 s plus a 4.4 s index load (part measured, part projected; see footnote 2). That is fine for `doctor --deep` and `build`, but wrong per query. So the per-query preflight must not scan the store (R3.3).
-- **Recovery is expensive, and the cost is all in the embedder.** Faster hardware divides the hours but does not change the ratio. Past T1, no amount of checkpointing makes re-embedding an acceptable recovery path: it takes 10 h at 1M and days at 10M. That is why R7 exists.
+- **Recovery is expensive, and the cost is all in the embedder.** Faster hardware divides the hours but does not change the ratio. Past T1, no amount of checkpointing makes re-embedding an acceptable recovery path: it takes 10 h at 1M and days at 10M. That is why N-18 exists.
 - Today's recovery is shaped for small indexes, and at 100k it breaks in five ways:
   1. **It runs on the read path.** `_load_index()` performs the rebuild inline, so the first `search` or MCP call after a quarantine blocks for the whole re-embed. Any client timeout fires long before it finishes.
   2. **It is all-or-nothing.** `_rebuild_index_from_store` embeds the whole corpus and persists once, at the end. An interrupt at minute 59 loses everything and leaves the file renamed: G1 again.
@@ -127,7 +144,7 @@ What follows from it:
 
 R6 addresses these.
 
-### 2.3 Where it breaks, by row count
+### 2.3 Where it breaks, by row count *(derived)*
 
 The row count at which each cost crosses a budget an agent or operator would notice. Budgets are stated, not measured. Crossing points are interpolated from §2.2 on this 4-vCPU container, so faster hardware moves them right, but by a constant factor, not an order of magnitude.
 
@@ -138,9 +155,9 @@ The row count at which each cost crosses a budget an agent or operator would not
 | ~100,000 | Recovery ≈ 1 h; an interrupted run loses all of it | All-or-nothing persist | R6.2, R6.3 |
 | ~230,000 | A store-scanning preflight would pass 100 ms per query | Filtered `COUNT` ≈ 0.44 µs/row (440 ms at 1M) | R3.3 counter |
 | ~250,000–400,000 | `_rebuild_index_from_store` passes 1 GB RSS | It holds all document text (~0.9 KB/row) plus the float32 matrix (1.5 KB/row) and its normalised copy at once *(arithmetic)* | R6.4 |
-| **~1,000,000** | Re-embed recovery ≈ 10 h, so re-embedding stops being a viable recovery | 27 docs/s | R7 |
+| **~1,000,000** | Re-embed recovery ≈ 10 h, so re-embedding stops being a viable recovery | 27 docs/s | N-18 (R7 known gap) |
 | ~2,000,000 | CLI cold start passes 1 s per `search`; a filtered search (50% allowlist) passes 100 ms | Load ≈ 0.45 µs/vector (526 ms at 1M, 4.4 s at 10M); allowlist search 43 ms → 621 ms from 1M to 10M | Daemon (out of scope, §4); allowlist cost noted for N-15 |
-| ~10,000,000 | Re-embed ≈ 4.3 days; index 2 GB on disk and ~2.8 GB peak RSS to build; store ≈ 10 GB; `doctor --deep` ≈ 15 s | §2.2 | R7, T3 runner sizing (§6.1) |
+| ~10,000,000 | Re-embed ≈ 4.3 days; index 2 GB on disk and ~2.8 GB peak RSS to build; store ≈ 10 GB; `doctor --deep` ≈ 15 s | §2.2 | N-18, T3 runner sizing (§6.1) |
 
 Untouched at any measured tier: index `len()` (≤ 9 µs), unfiltered k=5 search (≤ 22 ms at 10M), and the uid-set diff, which stays fast enough for `build` and `doctor --deep` (7.3 s at 10M).
 
@@ -148,27 +165,27 @@ Untouched at any measured tier: index `len()` (≤ 9 µs), unfiltered k=5 search
 
 ## 3. Requirements
 
-### R1 — Retrieval must fail loud, never empty
+### R1 — Retrieval fails loud, never empty
 
-**R1.1** `search` and `query` must never present an empty result set as a successful search when the vector index is unavailable: missing, unloadable, or inconsistent with the store (R3.1). This applies on **every** surface: the CLI, the daemon, and the MCP tools.
+**R1.1** `search` and `query` MUST NOT present an empty result set as a successful search when the vector index is unavailable: missing, unloadable, or inconsistent with the store (R3.1). This applies on **every** surface: the CLI, the daemon, and the MCP tools.
 
-**R1.2** When results are empty, the tool must distinguish two cases, and say which:
+**R1.2** When results are empty, the tool MUST distinguish two cases, and say which:
 
 | Case | Meaning | Required behaviour |
 |---|---|---|
 | No matches | index healthy, query genuinely has no hits | report "no matches" + the fact that the index was consulted |
 | Index unavailable | any non-healthy R3.1 state | report an **error** naming the state and the repair command; `search` exits non-zero (`query` degrades instead, R1.6) |
 
-**R1.3** The distinction must be machine-readable, not only human-readable. Each surface carries it in the channel that surface already has:
+**R1.3** The distinction MUST be machine-readable, not only human-readable. Each surface carries it in the channel that surface already has:
 
 | Surface | `ok` / `no_matches` | `index_unavailable` |
 |---|---|---|
-| CLI `search --json` (default) | bare array, exactly as today; exit 0 | bare `[]` on stdout; one-line error on stderr; **exit 3** |
-| CLI `search --json-v2` (opt-in) | envelope, exit 0 | envelope, exit 3 |
+| CLI `search --json` (default) | bare array, exactly as today; exit 0 | bare `[]` on stdout; one-line error on stderr; **exit 69** |
+| CLI `search --json-v2` (opt-in) | envelope, exit 0 | envelope, exit 69 |
 | CLI `query` (text and `--json`) | unchanged; exit 0 | context still returned (see R1.6); `"index_status"` key added to the JSON object; warning on stderr; exit 0 |
 | MCP `neuralmind_search` | list, exactly as today | the server's existing error shape: `{"error": "...", "code": "index_unavailable", "reason": "...", "repair": "..."}`, the same convention as `project_not_found` / `security_denied` (`mcp_server.py:1346`, `:1478-1496`) |
 | MCP `neuralmind_query` | object, unchanged | object with `"index_status"` added (R1.6) |
-| Daemon query / search | unchanged | must forward `index_status`; the thin daemon response may not drop it (`cli.py:1158-1190`) |
+| Daemon query / search | unchanged | MUST forward `index_status`; the thin daemon response MUST NOT drop it (`cli.py:1158-1190`) |
 
 The `--json-v2` envelope is:
 
@@ -184,19 +201,19 @@ The `--json-v2` envelope is:
 
 **R1.4** Backwards compatibility. The default `--json` payload of `search` stays a top-level array in **every** case, including `index_unavailable`. The status therefore travels in the exit code and on stderr, not in stdout. The status envelope exists only behind `--json-v2`. R1.3's status vocabulary is defined once and used by `--json-v2`, MCP and the daemon; the default `--json` output never contains it.
 
-**R1.5** Exit codes for `search`: `0` = ok or a genuine no-match; `3` = index unavailable. The value is distinct from argparse's `2` and the generic `1`, so a script can detect this failure without parsing prose.
+**R1.5** Exit codes for `search`: `0` = ok or a genuine no-match; `69` = index unavailable. 69 is `EX_UNAVAILABLE` from `sysexits.h` ("a service is unavailable"). It is chosen because every lower code already means something in this CLI: argparse and usage errors use `2`, generic failures `1`, `daemon status` uses `3` for "not running" (`cli.py:4738`), and the licence-expiry check uses `6` and `7` (`cli.py:5685-5687`). A script can therefore detect this failure without parsing prose, and one code means the same thing across subcommands.
 
-**R1.6** `query` is degraded, not empty. With no usable index, its L0/L1 layers (graph summary, communities) are still correct, but L2/L3 search hits are missing. It must therefore keep returning context, plus:
+**R1.6** `query` is degraded, not empty. With no usable index, its L0/L1 layers (graph summary, communities) are still correct, but L2/L3 search hits are missing. It MUST therefore keep returning context, plus:
 - an `"index_status": {"status": "index_unavailable", "reason": ..., "repair": ...}` key in the JSON / MCP object. This is additive: object consumers tolerate a new key, and the key is absent when the index is healthy, so healthy output stays byte-identical;
 - one line **inside the returned context text** saying semantic search was unavailable and hits were omitted. The agent reads the context, not the metadata, and the incident's wrong answer came from an agent reading a context with no hits in it.
 
-### R2 — `build` must not report success on an unusable index
+### R2 — `build` does not report success on an unusable index
 
-**R2.1** `build` must verify the index is loadable **after** writing it, before printing any success line. A build that leaves a quarantined index must not print `Build successful!`.
+**R2.1** `build` MUST verify the index is loadable **after** writing it, before printing any success line. A build that leaves a quarantined index MUST NOT print `Build successful!`.
 
-**R2.2** `build` must self-heal **every** unusable state in R3.1, not only the one the baseline already handles. The baseline escalation (`_load_index() is None` with store rows, §2) stays as it is. It must also trigger on `inconsistent`: a loadable index whose vector count differs from the store's row count (§2.0 G2). On that path the build repairs the difference (R6.2): it re-embeds only the rows missing from the index. Hash-skipping is allowed only after the index has been verified consistent.
+**R2.2** `build` MUST self-heal **every** unusable state in R3.1, not only the one the baseline already handles. The baseline escalation (`_load_index() is None` with store rows, §2) stays as it is. It MUST also trigger on `inconsistent`: a loadable index whose vector count differs from the store's row count (§2.0 G2). On that path the build repairs the difference (R6.2): it re-embeds only the rows missing from the index. Hash-skipping is allowed only after the index has been verified consistent.
 
-**R2.3** If the store-backed re-embed returns 0, `build` must **not** silently retry another full re-embed through the same embedder (§2: it fails the same way). It must surface the embedder's actual error and exit non-zero:
+**R2.3** If the store-backed re-embed returns 0, `build` MUST NOT silently retry another full re-embed through the same embedder (§2: it fails the same way). It MUST surface the embedder's actual error and exit non-zero:
 
 ```
 Build incomplete!
@@ -206,13 +223,13 @@ Build incomplete!
   Fix the embedder (e.g. `pip install onnxruntime`), then: neuralmind build <path>
 ```
 
-The `Delta` line must not imply success when the index was not repaired. `=N skipped` next to an unusable index is a **failure to repair**, not an optimisation.
+The `Delta` line MUST NOT imply success when the index was not repaired. `=N skipped` next to an unusable index is a **failure to repair**, not an optimisation.
 
-**R2.4** No write path may persist an index that is smaller than the store. `embed_content`, and any other caller of `_ensure_index()`, must take the same `rows > 0` recovery branch as `embed_nodes` before creating a fresh index (closes §2.0 G2). Recovery that `_load_index()` attempts and fails must be retried on the next **write-path** touch (`build`, `watch`, `migrate-index`) rather than lost once the file is renamed (closes G1). It is never retried on the read path (R6.1).
+**R2.4** A write path MUST NOT persist an index that is smaller than the store. `embed_content`, and any other caller of `_ensure_index()`, MUST take the same `rows > 0` recovery branch as `embed_nodes` before creating a fresh index (closes §2.0 G2). Recovery that `_load_index()` attempts and fails MUST be retried on the next **write-path** touch (`build`, `watch`, `migrate-index`) rather than lost once the file is renamed (closes G1). It is never retried on the read path (R6.1).
 
-**R2.5** `--rebuild-index` remains available for explicit operator use but is not required for recovery. Its help text must describe what it does: force a full re-embed. It must not promise a rebuild "from stored vectors … without full re-embed" (F5).
+**R2.5** `--rebuild-index` remains available for explicit operator use but is not required for recovery. Its help text MUST describe what it does: force a full re-embed. It MUST NOT promise a rebuild "from stored vectors … without full re-embed" (F5).
 
-Recovery that skips the embedder entirely, by persisting vectors, is R7. It is required from T2 (1M documents) up, where re-embedding takes hours to days (§2.3).
+Recovery that skips the embedder entirely, by persisting vectors, is N-18. It matters from T2 (1M documents) up, where re-embedding takes hours to days (§2.3, R7).
 
 ### R3 — Index health is a state machine, and `doctor` reports it truthfully
 
@@ -231,81 +248,77 @@ The four FAIL/WARN states cover all five causes in §1: version mismatch and cor
 
 **R3.1a — diagnosis is read-only.** The state is computed by one function, `index_health(project, scope) -> IndexHealth`. It calls `turbovec.IdMapIndex.load()` on the path directly and **never** calls `_load_index()`, because `_load_index()` renames and rebuilds as side effects. `doctor` never repairs anything. Repair belongs to `build` (R2) and `migrate-index` (R5).
 
-**R3.2** `recovered` must report **ok**, not FAIL. The presence of a `.stale` file is *evidence of a past incident*, not a current fault. Report it as an advisory line so the history is visible without failing the check:
+**R3.2** `recovered` MUST report **ok**, not FAIL. The presence of a `.stale` file is *evidence of a past incident*, not a current fault. Report it as an advisory line so the history is visible without failing the check:
 
 ```
 [ ok ] Turbovec compatibility: index loads (1 stale backup present, from a repaired mismatch)
 ```
 
-**R3.3** `doctor` must attempt the load, so its verdict cannot drift from what `search` will experience. The cost per tier is in §2.2 (≈20 ms at 100k, ≈0.5 s at 1M).
-- **Per-query preflight (`search`, MCP, daemon): O(1) in corpus size.** It compares `len(index)` with a `vectorizable_rows` counter kept in the store's `meta` table. Every insert or delete updates the counter in the same transaction as the row. It must never run `COUNT(*) … WHERE document != ''`, which costs 440 ms at 1M and ≈4.4 s at 10M. Long-lived processes evaluate it once per index load and again only when the `.tvim` mtime changes.
+**R3.3** `doctor` MUST attempt the load, so its verdict cannot drift from what `search` will experience. The cost per tier is in §2.2 (≈20 ms at 100k, ≈0.5 s at 1M).
+- **Per-query preflight (`search`, MCP, daemon): O(1) in corpus size.** It compares `len(index)` with a `vectorizable_rows` counter kept in the store's `meta` table. Every insert or delete updates the counter in the same transaction as the row. It MUST NOT run `COUNT(*) … WHERE document != ''`, which costs 440 ms at 1M and ≈4.4 s at 10M. Long-lived processes evaluate it once per index load and again only when the `.tvim` mtime changes.
 - **`doctor` default:** load + `len` + counter. **`doctor --deep` and `build`:** the full uid-set diff (≈1.6 s at 1M; ≈16 s at 10M: 7.3 s measured `contains()` plus ≈9 s projected uid scan). `build` runs the diff only when `len(index) ≠ vectorizable_rows` or the counter is absent (a legacy store, in which case it backfills the counter once). A healthy build never pays for it. `search` derives its R1 status from the same `index_health()` result. Under R6.1 the read path performs no recovery (apart from the small-store exception), so it reports the state exactly as `doctor` would find it.
 
-**R3.4** `doctor`'s overall `Setup incomplete` summary must be driven by the state machine, not by the count of advisory lines.
+**R3.4** `doctor`'s overall `Setup incomplete` summary MUST be driven by the state machine, not by the count of advisory lines.
 
 ### R4 — One watcher per project, enforced
 
-**R4.1** `watch` must take an exclusive, per-project lock on startup and exit cleanly (code 0, one clear line) if another instance holds it:
+**R4.1** `watch` MUST take an exclusive, per-project lock on startup and exit cleanly (code 0, one clear line) if another instance holds it:
 
 ```
 neuralmind watch: another watcher already holds /home/.../.neuralmind/watch.lock (pid 1234) — exiting
 ```
 
-**R4.2** Reuse the existing flock helper (`neuralmind/metrics_pipeline.py:44-66`, `_lock_file`/`_unlock_file`) rather than adding a second locking idiom. POSIX `flock(LOCK_EX|LOCK_NB)`; on Windows fall back to the byte-0 lock already implemented there.
+**R4.2** The lock SHOULD reuse the existing flock helper (`neuralmind/metrics_pipeline.py:44-66`, `_lock_file`/`_unlock_file`) rather than add a second locking idiom. POSIX `flock(LOCK_EX|LOCK_NB)`; on Windows fall back to the byte-0 lock already implemented there.
 
-**R4.3** The lock must be per-project (keyed on the resolved project path), not global — multiple projects legitimately run one watcher each.
+**R4.3** The lock MUST be per-project (keyed on the resolved project path), not global — multiple projects legitimately run one watcher each.
 
-**R4.4** Stale locks must not deadlock: a lock whose holder PID is gone must be reclaimable without manual cleanup. `flock` gives this for free (the lock dies with the process); the byte-0 fallback needs an explicit liveness check.
+**R4.4** Stale locks MUST NOT deadlock: a lock whose holder PID is gone MUST be reclaimable without manual cleanup. `flock` gives this for free (the lock dies with the process); the byte-0 fallback needs an explicit liveness check.
 
-**R4.5** The systemd unit must not `Restart=always` a second instance into a hot loop. Combined with R4.1 the unit should observe a clean exit and stay stopped.
+**R4.5** The systemd unit MUST NOT `Restart=always` a second instance into a hot loop. Combined with R4.1 the unit SHOULD observe a clean exit and stay stopped.
 
 ### R5 — Format-version preflight with an idempotent migration
 
-**R5.1** Detect an incompatible index **before** the slow path, and name the cause:
+**R5.1** `build`, `doctor` and `migrate-index` MUST detect an incompatible index **before** the slow path, and name the cause:
 
 ```
 Vector index format mismatch.
   On-disk: written by turbovec <X>     (or: "unknown — written before N-17")
   Installed: turbovec <Y>
-Recovery: rebuild from persisted vectors (R7), or, for a store written before R7,
-          re-embed <N> stored documents (≈<estimate from measured docs/s>).
+Recovery: re-embed <N> stored documents (≈<estimate from measured docs/s>).
+          After N-18: rebuild from persisted vectors instead.
 ```
 
-turbovec does not expose the version that wrote an index: `IdMapIndex.load()` only raises. The existing `turbovec_index_version()` (`turbovec_backend.py:366-393`) returns the *installed* version, despite its name. So the writer version must be recorded by NeuralMind itself. Every `_persist_index()` writes `turbovec_version` into the store's existing `meta` table, alongside the `dim` / `bit_width` keys already kept there. An index with no such key (any index written before this change) reports `On-disk: unknown — written before N-17`, and the mismatch is inferred from the load error alone. `turbovec_index_version()` should be renamed or re-documented so it stops implying it reads the on-disk stamp.
+turbovec does not expose the version that wrote an index: `IdMapIndex.load()` only raises. The existing `turbovec_index_version()` (`turbovec_backend.py:366-393`) returns the *installed* version, despite its name. So the writer version MUST be recorded by NeuralMind itself. Every `_persist_index()` writes `turbovec_version` into the store's existing `meta` table, alongside the `dim` / `bit_width` keys already kept there. An index with no such key (any index written before this change) reports `On-disk: unknown — written before N-17`, and the mismatch is inferred from the load error alone. `turbovec_index_version()` SHOULD be renamed or re-documented so it stops implying it reads the on-disk stamp.
 
-**R5.2** Expose an idempotent, safe-to-rerun migration entry point so upgrade tooling can call it non-interactively:
+**R5.2** NeuralMind MUST expose an idempotent, safe-to-rerun migration entry point so upgrade tooling can call it non-interactively:
 
 ```bash
 neuralmind migrate-index <project>    # exit 0 if already healthy (no-op)
 ```
 
-**R5.3** `neuralmind doctor` must surface a version mismatch as its own finding, distinct from generic quarantine, so operators can tell "my toolchain moved" from "the file is corrupt".
+**R5.3** `neuralmind doctor` MUST surface a version mismatch as its own finding, distinct from generic quarantine, so operators can tell "my toolchain moved" from "the file is corrupt".
 
 ### R6 — Recovery scales from T1 (100k documents) up
 
-**R6.1 No recovery on the read path.** `search`, `query`, the MCP tools and the daemon's query handler must never run a re-embed inline. When they find an unusable index, they report `index_unavailable` (R1) at once, naming the state. Recovery belongs to `build`, `watch` and `migrate-index`. This replaces today's first-touch rebuild in `_load_index()` for reads. The one exception: a store small enough that recovery fits well inside a client timeout (threshold set from §2.2 throughput, e.g. ≤ 1 embedder batch). Even then, it runs only under the R6.5 lock.
+**R6.1 No recovery on the read path.** `search`, `query`, the MCP tools and the daemon's query handler MUST NOT run a re-embed inline. When they find an unusable index, they report `index_unavailable` (R1) at once, naming the state. Recovery belongs to `build`, `watch` and `migrate-index`. This replaces today's first-touch rebuild in `_load_index()` for reads. The one exception: a store small enough that recovery fits well inside a client timeout (threshold set from §2.2 throughput, e.g. ≤ 1 embedder batch). Even then, it runs only under the R6.5 lock.
 
-**R6.2 Repair the difference, not the corpus.** For `inconsistent`, compute the missing uids (store uids where `index.contains(uid)` is false; ≈0.1 s at 100k) and re-embed only those. Drop index ids absent from the store. Full re-embed is reserved for `unloadable`, where no index survives. A 99,000-of-100,000 partial write then costs 1,000 documents (≈40 s), not 100,000 (≈1 h).
+**R6.2 Repair the difference, not the corpus.** For `inconsistent`, recovery MUST compute the missing uids (store uids where `index.contains(uid)` is false; ≈0.1 s at 100k) and re-embed only those, and MUST drop index ids absent from the store. Full re-embed is reserved for `unloadable`, where no index survives. A 99,000-of-100,000 partial write then costs 1,000 documents (≈40 s), not 100,000 (≈1 h).
 
-**R6.3 Checkpointed and resumable.** Recovery streams the store in chunks: fetch → embed → `add_with_ids` → persist index → commit. Each chunk is durable before the next starts. An interrupted recovery leaves a loadable `inconsistent` index, and the next run resumes it through R6.2 with no special resume code. A chunk-sized write never leaves the file absent or renamed.
+**R6.3 Checkpointed and resumable.** Recovery MUST stream the store in chunks: fetch → embed → `add_with_ids` → persist index → commit. Each chunk MUST be durable before the next starts. An interrupted recovery leaves a loadable `inconsistent` index, and the next run resumes it through R6.2 with no special resume code. A chunk-sized write never leaves the file absent or renamed.
 
-**R6.4 Bounded memory.** Recovery memory is O(chunk), independent of corpus size. That means no `fetchall()` of every document and no corpus-wide vector matrix.
+**R6.4 Bounded memory.** Recovery memory MUST be O(chunk), independent of corpus size. That means no `fetchall()` of every document and no corpus-wide vector matrix.
 
-**R6.5 One recovery per index.** Recovery takes an exclusive per-index lock with the same flock helper as R4, keyed on the index path. A second process that finds the lock held does not start a parallel re-embed. A write-path caller waits or exits with "recovery already in progress (pid N)". A read-path caller reports `index_unavailable` / `recovering`.
+**R6.5 One recovery per index.** Recovery MUST take an exclusive per-index lock with the same flock helper as R4, keyed on the index path. A second process that finds the lock held MUST NOT start a parallel re-embed. A write-path caller waits or exits with "recovery already in progress (pid N)". A read-path caller reports `index_unavailable` / `recovering`.
 
-**R6.6 Visible progress.** Recovery reports `done/total` documents and elapsed time through the existing `ProgressReporter` on a TTY, and as a plain line at least every 30 s otherwise. While a recovery holds the lock, `doctor` and the R1 `reason` field report `recovering (done/total)`, so an agent can tell "being fixed" from "broken".
+**R6.6 Visible progress.** Recovery MUST report `done/total` documents and elapsed time through the existing `ProgressReporter` on a TTY, and as a plain line at least every 30 s otherwise. While a recovery holds the lock, `doctor` and the R1 `reason` field report `recovering (done/total)`, so an agent can tell "being fixed" from "broken".
 
-**R6.7 Throughput is not made worse.** The current one-subprocess-per-256-docs path (§2.2: 27 docs/s, 9.5 s/batch) exists to work around an onnxruntime deadlock and is out of scope here. But recovery must not lower it: chunking (R6.3) must reuse `_embed_matrix`'s batching, not add per-chunk model reloads. Its batches also run one at a time. Running them across cores would divide the T1 hour, but it cannot bring T2/T3 into range (§2.2), so it is left to the embedder's own spec.
+**R6.7 Throughput is not made worse.** The current one-subprocess-per-256-docs path (§2.2: 27 docs/s, 9.5 s/batch) exists to work around an onnxruntime deadlock and is out of scope here. But recovery MUST NOT lower it: chunking (R6.3) MUST reuse `_embed_matrix`'s batching, not add per-chunk model reloads. Its batches also run one at a time. Running them across cores would divide the T1 hour, but it cannot bring T2/T3 into range (§2.2), so it is left to the embedder's own spec.
 
-### R7 — Recovery at T2/T3 does not re-embed
+### R7 — Moved to N-18
 
-**R7.1** From T2 (1M documents) up, recovering from `unloadable` (version mismatch, corruption) must rebuild the index from **persisted vectors**, not from the embedder. Measured cost of that rebuild: 15.8 s at 1M, 148 s at 10M (§2.2). Re-embedding stays the fallback only when no persisted vector exists for a row.
+Rebuilding the index from persisted vectors instead of re-embedding is now [`N-18-PERSISTED-VECTORS-SPEC.md`](N-18-PERSISTED-VECTORS-SPEC.md). It is a storage and schema commitment with its own open recall question, and R1–R6 do not depend on it. The ID R7 stays reserved so references do not shift.
 
-**R7.2** Vectors are persisted at embed time, alongside the row. That means no second embedding pass, and the R6.3 chunk writer reads them back. The cost is fixed by dimension: float16 = 768 B/row (≈0.77 GB at 1M, ≈7.7 GB at 10M); float32 doubles that. float16 is the default unless a recall check against float32 (the `neuralmind benchmark --quality` suite) shows a regression. The storage location (BLOB column vs. an append-only memory-mapped sidecar keyed by uid) is a PR-6 design decision. The sidecar avoids bloating SQLite pages that the R3.3 scans read.
-
-**R7.3** A store written before R7 has no vectors. Its first recovery re-embeds and back-fills them. `doctor` reports `vectors: not persisted (recovery will re-embed N documents, ≈<estimate from measured docs/s>)`, so an operator at T2/T3 can schedule that one-time cost instead of discovering it.
-
-**R7.4** Persisting vectors must not change query results. Healthy-index `query` output stays byte-identical (§6 regression guards).
+**Known gap until N-18 lands.** From T2 (1M documents) up, recovering an `unloadable` index means re-embedding the whole store: ≈10 h at 1M and ≈4.3 days at 10M at the measured 27 docs/s (§2.2). R6 makes that recovery safe (off the read path, checkpointed, resumable, locked, visible) but not fast. `doctor` and the R5.1 message MUST state the expected re-embed cost at T2/T3, so that an operator learns the price before starting recovery, not halfway through it.
 
 ---
 
@@ -313,6 +326,7 @@ neuralmind migrate-index <project>    # exit 0 if already healthy (no-op)
 
 - **Retrieval ranking quality.** nDCG/MRR/relevance grading is N-15.
 - **Changing the turbovec format or versioning scheme.** Upstream concern; we adapt.
+- **Persisted vectors / embedder-free recovery.** [`N-18`](N-18-PERSISTED-VECTORS-SPEC.md); see R7 for the known gap.
 - **CLI cold-start at T2/T3.** Each CLI `search` loads the whole index (0.5 s at 1M; 4.4 s at 10M, §2.2). The daemon is the answer to that, and it belongs to `PERFORMANCE-FUTURE-PROOFING-SPEC.md` §5. This spec requires only that the health check adds O(1) on top of the load (R3.3).
 - **Parallelising the embedder.** See R6.7.
 - **Cross-repo / federated indexes.** Explicitly not a NeuralMind capability.
@@ -328,8 +342,8 @@ Each is testable without a human in the loop.
 | ID | Criterion |
 |---|---|
 | AC0 | A test reproduces §2.0: quarantine → failed store rebuild → `embed_content` → `build` (hash-skips) → `search` returns `[]`. It fails on the baseline and passes after PR 3. |
-| AC1 | With an unusable index, `search` exits 3 and names `neuralmind build <path>` (not `--rebuild-index`) on stderr. With a healthy index and an unmatched query, `search` exits 0 and reports no-matches. |
-| AC2 | `search --json-v2` emits the R1.3 envelope with the correct `status` for all three cases. The default `search --json` payload is a bare array in all three cases (R1.4), with the unavailable case signalled only by exit 3 and stderr. |
+| AC1 | With an unusable index, `search` exits 69 and names `neuralmind build <path>` (not `--rebuild-index`) on stderr. With a healthy index and an unmatched query, `search` exits 0 and reports no-matches. |
+| AC2 | `search --json-v2` emits the R1.3 envelope with the correct `status` for all three cases. The default `search --json` payload is a bare array in all three cases (R1.4), with the unavailable case signalled only by exit 69 and stderr. |
 | AC2a | MCP `neuralmind_search` on an unusable index returns `{"code": "index_unavailable", ...}`, not `[]`. MCP `neuralmind_query` and daemon-served `query` both carry `index_status`, and the context text contains the R1.6 notice. With a healthy index, all three responses are unchanged. |
 | AC3 | `build` on an unusable index either repairs it or exits non-zero with the embedder's error (R2.3). It never prints `Build successful!` while `index_health()` is anything but `healthy` / `recovered`. |
 | AC4 | A plain `build` (no `--rebuild-index`) repairs both an `unloadable` and an `inconsistent` index. |
@@ -348,9 +362,23 @@ Each is testable without a human in the loop.
 | AC17 | Same fixture: peak RSS during recovery does not grow with corpus size, measured at 10k vs 100k within a fixed margin (R6.4). |
 | AC18 | Two concurrent `build`s on one unusable index: exactly one runs the re-embed, and the other reports `recovering` (R6.5). |
 | AC19 | At every tier T0–T3 (§6.1), the per-query preflight adds ≤ 50 ms on top of the index load, and it issues no full-table SQL scan (R3.3). The test asserts both: wall time, and the SQL issued, via a statement trace. |
-| AC20 | At T2 and T3, `unloadable` recovery with persisted vectors makes zero embedder calls. It completes within 2× the build time recorded for that tier in `bench/scale/results.json` (R7.1). |
+| AC20 | *Moved to N-18 (AC-N18-2). The ID stays reserved.* |
 | AC21 | At T2 and T3, peak RSS during recovery stays within the tier's index size plus a fixed chunk allowance (default 512 MB), and does not scale with the store's document text (R6.4). |
 | AC22 | At T2 and T3, `doctor --deep` and the `build` consistency check finish within 2× the recorded tier baseline. Default `doctor` stays O(1) in corpus size (R3.3). |
+
+### 5.1 Traceability
+
+| Requirement | Motivated by | Verified by | Delivered in |
+|---|---|---|---|
+| R1 fail loud | F1, F6, G1, G3 | AC1, AC2, AC2a | PR 2 |
+| R2 truthful, self-healing `build` | F2, F5, F7, G2 | AC0, AC3, AC4, AC12 | PR 3 |
+| R3 index-health state machine | F3, F7 | AC5, AC6, AC7, AC19, AC22 | PR 1 (preflight counter in PR 2) |
+| R4 one watcher per project | F4 | AC8, AC9, AC10 | PR 4 |
+| R5 version stamp + `migrate-index` | F5 | AC11, AC13 | PR 5 |
+| R6 recovery at scale | §2.2, §2.3 | AC14–AC18, AC21 | PR 2 (R6.1, AC14), PR 3 (R6.2–R6.7), PR 6 (tiers) |
+| R7 *(moved)* | §2.3 | AC20 *(moved)* | N-18 |
+
+Every AC appears in exactly one row. AC0 is written in PR 1 as an expected failure and turns green in PR 3.
 
 ---
 
@@ -377,21 +405,21 @@ Each is testable without a human in the loop.
 
 ### 6.1 Scale tiers
 
-Every scale requirement (R3.3, R6, R7) is tested at four tiers. A tier fixture is a synthetic store plus index, generated in chunks by a deterministic fake embedder (hash → unit vector). The fake embedder lets the tiers test **NeuralMind's** logic and the **real** turbovec and SQLite at size, without spending hours on ONNX. Real-embedder throughput is measured separately on a fixed 2,048-document sample, and per-tier re-embed times are derived from it, never asserted.
+Every scale requirement (R3.3, R6) is tested at four tiers, and N-18 reuses the same tiers. A tier fixture is a synthetic store plus index, generated in chunks by a deterministic fake embedder (hash → unit vector). The fake embedder lets the tiers test **NeuralMind's** logic and the **real** turbovec and SQLite at size, without spending hours on ONNX. Real-embedder throughput is measured separately on a fixed 2,048-document sample, and per-tier re-embed times are derived from it, never asserted.
 
-| Tier | Documents | Footprint (store + index + float16 vectors) | Runs | ACs |
+| Tier | Documents | Footprint (store + index) | Runs | ACs |
 |---|---:|---|---|---|
-| T0 | 10k | ≈ 0.01 + 0.003 + 0.008 GB | every PR (pytest) | all functional ACs |
-| T1 | 100k | ≈ 0.1 + 0.02 + 0.08 GB | every PR (pytest, fixture builds in < 1 s) | AC14–AC19 |
-| T2 | 1M | ≈ 1.0 + 0.2 + 0.77 GB | nightly scheduled workflow + `workflow_dispatch`; fits a standard hosted Linux runner | AC14–AC22 |
-| T3 | 10M | ≈ 10 + 2.0 + 7.7 GB | weekly + before every release, `workflow_dispatch`; needs a runner with ≥ 32 GB disk and ≥ 16 GB RAM (a larger hosted or self-hosted runner) | AC14–AC22 |
+| T0 | 10k | ≈ 0.01 + 0.003 GB | every PR (pytest) | all functional ACs |
+| T1 | 100k | ≈ 0.1 + 0.02 GB | every PR (pytest, fixture builds in < 1 s) | AC14–AC19 |
+| T2 | 1M | ≈ 1.0 + 0.2 GB (+ 0.77 GB vectors after N-18) | nightly scheduled workflow + `workflow_dispatch`; fits a standard hosted Linux runner | AC14–AC19, AC21–AC22; recovery time measured, not gated (R7 known gap) |
+| T3 | 10M | ≈ 10 + 2.0 GB (+ 7.7 GB vectors after N-18) | weekly + before every release, `workflow_dispatch`; needs a runner with ≥ 32 GB disk and ≥ 16 GB RAM (a larger hosted or self-hosted runner) | AC14–AC19, AC21–AC22; recovery time measured, not gated (R7 known gap) |
 
-- Each T2/T3 run writes its measurements (every row of the §2.2 tables, plus the AC timings and peak RSS) to `bench/scale/results.json`, with runner specs and package versions. The relative gates in AC20–AC22 compare against the committed file. Same contract as `bench/public/results.json`: re-baselining means committing the new file in the same change that explains why.
+- Each T2/T3 run writes its measurements (every row of the §2.2 tables, plus the AC timings and peak RSS) to `bench/scale/results.json`, with runner specs and package versions. The relative gates in AC21–AC22 compare against the committed file. Same contract as `bench/public/results.json`: re-baselining means committing the new file in the same change that explains why.
 - T3 replaces this spec's projected 10M SQLite figures (§2.2 footnote 2) with measured ones on its first run.
 - A T2/T3 failure files an issue and blocks the release workflow. It does not block PRs, because those tiers do not run on PRs.
 
 **Manual verification on a real corpus**
-- Run the AC12 sequence with the real embedder against a ≥100,000-document corpus (T1, real). Record wall time, peak RSS, and docs/s, then compare them with §2.2's 27 docs/s. Real-embedder runs at T2/T3 are not required: they would take ≈10 h and ≈4 days, which is the point of R7.
+- Run the AC12 sequence with the real embedder against a ≥100,000-document corpus (T1, real). Record wall time, peak RSS, and docs/s, then compare them with §2.2's 27 docs/s. Real-embedder runs at T2/T3 are not required: they would take ≈10 h and ≈4 days, which is the point of N-18.
 
 ---
 
@@ -406,11 +434,11 @@ Suggested split, each independently mergeable and testable:
 | 3 | Self-healing `build`, guarded `_ensure_index`, truthful success line, `--rebuild-index` help fix; chunked, resumable, diff-only, locked recovery with progress | R2, R6.2–R6.7, AC0 (passes), AC3–AC4, AC12, AC15–AC18 |
 | 4 | Watch single-instance lock | R4, AC8–AC10 |
 | 5 | Version stamp in `meta` + preflight + `migrate-index` | R5, AC11, AC13 |
-| 6 | Persisted vectors + T2/T3 tier workflows + `bench/scale/results.json` | R7, AC19–AC22 |
+| 6 | T2/T3 tier workflows + `bench/scale/results.json` (recovery time measure-only) | R3.3, R6, AC19, AC21–AC22 |
 
-PR 1 goes first. It is the smallest and pure diagnosis, PRs 2–3 read its state machine, and its reproduction test confirms (or refutes) §2.0 before any fix is written. PR 4 is fully independent and can land any time. PR 6 depends on PR 3's chunked writer. Its tier workflows can land early, measure-only with gates off, to record baselines before R7 exists.
+PR 1 goes first. It is the smallest and pure diagnosis, PRs 2–3 read its state machine, and its reproduction test confirms (or refutes) §2.0 before any fix is written. PR 4 is fully independent and can land any time. PR 6 depends on PR 3's chunked writer, but its tier workflows can land early, measure-only with gates off, to record baselines. Persisted vectors ship under N-18, which builds on PR 3 and PR 6.
 
-**Migration note.** PR 2 changes contracts on three surfaces. The CLI default `--json` and both healthy-index MCP payloads are unchanged (R1.4). The changes are a new exit code (3), a new MCP error `code`, and an additive `index_status` key. Audit the hooks and the MCP clients for code that treats `[]` as "no results", or that treats any non-zero `search` exit as fatal.
+**Migration note.** PR 2 changes contracts on three surfaces. The CLI default `--json` and both healthy-index MCP payloads are unchanged (R1.4). The changes are a new exit code (69), a new MCP error `code`, and an additive `index_status` key. Audit the hooks and the MCP clients for code that treats `[]` as "no results", or that treats any non-zero `search` exit as fatal.
 
 ---
 
@@ -424,6 +452,25 @@ The generalisable lessons:
 2. **A write path must verify its own output.** `Build successful!` printed after a skipped, unrepaired index is a lie that costs hours of downstream debugging.
 3. **A diagnostic must test the live thing, not a proxy for it.** `stale_path.exists()` is a proxy for "was quarantined once," not "is broken now."
 4. **Long-running processes need mutual exclusion by default.** The locking primitive already existed in the codebase; it simply wasn't applied.
+
+---
+
+## 9. Open questions
+
+| # | Question | Owner | Resolves by |
+|---|---|---|---|
+| Q1 | Does §2.0's mechanism (G1–G3) reproduce the incident, or did something else defeat recovery? | PR 1 | AC0 passing or failing for the right reason |
+| Q2 | ~~Is exit code 3 free?~~ **Resolved in rev 3:** no, `daemon status` uses 3. R1.5 now uses 69 (`EX_UNAVAILABLE`), unused across `neuralmind/`. | — | resolved |
+| Q3 | What R6.1 small-store threshold keeps first-touch recovery inside the MCP client timeouts actually in use (Claude Code, Cursor, Cline)? | PR 2 | measured client timeouts, recorded in the PR |
+| Q4 | Do the projected 10M SQLite figures (§2.2 footnote 2) hold? | PR 6 | the first T3 run |
+
+## 10. Revision history
+
+| Rev | Date | Change |
+|---|---|---|
+| 1 | 2026-10-08 | First draft: five requirements, twelve ACs. |
+| 2 | 2026-10-08 | Review fixes (Codex, Copilot on #621). Corrected F5: the baseline already recovers automatically. Added §2.0 gap analysis (G1–G3), the per-surface status contract, the V-vs-N state machine and the on-disk version stamp. Added measured scale tiers to 10M (§2.2–§2.3), R6, R7 and AC14–AC22. |
+| 3 | 2026-10-08 | Split R7 and AC20 out to N-18, leaving a known-gap statement. Adopted RFC 2119 key words, stable IDs, evidence grades, the traceability matrix (§5.1) and open questions (§9). Moved the index-unavailable exit code from 3, already used by `daemon status`, to 69 (`EX_UNAVAILABLE`). |
 
 ---
 
