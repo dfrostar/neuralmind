@@ -1,7 +1,7 @@
 {
   "repo": "https://github.com/pallets/click",
   "commit": "2247b35ea1c47c727d7a06e51fa280e12a863ff6",
-  "note": "Expected files were chosen by reading the code, before any run. This is the set the v4.10.0 block was tuned on (file ranking, tests after code); tests/benchmark/prompt_recall_neuralmind.json was held out. A prompt counts as named when the hook's block names any expected file.",
+  "note": "Expected files were chosen by reading the code, before any run. This is the set the v4.11.0 block was tuned on (file ranking, tests after code); tests/benchmark/prompt_recall_neuralmind.json was held out. A prompt counts as named when the hook's block names any expected file.",
   "prompts": [
     {
       "prompt": "which files in this repo handle parsing command-line options?",

@@ -13,7 +13,7 @@ reports:
 - **tokens**: the block's size (tiktoken ``o200k_base``, the self-benchmark's
   tokenizer; characters / 4 when tiktoken isn't installed, flagged).
 
-It reads both block formats: the file paths and symbols of v4.10.0, and the
+It reads both block formats: the file paths and symbols of v4.11.0, and the
 raw node ids (``- <node_id> (activation 0.05)``) before it, mapped to files
 through the project's graph. So it measures an older release too: run this
 file as a script with that release's checkout first on ``PYTHONPATH``

@@ -76,6 +76,9 @@ LABEL_MAX = 60
 # containing one could otherwise forge extra lines in the injected block.
 _CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 
+# The node types a graph marks code with: the built-in generator's "code", and
+# the older per-symbol types (TurboVecEmbedder.SCOPE_FILTERS["code"]).
+_CODE_TYPES = frozenset({"code", "function", "class", "method", "module"})
 _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _TEST_STEM = re.compile(r"^test_|_test$|Tests?$")
 _TEST_NAME = re.compile(r"\.(test|spec)\.")
@@ -144,7 +147,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
             own = rationale_ids.setdefault(node_id, {})
             own[str(raw_id)] = max(score, own.get(str(raw_id), score))
         info[node_id] = node
-        bucket = code if node.get("file_type") == "code" else other
+        bucket = code if node.get("file_type") in _CODE_TYPES else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
 
     result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
@@ -211,7 +214,7 @@ def format_block(result: PromptRecall) -> str:
 def is_test_path(path: str) -> bool:
     """Whether ``path`` looks like a test file in the common layouts."""
     parts = path.replace("\\", "/").split("/")
-    if _TEST_DIRS.intersection(parts[:-1]):
+    if _TEST_DIRS.intersection(part.lower() for part in parts[:-1]):
         return True
     name = parts[-1]
     return bool(_TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name))

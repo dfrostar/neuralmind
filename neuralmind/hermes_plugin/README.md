@@ -22,15 +22,17 @@ Files edited (1, most recent first): shop/pricing.py
 
 ## NeuralMind associative recall
 
-- shop_pricing_py (activation 0.26)
-- shop_pricing_py__add_tax_fn (activation 0.21)
-- shop_checkout_py__total_fn (activation 0.07)
+Code matching this prompt:
+- shop/pricing.py: add_discount() L18, add_tax() L9
+Connected to it in the synapse graph:
+- shop/checkout.py: total() L30
 ```
 
-Later turns get the recall part only. The recall lists NeuralMind's graph
-nodes for the code (files, functions, symbols) ranked by how strongly they're
-associated with the message. Those associations are learned from the files
-sessions in the project work on and edit.
+Later turns get the recall part only. The recall names the files and symbols
+the message matches, with line numbers, then the code linked to them in
+NeuralMind's synapse graph, and matching docs. The links start out structural
+(calls, imports) on a fresh build and come to reflect what sessions in the
+project edit together. A message that isn't about the code gets no recall.
 
 ## Requirements
 

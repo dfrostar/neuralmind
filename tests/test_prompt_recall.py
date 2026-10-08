@@ -393,6 +393,8 @@ def test_a_long_label_is_shortened():
         ("web/src/__tests__/app.tsx", True),
         ("spec/models/user_spec.rb", True),
         ("src/test/java/AppTest.java", True),
+        ("src/Test/java/App.java", True),
+        ("Tests/Unit/Pricing.cs", True),
         ("src/click/testing.py", False),
         ("src/click/core.py", False),
         ("docs/testing.md", False),
@@ -401,3 +403,12 @@ def test_a_long_label_is_shortened():
 )
 def test_is_test_path(path, expected):
     assert is_test_path(path) is expected
+
+
+@pytest.mark.parametrize("file_type", ["function", "class", "method", "module"])
+def test_older_graphs_per_symbol_code_types_count_as_code(file_type):
+    nodes = [_node(PARSER, "src/click/parser.py", "_OptionParser", 224, file_type)]
+    result = recall(_Mind(None, hits=[(PARSER, 0.6)], nodes=nodes), "q")
+    assert result.code
+    assert [f.path for f in result.matches] == ["src/click/parser.py"]
+    assert result.docs == []

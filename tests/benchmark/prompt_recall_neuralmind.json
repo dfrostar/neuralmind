@@ -1,7 +1,7 @@
 {
   "repo": "https://github.com/dfrostar/neuralmind",
   "commit": "edbc239c85ab3e1a529fb95298d76a05f1de925e",
-  "note": "The on-topic prompts of tests/benchmark/recall_gate.py. Expected files were chosen by reading the code before any run, and this set was held out while the v4.10.0 block was tuned on tests/benchmark/prompt_recall_click.json. A prompt counts as named when the hook's block names any expected file.",
+  "note": "The on-topic prompts of tests/benchmark/recall_gate.py. Expected files were chosen by reading the code before any run, and this set was held out while the v4.11.0 block was tuned on tests/benchmark/prompt_recall_click.json. A prompt counts as named when the hook's block names any expected file.",
   "prompts": [
     {
       "prompt": "how does synapse decay work",
