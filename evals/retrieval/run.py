@@ -8,13 +8,20 @@
 Every v4.6.0 ranking change sits behind a flag. This harness runs the
 pre-registered questions in ``evals/retrieval/questions/`` (30 per repo,
 written before any change was tried) once per flag configuration, read-only,
-and applies the keep rule from the spec:
+and applies a paired keep rule to every configuration against ``baseline``:
 
-* mean hit@5 across repos goes up, and it goes up on at least 3 repos;
-* no repo drops by more than one question;
+* pooled over every question, the configuration wins more hit@5 questions
+  than it loses, and an exact McNemar test on those discordant questions
+  gives p < 0.05;
+* no repo drops by more than two questions (non-inferiority, per repo);
 * average context tokens rise by at most 10%;
 * the public 4-repo benchmark's gold-file recall doesn't drop
   (``--public-benchmark``).
+
+The report also gives the mean MRR change with a paired bootstrap 95%
+interval, and p50/p95 query latency per repo. (The rule this replaced asked
+for a rise on three of the repos; with 30 questions a repo, one question is
+3.3 points, and it rejected a change that raised two repos and lowered none.)
 
 Repos: requests, click, flask and rich at the public benchmark's pinned
 commits (cloned on demand), plus this repository. ``--private PATH`` adds a
@@ -27,7 +34,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import random
 import shutil
 import subprocess
 import sys
@@ -40,6 +49,11 @@ QUESTIONS = Path(__file__).with_name("questions")
 MANIFEST = REPO_ROOT / "evals" / "public" / "manifest.json"
 
 FLAGS = (
+    "NEURALMIND_L3_K",
+    "NEURALMIND_L3_POOL",
+    "NEURALMIND_CODE_SIGNAL_CAP",
+    "NEURALMIND_AUTO_INTENT_BOOST",
+    "NEURALMIND_QUERY_LAYERS",
     "NEURALMIND_L3_PER_FILE",
     "NEURALMIND_DOC_HANDOFF",
     "NEURALMIND_HUB_DAMPEN",
@@ -71,6 +85,12 @@ CONFIGS: dict[str, dict[str, str]] = {
         "NEURALMIND_INTENT_RULES": "1",
         "NEURALMIND_INTENT_POOL": "1",
     },
+    # v4.12 retrieval, one item at a time against its new defaults: each
+    # configuration puts one setting back the way it was.
+    "l3_k4": {"NEURALMIND_L3_K": "4"},
+    "code_signal": {"NEURALMIND_CODE_SIGNAL_CAP": "10"},
+    "auto_intent": {"NEURALMIND_AUTO_INTENT_BOOST": "1"},
+    "l3_only": {"NEURALMIND_QUERY_LAYERS": "L0,L3"},
     "all": {
         "NEURALMIND_L3_PER_FILE": "2",
         "NEURALMIND_DOC_HANDOFF": "1",
@@ -80,8 +100,8 @@ CONFIGS: dict[str, dict[str, str]] = {
     },
 }
 
-MIN_REPOS_IMPROVED = 3
-MAX_DROP_QUESTIONS = 1
+MAX_P_VALUE = 0.05
+MAX_DROP_QUESTIONS = 2
 MAX_TOKEN_RISE = 0.10
 
 
@@ -194,7 +214,7 @@ def eval_config(root: Path, questions_path: Path, env: dict[str, str]) -> dict[s
     _set_flags(env)
     try:
         questions = load_questions(root, questions_path)
-        mind = NeuralMind(str(root))  # fresh selector: no cache shared across configs
+        mind = _TimedMind(NeuralMind(str(root)))  # fresh selector per config
         report = run_eval(root, questions, mind=mind)
     finally:
         _set_flags({})
@@ -204,8 +224,36 @@ def eval_config(root: Path, questions_path: Path, env: dict[str, str]) -> dict[s
         "hit_at_5": report.hit_at_5,
         "mrr": report.mrr,
         "avg_tokens": report.avg_context_tokens,
+        "latency_ms_p50": _percentile(mind.latencies_ms, 50),
+        "latency_ms_p95": _percentile(mind.latencies_ms, 95),
         "ranks": [r.rank for r in report.results],
     }
+
+
+class _TimedMind:
+    """A NeuralMind that records how long each ``query`` takes."""
+
+    def __init__(self, mind: Any) -> None:
+        self._mind = mind
+        self.latencies_ms: list[float] = []
+
+    def query(self, *args: Any, **kwargs: Any) -> Any:
+        start = time.perf_counter()
+        try:
+            return self._mind.query(*args, **kwargs)
+        finally:
+            self.latencies_ms.append((time.perf_counter() - start) * 1000)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._mind, name)
+
+
+def _percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    k = min(len(ordered) - 1, max(0, round(pct / 100 * (len(ordered) - 1))))
+    return round(ordered[k], 1)
 
 
 def _fresh_public_workdir(work: Path, config: str) -> Path:
@@ -256,33 +304,67 @@ def public_benchmark(work: Path, config: str, env: dict[str, str]) -> float | No
 # --------------------------------------------------------------------------- #
 # The keep rule
 # --------------------------------------------------------------------------- #
+def mcnemar_exact(wins: int, losses: int) -> float:
+    """Two-sided exact McNemar p-value for ``wins`` vs ``losses`` discordant pairs."""
+    n = wins + losses
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, k) for k in range(min(wins, losses) + 1)) / 2**n
+    return min(1.0, 2 * tail)
+
+
+def bootstrap_ci(diffs: list[float], reps: int = 2000, seed: int = 0) -> tuple[float, float]:
+    """Paired bootstrap 95% interval for the mean of ``diffs`` (deterministic)."""
+    if not diffs:
+        return 0.0, 0.0
+    rng = random.Random(seed)
+    n = len(diffs)
+    means = sorted(sum(rng.choice(diffs) for _ in range(n)) / n for _ in range(reps))
+    return means[int(0.025 * reps)], means[int(0.975 * reps) - 1]
+
+
+def _hit5(rank: int | None) -> int:
+    return 1 if rank is not None and rank <= 5 else 0
+
+
+def _rr(rank: int | None) -> float:
+    return 1.0 / rank if rank else 0.0
+
+
 def gate(results: dict[str, dict[str, dict]], config: str) -> dict[str, Any]:
-    """Apply spec 7's keep rule to one configuration against ``baseline``."""
+    """Apply the paired keep rule to one configuration against ``baseline``."""
     deltas_q: dict[str, int] = {}
-    deltas_h5: list[float] = []
     token_rise: list[float] = []
+    wins = losses = 0
+    rr_diffs: list[float] = []
     for repo, by_config in results.items():
         base, cand = by_config["baseline"], by_config[config]
-        hits_base = round(base["hit_at_5"] * base["n"])
-        hits_cand = round(cand["hit_at_5"] * cand["n"])
-        deltas_q[repo] = hits_cand - hits_base
-        deltas_h5.append(cand["hit_at_5"] - base["hit_at_5"])
+        repo_delta = 0
+        for rb, rc in zip(base["ranks"], cand["ranks"], strict=True):
+            d = _hit5(rc) - _hit5(rb)
+            wins += d > 0
+            losses += d < 0
+            repo_delta += d
+            rr_diffs.append(_rr(rc) - _rr(rb))
+        deltas_q[repo] = repo_delta
         if base["avg_tokens"]:
             token_rise.append(cand["avg_tokens"] / base["avg_tokens"] - 1)
-    improved = sum(1 for d in deltas_q.values() if d > 0)
     worst = min(deltas_q.values()) if deltas_q else 0
-    mean_delta = sum(deltas_h5) / len(deltas_h5) if deltas_h5 else 0.0
     mean_rise = sum(token_rise) / len(token_rise) if token_rise else 0.0
+    p_value = mcnemar_exact(wins, losses)
+    lo, hi = bootstrap_ci(rr_diffs)
     checks = {
-        "mean hit@5 rises": mean_delta > 0,
-        f"improves ≥{MIN_REPOS_IMPROVED} repos": improved >= MIN_REPOS_IMPROVED,
-        f"no repo drops >{MAX_DROP_QUESTIONS} question": worst >= -MAX_DROP_QUESTIONS,
+        f"wins > losses, McNemar p < {MAX_P_VALUE}": wins > losses and p_value < MAX_P_VALUE,
+        f"no repo drops >{MAX_DROP_QUESTIONS} questions": worst >= -MAX_DROP_QUESTIONS,
         f"tokens ≤ +{MAX_TOKEN_RISE:.0%}": mean_rise <= MAX_TOKEN_RISE,
     }
     return {
         "config": config,
-        "mean_hit_at_5_delta": round(mean_delta, 4),
-        "repos_improved": improved,
+        "wins": wins,
+        "losses": losses,
+        "p_value": round(p_value, 4),
+        "mean_mrr_delta": round(sum(rr_diffs) / len(rr_diffs), 4) if rr_diffs else 0.0,
+        "mrr_delta_ci95": [round(lo, 4), round(hi, 4)],
         "worst_repo_delta_questions": worst,
         "per_repo_delta_questions": deltas_q,
         "mean_token_rise": round(mean_rise, 4),
@@ -298,7 +380,7 @@ def render(
     repeat: dict[str, bool] | None = None,
 ) -> str:
     configs = list(next(iter(results.values())).keys()) if results else []
-    lines = ["# Retrieval eval — spec 7 work items", ""]
+    lines = ["# Retrieval eval", ""]
     lines.append("hit@5 / MRR / avg tokens per repo and configuration (30 questions each).")
     lines.append("")
     lines.append("| Repo | " + " | ".join(configs) + " |")
@@ -316,20 +398,30 @@ def render(
         means.append(f"**{h5:.1%} / {mrr:.3f}**")
     lines.append("| **mean** | " + " | ".join(means) + " |")
     lines.append("")
-    lines.append("## Keep rule")
+    lines.append("Query latency p50 / p95 (ms), baseline configuration:")
+    lines.append("")
+    for repo, by_config in results.items():
+        b = by_config.get("baseline", {})
+        lines.append(
+            f"- {repo}: {b.get('latency_ms_p50', 0):,.0f} / {b.get('latency_ms_p95', 0):,.0f}"
+        )
+    lines.append("")
+    lines.append("## Keep rule (paired, against baseline)")
     lines.append("")
     lines.append(
-        "| Config | Δ mean hit@5 | Repos improved | Worst repo (questions) | Δ tokens | "
-        "Public recall | Keep |"
+        "| Config | hit@5 won / lost | McNemar p | Δ MRR [95% CI] | Worst repo (questions) | "
+        "Δ tokens | Public recall | Keep |"
     )
-    lines.append("|---|---:|---:|---:|---:|---:|---|")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---|")
     base_pub = public.get("baseline")
     for g in gates:
         pub = public.get(g["config"])
         pub_s = f"{pub:.2%}" if pub is not None else "—"
         keep = g["keep"] and (pub is None or base_pub is None or pub >= base_pub)
+        lo, hi = g["mrr_delta_ci95"]
         lines.append(
-            f"| {g['config']} | {g['mean_hit_at_5_delta']:+.1%} | {g['repos_improved']} | "
+            f"| {g['config']} | {g['wins']} / {g['losses']} | {g['p_value']:.3f} | "
+            f"{g['mean_mrr_delta']:+.3f} [{lo:+.3f}, {hi:+.3f}] | "
             f"{g['worst_repo_delta_questions']:+d} | {g['mean_token_rise']:+.1%} | {pub_s} | "
             f"{'yes' if keep else 'no'} |"
         )

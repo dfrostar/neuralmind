@@ -16,23 +16,29 @@ from pathlib import Path
 
 from evals.public import backends, run
 from evals.public.backends import RepoFiles
+from evals.public.tokens import count_tokens
 
 
 class _FakeNM:
     """Stand-in for NeuralMind: deterministic search() + query() over fixtures."""
 
-    def __init__(self, search_hits, query_files, query_tokens):
+    def __init__(self, search_hits, query_files, query_context):
         self._search = search_hits
         self._qfiles = query_files
-        self._qtokens = query_tokens
+        self._qcontext = query_context
+        self.learn_args: list = []
 
-    def search(self, question, n=8):  # noqa: ARG002
+    def search(self, question, n=8, learn=None):  # noqa: ARG002
+        self.learn_args.append(learn)
         return self._search[:n]
 
-    def query(self, question):  # noqa: ARG002
+    def query(self, question, learn=None):  # noqa: ARG002
+        self.learn_args.append(learn)
+
         class _R:
             top_search_hits = [{"metadata": {"source_file": f}} for f in self._qfiles]
-            tokens = self._qtokens
+            context = self._qcontext
+            tokens = len(self._qcontext) // 4  # the selector's estimate; not used
 
         return _R()
 
@@ -80,22 +86,27 @@ class BackendScoringTests(unittest.TestCase):
                 {"metadata": {"source_file": "auth.py"}, "document": "class HTTPBasicAuth"},
             ],
             query_files=[],
-            query_tokens=0,
+            query_context="",
         )
         r = backends.run_embedding_rag("q", "prepared request", ["models.py"], nm)
         self.assertEqual(r.context_files, ["models.py", "auth.py"])  # dedup, rank-order
         self.assertEqual(r.recall, 1.0)
         self.assertGreater(r.tokens, 0)  # cost = retrieved chunk text
+        self.assertEqual(nm.learn_args, [False])  # never trains the index it measures
 
     def test_neuralmind_partial_recall_on_multifile_gold(self) -> None:
-        nm = _FakeNM(search_hits=[], query_files=["sessions.py"], query_tokens=900)
+        context = "## Search Results\n1. **Session.send** sessions.py\n" * 20
+        nm = _FakeNM(search_hits=[], query_files=["sessions.py"], query_context=context)
         # Cross-file gold needs BOTH files; only one retrieved → recall 0.5, not found.
         r = backends.run_neuralmind(
             "q", "session sends via adapter", ["sessions.py", "adapters.py"], nm
         )
         self.assertAlmostEqual(r.recall, 0.5)
         self.assertFalse(r.found)
-        self.assertEqual(r.tokens, 900)
+        # Cost is the assembled context counted with the benchmark's tokenizer,
+        # the same one every other backend is counted with.
+        self.assertEqual(r.tokens, count_tokens(context))
+        self.assertEqual(nm.learn_args, [False])
 
     def test_recall_is_containment_not_capped_by_rank(self) -> None:
         # Gold present deep in the list still counts for containment recall.
