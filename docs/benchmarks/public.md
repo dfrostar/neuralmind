@@ -237,7 +237,7 @@ v4.10.0's release commit `17aa6cb2`, AMD EPYC 7763):
 | `full-file` and `ripgrep` (no embeddings) | Identical |
 | `embedding-rag` and `neuralmind` token counts | 6 of 80 query rows differ, by 14 to 108 tokens (at most 15% of one query's context); per-repo means by at most 0.8% |
 | Files in the assembled context | 6 rows reorder their files or drop one — never a gold file |
-| "vs full-file" ratios | Move with the means: `requests` is 45.5× instead of 45.3×; the headline range is 45–246× either way |
+| "vs full-file" ratios | Move with the means: `requests` is 45.5× instead of 45.3×; the headline range is 45–246× either way <!-- claims-guard:allow — the v4.10.0 snapshot's figures, in its dated cross-machine record --> |
 
 Mean tokens/query for the (repo, backend) pairs that differ:
 

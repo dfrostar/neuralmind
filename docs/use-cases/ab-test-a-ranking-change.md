@@ -42,6 +42,12 @@ comparison is one variable away — same index, same questions, read-only.
   - average context tokens rise by at most 10%;
   - the public 4-repo benchmark's gold-file recall doesn't drop.
 
+  Since v4.12.0 the multi-repo harness applies a **paired** rule instead,
+  pooled over every question: the change wins more hit@5 questions than it
+  loses, with an exact McNemar p < 0.05; no repository drops by more than two
+  questions; tokens rise by at most 10%. The old rule, with one question worth
+  3.3 points, rejected a change that raised two repositories and lowered none.
+
   On a single repository, a reasonable version is "hit@5 up, MRR not down,
   tokens up by at most 10%". Whatever yours is, decide it before the first run.
 
@@ -134,7 +140,15 @@ NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --private ~/work/your-rep
   no per-question ranks for it.
 - **Fresh indexes, checked baseline.** Every run rebuilds each repository's
   index from nothing and runs the baseline again after every configuration.
-- **It applies the keep rule for you.** Two rows from v4.6.0's run
+- **It applies the keep rule for you** — since v4.12.0 the paired rule
+  above, with the mean MRR change and a bootstrap 95% interval, and p50/p95
+  query latency, in the report.
+- **It compares two releases.** `python -m evals.retrieval.run --compare
+  old/results.json new/results.json` pairs two runs question by question. That
+  is how v4.12.0 was checked against v4.11.1: hit@5 80.0% → 92.0% over 150
+  questions, 20 won and 2 lost (exact McNemar p = 0.0001)
+  ([`bench/retrieval/vs-v4.11`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.11/report.md)).
+- **v4.6.0's run, under the rule it used then.** Two rows from it
   ([`bench/retrieval/vs-v4.5`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.5/report.md)):
 
 ```
@@ -200,7 +214,7 @@ Two things catch people out:
    passed. The per-file cap came closest — +1.1 pts mean hit@5, two
    repositories up, none down on hit@5, public recall 96.25% — but mean MRR
    fell 0.654 → 0.629 (`requests` 0.75 → 0.69, `flask` 0.71 → 0.65), and the
-   rule asks for three repositories up, so it stays off.
+   rule then asked for three repositories up, so it stayed off.
 7. **The losses went in the release notes:** `requests` −1 question, `rich`
    MRR 0.71 → 0.60, a new `click` miss on the public benchmark, and the private
    repository at 73% / 0.60 against its target of 80% / 0.65 — not met.
@@ -225,7 +239,8 @@ can do the same before turning a research flag on for everyone: run it on the
 repository with `--private`, read the row, and only then change the default in
 the team's environment.
 
-Related: [Release notes v4.6.0](../releases/RELEASE_NOTES_v4.6.0.md) ·
+Related: [Release notes v4.12.0](../releases/RELEASE_NOTES_v4.12.0.md) ·
+[Release notes v4.6.0](../releases/RELEASE_NOTES_v4.6.0.md) ·
 [Raw eval output](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md) ·
 [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md) ·
 [Does it work on your codebase?](./benchmark-your-repo.md)

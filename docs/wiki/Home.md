@@ -1,7 +1,7 @@
 <!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # 🧠 NeuralMind Wiki
 
-**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 95% mean gold-file recall at 45–246× fewer tokens than pasting every source file.
+**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 97.5% mean gold-file recall (90–100% per repo) at 54–260× fewer tokens than pasting every source file.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -17,24 +17,48 @@ a loss, published as such.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **85.71–100% gold-file recall (95% mean) at 45–246× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| 💸 | **Cheaper context** | **90–100% gold-file recall (97.5% mean) at 54–260× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Competitor head-to-head, **real repos** (`requests`, `click` only — off by default, not yet re-run on the four-repo corpus) |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
-| 🔬 | **Answer grounding vs. naive truncation — a published loss** | At a *matched* token budget, naive truncation currently keeps slightly more gold facts on this prose-heavy fixture: **delta −0.054 at v4.3.4** (earlier releases +0.013 to +0.143). CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
+| 🔬 | **Answer grounding vs. naive truncation** | At a *matched* token budget on this prose-heavy fixture: **delta +0.251 at v4.12.0** (measured with CI's command on one machine; v4.11.1 +0.027), after a published loss of −0.054 at v4.3.4. CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
 (fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the "beats ripgrep" claim is specifically
-against ripgrep — a bare vector-RAG baseline matches or beats NeuralMind's recall at fewer
-tokens, see ["Where NeuralMind loses"](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses);
+against ripgrep — the plain vector baseline (the top 8 entries of NeuralMind's own index:
+names and docstrings, not code) costs fewer tokens and still ranks the gold file higher on
+flask and rich, though its recall is at or below NeuralMind's, see ["Where NeuralMind loses"](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses);
 the **learning** and **grounding** rows are
 committed A/Bs on the bundled reference fixture, so they're real but
-smaller-scope. We report where NeuralMind *doesn't* win too — a well-tuned
-vector RAG matches or beats it on pure findability and is cheaper on raw tokens;
-that's in the benchmark table. The competitor comparison is *pure retrieval ranking*, not
+smaller-scope. We report where NeuralMind *doesn't* win too — a plain vector
+index ranks the gold file higher on two of the four repos and is cheaper on raw
+tokens; that's in the benchmark table. The competitor comparison is *pure retrieval ranking*, not
 their LLM-agent loop. Full numbers and reproduction commands on the
 **[Benchmarks](Benchmarks)** page.
 
 ## What's New
+
+### v4.12.0 — Retrieval that keeps what vector search finds (October 2026)
+
+On the public benchmark, NeuralMind's own vector index alone — top 8, nothing
+added — matched or beat the full query pipeline on gold-file recall on all four
+repositories: the layers on top were taking accuracy away. L3 now holds **8
+hits instead of 4**, chosen from a pool of the 20 best fused candidates after
+every re-ranking pass has run over the whole pool, and L2 lists that query's
+other candidates (pool ranks 9–20) instead of each cluster's first seven
+nodes. Code-or-docs re-weighting applies only when you ask for a type
+(`--type`, MCP `query_type`); the code-signal boost is off; keyword search
+ignores question words; a node is embedded as its qualified name, module and
+docstring. JavaScript files (`.js`, `.mjs`, `.cjs`, `.jsx`) get code nodes.
+Retrieval eval hit@5 **80.0% → 92.0%** over 150 questions (20 won, 2 lost,
+exact McNemar p = 0.0001) at 17% fewer context tokens; public-benchmark
+gold-file recall **95% → 97.5%** (90–100% per repo) at 54–260× fewer tokens.
+Losses: flask's `request-wrapper` query is missed now, and on flask and rich
+NeuralMind's MRR (0.70, 0.83) is still below the plain vector baseline's
+(0.74, 0.94). Query p50 was 14–19 ms on one 4-core machine (266–348 ms before).
+`NEURALMIND_L3_K`, `NEURALMIND_L3_POOL`, `NEURALMIND_QUERY_LAYERS`,
+`NEURALMIND_AUTO_INTENT_BOOST` and `NEURALMIND_CODE_SIGNAL_CAP` tune or restore
+it. Run `neuralmind build` once after upgrading.
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md).
 
 ### v4.11.1 — No turbovec store on a ChromaDB project (October 2026)
 
@@ -645,7 +669,7 @@ Token-efficient retrieval plus persistent memory for AI coding agents.
 - **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt; since v4.9.0, Hermes-Agent gets it with each turn too, through `neuralmind install-hermes-plugin`.
 
-Measured effect: **45–246× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 95% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+Measured effect: **54–260× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 97.5% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 

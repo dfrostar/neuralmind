@@ -5,14 +5,14 @@ const evidence = [
     {
         title: 'Reproducible public benchmark',
         kind: 'Reproducible',
-        desc: '40 pre-registered queries on 4 pinned OSS repos: 95% mean gold-file recall at 45–246× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
+        desc: '40 pre-registered queries on 4 pinned OSS repos: 97.5% mean gold-file recall at 54–260× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
         link: '/benchmark/',
         linkText: 'See the benchmark →',
     },
     {
         title: 'CI-gated regression floors',
         kind: 'CI-gated',
-        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, synapse recall never lowers hit rate, and the faithfulness delta against naive truncation stays above −0.10 — it currently measures −0.054, a loss we publish rather than hide.',
+        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, synapse recall never lowers hit rate, and the faithfulness delta against naive truncation stays above −0.10 — at v4.12.0 it measured +0.25 (at v4.3.4 it was −0.054, a loss we published).',
         link: 'https://github.com/dfrostar/neuralmind/blob/main/.github/workflows/ci-benchmark.yml',
         linkText: 'CI config on GitHub →',
     },

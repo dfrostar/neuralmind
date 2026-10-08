@@ -578,7 +578,7 @@ maintainer has time. Security reports have their own response targets in
 |---------|-----------|--------|
 | Works everywhere | ✅ Yes | ❌ Cursor only |
 | Works offline | ✅ Yes, once the first build has cached the embedding model | ❌ Cloud |
-| Token reduction | Measured: 45–246× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
+| Token reduction | Measured: 54–260× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
 | Cost | Free at 1 seat | Paid (Cursor) |
 | Open source | ✅ MIT core | ❌ No |
 
@@ -595,9 +595,9 @@ queries:
 | | Tokens per query | Gold-file recall |
 |---|---:|---:|
 | Paste every source file | 41,729–232,483 | 100% |
-| NeuralMind | 682–948 | 85.71–100% per repo, 95% mean |
+| NeuralMind | 632–897 | 90–100% per repo, 97.5% mean |
 
-That is 45.3–245.2× fewer input tokens per query, not 45.3–245.2× less spend. The
+That is 54.9–259.3× fewer input tokens per query, not 54.9–259.3× less spend. The
 token ratio only becomes the cost ratio for uncached input billed per token.
 Prompt caching, flat-rate plans, and local models change the arithmetic, and
 output tokens are unaffected. Long context with prompt caching is the

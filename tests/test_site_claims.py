@@ -247,28 +247,27 @@ def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
     superseded = _superseded_ratios()
     for line in (
         "{ label: 'Fewer tokens', value: '46–263×', evidence: 'than pasting every source file' },",
+        "{ label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file' },",
         "ratio: '262.1×',",
-        "ratio: '78.0×',",
+        "ratio: '245.2×',",
     ):
         assert any(r in superseded for _, r in _ratios_in(line)), line
-    # A value that is canon again is no longer treated as replaced as a range
-    # endpoint: v4.3.4's 45.0× for requests is numerically the current range's
-    # low end.
-    assert 45.0 not in superseded and 45.0 in _allowed_ratios()
+    # The current range is canon, not replaced.
+    assert 54.0 in _allowed_ratios() and 260.0 in _allowed_ratios()
     current = (
-        "{ label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file' },"
+        "{ label: 'Fewer tokens', value: '54–260×', evidence: 'than pasting every source file' },"
     )
     assert not any(r in superseded for _, r in _ratios_in(current))
-    # Quoted on its own, though, it is still the replaced requests figure.
+    # Quoted on its own, a replaced per-repo figure is still caught.
     points = _superseded_ratios(point=True)
-    stale = "(The public benchmark’s 45.0× on the same repo is a different measurement"
+    stale = "(The public benchmark’s 45.3× on the same repo is a different measurement"
     assert any(not end and r in points for end, r in _ratio_claims_in(stale))
-    fresh = "(The public benchmark’s 45.3× on the same repo is a different measurement"
+    fresh = "(The public benchmark’s 54.9× on the same repo is a different measurement"
     assert not any(r in points for _, r in _ratio_claims_in(fresh))
     # The guard reads raw TSX: entity and ASCII spellings count too.
-    for stale_line in ("<p>46&ndash;263&times; fewer tokens</p>", "46-263x fewer tokens"):
+    for stale_line in ("<p>45&ndash;246&times; fewer tokens</p>", "45-246x fewer tokens"):
         assert any(r in superseded for _, r in _ratio_claims_in(stale_line)), stale_line
-    for current_line in ("<p>45&ndash;246&times; fewer tokens</p>", "45-246x fewer tokens"):
+    for current_line in ("<p>54&ndash;260&times; fewer tokens</p>", "54-260x fewer tokens"):
         assert not any(r in superseded for _, r in _ratio_claims_in(current_line)), current_line
 
 
