@@ -270,6 +270,32 @@ class TestMetricsCollector(unittest.TestCase):
         self.assertFalse(ok)
         self.assertLessEqual(today.stat().st_size, 300)
 
+    def test_rotation_keeps_a_record_appended_while_it_waits_for_the_lock(self) -> None:
+        from unittest import mock
+
+        from neuralmind import metrics_pipeline
+
+        collector = MetricsCollector(self.project, max_bytes=4000)
+        metrics = self.project / ".neuralmind" / "metrics"
+        metrics.mkdir(parents=True)
+        yesterday = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))
+        past = metrics / f"metrics_{yesterday}.jsonl"
+        big = json.dumps({"event": "query", "query": "x" * 1500})
+        past.write_text("".join(f"{big}\n" for _ in range(10)))
+        real_lock = metrics_pipeline._lock_file
+
+        def lock_after_a_late_append(fd: int) -> bool:
+            # A hook still on yesterday's path appends just before midnight.
+            with open(past, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"event": "late"}) + "\n")
+            return real_lock(fd)
+
+        with mock.patch.object(metrics_pipeline, "_lock_file", lock_after_a_late_append):
+            collector.rotate()
+        lines = past.read_text().splitlines()
+        self.assertEqual(json.loads(lines[-1]), {"event": "late"})
+        self.assertLessEqual(past.stat().st_size, 2000)
+
     def test_concurrent_processes_lose_and_tear_no_records(self) -> None:
         import os
         import subprocess

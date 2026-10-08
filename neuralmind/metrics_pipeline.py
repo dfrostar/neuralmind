@@ -238,25 +238,42 @@ class MetricsCollector:
                     f.unlink()
                     removed += 1
                 elif f.name != today and f.stat().st_size > self.max_bytes:
-                    # Keep the newest whole records that fit in half the cap
-                    # (at most 1,000), so the file ends up well under it even
-                    # when single records are large.
+                    self._truncate(f)
+        except Exception:
+            pass
+        return removed
+
+    def _truncate(self, path: Path) -> None:
+        """Keep the newest whole records that fit in half the cap (at most 1,000).
+
+        The file ends up well under the cap even when single records are
+        large. The read and the rewrite hold the append lock, so a hook still
+        appending to yesterday's file at midnight can't land a record between
+        them.
+        """
+        with _APPEND_LOCK:
+            fd = os.open(str(path), os.O_RDWR | getattr(os, "O_BINARY", 0))
+            locked = False
+            try:
+                locked = _lock_file(fd)
+                with os.fdopen(fd, "r+b", closefd=False) as f:
+                    text = f.read().decode("utf-8")
                     budget = self.max_bytes // 2
                     keep: list[str] = []
-                    for line in reversed(f.read_text(encoding="utf-8").splitlines()):
+                    for line in reversed(text.splitlines()):
                         size = len(line.encode("utf-8")) + 1
                         if size > budget or len(keep) >= 1000:
                             break
                         keep.append(line)
                         budget -= size
                     keep.reverse()
-                    f.write_text(
-                        "\n".join(keep) + "\n" if keep else "",
-                        encoding="utf-8",
-                    )
-        except Exception:
-            pass
-        return removed
+                    f.seek(0)
+                    f.truncate()
+                    f.write(("\n".join(keep) + "\n" if keep else "").encode("utf-8"))
+            finally:
+                if locked:
+                    _unlock_file(fd)
+                os.close(fd)
 
     def summarize(
         self,
