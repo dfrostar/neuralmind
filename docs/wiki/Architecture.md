@@ -668,9 +668,9 @@ sharper the longer the system runs.
 | **NeuralMind synapses (v0.4)** | **SQLite weighted graph** | **Persistent, continuously learning** | **Usage-based associative recall** |
 
 The agent never sees the synapse weights directly. It just gets better
-context: spreading-activation neighbors injected via the
-`UserPromptSubmit` hook, plus a markdown export that lands in Claude
-Code's auto-memory directory each session.
+context: the files each prompt matches and the code the synapse graph links
+to them, injected via the `UserPromptSubmit` hook, plus a markdown export
+that lands in Claude Code's auto-memory directory each session.
 
 ### Synapse store
 

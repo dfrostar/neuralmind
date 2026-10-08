@@ -85,6 +85,8 @@ keywords = [
     "compaction-recovery",
     "context-compaction",
     "recall-relevance-gating",
+    "cold-start-context",
+    "prompt-time-recall",
     "posttooluse-hook",
     "updated-tool-output",
     "noisy-log-trimming",

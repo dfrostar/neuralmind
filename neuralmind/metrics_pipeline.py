@@ -179,8 +179,8 @@ class MetricsCollector:
         """Log one prompt-time recall: ``injected``, or why it abstained.
 
         ``outcome`` is ``injected``, ``low_similarity`` (the prompt didn't
-        match the code well enough) or ``no_neighbors`` (nothing learned
-        around the match yet). No prompt text is kept.
+        match the code well enough) or ``no_neighbors`` (it matched, but no
+        match had a file to name). No prompt text is kept.
         """
         return self._append(
             {

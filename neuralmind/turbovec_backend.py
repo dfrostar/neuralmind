@@ -46,7 +46,7 @@ import numpy as np
 
 from .child_python import python_argv, python_cwd, python_env
 from .embedding_backend import EmbeddingBackend
-from .ir import node_community
+from .ir import CODE_SCOPE_EXTENSIONS, node_community
 from .paths import graph_json_path, vector_db_path
 from .progress import ProgressReporter, stream_is_tty
 from .secret_scan import redact_if_enabled
@@ -94,26 +94,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
     # File-type extension-based fallback for when file_type is generic/missing
     SCOPE_EXTENSIONS: dict[str, frozenset[str]] = {
-        "code": frozenset(
-            {
-                ".py",
-                ".js",
-                ".ts",
-                ".tsx",
-                ".jsx",
-                ".go",
-                ".rs",
-                ".java",
-                ".cs",
-                ".c",
-                ".cpp",
-                ".h",
-                ".rb",
-                ".php",
-                ".swift",
-                ".kt",
-            }
-        ),
+        "code": CODE_SCOPE_EXTENSIONS,
         "content": frozenset({".md", ".mdx", ".txt", ".rst", ".docx", ".pdf"}),
         "docs": frozenset({".md", ".mdx", ".txt", ".rst"}),
         "all": frozenset(),

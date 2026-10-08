@@ -140,27 +140,45 @@ def _rationale_owners(mind: Any) -> dict[str, str]:
 def _spread_with_aliases(
     store: Any,
     seeds: dict[str, float],
-    aliases: dict[str, float],
+    aliases: dict[str, dict[str, float]],
     depth: int,
     top_k: int,
 ) -> list[tuple[str, float]]:
     """Spread from ``seeds``, and from the rationale ids behind them.
 
-    Query feedback stores raw search-hit ids, so a rationale node can carry
-    learned edges of its own. Spreading from it separately and keeping each
-    neighbour's higher activation keeps those edges reachable without
-    applying one semantic hit's energy twice.
+    ``aliases`` maps a seed to its rationale ids and their scores. Query
+    feedback stores raw search-hit ids, so a rationale node can carry learned
+    edges of its own. A seed and its aliases reach each neighbour with the
+    highest of their activations, not the sum, so one semantic hit's energy
+    isn't applied twice; contributions from different seeds still add up, as
+    in one spread.
     """
     if not aliases:
         return store.spread(list(seeds.items()), depth=depth, top_k=top_k)
-    # Each spread can reach the other's seeds; neither is a neighbour.
+    # spread() is linear in its seeds, and its cost is the walk, not the cut:
+    # spread each group with nothing cut, then sum. No group lists another
+    # group's seeds as a neighbour.
+    starts = set(seeds) | {raw for own in aliases.values() for raw in own}
+    uncut = 1 << 30
     merged: dict[str, float] = {}
-    for own, other in ((seeds, aliases), (aliases, seeds)):
-        for node_id, energy in store.spread(
-            list(own.items()), depth=depth, top_k=top_k + len(other)
-        ):
-            if node_id not in other:
-                merged[node_id] = max(energy, merged.get(node_id, 0.0))
+
+    def add(ranked: list[tuple[str, float]]) -> None:
+        for node_id, energy in ranked:
+            if node_id not in starts:
+                merged[node_id] = merged.get(node_id, 0.0) + energy
+
+    plain = [(nid, score) for nid, score in seeds.items() if not aliases.get(nid)]
+    if plain:
+        add(store.spread(plain, depth=depth, top_k=uncut))
+    for nid, own in aliases.items():
+        if nid not in seeds or not own:
+            continue
+        # Each alias on its own: two rationale ids of one symbol are still one hit.
+        best = dict(store.spread([(nid, seeds[nid])], depth=depth, top_k=uncut))
+        for alias in own.items():
+            for node_id, energy in store.spread([alias], depth=depth, top_k=uncut):
+                best[node_id] = max(energy, best.get(node_id, 0.0))
+        add(list(best.items()))
     return sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[:top_k]
 
 
@@ -2533,7 +2551,7 @@ class NeuralMind:
             return [], 0.0
         owners = _rationale_owners(self)
         seeds: dict[str, float] = {}
-        aliases: dict[str, float] = {}
+        aliases: dict[str, dict[str, float]] = {}
         for hit in hits:
             if not hit.get("id"):
                 continue
@@ -2543,7 +2561,8 @@ class NeuralMind:
             # A code node and its own rationale can both match: one seed.
             seeds[node_id] = max(score, seeds.get(node_id, score))
             if raw_id != node_id:
-                aliases[raw_id] = max(score, aliases.get(raw_id, score))
+                own = aliases.setdefault(node_id, {})
+                own[raw_id] = max(score, own.get(raw_id, score))
         if not seeds:
             return [], 0.0
         ranked = _spread_with_aliases(store, seeds, aliases, depth=depth, top_k=top_k)

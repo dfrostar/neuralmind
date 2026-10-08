@@ -36,7 +36,7 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
-### v4.11.0 — Prompt recall that stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
+### v4.11.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
 Prompt-time recall used to add up to eight code nodes to almost any prompt,
 "thanks!" included, while missing most prompts that were about the code: their
@@ -48,10 +48,17 @@ index, 15 prompts about the code and 15 off-topic ones went from 5/15 and 10/15
 getting recall to 15/15 and 1/15; that's one repository and 30 prompts, and
 `python -m tests.benchmark.recall_gate`, run from a source checkout, reproduces
 the 15/15 and 1/15 or calibrates your own.
-`neuralmind metrics` counts how often recall injected or abstained. After
-Claude Code compacts a session, the session also gets its own first prompt,
-latest prompts (as written, up to 200 characters each) and edited files
-back, alongside the compaction summary. Whether either change improves answers isn't measured.
+`neuralmind metrics` counts how often recall injected or abstained. When it
+fires, the block names files, symbols and lines: the code the prompt matches,
+other files, mostly code, that the synapse graph links directly to it, and matching docs.
+On a freshly built project it used to list doc headings' neighbours as node
+ids instead; on fresh indexes it now names a file that answers the prompt for
+14 of 14 Click prompts and 14 of 15 held-out prompts about this repository
+(v4.9.2: 3 and 4), and `tests.benchmark.prompt_recall`, from a source
+checkout, reproduces that ([commands](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#reproduce-it)). After Claude Code compacts a session, the session also gets its own
+first prompt, latest prompts (as written, up to 200 characters each) and
+edited files back, alongside the compaction summary. Whether these changes
+improve answers isn't measured.
 [Pick up where you left off](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/pick-up-where-you-left-off.md) ·
 [`NEURALMIND_RECALL_MIN_SIMILARITY`](CLI-Reference#environment-variables) ·
 [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md).

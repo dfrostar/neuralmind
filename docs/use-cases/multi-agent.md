@@ -201,7 +201,7 @@ Useful pins for a multi-agent workflow:
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `NEURALMIND_EVENT_LOG` | `1` | `0` disables JSONL writer (in-process feed still works) |
-| `NEURALMIND_SYNAPSE_INJECT` | `1` | `0` disables spreading-activation context injection on `UserPromptSubmit` |
+| `NEURALMIND_SYNAPSE_INJECT` | `1` | `0` disables prompt-time recall (matching files and the code linked to them) on `UserPromptSubmit` |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | `0` disables session-start memory export |
 | `NEURALMIND_BYPASS` | unset | `1` switches off every NeuralMind hook action |
 
