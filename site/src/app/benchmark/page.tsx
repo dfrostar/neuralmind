@@ -26,7 +26,7 @@ export const metadata: Metadata = pageMetadata({
     ],
     ogTitle: 'The NeuralMind Public Benchmark',
     ogDescription:
-        '40 pre-registered queries on requests, click, flask and rich: 97.5% mean gold-file recall at 54–260× fewer tokens than pasting files — and the one query NeuralMind misses.',
+        '40 pre-registered queries on requests, click, flask and rich: the gold file found on all 40 at 51–242× fewer tokens than pasting files — and where NeuralMind still misses.',
 });
 
 /**
@@ -56,12 +56,12 @@ const REPOS: Repo[] = [
         name: 'requests',
         sha: '0e322af877',
         queries: 14,
-        ratio: '54.9×',
+        ratio: '51.2×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '41,729', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '26,543', mrr: '0.60' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '229', mrr: '0.92' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '759', mrr: '0.93', nm: true },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '816', mrr: '0.93', nm: true },
         ],
         misses: [],
     },
@@ -69,13 +69,13 @@ const REPOS: Repo[] = [
         name: 'click',
         sha: '874ca2bc1c',
         queries: 7,
-        ratio: '124.2×',
+        ratio: '117.1×',
         note: 'echo-util, missed from the v4.6.0 run until v4.12.0, is found again.',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '78,514', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.79', found: '71%', tokens: '45,059', mrr: '0.60' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '220', mrr: '0.86' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '632', mrr: '0.86', nm: true },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '670', mrr: '0.86', nm: true },
         ],
         misses: [],
     },
@@ -83,28 +83,26 @@ const REPOS: Repo[] = [
         name: 'flask',
         sha: 'c12a5d874c',
         queries: 10,
-        ratio: '73.1×',
-        note: 'The weakest repo in the corpus at 0.90 recall. request-wrapper was found in v4.11.1 and is missed at v4.12.0.',
+        ratio: '68.5×',
+        note: 'xfile-dispatch-context, missed in the v4.10.0 run, is found at v4.12.0. The plain vector baseline misses two of these ten queries.',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '59,013', mrr: '1.00' },
             { backend: 'ripgrep', recall: '0.85', found: '80%', tokens: '26,891', mrr: '0.65' },
             { backend: 'embedding-rag', recall: '0.85', found: '80%', tokens: '272', mrr: '0.74' },
-            { backend: 'neuralmind', recall: '0.90', found: '90%', tokens: '808', mrr: '0.70', nm: true },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '861', mrr: '0.72', nm: true },
         ],
-        misses: [
-            { query: 'request-wrapper', gold: 'wrappers.py', got: 'app.py, logging.py, helpers.py, testing.py' },
-        ],
+        misses: [],
     },
     {
         name: 'rich',
         sha: '7f580bdcf0',
         queries: 9,
-        ratio: '259.3×',
+        ratio: '242.0×',
         rows: [
             { backend: 'full-file', recall: '1.00', found: '100%', tokens: '232,483', mrr: '1.00' },
             { backend: 'ripgrep', recall: '1.00', found: '100%', tokens: '43,437', mrr: '0.75' },
             { backend: 'embedding-rag', recall: '1.00', found: '100%', tokens: '236', mrr: '0.94' },
-            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '897', mrr: '0.83', nm: true },
+            { backend: 'neuralmind', recall: '1.00', found: '100%', tokens: '961', mrr: '0.83', nm: true },
         ],
         misses: [],
     },
@@ -269,24 +267,24 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                     <h2 className="font-display text-xl font-bold text-white mb-5">What it comes to</h2>
                     <dl className="grid sm:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
                         <div className="border-b border-r border-carbon-border p-5">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Gold-file recall</dt>
+                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Gold file found</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">97.5%</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Mean over all 40 queries. Per repo it ranges 90–100% — <code className="font-mono text-[0.85em] text-slate-300">flask</code> is the floor.</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">40 of 40</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">Every query, on all four repos. A small sample: see where it still misses, below.</p>
                             </dd>
                         </div>
                         <div className="border-b border-r border-carbon-border p-5">
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Tokens vs pasting files</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">54–260×</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">51–242×</p>
                                 <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio.</p>
                             </dd>
                         </div>
                         <div className="border-b border-r border-carbon-border p-5">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Queries missed</dt>
+                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Top-5 hit rate, 150 questions</dt>
                             <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">1 of 40</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Named below, with the files it retrieved instead.</p>
+                                <p className="metric text-[1.75rem] text-white leading-none mb-2">93.3%</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">A larger retrieval eval on five repos. Its 10 misses are listed question by question.</p>
                             </dd>
                         </div>
                     </dl>
@@ -344,46 +342,25 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             evidence, it is advertising.
                         </p>
 
-                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">1 — The gold-file miss</h3>
-                        <div className="overflow-x-auto -mx-2 px-2 mb-6">
-                            <table className="w-full min-w-[32rem] border-collapse text-sm">
-                                <thead>
-                                    <tr className="border-b border-carbon-line">
-                                        <th scope="col" className="text-left font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2 pr-4">Query</th>
-                                        <th scope="col" className="text-left font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2 pr-4">Gold file(s)</th>
-                                        <th scope="col" className="text-left font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2">Retrieved instead</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {REPOS.flatMap((repo) =>
-                                        repo.misses.map((miss) => (
-                                            <tr key={miss.query} className="border-b border-carbon-border last:border-0">
-                                                <td className="py-2.5 pr-4 font-mono text-[0.8125rem] text-white align-top">
-                                                    {miss.query}
-                                                    <span className="block text-faint text-xs mt-0.5">{repo.name}</span>
-                                                </td>
-                                                <td className="py-2.5 pr-4 font-mono text-[0.8125rem] text-slate-300 align-top">{miss.gold}</td>
-                                                <td className="py-2.5 font-mono text-[0.8125rem] text-slate-400 align-top">{miss.got}</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">1 — Misses beyond these 40 queries</h3>
                         <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                            One miss in 40: <code className="font-mono text-[0.85em] text-slate-300">flask</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">request-wrapper</code> misses its
-                            gold file outright. It was found in v4.11.1 and is lost at v4.12.0, so <code className="font-mono text-[0.85em] text-slate-300">flask</code> is
-                            the weakest repo in the corpus at 0.90 recall. The previous committed run&rsquo;s three misses (v4.10.0) are found now: the two
-                            cross-file queries in <code className="font-mono text-[0.85em] text-slate-300">requests</code> and <code className="font-mono text-[0.85em] text-slate-300">flask</code>, and <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code>.
+                            This run finds every gold file, but 40 queries is a small sample, every earlier run had at least one
+                            miss, and the next code change can bring one back. The previous committed run&rsquo;s three misses (v4.10.0)
+                            are found now: the two cross-file queries in <code className="font-mono text-[0.85em] text-slate-300">requests</code> and <code className="font-mono text-[0.85em] text-slate-300">flask</code>, and <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code>.
+                            On the larger 150-question retrieval eval (five repos, including NeuralMind&rsquo;s own), the same build misses
+                            the gold file in the top five on 10 questions, listed in 
+                            <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/on-v4.12/report.md" className="text-electric-bright hover:underline">bench/retrieval</a>.
+                            On NeuralMind&rsquo;s own repository, four of its six misses are files vector search ranks outside the
+                            20 candidates NeuralMind re-ranks.
                         </p>
 
                         <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">2 — Token cost against a bare vector index</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">
                             The <code className="font-mono text-[0.85em] text-slate-300">embedding-rag</code> baseline is the top 8 entries of
                             NeuralMind&rsquo;s own vector index, nothing added. NeuralMind&rsquo;s recall is now at or above it on every
-                            repo &mdash; it ties on <code className="font-mono text-[0.85em] text-slate-300">requests</code>, <code className="font-mono text-[0.85em] text-slate-300">click</code> and <code className="font-mono text-[0.85em] text-slate-300">rich</code>, and finds one more
-                            gold file on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (0.90 against 0.85). But the baseline is cheaper on all four, and it still
-                            ranks the gold file higher on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (MRR 0.74 against 0.70) and <code className="font-mono text-[0.85em] text-slate-300">rich</code> (0.94 against 0.83).
+                            repo &mdash; it ties on <code className="font-mono text-[0.85em] text-slate-300">requests</code>, <code className="font-mono text-[0.85em] text-slate-300">click</code> and <code className="font-mono text-[0.85em] text-slate-300">rich</code>, and finds more
+                            gold files on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (1.00 against 0.85). But the baseline is cheaper on all four, and it still
+                            ranks the gold file higher on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (MRR 0.74 against 0.72) and <code className="font-mono text-[0.85em] text-slate-300">rich</code> (0.94 against 0.83).
                             Its token count is a floor: it sends a symbol&rsquo;s name, module and docstring, not
                             its code, where NeuralMind spends the difference assembling a
                             structured context — project map, the query&rsquo;s other candidates, eight ranked

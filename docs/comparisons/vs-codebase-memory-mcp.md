@@ -95,8 +95,8 @@ committed under
   we count the tokens of the whole files it surfaces at depth 8.
 - **Two repos, off by default.** This eval covers `requests` and `click`
   only, needs an external binary download, and has not been re-verified
-  against the four-repo corpus our main benchmark now uses (97.5% mean
-  gold-file recall, 90–100% per repo).
+  against the four-repo corpus our main benchmark now uses (the gold file
+  on 40 of 40 queries there).
 
 ## How NeuralMind differs architecturally
 

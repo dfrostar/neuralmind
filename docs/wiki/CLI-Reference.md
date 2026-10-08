@@ -861,13 +861,13 @@ run hasn't been compared across machines yet);
 [how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **90–100% gold-file recall (97.5% mean, 97.5% found-rate)
-at 54–260× fewer tokens** than pasting every source file, and beats `ripgrep` on
+— NeuralMind finds **the gold file on 40 of 40 queries at 51–242× fewer
+tokens** than pasting every source file, and beats `ripgrep` on
 cost on every repo; on recall it's ahead on 3 of 4 repos and ties on the fourth.
 The benchmark also reports, without hiding it, that NeuralMind's own vector index
 with nothing added (`embedding-rag`) ranks the gold file higher on `flask` and
-`rich` at fewer tokens, and that `flask` is NeuralMind's weakest repo in the
-corpus (1 of 40 queries missed, published). Full methodology,
+`rich` at fewer tokens. Forty queries is a small sample: the 150-question
+retrieval eval misses 10, published. Full methodology,
 results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
@@ -3895,8 +3895,10 @@ renewed — issue a new one.
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits (docstrings included) when the query asks for code (`query --type code`, MCP `query_type: "code"`); doc hits are multiplied by `0.5`. Re-ranks the 20-candidate pool before L3 is cut. *(v4.12.0+)* An intent **detected** from the question no longer applies it unless `NEURALMIND_AUTO_INTENT_BOOST=1`. |
 | `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when the query asks for docs (code hits are multiplied by `0.7`). Same v4.12.0 rule as `NEURALMIND_CODE_BOOST`. |
 | `NEURALMIND_AUTO_INTENT_BOOST` | unset | *(v4.12.0+)* Set to `1` to re-weight hits by the intent detected from the question's wording (the v4.11 behaviour). **Off by default:** on the retrieval eval it lost 3 questions and won none, and the markdown-heavy repository dropped from 77% to 67% hit@5 ([eval](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/on-v4.12/report.md)). A requested `--type` always re-weights. |
-| `NEURALMIND_L3_K` | `8` | *(v4.12.0+)* Search results in L3 per query (v4.11 and earlier: 4). Putting it back to `4` lost 14 of 150 questions on the retrieval eval. |
+| `NEURALMIND_L3_K` | `8` | *(v4.12.0+)* Search results in L3 per query (v4.11 and earlier: 4). Putting it back to `4` lost 4 of 150 questions on the retrieval eval. |
 | `NEURALMIND_L3_POOL` | `20` | *(v4.12.0+)* Fused vector + keyword candidates L3 is chosen from. The intent, code-signal and duplicate passes rank the whole pool before it is cut to `NEURALMIND_L3_K`; L2 lists the pool's candidates that L3 doesn't show. |
+| `NEURALMIND_L3_FILE_DECAY` | `0.6` | *(v4.12.0+)* Spreads L3 across files: the k-th further hit from a file L3 already shows keeps `0.6^k` of its score, so one file can't take all eight slots. Each file's first hit keeps its place, and the hits it moves out are listed in L2. `1` turns it off. On the self-benchmark fixture it took the top-k hit rate from 88% to 97%; without it the public benchmark misses flask's `request-wrapper`. |
+| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. |
 | `NEURALMIND_CODE_SIGNAL_CAP` | `1` | *(v4.12.0+)* Ceiling on the code-signal boost (a hit whose file name, label or text shares words with a code-intent question). `1` turns it off (the default); `N` turns it on, up to N× (v4.11: 10×, matching substrings of the whole path). On, it lost 2 questions on the retrieval eval. A markdown file is still marked down (×0.3) under a code intent. |
 | `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | *(v4.12.0+)* Comma-separated layers a query returns. `L0,L3` cuts tokens by 57% on the retrieval eval at the same hit@5, but loses the facts L1 and L2 carry (fact recall on the faithfulness fixture). `wakeup` is unaffected. |
 | `NEURALMIND_ORT_SESSION_CACHE` | auto | *(v4.12.0+)* `1` reuses one ONNX Runtime session per process for the bundled MiniLM embedder; `0` builds a new one per batch. Auto reuses everywhere except Python 3.14, where onnxruntime 1.29 deadlocks after a few runs on one session. Reusing it, a query embeds in about 3 ms instead of about 275 ms. |

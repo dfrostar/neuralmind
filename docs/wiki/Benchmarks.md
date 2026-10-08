@@ -29,25 +29,25 @@ NeuralMind is more than token reduction; the numbers below cover **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
-fixture** (real but smaller-scope): **(1) Cheaper context** — **90–100%
-gold-file recall (97.5% mean, 97.5% found-rate across 40 queries) at 54–260×
-fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
+fixture** (real but smaller-scope): **(1) Cheaper context** — **the gold
+file on 40 of 40 queries at 51–242× fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
 on recall on three of four (tying on the fourth); **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
-how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neutral**
-(reference fixture; +3.5 to +14 points across runs, CI gates the direction);
+how you work** — the Hebbian synapse layer never lowers top-k hit-rate, **budget-neutral**
+(reference fixture; +3.5 to +14 points in earlier releases, +0 at v4.12.0 where
+the fixture is at 97% without it; CI gates the direction);
 **(4) Answer grounding vs. naive truncation** — at a matched budget on the
-prose-heavy reference fixture, delta +0.251 at v4.12.0 (measured with CI's
+prose-heavy reference fixture, delta +0.265 at v4.12.0 (measured with CI's
 command on one machine; v4.11.1 +0.027 there), after a published loss of −0.054
 at v4.3.4; CI fails below −0.10. We report where NeuralMind *doesn't* win
 too — the plain vector baseline (the top 8 entries of NeuralMind's own index:
 names and docstrings, not code) is cheaper on raw tokens on every repo and still
-ranks the gold file higher on `flask` and `rich` (MRR 0.74 vs 0.70, 0.94 vs
-0.83), though its recall is at or below NeuralMind's; one of 40 queries misses
-its gold file, `flask`'s `request-wrapper` (see the public benchmark's "Where
-NeuralMind loses" section), and the competitor row is *pure
+ranks the gold file higher on `flask` and `rich` (MRR 0.74 vs 0.72, 0.94 vs
+0.83), though its recall is at or below NeuralMind's; 40 queries is a small
+sample, and the 150-question retrieval eval misses 10 (see the public
+benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
 retrieval ranking*, not their LLM-agent loop. Full tables and reproduction
 commands below.
 
@@ -76,7 +76,7 @@ token budget** — the honest comparison, not "small context vs the whole repo."
 
 | Metric (built-in backend, gold set) | What CI enforces | Measured |
 |---|---|---|
-| Expected-fact recall vs matched-budget naive | mean delta **≥ −0.10** (3 runs) | **+0.251** at v4.12.0 (0.825 vs 0.574, one machine); −0.054 at v4.3.4 (0.451 vs 0.505); earlier releases +0.013 to +0.143 |
+| Expected-fact recall vs matched-budget naive | mean delta **≥ −0.10** (3 runs) | **+0.265** at v4.12.0 (0.839 vs 0.574, one machine); −0.054 at v4.3.4 (0.451 vs 0.505); earlier releases +0.013 to +0.143 |
 | Grounding (right modules cited) | not gated | 0.843 at v4.3.4 |
 
 A positive delta would mean smart selection beats plain truncation **at equal
@@ -116,25 +116,27 @@ this repository):
 
 | | v4.11.1 | **v4.12.0** |
 |---|---:|---:|
-| hit@5 | 80.0% | **92.0%** |
-| MRR | 0.671 | **0.729** |
-| context tokens per question | 930 | **773** (−17%) |
+| hit@5 | 80.0% | **93.3%** |
+| MRR | 0.671 | **0.750** |
+| context tokens per question | 930 | **830** (−11%) |
 
-On the 40-query public benchmark, gold-file recall went from 95% (85.71–100% per repo) to **97.5%** (90–100% per repo), and from 45–246× to **54–260×** fewer tokens than pasting every file. <!-- claims-guard:allow — dated v4.11.1 comparison -->
+On the 40-query public benchmark, the gold file is now found on all 40 queries (v4.11.1: 95% recall, 85.71–100% per repo), and the ratio went from 45–246× to **51–242×** fewer tokens than pasting every file. <!-- claims-guard:allow — dated v4.11.1 comparison -->
 
-20 questions won and 2 lost on hit@5 (exact McNemar p = 0.0001); every
-repository improved (requests +3, click +4, flask +2, rich +3, this repository
-+6); the mean MRR change is +0.057, paired bootstrap 95% interval [+0.003,
-+0.109]. Each default was then put back one at a time (`on-v4.12`): four L3
-hits instead of eight costs 14 questions, re-weighting by detected intent 3, the
-code-signal boost 2. Since v4.12.0 the keep rule is **paired**: a configuration
+21 questions won and 1 lost on hit@5 (exact McNemar p < 0.0001); every
+repository improved (requests +3, click +4, flask +3, rich +3, this repository
++7); the mean MRR change is +0.079, paired bootstrap 95% interval [+0.024,
++0.132]. Each default was then put back one at a time (`on-v4.12`): four L3
+hits instead of eight costs 4 questions, re-weighting by detected intent 4, the
+code-signal boost 1, turning off the spread across files 1, and ranking tests
+like code 1 (and 0.020 MRR). Since v4.12.0 the keep rule is **paired**: a configuration
 is kept when, pooled over every question, it wins more hit@5 questions than it
 loses with an exact McNemar p < 0.05, no repository drops by more than two
 questions, and tokens rise by at most 10%. The v4.6.0 rounds below used the
 rule this replaced.
 
-Losses: flask's `request-wrapper` public query, found by v4.11.1, is missed;
-on flask and rich NeuralMind's MRR stays below the plain vector baseline's.
+Losses: 10 of the 150 questions are still missed, six of them on this
+repository; on flask and rich NeuralMind's MRR stays below the plain vector
+baseline's.
 Answer quality with a model in the loop is not measured.
 
 ## Retrieval eval (v4.6.0)

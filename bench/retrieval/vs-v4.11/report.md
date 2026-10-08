@@ -4,14 +4,14 @@ hit@5 / MRR / avg tokens, 30 questions per repo.
 
 | Repo | old | new |
 |---|---:|---:|
-| requests | 90% / 0.82 / 913 | 100% / 0.83 / 699 |
-| click | 87% / 0.76 / 721 | 100% / 0.87 / 602 |
-| flask | 87% / 0.73 / 848 | 93% / 0.74 / 744 |
-| rich | 80% / 0.59 / 912 | 90% / 0.66 / 750 |
-| neuralmind | 57% / 0.46 / 1,259 | 77% / 0.54 / 1,071 |
-| **pooled** | **80.0% / 0.671 / 930** | **92.0% / 0.729 / 773** |
+| requests | 90% / 0.82 / 913 | 100% / 0.83 / 752 |
+| click | 87% / 0.76 / 721 | 100% / 0.87 / 658 |
+| flask | 87% / 0.73 / 848 | 97% / 0.75 / 799 |
+| rich | 80% / 0.59 / 912 | 90% / 0.66 / 797 |
+| neuralmind | 57% / 0.46 / 1,259 | 80% / 0.64 / 1,145 |
+| **pooled** | **80.0% / 0.671 / 930** | **93.3% / 0.750 / 830** |
 
-hit@5 questions won / lost: **20 / 2** (exact McNemar p = 0.0001); per repo: requests +3, click +4, flask +2, rich +3, neuralmind +6. Mean MRR change +0.057 (paired bootstrap 95% interval [+0.003, +0.109]); mean tokens -17.0%.
+hit@5 questions won / lost: **21 / 1** (exact McNemar p = 0.0000); per repo: requests +3, click +4, flask +3, rich +3, neuralmind +7. Mean MRR change +0.079 (paired bootstrap 95% interval [+0.024, +0.132]); mean tokens -10.8%.
 
 Keep rule: **passes** — wins > losses, McNemar p < 0.05: yes; no repo drops >2 questions: yes; tokens ≤ +10%: yes.
 

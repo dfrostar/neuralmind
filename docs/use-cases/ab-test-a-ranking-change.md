@@ -145,8 +145,8 @@ NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --private ~/work/your-rep
   query latency, in the report.
 - **It compares two releases.** `python -m evals.retrieval.run --compare
   old/results.json new/results.json` pairs two runs question by question. That
-  is how v4.12.0 was checked against v4.11.1: hit@5 80.0% → 92.0% over 150
-  questions, 20 won and 2 lost (exact McNemar p = 0.0001)
+  is how v4.12.0 was checked against v4.11.1: hit@5 80.0% → 93.3% over 150
+  questions, 21 won and 1 lost (exact McNemar p < 0.0001)
   ([`bench/retrieval/vs-v4.11`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.11/report.md)).
 - **v4.6.0's run, under the rule it used then.** Two rows from it
   ([`bench/retrieval/vs-v4.5`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.5/report.md)):

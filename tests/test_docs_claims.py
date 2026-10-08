@@ -322,7 +322,8 @@ SUPERSEDED_BENCHMARK_FIGURES = [
     ),
 ]
 
-# The public benchmark's mean is 95% and its per-repo floor is 85.71%. A bare
+# Every public-benchmark run before v4.12.0 had a miss, and 40 of 40 at v4.12.0
+# is too small a sample to carry a perfect-recall claim. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
 PERFECT_RECALL_RE = re.compile(

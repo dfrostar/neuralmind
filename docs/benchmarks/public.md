@@ -74,7 +74,7 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 | `full-file` | 1.00 | 100% | 41,729 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 26,543 | 0.60 | 1.6× |
 | `embedding-rag` | 1.00 | 100% | 229 | 0.92 | 181.9× |
-| **`neuralmind`** | **1.00** | **100%** | **759** | **0.93** | **54.9×** |
+| **`neuralmind`** | **1.00** | **100%** | **816** | **0.93** | **51.2×** |
 
 No NeuralMind gold-file misses on this repo.
 
@@ -85,7 +85,7 @@ No NeuralMind gold-file misses on this repo.
 | `full-file` | 1.00 | 100% | 78,514 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 45,059 | 0.60 | 1.7× |
 | `embedding-rag` | 1.00 | 100% | 220 | 0.86 | 357.5× |
-| **`neuralmind`** | **1.00** | **100%** | **632** | **0.86** | **124.2×** |
+| **`neuralmind`** | **1.00** | **100%** | **670** | **0.86** | **117.1×** |
 
 No NeuralMind gold-file misses on this repo.
 
@@ -96,13 +96,9 @@ No NeuralMind gold-file misses on this repo.
 | `full-file` | 1.00 | 100% | 59,013 | 1.00 | 1× |
 | `ripgrep` | 0.85 | 80% | 26,891 | 0.65 | 2.2× |
 | `embedding-rag` | 0.85 | 80% | 272 | 0.74 | 217.0× |
-| **`neuralmind`** | **0.90** | **90%** | **808** | **0.70** | **73.1×** |
+| **`neuralmind`** | **1.00** | **100%** | **861** | **0.72** | **68.5×** |
 
-**Where it missed** (1 of 10):
-
-| query | gold files | files it retrieved |
-|---|---|---|
-| `request-wrapper` | `wrappers.py` | `app.py`, `logging.py`, `helpers.py`, `testing.py` |
+No NeuralMind gold-file misses on this repo.
 
 ### `rich` @ `7f580bdcf0` — 9 pre-registered queries
 
@@ -111,30 +107,31 @@ No NeuralMind gold-file misses on this repo.
 | `full-file` | 1.00 | 100% | 232,483 | 1.00 | 1× |
 | `ripgrep` | 1.00 | 100% | 43,437 | 0.75 | 5.4× |
 | `embedding-rag` | 1.00 | 100% | 236 | 0.94 | 985.5× |
-| **`neuralmind`** | **1.00** | **100%** | **897** | **0.83** | **259.3×** |
+| **`neuralmind`** | **1.00** | **100%** | **961** | **0.83** | **242.0×** |
 
 No NeuralMind gold-file misses on this repo.
 
 ### Aggregate across all 4 repos (40 queries)
 
-**90–100% gold-file recall per repo (97.5% mean over all 40 queries), 97.5%
-found-rate (39 of 40), 54.9×–259.3× fewer tokens than pasting whole files.**
-Neither number is uniform across repos — that's the honest picture, not a
-single cherry-picked ratio. `flask` is the weakest repo in the corpus at 90%
-recall (one miss in 10 queries); every other repo reaches 100%.
+**Every one of the 40 queries retrieved its gold files (40 of 40, found-rate
+100% on each repo), at 51.2×–242.0× fewer tokens than pasting whole files.**
+The token ratio is not uniform across repos — that's the honest picture, not a
+single cherry-picked ratio.
 
-The mean is **query-weighted**: 39 of 40 possible gold-file hits (a two-file
-query that retrieves one of its two gold files scores 0.5). The unweighted
-average of the four per-repo means is the same here, 97.5%; the
-query-weighted figure is the one we quote.
+Forty queries is a small sample, and a clean sweep on it is not a claim that
+NeuralMind never misses. On the 150-question retrieval eval
+([`bench/retrieval`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)),
+the same build puts a gold file in the top five for 93.3% of questions; the
+misses are listed there, question by question. Every earlier run of this
+benchmark had at least one miss, and the next code change can bring one back.
 
 ---
 
 ## What the numbers honestly say
 
 1. **Against what developers actually do today — paste files or grep — NeuralMind
-   is a large, real win, but not a perfect one.** It reaches **90–100% gold-file
-   recall (97.5% mean) at 54.9–259.3× fewer tokens** than pasting the files. It
+   is a large, real win, but not a perfect one.** It finds the gold file on all
+   40 queries **at 51.2–242.0× fewer tokens** than pasting the files. It
    beats `ripgrep` on cost on every repo, and on recall it's ahead on 3 of 4
    repos (`requests`, `click`, `flask`) and ties on the other one (`rich`),
    never behind. Most agents don't have a tuned vector index sitting there; they
@@ -145,14 +142,14 @@ query-weighted figure is the one we quote.
    `embedding-rag` is NeuralMind's own vector index with nothing added, so this
    comparison isolates what NeuralMind's ranking and context assembly add.
    - **Recall:** NeuralMind is now level with it on `requests`, `click` and
-     `rich`, and ahead on `flask` (0.90 vs 0.85). Across all 40 queries it is
-     97.5% to the baseline's 96.25%.
+     `rich`, and ahead on `flask` (1.00 vs 0.85). Across all 40 queries it is
+     40 of 40 to the baseline's 38.5.
    - **Before v4.12.0 it was the other way round:** the baseline matched or beat
      NeuralMind's recall on every repo, at 98.75% to 95%. The ranking layers were
      discarding gold files that vector search had found. See the
      [v4.12.0 release notes](../releases/RELEASE_NOTES_v4.12.0.md).
    - **Rank:** the baseline still places the gold file higher on `flask` (MRR
-     0.74 vs 0.70) and `rich` (0.94 vs 0.83).
+     0.74 vs 0.72) and `rich` (0.94 vs 0.83).
    - **Cost:** the baseline's token count is a floor, not what a vector RAG pays.
      It sends only each entry's indexed text: a symbol's name, module and
      docstring, never its code. NeuralMind's tokens buy the assembled context an
@@ -168,17 +165,20 @@ query-weighted figure is the one we quote.
 
 Three loss modes, reported plainly:
 
-- **One gold-file miss.** On `flask`, `request-wrapper` retrieves `app.py`,
-  `logging.py`, `helpers.py` and `testing.py`, but not its gold file
-  `wrappers.py`. It is a new miss in the v4.12.0 run; v4.10.0 found it. The
-  three v4.10.0 misses (`xfile-status-codes`, `echo-util`,
-  `xfile-dispatch-context`) are found now. These numbers move between code
+- **Misses outside these 40 queries.** This run has none, but the 150-question
+  retrieval eval misses the gold file in the top five on 10 questions, most
+  of them on `rich` and on this repository. On this repository four of its six
+  misses are vector-search misses: the gold file's best entry ranks 23rd to
+  39th, past the 20 candidates NeuralMind re-ranks. The other two are in the
+  pool, but five other files rank above them. The three v4.10.0 misses here (`xfile-status-codes`,
+  `echo-util`, `xfile-dispatch-context`) and `request-wrapper`, missed by an
+  earlier v4.12.0 build, are found now. These numbers move between code
   changes; see ["The corpus"](#the-corpus) below. Full per-query detail is in the
   tables above and in [`bench/public/results.json`](../../bench/public/results.json).
 - **Rank quality against bare vector retrieval.** On `flask` and `rich`, the
   baseline ranks the gold file higher. The re-ranking NeuralMind adds still
   costs some rank on those two repos.
-- **Token cost against bare vector retrieval.** NeuralMind spends 2.9–3.8× the
+- **Token cost against bare vector retrieval.** NeuralMind spends 3.0–4.1× the
   baseline's tokens to deliver assembled context. If your only need is "which
   file", a bare vector index is cheaper.
 
@@ -421,6 +421,8 @@ is 0.69 on `click` (was 0.60) and 0.72 on `flask` (was 0.70), and NeuralMind's
 - Keyword search ignores question words.
 - Nodes embed as their name, module and docstring.
 - L2 lists the query's other candidates.
+- L3 spreads its eight hits across files, and ranks test files below the code
+  they test unless the question asks about tests.
 
 The benchmark harness changed too:
 - The `neuralmind` backend runs read-only; it used to train the index it
@@ -431,10 +433,10 @@ The benchmark harness changed too:
 The movement:
 - `requests` recovers `xfile-status-codes` (0.96 → 1.00), `click` recovers
   `echo-util` (0.86 → 1.00), and `flask` recovers `xfile-dispatch-context`
-  but now misses `request-wrapper` (0.95 → 0.90). `rich` stays at 1.00.
-- Net: 95% → 97.5% mean, 92.5% → 97.5% found-rate, 3 misses → 1.
-- Tokens per question fell on `requests`, `click` and `rich` and rose on
-  `flask`, so the range moved to 54.9–259.3×. <!-- claims-guard:allow — the v4.10.0 range this regeneration replaced -->
+  (0.95 → 1.00). `rich` stays at 1.00.
+- Net: 3 misses → 0, found-rate 92.5% → 100%.
+- Tokens per question fell on `requests` and `click` and rose on `flask` and
+  `rich`, so the range moved to 51.2–242.0×. <!-- claims-guard:allow — the v4.10.0 range this regeneration replaced, this line and the next -->
   It was 45.3–245.2×.
 - The `embedding-rag` baseline's numbers moved with the new embedded text:
   fewer tokens per entry, and recall 0.85 on `flask` (was 0.95).

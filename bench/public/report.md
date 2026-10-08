@@ -16,9 +16,9 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 | `full-file` | 1.00 | 100% | 41729 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 26543  (1.6× fewer) | 0.60 |
 | `embedding-rag` | 1.00 | 100% | 229  (181.9× fewer) | 0.92 |
-| `neuralmind` | 1.00 | 100% | 759  (54.9× fewer) | 0.93 |
+| `neuralmind` | 1.00 | 100% | 816  (51.2× fewer) | 0.93 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **54.9× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **51.2× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._
 
@@ -31,9 +31,9 @@ _No NeuralMind gold-file misses on this repo._
 | `full-file` | 1.00 | 100% | 78514 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 45059  (1.7× fewer) | 0.60 |
 | `embedding-rag` | 1.00 | 100% | 220  (357.5× fewer) | 0.86 |
-| `neuralmind` | 1.00 | 100% | 632  (124.2× fewer) | 0.86 |
+| `neuralmind` | 1.00 | 100% | 670  (117.1× fewer) | 0.86 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **124.2× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **117.1× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._
 
@@ -46,15 +46,11 @@ _No NeuralMind gold-file misses on this repo._
 | `full-file` | 1.00 | 100% | 59013 | 1.00 |
 | `ripgrep` | 0.85 | 80% | 26891  (2.2× fewer) | 0.65 |
 | `embedding-rag` | 0.85 | 80% | 272  (217.0× fewer) | 0.74 |
-| `neuralmind` | 0.90 | 90% | 808  (73.1× fewer) | 0.70 |
+| `neuralmind` | 1.00 | 100% | 861  (68.5× fewer) | 0.72 |
 
-**Headline:** NeuralMind reaches **90% gold-file recall** at **73.1× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **68.5× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
-### Where NeuralMind loses
-
-| query | gold | retrieved files |
-|---|---|---|
-| `request-wrapper` | wrappers.py | app.py, logging.py, helpers.py, testing.py |
+_No NeuralMind gold-file misses on this repo._
 
 ## rich  `@7f580bdcf0`
 
@@ -65,8 +61,8 @@ _No NeuralMind gold-file misses on this repo._
 | `full-file` | 1.00 | 100% | 232483 | 1.00 |
 | `ripgrep` | 1.00 | 100% | 43437  (5.4× fewer) | 0.75 |
 | `embedding-rag` | 1.00 | 100% | 236  (985.5× fewer) | 0.94 |
-| `neuralmind` | 1.00 | 100% | 897  (259.3× fewer) | 0.83 |
+| `neuralmind` | 1.00 | 100% | 961  (242.0× fewer) | 0.83 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **259.3× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **242.0× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._

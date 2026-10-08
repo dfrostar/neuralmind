@@ -16,8 +16,8 @@ raised two repos and lowered none.
 
 | Directory | Baseline | What it decided |
 |---|---|---|
-| [`vs-v4.11/`](vs-v4.11/report.md) | v4.11.1 | The v4.12.0 retrieval against v4.11.1 (`--compare`): pooled hit@5 **80.0% → 92.0%**, MRR 0.671 → 0.729 (95% interval of the change [+0.003, +0.109]), 20 questions won and 2 lost (McNemar p = 0.0001), every repo up, tokens −17%. |
-| [`on-v4.12/`](on-v4.12/report.md) | v4.12.0 | Each v4.12.0 default put back one at a time. Four L3 hits instead of eight: 14 questions lost. The code-signal boost: 2 lost. Re-weighting by detected intent: 3 lost. L0+L3 only: no hit@5 change at 57% fewer tokens, but on the faithfulness fixture L2 carries facts (fact recall 0.825 with it), so it stays. BM25 off: 1 won, 6 lost. |
+| [`vs-v4.11/`](vs-v4.11/report.md) | v4.11.1 | The v4.12.0 retrieval against v4.11.1 (`--compare`): pooled hit@5 **80.0% → 93.3%**, MRR 0.671 → 0.750 (95% interval of the change [+0.024, +0.132]), 21 questions won and 1 lost (McNemar p < 0.0001), every repo up, tokens −11%. |
+| [`on-v4.12/`](on-v4.12/report.md) | v4.12.0 | Each v4.12.0 default put back one at a time. Four L3 hits instead of eight: 4 questions lost. The code-signal boost: 1 lost. Re-weighting by detected intent: 4 lost. L0+L3 only: no hit@5 change at 60% fewer tokens, but on the faithfulness fixture L2 carries facts (fact recall 0.839 with it), so it stays. BM25 off: 1 won, 2 lost. No spread across files: 1 lost. Tests ranked like code: 1 lost, MRR −0.020. None passes the keep rule, so every default stays. |
 | [`vs-v4.5/`](vs-v4.5/report.md) | v4.5.0 retrieval | Of nine configurations, only `bm25_unified` — one BM25 index over docs and code — passed: mean hit@5 72.8% → 79.4%, MRR 0.589 → 0.654, three repos up (flask +3, neuralmind +6, private +4 questions), requests −1, tokens +1.1%, public recall 93.75% → 95.00%. It became the v4.6.0 default. |
 | [`on-v4.6/`](on-v4.6/report.md) | v4.6.0 (unified BM25 on) | No remaining item passed on top of it. The closest, the per-file cap, raised two repos and lost none (public recall 96.25%) but the rule asks for three. |
 
@@ -43,7 +43,7 @@ decided per release.
 ## Reproduce
 
 ```bash
-NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --configs baseline,l3_k4,code_signal,auto_intent,l3_only,bm25_off --out bench/retrieval/on-v4.12
+NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --configs baseline,l3_k4,code_signal,auto_intent,l3_only,bm25_off,no_diversity,tests_equal --out bench/retrieval/on-v4.12
 python -m evals.retrieval.run --compare bench/retrieval/vs-v4.11/results-v4.11.1.json bench/retrieval/vs-v4.11/results-v4.12.0.json
 python -m evals.retrieval.run --private ~/work/your-repo   # add your own repo, locally
 ```

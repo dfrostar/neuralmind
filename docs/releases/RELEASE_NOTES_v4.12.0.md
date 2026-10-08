@@ -1,4 +1,4 @@
-# NeuralMind v4.12.0 — retrieval that keeps what vector search finds: 92% hit@5 on the retrieval eval, 97.5% public-benchmark recall, 14 ms queries
+# NeuralMind v4.12.0 — retrieval that keeps what vector search finds: 93% hit@5 on the retrieval eval, 40 of 40 on the public benchmark, 13–14 ms queries
 
 **Type:** Minor release | **Themes:** [ranking](#1-l3-ranks-a-pool-of-20-and-keeps-eight) · [what gets embedded](#4-what-a-node-is-embedded-as) · [speed](#5-speed) · [JavaScript](#6-javascript-repositories-get-code-nodes) · [fixes](#7-fixes) · [measurement](#8-measurement)
 
@@ -8,7 +8,7 @@ else: on the public benchmark, the `embedding-rag` baseline — NeuralMind's
 `NeuralMind.query` pipeline on gold-file recall on all four repositories, at
 fewer tokens. The layers on top of vector search were taking accuracy away.
 
-Four things did it:
+Four things did it, and a fifth showed up once they were fixed:
 
 - L3 kept only **four** hits, and every re-ranking pass ran *after* that cut, so
   nothing could rescue a gold file at fused rank 5–8.
@@ -21,6 +21,10 @@ Four things did it:
 - **A node embedded as metadata.** A method was embedded without its class, and
   without the docstring that says what it does, beside a line number and a
   cluster number that carry no meaning.
+- **One file could take every slot.** With eight hits, a question about how
+  users are stored got eight entries from `users/crud.py` and none from the
+  database module it also needed. On this repository, test files took two to
+  seven of the eight.
 
 v4.12.0 fixes each one. Every change was measured on the 150-question retrieval
 eval and the 40-query public benchmark. Each ranking default was then checked
@@ -30,35 +34,38 @@ by putting it back one at a time.
 
 | | v4.11.1 | **v4.12.0** |
 |---|---:|---:|
-| Retrieval eval: hit@5, 150 questions over 5 repos | 80.0% | **92.0%** |
-| Retrieval eval: MRR | 0.671 | **0.729** |
-| Retrieval eval: context tokens per question | 930 | **773** (−17%) |
-| Public benchmark: gold-file recall, 40 queries | 95% (85.71–100% per repo) | **97.5%** (90–100% per repo) |
-| Public benchmark: fewer tokens than pasting every file | 45–246× | **54–260×** |
-| Faithfulness fixture: gold facts in the context (one machine) | 0.559 | **0.825** |
-| Self-benchmark fixture: top-k hit rate / reduction (one machine) | 75% / 5.1× | **88% / 5.6×** |
-| Query latency, p50 (one machine, see below) | 266–348 ms | **14–19 ms** |
-| Indexing this repository (19,629 nodes, one machine) | 22 min | **6.7 min** |
+| Retrieval eval: hit@5, 150 questions over 5 repos | 80.0% | **93.3%** |
+| Retrieval eval: MRR | 0.671 | **0.750** |
+| Retrieval eval: context tokens per question | 930 | **830** (−11%) |
+| Public benchmark: queries whose gold file is found, of 40 | 37 | **40** |
+| Public benchmark: fewer tokens than pasting every file | 45–246× | **51–242×** |
+| Faithfulness fixture: gold facts in the context (one machine) | 0.559 | **0.839** |
+| Self-benchmark fixture: top-k hit rate / reduction (one machine) | 75% / 5.1× | **97% / 5.4×** |
+| Query latency, p50, four library repos (one machine, see below) | 266–348 ms | **13–14 ms** |
+| Query latency, p50 / p95, this repository (19.9k nodes, one machine) | not measured | **21 / 38 ms** |
+| Indexing this repository (19.9k nodes, one ONNX thread, one machine) | 22 min | **5.1 min** |
 
-- **Retrieval eval:** 20 questions won and 2 lost on hit@5 (exact McNemar
-  p = 0.0001). Every repository improved: requests +3, click +4, flask +2,
-  rich +3, this repository +6. The mean MRR change is +0.057, with a paired
-  bootstrap 95% interval of [+0.003, +0.109].
+- **Retrieval eval:** 21 questions won and 1 lost on hit@5 (exact McNemar
+  p < 0.0001). Every repository improved: requests +3, click +4, flask +3,
+  rich +3, this repository +7. The mean MRR change is +0.079, with a paired
+  bootstrap 95% interval of [+0.024, +0.132]. It still misses 10 of the 150;
+  they are listed question by question.
   [`bench/retrieval/vs-v4.11`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/vs-v4.11/report.md)
-- **Public benchmark:** NeuralMind now finds every gold file on requests, click
-  and rich, and 9 of 10 on flask.
+- **Public benchmark:** NeuralMind finds the gold file on all 40 queries. That
+  is a small sample, not a claim of zero misses: the 150-question eval above
+  is the larger test, and every earlier run of this benchmark had a miss.
   [`docs/benchmarks/public.md`](../benchmarks/public.md)
 - **Evidence levels.**
   - *Reproducible on demand:* the retrieval eval, the public benchmark, and the
     two fixture gates (the self-benchmark and faithfulness runs, also CI gates).
-  - *One machine, not committed as data:* query latency and indexing time,
-    measured by a local harness on a 4-core container. The retrieval eval now
-    records p50/p95 query latency, so the next release's comparison is
-    committed.
+  - *One machine:* query latency and indexing time, on a 4-core container.
+    v4.12.0's latency is the committed retrieval eval run's
+    (`bench/retrieval/on-v4.12`, synapse recall on, one ONNX thread); v4.11.1's
+    came from a local harness and was not committed. Latency moves by machine.
   - *Fixture rows:* both versions were run on the same 4-core container with
-    the CI workflow's commands. CI's own runner measured v4.12.0 at a
-    **85.1% hit rate and 5.8×**, and fact recall 0.825 (the parity gate). The
-    gates pass either way; the numbers move by machine.
+    the CI workflow's commands. CI's own runner reports its numbers in the
+    self-benchmark job; they have differed from this container's by a few
+    points, and the gates pass either way.
 
 ## 1. L3 ranks a pool of 20 and keeps eight
 
@@ -69,14 +76,32 @@ by putting it back one at a time.
     the duplicate collapse, and the boosts below.
   - Only then is the pool cut to eight.
   - The structural and synapse passes then re-rank those eight, as before.
-- **Putting four back costs 14 of the 150 questions** (`on-v4.12`, `l3_k4`).
+- **Putting four back costs 4 of the 150 questions** (`on-v4.12`, `l3_k4`).
 - **Settings:** `NEURALMIND_L3_K` (default 8) and `NEURALMIND_L3_POOL`
   (default 20).
 - **Duplicates collapse.** Hits that repeat the same text in the same file
   collapse into the best-ranked one. In requests, `ok`, `__bool__` and
   `__nonzero__` share one docstring, and they used to take three of the four
   slots.
-
+- **Hits spread across files.** Each further hit from a file L3 already shows
+  keeps 0.6× the score of the one before it, so a second file competes for
+  the slots a single file used to fill. Each file's first hit keeps its place,
+  and the hits it moves out are listed in L2.
+  - On the self-benchmark fixture the top-k hit rate went from 88% to 97%: the
+    "how are users stored" question now gets `db/connection.py` beside
+    `users/crud.py`.
+  - Without it, the public benchmark misses flask's `request-wrapper`, which
+    v4.11.1 found.
+  - Turning it off (`NEURALMIND_L3_FILE_DECAY=1`) costs 1 of the 150
+    questions.
+- **Tests rank below the code they test.** A hit from a test file (`tests/`,
+  `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) scores half,
+  unless the question mentions tests.
+  - On this repository the eval's MRR went from 0.54 to 0.64; turning it off
+    (`NEURALMIND_TEST_FILE_FACTOR=1`) costs 1 question and 0.020 MRR, 95%
+    interval [−0.036, −0.007].
+  - click's `testing.py` is product code, not a test file, and is not
+    demoted.
 ## 2. Boosts that no longer outvote the ranking
 
 - **Requested types only.** Code-or-docs re-weighting now applies only when the
@@ -84,12 +109,12 @@ by putting it back one at a time.
   - An intent *detected* from the wording of the question no longer re-weights
     hits. The detector is a keyword heuristic, and it read "how does X…"
     questions as documentation questions.
-  - Turning detected-intent re-weighting back on costs 3 questions overall, and
-    the markdown-heavy repository drops from 77% to 67%.
+  - Turning detected-intent re-weighting back on costs 4 questions overall, and
+    the markdown-heavy repository drops from 80% to 67%.
   - `NEURALMIND_AUTO_INTENT_BOOST=1` restores it.
 - **Code-signal boost off.** It multiplied a hit by up to 10 when a word of the
   question appeared in its path, label or text.
-  - It is now off by default; on, it costs 2 questions.
+  - It is now off by default; on, it costs 1 question.
   - When on, it matches whole words of the **file name**. It used to match
     substrings of the whole path, so the package directory (`requests`, `click`)
     matched every file, and one-letter names like click's `F` matched almost
@@ -110,16 +135,20 @@ by putting it back one at a time.
   relevant cluster in graph order. That was the same for every query and
   unrelated to it: for a question about click's `echo`, it showed
   `_compat.py: CYGWIN, WIN, _ansi_re`.
-- **Now:** it lists this query's candidates that L3 doesn't show, pool ranks
-  9–20, grouped by cluster.
+- **Now:** it lists this query's candidates that L3 doesn't show, grouped by
+  cluster: up to 12 lines from the pool of 20, in relevance order.
+  - There is no per-cluster cap any more. With L3 spread across files, the
+    best file's other candidates land here, and a cap of seven dropped the
+    user record's fields on the faithfulness fixture (fact recall 0.788 capped,
+    0.839 uncapped).
 - **Faithfulness fixture:**
   - With everything else in v4.12.0 held fixed, this change alone took fact
     recall from 0.723 to 0.825.
   - Against v4.11.1, the context now beats a naive context of the same size by
-    +0.25. In v4.11.1 the margin was +0.03.
+    +0.26. In v4.11.1 the margin was +0.03.
 - **L1 is unchanged.**
 - **Setting:** `NEURALMIND_QUERY_LAYERS` picks which layers a query returns.
-  `L0,L3` cuts tokens by 57% on the retrieval eval at the same hit@5, but loses
+  `L0,L3` cuts tokens by 60% on the retrieval eval at the same hit@5, but loses
   the facts L2 carries.
 
 ## 4. What a node is embedded as
@@ -164,6 +193,10 @@ Send a given PreparedRequest.
     attention-masked, the vectors are bit-for-bit identical (maximum
     difference 0.0 on mixed-length inputs).
   - An indexing batch of 32 runs about 6.7× faster.
+- **Length-sorted batches.** Texts are sorted by token length before they are
+  batched, so a batch no longer pads to its one long docstring. Same vectors,
+  bit for bit; 3,000 of this repository's nodes embed in 27 s instead of 63 s
+  on one thread.
 - **Session reuse.** It now reuses one ONNX session per process instead of
   building one (~150 ms) for every call.
   - A query embeds in about 3 ms instead of about 275 ms.
@@ -172,6 +205,13 @@ Send a given PreparedRequest.
   - `NEURALMIND_ORT_SESSION_CACHE=0` or `=1` forces either way.
 - **Inverted keyword index.** BM25 searches an inverted index instead of
   scanning every document for every query term. The scores are the same.
+- **Synapse lookups use the node indexes.** With no table statistics, SQLite
+  planned each synapse lookup onto the namespace index, so spreading
+  activation scanned every edge in the store once per node it visited. On this
+  repository's 28.8k-edge store the retrieval eval measured p50 74 ms and p95
+  450 ms, most of it in those scans. The lookup now uses the `node_a`/`node_b`
+  indexes and returns the same rows: p50 21 ms, p95 38 ms. A test checks
+  SQLite's plan for every lookup.
 - **Indexing outside Python 3.14** runs in-process instead of starting a
   subprocess for every 256 texts.
 
@@ -259,13 +299,12 @@ The click question "how does echo print a message with a newline to stdout"
 ## Relevant Code Areas
 
 ### Cluster 2 (relevance: 2.22)
+- stdout() (code) — testing.py
 - readline() (code) — testing.py
 - STDOUT_HANDLE (code) — _winconsole.py
-- EchoingStdin (code) — testing.py
 …
 ### Cluster 1 (relevance: 1.96)
 - get_binary_stdout() (code) — _compat.py
-- echo_via_pager() (code) — termui.py
 
 ## Search Results
 
@@ -273,22 +312,28 @@ The click question "how does echo print a message with a newline to stdout"
    Type: rationale
    File: utils.py
 
-2. **echo()** (score: 0.96)
-   Type: code
-   File: utils.py
-
-3. **_echo()** (score: 0.92)
+2. **_echo()** (score: 0.92)
    Type: code
    File: testing.py
-…
-8. **_get_text_stdout()** (score: 0.51)
+
+3. **get_text_stdout()** (score: 0.64)
    Type: code
-   File: _winconsole.py
+   File: _compat.py
+
+4. **echo()** (score: 0.58)
+   Type: code
+   File: utils.py
+…
+8. **_default_text_stdout** (score: 0.33)
+   Type: code
+   File: _compat.py
 ```
 
 - **v4.11.1** returned four hits for this question, in 632 tokens. The top two
   were the same. Its L2 listed each cluster's first seven nodes:
   `_compat.py`, `CYGWIN`, `WIN`, `_ansi_re` and so on.
+- `echo()` is fourth, not second: it is the second hit from `utils.py`, so it
+  gives way to the best hits from three other files. The file is still first.
 - A code hit no longer repeats `Entity: … Type: … File: …` as a snippet under
   its own title. Only document hits carry a snippet.
 - On the public benchmark's version of this question (`echo-util`), v4.11.1
@@ -309,6 +354,8 @@ The click question "how does echo print a message with a newline to stdout"
 |---|---|---|
 | `NEURALMIND_L3_K` | `8` | L3 search results per query (v4.11: 4) |
 | `NEURALMIND_L3_POOL` | `20` | Fused candidates L3 is chosen from |
+| `NEURALMIND_L3_FILE_DECAY` | `0.6` | Score kept by each further hit from a file L3 already shows; `1` turns the spread off |
+| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | Score multiplier for test-file hits unless the question mentions tests; `1` turns it off |
 | `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | Layers a query returns |
 | `NEURALMIND_AUTO_INTENT_BOOST` | unset | `1` re-weights hits by the intent detected from the question (v4.11 behaviour) |
 | `NEURALMIND_CODE_SIGNAL_CAP` | `1` (off) | `N` turns the code-signal boost back on, up to N× (v4.11: 10) |
@@ -319,30 +366,36 @@ The click question "how does echo print a message with a newline to stdout"
 - **Answer quality with a model in the loop is not measured.** Every number
   above is about whether the right file, or the right fact, reaches the
   context.
-- **Rank of the gold file.** On flask and rich, NeuralMind's MRR (0.70, 0.83) is
+- **Rank of the gold file.** On flask and rich, NeuralMind's MRR (0.72, 0.83) is
   still below the plain vector baseline's (0.74, 0.94). Recall is at or above
   it.
-- **One public query lost.** `request-wrapper` on flask (gold `wrappers.py`)
-  was found in v4.11.1 and is missed now.
+- **10 of 150 retrieval-eval questions missed.** Six are on this repository,
+  three on rich, one on flask. Four of this repository's six are vector-search
+  misses: the gold file's best entry ranks 23rd to 39th, past the 20
+  candidates NeuralMind re-ranks. A stronger general-purpose embedder of the
+  same size (bge-small-en-v1.5) was tried and lost: hit@5 96.7% → 92.5% on the
+  four library repositories, at 2.7× the query time.
 - **The parameter tuner is not wired in.** It still writes its choice where the
   selector doesn't read it, and its live evaluation doesn't pass candidate
   settings through the selector. Wiring it as it stands would steer budgets
   toward their minimum. It stays opt-in and inert until that is fixed.
-- **The synapse layer's lift is measured only on the fixture** (+2.6 points on
-  CI's runner this release; +5 on the container, where v4.11.1 measured +6),
-  whose seeded sessions overlap its gold answers.
-  There is no real-repository measurement yet.
+- **The synapse layer's lift is measured only on the fixture**, whose seeded
+  sessions overlap its gold answers. With hits spread across files the fixture
+  reaches 97% with recall off, and recall adds nothing on it this release
+  (v4.11.1: +6 on the same container). The CI gate is that it never lowers the
+  hit rate, and it doesn't. There is no real-repository measurement yet.
 
 ## Upgrading
 
 - **Run `neuralmind build` once.** Every node's embedded text changed, so the
   first build after upgrading re-embeds every node once.
-  - A full build took 6.7 minutes for this repository's 19,629 nodes on a
-    4-core container. Re-embedding the four library repositories (548–2,069
-    nodes) took 13–41 seconds each.
+  - A full build took 5.1 minutes for this repository's 19.9k nodes on a
+    4-core container with one ONNX thread. The four library repositories
+    (548–2,069 nodes) took 6–17 seconds each.
   - Later builds re-embed only what changed.
 - **Restore v4.11 ranking:** `NEURALMIND_L3_K=4 NEURALMIND_CODE_SIGNAL_CAP=10
-  NEURALMIND_AUTO_INTENT_BOOST=1`.
+  NEURALMIND_AUTO_INTENT_BOOST=1 NEURALMIND_L3_FILE_DECAY=1
+  NEURALMIND_TEST_FILE_FACTOR=1`.
 - **No index format change.** No hook re-install.
 
 ## Reproduce
@@ -352,7 +405,8 @@ git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 pip install -e . tiktoken
 NEURALMIND_ORT_THREADS=1 python -m evals.public.run --out bench/public
 NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run \
-  --configs baseline,l3_k4,code_signal,auto_intent,l3_only,bm25_off --out bench/retrieval/on-v4.12
+  --configs baseline,l3_k4,code_signal,auto_intent,l3_only,bm25_off,no_diversity,tests_equal \
+  --out bench/retrieval/on-v4.12
 python -m evals.retrieval.run --compare \
   bench/retrieval/vs-v4.11/results-v4.11.1.json bench/retrieval/vs-v4.11/results-v4.12.0.json
 ```

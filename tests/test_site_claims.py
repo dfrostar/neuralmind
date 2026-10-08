@@ -81,8 +81,10 @@ _DASH = r"\s*(?:×|&times;|&#215;|x)?\s*(?:–|—|-|&ndash;|&mdash;|&#8211;)\s*
 RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _DASH + r"(\d+(?:\.\d+)?)" + _TIMES)
 SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _TIMES)
 
-# "100% recall" in any word order within a short window. The public
-# benchmark's mean is 95% and its per-repo floor is 85.71% (click).
+# "100% recall" in any word order within a short window. Every public
+# benchmark run before v4.12.0 had a miss; v4.12.0 finds all 40 gold files, but
+# 40 queries cannot carry a perfect-recall claim (the 150-question retrieval
+# eval still misses 10), so the site says "40 of 40 queries" instead.
 PERFECT_RECALL_RE = re.compile(
     r"100\s*%[^.<>{}]{0,40}?recall|recall[^.<>{}]{0,40}?100\s*%", re.IGNORECASE
 )
@@ -253,21 +255,21 @@ def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
     ):
         assert any(r in superseded for _, r in _ratios_in(line)), line
     # The current range is canon, not replaced.
-    assert 54.0 in _allowed_ratios() and 260.0 in _allowed_ratios()
+    assert 51.0 in _allowed_ratios() and 242.0 in _allowed_ratios()
     current = (
-        "{ label: 'Fewer tokens', value: '54–260×', evidence: 'than pasting every source file' },"
+        "{ label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file' },"
     )
     assert not any(r in superseded for _, r in _ratios_in(current))
     # Quoted on its own, a replaced per-repo figure is still caught.
     points = _superseded_ratios(point=True)
     stale = "(The public benchmark’s 45.3× on the same repo is a different measurement"
     assert any(not end and r in points for end, r in _ratio_claims_in(stale))
-    fresh = "(The public benchmark’s 54.9× on the same repo is a different measurement"
+    fresh = "(The public benchmark’s 51.2× on the same repo is a different measurement"
     assert not any(r in points for _, r in _ratio_claims_in(fresh))
     # The guard reads raw TSX: entity and ASCII spellings count too.
     for stale_line in ("<p>45&ndash;246&times; fewer tokens</p>", "45-246x fewer tokens"):
         assert any(r in superseded for _, r in _ratio_claims_in(stale_line)), stale_line
-    for current_line in ("<p>54&ndash;260&times; fewer tokens</p>", "54-260x fewer tokens"):
+    for current_line in ("<p>51&ndash;242&times; fewer tokens</p>", "51-242x fewer tokens"):
         assert not any(r in superseded for _, r in _ratio_claims_in(current_line)), current_line
 
 
@@ -298,10 +300,9 @@ def test_site_does_not_claim_perfect_gold_file_recall() -> None:
                 rel = path.relative_to(REPO_ROOT)
                 violations.append(f"{rel}:{lineno}: {line.strip()[:110]}")
     assert not violations, (
-        "The site claims 100% gold-file recall. The public benchmark reports "
-        "95% mean across 40 queries (0.96 requests / 0.86 click / 0.95 flask "
-        "/ 1.00 rich) and publishes every miss — quote the mean and the range:\n  "
-        + "\n  ".join(violations)
+        "The site claims 100% gold-file recall. Forty queries cannot carry "
+        "that claim, and the 150-question retrieval eval still misses 10 — say "
+        "'40 of 40 queries' and quote the larger eval beside it:\n  " + "\n  ".join(violations)
     )
 
 
@@ -525,9 +526,11 @@ def test_public_benchmark_headline_matches_the_committed_run() -> None:
     )
     lo = min(bench["per_repo_recall"].values())
     hi = max(bench["per_repo_recall"].values())
+    # A range whose ends meet (every repo at 100%) is stated once.
+    per_repo = f"{_pct(lo)}-{_pct(hi)}% per repo" if lo != hi else f"{_pct(lo)}% on every repo"
     expected = [
         f"{_pct(bench['mean'])}% gold-file recall",
-        f"{_pct(lo)}-{_pct(hi)}% per repo",
+        per_repo,
         f"{_pct(bench['found_rate'])}% found-rate",
     ]
     missing = [e for e in expected if e not in headline]

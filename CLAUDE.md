@@ -74,9 +74,12 @@ Rules that follow from it:
 - **Say which kind of evidence it is.** CI-gated, reproducible-on-demand, a
   one-repo field report, and a community submission are not the same strength
   of claim, and the site says which is which.
-- **Quote the mean and the range, publish the misses.** Gold-file recall is
-  97.5% mean / 90–100% per repo, not "100%". The docs already report where
-  NeuralMind loses; the site must not round that away.
+- **Quote the mean and the range, publish the misses.** The public benchmark
+  finds the gold file on 40 of 40 queries at v4.12.0, and the site still says
+  "40 of 40", not "100% recall": 40 queries is a small sample, and the
+  150-question retrieval eval misses 10, which the site quotes beside it. The
+  docs already report where NeuralMind loses; the site must not round that
+  away.
 - **A headline needs its raw data committed.** The public-benchmark figures
   are recomputed in CI from `bench/public/results.json`; re-running the
   benchmark means committing that file (`--out bench/public`) and updating

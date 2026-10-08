@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Benchmarks — CI-verified &amp; community-submitted · NeuralMind</title>
-    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (90–100% gold-file recall per repo, 97.5% mean, at 54–260× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
+    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (the gold file on 40 of 40 queries, at 51–242× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
     <meta name="keywords" content="neuralmind, benchmark, token reduction, gold-file recall, claude code, mcp, llm cost optimization, real-world numbers, community benchmarks, code retrieval benchmark">
     <link rel="canonical" href="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:title" content="NeuralMind Benchmarks — real numbers from real codebases">
-    <meta property="og:description" content="90–100% gold-file recall per repo (97.5% mean) at 54–260× fewer tokens on pinned real OSS repos, reproducible with one command — plus community-submitted measurements.">
+    <meta property="og:description" content="The gold file on 40 of 40 queries at 51–242× fewer tokens on pinned real OSS repos, reproducible with one command — plus community-submitted measurements.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="NeuralMind Benchmarks — real numbers from real codebases">
@@ -79,8 +79,8 @@
 
 <div class="stats-band">
     <div class="container band-grid">
-        <div class="band-stat"><b>90–100%</b><span>gold-file recall per repo on pinned real OSS repos (97.5% mean)</span></div>
-        <div class="band-stat"><b>54–260×</b><span>fewer tokens than pasting whole files</span></div>
+        <div class="band-stat"><b>40 of 40</b><span>queries find their gold file on pinned real OSS repos</span></div>
+        <div class="band-stat"><b>51–242×</b><span>fewer tokens than pasting whole files</span></div>
         <div class="band-stat"><b>40</b><span>pre-registered queries — every one reported</span></div>
         <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos, vs the CLI's fixed 50K-token estimate</span></div>
     </div>
@@ -123,7 +123,7 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">41,729</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">26,543</td><td class="num">1.6×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">229</td><td class="num">181.9×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">759</td><td class="num"><span class="win">54.9×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">816</td><td class="num"><span class="win">51.2×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -141,7 +141,7 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">78,514</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">45,059</td><td class="num">1.7×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">220</td><td class="num">357.5×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">632</td><td class="num"><span class="win">124.2×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">670</td><td class="num"><span class="win">117.1×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -159,11 +159,11 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">59,013</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.85</td><td class="num">26,891</td><td class="num">2.2×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">0.85</td><td class="num">272</td><td class="num">217.0×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">0.90</span></td><td class="num">808</td><td class="num"><span class="win">73.1×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">861</td><td class="num"><span class="win">68.5×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="result-meta">Misses 1 of 10 (<code>request-wrapper</code>, gold <code>wrappers.py</code>; found by v4.11.1) — the weakest repo in the corpus.</p>
+                <p class="result-meta">No NeuralMind gold-file misses on this repo (<code>xfile-dispatch-context</code>, missed by v4.11.1, is found).</p>
             </div>
             <div class="result-block">
                 <h3><code>rich</code> @ <code>7f580bdcf0</code></h3>
@@ -177,14 +177,14 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">232,483</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">1.00</td><td class="num">43,437</td><td class="num">5.4×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">236</td><td class="num">985.5×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">897</td><td class="num"><span class="win">259.3×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">961</td><td class="num"><span class="win">242.0×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
                 <p class="result-meta">No NeuralMind gold-file misses on this repo.</p>
             </div>
         </div>
-        <p class="note"><b>Read the losses too:</b> across all 4 repos (40 queries), NeuralMind's mean recall is 97.5% (97.5% found-rate, 1 miss) — <code>flask</code> is the weakest repo at 0.90 recall, where <code>request-wrapper</code>, found by v4.11.1, is missed now. <code>embedding-rag</code> is the top 8 entries of NeuralMind's own vector index, nothing added. NeuralMind's recall is at or above it on every repo, but it is cheaper on all four, and it still ranks the gold file higher on <code>flask</code> (MRR 0.74 vs 0.70) and <code>rich</code> (0.94 vs 0.83). Its token count is a floor: it sends a symbol's name, module and docstring, not code, where NeuralMind spends the difference on a structured context (project map, the query's other candidates, eight ranked hits). Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>. These tables were regenerated at v4.12.0, with the <code>neuralmind</code> backend run read-only and its tokens counted with the benchmark's tokenizer — <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md">what changed</a>.</p>
+        <p class="note"><b>Read the losses too:</b> NeuralMind finds the gold file on all 40 queries, but 40 is a small sample: on the 150-question retrieval eval it misses 10, listed in <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/on-v4.12/report.md">bench/retrieval</a>. <code>embedding-rag</code> is the top 8 entries of NeuralMind's own vector index, nothing added. NeuralMind's recall is at or above it on every repo, but it is cheaper on all four, and it still ranks the gold file higher on <code>flask</code> (MRR 0.74 vs 0.72) and <code>rich</code> (0.94 vs 0.83). Its token count is a floor: it sends a symbol's name, module and docstring, not code, where NeuralMind spends the difference on a structured context (project map, the query's other candidates, eight ranked hits). Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>. These tables were regenerated at v4.12.0, with the <code>neuralmind</code> backend run read-only and its tokens counted with the benchmark's tokenizer — <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md">what changed</a>.</p>
 
         <div class="codeblock">
             <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind

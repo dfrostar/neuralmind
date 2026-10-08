@@ -14,9 +14,9 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // The site's own rule is that a CI gate and a per-repo mean are not the same
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
-    { label: 'Gold-file recall', value: '97.5%', evidence: 'mean; 90–100% per repo', figure: true },
-    { label: 'Fewer tokens', value: '54–260×', evidence: 'than pasting every source file', figure: true },
-    { label: 'Pre-registered queries', value: '40', evidence: '4 public repos, every miss published', figure: true },
+    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos', figure: true },
+    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file', figure: true },
+    { label: 'Top-5 hit rate', value: '93.3%', evidence: '150-question eval, 5 repos, every miss published', figure: true },
     { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
 ];
 
@@ -77,9 +77,9 @@ export default function Hero() {
                             Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
                             NeuralMind maps your repo, learns which files belong together as you
                             work, and hands your agent the right code first —{' '}
-                            <span className="text-slate-100 font-medium">97.5% mean gold-file recall at
-                            54–260× fewer tokens</span> than pasting every source file, on a
-                            public 40-query benchmark. No telemetry. MIT core.
+                            <span className="text-slate-100 font-medium">the gold file on 40 of 40 benchmark
+                            queries at 51–242× fewer tokens</span> than pasting every source file,
+                            with every miss on a larger 150-question eval published. No telemetry. MIT core.
                         </p>
 
                         <div className="flex flex-wrap items-center gap-3">
