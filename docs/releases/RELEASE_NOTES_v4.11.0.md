@@ -18,15 +18,15 @@ injected isn't what the agent needed:
    records the session's prompts and edited files as you work (v4.8.0), but gave
    them back only to the *next* session. After a compaction, the session now gets
    its own record back: its prompts as written, up to 200 characters each, and
+   the files it edited.
 3. **On a freshly built project, prompt recall named documentation headings,
    not code.** Asked which files in Click parse command-line options, it
    listed eight `docs_*` node ids, six of them at activation 0.00. The block
    now names the files and symbols the prompt matches, the code linked to them,
    and matching docs, as paths. It does this for Hermes too, since the plugin
    runs the same hook action.
-   the files it edited.
 
-No new hooks and no re-install: both changes ride on the `UserPromptSubmit`
+No new hooks and no re-install: all three ride on the `UserPromptSubmit`
 and `SessionStart` hooks NeuralMind already registers. The hook block's version
 is unchanged.
 

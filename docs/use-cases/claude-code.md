@@ -39,7 +39,7 @@ Code matching this prompt:
 Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
 ```
 
-The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt that isn't about the code, like "yes", gets nothing. On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.10.0.md#measured)); whether that makes the agent's answers better isn't measured.
+The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt that isn't about the code, like "yes", gets nothing. On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#measured)); whether that makes the agent's answers better isn't measured.
 
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 

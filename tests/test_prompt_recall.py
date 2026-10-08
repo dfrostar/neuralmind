@@ -167,6 +167,17 @@ def test_a_docstring_spreads_at_its_own_score_not_its_symbols(tmp_path):
     assert result.linked_ids == [RESOLVE, RUNNER]
 
 
+def test_an_all_negative_match_reports_its_raw_best_score():
+    # A cosine backend's scores can be negative; the gate and the metrics
+    # read the best of them, not a floor of 0.
+    result = recall(_Mind(None, hits=[(PARSER, -0.3), (RUNNER, -0.1)]), "q")
+    assert result.similarity == -0.1
+
+
+def test_no_match_has_a_best_score_of_zero():
+    assert recall(_Mind(None, hits=[]), "q").similarity == 0.0
+
+
 def test_a_path_or_label_cant_add_lines_to_the_block():
     evil = "src_evil_py__run_fn"
     nodes = NODES + [

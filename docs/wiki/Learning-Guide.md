@@ -204,8 +204,9 @@ cat .neuralmind/SYNAPSE_MEMORY.md
 
 ## How synapse learning happens
 
-Four activation paths, all of which strengthen pairwise edges between
-co-active nodes (Hebbian: "nodes that fire together wire together"):
+Four paths keep the synapse graph current. Three strengthen pairwise edges
+between co-active nodes (Hebbian: "nodes that fire together wire together"),
+and `SessionStart` ages them:
 
 1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
 2. **`PostToolUse` hook on Edit/Write** — when the agent's new code reuses existing symbols, their edges are reinforced (reuse feedback).

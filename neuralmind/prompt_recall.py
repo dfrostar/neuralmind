@@ -127,13 +127,14 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     info: dict[str, dict] = {}
     # A rationale hit's own id and score, by the code node it belongs to.
     rationale_ids: dict[str, dict[str, float]] = {}
-    similarity = 0.0
+    # The raw best score: a cosine backend's can be negative.
+    similarity: float | None = None
     for hit in hits or []:
         raw_id = hit.get("id")
         if not raw_id:
             continue
         score = float(hit.get("score", 0.0))
-        similarity = max(similarity, score)
+        similarity = score if similarity is None else max(similarity, score)
         node_id = _synapse_node(str(raw_id), owners)
         node = nodes.get(node_id)
         if node is None:
@@ -146,7 +147,7 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         bucket = code if node.get("file_type") == "code" else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
 
-    result = PromptRecall(similarity=similarity, code=bool(code))
+    result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
     primary, secondary = (code, other) if code else (other, {})
     tests_last = not _TEST_PROMPT.search(prompt)
     result.matches = _by_file(primary, info, MATCH_FILES, tests_last=tests_last)
