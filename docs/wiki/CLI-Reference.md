@@ -1333,7 +1333,8 @@ a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
 `backend: graph`, `chroma`, `chromadb` or `in_memory` it reports
 `not applicable: the <backend> backend keeps no turbovec index` with status
 `ok`, and no longer creates `.neuralmind/neuralmind_turbovec/store.sqlite`
-to inspect. `neuralmind build` runs the same check before embedding, also
+to inspect. A backend name `neuralmind` doesn't support, such as a typo, is a
+warning instead. `neuralmind build` runs the same check before embedding, also
 only on turbovec projects.
 
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any

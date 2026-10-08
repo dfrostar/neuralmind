@@ -217,6 +217,26 @@ def test_turbovec_check_not_applicable_off_turbovec(temp_project, backend):
     assert not (temp_project / ".neuralmind" / "neuralmind_turbovec").exists()
 
 
+def test_turbovec_check_warns_on_an_unsupported_backend(temp_project):
+    # A typo isn't "not applicable": create_backend rejects it, so say so.
+    (temp_project / "neuralmind-backend.yaml").write_text("backend: turvovec\n", encoding="utf-8")
+    check = doctor._check_turbovec_version(temp_project)
+    assert check.status == doctor.WARN
+    assert "turvovec" in check.detail
+    assert "not applicable" not in check.detail
+    assert not (temp_project / ".neuralmind" / "neuralmind_turbovec").exists()
+
+
+def test_supported_backends_are_what_create_backend_serves(tmp_path):
+    from neuralmind import backend_manager as bm
+
+    with pytest.raises(ValueError, match="Unsupported backend"):
+        bm.create_backend("turvovec", str(tmp_path))
+    assert "turvovec" not in bm.SUPPORTED_BACKENDS
+    assert bm.TURBOVEC_BACKENDS <= bm.SUPPORTED_BACKENDS
+    assert {"graph", "chroma", "chromadb", "in_memory"} <= bm.SUPPORTED_BACKENDS
+
+
 @pytest.mark.parametrize(
     "config", [None, "backend: auto\n", "backend: turbovec\n", "backend: turboquant\n"]
 )

@@ -67,6 +67,10 @@ def resolve_backend(backend: str | None) -> str:
 
 # The backend names create_backend serves with TurboVecEmbedder.
 TURBOVEC_BACKENDS = frozenset({"turbovec", "turboquant"})
+CHROMA_BACKENDS = frozenset({"graph", "chroma", "chromadb"})
+IN_MEMORY_BACKENDS = frozenset({"in_memory", "inmemory", "memory"})
+# Every name create_backend serves, after resolve_backend.
+SUPPORTED_BACKENDS = TURBOVEC_BACKENDS | CHROMA_BACKENDS | IN_MEMORY_BACKENDS
 
 _CONFIG_NAMES = ("neuralmind-backend.yaml", "neuralmind-backend.yml", "neuralmind-backend.json")
 
@@ -140,7 +144,7 @@ def create_backend(
     scope: str = "all",
 ) -> EmbeddingBackend:
     normalized = resolve_backend(backend)
-    if normalized in {"graph", "chroma", "chromadb"}:
+    if normalized in CHROMA_BACKENDS:
         # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
         # the chroma backend is actually selected, so the turbovec backend can
         # run without it. See issue #204. As of v0.29.0 ChromaDB is an opt-in
@@ -162,7 +166,7 @@ def create_backend(
             raise
 
         return GraphEmbedder(project_path, db_path=db_path)
-    if normalized in {"in_memory", "inmemory", "memory"}:
+    if normalized in IN_MEMORY_BACKENDS:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
     if normalized in TURBOVEC_BACKENDS:
         # Lazy import, mirroring the chroma branch — keeps construction symmetric

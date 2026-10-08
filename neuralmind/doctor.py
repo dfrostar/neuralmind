@@ -441,11 +441,21 @@ def _check_turbovec_version(project: Path) -> Check:
     then report an index that doesn't exist as compatible.
     """
     try:
-        from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
+        from neuralmind.backend_manager import (
+            SUPPORTED_BACKENDS,
+            TURBOVEC_BACKENDS,
+            project_backend,
+        )
 
         backend_name = project_backend(project)
     except Exception as e:
         return Check("Turbovec compatibility", WARN, f"could not resolve backend ({e})")
+    if backend_name not in SUPPORTED_BACKENDS:
+        return Check(
+            "Turbovec compatibility",
+            WARN,
+            f"could not resolve backend (unsupported backend: {backend_name})",
+        )
     if backend_name not in TURBOVEC_BACKENDS:
         return Check(
             "Turbovec compatibility",
