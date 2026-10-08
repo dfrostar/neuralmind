@@ -1,10 +1,11 @@
-# NeuralMind v4.11.0 — prompt recall that stays quiet when the prompt isn't about the code, and a session's own record back after compaction
+# NeuralMind v4.11.0 — prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction
 
-**Type:** Minor release | **Themes:** prompt-time recall ([a gate, and a seeding fix](#prompt-recall-that-knows-when-to-add-nothing)) · compaction ([the session's own record back](#after-compaction-the-sessions-own-record)) · `query` ranking ([the project's code before its tests, examples and docs](#query-finds-the-projects-code-not-its-tests-examples-and-docs))
+**Type:** Minor release | **Themes:** prompt-time recall ([a gate, and a seeding fix](#prompt-recall-that-knows-when-to-add-nothing); [files and symbols, from the first turn](#prompt-recall-names-files-from-the-first-turn)) · compaction ([the session's own record back](#after-compaction-the-sessions-own-record)) · `query` ranking ([the project's code before its tests, examples and docs](#query-finds-the-projects-code-not-its-tests-examples-and-docs))
 
 Two of the most common complaints about agent context are that tools inject
 too much, and that compaction makes the agent forget. Both applied to
-NeuralMind's Claude Code hooks:
+NeuralMind's Claude Code hooks, and so did a third, that what does get
+injected isn't what the agent needed:
 
 1. **Prompt-time recall fired on prompts that had nothing to do with the
    code.** Every prompt has nearest neighbours in the index, however poor the
@@ -18,8 +19,14 @@ NeuralMind's Claude Code hooks:
    them back only to the *next* session. After a compaction, the session now gets
    its own record back: its prompts as written, up to 200 characters each, and
    the files it edited.
+3. **On a freshly built project, prompt recall named documentation headings,
+   not code.** Asked which files in Click parse command-line options, it
+   listed eight `docs_*` node ids, six of them at activation 0.00. The block
+   now names the files and symbols the prompt matches, the code linked to them,
+   and matching docs, as paths. It does this for Hermes too, since the plugin
+   runs the same hook action.
 
-No new hooks and no re-install: both changes ride on the `UserPromptSubmit`
+No new hooks and no re-install: all three ride on the `UserPromptSubmit`
 and `SessionStart` hooks NeuralMind already registers. The hook block's version
 is unchanged.
 
@@ -78,7 +85,7 @@ python -m tests.benchmark.recall_gate /path/to/project --prompts my_prompts.json
 ```
 
 `--prompts` takes a JSON file with `on_topic` and `off_topic` lists. It prints
-each prompt's similarity, how many nodes recall would inject without the gate
+each prompt's similarity, how many files the block would name without the gate
 (the "Seeding fix only" row) and a sweep from 0.25 to 0.40: on-topic prompts
 kept against off-topic prompts let through (0.35 is the v4.11.0 row). It runs
 the current code only, so it can't rerun the first row: v4.9.1's recall
@@ -92,14 +99,159 @@ the prompt text, and `neuralmind metrics` shows the totals:
 ```
 Prompts seen by recall........          212
 Recall injected...............          131
-Abstained: low similarity.....           74
-Abstained: nothing learned....            7
+Abstained: low similarity.....           81
+Abstained: nothing to name....            0
 Abstain rate..................        38.2%
 ```
 
-(Illustrative numbers.) "Nothing learned" means the prompt matched the code,
-but the synapse layer has no edges around the match yet. Nothing is logged
-under `NEURALMIND_NO_LEARN=1`.
+(Illustrative numbers.) "Nothing to name" means the prompt matched well
+enough, but none of its matches belongs to a file. Since the block names the
+matches themselves ([below](#prompt-recall-names-files-from-the-first-turn)),
+that's rare. Nothing is logged under `NEURALMIND_NO_LEARN=1`.
+
+## Prompt recall names files, from the first turn
+
+### What was wrong
+
+`neuralmind build` doesn't leave the synapse graph empty: it seeds it with the
+code's structural edges (calls, imports, inheritance) and links each doc
+heading to its page. On [Click](https://github.com/pallets/click) (2,801 nodes,
+4,635 seeded edges), "which files in this repo handle parsing command-line
+options?" got this from v4.9.2:
+
+```
+## NeuralMind associative recall
+
+- docs_parameters_md (activation 0.05)
+- docs_arguments_md (activation 0.05)
+- docs_parameters_md__h3 (activation 0.00)
+- docs_parameters_md__h20 (activation 0.00)
+- docs_parameters_md__h32 (activation 0.00)
+- docs_arguments_md__h3 (activation 0.00)
+- docs_arguments_md__h24 (activation 0.00)
+- docs_arguments_md__h64 (activation 0.00)
+```
+
+`src/click/parser.py` and `src/click/core.py` are the answer. In a live Hermes
+turn, that block was all the model got, and it answered from what it already
+knew about Click. Three causes:
+
+- **Recall listed only neighbours.** It searched for the prompt's four nearest
+  nodes and listed what spreading activation reached from them. Spreading
+  activation never returns its seeds, so the code that matched best was never
+  named. `core.py`'s `make_parser()` was the fifth-best match and
+  `parser.py`'s `_OptionParser` the ninth.
+- **Doc headings crowded out code.** Click's docs are thorough, so headings
+  were two of the four nearest nodes, and the only edges a heading has lead to
+  its page and the page's other headings.
+- **Node ids aren't paths.** `src_click_core_py__command_cls__make_parser_fn`
+  still has to be turned into a file to open.
+
+The seeding fix [above](#prompt-recall-that-knows-when-to-add-nothing) helps
+when a docstring matches best, but on its own it still named neither
+`parser.py` nor `core.py` for this prompt.
+
+### What the agent sees now
+
+The same prompt, the same fresh index:
+
+```
+## NeuralMind associative recall
+
+Code matching this prompt:
+- src/click/core.py: make_parser() L1256, Parameter L2241
+- src/click/parser.py: _OptionParser L224, parse_args() L298
+- examples/repo/repo.py: cli() L44
+- src/click/_termui_impl.py: _less_uses_raw_mode() L520
+Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
+```
+
+- **Code matching this prompt:** up to 4 files, each with up to 3 matching
+  symbols and the line they start on. The hook reads the 16 nearest nodes, not
+  4, and a docstring match counts as its function. Files rank by the summed
+  scores of their matching symbols, so a file with several matches outranks
+  one stray match. Test files come after the code they test, unless the prompt
+  mentions tests, because they repeat the code's vocabulary and match about as
+  well.
+- **Connected to it in the synapse graph:** up to 3 files in other places that
+  the graph links directly to the listed code: it spreads from up to 4 of the
+  listed files' matches, each file's best first, then their next best.
+  Structural edges on a fresh index, co-edits as you work. A hub, like Click's `echo()`
+  that 305 nodes link to, is damped the way spreading activation already damps
+  a hub's outgoing energy, and a link carrying under 5% of the best match's
+  score is dropped. On the fresh Click index this part is empty
+  for this prompt. After five simulated sessions that edited `parser.py`
+  together with `shell_completion.py` and `testing.py`, it reads:
+
+  ```
+  Connected to it in the synapse graph:
+  - src/click/testing.py: ExceptionInfo L29, EchoingStdin L32
+  - src/click/shell_completion.py: shell_complete() L19, CompletionItem L67
+  ```
+
+  v4.9.2 and the seeding fix alone named neither file on that graph.
+- **Docs:** one line, up to 3 documentation files.
+
+When none of a prompt's matches is code (a book indexed with
+`ingest-content`, or a question only the docs answer), its matching documents
+are the main list. Everything else is as before: the
+heading, the similarity gate, `NEURALMIND_SYNAPSE_INJECT=0`, and the opt-in
+cohesion check (`NEURALMIND_SYNAPSE_OUTLIERS=1`), which now reads the linked
+nodes.
+
+### Measured
+
+Each prompt has the files that answer it, chosen by reading the code before
+anything ran. A prompt counts as *named* when the block names any of them, and
+*first* when the first code file it lists is one of them. Fresh indexes, no
+usage; tokens are tiktoken `o200k_base`, per injected block.
+
+| | Click, 14 prompts: named | first | tokens, mean (max) | NeuralMind, 15 prompts: named | first | tokens, mean (max) |
+|---|---|---|---|---|---|---|
+| v4.9.2 | 3 | 3 | 124 (177) | 4 | 1 | 155 (167), 6 prompts got a block |
+| Seeding fix + gate only | 8 | 7 | 137 (183) | 14 | 6 | 153 (172) |
+| **v4.11.0** | **14** | **11** | **120 (173)** | **14** | **10** | **132 (189)** |
+
+The raw runs behind this table, every block included, are in
+[`tests/benchmark/prompt_recall_results.json`](https://github.com/dfrostar/neuralmind/blob/main/tests/benchmark/prompt_recall_results.json):
+one fresh index per set, built by v4.11.0, with each release's hook run on it.
+The warm-graph and timing figures below come from runs whose data isn't
+committed.
+
+The Click set is the one the ranking was tuned on (summed scores, tests after
+code). The NeuralMind set, the on-topic prompts of `recall_gate` above at
+commit `edbc239c`, was held out. Its one miss, "fix the claims guard test for
+site numbers", has no test file among its 16 nearest nodes; its best match
+scores 0.375, just over the gate. On the simulated warm Click graph, v4.11.0
+named an answering file for 14 of 14 prompts, against 4 for v4.9.2 and 8 for
+the seeding fix alone.
+
+The hook isn't slower. Loading the index, searching and spreading takes a
+median 133–171 ms per prompt across these three indexes, against 132–190 ms
+for the seeding fix alone, on an M3 MacBook (two runs each). Linking one hop
+out instead of two keeps a prompt about a much co-edited file fast: on the
+warm graph the 90th percentile is 154–199 ms, against 278–372 ms. Two hops
+never named an answering file that one hop missed, and on the warm graph they
+lost one (13 of 14). The MCP `neuralmind_synaptic_neighbors` tool still
+spreads two hops and returns node ids.
+
+### Reproduce it
+
+From a NeuralMind source checkout (the harness is in `tests/`, which the PyPI
+package doesn't include):
+
+```bash
+git clone https://github.com/pallets/click
+git -C click checkout 2247b35ea1c47c727d7a06e51fa280e12a863ff6
+neuralmind build click
+python -m tests.benchmark.prompt_recall click --prompts tests/benchmark/prompt_recall_click.json
+# The NeuralMind set, on a built checkout of the commit it names:
+python -m tests.benchmark.prompt_recall . --prompts tests/benchmark/prompt_recall_neuralmind.json -v
+```
+
+It runs the hook's own function and reads both the new block and the old
+node-id lines, so `PYTHONPATH=<older checkout> python tests/benchmark/prompt_recall.py …`
+measures an earlier release. `-v` prints every block.
 
 ## After compaction, the session's own record
 
@@ -325,19 +477,28 @@ question got worse, in any repository; `NEURALMIND_L3_ROLES=0` restores v4.10.0.
 
 **On "yes", "thanks!" or an off-topic question:** no recall block, as long as its best match scores below the cutoff. In the measurement, 14 of the 15 off-topic prompts did; "looks good, commit it" (0.364) still got one.
 
-**On a prompt about the code**, the same block as before, now seeded from the
-code nodes. This is real output for "how does synapse decay work" on this
-repository:
+**On a prompt about the code**, the files and symbols it matches, the code
+linked to them, and matching docs. This is real output for "how does synapse
+decay work" on a fresh index of this repository at `edbc239c`:
 
 ```
 ## NeuralMind associative recall
 
-- neuralmind_synapses_py__synapsestore_cls__decay_fn (activation 0.10)
-- neuralmind_synapses_py__synapsestore_cls__connect_fn (activation 0.10)
-- neuralmind_synapse_feedback_py__deactivate_files_fn (activation 0.09)
-- neuralmind_synapses_py (activation 0.08)
-...
+Code matching this prompt:
+- neuralmind/synapses.py: decay_weight() L341, decay() L866, decay_node() L1087
+- neuralmind/core.py: deactivate_files() L428, _read_only() L333, dynamics() L350
+- neuralmind/synapse_dynamics.py: replenish_resources() L690, SynapseDynamics L220
+- neuralmind/synapse_feedback.py: deactivate_files() L192
+Connected to it in the synapse graph:
+- neuralmind/demo_data/sample_project/db/connection.py: _ensure_schema() L40
+- neuralmind/cli.py: cmd_watch() L4562
+- neuralmind/embedder.py: get_file_nodes() L452
 ```
+
+The connected files come from the build's structural graph, and they're only
+as good as it is. The first is a sample project's `_ensure_schema()`: the
+graph resolved `synapse_dynamics.py`'s calls to its own `_ensure_schema()` to
+that function of the same name.
 
 **After a compaction**, alongside Claude Code's own summary (an illustrative
 example):
@@ -358,8 +519,8 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 
 | Agent | What changes |
 |---|---|
-| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing when the best match scores below the cutoff (most off-topic prompts; 1 of 15 measured still got recall). After a compaction, the session gets its own record back. |
-| **Hermes-Agent** (`install-hermes-plugin`) | The same recall gate and seeding fix: the plugin runs the same hook action. Hermes has no compaction event, so no pre-compaction record. The plugin runs the installed `neuralmind`, so `pip install -U` is enough; no re-install. |
+| **Claude Code** (a built project, with `neuralmind install-hooks`) | Prompt recall fires on prompts about the code, including ones it used to miss, and adds nothing when the best match scores below the cutoff (most off-topic prompts; 1 of 15 measured still got recall). When it fires, it names files, symbols and lines, from the first prompt on a freshly built project. After a compaction, the session gets its own record back. |
+| **Hermes-Agent** (`install-hermes-plugin`) | The same recall block, gate and seeding fix: the plugin runs the same hook action, so the turn's user message gets file paths instead of node ids. Hermes has no compaction event, so no pre-compaction record. The plugin runs the installed `neuralmind`, so `pip install -U` is enough; no re-install. |
 | **Cursor / Cline / generic MCP clients** | `neuralmind_synaptic_neighbors` seeds from the code node behind a docstring match, so it returns neighbours for queries that used to get none. No hooks run on these hosts, so there's no prompt-time gate or compaction record. |
 | **Every agent, through `query`** (`neuralmind_query`, `neuralmind query`, `eval`, `benchmark`) | On an index built from the repository root, `query` returns the project's code ahead of its tests, examples and docs, so `eval`'s hit@5 on a whole repository can rise after upgrading. The hooks' prompt recall, recap and wake-up context don't use L3, so the ranking change doesn't touch them. |
 
@@ -378,8 +539,16 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 - **The threshold comes from one repository**, 30 prompts and the default
   embedder. Another codebase, another embedding model, or a different style of
   prompting can put the boundary somewhere else; `--prompts` is there to check.
-- **Answer quality.** We measured whether recall fires, not whether the agent
-  answers better with it, or worse without the nodes it used to get.
+- **Answer quality.** We measured whether recall fires, and whether the block
+  names the files that answer the prompt, not whether the agent answers better
+  with it.
+- **The file ranking comes from one tuning set.** Summed scores and tests after
+  code were chosen on 14 Click prompts and checked on 15 held-out prompts about
+  this repository. Test files are recognised by path (`tests/`, `test_*.py`,
+  `*_test.go`, `*.test.ts` and similar), and a prompt counts as about tests
+  when it says "test", "spec", "pytest" or "unittest".
+- **Learned links were checked on a simulated graph.** Five scripted
+  co-editing sessions on Click, not real use.
 - **The compaction record's effect.** We haven't measured how often an agent
   repeats work or loses the original task after compaction, with or without the
   record. Whether Claude Code keeps the `session_id` across a compaction isn't
@@ -389,10 +558,14 @@ Files edited (5, most recent first): docs/scheduler.md, tests/conftest.py, tests
 ## Upgrading
 
 `pip install -U neuralmind`. The hook block is unchanged, so an existing
-`neuralmind install-hooks` setup picks up both changes. If you rely on recall
-for short follow-up prompts, set `NEURALMIND_RECALL_MIN_SIMILARITY=0` to keep
-the old behaviour. The `query` ranking change reads the index you have; restart
-a running NeuralMind daemon or MCP server to pick it up.
+`neuralmind install-hooks` setup picks up all three changes. The recall
+block's heading is unchanged, but its lines are now
+`- <path>: <symbol> L<n>, …` instead of `- <node_id> (activation 0.05)`: a
+script that parsed the old lines needs updating. If you rely on recall for
+short follow-up prompts, set `NEURALMIND_RECALL_MIN_SIMILARITY=0` to keep
+recall on for every prompt.
+The `query` ranking change reads the index you have; restart a running
+NeuralMind daemon or MCP server to pick it up.
 
 ## Related
 

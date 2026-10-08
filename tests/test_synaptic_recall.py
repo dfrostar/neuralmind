@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from neuralmind.core import NeuralMind, _rationale_owners, _synapse_node
 from neuralmind.synapses import SynapseStore
 
@@ -89,6 +91,43 @@ def test_a_rationale_hit_never_recalls_itself_or_its_code_node(tmp_path):
     hits = [{"id": "pkg_mod_py__load_fn__rationale", "score": 0.6}]
     ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits), "q")
     assert [node for node, _ in ranked] == ["pkg_mod_py__save_fn"]
+
+
+def test_two_rationales_of_one_symbol_dont_double_a_shared_neighbour(tmp_path):
+    # Both of load's graphify rationale nodes link to save: save gets one
+    # rationale's activation, not the sum of the two.
+    store = SynapseStore(tmp_path / "synapses.db")
+    edges = []
+    for raw in ("pkg_mod_py_load_rationale_1", "pkg_mod_py_load_rationale_2"):
+        store.reinforce([raw, "pkg_mod_py__save_fn"])
+        edges.append({"relation": "rationale_for", "source": raw, "target": "pkg_mod_py__load_fn"})
+    hits = [
+        {"id": "pkg_mod_py_load_rationale_1", "score": 0.6},
+        {"id": "pkg_mod_py_load_rationale_2", "score": 0.6},
+    ]
+    ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits, edges), "q")
+    alone = dict(store.spread([("pkg_mod_py_load_rationale_1", 0.6)], depth=2, top_k=10))
+    assert dict(ranked)["pkg_mod_py__save_fn"] == pytest.approx(alone["pkg_mod_py__save_fn"])
+
+
+def test_another_seeds_link_adds_to_a_rationales_link(tmp_path):
+    # load's rationale and save both link to export; load itself doesn't.
+    # export gets save's contribution plus the rationale's, not the larger.
+    store = SynapseStore(tmp_path / "synapses.db")
+    for _ in range(3):
+        store.reinforce(["pkg_mod_py__load_fn__rationale", "pkg_mod_py__export_fn"])
+    store.reinforce(["pkg_mod_py__save_fn", "pkg_mod_py__export_fn"])
+    hits = [
+        {"id": "pkg_mod_py__load_fn__rationale", "score": 0.6},
+        {"id": "pkg_mod_py__save_fn", "score": 0.6},
+    ]
+    ranked, _ = NeuralMind.synaptic_recall(_Mind(store, hits), "q")
+
+    def alone(seed):
+        return dict(store.spread([(seed, 0.6)], depth=2, top_k=10))["pkg_mod_py__export_fn"]
+
+    expected = alone("pkg_mod_py__load_fn__rationale") + alone("pkg_mod_py__save_fn")
+    assert dict(ranked)["pkg_mod_py__export_fn"] == pytest.approx(expected)
 
 
 def test_no_match_recalls_nothing(tmp_path):
