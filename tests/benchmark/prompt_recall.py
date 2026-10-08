@@ -47,6 +47,7 @@ from pathlib import Path
 
 _OLD_LINE = re.compile(r"^- (\S+) \(activation [0-9.]+\)$")
 _NEW_LINE = re.compile(r"^- ([^:]+?)(?::|$)")
+_DOCS_LINE = re.compile(r"^Docs: (.+)$")
 
 
 def _tokenizer():
@@ -60,19 +61,26 @@ def _tokenizer():
 
 
 def _named_files(block: str, id_to_file: dict[str, str]) -> list[str]:
-    """Files the block names, in order: paths, or node ids mapped to their file."""
+    """Files the block names, in order: paths, or node ids mapped to their file.
+
+    A matching doc is named on the block's ``Docs: a, b`` line, not a bullet.
+    """
     files: list[str] = []
     for line in block.splitlines():
         old = _OLD_LINE.match(line)
         new = None if old else _NEW_LINE.match(line)
+        docs = None if old or new else _DOCS_LINE.match(line)
         if old:
-            path = id_to_file.get(old.group(1), "")
+            paths = [id_to_file.get(old.group(1), "")]
         elif new:
-            path = new.group(1).strip()
+            paths = [new.group(1).strip()]
+        elif docs:
+            paths = [p.strip() for p in docs.group(1).split(",")]
         else:
             continue
-        if path and path not in files:
-            files.append(path)
+        for path in paths:
+            if path and path not in files:
+                files.append(path)
     return files
 
 
