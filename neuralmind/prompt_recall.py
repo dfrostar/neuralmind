@@ -227,8 +227,11 @@ def is_code_node(node: dict) -> bool:
     if kind in _PROSE_TYPES:
         return False
     from .graphgen import _CODE_SUFFIXES
+    from .ir import CODE_SCOPE_EXTENSIONS
 
-    return os.path.splitext(str(node.get("source_file") or ""))[1].lower() in _CODE_SUFFIXES
+    suffix = os.path.splitext(str(node.get("source_file") or ""))[1].lower()
+    # The index's code scope, and every language the built-in graph parses.
+    return suffix in CODE_SCOPE_EXTENSIONS or suffix in _CODE_SUFFIXES
 
 
 def is_test_path(path: str) -> bool:

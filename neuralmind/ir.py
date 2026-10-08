@@ -70,6 +70,29 @@ NODE_KINDS: frozenset[str] = frozenset(
     }
 )
 
+# File suffixes the code scope takes as code when a node's type is generic or
+# missing (TurboVecEmbedder's scope filter, and prompt recall).
+CODE_SCOPE_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".cs",
+        ".c",
+        ".cpp",
+        ".h",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    }
+)
+
 # Canonical edge relations the current extractors emit (graphify + built-in
 # tree-sitter). Unknown relations are a validation warning, not an error.
 EDGE_RELATIONS: frozenset[str] = frozenset(
