@@ -179,7 +179,12 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         result.linked = _by_file(
             linked, info, LINKED_FILES, tests_last=tests_last, symbols=LINKED_SYMBOLS
         )
-        result.linked_ids = list(linked)[:COHESION_CLUSTER]
+        # The cohesion check reads the cluster the block shows: only nodes in
+        # the linked files it lists.
+        listed = {entry.path for entry in result.linked}
+        result.linked_ids = [nid for nid in linked if _path(info.get(nid)) in listed][
+            :COHESION_CLUSTER
+        ]
 
     shown = matched | {entry.path for entry in result.linked}
     docs = _by_file(secondary, info, DOC_FILES, shown, rank_by_best=True)

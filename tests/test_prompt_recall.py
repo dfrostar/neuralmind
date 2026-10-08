@@ -192,6 +192,26 @@ def test_a_path_or_label_cant_add_lines_to_the_block():
     ]
 
 
+def test_the_cohesion_ids_are_only_from_the_linked_files_listed(tmp_path):
+    # Four linked files, of which the block lists three, and a linked node
+    # with no path, which it can't list at all.
+    linked = [f"src_click_m{i}_py__f{i}_fn" for i in range(4)]
+    nodes = NODES + [_node(nid, f"src/click/m{i}.py", f"f{i}()", 1) for i, nid in enumerate(linked)]
+    store = SynapseStore(tmp_path / "synapses.db")
+    for times, nid in zip((5, 4, 3, 2), linked, strict=True):
+        for _ in range(times):
+            store.reinforce([PARSER, nid])
+    for _ in range(6):
+        store.reinforce([PARSER, "no_metadata_node"])
+    result = recall(_Mind(store, hits=[(PARSER, 0.6)], nodes=nodes), "q")
+    assert [f.path for f in result.linked] == [
+        "src/click/m0.py",
+        "src/click/m1.py",
+        "src/click/m2.py",
+    ]
+    assert result.linked_ids == linked[:3]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.

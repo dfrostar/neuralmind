@@ -85,7 +85,7 @@ python -m tests.benchmark.recall_gate /path/to/project --prompts my_prompts.json
 ```
 
 `--prompts` takes a JSON file with `on_topic` and `off_topic` lists. It prints
-each prompt's similarity, how many nodes recall would inject without the gate
+each prompt's similarity, how many files the block would name without the gate
 (the "Seeding fix only" row) and a sweep from 0.25 to 0.40: on-topic prompts
 kept against off-topic prompts let through (0.35 is the v4.11.0 row). It runs
 the current code only, so it can't rerun the first row: v4.9.1's recall
