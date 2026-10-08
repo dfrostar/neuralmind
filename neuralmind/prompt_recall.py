@@ -295,7 +295,9 @@ def _by_file(
         if not path or (exclude and path in exclude):
             continue
         entry = files.setdefault(path, FileRecall(path=path))
-        entry.score += score
+        # A cosine score can be negative: a dissimilar hit isn't evidence
+        # against the file its best match is in.
+        entry.score += max(score, 0.0)
         entry.best = max(entry.best, score)
         symbol = _symbol(node, path)
         if symbol and symbol not in entry.symbols and len(entry.symbols) < symbols:

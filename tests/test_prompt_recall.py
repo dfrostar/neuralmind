@@ -229,6 +229,15 @@ def test_a_linked_function_and_its_docstring_count_once(tmp_path):
     assert result.linked_ids == [RESOLVE, RUNNER]
 
 
+def test_a_negative_match_doesnt_count_against_its_file():
+    hits = [(PARSER, 0.6), ("src_click_parser_py", -0.5), (RESOLVE, 0.2)]
+    result = recall(_Mind(None, hits=hits), "q")
+    assert [f.path for f in result.matches] == [
+        "src/click/parser.py",
+        "src/click/shell_completion.py",
+    ]
+
+
 def test_linked_code_skips_files_that_already_matched(tmp_path):
     result = recall(_Mind(_store(tmp_path)), "q")
     # add_to_parser() is linked to make_parser(), but core.py is already named.

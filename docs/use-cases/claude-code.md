@@ -26,7 +26,7 @@ That gives the agent ~400 tokens of architecture/cluster context instead of 50K 
 
 With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.8.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
 
-**Every prompt about the code** also arrives with a short block naming the files it matches, with their symbols and line numbers, code in other files the synapse graph links to them, and matching docs *(v4.11.0+)*. That starts with the first prompt after `neuralmind build`, so it helps most in a repository you've just cloned. In a fresh index of [Click](https://github.com/pallets/click), "which files in this repo handle parsing command-line options?" arrives with:
+**A prompt about the code** also arrives with a short block naming the files it matches, with their symbols and line numbers, code in other files the synapse graph links to them, and matching docs *(v4.11.0+)*, as long as its best match clears the similarity cutoff (`NEURALMIND_RECALL_MIN_SIMILARITY`, default 0.35). That starts with the first prompt after `neuralmind build`, so it helps most in a repository you've just cloned. In a fresh index of [Click](https://github.com/pallets/click), "which files in this repo handle parsing command-line options?" arrives with:
 
 ```
 ## NeuralMind associative recall
@@ -39,7 +39,7 @@ Code matching this prompt:
 Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
 ```
 
-The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt that isn't about the code, like "yes", gets nothing. On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#measured)); whether that makes the agent's answers better isn't measured.
+The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt whose best match scores below that cutoff, like "yes", gets nothing; it's a similarity threshold, not a topic check, so an off-topic prompt can still clear it (1 of 15 did in the measurement). On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#measured)); whether that makes the agent's answers better isn't measured.
 
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 

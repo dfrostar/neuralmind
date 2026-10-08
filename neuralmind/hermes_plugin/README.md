@@ -32,7 +32,9 @@ Later turns get the recall part only. The recall names the files and symbols
 the message matches, with line numbers, then the code linked to them in
 NeuralMind's synapse graph, and matching docs. The links start out structural
 (calls, imports) on a fresh build and come to reflect what sessions in the
-project edit together. A message that isn't about the code gets no recall.
+project edit together. A message whose best match scores below the
+similarity cutoff (`NEURALMIND_RECALL_MIN_SIMILARITY`, default 0.35) gets no
+recall; most off-topic messages do, though one can still clear it.
 
 ## Requirements
 
