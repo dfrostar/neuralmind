@@ -80,7 +80,7 @@ _CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 # the older per-symbol types (TurboVecEmbedder.SCOPE_FILTERS["code"]).
 _CODE_TYPES = frozenset({"code", "function", "class", "method", "module"})
 _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
-_TEST_STEM = re.compile(r"^test_|_test$|Tests?$")
+_TEST_STEM = re.compile(r"^tests?$|^test_|_tests?$|Tests?$")
 _TEST_NAME = re.compile(r"\.(test|spec)\.")
 _TEST_PROMPT = re.compile(r"\b(tests?|testing|specs?|pytest|unittest)\b", re.IGNORECASE)
 
