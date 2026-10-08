@@ -207,6 +207,14 @@ def test_prompt_recall_with_nothing_learned_is_logged(tmp_path, monkeypatch):
     assert _recall_outcomes(tmp_path) == ["no_neighbors"]
 
 
+def test_the_default_cutoff_is_the_measured_0_35(tmp_path, monkeypatch):
+    # The release notes calibrate the default at 0.35: just below abstains,
+    # 0.35 itself injects.
+    monkeypatch.delenv("NEURALMIND_RECALL_MIN_SIMILARITY", raising=False)
+    assert _recall(tmp_path, monkeypatch, _RANKED, 0.349) == ""
+    assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.35)
+
+
 def test_prompt_recall_threshold_is_configurable(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_RECALL_MIN_SIMILARITY", "0")
     assert "pkg_mod_py__save_fn" in _recall(tmp_path, monkeypatch, _RANKED, 0.2)
