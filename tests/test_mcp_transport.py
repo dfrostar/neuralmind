@@ -1,11 +1,14 @@
-"""Real stdio round-trip against ``neuralmind-mcp`` (Phase 0 of the perf spec).
+"""Real stdio round-trip against the MCP server (Phase 0 of the perf spec).
 
 The unit tests in ``test_mcp_server.py`` drive the handlers with a fake
-``Server``; this one spawns the actual entry point and speaks JSON-RPC to it,
-so a dropped SDK API (mcp 2.0.0 removed ``Server.list_tools``) fails here
-instead of on a user's first ``pip install``. The same function runs in the
-fresh-install CI job via ``scripts/mcp_stdio_smoke.py`` on both SDK lines,
-against the installed wheel (``--require-wheel``).
+``Server``; these start a real server and speak JSON-RPC to it, so a dropped
+SDK API (mcp 2.0.0 removed ``Server.list_tools``) fails here instead of on a
+user's first ``pip install``. One starts ``neuralmind.mcp_server.main`` with
+``python -c``; another spawns the installed ``neuralmind-mcp`` console script,
+as clients do, so a broken ``[project.scripts]`` entry fails too. The same
+function runs in the fresh-install CI job via ``scripts/mcp_stdio_smoke.py``
+on both SDK lines, against the installed wheel and its console script
+(``--require-wheel --entry-point``).
 """
 
 from __future__ import annotations
@@ -64,6 +67,60 @@ def test_mcp_server_answers_initialize_list_and_call_over_stdio(
     assert any(step.startswith("tools/call ok") for step in summary["steps"])
     assert any("validation error ok" in step for step in summary["steps"])
     assert summary["validation_layer"] in {"server", "sdk", "protocol"}
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not MCP_INSTALLED, reason="mcp SDK not installed")
+def test_installed_console_script_answers_over_stdio(temp_project):
+    """``--entry-point`` (the fresh-install job) runs the ``neuralmind-mcp``
+    script installed next to this interpreter, not ``python -c``."""
+    smoke = _load_smoke()
+    script = smoke.console_script()
+    # This environment's own script: not a PATH lookup, and not the base
+    # interpreter's directory, where resolving a venv's python would look.
+    assert script.parent == Path(sys.executable).parent, script
+    if not script.is_file():
+        pytest.skip(f"{script.name} is not installed next to {sys.executable}")
+    summary = smoke.run_smoke(timeout=90.0, project_path=str(temp_project), entry_point=True)
+    assert summary["command"] == [str(script)]
+    assert summary["tool_count"] >= 20
+    assert summary["exit_code"] == 0, summary
+    assert any(step.startswith("tools/call ok") for step in summary["steps"])
+
+
+@pytest.mark.skipif(not MCP_INSTALLED, reason="mcp SDK not installed")
+def test_entry_point_fails_without_an_installed_console_script(tmp_path, monkeypatch, capsys):
+    smoke = _load_smoke()
+    monkeypatch.setattr(smoke, "console_script", lambda: tmp_path / "neuralmind-mcp")
+    assert smoke.main(["--entry-point"]) == 1
+    err = capsys.readouterr().err
+    assert f"neuralmind-mcp is not installed next to {sys.executable}" in err, err
+
+
+@pytest.mark.skipif(not MCP_INSTALLED, reason="mcp SDK not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a #! script")
+def test_entry_point_fails_when_the_console_script_cannot_start(tmp_path, monkeypatch, capsys):
+    """What ``--entry-point`` is for: an entry point naming a missing function
+    installs cleanly and ``python -c`` still serves, but the script dies."""
+    smoke = _load_smoke()
+    script = tmp_path / "neuralmind-mcp"
+    # Roughly what pip writes for ``neuralmind-mcp = "neuralmind.mcp_server:no_such_main"``,
+    # with the /bin/sh trampoline it uses when the interpreter path is too long
+    # for a #! line.
+    script.write_text(
+        "#!/bin/sh\n"
+        "'''exec' "
+        f'"{sys.executable}" "$0" "$@"\n'
+        "' '''\n"
+        "import sys\n"
+        "from neuralmind.mcp_server import no_such_main\n"
+        "sys.exit(no_such_main())\n"
+    )
+    script.chmod(0o755)
+    monkeypatch.setattr(smoke, "console_script", lambda: script)
+    assert smoke.main(["--entry-point"]) == 1
+    err = capsys.readouterr().err
+    assert "cannot import name 'no_such_main'" in err, err
 
 
 @pytest.mark.skipif(not MCP_INSTALLED, reason="mcp SDK not installed")

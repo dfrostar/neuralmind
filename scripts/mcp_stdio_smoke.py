@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """End-to-end smoke test for the NeuralMind MCP server over stdio.
 
-Spawns ``neuralmind-mcp`` exactly as an MCP client would (a child process
-speaking newline-delimited JSON-RPC on stdin/stdout), then drives the four
-messages every client sends first:
+Starts the server as an MCP client does (a child process speaking
+newline-delimited JSON-RPC on stdin/stdout), then drives the four messages
+every client sends first:
 
 1. ``initialize``                 → must answer with ``serverInfo.name == "neuralmind"``
 2. ``notifications/initialized``  → (no reply)
@@ -15,6 +15,16 @@ plus one call with a missing required argument, which must come back as an
 failure. That last check is what the MCP SDK 2.x migration lost: 1.x validated
 arguments in the decorator, 2.x does not, and ``neuralmind.mcp_server`` now
 does it itself.
+
+The server is ``python -c "from neuralmind.mcp_server import main; main()"``
+run with this interpreter, unless ``--entry-point`` is given. Then it is the
+``neuralmind-mcp`` console script installed next to this interpreter, the
+command MCP clients are configured with, and the fresh-install job passes it.
+Only that tests the ``[project.scripts]`` declaration: ``python -c`` names its
+own target, so an entry pointing at a function that doesn't exist installs
+cleanly and passes, while the script clients run dies on startup. The script
+is looked up next to the interpreter, not on PATH, where another
+environment's ``neuralmind-mcp`` could answer.
 
 Stdlib only, so the fresh-install CI job (a venv with no dev extras) can run it
 against whichever ``mcp`` version the resolver picked. ``tests/test_mcp_transport.py``
@@ -40,6 +50,7 @@ import argparse
 import json
 import os
 import queue
+import shlex
 import subprocess
 import sys
 import sysconfig
@@ -51,6 +62,8 @@ from typing import Any
 PROTOCOL_VERSION = "2025-06-18"
 DEFAULT_TIMEOUT = 60.0
 SERVER_CODE = "from neuralmind.mcp_server import main; main()"
+# What pip installs for ``[project.scripts] neuralmind-mcp``.
+SCRIPT_NAME = "neuralmind-mcp.exe" if sys.platform == "win32" else "neuralmind-mcp"
 # Prints the file the server's ``import neuralmind`` loads, without importing it.
 ORIGIN_CODE = (
     "import importlib.util as u; s = u.find_spec('neuralmind'); print(s.origin if s else '')"
@@ -78,32 +91,57 @@ def _in_site_packages(path: str) -> bool:
     return any(resolved.is_relative_to(Path(root).resolve()) for root in roots if root)
 
 
+def console_script() -> Path:
+    """The ``neuralmind-mcp`` console script installed next to this interpreter.
+
+    ``sys.executable`` is not resolved: in a venv it can be a link to the base
+    interpreter, whose directory holds that interpreter's scripts, not the venv's.
+    """
+    return Path(sys.executable).parent / SCRIPT_NAME
+
+
 def run_smoke(
     timeout: float = DEFAULT_TIMEOUT,
     project_path: str | None = None,
     require_wheel: bool = False,
+    entry_point: bool = False,
 ) -> dict[str, Any]:
     """Run the round-trip; return a summary dict; raise SmokeFailureError on any miss.
 
     The server runs in an empty temporary directory (see the module docstring),
     removed once it has exited. ``require_wheel`` fails before the round-trip
     unless the server's ``neuralmind`` comes from this interpreter's
-    site-packages.
+    site-packages. ``entry_point`` starts the server with :func:`console_script`
+    instead of ``python -c``.
     """
     with tempfile.TemporaryDirectory(
         prefix="neuralmind-smoke-", ignore_cleanup_errors=True
     ) as workdir:
-        return _round_trip(workdir, timeout, project_path, require_wheel)
+        return _round_trip(workdir, timeout, project_path, require_wheel, entry_point)
 
 
 def _round_trip(
-    workdir: str, timeout: float, project_path: str | None, require_wheel: bool
+    workdir: str,
+    timeout: float,
+    project_path: str | None,
+    require_wheel: bool,
+    entry_point: bool,
 ) -> dict[str, Any]:
+    if entry_point:
+        script = console_script()
+        if not script.is_file():
+            raise SmokeFailureError(f"{script.name} is not installed next to {sys.executable}")
+        cmd = [str(script)]
+    else:
+        cmd = [sys.executable, "-c", SERVER_CODE]
     env = dict(os.environ)
     env.setdefault("NEURALMIND_ORT_THREADS", "1")
     env.setdefault("PYTHONUNBUFFERED", "1")
     # Same interpreter, working directory and environment as the server, so the
-    # same sys.path: this is the neuralmind the round-trip tests.
+    # same sys.path: this is the neuralmind the round-trip tests. The console
+    # script runs this interpreter too, and differs only in putting its own
+    # directory first on sys.path instead of the working directory; neither
+    # directory holds a neuralmind.
     origin = subprocess.run(
         [sys.executable, "-c", ORIGIN_CODE],
         cwd=workdir,
@@ -118,7 +156,7 @@ def _round_trip(
             "not from this interpreter's site-packages"
         )
     proc = subprocess.Popen(
-        [sys.executable, "-c", SERVER_CODE],
+        cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -129,7 +167,7 @@ def _round_trip(
     )
     lines: queue.Queue[str | None] = queue.Queue()
     threading.Thread(target=_reader, args=(proc.stdout, lines), daemon=True).start()
-    summary: dict[str, Any] = {"steps": [], "neuralmind_origin": origin}
+    summary: dict[str, Any] = {"steps": [], "command": cmd, "neuralmind_origin": origin}
 
     def send(message: dict[str, Any]) -> None:
         assert proc.stdin is not None
@@ -270,6 +308,12 @@ def main(argv: list[str] | None = None) -> int:
         help="fail unless the server imports neuralmind from this interpreter's "
         "site-packages (an installed wheel, not a checkout or an editable install)",
     )
+    parser.add_argument(
+        "--entry-point",
+        action="store_true",
+        help=f"start the server with the {SCRIPT_NAME} console script installed next to "
+        "this interpreter, as MCP clients do, instead of python -c; fails if it isn't there",
+    )
     args = parser.parse_args(argv)
     try:
         import mcp  # noqa: F401
@@ -277,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         print("mcp SDK not importable; nothing to smoke-test", file=sys.stderr)
         return 1
     try:
-        summary = run_smoke(require_wheel=args.require_wheel)
+        summary = run_smoke(require_wheel=args.require_wheel, entry_point=args.entry_point)
     except SmokeFailureError as exc:
         print(f"MCP stdio smoke FAILED: {exc}", file=sys.stderr)
         return 1
@@ -287,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         version: str | None = _dist_version("mcp")
     except Exception:  # pragma: no cover - metadata missing in odd installs
         version = None
+    print(f"[mcp-smoke] server: {shlex.join(summary['command'])}")
     print(f"[mcp-smoke] server's neuralmind: {summary['neuralmind_origin']}")
     for step in summary["steps"]:
         print(f"[mcp-smoke] {step}")
