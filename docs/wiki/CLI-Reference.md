@@ -1518,6 +1518,7 @@ python -m evals.retrieval.run --repos flask --configs baseline,per_file
 | `--work-dir DIR` | Where clones and copies go (default `.bench-work`, gitignored) |
 | `--no-build` | Reuse the existing indexes instead of rebuilding them from nothing |
 | `--compare OLD NEW` | *(v4.12.0+)* Instead of running, pair two runs' `results.json` (the `baseline` configuration of each), question by question, and apply the keep rule, e.g. one release against the next. With `--out`, writes `report.md` |
+| `--fail-on-regression` | *(v4.12.0+)* With `--compare`: exit `1` if NEW regresses against OLD — more hit@5 questions lost than won with an exact McNemar p < 0.05, any repo down more than two questions, or tokens up more than 10%. A change that moves nothing passes. The `retrieval-eval.yml` workflow runs it on the base and head of every PR that touches the retrieval path |
 
 Every run rebuilds each repository's index from nothing — learned synapses from
 an earlier run would otherwise move the baseline — and runs the baseline again

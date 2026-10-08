@@ -14,3 +14,5 @@ hit@5 / MRR / avg tokens, 30 questions per repo.
 hit@5 questions won / lost: **20 / 2** (exact McNemar p = 0.0001); per repo: requests +3, click +4, flask +2, rich +3, neuralmind +6. Mean MRR change +0.057 (paired bootstrap 95% interval [+0.003, +0.109]); mean tokens -17.0%.
 
 Keep rule: **passes** — wins > losses, McNemar p < 0.05: yes; no repo drops >2 questions: yes; tokens ≤ +10%: yes.
+
+Regression check: **passes**.

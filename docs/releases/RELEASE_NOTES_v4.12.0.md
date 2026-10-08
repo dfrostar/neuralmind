@@ -35,8 +35,8 @@ by putting it back one at a time.
 | Retrieval eval: context tokens per question | 930 | **773** (−17%) |
 | Public benchmark: gold-file recall, 40 queries | 95% (85.71–100% per repo) | **97.5%** (90–100% per repo) |
 | Public benchmark: fewer tokens than pasting every file | 45–246× | **54–260×** |
-| Faithfulness fixture: gold facts in the context | 0.559 | **0.825** |
-| Self-benchmark fixture: top-k hit rate / reduction | 75% / 5.1× | **88% / 5.6×** |
+| Faithfulness fixture: gold facts in the context (one machine) | 0.559 | **0.825** |
+| Self-benchmark fixture: top-k hit rate / reduction (one machine) | 75% / 5.1× | **88% / 5.6×** |
 | Query latency, p50 (one machine, see below) | 266–348 ms | **14–19 ms** |
 | Indexing this repository (19,629 nodes, one machine) | 22 min | **6.7 min** |
 
@@ -55,6 +55,10 @@ by putting it back one at a time.
     measured by a local harness on a 4-core container. The retrieval eval now
     records p50/p95 query latency, so the next release's comparison is
     committed.
+  - *Fixture rows:* both versions were run on the same 4-core container with
+    the CI workflow's commands. CI's own runner measured v4.12.0 at a
+    **85.1% hit rate and 5.8×**, and fact recall 0.825 (the parity gate). The
+    gates pass either way; the numbers move by machine.
 
 ## 1. L3 ranks a pool of 20 and keeps eight
 
@@ -230,6 +234,19 @@ Send a given PreparedRequest.
     lowered none.
   - The report adds the MRR change with a bootstrap interval and p50/p95 query
     latency.
+- **Two new CI gates.**
+  - *NeuralMind never falls below its own vector index.* The public-benchmark
+    drift job now fails if NeuralMind's recall on any repo is below the
+    `embedding-rag` baseline's, or if the pooled MRR gap to that baseline widens
+    by more than 0.05 from the committed run. MRR is a ratchet, not a floor,
+    because the baseline still ranks higher on flask and rich. Run against the
+    v4.10.0 snapshot, the gate flags `click` and `requests`.
+  - *Retrieval changes are evaluated question by question.* A PR that touches
+    the retrieval path runs the 150-question retrieval eval on its base and its
+    head, on the same runner, and fails on a regression: more hit@5 questions
+    lost than won with p < 0.05, any repository down more than two questions,
+    or tokens up more than 10%. A change that moves nothing passes.
+    (`.github/workflows/retrieval-eval.yml`, `--fail-on-regression`.)
 - **Comparing releases:** `--compare OLD NEW` pairs two runs, which is how
   `vs-v4.11` was made.
 
@@ -311,8 +328,9 @@ The click question "how does echo print a message with a newline to stdout"
   selector doesn't read it, and its live evaluation doesn't pass candidate
   settings through the selector. Wiring it as it stands would steer budgets
   toward their minimum. It stays opt-in and inert until that is fixed.
-- **The synapse layer's lift is measured only on the fixture** (+5 points this
-  release, +6 in v4.11.1), whose seeded sessions overlap its gold answers.
+- **The synapse layer's lift is measured only on the fixture** (+2.6 points on
+  CI's runner this release; +5 on the container, where v4.11.1 measured +6),
+  whose seeded sessions overlap its gold answers.
   There is no real-repository measurement yet.
 
 ## Upgrading

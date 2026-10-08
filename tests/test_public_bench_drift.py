@@ -147,3 +147,37 @@ def test_drift_message_names_the_pair_and_how_to_regenerate(capsys) -> None:
     assert "python -m evals.public.run --out bench/public" in out
     # The surfaces that must change with the snapshot, and the tests that say so.
     assert "site/claims.json" in out and "tests/test_site_claims.py" in out
+
+
+# --------------------------------------------------------------------------- #
+# NeuralMind against the plain vector baseline (embedding-rag)
+# --------------------------------------------------------------------------- #
+def test_committed_run_is_at_or_above_the_vector_baseline() -> None:
+    committed = drift.load(COMMITTED)
+    ok, failures = drift.vector_floor(committed, committed)
+    assert not failures
+    assert len(ok) == len(REPOS) + 1  # every repo's recall, plus the pooled MRR gap
+
+
+def test_recall_below_the_vector_baseline_fails_the_gate() -> None:
+    # v4.10.0's shape: click 0.86 for NeuralMind against 1.00 for its own index.
+    fresh = copy.deepcopy(_report())
+    _summary(fresh, "click", "neuralmind")["mean_recall"] = 0.8571
+    _summary(fresh, "click", "embedding-rag")["mean_recall"] = 1.0
+    ok, failures = drift.vector_floor(drift.extract(fresh), drift.load(COMMITTED))
+    assert [f for f in failures if f.startswith("click:")]
+    # Within the drift tolerance of the committed run (−14 points is not), so
+    # isolate the floor: commit the same numbers and it still fails.
+    assert _run_main(fresh, fresh) == 1
+
+
+def test_pooled_mrr_gap_may_widen_only_by_the_tolerance() -> None:
+    committed = _report()
+    small, large = copy.deepcopy(committed), copy.deepcopy(committed)
+    # rich has 9 of the 40 queries: widening its gap by d widens the pool's by 9d/40.
+    for report, delta in ((small, 0.04 * 40 / 9), (large, 0.06 * 40 / 9)):
+        _summary(report, "rich", "neuralmind")["mean_mrr"] -= delta
+    base = drift.load(COMMITTED)
+    assert not drift.vector_floor(drift.extract(small), base)[1]
+    failures = drift.vector_floor(drift.extract(large), base)[1]
+    assert any("pooled MRR gap" in f for f in failures)

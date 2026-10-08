@@ -446,6 +446,28 @@ def render(
     return "\n".join(lines) + "\n"
 
 
+def regressions(g: dict[str, Any]) -> list[str]:
+    """Why a paired comparison counts as a regression; empty when it doesn't.
+
+    The CI gate for retrieval-path changes. Unlike the keep rule it doesn't
+    ask a change to *gain*, so a refactor that moves nothing passes: it fails
+    on a significant loss (more hit@5 questions lost than won, exact McNemar
+    p < 0.05), on any repo losing more than two questions, or on tokens rising
+    more than 10%.
+    """
+    reasons = []
+    if g["losses"] > g["wins"] and g["p_value"] < MAX_P_VALUE:
+        reasons.append(
+            f"hit@5: {g['losses']} questions lost, {g['wins']} won (McNemar p = {g['p_value']:.4f})"
+        )
+    for repo, delta in g["per_repo_delta_questions"].items():
+        if delta < -MAX_DROP_QUESTIONS:
+            reasons.append(f"{repo}: {-delta} questions lost (at most {MAX_DROP_QUESTIONS})")
+    if g["mean_token_rise"] > MAX_TOKEN_RISE:
+        reasons.append(f"tokens {g['mean_token_rise']:+.1%} (at most +{MAX_TOKEN_RISE:.0%})")
+    return reasons
+
+
 def compare(old_path: Path, new_path: Path) -> str:
     """The paired keep rule between two runs' ``baseline`` configurations.
 
@@ -453,6 +475,11 @@ def compare(old_path: Path, new_path: Path) -> str:
     ``--compare old/results.json new/results.json``. Repos in both are
     paired question by question.
     """
+    return compare_with_gate(old_path, new_path)[0]
+
+
+def compare_with_gate(old_path: Path, new_path: Path) -> tuple[str, dict[str, Any]]:
+    """:func:`compare`'s report, and the gate it was computed from."""
     old = json.loads(Path(old_path).read_text(encoding="utf-8"))["results"]
     new = json.loads(Path(new_path).read_text(encoding="utf-8"))["results"]
     paired = {
@@ -501,7 +528,13 @@ def compare(old_path: Path, new_path: Path) -> str:
         + "; ".join(f"{k}: {'yes' if v else 'no'}" for k, v in g["checks"].items())
         + ".",
     ]
-    return "\n".join(lines) + "\n"
+    found = regressions(g)
+    lines += [
+        "",
+        "Regression check: "
+        + ("**fails** — " + "; ".join(found) + "." if found else "**passes**."),
+    ]
+    return "\n".join(lines) + "\n", g
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -521,15 +554,20 @@ def main(argv: list[str] | None = None) -> int:
         metavar=("OLD", "NEW"),
         help="pair two runs' results.json (e.g. two releases) instead of running",
     )
+    ap.add_argument(
+        "--fail-on-regression",
+        action="store_true",
+        help="with --compare: exit 1 if NEW regresses against OLD (the CI gate)",
+    )
     args = ap.parse_args(argv)
     if args.compare:
-        report = compare(Path(args.compare[0]), Path(args.compare[1]))
+        report, g = compare_with_gate(Path(args.compare[0]), Path(args.compare[1]))
         print(report, end="")
         if args.out:
             out = Path(args.out)
             out.mkdir(parents=True, exist_ok=True)
             (out / "report.md").write_text(report, encoding="utf-8")
-        return 0
+        return 1 if args.fail_on_regression and regressions(g) else 0
 
     work = Path(args.work_dir).resolve()
     work.mkdir(parents=True, exist_ok=True)

@@ -30,6 +30,16 @@ v4.12.0 runs have the five public ones. Every run re-ran the baseline after all
 configurations and it reproduced exactly on every repo. Each release's run
 indexes this repository as it stood at that release.
 
+## In CI *(v4.12.0+)*
+
+A PR that touches the retrieval path (`.github/workflows/retrieval-eval.yml`
+lists the files) runs this eval on its base and its head, on the same runner,
+and `--compare --fail-on-regression` fails it on a regression: more hit@5
+questions lost than won with an exact McNemar p < 0.05, any repository down
+more than two questions, or tokens up more than 10%. A change that moves
+nothing passes; whether a change earns a default stays the keep rule above,
+decided per release.
+
 ## Reproduce
 
 ```bash

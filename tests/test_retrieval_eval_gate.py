@@ -91,3 +91,38 @@ def test_compare_pairs_two_runs_by_repo(tmp_path):
     assert "| a |" in report and "only-old" not in report
     assert "**10 / 0**" in report
     assert "**passes**" in report
+
+
+def test_regressions_fail_a_significant_loss_but_not_a_neutral_change():
+    neutral = run.gate(_results(([1] * 30, [1] * 30), ([1] * 30, [1] * 30)), "cand")
+    assert run.regressions(neutral) == []  # a refactor that moves nothing passes
+    worse = run.gate(_results(([1] * 30, [1] * 30), ([None] * 10 + [1] * 20, [1] * 30)), "cand")
+    reasons = run.regressions(worse)
+    assert any("hit@5" in r for r in reasons) and any("r1" in r for r in reasons)
+
+
+def test_fail_on_regression_sets_the_exit_code(tmp_path):
+    import json
+
+    def write(name, ranks):
+        r = ranks
+        payload = {
+            "results": {
+                "a": {
+                    "baseline": {
+                        "n": len(r),
+                        "hit_at_5": sum(1 for x in r if x and x <= 5) / len(r),
+                        "mrr": sum(1 / x for x in r if x) / len(r),
+                        "avg_tokens": 100.0,
+                        "ranks": r,
+                    }
+                }
+            }
+        }
+        (tmp_path / name).write_text(json.dumps(payload))
+        return str(tmp_path / name)
+
+    good, bad = write("good.json", [1] * 30), write("bad.json", [None] * 10 + [1] * 20)
+    assert run.main(["--compare", good, good, "--fail-on-regression"]) == 0
+    assert run.main(["--compare", good, bad, "--fail-on-regression"]) == 1
+    assert run.main(["--compare", good, bad]) == 0  # reporting only without the flag

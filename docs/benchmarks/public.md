@@ -251,6 +251,11 @@ Mean tokens/query for the (repo, backend) pairs that differ:
 re-runs this benchmark on every PR and push to `main`, fails if any repo's
 recall moves more than 5 points or its mean tokens/query more than 10% from
 the committed snapshot, and uploads its fresh `results.json` as an artifact.
+*(v4.12.0+)* It also fails if NeuralMind's recall on any repo falls below the
+`embedding-rag` baseline's, or if the pooled MRR gap to that baseline widens by
+more than 0.05 from the committed snapshot. That is the comparison that showed
+the ranking layers costing recall before v4.12.0; run on the v4.10.0 snapshot,
+it flags `click` and `requests`.
 The spread above is well inside those tolerances, so the check passes in
 either state. Both CI runs above used numpy 2.5.3, onnxruntime 1.30.0,
 tokenizers 0.23.2, turbovec 1.1.2, tiktoken 0.14.0 and
