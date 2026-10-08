@@ -812,7 +812,7 @@ class ContextSelector:
         if not search_results:
             return "", []
 
-        # Count community hits. With roles on (v4.10.1), a test or example
+        # Count community hits. With roles on (v4.11.0), a test or example
         # hit the question doesn't ask for counts a third, as it does in L3.
         roles = l3_slots.roles_enabled()
         asked = l3_slots.asked_kinds(query)
@@ -1370,7 +1370,7 @@ class ContextSelector:
         # Re-rank in place. This one is already budget-neutral: it reweights
         # the hits we have rather than adding to them. A test or example
         # shares the question's identifiers because it exercises that code,
-        # so with roles on it scores like a doc here, as any doc does (v4.10.1).
+        # so with roles on it scores like a doc here, as any doc does (v4.11.0).
         if intent == "code":
             roles = l3_slots.roles_enabled()
             asked = l3_slots.asked_kinds(query)
@@ -1725,7 +1725,7 @@ class ContextSelector:
                 is_doc = False
             is_code = not is_doc and (file_type == "code" or bool(source_file))
             # A test or example is about the code, as a doc is, but it is not
-            # the docs either: neither boost (v4.10.1). A doc by role (an
+            # the docs either: neither boost (v4.11.0). A doc by role (an
             # ingested ``document_pdf`` chunk, say) gets the doc boost.
             if hit_role == l3_slots.SUPPORT:
                 is_doc = is_code = False
@@ -1879,7 +1879,7 @@ class ContextSelector:
         self._last_intent = intent
 
         # The project's own code gets slots its tests, examples and docs took
-        # (v4.10.1). A no-op when nothing but the project's code was found.
+        # (v4.11.0). A no-op when nothing but the project's code was found.
         if l3_slots.roles_enabled():
             results = self._reserve_source_slots(query, results, intent, n)
 

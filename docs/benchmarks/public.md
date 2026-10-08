@@ -201,8 +201,8 @@ across runs, CI-gated on direction, budget-
   from the root, as `neuralmind build .` indexes a checkout, they do. The
   multi-repo retrieval eval measures that case on the same four repos and
   commits
-  (`python -m evals.retrieval.run --full-repo`, v4.10.1+; raw output in
-  [`bench/retrieval/roles-v4.10.1/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
+  (`python -m evals.retrieval.run --full-repo`, v4.11.0+; raw output in
+  [`bench/retrieval/roles-v4.11.0/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
   metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds
   the *answering* signal — see below — but it stays a clearly-labeled secondary,

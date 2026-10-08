@@ -346,7 +346,7 @@ def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatc
     ranked = [hit(f"doc{i}", f"docs/{i}.md", 0.9 - i / 100, "document") for i in range(4)]
     ranked.append(hit("impl", "app/orders.py", 0.8))
     monkeypatch.setenv("NEURALMIND_INTENT_RULES", "1")
-    # Since v4.10.1 the roles pass gives the code a slot here on its own
+    # Since v4.11.0 the roles pass gives the code a slot here on its own
     # (tests/test_l3_roles.py); this pins what the intent pool flag does.
     monkeypatch.setenv("NEURALMIND_L3_ROLES", "0")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))

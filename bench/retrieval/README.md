@@ -21,18 +21,18 @@ all configurations and it reproduced exactly on all six repos.
 |---|---|---|
 | [`vs-v4.5/`](vs-v4.5/report.md) | v4.5.0 retrieval | Of nine configurations, only `bm25_unified` — one BM25 index over docs and code — passed: mean hit@5 72.8% → 79.4%, MRR 0.589 → 0.654, three repos up (flask +3, neuralmind +6, private +4 questions), requests −1, tokens +1.1%, public recall 93.75% → 95.00%. It became the v4.6.0 default. |
 | [`on-v4.6/`](on-v4.6/report.md) | v4.6.0 (unified BM25 on) | No remaining item passed on top of it. The closest, the per-file cap, raised two repos and lost none (public recall 96.25%) but the rule asks for three. |
-| [`roles-v4.10.1/source-dir/`](roles-v4.10.1/source-dir/report.md) | v4.10.1 (roles pass on), against `roles_off` (v4.10.0's ranking) | The roles pass changes nothing where only a library's source directory is indexed: `requests`, `click`, `flask` and `rich` rank every question identically, and public recall is the same. On this repository, with its docs indexed, hit@5 rose 57% → 70% (+4 questions), MRR 0.45 → 0.55, tokens +1.8%, and no question ranked lower. |
-| [`roles-v4.10.1/click-2247b35.md`](roles-v4.10.1/click-2247b35.md) | the same, on the 14 Click questions it was tuned on (Click @ `2247b35`, whole repository; not held out) | hit@5 64% → 100%, hit@1 36% → 71%, MRR 0.49 → 0.80, tokens +1.8%. |
-| [`roles-v4.10.1/full-repo/`](roles-v4.10.1/full-repo/report.md) | the same, with `--full-repo`: each public repository indexed from its root | Mean hit@5 77.5% → 79.2% (`click` +2 questions, the rest flat), MRR 0.615 → 0.672 (up on all four), tokens +1.6%; of 120 questions 18 rank higher, none lower. By the keep rule it doesn't pass (one repo improved, the rule asks for three); it shipped on by default anyway, for the reasons in the [v4.10.1 release notes](../../docs/releases/RELEASE_NOTES_v4.10.1.md#measured-roles-on-vs-off). |
+| [`roles-v4.11.0/source-dir/`](roles-v4.11.0/source-dir/report.md) | v4.11.0 (roles pass on), against `roles_off` (v4.10.0's ranking) | The roles pass changes nothing where only a library's source directory is indexed: `requests`, `click`, `flask` and `rich` rank every question identically, and public recall is the same. On this repository, with its docs indexed, hit@5 rose 57% → 70% (+4 questions), MRR 0.45 → 0.55, tokens +1.8%, and no question ranked lower. |
+| [`roles-v4.11.0/click-2247b35.md`](roles-v4.11.0/click-2247b35.md) | the same, on the 14 Click questions it was tuned on (Click @ `2247b35`, whole repository; not held out) | hit@5 64% → 100%, hit@1 36% → 71%, MRR 0.49 → 0.80, tokens +1.8%. |
+| [`roles-v4.11.0/full-repo/`](roles-v4.11.0/full-repo/report.md) | the same, with `--full-repo`: each public repository indexed from its root | Mean hit@5 77.5% → 79.2% (`click` +2 questions, the rest flat), MRR 0.615 → 0.672 (up on all four), tokens +1.6%; of 120 questions 18 rank higher, none lower. By the keep rule it doesn't pass (one repo improved, the rule asks for three); it shipped on by default anyway, for the reasons in the [v4.11.0 release notes](../../docs/releases/RELEASE_NOTES_v4.11.0.md#measured-roles-on-vs-off). |
 
 ## Reproduce
 
 ```bash
 python -m evals.retrieval.run --public-benchmark --out bench/retrieval/on-v4.6
 python -m evals.retrieval.run --private ~/work/your-repo   # add your own repo, locally
-# v4.10.1: the roles pass against v4.10.0's ranking, on source directories and on whole repositories
-python -m evals.retrieval.run --configs baseline,roles_off --public-benchmark --out bench/retrieval/roles-v4.10.1/source-dir
-python -m evals.retrieval.run --full-repo --repos requests,click,flask,rich --configs baseline,roles_off --out bench/retrieval/roles-v4.10.1/full-repo
+# v4.11.0: the roles pass against v4.10.0's ranking, on source directories and on whole repositories
+python -m evals.retrieval.run --configs baseline,roles_off --public-benchmark --out bench/retrieval/roles-v4.11.0/source-dir
+python -m evals.retrieval.run --full-repo --repos requests,click,flask,rich --configs baseline,roles_off --out bench/retrieval/roles-v4.11.0/full-repo
 ```
 
 `--full-repo` indexes each public repository from its clone's root, docs, tests
@@ -56,7 +56,7 @@ repository.
 | `bm25_unified` | `NEURALMIND_BM25_UNIFIED=1` |
 | `intent_pool` | `NEURALMIND_INTENT_RULES=1 NEURALMIND_INTENT_POOL=1` |
 | `unified_intent_pool` | both of the above |
-| `roles_off` | `NEURALMIND_L3_ROLES=0` (v4.10.0's ranking, before the v4.10.1 roles pass) |
+| `roles_off` | `NEURALMIND_L3_ROLES=0` (v4.10.0's ranking, before the v4.11.0 roles pass) |
 
 `bm25_unified`, `intent_pool` and `unified_intent_pool` were designed after
 seeing the first round's results; the public benchmark (40 queries, written

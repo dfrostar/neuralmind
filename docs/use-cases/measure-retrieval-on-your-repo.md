@@ -106,7 +106,7 @@ NEURALMIND_L3_ROLES=0 neuralmind eval . --no-history       # v4.10.0's ranking: 
 ```
 
 If your index covers tests, examples or docs (it does if you built from the
-repository root), expect hit@5 or MRR to move after upgrading to v4.10.1: the
+repository root), expect hit@5 or MRR to move after upgrading to v4.11.0: the
 roles pass ranks your project's own code above them. The last line above
 shows by how much on your questions.
 

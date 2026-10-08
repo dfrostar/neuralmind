@@ -1,4 +1,4 @@
-"""v4.10.1: the project's own code competes with its tests, examples and docs.
+"""v4.11.0: the project's own code competes with its tests, examples and docs.
 
 Indexed from its root, a repository's tests, example scripts and doc headings
 outrank the code they are about, and they filled all four L3 slots for "which
