@@ -247,6 +247,58 @@ class TestMetricsCollector(unittest.TestCase):
         self.assertTrue(lines)
         self.assertTrue(all(json.loads(line)["query"] == "x" * 1500 for line in lines))
 
+    def test_the_cap_counts_what_another_process_appended_while_waiting(self) -> None:
+        from unittest import mock
+
+        from neuralmind import metrics_pipeline
+
+        collector = MetricsCollector(self.project, max_bytes=300)
+        self.assertTrue(
+            collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        )
+        today = next((self.project / ".neuralmind" / "metrics").glob("metrics_*.jsonl"))
+        real_lock = metrics_pipeline._lock_file
+
+        def lock_after_another_append(fd: int) -> bool:
+            # Another hook process's record lands while this one waits.
+            with open(today, "ab") as f:
+                f.write(b'{"event": "other", "pad": "' + b"x" * 150 + b'"}\n')
+            return real_lock(fd)
+
+        with mock.patch.object(metrics_pipeline, "_lock_file", lock_after_another_append):
+            ok = collector.log_recall_metrics(outcome="injected", injected=1, similarity=0.5)
+        self.assertFalse(ok)
+        self.assertLessEqual(today.stat().st_size, 300)
+
+    def test_concurrent_processes_lose_and_tear_no_records(self) -> None:
+        import os
+        import subprocess
+        import sys
+
+        root = Path(__file__).resolve().parents[1]
+        code = (
+            "import sys\n"
+            "from neuralmind.metrics_pipeline import MetricsCollector\n"
+            "c = MetricsCollector(sys.argv[1])\n"
+            "for i in range(40):\n"
+            "    assert c.log_recall_metrics(outcome='injected', injected=i, similarity=0.5)\n"
+        )
+        env = dict(
+            os.environ, PYTHONPATH=os.pathsep.join([str(root), os.environ.get("PYTHONPATH", "")])
+        )
+        procs = [
+            subprocess.Popen([sys.executable, "-c", code, str(self.project)], env=env)
+            for _ in range(4)
+        ]
+        self.assertEqual([p.wait(timeout=120) for p in procs], [0, 0, 0, 0])
+        lines = [
+            line
+            for f in (self.project / ".neuralmind" / "metrics").glob("metrics_*.jsonl")
+            for line in f.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(len(lines), 160)
+        self.assertTrue(all(json.loads(line)["event"] == "recall" for line in lines))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

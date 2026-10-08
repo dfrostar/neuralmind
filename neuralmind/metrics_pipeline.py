@@ -13,18 +13,58 @@ Local-first. Stdlib-only. Fail-open.
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
 from pathlib import Path
 from typing import Any
 
+from .recent_queries import _lock_byte0, _unlock_byte0
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+
 METRICS_DIR_NAME = "metrics"
 METRICS_RETENTION_DAYS = 30
 METRICS_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
-# One record's limit. Concurrent hook processes can each pass the size check
-# before either appends, so the daily cap can be overshot by one record per
-# process at once; bounding records keeps that overshoot small without a
-# cross-process lock.
+# One record's limit. The size check and the append share a best-effort
+# cross-process lock; if it can't be had in time the record is appended
+# anyway, so this bounds how far concurrent hook processes can overshoot the
+# daily cap.
 METRICS_MAX_RECORD_BYTES = 64 * 1024
+
+# Serializes appends within this process. Every hook process appends to the
+# same daily file, and Windows' CRT implements append mode as seek-to-end +
+# write, so two handles writing at once can interleave and lose records.
+_APPEND_LOCK = threading.Lock()
+
+
+def _lock_file(fd: int) -> bool:
+    """Best-effort cross-process lock on *fd*: flock on POSIX, byte 0 on Windows.
+
+    Non-blocking with a short retry, so a stuck holder never stalls a hook.
+    """
+    if fcntl is None:
+        return _lock_byte0(fd)
+    for _ in range(50):  # ~50ms worst case
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            time.sleep(0.001)
+    return False
+
+
+def _unlock_file(fd: int) -> None:
+    if fcntl is None:
+        _unlock_byte0(fd)
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
 
 
 def metrics_dir(project_path: str | Path) -> Path:
@@ -71,17 +111,28 @@ class MetricsCollector:
         try:
             path = _metrics_file(self.project_path)
             path.parent.mkdir(parents=True, exist_ok=True)
-            line = json.dumps(payload, sort_keys=True) + "\n"
-            record_bytes = len(line.encode("utf-8"))
-            new_day = not path.exists()
-            size = 0 if new_day else path.stat().st_size
-            if record_bytes > METRICS_MAX_RECORD_BYTES or size + record_bytes > self.max_bytes:
-                # Too large on its own, or it would take today's file past
-                # the cap. Drop the record rather than rewrite a file other
-                # hook processes may be appending to.
+            encoded = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
+            if len(encoded) > min(METRICS_MAX_RECORD_BYTES, self.max_bytes):
                 return False
-            with open(path, "a", encoding="utf-8") as f:
-                f.write(line)
+            new_day = not path.exists()
+            with _APPEND_LOCK:
+                # O_BINARY: Windows would otherwise write "\r\n", past the bytes counted.
+                flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0)
+                fd = os.open(str(path), flags, 0o644)
+                locked = False
+                try:
+                    locked = _lock_file(fd)
+                    # Checked under the lock, against what other processes
+                    # have committed. A record that would take today's file
+                    # past the cap is dropped rather than rewrite a file
+                    # other hook processes are appending to.
+                    if os.fstat(fd).st_size + len(encoded) > self.max_bytes:
+                        return False
+                    os.write(fd, encoded)
+                finally:
+                    if locked:
+                        _unlock_file(fd)
+                    os.close(fd)
         except Exception:
             return False
         if new_day:
