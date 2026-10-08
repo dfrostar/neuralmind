@@ -142,6 +142,26 @@ def test_spread_skips_seeds_without_edges(tmp_path):
     assert ranked == {}
 
 
+def test_degrees_count_distinct_neighbors_across_namespaces(tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["A", "B"])
+    s.reinforce(["A", "C"])
+    # The same pair in a second namespace is still one neighbor.
+    s.reinforce(["A", "B"], namespace=SHARED_NAMESPACE)
+    assert s.degrees(["A", "B", "C", "lonely"]) == {"A": 2, "B": 1, "C": 1}
+    assert s.degrees(["A"], namespaces=[SHARED_NAMESPACE]) == {"A": 1}
+    assert s.degrees([]) == {}
+
+
+def test_degrees_takes_more_ids_than_sqlite_binds_at_once(tmp_path):
+    s = _store(tmp_path)
+    s.reinforce(["A", "B"])
+    # 300,000 bound variables in one query: past SQLite's default 32,766 and
+    # the 250,000 Debian and Ubuntu builds allow.
+    ids = [f"n{i}" for i in range(150_000)] + ["A"]
+    assert s.degrees(ids) == {"A": 1}
+
+
 def test_normalize_hubs_scales_runaway_central_nodes(tmp_path):
     s = _store(tmp_path)
     # make HUB the center of a star with many spokes

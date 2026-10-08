@@ -18,11 +18,13 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run   # clones the pinned repos,
 > The benchmark harness (`evals/public`) ships in the **source tree**, not the
 > PyPI wheel, so run it from a clone — `pip install neuralmind` alone won't have
 > it. The pinned repos are cloned at fixed commit SHAs and nothing in the run
-> is random, so **gold-file recall, found-rate and MRR should match the tables
-> below exactly**; they have on every machine we've compared. **Token counts
-> can differ slightly between machines:** an Apple M3 reproduced the committed
-> v4.3.4 run byte for byte, but some CI runners land up to 1.3% off on a per-repo
-> mean. `NEURALMIND_ORT_THREADS=1` matches CI's configuration (it applies to
+> is random, so **gold-file recall and found-rate should match the tables below
+> exactly**; they have on every machine we've compared. **Token counts can
+> differ slightly between machines:** CI runners with AVX-512 and an Apple M3
+> reproduce the committed run byte for byte, while runners without AVX-512 land
+> up to 0.8% off on a per-repo mean, and on `click` they rank the
+> `embedding-rag` baseline's gold files lower (MRR 0.60 instead of 0.69).
+> `NEURALMIND_ORT_THREADS=1` matches CI's configuration (it applies to
 > `neuralmind benchmark --public` too). What moves, and the evidence:
 > [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces).
 
@@ -37,7 +39,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run   # clones the pinned repos,
 | **Cost + correctness reported jointly** | The headline is "recall at N× fewer tokens," never a lone ratio. |
 | **Strong baselines, disclosed** | Not just naive whole-file dumps — we include keyword (`ripgrep`) and a function-level vector RAG using the *same encoder* NeuralMind uses. |
 | **Pre-registered queries, every one reported** | Queries are committed in `evals/public/manifest.json` before tuning; losses are shown, not hidden. |
-| **Deterministic per machine** | Synapse injection is OFF (see "What this does *not* measure") and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall, found-rate and MRR have matched exactly, and token counts have moved slightly on some CI runners — see [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces). |
+| **Deterministic per machine** | Synapse injection is OFF (see "What this does *not* measure") and nothing is sampled, so a re-run on the same machine is byte-identical. Across machines, recall and found-rate have matched exactly, while token counts, and on one repo the `embedding-rag` baseline's MRR, have moved slightly on CI runners without AVX-512 — see [How exactly a re-run reproduces](#how-exactly-a-re-run-reproduces). |
 
 ### The baselines
 
@@ -70,8 +72,8 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 |---|---:|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 41,729 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 26,543 | 0.60 | 1.6× |
-| `embedding-rag` | 1.00 | 100% | 607 | 0.96 | 68.8× |
-| **`neuralmind`** | **0.96** | **93%** | **895** | **0.96** | **46.6×** |
+| `embedding-rag` | 1.00 | 100% | 602 | 0.96 | 69.3× |
+| **`neuralmind`** | **0.96** | **93%** | **922** | **0.96** | **45.3×** |
 
 **Where it missed** (1 of 14):
 
@@ -85,8 +87,8 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 |---|---:|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 78,514 | 1.00 | 1× |
 | `ripgrep` | 0.79 | 71% | 45,059 | 0.60 | 1.7× |
-| `embedding-rag` | 1.00 | 100% | 636 | 0.60 | 123.4× |
-| **`neuralmind`** | **0.86** | **86%** | **645** | **0.69** | **121.7×** |
+| `embedding-rag` | 1.00 | 100% | 645 | 0.69 | 121.7× |
+| **`neuralmind`** | **0.86** | **86%** | **682** | **0.69** | **115.2×** |
 
 **Where it missed** (1 of 7):
 
@@ -100,8 +102,8 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 |---|---:|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 59,013 | 1.00 | 1× |
 | `ripgrep` | 0.85 | 80% | 26,891 | 0.65 | 2.2× |
-| `embedding-rag` | 0.95 | 90% | 677 | 0.70 | 87.2× |
-| **`neuralmind`** | **0.95** | **90%** | **756** | **0.72** | **78.0×** |
+| `embedding-rag` | 0.95 | 90% | 671 | 0.72 | 87.9× |
+| **`neuralmind`** | **0.95** | **90%** | **773** | **0.73** | **76.3×** |
 
 **Where it missed** (1 of 10):
 
@@ -115,15 +117,15 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 |---|---:|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 232,483 | 1.00 | 1× |
 | `ripgrep` | 1.00 | 100% | 43,437 | 0.75 | 5.4× |
-| `embedding-rag` | 1.00 | 100% | 669 | 0.89 | 347.4× |
-| **`neuralmind`** | **1.00** | **100%** | **887** | **0.70** | **262.1×** |
+| `embedding-rag` | 1.00 | 100% | 672 | 0.89 | 346.1× |
+| **`neuralmind`** | **1.00** | **100%** | **948** | **0.70** | **245.2×** |
 
 No NeuralMind gold-file misses on this repo.
 
 ### Aggregate across all 4 repos (40 queries)
 
 **85.71–100% gold-file recall per repo (95% mean over all 40 queries), 92.5%
-found-rate (37 of 40), 46.6×–262.1× fewer tokens than pasting whole files.**
+found-rate (37 of 40), 45.3×–245.2× fewer tokens than pasting whole files.**
 Neither number is uniform across repos — that's the honest picture, not a
 single cherry-picked ratio. `click` is the weakest repo in the corpus at
 85.71% recall (one miss in 7 queries); every other repo reaches at least 95%.
@@ -140,7 +142,7 @@ one we quote.
 
 1. **Against what developers actually do today — paste files or grep — NeuralMind
    is a large, real win, but not a perfect one.** It reaches **85.71–100% gold-file
-   recall (95% mean) at 46.6–262.1× fewer tokens** than pasting the files, and
+   recall (95% mean) at 45.3–245.2× fewer tokens** than pasting the files, and
    it beats `ripgrep` on cost on every repo, and on recall it's ahead on 3 of
    4 repos (`requests`, `click`, `flask`) and ties exactly on the other one
    (`rich`) — never behind. Most agents don't have a tuned
@@ -204,81 +206,90 @@ across runs, CI-gated on direction, budget-
 
 Nothing in the run is random: synapse injection is off and no step samples,
 and every same-machine re-run we've done has been byte-identical. Across
-machines, correctness has not moved in any run we've compared, but token
-counts sometimes have. Only the two embedding-backed backends, `embedding-rag`
-and `neuralmind`, are affected, which points at floating-point results in the
-embedding path differing slightly between machines: a tiny difference can
-reorder near-tied candidates and change which chunks fill the context.
+machines, recall and found-rate have not moved in any run we've compared, but
+token counts sometimes have. Only the two embedding-backed backends,
+`embedding-rag` and `neuralmind`, are affected, which points at floating-point
+results in the embedding path differing slightly between machines: a tiny
+difference can reorder near-tied candidates, which changes which chunks fill
+the context and, now and then, the rank at which a gold file appears.
+
+**Which machines land where.** On GitHub's hosted runners, whether the CPU has
+AVX-512 decides it. The `public-benchmark-drift` job logs its runner's CPU, and
+in all 30 of its runs on `main` from the v4.6.0 snapshot's commit (2026-10-04)
+to v4.10.0's (2026-10-07), every runner with AVX-512 (AMD EPYC 9V74 and 9V45,
+Intel Xeon Platinum 8573C, Intel Xeon 6973P-C) produced one output and every
+runner without it (AMD EPYC 7763, and EPYC 9V74 machines that didn't expose
+AVX-512) produced the other. Neither the runner image (two of them), CPython
+(3.12.14 and 3.12.15) nor turbovec (1.0.0 to 1.1.2) changed which output a run
+produced, before or after the code change that moved the tables (v4.8.1, see
+[The corpus](#the-corpus)). The committed `results.json` is the AVX-512 output,
+run [37577515538](https://github.com/dfrostar/neuralmind/actions/runs/37577515538)
+at `d1c538cd` (the same retrieval code as v4.10.0). An Apple M3, an ARM chip
+with no AVX-512, reproduces it byte for byte (below).
+
+What a runner without AVX-512 measures, against the committed run
+(run [37581970831](https://github.com/dfrostar/neuralmind/actions/runs/37581970831),
+v4.10.0's release commit `17aa6cb2`, AMD EPYC 7763):
 
 | What you compare | What we've seen |
 |---|---|
-| Gold-file recall, found-rate, MRR | Identical in every query row and every per-repo summary, on every machine below |
+| Gold-file recall, found-rate | Identical in every query row and every per-repo summary |
+| MRR | `neuralmind`: identical. `embedding-rag` on `click`: 0.60 instead of 0.69, because in two queries (`command-core`, `help-formatter`) the gold file trades places with a near-tied chunk |
 | `full-file` and `ripgrep` (no embeddings) | Identical |
-| `embedding-rag` and `neuralmind` token counts | Identical to the committed v4.3.4 run on the M3 and in one of the three CI runs. Between the two CI states below, 11 of 80 query rows differ, by 1 to 67 tokens (at most 14% of one query's context), and per-repo means by at most 1.3% |
-| Files in the assembled context | 4 of those 11 rows gain, lose or swap a file — never a gold file |
-| "vs full-file" ratios | Move with the means: the headline range is 45.0×–260.7× in the v4.3.4 run and 44.9×–259.5× in the other state |
+| `embedding-rag` and `neuralmind` token counts | 6 of 80 query rows differ, by 14 to 108 tokens (at most 15% of one query's context); per-repo means by at most 0.8% |
+| Files in the assembled context | 6 rows reorder their files or drop one — never a gold file |
+| "vs full-file" ratios | Move with the means: `requests` is 45.5× instead of 45.3×; the headline range is 45–246× either way |
 
-**CI runs (observed; CI gates drift, not exact reproduction).** The
-`public-benchmark-drift` job re-runs this benchmark on every PR and push to
-`main`, fails if any repo's recall moves more than 5 points or its mean
-tokens/query more than 10% from the committed snapshot, and uploads its fresh
-`results.json` as an artifact. The spread below is well inside those
-tolerances, so the check passes in either state. Artifacts are kept for 90
-days, which is why the numbers are copied here. Three `main` runs on 2026-10-03, compared against
-the snapshot committed at v4.3.4, had the same runner image (ubuntu-24.04
-`20260927.320.1`), CPython 3.12.14, identical third-party packages (numpy
-2.5.3, onnxruntime 1.30.0, tokenizers 0.23.2, turbovec 1.0.0, tiktoken 0.14.0)
-and `NEURALMIND_ORT_THREADS=1`. Each run landed exactly on one of two states:
+Mean tokens/query for the (repo, backend) pairs that differ:
 
-| Run | Commit | Fresh `results.json` |
-|---|---|---|
-| [37092548906](https://github.com/dfrostar/neuralmind/actions/runs/37092548906) | `c8c6b8f` | state B |
-| [37117393222](https://github.com/dfrostar/neuralmind/actions/runs/37117393222) | `cacadf4` | state A: byte-identical to the committed v4.3.4 file |
-| [37133642769](https://github.com/dfrostar/neuralmind/actions/runs/37133642769) | `8b1e827` | state B: byte-identical to `c8c6b8f`'s run |
+| repo | backend | committed (AVX-512) | without AVX-512 |
+|---|---|---:|---:|
+| `requests` | `embedding-rag` | 602.1 | 606.5 |
+| `requests` | `neuralmind` | 922.1 | 916.7 |
+| `flask` | `embedding-rag` | 671.3 | 676.7 |
 
-Code doesn't explain the split. `8b1e827` differs from `cacadf4` only in a test
-file, and `c8c6b8f`, from before `cacadf4`'s indexing changes, matches
-`8b1e827` byte for byte. With the software identical, the runner's hardware is
-the likely cause, since GitHub's hosted runners don't all have the same CPU.
-Which hardware difference decides it is not known. State A has come from three
-very different machines: the x86-64 AVX-512 host that produced the committed
-run, one CI runner, and the Apple M3 below. State B has come only from CI
-runners, and those jobs didn't log their CPU. The drift job logs the runner's
-CPU model and SIMD flags from now on, so the next split can be attributed.
-The self-benchmark has a recorded history of the same kind of host dependence
-(token totals differing between runners, hit rates identical), in
+**CI gates drift, not exact reproduction.** The `public-benchmark-drift` job
+re-runs this benchmark on every PR and push to `main`, fails if any repo's
+recall moves more than 5 points or its mean tokens/query more than 10% from
+the committed snapshot, and uploads its fresh `results.json` as an artifact.
+The spread above is well inside those tolerances, so the check passes in
+either state. Both CI runs above used numpy 2.5.3, onnxruntime 1.30.0,
+tokenizers 0.23.2, turbovec 1.1.2, tiktoken 0.14.0 and
+`NEURALMIND_ORT_THREADS=1`. Artifacts are kept for 90 days, which is why the
+numbers are copied here. The self-benchmark has a recorded history of the same
+AVX-512 host dependence (token totals differing between runners, hit rates
+identical since a fix in August), in
 [`tests/test_benchmark_regression.py`](../../tests/test_benchmark_regression.py).
 
-**Apple Silicon (two runs on one maintainer machine, not CI).** On 2026-10-03,
-an Apple M3 (macOS, arm64) ran the benchmark at `8b1e827`, the same code as the
-third CI run above, with Python 3.11.16 and numpy 2.4.6 (the newest numpy for
-Python 3.11) and CI's onnxruntime, tokenizers, turbovec and tiktoken versions.
-Its `results.json` was byte-identical to the committed v4.3.4 one, both with
-`NEURALMIND_ORT_THREADS=1` and with it unset (ONNX Runtime's default thread
-pool, on 8 cores). The unset run took about 3 minutes, the pinned one about 9½.
+**Apple Silicon (one maintainer machine, not CI).** On 2026-10-07 an Apple M3
+(macOS, arm64) ran the benchmark at `175849d6`, which is v4.10.0's code, with
+CPython 3.12.14, the same third-party packages as CI and
+`NEURALMIND_ORT_THREADS=1`, in about 8½ minutes. Its `results.json` was
+byte-identical to the committed one. On 2026-10-03 the same
+machine had matched the v4.3.4 snapshot byte for byte, with the thread pin and
+without it (about 3 minutes unset).
 
-Mean tokens/query in the two CI states, for the (repo, backend) pairs that
-differ:
-
-| repo | backend | v4.3.4 run (state A) | state B |
-|---|---|---:|---:|
-| `requests` | `embedding-rag` | 606.9 | 604.1 |
-| `requests` | `neuralmind` | 927.9 | 929.8 |
-| `click` | `embedding-rag` | 636.0 | 637.3 |
-| `click` | `neuralmind` | 711.3 | 702.0 |
-| `flask` | `embedding-rag` | 676.7 | 676.5 |
-| `rich` | `embedding-rag` | 669.2 | 670.4 |
-| `rich` | `neuralmind` | 891.9 | 895.8 |
+**Earlier snapshots.** The split predates the CPU log. For the v4.3.4 snapshot,
+three `main` runs on 2026-10-03 landed on two states
+([37117393222](https://github.com/dfrostar/neuralmind/actions/runs/37117393222)
+matched the committed file;
+[37092548906](https://github.com/dfrostar/neuralmind/actions/runs/37092548906)
+and [37133642769](https://github.com/dfrostar/neuralmind/actions/runs/37133642769)
+matched each other), with per-repo means at most 1.3% apart and recall,
+found-rate and MRR identical. For the v4.6.0 snapshot, runners without AVX-512
+measured up to 1.9% off on a per-repo mean (`requests`/`neuralmind`: 878.0
+mean tokens against the committed 895.1), more than the 1.3% this page quoted
+at the time; the 10% drift tolerance let it pass, and nothing flagged it.
 
 **Comparing your own run.** Add `--out bench/public` to the command at the top;
 `git diff bench/public/results.json` is then empty when your run matches the
 committed one byte for byte. `NEURALMIND_ORT_THREADS=1` matches CI's
 configuration. It made no difference on the M3, so treat it as a precaution
 rather than a requirement, and drop it if you want the faster run. Expect
-recall, found-rate and MRR to match exactly; token counts may match byte for
-byte or land close to the tables. The spread above is what we've seen for this
-snapshot so far, not a guaranteed bound; a regenerated snapshot needs its own
-check.
+recall and found-rate to match exactly. Token counts, and the `embedding-rag`
+baseline's MRR on `click`, may match byte for byte or land on the other state
+above. The spread above is what we've seen for this snapshot so far, not a
+guaranteed bound; a regenerated snapshot needs its own check.
 
 ## Answerability arm — `--judge` (opt-in, secondary signal)
 
@@ -378,6 +389,26 @@ stale by definition, so they were regenerated against the v4.6.0 code
 92.5% found-rate, 4 misses → 3. Why the index changed, and the five other
 ranking changes that were measured and *not* kept, is in the retrieval eval:
 [`bench/retrieval/README.md`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md).
+
+**Regenerated 2026-10-07 at v4.10.0.** The tables went stale without a
+retrieval change aimed at them. v4.8.1
+([#587](https://github.com/dfrostar/neuralmind/pull/587)) corrected the code
+graph the build writes: a call is attributed to the function it's in, Python
+relative imports resolve against the importer's package, and symbols whose ids
+collided get their own nodes. The graph's clusters regrouped on all four repos
+(`click`'s four became three), and with them the project summary (L1) and the
+cluster context (L2) the selector builds from them. Every NeuralMind per-repo
+mean went up, by 17 to 61 tokens a question, and every ratio went down: <!-- claims-guard:allow — the v4.6.0 ratios this regeneration replaced, this line and the next -->
+`requests` 46.6× → 45.3×, `click` 121.7× → 115.2×, `flask` 78.0× → 76.3×, `rich` 262.1× → 245.2×, and the range 46–263× → 45–246×.
+The search hits (L3) changed on 5 of the 40 questions; recall, found-rate and
+the three misses didn't move. On `click` most questions carry the same extra
+31 tokens: L1 lists three clusters instead of four (18 fewer), and the cluster
+those questions load now includes the package's module docstring (about 49
+more). The drift gate passed on every run in between, because it allows 10% on
+tokens, so the published tables stayed stale from 2026-10-05 until this
+regeneration. The `embedding-rag` baseline moved with the same graph: its MRR
+is 0.69 on `click` (was 0.60) and 0.72 on `flask` (was 0.70), and NeuralMind's
+`flask` MRR is 0.73 (was 0.72).
 
 Add a repo the same way: append to `evals/public/manifest.json` (pin the commit,
 give each query an objective def-site gold file) and re-run. Community-contributed

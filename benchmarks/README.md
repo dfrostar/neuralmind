@@ -71,7 +71,7 @@ Useful variants of #8:
 ## What the numbers say (short version)
 
 Full tables on the [Benchmarks](../docs/wiki/Benchmarks.md) page. Headline:
-**85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting
+**85.71–100% gold-file recall (95% mean) at 45–246× fewer tokens** than pasting
 every source file on real OSS repos, beating `ripgrep` on cost on every repo and
 on recall on 3 of 4 (tying exactly on the fourth); a synapse-layer lift in
 top-k hit-rate that CI gates on direction (+3.5 to +14 pts observed across runs,

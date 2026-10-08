@@ -1,4 +1,4 @@
-# NeuralMind v4.10.1 — No turbovec store on a ChromaDB project
+# NeuralMind v4.11.1 — No turbovec store on a ChromaDB project
 
 **Type:** Patch release | **Theme:** Two turbovec checks that ran on every backend
 
@@ -60,4 +60,4 @@ None. No stored data changes shape, and no command takes new arguments.
 ## Related
 
 - [CLI reference: doctor](../wiki/CLI-Reference.md#doctor-v0120)
-- [v4.10.0 release notes](RELEASE_NOTES_v4.10.0.md)
+- [v4.11.0 release notes](RELEASE_NOTES_v4.11.0.md)

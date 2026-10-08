@@ -261,6 +261,56 @@ SUPERSEDED_FIGURES = [
     ),
 ]
 
+# Public-benchmark ratios that a regenerated run replaced (site/claims.json,
+# `unsourced_do_not_use`). Each was the measurement of its day and stays in the
+# dated release notes and CHANGELOG.md, which this guard doesn't read; a
+# published page that records the history marks the line with the allow
+# marker. The v4.3.4 run's 45.0× for `requests` was still on two pages a week
+# after v4.6.0 replaced it. Unlike the point estimates above, most of these are
+# ranges, so they're matched on the raw line: _without_ranges would blank them.
+_TIMES = r"(?:\s*(?:×|&times;|&#215;)|x(?![a-z]))"
+_TO = r"\s*(?:×|&times;|&#215;|x)?\s*(?:–|—|-|&ndash;|&mdash;|&#8211;|to)\s*"
+
+
+def _ratio_range(low: str, high: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![\d.])(?:{low}){_TO}(?:{high}){_TIMES}")
+
+
+def _ratios(*values: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![\d.])(?:{'|'.join(values)}){_TIMES}")
+
+
+SUPERSEDED_BENCHMARK_FIGURES = [
+    (
+        _ratio_range(r"46(?:\.6)?", r"26[23](?:\.1)?"),
+        "The v4.6.0 run's range, replaced 2026-10-07 at v4.10.0: 45–246×.",
+    ),
+    (
+        # click's 121.7× is left out: the embedding-rag baseline measures
+        # exactly that on click in the current run, in the tables that list it.
+        _ratios(r"46\.6", r"78(?:\.0)?", r"262\.1", r"263"),
+        (
+            "A v4.6.0 per-repo ratio, replaced 2026-10-07 at v4.10.0: requests "
+            "45.3×, click 115.2×, flask 76.3×, rich 245.2×."
+        ),
+    ),
+    (
+        _ratio_range(r"45(?:\.0)?", r"26(?:0\.7|1)"),
+        "The v4.3.4 run's range, replaced at v4.6.0 and again at v4.10.0 (45–246×).",
+    ),
+    (
+        _ratios(r"45\.0", r"110\.4", r"81\.6", r"260\.7", r"261"),
+        (
+            "A v4.3.4 per-repo ratio. The current run measures requests 45.3×, "
+            "click 115.2×, flask 76.3×, rich 245.2×."
+        ),
+    ),
+    (
+        _ratio_range(r"46", r"259"),
+        "Published 2026-09-16 from a run whose raw output was never committed.",
+    ),
+]
+
 # The public benchmark's mean is 95% and its per-repo floor is 85.71%. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
@@ -412,6 +462,56 @@ def test_published_surfaces_do_not_quote_superseded_point_estimates() -> None:
         "these on direction, not size — quote the gate and the observed band:\n  "
         + "\n  ".join(violations)
     )
+
+
+def test_published_surfaces_do_not_quote_superseded_benchmark_figures() -> None:
+    violations: list[str] = []
+    for path in _published_paths():
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for index, line in enumerate(lines):
+            if _allowed(lines, index):
+                continue
+            for pattern, reason in SUPERSEDED_BENCHMARK_FIGURES:
+                m = pattern.search(line)
+                if m:
+                    rel = path.relative_to(REPO_ROOT)
+                    violations.append(f"{rel}:{index + 1}: {m.group(0)!r} — {reason}")
+                    break  # a range's high end would otherwise report the line twice
+    assert not violations, (
+        "A published surface quotes a public-benchmark ratio that a regenerated "
+        "run replaced. Quote the committed run (site/claims.json), or, on a dated "
+        "line that records the history, add the claims-guard:allow marker:\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_superseded_benchmark_guard_trips_on_the_copy_that_shipped() -> None:
+    shipped = [
+        "**46–263× fewer tokens than pasting every source file, at 95% mean",
+        '<div class="num">46&#8211;263&#215;</div>',
+        "<li>3 of 40 queries missed, 46&ndash;263&times; fewer tokens</li>",
+        "That is 46.6–262.1× fewer input tokens per query, not 46.6–262.1× less spend.",
+        "found-rate (37 of 40), 46.6×–262.1× fewer tokens than pasting whole files.",
+        '<td class="num"><span class="win">78.0×</span></td>',
+        "The public benchmark's 45.0× on `requests` is a different measurement",
+        "**93.75% mean gold-file recall (85–100% per repo) at 45–261× fewer tokens**",
+        "45 to 261x fewer tokens",
+    ]
+    for line in shipped:
+        assert any(p.search(line) for p, _ in SUPERSEDED_BENCHMARK_FIGURES), line
+
+    current = [
+        "**45–246× fewer tokens than pasting every source file, at 95% mean",
+        '<div class="num">45&#8211;246&#215;</div>',
+        "That is 45.3–245.2× fewer input tokens per query",
+        "requests 45.3×, click 115.2×, flask 76.3×, rich 245.2×",
+        "| `embedding-rag` | 1.00 | 100% | 645 | 0.69 | 121.7× |",
+        "78.6× on psf/requests v2.32.3 at v4.5.0",
+        "the community submissions so far (46× to 65.6×)",
+        "5.1× on the CI fixture at v4.3.4; the build fails below 4.0×",
+    ]
+    for line in current:
+        assert not any(p.search(line) for p, _ in SUPERSEDED_BENCHMARK_FIGURES), line
 
 
 def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:

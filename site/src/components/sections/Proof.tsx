@@ -5,7 +5,7 @@ const evidence = [
     {
         title: 'Reproducible public benchmark',
         kind: 'Reproducible',
-        desc: '40 pre-registered queries on 4 pinned OSS repos: 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
+        desc: '40 pre-registered queries on 4 pinned OSS repos: 95% mean gold-file recall at 45–246× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
         link: '/benchmark/',
         linkText: 'See the benchmark →',
     },

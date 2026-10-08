@@ -73,9 +73,13 @@ CLASSNAME_RE = re.compile(r"className=(?:\"[^\"]*\"|'[^']*'|\{[^}]*\})", re.DOTA
 ALLOW_MARKER = "claims-guard:allow"
 
 # Any number immediately preceding a multiplication sign, including both
-# endpoints of a range ("45–257×" yields 45 and 257).
-RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)\s*×")
-SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*×")
+# endpoints of a range ("45–257×" yields 45 and 257). The sign can be written
+# ×, &times;, &#215; or an x right after the number, and the dash as an
+# entity, as in tests/test_docs_claims.py.
+_TIMES = r"(?:\s*(?:×|&times;|&#215;)|x(?![a-z]))"
+_DASH = r"\s*(?:×|&times;|&#215;|x)?\s*(?:–|—|-|&ndash;|&mdash;|&#8211;)\s*"
+RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _DASH + r"(\d+(?:\.\d+)?)" + _TIMES)
+SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)" + _TIMES)
 
 # "100% recall" in any word order within a short window. The public
 # benchmark's mean is 95% and its per-repo floor is 85.71% (click).
@@ -150,18 +154,26 @@ def _exempt(lines: list[str], index: int) -> bool:
     return any(ALLOW_MARKER in line for line in window)
 
 
+def _ratio_claims_in(line: str) -> list[tuple[bool, float]]:
+    """Return (is_range_endpoint, ratio) for every ratio claim on *line*."""
+    found: list[tuple[bool, float]] = []
+    consumed = line
+    for m in RANGE_RE.finditer(line):
+        found.append((True, float(m.group(1))))
+        found.append((True, float(m.group(2))))
+        consumed = consumed.replace(m.group(0), " ")
+    for m in SINGLE_RE.finditer(consumed):
+        found.append((False, float(m.group(1))))
+    return found
+
+
 def _ratios_in(text: str) -> list[tuple[int, float]]:
     """Return (lineno, ratio) for every ratio claim in *text*."""
-    found: list[tuple[int, float]] = []
-    for lineno, line in enumerate(text.splitlines(), start=1):
-        consumed = line
-        for m in RANGE_RE.finditer(line):
-            found.append((lineno, float(m.group(1))))
-            found.append((lineno, float(m.group(2))))
-            consumed = consumed.replace(m.group(0), " ")
-        for m in SINGLE_RE.finditer(consumed):
-            found.append((lineno, float(m.group(1))))
-    return found
+    return [
+        (lineno, ratio)
+        for lineno, line in enumerate(text.splitlines(), start=1)
+        for _, ratio in _ratio_claims_in(line)
+    ]
 
 
 def test_every_site_ratio_has_provenance() -> None:
@@ -180,6 +192,84 @@ def test_every_site_ratio_has_provenance() -> None:
         "measured and how to reproduce it — add the measurement first, then the "
         "claim:\n  " + "\n  ".join(violations)
     )
+
+
+def _superseded_ratios(*, point: bool = False) -> dict[float, str]:
+    """Ratios a regenerated benchmark replaced, from the ``ratios`` lists in
+    ``unsourced_do_not_use``, minus any value that is canon again.
+
+    With *point*, for a ratio quoted on its own rather than as a range's end:
+    a value that is canon only as a rounded range endpoint (``range_endpoint``)
+    doesn't count as canon then. The range's low end, 45, is v4.3.4's 45.0×
+    for requests in number only; quoted on its own it is that replaced
+    measurement, and the current one is 45.3×.
+    """
+    canon = _claims()["ratios"]
+    allowed = {float(e["value"]) for e in canon if not (point and e.get("range_endpoint"))}
+    return {
+        float(value): entry["claim"]
+        for entry in _claims()["unsourced_do_not_use"]
+        for value in entry.get("ratios", [])
+        if float(value) not in allowed
+    }
+
+
+def test_site_does_not_quote_superseded_ratios() -> None:
+    """A ratio claims.json records as replaced must not appear on any page.
+
+    The provenance check above reads only the homepage sections and the
+    layout, so a page outside them keeps quoting a figure after the canon
+    drops it: /benchmark carried its own copy of every per-repo ratio. This
+    check reads every page under site/src.
+    """
+    superseded = _superseded_ratios()
+    superseded_points = _superseded_ratios(point=True)
+    violations: list[str] = []
+    for path in _site_files():
+        lines = _prose(path).splitlines()
+        for index, line in enumerate(lines):
+            if _exempt(lines, index):
+                continue
+            for endpoint, ratio in _ratio_claims_in(line):
+                replaced = superseded if endpoint else superseded_points
+                if ratio in replaced:
+                    rel = path.relative_to(REPO_ROOT)
+                    violations.append(
+                        f"{rel}:{index + 1}: {ratio:g}× — replaced: {replaced[ratio]}"
+                    )
+    assert not violations, (
+        "The site quotes a ratio that a regenerated run replaced. Quote the "
+        "committed run's figures from site/claims.json:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_superseded_ratio_guard_trips_on_the_copy_that_shipped() -> None:
+    superseded = _superseded_ratios()
+    for line in (
+        "{ label: 'Fewer tokens', value: '46–263×', evidence: 'than pasting every source file' },",
+        "ratio: '262.1×',",
+        "ratio: '78.0×',",
+    ):
+        assert any(r in superseded for _, r in _ratios_in(line)), line
+    # A value that is canon again is no longer treated as replaced as a range
+    # endpoint: v4.3.4's 45.0× for requests is numerically the current range's
+    # low end.
+    assert 45.0 not in superseded and 45.0 in _allowed_ratios()
+    current = (
+        "{ label: 'Fewer tokens', value: '45–246×', evidence: 'than pasting every source file' },"
+    )
+    assert not any(r in superseded for _, r in _ratios_in(current))
+    # Quoted on its own, though, it is still the replaced requests figure.
+    points = _superseded_ratios(point=True)
+    stale = "(The public benchmark’s 45.0× on the same repo is a different measurement"
+    assert any(not end and r in points for end, r in _ratio_claims_in(stale))
+    fresh = "(The public benchmark’s 45.3× on the same repo is a different measurement"
+    assert not any(r in points for _, r in _ratio_claims_in(fresh))
+    # The guard reads raw TSX: entity and ASCII spellings count too.
+    for stale_line in ("<p>46&ndash;263&times; fewer tokens</p>", "46-263x fewer tokens"):
+        assert any(r in superseded for _, r in _ratio_claims_in(stale_line)), stale_line
+    for current_line in ("<p>45&ndash;246&times; fewer tokens</p>", "45-246x fewer tokens"):
+        assert not any(r in superseded for _, r in _ratio_claims_in(current_line)), current_line
 
 
 def test_site_does_not_name_private_projects() -> None:
@@ -454,7 +544,7 @@ def test_public_benchmark_ratios_are_registered_from_the_committed_run() -> None
     bench = _public_benchmark()
     allowed = _allowed_ratios()
     per_repo = bench["ratios"]
-    # The site quotes the range rounded outward: 46.6x -> "46", 262.1x -> "263".
+    # The site quotes the range rounded outward: 45.3x -> "45", 245.2x -> "246".
     low = float(int(min(per_repo.values())))
     high = float(-int(-max(per_repo.values()) // 1))
     needed = {f"{name} ({r:g}×)": r for name, r in per_repo.items()}
