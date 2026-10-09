@@ -70,9 +70,14 @@ QUESTION = "which files in this repo handle parsing command-line options?"
         ("docs/examples/basic.py", True),
         ("demos/app.js", True),
         ("samples/x.go", True),
+        ("demo/index.js", True),
+        ("example/app.py", True),
         ("src/click/core.py", False),
         ("src/example.py", False),  # a module named example is project code
         ("tests/test_examples.py", False),
+        # Java packages are folders: Spring Initializr's default is com.example.demo.
+        ("src/main/java/com/example/demo/DemoApplication.java", False),
+        ("app/src/main/kotlin/com/sample/app/Main.kt", False),
     ],
 )
 def test_example_file_detection(path, is_example):

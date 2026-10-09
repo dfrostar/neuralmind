@@ -253,7 +253,11 @@ _TEST_QUERY = re.compile(
     re.I,
 )
 _TEST_CLASS_QUERY = re.compile(r"\b[A-Za-z]\w*[a-z0-9]Tests?\b")  # UserServiceTest
-_EXAMPLE_DIRS = frozenset({"example", "examples", "demo", "demos", "sample", "samples"})
+# Plural anywhere in the path; the singular only as the project's top folder,
+# because Java and Kotlin packages are folders too and Spring Initializr's
+# default package is com.example.demo.
+_EXAMPLE_DIRS = frozenset({"examples", "demos", "samples"})
+_EXAMPLE_TOP_DIRS = frozenset({"example", "demo", "sample"})
 _EXAMPLE_QUERY = re.compile(r"\b(examples?|demos?|samples?)\b", re.I)
 _ABSOLUTE_PATH = re.compile(r"^(?:/|[A-Za-z]:/)")
 
@@ -297,9 +301,11 @@ def _is_test_file(path: str, root: str | os.PathLike | None = None) -> bool:
 
 
 def _is_example_file(path: str, root: str | os.PathLike | None = None) -> bool:
-    """A file under ``examples/``, ``demo(s)/`` or ``sample(s)/``: code that uses the project."""
+    """A file under ``examples/``, ``demos/`` or ``samples/``, or a top-level
+    ``example/``, ``demo/`` or ``sample/``: code that uses the project."""
     parts = _project_relative(path, root).lower().split("/")
-    return any(p in _EXAMPLE_DIRS for p in parts[:-1])
+    dirs = parts[:-1]
+    return any(p in _EXAMPLE_DIRS for p in dirs) or bool(dirs and dirs[0] in _EXAMPLE_TOP_DIRS)
 
 
 def _asks_about_tests(query: str) -> bool:
