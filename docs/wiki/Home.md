@@ -62,7 +62,7 @@ baseline's (0.74, 0.94). Query p50 was 13–14 ms on the library repos and
 it. Run `neuralmind build` once after upgrading.
 [Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md).
 
-### v4.11.1 — No turbovec store on a ChromaDB project (October 2026)
+### Also in v4.12.0 — No turbovec store on a ChromaDB project (October 2026)
 
 `neuralmind build` and `neuralmind doctor` check whether the turbovec index
 was quarantined, and both opened the turbovec store to do it, whatever the
@@ -71,7 +71,7 @@ every build left an empty `.neuralmind/neuralmind_turbovec/store.sqlite`
 behind, and `doctor` called it "Index version compatible". Both checks now
 run only on turbovec projects; elsewhere `doctor` reports the check as not
 applicable.
-[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md).
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md#also-in-this-release-no-turbovec-store-on-a-chromadb-project).
 
 ### v4.11.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
