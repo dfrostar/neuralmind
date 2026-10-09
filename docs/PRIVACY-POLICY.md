@@ -1,7 +1,7 @@
 # Privacy Policy — NeuralMind
 
 **Effective Date:** July 19, 2026
-**Last Updated:** October 6, 2026
+**Last Updated:** October 9, 2026
 
 ---
 
@@ -31,7 +31,7 @@ There is no license portal yet: licenses are issued manually and sent to you dir
 - No payment card data. No payment processor is integrated; Team licenses are invoiced manually, in USD
 - No seat assignments. Seats are administered on your own machines with `neuralmind team seats`, and the email addresses you add are not sent to us
 - No usage data from the OSS tool (NeuralMind OSS operates entirely locally)
-- No telemetry, analytics, or tracking pixels
+- No telemetry, analytics, or tracking pixels in the NeuralMind software or in licensing. The neuralmind.uk website is separate: [its privacy page](https://neuralmind.uk/privacy) describes the cookieless Cloudflare Web Analytics it uses
 - No cookies (there is no license portal yet)
 
 ---
@@ -84,8 +84,9 @@ We use the following processors to deliver our service:
 | Processor | Data Accessed | Purpose | DPA Available |
 |-----------|---------------|---------|---------------|
 | **GitHub** | Username (via GitHub login, if used) | Community forum, issue tracking | https://docs.github.com/en/site-policy |
+| **Zoho Mail** (Zoho Corporation) | Email address, name and anything you write in emails to or from hello@neuralmind.uk | Hosts our business email: license requests, invoices, support, privacy requests | https://www.zoho.com/gdpr.html |
 
-No payment processor is integrated: Team licenses are invoiced manually, in USD.
+No payment processor or invoicing service is integrated: Team licenses are invoiced manually, in USD, and invoices are sent by email.
 
 We do not share your data with any other third parties. We do not sell your data. We do not use your data for advertising.
 

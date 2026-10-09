@@ -67,13 +67,14 @@ const sections: Section[] = [
         title: 'Third-Party Services',
         body: [
             'GitHub: for source code hosting and releases. GitHub\'s privacy policy applies.',
+            'Zoho Mail: hosts our business email (hello@neuralmind.uk), so it processes the emails you exchange with us, including license requests, invoices and support. Zoho\'s privacy policy and data processing addendum apply.',
             'PyPI: for package distribution. Python Software Foundation privacy policy applies.',
             'Cloudflare: for domain, DNS, and Pages hosting. Cloudflare\'s privacy policy applies.',
         ],
     },
     {
         title: 'Changes to This Policy',
-        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: October 6, 2026.',
+        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: October 9, 2026.',
     },
     {
         title: 'Contact',
@@ -89,7 +90,7 @@ export default function Privacy() {
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
                     <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. We never receive your code, the software has no telemetry, and this website uses only cookie-free, aggregate analytics.</p>
-                    <p className="text-slate-400 text-lg mb-12">Last updated: October 6, 2026</p>
+                    <p className="text-slate-400 text-lg mb-12">Last updated: October 9, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">
                             <h2 className="font-display text-2xl font-bold text-white mb-3 border-l-4 border-electric pl-4">{s.title}</h2>
