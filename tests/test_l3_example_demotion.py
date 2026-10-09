@@ -156,3 +156,82 @@ def test_absolute_graph_paths_under_an_examples_checkout(tmp_path):
     sel = ContextSelector(StubEmbedder(root, ranked), str(root))
     sel.get_l3_search("where is m0 parsed")
     assert not any(h.get("_example_file") or h.get("_test_file") for h in sel._last_l3_boosted)
+
+
+# --------------------------------------------------------------------------- #
+# Review follow-ups (#625)
+# --------------------------------------------------------------------------- #
+def test_a_named_test_under_examples_is_not_demoted_as_an_example():
+    """The test exemption holds whatever folder the test lives in."""
+    out = cs._demote_examples(
+        cs._demote_tests(
+            [hit("t", "examples/app/tests/test_app.py", 1.0)], "why does test_app.py fail?", 0.5
+        ),
+        "why does test_app.py fail?",
+        0.5,
+    )
+    assert out[0]["score"] == pytest.approx(1.0)
+    assert "_example_file" not in out[0] and "_test_file" not in out[0]
+
+
+class RecallEmbedder(StubEmbedder):
+    """Adds id lookup, so recall can pull absent neighbours in."""
+
+    def __init__(self, project, ranked, extra):
+        super().__init__(project, ranked)
+        self._extra = {h["id"]: h for h in extra}
+
+    def get_nodes_by_ids(self, ids):
+        return [dict(self._extra[i], metadata=dict(self._extra[i]["metadata"])) for i in ids]
+
+
+SEARCHED = [
+    hit("a", "src/pkg/a.py", 0.9),
+    hit("b", "src/pkg/b.py", 0.8),
+    hit("c", "src/pkg/c.py", 0.7),
+]
+NEIGHBOURS = [hit("demo", "examples/demo/run.py", 0.0), hit("impl", "src/pkg/impl.py", 0.0)]
+
+
+def recalled_ids(sel):
+    return {h["id"] for h in sel._last_l3_boosted if h.get("_synapse_recalled")}
+
+
+def test_synapse_recall_demotes_an_example_neighbour_before_its_threshold(tmp_path):
+    # Both clear the 0.15 pull-in threshold, but the example only at full weight.
+    sel = ContextSelector(RecallEmbedder(tmp_path, SEARCHED, NEIGHBOURS), str(tmp_path))
+    sel.synapse_recall = lambda seeds: [("demo", 0.25), ("impl", 0.25)]
+    sel.get_l3_search("how is the cache warmed")
+    assert recalled_ids(sel) == {"impl"}
+
+
+def test_synapse_recall_keeps_an_example_the_question_asks_for(tmp_path):
+    sel = ContextSelector(RecallEmbedder(tmp_path, SEARCHED, NEIGHBOURS), str(tmp_path))
+    sel.synapse_recall = lambda seeds: [("demo", 0.25), ("impl", 0.25)]
+    sel.get_l3_search("show me an example of warming the cache")
+    assert recalled_ids(sel) == {"demo", "impl"}
+
+
+def test_structural_recall_orders_the_code_before_an_example(tmp_path, monkeypatch):
+    monkeypatch.delenv("NEURALMIND_STRUCTURAL", raising=False)
+    monkeypatch.setenv("NEURALMIND_L3_K", "2")
+    sel = ContextSelector(RecallEmbedder(tmp_path, SEARCHED, NEIGHBOURS), str(tmp_path))
+    # The example is wired more strongly, but there's one slot to give.
+    sel.structural_recall = lambda seeds: [("demo", 0.9), ("impl", 0.6)]
+    sel.get_l3_search("how is the cache warmed")
+    wired = [h["id"] for h in sel._last_l3_boosted if h.get("_structural_recalled")]
+    assert wired == ["impl"]
+    monkeypatch.setenv("NEURALMIND_EXAMPLE_FILE_FACTOR", "1")
+    sel = ContextSelector(RecallEmbedder(tmp_path, SEARCHED, NEIGHBOURS), str(tmp_path))
+    sel.structural_recall = lambda seeds: [("demo", 0.9), ("impl", 0.6)]
+    sel.get_l3_search("how is the cache warmed")
+    assert [h["id"] for h in sel._last_l3_boosted if h.get("_structural_recalled")] == ["demo"]
+
+
+def test_a_present_examples_recall_boost_is_demoted(tmp_path):
+    ranked = SEARCHED + [hit("ex", "examples/demo/run.py", 0.6)]
+    sel = ContextSelector(RecallEmbedder(tmp_path, ranked, []), str(tmp_path))
+    sel.synapse_recall = lambda seeds: [("ex", 0.5)]
+    sel.get_l3_search("how is the cache warmed")
+    ex = next(h for h in sel._last_l3_boosted if h["id"] == "ex")
+    assert ex["_synapse_boost"] == pytest.approx(sel._synapse_boost_weight * 0.5 * 0.5)

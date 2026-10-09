@@ -128,6 +128,11 @@ by putting it back one at a time.
     graph that stores absolute paths doesn't turn a checkout under
     `~/work/examples/` into examples. That fix covers the test-file demotion
     too.
+  - A neighbour that structural or synapse recall pulls in from a test or
+    example file gets the same factor before it competes for a slot (synapse
+    recall scales its energy before the pull-in threshold), and a test file
+    inside an example folder is treated as a test. Neither changed a measured
+    question.
   - `NEURALMIND_EXAMPLE_FILE_FACTOR=1` turns it off.
 ## 2. Boosts that no longer outvote the ranking
 

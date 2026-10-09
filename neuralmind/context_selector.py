@@ -349,15 +349,16 @@ def _demote_examples(
     An example uses the words of a question about the feature it
     demonstrates: on pallets/click, "which files handle parsing command-line
     options?" put ``examples/repo/repo.py`` above ``core.py``, and four of 14
-    questions led with an example script. A hit already demoted as a test
-    isn't demoted again. ``factor >= 1`` returns the list unchanged.
+    questions led with an example script. A test file under an example
+    folder is a test, not an example: it is demoted once, as a test, or kept
+    for a question about tests. ``factor >= 1`` returns the list unchanged.
     """
     if _EXAMPLE_QUERY.search(query or ""):
         return results
     return _demote(
         results,
         factor,
-        lambda r: not r.get("_test_file") and _is_example_file(_module_of(r), root),
+        lambda r: _is_example_file(_module_of(r), root) and not _is_test_file(_module_of(r), root),
         "_example_file",
     )
 
@@ -1210,7 +1211,23 @@ class ContextSelector:
                     namespace_contribution=contributions.get(node_id),
                 )
 
-    def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
+    def _file_factor(self, node: dict, query: str | None) -> float:
+        """The test or example demotion ``node`` gets under ``query``; 1 for none.
+
+        ``None`` (a caller without a question) applies none.
+        """
+        if query is None:
+            return 1.0
+        path = _module_of(node)
+        if _is_test_file(path, self.project_path):
+            if _asks_about_tests(query):
+                return 1.0
+            return min(1.0, _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR))
+        if _is_example_file(path, self.project_path) and not _EXAMPLE_QUERY.search(query):
+            return min(1.0, _env_number("NEURALMIND_EXAMPLE_FILE_FACTOR", self.EXAMPLE_FILE_FACTOR))
+        return 1.0
+
+    def _apply_synapse_boost(self, results: list[dict], query: str | None = None) -> list[dict]:
         """Re-rank L3 hits using learned synapse co-activation.
 
         Budget-neutral: never grows the result count. Seeds spreading
@@ -1222,6 +1239,10 @@ class ContextSelector:
         No-op (returns ``results`` unchanged) when recall isn't wired, the
         kill switch is set, or the graph is cold — so cold-start behavior is
         byte-identical to a build without a synapse store.
+
+        With ``query``, a test or example neighbour gets the demotion a searched
+        one does (:meth:`_file_factor`): its energy is scaled before the pull-in
+        threshold and the ordering, and so is its boost.
         """
         if self._synapse_disabled():
             return results
@@ -1245,7 +1266,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in energy:
                 continue
-            boost = self._synapse_boost_weight * energy[nid]
+            boost = self._synapse_boost_weight * energy[nid] * self._file_factor(r, query)
             r["score"] = r.get("score", 0.0) + boost
             r["_synapse_boost"] = boost
             boosted = True
@@ -1292,6 +1313,16 @@ class ContextSelector:
             for node in get_nodes_by_ids([nid for nid, _ in candidates]) or []
             if _module_of(node) not in present_modules
         ]
+        # A test or example neighbour contends with demoted energy, so it has
+        # to clear the pull-in threshold as one.
+        for node in fetched:
+            nid = node.get("id")
+            energy_by_id[nid] = energy_by_id.get(nid, 0.0) * self._file_factor(node, query)
+        fetched = [
+            n
+            for n in fetched
+            if energy_by_id.get(n.get("id"), 0.0) >= self._synapse_pull_in_min_energy
+        ]
         fetched.sort(key=lambda n: energy_by_id.get(n.get("id"), 0.0), reverse=True)
         fetched = fetched[:num_swap]
         if not fetched:
@@ -1305,7 +1336,9 @@ class ContextSelector:
             node["_synapse_recalled"] = True
         return kept + fetched
 
-    def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
+    def _apply_structural_expansion(
+        self, results: list[dict], query: str | None = None
+    ) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
 
         Budget-neutral, and a structural analogue of :meth:`_apply_synapse_boost`.
@@ -1321,6 +1354,10 @@ class ContextSelector:
         byte-identical to a build without structural edges. Runs *before* the
         synapse boost: structure is precise and claims a displacement slot
         first, then learned co-activation re-ranks what remains.
+
+        With ``query``, a test or example neighbour's weight gets the demotion
+        a searched hit does (:meth:`_file_factor`) before candidates are
+        ordered, and so does its boost.
         """
         if self._structural_disabled():
             return results
@@ -1348,7 +1385,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in recalled:
                 continue
-            boost = self._structural_boost_weight * recalled[nid]
+            boost = self._structural_boost_weight * recalled[nid] * self._file_factor(r, query)
             r["score"] = r.get("score", 0.0) + boost
             r["_structural_boost"] = boost
             boosted = True
@@ -1372,8 +1409,20 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        weight_by_id = dict(candidates[:num_swap])
-        fetched = get_nodes_by_ids(list(weight_by_id))
+        weight_by_id = dict(candidates)
+        fetched = get_nodes_by_ids(list(weight_by_id)) or []
+        # A test or example neighbour is ordered by its demoted weight, so the
+        # project's own code goes first when both are wired to the hits.
+        for node in fetched:
+            nid = node.get("id")
+            weight_by_id[nid] = weight_by_id.get(nid, 0.0) * self._file_factor(node, query)
+        chosen = {
+            n.get("id")
+            for n in sorted(
+                fetched, key=lambda n: weight_by_id.get(n.get("id"), 0.0), reverse=True
+            )[:num_swap]
+        }
+        fetched = [n for n in fetched if n.get("id") in chosen]
         if not fetched:
             return results
 
@@ -2021,12 +2070,12 @@ class ContextSelector:
         # callers/callees/base classes into contention (precise, day-one
         # wiring). Runs before the synapse boost so structure claims a
         # displacement slot, then learned association re-ranks what remains.
-        results = self._apply_structural_expansion(results)
+        results = self._apply_structural_expansion(results, query)
 
         # Fold in the live synapse graph: results the agent has historically
         # co-activated with this query's top hits get a relevance nudge, so
         # learned association — not just vector similarity — shapes ranking.
-        results = self._apply_synapse_boost(results)
+        results = self._apply_synapse_boost(results, query)
 
         # How the slots are spent (v4.6.0, spec 7): per-file cap, doc-to-code
         # hand-off, hub dampening. Each is behind its own flag; with none set
