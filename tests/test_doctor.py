@@ -283,6 +283,42 @@ def test_run_diagnostics_json_serialisable(empty_project):
     assert json.loads(json.dumps(payload))["status"] in {doctor.OK, doctor.WARN, doctor.FAIL}
 
 
+def _doctor_args(project, json_out=False):
+    import argparse
+
+    return argparse.Namespace(project_path=str(project), json=json_out, config_path=None)
+
+
+@pytest.mark.parametrize("json_out", [False, True])
+def test_cmd_doctor_exits_1_when_a_check_fails(empty_project, capsys, json_out):
+    # No graph -> the code-graph check fails, so doctor must exit 1 and a
+    # script can gate on it (v0.55.0 accidentally made it always exit 0).
+    from neuralmind import cli
+
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_doctor(_doctor_args(empty_project, json_out))
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    if json_out:
+        assert json.loads(out)["status"] == doctor.FAIL
+    else:
+        assert "[FAIL]" in out
+
+
+@pytest.mark.parametrize("worst", [doctor.OK, doctor.WARN])
+def test_cmd_doctor_returns_normally_without_a_failure(empty_project, monkeypatch, worst):
+    from neuralmind import cli
+
+    monkeypatch.setattr(
+        doctor,
+        "run_diagnostics",
+        lambda _p: [doctor.Check("a", doctor.OK, ""), doctor.Check("b", worst, "")],
+    )
+    monkeypatch.setattr(cli, "_tier2_doctor_checks", lambda _a: [])
+    # Warnings alone don't fail the run: no SystemExit means exit status 0.
+    cli.cmd_doctor(_doctor_args(empty_project))
+
+
 def test_query_without_graph_raises_friendly_error(empty_project):
     mind = NeuralMind(str(empty_project), backend_type="in_memory")
     with pytest.raises(GraphNotBuiltError) as exc:

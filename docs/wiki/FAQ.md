@@ -509,7 +509,8 @@ neuralmind install-mcp . --print
 neuralmind-mcp
 ```
 
-`doctor` always exits 0, so read its output rather than its exit code.
+`doctor` exits 1 when any check fails (v4.12.0+; earlier versions always
+exit 0), and each failed line says what to run.
 
 ---
 

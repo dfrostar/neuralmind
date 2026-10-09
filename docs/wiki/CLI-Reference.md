@@ -1342,7 +1342,10 @@ only on turbovec projects.
 
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any
 check **failed** — so you can gate a CI step or an agent's provisioning on
-`neuralmind doctor`.
+`neuralmind doctor`. `--json` exits the same way, after printing the report;
+its `status` field (`ok` / `warn` / `fail`) is the same verdict.
+*(v4.12.0+)* v0.55.0 through v4.11.1 always exited `0`, even when a check
+failed; on those versions read `--json`'s `status` instead.
 
 **Example:**
 

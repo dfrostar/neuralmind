@@ -35,7 +35,9 @@ docker compose up -d
 
 echo "[4/4] Waiting for healthy..."
 for i in $(seq 1 30); do
-    if docker compose exec -T neuralmind neuralmind doctor >/dev/null 2>&1; then
+    # Not `neuralmind doctor`: it exits 1 until a project is built and hooks
+    # are installed, which this deploy doesn't do.
+    if docker compose exec -T neuralmind neuralmind --version >/dev/null 2>&1; then
         echo "NeuralMind is up!"
         break
     fi

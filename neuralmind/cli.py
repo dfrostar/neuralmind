@@ -2436,6 +2436,13 @@ def cmd_doctor(args):
         }
         print(summary.get(status, ""))
 
+    # Exit 1 on a failed check (warnings don't count) so a script or CI step
+    # can gate on `neuralmind doctor`. Same for --json: the payload is printed
+    # first. Keep this in cmd_doctor itself — v0.55.0 lost it once when the
+    # Tier 2 helper was inserted above it.
+    if status == doctor.FAIL:
+        sys.exit(1)
+
 
 def _tier2_doctor_checks(args) -> list:
     """Return extra Tier 2 doctor checks (license, governance, audit)."""

@@ -49,7 +49,10 @@ Then check the install:
 neuralmind doctor .    # graph, index, hooks, MCP, synapses
 ```
 
-`doctor` always exits 0, so read its output rather than its exit code.
+`doctor` exits 1 when any check fails and 0 otherwise (warnings don't fail
+it), so a script can gate on it. Before v4.12.0 it always exited 0: on those
+versions read `neuralmind doctor . --json`'s `status` field (`ok` / `warn` /
+`fail`) instead.
 
 ## Moving off the ChromaDB backend
 
