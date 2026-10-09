@@ -523,9 +523,11 @@ neuralmind query /path/to/project "auth flow" --explain
 # →     0.887  JWTMiddleware  (auth/middleware.py)
 ```
 
-**Query intent *(v4.6.0+)*.** L3 re-weights its hits by the question's intent —
-a `docs` question multiplies doc hits by 2.0 and code hits by 0.7 — and
-`--explain` now says which intent it used and how it was decided:
+**Query intent *(v4.6.0+)*.** `--explain` says which intent a question was
+given and how it was decided. *(v4.12.0+)* Only a **requested** intent
+(`--type code|docs`, or `query_type` over MCP) re-weights L3's candidates — a
+`docs` request multiplies doc hits by 2.0 and code hits by 0.7. A detected one is
+shown but changes no score unless `NEURALMIND_AUTO_INTENT_BOOST=1`:
 
 | Shown as | Decided by |
 |---|---|
@@ -533,12 +535,12 @@ a `docs` question multiplies doc hits by 2.0 and code hits by 0.7 — and
 | `… (by keywords)` | the older keyword count, when the classifier calls the question `hybrid` |
 | `code (by question shape)` / `docs (by question shape)` | the opt-in intent rules, `NEURALMIND_INTENT_RULES=1` (see [Environment Variables](#environment-variables)) |
 
-When a "how does X work" question comes back ranked as `docs`, this line
-explains why a README ranks above the implementation *within* L3's four hits
-(a `docs` intent multiplies doc hits by 2.0 and code by 0.7). It can't explain
-the implementation missing from those four: in v4.6.0's eval, switching intent
-never changed hit@5. The hit list prints each hit's label and
-file; before v4.6.0 it printed raw node ids.
+Before v4.12.0 a detected `docs` intent multiplied doc hits by 2.0 and code by
+0.7 within L3's four hits, which is why a README could rank above the
+implementation of a "how does X work" question; v4.12.0 stopped that (the
+retrieval eval lost 3 questions with it) and widened L3 to eight hits chosen
+from 20 candidates. The hit list prints each hit's label and file; before
+v4.6.0 it printed raw node ids.
 
 #### Sample Output
 
@@ -853,18 +855,19 @@ This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 machine matches the published table to the token. Across machines, recall and
 found-rate have matched exactly, while token counts differ slightly on the
 GitHub-hosted CI runners without AVX-512 (up to 0.8% on a per-repo mean for the
-current run; an Apple M3, also without AVX-512, matched exactly);
+v4.10.0 run; an Apple M3, also without AVX-512, matched exactly; the v4.12.0
+run hasn't been compared across machines yet);
 `NEURALMIND_ORT_THREADS=1` matches CI's configuration — see
 [how exactly a re-run reproduces](../benchmarks/public.md#how-exactly-a-re-run-reproduces).
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **85.71–100% gold-file recall (95% mean, 92.5% found-rate)
-at 45–246× fewer tokens** than pasting every source file, and beats `ripgrep` on
-cost on every repo; on recall it's ahead on 3 of 4 repos and ties exactly on the
-fourth. The benchmark also reports, without hiding it, that a well-tuned vector
-RAG matches or beats it at *findability* on every repo (and cheaper on raw
-tokens), and that `click` is NeuralMind's weakest repo in the corpus (3 of 40
-queries missed, every one published). Full methodology,
+— NeuralMind finds **the gold file on 40 of 40 queries at 51–242× fewer
+tokens** than pasting every source file, and beats `ripgrep` on
+cost on every repo; on recall it's ahead on 3 of 4 repos and ties on the fourth.
+The benchmark also reports, without hiding it, that NeuralMind's own vector index
+with nothing added (`embedding-rag`) ranks the gold file higher on `flask` and
+`rich` at fewer tokens. Forty queries is a small sample: the 150-question
+retrieval eval misses 10, published. Full methodology,
 results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
@@ -1476,15 +1479,20 @@ NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default r
 
 #### Retrieval eval harness (`python -m evals.retrieval.run`) *(v4.6.0+)*
 
-From a source checkout, the harness that chose v4.6.0's default runs the same
-scorer as `neuralmind eval` across several repositories and every ranking-flag
-configuration, **read-only**, and applies a keep rule fixed in advance:
+From a source checkout, the harness that chose v4.6.0's and v4.12.0's
+defaults runs the same scorer as `neuralmind eval` across several repositories
+and every ranking-flag configuration, **read-only**, and applies a paired keep
+rule fixed in advance *(v4.12.0+; v4.6.0 used an earlier rule)*:
 
-- mean hit@5 across repos goes up, and it goes up on at least 3 repos;
-- no repo drops by more than one question;
+- pooled over every question, the configuration wins more hit@5 questions than
+  it loses, with an exact McNemar p < 0.05;
+- no repo drops by more than two questions;
 - average context tokens rise by at most 10%;
 - with `--public-benchmark`, the public 4-repo benchmark's gold-file recall
   doesn't drop.
+
+The report also gives each configuration's mean MRR change with a paired
+bootstrap 95% interval, and p50/p95 query latency per repo.
 
 The repositories are `requests`, `click`, `flask` and `rich` at the public
 benchmark's pinned commits (cloned on demand) and this repository, with 30
@@ -1494,8 +1502,9 @@ v4.6.0's default was measured on those five public repos plus a private
 
 ```bash
 pip install -e . tiktoken
-NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark --out bench/retrieval/on-v4.6
+NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark --out bench/retrieval/on-v4.12
 python -m evals.retrieval.run --private ~/work/your-repo     # add your own repo, locally
+python -m evals.retrieval.run --compare old/results.json new/results.json   # pair two releases
 python -m evals.retrieval.run --repos flask --configs baseline,per_file
 ```
 
@@ -1508,11 +1517,13 @@ python -m evals.retrieval.run --repos flask --configs baseline,per_file
 | `--out DIR` | Write `results.json` and `report.md` |
 | `--work-dir DIR` | Where clones and copies go (default `.bench-work`, gitignored) |
 | `--no-build` | Reuse the existing indexes instead of rebuilding them from nothing |
+| `--compare OLD NEW` | *(v4.12.0+)* Instead of running, pair two runs' `results.json` (the `baseline` configuration of each), question by question, and apply the keep rule, e.g. one release against the next. With `--out`, writes `report.md` |
+| `--fail-on-regression` | *(v4.12.0+)* With `--compare`: exit `1` if NEW regresses against OLD — more hit@5 questions lost than won with an exact McNemar p < 0.05, any repo down more than two questions, or tokens up more than 10%. A change that moves nothing passes. The `retrieval-eval.yml` workflow runs it on the base and head of every PR that touches the retrieval path |
 
 Every run rebuilds each repository's index from nothing — learned synapses from
 an earlier run would otherwise move the baseline — and runs the baseline again
 after every configuration; the report says whether it reproduced. The raw
-output behind v4.6.0's default is committed in
+output behind v4.6.0's and v4.12.0's defaults is committed in
 [`bench/retrieval/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md).
 Walkthrough: [A/B-test a ranking change on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md).
 
@@ -3881,13 +3892,21 @@ renewed — issue a new one.
 | `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning, decay and *(v4.8.0+)* session-recap recording, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
 | `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`), `build` included. Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one for `ingest-content` — so this is for golden-output tests and log-sensitive CI jobs. Since v4.4.0 the `build` embedding bar shows only on a terminal, and read commands (`query`, `search`, `wakeup`, the MCP tools) print nothing on success. |
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
-| `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
-| `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when a query is classified `docs` (code hits are multiplied by `0.7`). |
+| `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits (docstrings included) when the query asks for code (`query --type code`, MCP `query_type: "code"`); doc hits are multiplied by `0.5`. Re-ranks the 20-candidate pool before L3 is cut. *(v4.12.0+)* An intent **detected** from the question no longer applies it unless `NEURALMIND_AUTO_INTENT_BOOST=1`. |
+| `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when the query asks for docs (code hits are multiplied by `0.7`). Same v4.12.0 rule as `NEURALMIND_CODE_BOOST`. |
+| `NEURALMIND_AUTO_INTENT_BOOST` | unset | *(v4.12.0+)* Set to `1` to re-weight hits by the intent detected from the question's wording (the v4.11 behaviour). **Off by default:** on the retrieval eval it lost 3 questions and won none, and the markdown-heavy repository dropped from 77% to 67% hit@5 ([eval](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/on-v4.12/report.md)). A requested `--type` always re-weights. |
+| `NEURALMIND_L3_K` | `8` | *(v4.12.0+)* Search results in L3 per query (v4.11 and earlier: 4). Putting it back to `4` lost 4 of 150 questions on the retrieval eval. |
+| `NEURALMIND_L3_POOL` | `20` | *(v4.12.0+)* Fused vector + keyword candidates L3 is chosen from. The intent, code-signal and duplicate passes rank the whole pool before it is cut to `NEURALMIND_L3_K`; L2 lists the pool's candidates that L3 doesn't show. |
+| `NEURALMIND_L3_FILE_DECAY` | `0.6` | *(v4.12.0+)* Spreads L3 across files: the k-th further hit from a file L3 already shows keeps `0.6^k` of its score, so one file can't take all eight slots. Each file's first hit keeps its place, and the hits it moves out are listed in L2. `1` turns it off. On the self-benchmark fixture it took the top-k hit rate from 88% to 97%; without it the public benchmark misses flask's `request-wrapper`. |
+| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. |
+| `NEURALMIND_CODE_SIGNAL_CAP` | `1` | *(v4.12.0+)* Ceiling on the code-signal boost (a hit whose file name, label or text shares words with a code-intent question). `1` turns it off (the default); `N` turns it on, up to N× (v4.11: 10×, matching substrings of the whole path). On, it lost 2 questions on the retrieval eval. A markdown file is still marked down (×0.3) under a code intent. |
+| `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | *(v4.12.0+)* Comma-separated layers a query returns. `L0,L3` cuts tokens by 57% on the retrieval eval at the same hit@5, but loses the facts L1 and L2 carry (fact recall on the faithfulness fixture). `wakeup` is unaffected. |
+| `NEURALMIND_ORT_SESSION_CACHE` | auto | *(v4.12.0+)* `1` reuses one ONNX Runtime session per process for the bundled MiniLM embedder; `0` builds a new one per batch. Auto reuses everywhere except Python 3.14, where onnxruntime 1.29 deadlocks after a few runs on one session. Reusing it, a query embeds in about 3 ms instead of about 275 ms. |
 | `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.10.0+)* Opt-in — set to `1`, `true`, `yes` or `on` (case- and whitespace-insensitive); anything else, including unset, is off. Lets the v3.9.0 retrieval pull-in — two-pass source-file search, synapse-seeded expansion, and snippet extraction — contend for L3 slots, budget-neutrally (displacement, not addition). **Off by default because it was measured, not because it is unfinished:** on the faithfulness fixture it takes the delta from `+0.041` to `-0.065` appended (how v3.9.0 shipped) or `-0.107` displaced, against a `+0.000` gate floor. Making it budget-neutral made it worse, which is the useful finding — displacing evicts a real hit per candidate, so candidates that are worse than what they replace cost facts, not just tokens. Intent classification and the code-signal boost are unaffected by this flag and stay on; they are bit-for-bit neutral on the same fixture. Turning this on is a research setting until a gate says otherwise. Reproducing these numbers requires a **fresh copy of the fixture per sample** — `query()` reinforces synapses into `<project>/.neuralmind/synapses.db`, so re-running against the same directory measures a progressively trained index, not a repeat. |
 | `NEURALMIND_L3_PER_FILE` | unset | *(v4.6.0+, research flag)* Set to `N` to allow at most N L3 hits per file, refilling vacated slots from the next-best candidates of the same search. **Off by default:** at `2` it raised mean hit@5 by 1.1 points with two repos up and none down on hit@5 (public recall 96.25%), but mean MRR fell 0.654 → 0.629 (`requests` 0.75 → 0.69, `flask` 0.71 → 0.65), and the keep rule needs three repos. |
 | `NEURALMIND_DOC_HANDOFF` | unset | *(v4.6.0+, research flag)* Set to `1` so a doc hit that names a code file or symbol brings that code into contention for an L3 slot. **Off by default:** it helps only where the docs name code (against v4.5.0: the private repo +3 questions, `neuralmind` +1) and was a wash on top of the unified index. |
 | `NEURALMIND_HUB_DAMPEN` | unset | *(v4.6.0+, research flag)* Set to `1` to down-weight files returned far more often than chance (with a floor, so a hub that is the only match still wins). **Off by default:** it cost `click` 3–4 questions — on a small library the most-returned files are central modules, not hubs. |
-| `NEURALMIND_INTENT_RULES` | unset | *(v4.6.0+, research flag)* Set to `1` to classify "how does X…", "where is X…" and "which X is…" questions as `code` intent (and questions that name a document or ask how to install as `docs`) before the v3.9.0 classifier runs; `query --explain` then shows `(by question shape)`. **Off by default:** it only re-orders the four hits L3 already chose, so it moved MRR (0.654 → 0.672) and never hit@5. |
+| `NEURALMIND_INTENT_RULES` | unset | *(v4.6.0+, research flag)* Set to `1` to classify "how does X…", "where is X…" and "which X is…" questions as `code` intent (and questions that name a document or ask how to install as `docs`) before the v3.9.0 classifier runs; `query --explain` then shows `(by question shape)`. **Off by default:** measured on v4.6.0, it only re-ordered the four hits L3 had chosen, so it moved MRR (0.654 → 0.672) and never hit@5. Since v4.12.0 a detected intent re-weights hits only with `NEURALMIND_AUTO_INTENT_BOOST=1`. |
 | `NEURALMIND_INTENT_POOL` | unset | *(v4.6.0+, research flag)* Set to `1` (measured with `NEURALMIND_INTENT_RULES=1`) to let intent rank all 10 search candidates instead of re-ordering the four L3 chose. **Off by default:** it cost `click` 8 questions and took the public benchmark's recall to 83.75% (measured against v4.5.0). |
 
 ---

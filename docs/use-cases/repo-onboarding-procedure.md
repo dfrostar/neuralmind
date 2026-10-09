@@ -97,7 +97,8 @@ neuralmind build .            # auto-generates the code graph via tree-sitter ba
 ```
 
 - Supports Python, TypeScript, Node, Go, Rust, Java, C/C++, C#, Ruby, PHP in
-  one mixed pass; OpenAPI/AsyncAPI, SQL DDL, and protobuf become document
+  one mixed pass (plain JavaScript, `.js`/`.mjs`/`.cjs`/`.jsx`, gets code nodes
+  from v4.12.0; on an older install a JavaScript-only repo indexes as prose); OpenAPI/AsyncAPI, SQL DDL, and protobuf become document
   nodes automatically (v0.40.0+).
 - **Decisions:** `--force` only when you want to re-embed everything
   (usually not needed); otherwise incremental is fine. Prefer the built-in

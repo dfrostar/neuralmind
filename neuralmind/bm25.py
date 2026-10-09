@@ -60,6 +60,19 @@ def _tokenize_prose(text: str) -> list[str]:
     return [t for t in tokens if len(t) >= 2 and not t.replace("-", "").isdigit()]
 
 
+# Words a question is phrased with but no identifier or docstring is ranked
+# by. Dropped from the *query* only (the index is unchanged): IDF keeps them
+# small but never zero, so on a short query "the … message … program" could
+# outvote the one rare term that named the answer.
+_QUERY_STOPWORDS = frozenset("""
+    a about an and are as at be been being but by can could did do does doing
+    for from had has have how if in into is it its me my of on or our should
+    so some than that the their them then there these they this those to
+    under up was we were what when where which while who whom why will with
+    would you your
+    """.split())
+
+
 class BM25Index:
     """BM25 sparse index for code node retrieval.
 
@@ -96,6 +109,9 @@ class BM25Index:
         self._tf: list[dict[str, int]] = []
         # Document length (token count) per doc
         self._dl: list[int] = []
+        # Inverted index {term: [(doc index, tf), ...]}, built on first search
+        # so a query visits only the documents that contain its terms.
+        self._postings: dict[str, list[tuple[int, int]]] | None = None
 
         # Collection-level stats, rebuilt by build()
         self._df: dict[str, int] = {}  # document frequency per term
@@ -126,6 +142,7 @@ class BM25Index:
             self._metadatas.append(meta)
             self._tf.append(tf)
             self._dl.append(len(tokens))
+        self._postings = None
 
     def build(self) -> None:
         """Compute IDF and avgdl from the current document set."""
@@ -153,20 +170,21 @@ class BM25Index:
             return []
 
         q_tokens = self._tokenize(query)
+        content = [t for t in q_tokens if t not in _QUERY_STOPWORDS]
+        # A query made only of stopwords keeps them rather than matching nothing.
+        q_tokens = content or q_tokens
         if not q_tokens:
             return []
 
         scores: dict[int, float] = {}
         k1, b, avgdl = self.k1, self.b, self._avgdl
+        postings = self._get_postings()
 
         for term in q_tokens:
             if term not in self._idf:
                 continue
             idf = self._idf[term]
-            for i, tf_map in enumerate(self._tf):
-                tf = tf_map.get(term, 0)
-                if tf == 0:
-                    continue
+            for i, tf in postings.get(term, ()):
                 dl = self._dl[i]
                 # Sublinear TF scaling: log(tf) + 1 prevents high-TF docs from dominating
                 sublinear_tf = 1 + math.log(tf) if tf > 0 else 0
@@ -193,6 +211,16 @@ class BM25Index:
             for i, score in ranked
         ]
 
+    def _get_postings(self) -> dict[str, list[tuple[int, int]]]:
+        if self._postings is None:
+            postings: dict[str, list[tuple[int, int]]] = {}
+            for i, tf_map in enumerate(self._tf):
+                for term, tf in tf_map.items():
+                    if tf:
+                        postings.setdefault(term, []).append((i, tf))
+            self._postings = postings
+        return self._postings
+
     def bm25_search_prose(self, query: str, n: int = 10) -> list[dict[str, Any]]:
         """Return top_k results using prose-friendly tokenization.
 
@@ -210,15 +238,13 @@ class BM25Index:
 
         scores: dict[int, float] = {}
         k1, b, avgdl = self.k1, self.b, self._avgdl
+        postings = self._get_postings()
 
         for term in q_tokens:
             if term not in self._idf:
                 continue
             idf = self._idf[term]
-            for i, tf_map in enumerate(self._tf):
-                tf = tf_map.get(term, 0)
-                if tf == 0:
-                    continue
+            for i, tf in postings.get(term, ()):
                 dl = self._dl[i]
                 # Sublinear TF scaling: log(tf) + 1 prevents high-TF docs from dominating
                 sublinear_tf = 1 + math.log(tf) if tf > 0 else 0

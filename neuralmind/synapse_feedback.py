@@ -246,6 +246,13 @@ def reinforce_from_query(mind: NeuralMind, question: str, result: ContextResult)
     node_ids: list[str] = []
     for hit in hits[:6]:
         nid = hit.get("id")
+        # A hit the synapse or structural graph pulled into the results was
+        # not retrieved by this question; wiring it to the question's hits
+        # would let the graph confirm its own guesses, query after query,
+        # until the edge reached long-term weight. Only what the question's
+        # own search found co-activates.
+        if hit.get("_synapse_recalled") or hit.get("_structural_recalled"):
+            continue
         if nid:
             node_ids.append(str(nid))
     for comm_id in result.communities_loaded or []:

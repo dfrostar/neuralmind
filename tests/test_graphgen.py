@@ -346,6 +346,57 @@ class TypeScriptTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
+    graphgen.is_available()
+    and graphgen.language_available("typescript")
+    and graphgen.language_available("tsx"),
+    "tree-sitter-typescript not installed",
+)
+class JavaScriptTests(unittest.TestCase):
+    """JavaScript through the TypeScript grammars; a JS-only repo was prose."""
+
+    FILES = {
+        "lib/util.js": (
+            "/** Format a greeting for a user. */\n"
+            "export function greet(name) { return `hello ${name}`; }\n"
+            "export class Cache {\n  set(key, value) { this.m[key] = value; }\n}\n"
+        ),
+        "main.mjs": "import { greet } from './lib/util';\nfunction run() { return greet('x'); }\n",
+        "app.jsx": "export function App() { return <div className='a'>hi</div>; }\n",
+        "hello.ts": "import { greet } from './lib/util.js';\nexport function hello() { return greet('y'); }\n",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        root = Path(cls._tmp.name)
+        for rel, text in cls.FILES.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        cls.graph = graphgen.build_graph(root)
+        cls.labels = {n["label"] for n in cls.graph["nodes"]}
+        cls.edges = {(e["relation"], e["source"], e["target"]) for e in cls.graph["links"]}
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def test_a_javascript_repo_is_code(self) -> None:
+        self.assertEqual(self.graph.get("project_kind"), "code")
+
+    def test_finds_functions_classes_methods_and_jsdoc(self) -> None:
+        for want in ("greet()", "Cache", "set()", "run()", "Format a greeting for a user."):
+            self.assertIn(want, self.labels)
+
+    def test_jsx_component_survives(self) -> None:
+        self.assertIn("App()", self.labels)
+
+    def test_extensionless_and_esm_js_imports_resolve(self) -> None:
+        self.assertIn(("imports_from", "main_mjs", "lib_util_js"), self.edges)
+        self.assertIn(("imports_from", "hello_ts", "lib_util_js"), self.edges)
+        self.assertIn(("calls", "main_mjs__run_fn", "lib_util_js__greet_fn"), self.edges)
+
+
+@unittest.skipUnless(
     graphgen.is_available() and graphgen.language_available("go"),
     "tree-sitter-go not installed",
 )
@@ -1242,7 +1293,7 @@ class LanguageSeamTests(unittest.TestCase):
     """The suffix→language registry is the only thing a new grammar touches."""
 
     def test_supported_suffixes(self) -> None:
-        for suf in (".py", ".ts", ".tsx", ".go", ".rs", ".java"):
+        for suf in (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go", ".rs", ".java"):
             self.assertIn(suf, graphgen.SUPPORTED_SUFFIXES)
 
     def test_every_suffix_has_an_extractor(self) -> None:

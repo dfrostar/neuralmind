@@ -1,0 +1,99 @@
+name: Retrieval eval (base vs head)
+
+# Runs the 150-question retrieval eval (evals/retrieval: requests, click,
+# flask, rich and this repository, 30 pre-registered questions each) on the
+# PR's base and on its head, on the same runner, and fails if the head
+# regresses: more hit@5 questions lost than won with an exact McNemar
+# p < 0.05, any repo losing more than two questions, or context tokens up
+# more than 10% (evals/retrieval/run.py, regressions()). A change that moves
+# nothing passes; the keep rule that asks a change to *gain* stays a release
+# decision, reported in the summary but not gated here.
+#
+# The public-benchmark drift job checks 40 queries against a committed
+# snapshot and NeuralMind against its own vector index; this one checks the
+# change itself, question by question, on a corpus large enough to see it.
+# Only on PRs that touch the retrieval path: it builds every index twice.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "neuralmind/bm25.py"
+      - "neuralmind/context_selector.py"
+      - "neuralmind/core.py"
+      - "neuralmind/embedder.py"
+      - "neuralmind/graphgen.py"
+      - "neuralmind/l3_slots.py"
+      - "neuralmind/node_text.py"
+      - "neuralmind/onnx_embedder.py"
+      - "neuralmind/retrieval_enhancement.py"
+      - "neuralmind/turbovec_backend.py"
+      - "evals/retrieval/**"
+      - ".github/workflows/retrieval-eval.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retrieval-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  retrieval-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install NeuralMind + eval deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . tiktoken
+
+      # The base's code runs from its own worktree: PYTHONPATH puts its
+      # neuralmind/ and evals/ ahead of the editable install of the head.
+      - name: Check out the base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: git worktree add "$RUNNER_TEMP/base" "$BASE_SHA"
+
+      # One work dir for both runs: the pinned clones are fetched once, and
+      # each run deletes and rebuilds every index before it asks a question.
+      - name: Eval the base
+        working-directory: ${{ runner.temp }}/base
+        env:
+          PYTHONPATH: ${{ runner.temp }}/base
+        run: >
+          python -m evals.retrieval.run --configs baseline
+          --work-dir "$RUNNER_TEMP/retrieval-work" --out "$RUNNER_TEMP/retrieval-base"
+
+      - name: Eval the head
+        run: >
+          python -m evals.retrieval.run --configs baseline
+          --work-dir "$RUNNER_TEMP/retrieval-work" --out "$RUNNER_TEMP/retrieval-head"
+
+      - name: Compare base and head
+        run: |
+          set -o pipefail
+          python -m evals.retrieval.run --fail-on-regression \
+            --compare "$RUNNER_TEMP/retrieval-base/results.json" "$RUNNER_TEMP/retrieval-head/results.json" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload both runs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: retrieval-eval
+          path: |
+            ${{ runner.temp }}/retrieval-base/
+            ${{ runner.temp }}/retrieval-head/
+          if-no-files-found: warn

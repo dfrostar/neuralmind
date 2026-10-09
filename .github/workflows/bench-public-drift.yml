@@ -7,6 +7,9 @@ name: Public benchmark drift check
 # tokens/query by more than 10%, or if a committed number goes unmeasured —
 # the same pattern ci-benchmark.yml uses for the reference-fixture gates,
 # applied to the public corpus so a stale snapshot can't sit uncorrected.
+# It also fails if NeuralMind's recall on any repo falls below the
+# embedding-rag baseline's (its own vector index, nothing added), or if the
+# pooled MRR gap to that baseline widens by more than 0.05.
 # Comparison logic: scripts/check_public_bench_drift.py.
 
 on:

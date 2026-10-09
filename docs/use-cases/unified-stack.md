@@ -141,7 +141,7 @@ Expected combined outcome on a real codebase:
 
 | Source | Typical reduction |
 |---|---|
-| NeuralMind retrieval | 45–246× vs. pasting every source file on the public benchmark — measure yours with `neuralmind benchmark .` |
+| NeuralMind retrieval | 51–242× vs. pasting every source file on the public benchmark — measure yours with `neuralmind benchmark .` |
 | Headroom transport | 2–5× on structured tool results |
 | Ponytail generation | 42–77% fewer output tokens on task completion |
 

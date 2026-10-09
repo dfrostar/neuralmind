@@ -243,7 +243,7 @@ Claude Code; prefixing one command inside a session doesn't reach them.
 
 ## Expected savings
 
-NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output by default, and the opt-in install-log trimming above is measured on its own ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 45–246× smaller than pasting every source file, at 95% mean gold-file recall.
+NeuralMind's measured savings are on the retrieval side; it doesn't compress tool output by default, and the opt-in install-log trimming above is measured on its own ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). Run `neuralmind benchmark . --json` on your repo for your retrieval number. On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (4 pinned repos, 40 queries), NeuralMind's context is 51–242× smaller than pasting every source file, and it finds the gold file on all 40 queries.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

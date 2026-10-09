@@ -116,7 +116,7 @@ the one that looks best to a human, the one that works for retrieval.
 
 ## Honest scope
 
-- **Language:** Currently targets JavaScript/TS (JSDoc). Python docstrings planned for Phase 2.
+- **Language:** Currently targets JavaScript/TS (JSDoc). Python docstrings planned for Phase 2. In plain `.js`/`.mjs`/`.cjs`/`.jsx` files, JSDoc reaches NeuralMind's index as docstrings only from v4.12.0, which parses them with the TypeScript grammars; before that a JavaScript-only repository got no code nodes, so there was nothing for a better JSDoc to make findable. Since v4.12.0 a node is also embedded as its qualified name, module and docstring, so its docstring is part of what a query is matched against.
 - **Fitness is local:** The evolver optimizes per-method, not for global index coherence.
 - **Dry-run first:** Always run `--dry-run` before committing to file changes.
 - **Not a style guide:** The evolver doesn't enforce conventions — it optimizes for retrieval fitness. A 1-line JSDoc that retrieves beats a 10-line JSDoc that doesn't.

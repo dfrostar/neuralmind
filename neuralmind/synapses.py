@@ -2002,7 +2002,7 @@ class SynapseStore:
                 SELECT CASE WHEN node_a = ? THEN node_b ELSE node_a END AS other,
                        namespace, weight
                 FROM synapses
-                WHERE (node_a = ? OR node_b = ?) AND namespace IN ({marks})
+                WHERE (node_a = ? OR node_b = ?) AND +namespace IN ({marks})
                 """,
                 (node_id, node_id, node_id, *factors),
             )
@@ -2036,10 +2036,10 @@ class SynapseStore:
                     f"""
                     SELECT node, COUNT(DISTINCT other) FROM (
                         SELECT node_a AS node, node_b AS other FROM synapses
-                        WHERE node_a IN ({id_marks}) AND namespace IN ({ns_marks})
+                        WHERE node_a IN ({id_marks}) AND +namespace IN ({ns_marks})
                         UNION ALL
                         SELECT node_b AS node, node_a AS other FROM synapses
-                        WHERE node_b IN ({id_marks}) AND namespace IN ({ns_marks})
+                        WHERE node_b IN ({id_marks}) AND +namespace IN ({ns_marks})
                     )
                     GROUP BY node
                     """,
@@ -2209,12 +2209,19 @@ class SynapseStore:
                 for node_id, energy in frontier.items():
                     if energy <= 0.0:
                         continue
+                    # `+namespace` keeps the namespace out of index selection.
+                    # Without statistics SQLite picked idx_syn_ns_hl for any
+                    # namespace predicate and scanned every edge in it once per
+                    # frontier node: 70 ms of a 74 ms query on a 28.8k-edge
+                    # store, up to 490 ms on a hub. The node_a/node_b indexes
+                    # (MULTI-INDEX OR) return the same rows. Same in every
+                    # node lookup below and in neighbors()/degrees().
                     cur = conn.execute(
                         f"""
                         SELECT CASE WHEN node_a = ? THEN node_b ELSE node_a END AS other,
                                namespace, weight
                         FROM synapses
-                        WHERE (node_a = ? OR node_b = ?) AND namespace IN ({marks})
+                        WHERE (node_a = ? OR node_b = ?) AND +namespace IN ({marks})
                         """,
                         (node_id, node_id, node_id, *factors),
                     )
@@ -2332,7 +2339,7 @@ class SynapseStore:
                     # also shrinks the edges it shares with this one.
                     mass = conn.execute(
                         "SELECT COALESCE(SUM(weight), 0.0) FROM synapses "
-                        "WHERE (node_a = ? OR node_b = ?) AND namespace = ?",
+                        "WHERE (node_a = ? OR node_b = ?) AND +namespace = ?",
                         (node_id, node_id, ns),
                     ).fetchone()[0]
                     # Relative tolerance so float rounding in the sum never
@@ -2343,7 +2350,7 @@ class SynapseStore:
                         """
                         UPDATE synapses
                         SET weight = weight * ?
-                        WHERE (node_a = ? OR node_b = ?) AND namespace = ?
+                        WHERE (node_a = ? OR node_b = ?) AND +namespace = ?
                         """,
                         (budget / mass, node_id, node_id, ns),
                     )

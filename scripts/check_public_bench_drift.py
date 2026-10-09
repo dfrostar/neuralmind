@@ -13,6 +13,17 @@ and every one is within tolerance. Exit 1 = drift, a committed number the
 fresh run did not produce, a fresh number the committed run does not publish,
 or no committed numbers at all.
 
+It also holds NeuralMind to the plain vector baseline it is built on
+(``embedding-rag``: NeuralMind's own index, top 8, nothing added). In the
+fresh run, NeuralMind's gold-file recall must be at least the baseline's on
+every repo, and the pooled MRR gap to the baseline (baseline minus NeuralMind,
+over every query) may not widen by more than 0.05 from the committed run's.
+The ranking layers on top of vector search once cost recall on every repo
+while every other gate stayed green; this is the check that would have said
+so. MRR is held to a ratchet, not a floor, because the baseline still ranks
+higher on two repos; it is pooled because one 7-query repo's MRR has moved
+0.09 between machines.
+
 The inline parser this replaced read ``public.md`` with regexes that never
 matched its format, found nothing, printed a warning, and exited 0, so drift
 was never detected. Finding nothing to compare is a failure here, not a pass.
@@ -31,6 +42,8 @@ ROOT = Path(__file__).resolve().parent.parent
 COMMITTED = ROOT / "bench" / "public" / "results.json"
 
 RECALL_TOLERANCE = 0.05  # absolute: 5 percentage points of gold-file recall
+BASELINE = "embedding-rag"  # the plain vector baseline NeuralMind must not fall below
+MRR_GAP_TOLERANCE = 0.05  # absolute: how far the pooled MRR gap may widen
 COST_TOLERANCE = 0.10  # relative: 10% of the committed mean tokens/query
 # Recall values are 4-decimal fractions, so 0.85 vs 0.90 must not trip on float error.
 _EPSILON = 1e-9
@@ -64,6 +77,8 @@ def extract(report: dict) -> Numbers:
             numbers.setdefault(repo["name"], {})[backend] = {
                 "recall": float(stats["mean_recall"]),
                 "tokens": float(stats["mean_tokens"]),
+                "mrr": float(stats.get("mean_mrr", 0.0)),
+                "n": float(stats.get("n", 1)),
             }
     return numbers
 
@@ -117,6 +132,44 @@ def compare(
     return ok, failures
 
 
+def pooled_mrr_gap(run: Numbers) -> float | None:
+    """Query-weighted mean of (baseline MRR − NeuralMind MRR), or None."""
+    total = gap = 0.0
+    for backends in run.values():
+        nm, base = backends.get("neuralmind"), backends.get(BASELINE)
+        if nm is None or base is None:
+            continue
+        total += nm["n"]
+        gap += (base["mrr"] - nm["mrr"]) * nm["n"]
+    return gap / total if total else None
+
+
+def vector_floor(
+    fresh: Numbers, committed: Numbers, mrr_tolerance: float = MRR_GAP_TOLERANCE
+) -> tuple[list[str], list[str]]:
+    """Return ``(ok, failures)`` for NeuralMind against the plain vector baseline."""
+    ok: list[str] = []
+    failures: list[str] = []
+    for repo in sorted(fresh):
+        nm, base = fresh[repo].get("neuralmind"), fresh[repo].get(BASELINE)
+        if nm is None or base is None:
+            failures.append(f"{repo}: neuralmind or {BASELINE} missing from the fresh run")
+            continue
+        line = f"{repo}: neuralmind recall {nm['recall']:.4f} vs {BASELINE} {base['recall']:.4f}"
+        (failures if nm["recall"] + _EPSILON < base["recall"] else ok).append(line)
+    fresh_gap, committed_gap = pooled_mrr_gap(fresh), pooled_mrr_gap(committed)
+    if fresh_gap is None or committed_gap is None:
+        failures.append("pooled MRR gap: not computable from both runs")
+    else:
+        line = (
+            f"pooled MRR gap ({BASELINE} − neuralmind): {fresh_gap:+.4f} vs committed "
+            f"{committed_gap:+.4f} (may widen by at most {mrr_tolerance:.2f})"
+        )
+        widened = fresh_gap - committed_gap > mrr_tolerance + _EPSILON
+        (failures if widened else ok).append(line)
+    return ok, failures
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fresh", required=True, type=Path, help="report from evals.public.run --json")
@@ -137,6 +190,19 @@ def main(argv: list[str] | None = None) -> int:
     ok, failures = compare(fresh, committed)
     for line in ok:
         print(f"  OK     {line}")
+    floor_ok, floor_failures = vector_floor(fresh, committed)
+    print(f"\nNeuralMind against the plain vector baseline ({BASELINE}):")
+    for line in floor_ok:
+        print(f"  OK     {line}")
+    if floor_failures:
+        print("\nBELOW THE VECTOR BASELINE:")
+        for line in floor_failures:
+            print(f"  {line}")
+        print(
+            "\nNeuralMind's ranking must not lose gold files its own vector index finds\n"
+            "(recall), or fall further behind it on rank (pooled MRR). Fix the ranking\n"
+            "change, don't regenerate the snapshot to make this pass."
+        )
     if failures:
         print(
             f"\nDRIFT DETECTED (tolerance: recall ±{RECALL_TOLERANCE:.2f}, "
@@ -145,6 +211,8 @@ def main(argv: list[str] | None = None) -> int:
         for line in failures:
             print(f"  {line}")
         print(REGENERATE)
+        return 1
+    if floor_failures:
         return 1
     print(f"\nAll {len(ok)} committed (repo, backend) numbers within tolerance.")
     return 0

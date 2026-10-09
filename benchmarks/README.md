@@ -71,15 +71,18 @@ Useful variants of #8:
 ## What the numbers say (short version)
 
 Full tables on the [Benchmarks](../docs/wiki/Benchmarks.md) page. Headline:
-**85.71–100% gold-file recall (95% mean) at 45–246× fewer tokens** than pasting
+**the gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting
 every source file on real OSS repos, beating `ripgrep` on cost on every repo and
-on recall on 3 of 4 (tying exactly on the fourth); a synapse-layer lift in
-top-k hit-rate that CI gates on direction (+3.5 to +14 pts observed across runs,
-budget-neutral). We also report where NeuralMind **doesn't** win — a well-tuned
-vector RAG matches or beats it on pure findability and is cheaper on raw tokens,
-`click` is the weakest repo in the corpus (85.71%, one miss in 7 queries), at a matched budget naive truncation
-currently keeps slightly more gold facts on the reference fixture (−0.054 at
-v4.3.4), and the competitor row is **pure retrieval ranking**, not their
+on recall on 3 of 4 (tying exactly on the fourth); synapse recall that CI gates
+on direction — it never lowers top-k hit-rate (+3.5 to +14 pts observed in
+earlier releases, +0 at v4.12.0, where the fixture is at 97% without it). We also report where NeuralMind **doesn't** win — the plain
+vector baseline (the top 8 entries of NeuralMind's own index: names and
+docstrings, not code) is cheaper on raw tokens on every repo and still ranks the
+gold file higher on `flask` and `rich` (MRR 0.74 vs 0.72, 0.94 vs 0.83), though
+its recall is at or below NeuralMind's; 40 queries is a small sample, and the
+150-question retrieval eval misses 10, published; at a matched budget
+NeuralMind now keeps more gold facts than naive truncation on the reference
+fixture (+0.265 at v4.12.0, after −0.054 at v4.3.4), and the competitor row is **pure retrieval ranking**, not their
 LLM-agent loop.
 
 ---

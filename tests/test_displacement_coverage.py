@@ -249,3 +249,23 @@ def test_recall_still_pulls_in_a_file_search_missed(monkeypatch):
     assert len(out) == len(hits)  # budget-neutral
     assert "db_connect" in {r["id"] for r in out}
     assert "crud_update" not in {r["id"] for r in out}
+
+
+def test_a_file_spread_repeat_goes_before_a_files_only_hit():
+    # next-after-charge-change on CI's fixture graph (v4.12.0): after the file
+    # spread, billing/invoices.py's only hit scored below repeats from other
+    # files by more than the coverage margin, and synapse recall evicted it.
+    hits = [
+        _hit("s1", "billing/stripe_client.py", 1.0),
+        _hit("r1", "api/routes.py", 0.669),
+        dict(_hit("s2", "billing/stripe_client.py", 0.584), _file_repeat=1),
+        _hit("i1", "billing/__init__.py", 0.464),
+        dict(_hit("r2", "api/routes.py", 0.369), _file_repeat=1),
+        dict(_hit("s3", "billing/stripe_client.py", 0.34), _file_repeat=2),
+        _hit("v1", "billing/invoices.py", 0.24),
+        dict(_hit("r3", "api/routes.py", 0.202), _file_repeat=2),
+    ]
+    kept, dropped = _displace(hits, 2)
+    assert "billing/invoices.py" in _modules(kept)
+    assert {d["id"] for d in dropped} == {"r3", "s3"}  # the weakest repeats
+    assert _modules(kept) == _modules(hits)

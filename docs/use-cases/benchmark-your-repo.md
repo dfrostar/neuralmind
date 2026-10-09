@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 45–246× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 51–242× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 
@@ -91,7 +91,7 @@ Before v4.5.0 every repo was divided by a fixed 50,000-token guess. The
 the headline. "Questions" reads `project eval` when the repo has a
 `.neuralmind.eval.yaml` — see [Step 3d](#step-3d--score-it-against-your-own-questions-neuralmind-eval).
 
-The public benchmark's 45.3× on `requests` is a different measurement — its
+The public benchmark's 51.2× on `requests` is a different measurement — its
 own 14 questions, against non-test source only — so the two numbers don't
 compare directly.
 
@@ -288,7 +288,7 @@ A few things to check before giving up:
 1. **Is the graph actually built?** `neuralmind stats .` should report a non-zero node count. If it's tiny, `graphify` may have missed your language or the project structure.
 2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress. On a repo that small the measured ratio can drop below 1×, and `benchmark` says so: the context is larger than the code it covers.
 3. **Try a larger query set.** The default 5-query benchmark is representative, not exhaustive. Pass `sample_queries` if you use the Python API.
-4. **Check the query intent** (v4.6.0+). `neuralmind query . "your question" --explain` prints the intent L3 ranked with — `Query intent     : docs (by classifier)` on a question about how your code behaves explains why a README ranks above the implementation *within* L3's four hits (a `docs` intent multiplies doc hits by 2.0 and code by 0.7). It can't explain the implementation missing from those four: in v4.6.0's eval, switching intent never changed hit@5. Collect a few of those questions in `.neuralmind.eval.yaml` and [A/B-test the research flags](./ab-test-a-ranking-change.md) on them before turning one on.
+4. **Check the query intent** (v4.6.0+). `neuralmind query . "your question" --explain` prints the intent L3 ranked with — `Query intent     : docs (by classifier)` on a question about how your code behaves used to explain why a README ranked above the implementation *within* L3's hits (a `docs` intent multiplied doc hits by 2.0 and code by 0.7). Since v4.12.0 a detected intent no longer re-weights hits unless you set `NEURALMIND_AUTO_INTENT_BOOST=1`; only a type you ask for (`--type code|docs`) does, and L3 holds eight hits chosen from a pool of 20. If the implementation is still missing from those eight, collect a few of those questions in `.neuralmind.eval.yaml` and [A/B-test the research flags](./ab-test-a-ranking-change.md) on them before turning one on.
 5. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
 
 ## Related

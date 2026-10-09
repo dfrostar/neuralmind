@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from neuralmind.retrieval_enhancement import (
     apply_code_signal_boost,
     classify_intent,
@@ -134,7 +136,19 @@ class TestCodeIdentifierExtraction:
 
 
 class TestCodeSignalBoost:
-    """Test 3: Code-signal boosting"""
+    """Test 3: Code-signal boosting (off by default; these turn it on)"""
+
+    @pytest.fixture(autouse=True)
+    def _boost_on(self, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_CODE_SIGNAL_CAP", "10")
+
+    def test_off_by_default(self, monkeypatch):
+        monkeypatch.delenv("NEURALMIND_CODE_SIGNAL_CAP")
+        hit = {
+            "metadata": {"source_file": "synapses.py", "label": "reinforce", "file_type": "code"},
+            "document": "",
+        }
+        assert compute_code_signal_score(hit, ["synapse", "reinforce"]) == 1.0
 
     def test_boosts_file_with_identifiers(self):
         results = [
@@ -225,6 +239,46 @@ class TestCodeSignalBoost:
         }
         score = compute_code_signal_score(result, ["synapse", "reinforce"])
         assert score <= 0.5
+
+
+class TestCodeSignalMatching:
+    """Whole-word matching against the file name, label and document."""
+
+    @staticmethod
+    def _hit(source_file, label, document="", file_type="code"):
+        return {
+            "metadata": {"source_file": source_file, "label": label, "file_type": file_type},
+            "document": document,
+            "score": 0.5,
+        }
+
+    def test_directory_names_do_not_match(self, monkeypatch):
+        # "requests" names the package directory every file sits in.
+        monkeypatch.setenv("NEURALMIND_CODE_SIGNAL_CAP", "10")
+        hit = self._hit("src/requests/models.py", "Response")
+        assert compute_code_signal_score(hit, ["requests"]) == 1.0
+        assert compute_code_signal_score(self._hit("requests/api.py", "get()"), ["api"]) > 1.0
+
+    def test_short_labels_and_empty_paths_match_nothing(self, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_CODE_SIGNAL_CAP", "10")
+        # click's one-letter type aliases matched every identifier as substrings.
+        assert compute_code_signal_score(self._hit("types.py", "F"), ["format"]) == 1.0
+        assert compute_code_signal_score(self._hit("", "x"), ["anything"]) == 1.0
+
+    def test_a_docstring_counts_as_code(self):
+        hit = self._hit("synapses.py", "Reinforce the edges.", file_type="rationale")
+        assert compute_code_signal_score(hit, ["reinforce"]) >= 1.0
+
+    def test_cap_limits_the_multiplier(self, monkeypatch):
+        hit = self._hit("synapse_store.py", "SynapseStore", "synapse store reinforce")
+        monkeypatch.setenv("NEURALMIND_CODE_SIGNAL_CAP", "2")
+        assert compute_code_signal_score(hit, ["synapse", "store", "reinforce"]) == 2.0
+
+    def test_boost_leaves_the_input_hits_untouched(self, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_CODE_SIGNAL_CAP", "10")
+        hits = [self._hit("synapses.py", "reinforce()"), self._hit("other.py", "x()")]
+        apply_code_signal_boost(hits, ["reinforce"])
+        assert [h["score"] for h in hits] == [0.5, 0.5]  # the search cache's dicts
 
 
 class TestSynapseSeededExpansion:

@@ -51,7 +51,14 @@ the graph *producer* changed.
 
 - **Languages:** Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP out of
   the box (Rust added in v0.27.0, Java in v0.28.0, C/C++ in v0.32.0, C# in
-  v0.35.0, Ruby in v0.36.0, PHP in v0.37.0)
+  v0.35.0, Ruby in v0.36.0, PHP in v0.37.0). **JavaScript** (`.js`, `.mjs`,
+  `.cjs`, `.jsx`) is parsed with the TypeScript grammars since v4.12.0:
+  functions, classes, methods, JSDoc docstrings, imports and calls. Before
+  that, a JavaScript-only repository was classified as prose and got no code
+  nodes at all, so if you indexed one earlier, run `neuralmind build .` again.
+  `.tsx` and `.jsx` use the TSX grammar, and extensionless imports
+  (`./lib/util`) and ESM-style `.js` imports from TypeScript (`./db.js` →
+  `db.ts`) resolve ([release notes](../releases/RELEASE_NOTES_v4.12.0.md#6-javascript-repositories-get-code-nodes))
   — a mixed-language repo is indexed in one pass. Rust structs, enums, traits,
   `impl` blocks, and `use`/`impl Trait` edges all map onto the same graph model;
   C/C++ functions, `struct`/`union`/`enum`s, C++ classes and namespace-qualified

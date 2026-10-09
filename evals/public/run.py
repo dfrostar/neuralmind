@@ -260,7 +260,8 @@ def render_markdown(report: dict[str, Any]) -> str:
     out.append(f"- **Correctness oracle:** {report['oracle']} (gold = symbol definition site)")
     out.append(
         "- **Baselines:** `full-file` (paste every file), `ripgrep` (keyword → top files), "
-        "`embedding-rag` (top-k chunks, same encoder), `neuralmind` (progressive disclosure + synapses)\n"
+        "`embedding-rag` (top-k entries of the same vector index: names and docstrings, "
+        "not code bodies), `neuralmind` (progressive disclosure + synapses)\n"
     )
     for repo in report["repos"]:
         out.append(f"## {repo['name']}  `@{(repo.get('commit') or '')[:10]}`\n")

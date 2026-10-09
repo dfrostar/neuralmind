@@ -10,11 +10,11 @@ const faqs = [
     },
     {
         q: 'How much does NeuralMind reduce Claude Code token usage?',
-        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 45–246× smaller than pasting every source file, at 95% mean gold-file recall. On private repos, "neuralmind benchmark ." reported 12–50× before v4.5.0, against a fixed 50K-token estimate; it now divides the measured size of your own code, so run it and read yours. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly. NeuralMind no longer claims savings on tool output: its old compression hooks, measured against how Claude Code actually handles hook output, added tokens instead of saving them, so they were switched off (docs.neuralmind.uk/benchmarks/compression.html).',
+        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 51–242× smaller than pasting every source file, and it found the gold file on all 40. On private repos, "neuralmind benchmark ." reported 12–50× before v4.5.0, against a fixed 50K-token estimate; it now divides the measured size of your own code, so run it and read yours. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly. NeuralMind no longer claims savings on tool output: its old compression hooks, measured against how Claude Code actually handles hook output, added tokens instead of saving them, so they were switched off (docs.neuralmind.uk/benchmarks/compression.html).',
     },
     {
         q: 'How is this different from RAG or a vector database?',
-        a: 'Plain RAG retrieves text chunks that look similar to the question. NeuralMind keeps a graph of your code — symbols, imports, call edges — assembles a structured context from it (project map, relevant symbols, their callers), and adds a synapse layer that learns which files you use together. On pure findability a tuned vector index is a strong baseline: in the public benchmark it matches or beats NeuralMind’s recall at fewer tokens on every repo, and we publish that. NeuralMind spends its extra tokens on context an agent can answer from, and on memory that persists between sessions.',
+        a: 'Plain RAG retrieves text chunks that look similar to the question. NeuralMind keeps a graph of your code — symbols, imports, call edges — assembles a structured context from it (project map, relevant symbols, their callers), and adds a synapse layer that learns which files you use together. On pure findability a vector index is a strong baseline: in the public benchmark, NeuralMind’s own index alone (top 8 entries, names and docstrings, no code) costs fewer tokens on every repo and still ranks the gold file higher on flask and rich, though NeuralMind’s recall is now at or above it everywhere — and we publish that. NeuralMind spends its extra tokens on context an agent can answer from, and on memory that persists between sessions.',
     },
     {
         q: 'How is NeuralMind different from CLAUDE.md or Cursor rules?',
@@ -34,7 +34,7 @@ const faqs = [
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Four places, all published. It misses 3 of the 40 public-benchmark queries — two are two-file questions where it retrieves one of the two files, and one is a click query it misses outright, which makes click its weakest repo at 85.71% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
+        a: 'Four places, all published. It finds all 40 public-benchmark queries, but 40 is a small sample: on a 150-question retrieval eval it misses the gold file in the top five on 10, most of them where vector search ranks that file outside the 20 candidates NeuralMind re-ranks. If all you need is to locate a file, a bare vector index is cheaper, and on flask and rich it still ranks the gold file higher. On the CI fixture it took until v4.12.0 to beat naive truncation at the same token budget (+0.26; v4.3.4 was a loss, −0.054), and that fixture is small. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'Why not just use Cursor, Windsurf or Aider memory?',
@@ -42,7 +42,7 @@ const faqs = [
     },
     {
         q: 'What languages does it support?',
-        a: 'Ten out of the box via bundled tree-sitter grammars: Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby and PHP — plus OpenAPI, SQL DDL and Protocol Buffers schema files. Markdown and text can be indexed too, as their own content project.',
+        a: 'Ten out of the box via bundled tree-sitter grammars: Python, TypeScript (and JavaScript/JSX, parsed with the TypeScript grammars), Go, Rust, Java, C, C++, C#, Ruby and PHP — plus OpenAPI, SQL DDL and Protocol Buffers schema files. Markdown and text can be indexed too, as their own content project.',
     },
     {
         q: 'What is the business case for a team?',

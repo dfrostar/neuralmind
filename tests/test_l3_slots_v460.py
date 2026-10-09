@@ -1,4 +1,4 @@
-"""v4.6.0 spec 7: how the four L3 slots are spent.
+"""v4.6.0 spec 7: how the L3 slots are spent (pinned here at four).
 
 Each work item is behind a flag. These tests pin what each pass does on its
 own, that the default path (no flags) is unchanged, and the four regression
@@ -31,6 +31,14 @@ FLAGS = (
 def _clean_flags(monkeypatch):
     for name in FLAGS:
         monkeypatch.delenv(name, raising=False)
+    # These pin how the v4.6.0 passes spend four L3 slots; the depth itself
+    # (eight since v4.12) is covered in test_context_selector.
+    monkeypatch.setenv("NEURALMIND_L3_K", "4")
+    monkeypatch.delenv("NEURALMIND_AUTO_INTENT_BOOST", raising=False)
+    # v4.12's file diversity and test demotion re-order the pool before the
+    # cut; they are covered in test_l3_ranking_v412.
+    monkeypatch.setenv("NEURALMIND_L3_FILE_DECAY", "1")
+    monkeypatch.setenv("NEURALMIND_TEST_FILE_FACTOR", "1")
 
 
 def hit(nid, sf, score, file_type="code", label=None, document=""):
@@ -347,7 +355,10 @@ def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatc
     monkeypatch.setenv("NEURALMIND_INTENT_RULES", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
     sel.get_l3_search(REGRESSION_SHAPES[0])
-    assert "app/orders.py" not in files_of(sel)  # intent alone only re-orders the top four
+    # Since v4.12 the passes rank the whole candidate pool before it is cut,
+    # so a code question's mark-down of markdown already lifts the code hit
+    # from fifth place; before, it only re-ordered the top four.
+    assert files_of(sel)[0] == "app/orders.py"
     monkeypatch.setenv("NEURALMIND_INTENT_POOL", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
     sel.get_l3_search(REGRESSION_SHAPES[0])

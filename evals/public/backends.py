@@ -11,9 +11,11 @@ skeptic can read exactly how each baseline is configured:
   "just paste the files" workflow pays.
 - ``ripgrep``     — extract query keywords, rank files by match count, open the
   top-N **whole files** (what "just grep it and read the files" actually costs).
-- ``embedding_rag`` — top-k function/class **chunks** retrieved by the same
-  encoder NeuralMind uses, sending only the retrieved chunks (a strong, cheap
-  vector-RAG baseline). Isolates what NeuralMind adds *over* plain vector search.
+- ``embedding_rag`` — the top-k entries of NeuralMind's own vector index (same
+  encoder), sending only their indexed text: a symbol's name, module and
+  docstring, not its body. Isolates what NeuralMind's ranking and context
+  assembly add *over* plain vector search; its token cost is a floor, below
+  what a chunk RAG that sends code bodies would pay.
 - ``neuralmind``  — ``NeuralMind.query`` progressive L0–L3 disclosure + synapse
   recall; cost is the assembled compact context.
 
@@ -210,8 +212,9 @@ def run_ripgrep(
 def run_embedding_rag(
     query_id: str, question: str, gold_files: list[str], nm: Any
 ) -> BackendResult:
-    """Top-k function/class chunks via the same encoder; cost = retrieved chunks."""
-    hits = nm.search(question, n=RAG_TOP_K)
+    """Top-k entries of NeuralMind's vector index; cost = their indexed text."""
+    # Read-only: a benchmark must never train the index it measures.
+    hits = nm.search(question, n=RAG_TOP_K, learn=False)
     files: list[str] = []
     chunks: list[str] = []
     tokens = 0
@@ -242,7 +245,8 @@ def run_embedding_rag(
 
 def run_neuralmind(query_id: str, question: str, gold_files: list[str], nm: Any) -> BackendResult:
     """NeuralMind progressive disclosure + synapse recall; cost = assembled context."""
-    result = nm.query(question)
+    # Read-only: a benchmark must never train the index it measures.
+    result = nm.query(question, learn=False)
     files: list[str] = []
     for h in getattr(result, "top_search_hits", []) or []:
         meta = h.get("metadata", {}) or {}
@@ -251,9 +255,11 @@ def run_neuralmind(query_id: str, question: str, gold_files: list[str], nm: Any)
             files.append(Path(str(src)).name)
     seen: set[str] = set()
     ordered = [f for f in files if not (f in seen or seen.add(f))]
-    tokens = int(getattr(result, "tokens", 0) or 0)
-    # NeuralMind's real window is the assembled compact L0–L3 context.
+    # NeuralMind's real window is the assembled compact L0–L3 context, counted
+    # with the same tokenizer as every other backend (result.tokens is the
+    # selector's chars/4 estimate, which ran ~13% under tiktoken).
     context_text = str(getattr(result, "context", "") or "")
+    tokens = count_tokens(context_text)
     return BackendResult(
         "neuralmind", query_id, gold_files, ordered, tokens, context_text=context_text
     )

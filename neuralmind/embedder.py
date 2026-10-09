@@ -25,6 +25,7 @@ from chromadb.config import Settings
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
 from .ir import node_community
+from .node_text import context_for, node_text
 from .paths import graph_json_path, vector_db_path
 from .secret_scan import redact_if_enabled
 
@@ -152,42 +153,8 @@ class GraphEmbedder(EmbeddingBackend):
         return True
 
     def _node_to_text(self, node: dict) -> str:
-        """
-        Convert a node to searchable text representation.
-
-        Combines label, file_type, source_file, and community info
-        into a rich text description for embedding.
-        """
-        parts = []
-
-        # Primary identifier
-        label = node.get("label", node.get("id", "unknown"))
-        parts.append(f"Entity: {label}")
-
-        # Type information
-        file_type = node.get("file_type", "unknown")
-        parts.append(f"Type: {file_type}")
-
-        # Source location
-        source_file = node.get("source_file", "")
-        if source_file:
-            parts.append(f"File: {source_file}")
-
-        source_loc = node.get("source_location", "")
-        if source_loc:
-            parts.append(f"Location: {source_loc}")
-
-        # Community/cluster info
-        community = node_community(node)
-        if community >= 0:
-            parts.append(f"Community: {community}")
-
-        # Normalized label (often more descriptive)
-        norm_label = node.get("norm_label", "")
-        if norm_label and norm_label != label:
-            parts.append(f"Normalized: {norm_label}")
-
-        return redact_if_enabled("\n".join(parts))
+        """Convert a node to its searchable text (see :mod:`neuralmind.node_text`)."""
+        return node_text(node, context_for(self))
 
     def _content_to_text(self, content_node: dict) -> str:
         """Convert a content node (non-code) to searchable text representation.
@@ -350,7 +317,9 @@ class GraphEmbedder(EmbeddingBackend):
             if not node_id:
                 continue
 
-            text = self._node_to_text(node)
+            # A markdown section embeds its body, as on the turbovec backend;
+            # a code node (no content_text) its metadata text.
+            text = self._content_to_text(node)
             meta = self._node_metadata(node)
             meta["content_hash"] = self._content_hash(text)
             meta["embedded_at"] = datetime.now().isoformat()
@@ -747,10 +716,10 @@ class GraphEmbedder(EmbeddingBackend):
         """Stored ids written from a graph that the loaded graph no longer has.
 
         Returns ``(orphans, stored_total)``. Only rows ``embed_nodes`` wrote are
-        candidates: their document is the ``Entity: ...`` text built from a
-        graph node. Rows from ``embed_content`` (ingested docs, compliance
-        practices) hold their own content text and a content category, and
-        are never reported.
+        candidates: a ``code`` or ``rationale`` row, or an ``Entity: ...``
+        document built from any other graph node. Rows from ``embed_content``
+        (ingested docs, compliance practices) hold their own content text and
+        a content category, and are never reported.
         """
         graph_ids = {
             str(n.get("id", n.get("label", "")))
@@ -772,7 +741,10 @@ class GraphEmbedder(EmbeddingBackend):
             meta = metas[i] if i < len(metas) and isinstance(metas[i], dict) else {}
             if meta.get("content_category") or meta.get("practice_id"):
                 continue
-            if isinstance(doc, str) and doc.startswith("Entity: "):
+            from_graph = meta.get("file_type") in ("code", "rationale") or (
+                isinstance(doc, str) and doc.startswith("Entity: ")
+            )
+            if from_graph:
                 orphans.add(nid)
         return orphans, len(ids)
 

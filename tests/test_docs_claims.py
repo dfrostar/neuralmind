@@ -282,27 +282,38 @@ def _ratios(*values: str) -> re.Pattern[str]:
 
 SUPERSEDED_BENCHMARK_FIGURES = [
     (
+        _ratio_range(r"45(?:\.3)?", r"24[56](?:\.2)?"),
+        "The v4.10.0 run's range, replaced 2026-10-08 at v4.12.0: 54–260×.",
+    ),
+    (
+        _ratios(r"45\.3", r"115\.2", r"76\.3", r"245\.2"),
+        (
+            "A v4.10.0 per-repo ratio, replaced 2026-10-08 at v4.12.0: requests "
+            "54.9×, click 124.2×, flask 73.1×, rich 259.3×."
+        ),
+    ),
+    (
         _ratio_range(r"46(?:\.6)?", r"26[23](?:\.1)?"),
-        "The v4.6.0 run's range, replaced 2026-10-07 at v4.10.0: 45–246×.",
+        "The v4.6.0 run's range, replaced 2026-10-07 at v4.10.0 (since: 54–260×).",
     ),
     (
         # click's 121.7× is left out: the embedding-rag baseline measures
         # exactly that on click in the current run, in the tables that list it.
         _ratios(r"46\.6", r"78(?:\.0)?", r"262\.1", r"263"),
         (
-            "A v4.6.0 per-repo ratio, replaced 2026-10-07 at v4.10.0: requests "
-            "45.3×, click 115.2×, flask 76.3×, rich 245.2×."
+            "A v4.6.0 per-repo ratio, replaced 2026-10-07 at v4.10.0 (since: requests "
+            "54.9×, click 124.2×, flask 73.1×, rich 259.3×)."
         ),
     ),
     (
         _ratio_range(r"45(?:\.0)?", r"26(?:0\.7|1)"),
-        "The v4.3.4 run's range, replaced at v4.6.0 and again at v4.10.0 (45–246×).",
+        "The v4.3.4 run's range, replaced at v4.6.0, v4.10.0 and v4.12.0 (54–260×).",
     ),
     (
         _ratios(r"45\.0", r"110\.4", r"81\.6", r"260\.7", r"261"),
         (
-            "A v4.3.4 per-repo ratio. The current run measures requests 45.3×, "
-            "click 115.2×, flask 76.3×, rich 245.2×."
+            "A v4.3.4 per-repo ratio. The current run measures requests 54.9×, "
+            "click 124.2×, flask 73.1×, rich 259.3×."
         ),
     ),
     (
@@ -311,7 +322,8 @@ SUPERSEDED_BENCHMARK_FIGURES = [
     ),
 ]
 
-# The public benchmark's mean is 95% and its per-repo floor is 85.71%. A bare
+# Every public-benchmark run before v4.12.0 had a miss, and 40 of 40 at v4.12.0
+# is too small a sample to carry a perfect-recall claim. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
 PERFECT_RECALL_RE = re.compile(
@@ -496,15 +508,19 @@ def test_superseded_benchmark_guard_trips_on_the_copy_that_shipped() -> None:
         "The public benchmark's 45.0× on `requests` is a different measurement",
         "**93.75% mean gold-file recall (85–100% per repo) at 45–261× fewer tokens**",
         "45 to 261x fewer tokens",
+        "**45–246× fewer tokens than pasting every source file, at 95% mean",
+        '<div class="num">45&#8211;246&#215;</div>',
+        "That is 45.3–245.2× fewer input tokens per query",
+        "requests 45.3×, click 115.2×, flask 76.3×, rich 245.2×",
     ]
     for line in shipped:
         assert any(p.search(line) for p, _ in SUPERSEDED_BENCHMARK_FIGURES), line
 
     current = [
-        "**45–246× fewer tokens than pasting every source file, at 95% mean",
-        '<div class="num">45&#8211;246&#215;</div>',
-        "That is 45.3–245.2× fewer input tokens per query",
-        "requests 45.3×, click 115.2×, flask 76.3×, rich 245.2×",
+        "**54–260× fewer tokens than pasting every source file, at 97.5% mean",
+        '<div class="num">54&#8211;260&#215;</div>',
+        "That is 54.9–259.3× fewer input tokens per query",
+        "requests 54.9×, click 124.2×, flask 73.1×, rich 259.3×",
         "| `embedding-rag` | 1.00 | 100% | 645 | 0.69 | 121.7× |",
         "78.6× on psf/requests v2.32.3 at v4.5.0",
         "the community submissions so far (46× to 65.6×)",

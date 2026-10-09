@@ -1,6 +1,16 @@
 # Code/Document Scoring
 
-NeuralMind v3.1.4+ automatically detects query intent and boosts relevant results.
+NeuralMind v3.1.4+ detects query intent and can boost results of the matching type.
+
+> **Changed in v4.12.0:** an intent *detected* from the wording of a question no
+> longer re-weights hits by default; only a type you ask for does (`--type
+> code|docs`, or the MCP `query_type`). The detector is a keyword heuristic, and
+> it read "how does X…" questions as documentation questions. On the
+> 150-question retrieval eval, turning detected-intent re-weighting back on
+> costs 3 questions overall, and the markdown-heavy repository drops from 77% to
+> 67% hit@5. `NEURALMIND_AUTO_INTENT_BOOST=1` restores it. Under a code intent a
+> docstring now counts as the code it documents; markdown is still marked down.
+> ([release notes](../releases/RELEASE_NOTES_v4.12.0.md#2-boosts-that-no-longer-outvote-the-ranking))
 
 ## The Problem
 
@@ -12,20 +22,20 @@ By default, documents (READMEs, changelogs, wikis) dominate search results — e
 
 ## The Solution
 
-NeuralMind now auto-detects query intent and applies type-aware boosting:
+NeuralMind detects query intent and applies type-aware boosting when you ask for a type (and, with `NEURALMIND_AUTO_INTENT_BOOST=1`, when it detects one):
 
 | Intent | Code Nodes | Doc Nodes |
 |--------|------------|-----------|
 | `code` | × 3.0 | × 0.5 |
 | `docs` | × 0.7 | × 2.0 |
-| `auto` (code detected) | × 3.0 | × 0.5 |
-| `auto` (docs detected) | × 0.7 | × 2.0 |
-| `auto` (hybrid) | × 1.0 | × 1.0 |
+| `auto` (default since v4.12.0) | × 1.0 | × 1.0 |
+| `auto` + `NEURALMIND_AUTO_INTENT_BOOST=1`, code detected | × 3.0 | × 0.5 |
+| `auto` + `NEURALMIND_AUTO_INTENT_BOOST=1`, docs detected | × 0.7 | × 2.0 |
 
 ## Usage
 
 ```bash
-# Auto-detect intent (default)
+# No type asked for (default): no re-weighting since v4.12.0
 neuralmind query . "implement authentication middleware"
 
 # Explicit code filter
@@ -58,6 +68,8 @@ Lower threshold = more sensitive detection. Higher threshold = more queries clas
 4. **Scoring** — code and doc scores are computed, threshold applied for final classification
 
 ## Results
+
+The v3.1.4 targets, when L3 held four hits and detected intent re-weighted them:
 
 - Code-framed queries: >80% code nodes in top-4 results
 - Doc-framed queries: >60% doc nodes in top-4 results

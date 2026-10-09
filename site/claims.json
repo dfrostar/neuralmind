@@ -1,5 +1,5 @@
 {
-  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (95% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
+  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the public benchmark of the day contradicted (93.6% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
   "_evidence_levels": {
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
     "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number on the same machine. Token counts, and the ratios built on them, can shift slightly from one machine to another; where that has been measured, recall and found-rate did not move, and the source page states the spread (docs/benchmarks/public.md: for the current run, per-repo mean tokens within 0.8% between CI runners with and without AVX-512, recall, found-rate and NeuralMind's MRR identical, the embedding-rag baseline's MRR on click 0.69 against 0.60).",
@@ -8,44 +8,44 @@
   },
   "ratios": [
     {
-      "value": 45,
+      "value": 51,
       "range_endpoint": true,
-      "context": "Low end of 'fewer tokens than pasting whole files' across the 40-query public benchmark: requests, at 45.3x, rounded down — the range is quoted rounded outward (also quoted per-repo as 45.3x). Runners without AVX-512 measure requests at 45.5x; the rounded range is the same.",
+      "context": "Low end of 'fewer tokens than pasting whole files' across the 40-query public benchmark: requests, at 51.2x, rounded down — the range is quoted rounded outward (also quoted per-repo as 51.2x). Measured at v4.12.0.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 246,
+      "value": 242,
       "range_endpoint": true,
-      "context": "High end of the same range (rich, at 245.2x, rounded up).",
+      "context": "High end of the same range (rich, at 242.0x).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 45.3,
+      "value": 51.2,
       "context": "requests @ 0e322af877 — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 115.2,
+      "value": 117.1,
       "context": "click @ 874ca2bc1c — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 76.3,
+      "value": 68.5,
       "context": "flask @ c12a5d874c — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 245.2,
+      "value": 242.0,
       "context": "rich @ 7f580bdcf0 — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
@@ -148,11 +148,11 @@
   ],
   "non_ratio_headline_claims": [
     {
-      "claim": "95% gold-file recall (mean over all 40 queries, query-weighted), 85.71-100% per repo, 92.5% found-rate (37 of 40), across 40 pre-registered queries on 4 pinned OSS repos",
+      "claim": "100% gold-file recall (40 of 40 queries, query-weighted), 100% on every repo, 100% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
       "source": "docs/benchmarks/public.md",
       "reproduce": "NEURALMIND_ORT_THREADS=1 python -m evals.public.run",
       "evidence": "reproducible",
-      "note": "Do NOT round this to '100% recall'. Per-repo recall is 96.43% / 85.71% / 95% / 100% (requests / click / flask / rich). click is the weakest repo: its echo-util query has missed since the v4.6.0 run (click was 100% before it). Every miss (3 of 40) is published: requests xfile-status-codes and flask xfile-dispatch-context are partial (one of two gold files retrieved), click echo-util is a full miss. NeuralMind still trails the embedding-rag baseline on recall (98.75% mean) — say so wherever the old copy did. The mean is query-weighted (every one of the 40 queries counts once); the unweighted average of the per-repo means is a different figure and is not the one we quote. Backed by bench/public/results.json, regenerated 2026-10-07 at v4.10.0 (tokenizer tiktoken o200k_base): recall, found-rate and the three misses are unchanged from the v4.6.0 run. Tokens moved, and so did mean reciprocal rank in three places: NeuralMind on flask (0.7167 to 0.7333) and the embedding-rag baseline on click (0.5952 to 0.6905) and flask (0.70 to 0.7167). tests/test_site_claims.py recomputes the mean, the per-repo range, the found-rate and the per-repo ratios from that file."
+      "note": "This is canon for the data, not copy for the site: the site must NOT headline '100% recall' (tests/test_site_claims.py rejects it). Forty queries is a small sample, every earlier run had at least one miss, and the next retrieval change can bring one back. Say '40 of 40 queries' and pair it with the larger 150-question retrieval eval, where the same build puts a gold file in the top five for 93.3% of questions and misses 10 (bench/retrieval/on-v4.12; misses listed per question). At v4.12.0 the three v4.10.0 misses (requests xfile-status-codes, click echo-util, flask xfile-dispatch-context) are found. NeuralMind's recall is now at or above the embedding-rag baseline's on every repo (96.25% mean for the baseline; flask 1.00 vs 0.85), but its MRR is still below the baseline's on flask (0.72 vs 0.74) and rich (0.83 vs 0.94) — say so wherever recall is compared. The embedding-rag baseline is the top 8 entries of NeuralMind's own vector index (a symbol's name, module and docstring, not code bodies), so its token count is a floor, not what a chunk RAG sending code would pay. Backed by bench/public/results.json, regenerated at v4.12.0 (tokenizer tiktoken o200k_base, neuralmind backend run read-only and counted with the benchmark tokenizer). tests/test_site_claims.py recomputes the mean, the per-repo range, the found-rate and the per-repo ratios from that file."
     },
     {
       "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
@@ -162,11 +162,11 @@
       "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number. HISTORY: this gate measured -1.75 pts (74.6% -> 72.8%) on AVX-512 hosts and +3.5 elsewhere, bit-stably, for months. A 2-point tolerance was added 2026-08-29 to make it pass and was reverted; the cause was displacement dropping the ranked tail, which could evict a module's only representatives. Fixed 2026-08-31 by choosing displacement victims whose module another survivor still covers. Both host classes now measure +3.51 on this fixture (74.6% -> 78.1%), verified on an avx512f container and a non-avx512f CI runner at the same commit."
     },
     {
-      "claim": "Faithfulness vs naive truncation at a matched token budget: CI fails if the mean delta falls below -0.10 (built-in backend, mean of 3 runs on the reference fixture). At v4.3.4 it measures -0.054 — naive truncation keeps slightly more gold facts — and the site publishes that as a loss.",
+      "claim": "Faithfulness vs naive truncation at a matched token budget: CI fails if the mean delta falls below -0.10 (built-in backend, mean of 3 runs on the reference fixture). At v4.12.0 it measured +0.265 (0.839 vs 0.574 expected-fact recall) with CI's command on one machine, where v4.11.1 measured +0.027; at v4.3.4 CI measured -0.054, a loss the site published.",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m evals.faithfulness.runner --run",
       "evidence": "ci-gated",
-      "note": "Do NOT describe this as 'never worse' or 'beats truncation'. ci-benchmark.yml asserts mean_faithfulness_delta >= -0.10, not >= 0.0: the gate was relaxed because sample_project mixes code with prose chapter summaries, where a matched-budget naive baseline can edge out the built-in backend. CI output on #539: built-in recall 0.451 vs naive 0.505, delta runs [-0.054, -0.054, -0.054]. Earlier releases measured +0.013 to +0.143. Quote the gate and the current, dated measurement; re-check both whenever ci-benchmark.yml or the fixture changes."
+      "note": "Do NOT describe this as 'never worse' or 'beats truncation'. ci-benchmark.yml asserts mean_faithfulness_delta >= -0.10, not >= 0.0: the gate was relaxed because sample_project mixes code with prose chapter summaries, where a matched-budget naive baseline can edge out the built-in backend. CI output on #539: built-in recall 0.451 vs naive 0.505, delta runs [-0.054, -0.054, -0.054]. Earlier releases measured +0.013 to +0.143. v4.12.0 (L2 lists the query's other candidates, 8 L3 hits from 20 spread across files) measured +0.265 (0.839 vs 0.574) on a 4-core AVX-512 container running the ci-benchmark.yml step, where the v4.11.1 code on the same machine measured +0.027 — so the machine reads higher than #539's runner did; CI's own number for v4.12.0 is in the PR's self-benchmark run. Quote the gate and the current, dated measurement; re-check both whenever ci-benchmark.yml or the fixture changes."
     },
     {
       "claim": "TurboVec fact recall 0.800 vs chroma float32 0.744, identical top-k hit@4",
@@ -190,7 +190,7 @@
     },
     {
       "claim": "100% gold-file recall on the public benchmark",
-      "why": "Contradicted by the current public benchmark: 0.96 on requests, 0.86 on click, 0.95 on flask. The 100% figure came from an older, narrower competitor eval that the docs already flag as not re-verified against the expanded corpus."
+      "why": "Contradicted by every public-benchmark run before v4.12.0 (93.6% to 95% mean, a repo below 1.00 each time); the 100% figure came from an older, narrower competitor eval. The v4.12.0 run does find all 40 gold files, but 40 queries cannot carry a perfect-recall claim: on the 150-question retrieval eval the same build misses the gold file in the top five on 10 questions. Quote '40 of 40 queries' beside the 150-question figure instead."
     },
     {
       "claim": "'+6.1 pts' or '+0.143' labelled CI-gated",
@@ -203,13 +203,18 @@
     },
     {
       "claim": "93.75% mean gold-file recall / 85-100% per repo / 90% found-rate / 4 of 40 misses / 45-261x (or the per-repo 45.0x, 110.4x, 81.6x, 260.7x)",
-      "why": "Superseded 2026-10-01 for v4.6.0, when bench/public/results.json was regenerated. Those figures were correct for the v4.3.4 run they came from and stay in the dated release notes and CHANGELOG.md as history, but they are no longer the current measurement: the v4.6.0 run measured 95% (query-weighted), 85.71-100% per repo, 92.5% found-rate, 3 of 40 misses, 46-263x, itself superseded 2026-10-07 (next entry). Their ratio entries were removed from `ratios` and are recorded only here; the site no longer quotes them, and must not. 45.0x is left out of this entry's `ratios`: 45 is the current range's low end, so a number can't tell them apart.",
+      "why": "Superseded 2026-10-01 for v4.6.0, when bench/public/results.json was regenerated. Those figures were correct for the v4.3.4 run they came from and stay in the dated release notes and CHANGELOG.md as history, but they are no longer the current measurement: the v4.6.0 run measured 95% (query-weighted), 85.71-100% per repo, 92.5% found-rate, 3 of 40 misses, 46-263x, itself superseded 2026-10-07 (next entry). Their ratio entries were removed from `ratios` and are recorded only here; the site no longer quotes them, and must not. 45 was then the v4.10.0 range's low end too; since v4.12.0 neither is current.",
       "ratios": [45, 261, 110.4, 81.6, 260.7]
     },
     {
       "claim": "46-263x fewer tokens on the public benchmark (or the per-repo 46.6x requests, 121.7x click, 78.0x flask, 262.1x rich)",
       "why": "Superseded 2026-10-07, when bench/public/results.json was regenerated at v4.10.0. The v4.6.0 run measured them. v4.8.1 (#587) then corrected the call graph the build writes — calls attributed to the right function, Python relative imports resolved, colliding symbol ids split — which regrouped the graph's clusters and made the assembled context larger (click 645.4 -> 681.6 mean tokens, rich 887.1 -> 948), so the ratios are now 45-246x (45.3x requests, 115.2x click, 76.3x flask, 245.2x rich). Recall, found-rate and the three misses did not move. The drift gate allows 10% on tokens, so CI passed throughout. They stay in the dated release notes and CHANGELOG.md as history; the site must not quote them. click's 121.7x is now also the embedding-rag baseline's click ratio, which the site doesn't quote either.",
       "ratios": [263, 46.6, 121.7, 78, 262.1]
+    },
+    {
+      "claim": "95% mean gold-file recall / 85.71-100% per repo / 92.5% found-rate / 3 of 40 misses / 45-246x fewer tokens (or the per-repo 45.3x requests, 115.2x click, 76.3x flask, 245.2x rich)",
+      "why": "Superseded at v4.12.0, when bench/public/results.json was regenerated after the ranking changes (L3 keeps 8 hits from a pool of 20, boosts that no longer outvote the ranking, a node embedded as its qualified name, module and docstring) and with the neuralmind backend run read-only and counted with the benchmark's tokenizer. The v4.12.0 run finds all 40 gold files (100% found-rate, no misses) at 51-242x (51.2x requests, 117.1x click, 68.5x flask, 242.0x rich). The old figures were correct for the v4.10.0 run and stay in the dated release notes and CHANGELOG.md as history; the site must not quote them.",
+      "ratios": [45, 246, 45.3, 115.2, 76.3, 245.2]
     }
   ],
   "private_names_never_publish": [
