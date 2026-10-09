@@ -3824,11 +3824,15 @@ renewed — issue a new one.
 | 0 | Success |
 | 1 | General error |
 | 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist |
-| 3 | graph.json not found |
-| 4 | Index not built (run `build` first) |
-| 5 | Database error |
+| 3 | `build --strict`: the code graph fails the freshness check; `daemon status`: the daemon isn't running |
 | 6 | `license expiring`: renewals due inside the window |
 | 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |
+
+Most commands exit `1` when the code graph or index is missing, with a hint to
+run `neuralmind build` or `neuralmind doctor` (`health` uses `2` for "no
+index"). A command's own section lists any other code it uses.
+`tests/test_cli_exit_codes.py` checks that this table names only codes the CLI
+emits, and runs the documented cases.
 
 ---
 

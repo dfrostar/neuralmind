@@ -34,6 +34,15 @@ jobs:
       - name: Lint with Ruff
         run: ruff check .
 
+      # ruff has no unreachable-code rule; this is how doctor's exit 1 was lost.
+      - name: Check for unreachable code
+        run: python scripts/check_unreachable.py
+
+      # Scripts nothing runs rot silently (scripts/test_self_hosted.sh did).
+      # shellcheck ships on the ubuntu runner image.
+      - name: Lint shell scripts
+        run: find scripts -name '*.sh' -print0 | xargs -0 shellcheck --severity=warning
+
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
