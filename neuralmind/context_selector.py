@@ -245,12 +245,50 @@ def _env_number(name: str, default, cast=float):
 
 
 _TEST_DIRS = frozenset({"tests", "test", "__tests__", "spec", "specs", "testing"})
-_TEST_QUERY = re.compile(r"\b(tests?|testing|spec|specs|fixtures?|pytest|unittest)\b", re.I)
+_TEST_QUERY = re.compile(
+    r"\b(tests?|testing|spec|specs|fixtures?|pytest|unittest|conftest)\b"
+    # Naming a test asks about tests too: test_parse_option(), parse_test.go,
+    # cart.test.ts. "_" is a word character, so the words above miss those.
+    r"|\btest_\w|\w_tests?\b|\w\.(?:test|spec)\.\w",
+    re.I,
+)
+_TEST_CLASS_QUERY = re.compile(r"\b[A-Za-z]\w*[a-z0-9]Tests?\b")  # UserServiceTest
+# Plural anywhere in the path; the singular only as the project's top folder,
+# because Java and Kotlin packages are folders too and Spring Initializr's
+# default package is com.example.demo.
+_EXAMPLE_DIRS = frozenset({"examples", "demos", "samples"})
+_EXAMPLE_TOP_DIRS = frozenset({"example", "demo", "sample"})
+_EXAMPLE_QUERY = re.compile(r"\b(examples?|demos?|samples?)\b", re.I)
+_ABSOLUTE_PATH = re.compile(r"^(?:/|[A-Za-z]:/)")
 
 
-def _is_test_file(path: str) -> bool:
+def _project_relative(path: str, root: str | os.PathLike | None = None) -> str:
+    """``path`` with forward slashes, relative to ``root`` if it's absolute and inside it.
+
+    Graphs may store absolute source paths, and only the part inside the
+    project says what a file is: a checkout at ``/home/me/examples/app``
+    doesn't make ``src/app/core.py`` an example, nor one under ``tests/`` a
+    test. An absolute path outside ``root`` is returned as it is.
+    """
+    p = str(path).replace("\\", "/")
+    if root is None or not _ABSOLUTE_PATH.match(p):
+        return p
+    bases = {str(root).replace("\\", "/").rstrip("/")}
+    try:
+        bases.add(str(Path(root).resolve()).replace("\\", "/").rstrip("/"))
+    except OSError:
+        pass
+    for base in bases:
+        if base and len(p) > len(base) and p[len(base)] == "/":
+            head = p[: len(base)]
+            if head == base or (re.match(r"^[A-Za-z]:", base) and head.lower() == base.lower()):
+                return p[len(base) + 1 :]
+    return p
+
+
+def _is_test_file(path: str, root: str | os.PathLike | None = None) -> bool:
     """``tests/test_x.py``, ``pkg/x_test.go``, ``src/x.spec.ts`` and the like."""
-    parts = path.replace("\\", "/").lower().split("/")
+    parts = _project_relative(path, root).lower().split("/")
     name = parts[-1]
     if any(p in _TEST_DIRS for p in parts[:-1]):
         return True
@@ -262,24 +300,67 @@ def _is_test_file(path: str) -> bool:
     )
 
 
-def _demote_tests(results: list[dict], query: str, factor: float) -> list[dict]:
+def _is_example_file(path: str, root: str | os.PathLike | None = None) -> bool:
+    """A file under ``examples/``, ``demos/`` or ``samples/``, or a top-level
+    ``example/``, ``demo/`` or ``sample/``: code that uses the project."""
+    parts = _project_relative(path, root).lower().split("/")
+    dirs = parts[:-1]
+    return any(p in _EXAMPLE_DIRS for p in dirs) or bool(dirs and dirs[0] in _EXAMPLE_TOP_DIRS)
+
+
+def _asks_about_tests(query: str) -> bool:
+    return bool(_TEST_QUERY.search(query or "") or _TEST_CLASS_QUERY.search(query or ""))
+
+
+def _demote(results: list[dict], factor: float, matches, mark: str) -> list[dict]:
+    """Scale the hits ``matches`` picks by ``factor``, mark them, and re-sort."""
+    if factor >= 1.0 or not results:
+        return results
+    out = []
+    for r in results:
+        if matches(r):
+            r = dict(r)
+            r["score"] = float(r.get("score") or 0.0) * factor
+            r[mark] = True
+        out.append(r)
+    out.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
+    return out
+
+
+def _demote_tests(
+    results: list[dict], query: str, factor: float, root: str | os.PathLike | None = None
+) -> list[dict]:
     """Scale test-file hits by ``factor`` unless the question is about tests.
 
     A test names the same functions as the code it tests, so on a large repo
     with its tests indexed they took up to seven of the eight L3 slots on
     "how does X work" questions. ``factor >= 1`` returns the list unchanged.
     """
-    if factor >= 1.0 or not results or _TEST_QUERY.search(query or ""):
+    if _asks_about_tests(query):
         return results
-    out = []
-    for r in results:
-        if _is_test_file(_module_of(r)):
-            r = dict(r)
-            r["score"] = float(r.get("score") or 0.0) * factor
-            r["_test_file"] = True
-        out.append(r)
-    out.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
-    return out
+    return _demote(results, factor, lambda r: _is_test_file(_module_of(r), root), "_test_file")
+
+
+def _demote_examples(
+    results: list[dict], query: str, factor: float, root: str | os.PathLike | None = None
+) -> list[dict]:
+    """Scale example-script hits by ``factor`` unless the question asks for an example.
+
+    An example uses the words of a question about the feature it
+    demonstrates: on pallets/click, "which files handle parsing command-line
+    options?" put ``examples/repo/repo.py`` above ``core.py``, and four of 14
+    questions led with an example script. A test file under an example
+    folder is a test, not an example: it is demoted once, as a test, or kept
+    for a question about tests. ``factor >= 1`` returns the list unchanged.
+    """
+    if _EXAMPLE_QUERY.search(query or ""):
+        return results
+    return _demote(
+        results,
+        factor,
+        lambda r: _is_example_file(_module_of(r), root) and not _is_test_file(_module_of(r), root),
+        "_example_file",
+    )
 
 
 def _diversify_files(results: list[dict], decay: float) -> list[dict]:
@@ -402,6 +483,11 @@ class ContextSelector:
     # 77% to 80% with nothing lost elsewhere. NEURALMIND_TEST_FILE_FACTOR
     # overrides; 1 turns it off.
     TEST_FILE_FACTOR = 0.5
+    # Example-script hits (examples/, demo(s)/, sample(s)/) keep this fraction
+    # of their score unless the question asks for an example (see
+    # _demote_examples). NEURALMIND_EXAMPLE_FILE_FACTOR overrides; 1 turns it
+    # off.
+    EXAMPLE_FILE_FACTOR = 0.5
 
     # Synapse-driven recall (see _apply_synapse_boost / get_l2_context):
     # number of top hits used to seed spreading activation, how strongly
@@ -1125,7 +1211,23 @@ class ContextSelector:
                     namespace_contribution=contributions.get(node_id),
                 )
 
-    def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
+    def _file_factor(self, node: dict, query: str | None) -> float:
+        """The test or example demotion ``node`` gets under ``query``; 1 for none.
+
+        ``None`` (a caller without a question) applies none.
+        """
+        if query is None:
+            return 1.0
+        path = _module_of(node)
+        if _is_test_file(path, self.project_path):
+            if _asks_about_tests(query):
+                return 1.0
+            return min(1.0, _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR))
+        if _is_example_file(path, self.project_path) and not _EXAMPLE_QUERY.search(query):
+            return min(1.0, _env_number("NEURALMIND_EXAMPLE_FILE_FACTOR", self.EXAMPLE_FILE_FACTOR))
+        return 1.0
+
+    def _apply_synapse_boost(self, results: list[dict], query: str | None = None) -> list[dict]:
         """Re-rank L3 hits using learned synapse co-activation.
 
         Budget-neutral: never grows the result count. Seeds spreading
@@ -1137,6 +1239,10 @@ class ContextSelector:
         No-op (returns ``results`` unchanged) when recall isn't wired, the
         kill switch is set, or the graph is cold — so cold-start behavior is
         byte-identical to a build without a synapse store.
+
+        With ``query``, a test or example neighbour gets the demotion a searched
+        one does (:meth:`_file_factor`): its energy is scaled before the pull-in
+        threshold and the ordering, and so is its boost.
         """
         if self._synapse_disabled():
             return results
@@ -1160,7 +1266,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in energy:
                 continue
-            boost = self._synapse_boost_weight * energy[nid]
+            boost = self._synapse_boost_weight * energy[nid] * self._file_factor(r, query)
             r["score"] = r.get("score", 0.0) + boost
             r["_synapse_boost"] = boost
             boosted = True
@@ -1207,6 +1313,16 @@ class ContextSelector:
             for node in get_nodes_by_ids([nid for nid, _ in candidates]) or []
             if _module_of(node) not in present_modules
         ]
+        # A test or example neighbour contends with demoted energy, so it has
+        # to clear the pull-in threshold as one.
+        for node in fetched:
+            nid = node.get("id")
+            energy_by_id[nid] = energy_by_id.get(nid, 0.0) * self._file_factor(node, query)
+        fetched = [
+            n
+            for n in fetched
+            if energy_by_id.get(n.get("id"), 0.0) >= self._synapse_pull_in_min_energy
+        ]
         fetched.sort(key=lambda n: energy_by_id.get(n.get("id"), 0.0), reverse=True)
         fetched = fetched[:num_swap]
         if not fetched:
@@ -1220,7 +1336,9 @@ class ContextSelector:
             node["_synapse_recalled"] = True
         return kept + fetched
 
-    def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
+    def _apply_structural_expansion(
+        self, results: list[dict], query: str | None = None
+    ) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
 
         Budget-neutral, and a structural analogue of :meth:`_apply_synapse_boost`.
@@ -1236,6 +1354,10 @@ class ContextSelector:
         byte-identical to a build without structural edges. Runs *before* the
         synapse boost: structure is precise and claims a displacement slot
         first, then learned co-activation re-ranks what remains.
+
+        With ``query``, a test or example neighbour's weight gets the demotion
+        a searched hit does (:meth:`_file_factor`) before candidates are
+        ordered, and so does its boost.
         """
         if self._structural_disabled():
             return results
@@ -1263,7 +1385,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in recalled:
                 continue
-            boost = self._structural_boost_weight * recalled[nid]
+            boost = self._structural_boost_weight * recalled[nid] * self._file_factor(r, query)
             r["score"] = r.get("score", 0.0) + boost
             r["_structural_boost"] = boost
             boosted = True
@@ -1287,8 +1409,20 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        weight_by_id = dict(candidates[:num_swap])
-        fetched = get_nodes_by_ids(list(weight_by_id))
+        weight_by_id = dict(candidates)
+        fetched = get_nodes_by_ids(list(weight_by_id)) or []
+        # A test or example neighbour is ordered by its demoted weight, so the
+        # project's own code goes first when both are wired to the hits.
+        for node in fetched:
+            nid = node.get("id")
+            weight_by_id[nid] = weight_by_id.get(nid, 0.0) * self._file_factor(node, query)
+        chosen = {
+            n.get("id")
+            for n in sorted(
+                fetched, key=lambda n: weight_by_id.get(n.get("id"), 0.0), reverse=True
+            )[:num_swap]
+        }
+        fetched = [n for n in fetched if n.get("id") in chosen]
         if not fetched:
             return results
 
@@ -1915,7 +2049,16 @@ class ContextSelector:
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)
         results = _demote_tests(
-            results, query, _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR)
+            results,
+            query,
+            _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR),
+            self.project_path,
+        )
+        results = _demote_examples(
+            results,
+            query,
+            _env_number("NEURALMIND_EXAMPLE_FILE_FACTOR", self.EXAMPLE_FILE_FACTOR),
+            self.project_path,
         )
         ranked_pool = _diversify_files(
             _collapse_duplicates(results),
@@ -1927,12 +2070,12 @@ class ContextSelector:
         # callers/callees/base classes into contention (precise, day-one
         # wiring). Runs before the synapse boost so structure claims a
         # displacement slot, then learned association re-ranks what remains.
-        results = self._apply_structural_expansion(results)
+        results = self._apply_structural_expansion(results, query)
 
         # Fold in the live synapse graph: results the agent has historically
         # co-activated with this query's top hits get a relevance nudge, so
         # learned association — not just vector similarity — shapes ranking.
-        results = self._apply_synapse_boost(results)
+        results = self._apply_synapse_boost(results, query)
 
         # How the slots are spent (v4.6.0, spec 7): per-file cap, doc-to-code
         # hand-off, hub dampening. Each is behind its own flag; with none set

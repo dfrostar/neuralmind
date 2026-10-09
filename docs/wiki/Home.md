@@ -48,8 +48,8 @@ other candidates (pool ranks 9–20) instead of each cluster's first seven
 nodes. Code-or-docs re-weighting applies only when you ask for a type
 (`--type`, MCP `query_type`); the code-signal boost is off; keyword search
 ignores question words; a node is embedded as its qualified name, module and
-docstring. The eight hits spread across files, and test files rank below the
-code they test. JavaScript files (`.js`, `.mjs`, `.cjs`, `.jsx`) get code nodes.
+docstring. The eight hits spread across files, and test files and example
+scripts rank below the code they test or demonstrate. JavaScript files (`.js`, `.mjs`, `.cjs`, `.jsx`) get code nodes.
 Retrieval eval hit@5 **80.0% → 93.3%** over 150 questions (21 won, 1 lost,
 exact McNemar p < 0.0001) at 11% fewer context tokens; on the public benchmark
 the gold file is found on **40 of 40** queries (v4.11.1 missed 3) at 51–242×

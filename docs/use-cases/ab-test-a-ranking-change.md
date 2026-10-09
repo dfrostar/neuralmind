@@ -140,6 +140,15 @@ NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --private ~/work/your-rep
   no per-question ranks for it.
 - **Fresh indexes, checked baseline.** Every run rebuilds each repository's
   index from nothing and runs the baseline again after every configuration.
+- **`--full-repo` indexes the public repositories from their roots.** By
+  default each one is indexed from its source directory, as the public
+  benchmark does, so its tests, examples and docs never compete with the
+  library code. `--full-repo` indexes the whole checkout, as
+  `neuralmind build .` would, and prefixes the gold paths with the source
+  directory. A ranking change can be invisible one way and matter the other:
+  v4.12.0's example demotion changes nothing on the source directories and
+  wins a rich question on the whole checkout
+  ([`bench/retrieval/examples-v4.12`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
 - **It applies the keep rule for you** — since v4.12.0 the paired rule
   above, with the mean MRR change and a bootstrap 95% interval, and p50/p95
   query latency, in the report.

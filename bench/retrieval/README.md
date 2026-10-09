@@ -18,6 +18,7 @@ raised two repos and lowered none.
 |---|---|---|
 | [`vs-v4.11/`](vs-v4.11/report.md) | v4.11.1 | The v4.12.0 retrieval against v4.11.1 (`--compare`): pooled hit@5 **80.0% → 93.3%**, MRR 0.671 → 0.750 (95% interval of the change [+0.024, +0.132]), 21 questions won and 1 lost (McNemar p < 0.0001), every repo up, tokens −11%. |
 | [`on-v4.12/`](on-v4.12/report.md) | v4.12.0 | Each v4.12.0 default put back one at a time. Four L3 hits instead of eight: 4 questions lost. The code-signal boost: 1 lost. Re-weighting by detected intent: 4 lost. L0+L3 only: no hit@5 change at 60% fewer tokens, but on the faithfulness fixture L2 carries facts (fact recall 0.839 with it), so it stays. BM25 off: 1 won, 2 lost. No spread across files: 1 lost. Tests ranked like code: 1 lost, MRR −0.020. None passes the keep rule, so every default stays. |
+| [`examples-v4.12/`](examples-v4.12/full-repo/report.md) | v4.12.0 without the example demotion (`examples_equal`) | Example scripts scored like the code they use. On the 120 questions for the four library repos indexed from their roots (`--full-repo`, [`full-repo/`](examples-v4.12/full-repo/report.md)): rich +1 question (hit@5 83% → 87%), click MRR 0.75 → 0.76, nothing lost, tokens unchanged. The standard 150-question run ([`source-dir/`](examples-v4.12/source-dir/report.md)) and public recall are identical: those source folders hold no examples. On 14 Click questions it was checked on ([`click-2247b35.md`](examples-v4.12/click-2247b35.md), not held out): hit@1 43% → 64%, MRR 0.68 → 0.79. |
 | [`vs-v4.5/`](vs-v4.5/report.md) | v4.5.0 retrieval | Of nine configurations, only `bm25_unified` — one BM25 index over docs and code — passed: mean hit@5 72.8% → 79.4%, MRR 0.589 → 0.654, three repos up (flask +3, neuralmind +6, private +4 questions), requests −1, tokens +1.1%, public recall 93.75% → 95.00%. It became the v4.6.0 default. |
 | [`on-v4.6/`](on-v4.6/report.md) | v4.6.0 (unified BM25 on) | No remaining item passed on top of it. The closest, the per-file cap, raised two repos and lost none (public recall 96.25%) but the rule asks for three. |
 
@@ -46,7 +47,14 @@ decided per release.
 NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --configs baseline,l3_k4,code_signal,auto_intent,l3_only,bm25_off,no_diversity,tests_equal --out bench/retrieval/on-v4.12
 python -m evals.retrieval.run --compare bench/retrieval/vs-v4.11/results-v4.11.1.json bench/retrieval/vs-v4.11/results-v4.12.0.json
 python -m evals.retrieval.run --private ~/work/your-repo   # add your own repo, locally
+python -m evals.retrieval.run --configs baseline,examples_equal --public-benchmark --out bench/retrieval/examples-v4.12/source-dir
+python -m evals.retrieval.run --full-repo --repos requests,click,flask,rich --configs baseline,examples_equal --out bench/retrieval/examples-v4.12/full-repo
 ```
+
+`--full-repo` indexes each public repository from its clone's root, docs, tests
+and examples included, as `neuralmind build .` would, and prefixes the gold
+paths with the manifest's `subdir`. Without it, each is indexed from its source
+directory, as the public benchmark does.
 
 ## How to read the configurations
 
@@ -67,6 +75,7 @@ python -m evals.retrieval.run --private ~/work/your-repo   # add your own repo, 
 | `code_signal` | `NEURALMIND_CODE_SIGNAL_CAP=10` (v4.11's code-signal boost) |
 | `auto_intent` | `NEURALMIND_AUTO_INTENT_BOOST=1` (v4.11's re-weighting by detected intent) |
 | `l3_only` | `NEURALMIND_QUERY_LAYERS=L0,L3` |
+| `examples_equal` | `NEURALMIND_EXAMPLE_FILE_FACTOR=1` (example scripts scored like the code they use) |
 
 `bm25_unified`, `intent_pool` and `unified_intent_pool` were designed after
 seeing the first round's results; the public benchmark (40 queries, written
