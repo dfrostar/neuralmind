@@ -175,7 +175,8 @@ def _cmd_onboarding_eula(args) -> int:
   4. TERM & TERMINATION
      - License is valid until the expiry date
      - May be terminated for breach or non-payment
-     - 30-day grace period after expiration
+     - 30-day grace period after expiration, then Team features stop until renewed
+     - Your data stays on your machines; expiration does not delete it
 
   5. WARRANTY & LIABILITY
      - Software provided "AS IS" without warranty

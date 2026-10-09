@@ -67,7 +67,6 @@ const sections: Section[] = [
         title: 'Third-Party Services',
         body: [
             'GitHub: for source code hosting and releases. GitHub\'s privacy policy applies.',
-            'Zoho Mail: hosts our business email (hello@neuralmind.uk), so it processes the emails you exchange with us, including license requests, invoices and support. Zoho\'s privacy policy and data processing addendum apply.',
             'PyPI: for package distribution. Python Software Foundation privacy policy applies.',
             'Cloudflare: for domain, DNS, and Pages hosting. Cloudflare\'s privacy policy applies.',
         ],

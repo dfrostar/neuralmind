@@ -84,11 +84,10 @@ We use the following processors to deliver our service:
 | Processor | Data Accessed | Purpose | DPA Available |
 |-----------|---------------|---------|---------------|
 | **GitHub** | Username (via GitHub login, if used) | Community forum, issue tracking | https://docs.github.com/en/site-policy |
-| **Zoho Mail** (Zoho Corporation) | Email address, name and anything you write in emails to or from hello@neuralmind.uk | Hosts our business email: license requests, invoices, support, privacy requests | https://www.zoho.com/gdpr.html |
 
 No payment processor or invoicing service is integrated: Team licenses are invoiced manually, in USD, and invoices are sent by email.
 
-We do not share your data with any other third parties. We do not sell your data. We do not use your data for advertising.
+We do not sell your data, share it with third parties for their own purposes, or use it for advertising. Email you send us is held by our business email provider, as with any business email.
 
 If a new sub-processor is added, we will update this Policy and notify existing customers via email 30 days before the new processor begins processing.
 

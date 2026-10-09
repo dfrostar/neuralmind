@@ -44,10 +44,10 @@ Customer shall NOT:
 The License Term is specified in the License File (1, 3, 6, 12, 24, or 36 months).
 
 ### 4.2 Expiration
-Upon expiration:
-- The Software will enter a 30-day grace period with reduced functionality
-- After grace period, the Software will cease to function until renewed
-- Customer data is preserved for 90 days post-expiration, then deleted
+Upon expiration of the License Term:
+- A grace period of 30 days applies, during which the licensed features continue to operate so that Customer can renew without interruption
+- After the grace period, the licensed (Team) features stop operating until the license is renewed. The open-source (MIT-licensed) components of the Software are not affected
+- The Software stores Customer data only on Customer's own systems. Expiration does not delete or alter that data, and Customer remains responsible for it. Provider keeps its licensing and billing records as described in the NeuralMind Privacy Policy
 
 ### 4.3 Renewal
 Customer may renew by:
