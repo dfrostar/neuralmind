@@ -409,8 +409,9 @@ The click question "how does echo print a message with a newline to stdout"
   `set -e`, or reads its exit code, stops on a failed check where it went on
   before. To keep going, run `neuralmind doctor . || true`, or read
   `--json`'s `status` field. NeuralMind's own Team install script
-  (`scripts/install-team.sh`) waited on `doctor` for its container and now
-  waits on `neuralmind --version`.
+  (`scripts/install-team.sh`) waited on `doctor` for its container. It now
+  checks that the CLI runs in a one-off container: the compose service has no
+  long-running process yet, so there is no server to wait for.
 
 ## Reproduce
 

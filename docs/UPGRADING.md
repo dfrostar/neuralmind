@@ -50,9 +50,11 @@ neuralmind doctor .    # graph, index, hooks, MCP, synapses
 ```
 
 `doctor` exits 1 when any check fails and 0 otherwise (warnings don't fail
-it), so a script can gate on it. Before v4.12.0 it always exited 0: on those
-versions read `neuralmind doctor . --json`'s `status` field (`ok` / `warn` /
-`fail`) instead.
+it), so a script can gate on it. v0.55.0 through v4.11.1 always exited 0: if
+you're upgrading from one of those, a script that ran `doctor` under `set -e`
+now stops on a failed check, and on those versions you read
+`neuralmind doctor . --json`'s `status` field (`ok` / `warn` / `fail`)
+instead.
 
 ## Moving off the ChromaDB backend
 
