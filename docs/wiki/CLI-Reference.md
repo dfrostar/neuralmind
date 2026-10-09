@@ -1332,7 +1332,7 @@ mode where the OS has one. Storage encryption only fails when the project sets
 **Turbovec compatibility** fails when the turbovec index was quarantined
 (`index.tvim.stale`: the installed turbovec couldn't read it), and the fix is
 a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
-*(v4.11.1+)* It runs only when the project's backend is turbovec. With
+*(v4.12.0+)* It runs only when the project's backend is turbovec. With
 `backend: graph`, `chroma`, `chromadb` or `in_memory` it reports
 `not applicable: the <backend> backend keeps no turbovec index` with status
 `ok`, and no longer creates `.neuralmind/neuralmind_turbovec/store.sqlite`
