@@ -245,12 +245,46 @@ def _env_number(name: str, default, cast=float):
 
 
 _TEST_DIRS = frozenset({"tests", "test", "__tests__", "spec", "specs", "testing"})
-_TEST_QUERY = re.compile(r"\b(tests?|testing|spec|specs|fixtures?|pytest|unittest)\b", re.I)
+_TEST_QUERY = re.compile(
+    r"\b(tests?|testing|spec|specs|fixtures?|pytest|unittest|conftest)\b"
+    # Naming a test asks about tests too: test_parse_option(), parse_test.go,
+    # cart.test.ts. "_" is a word character, so the words above miss those.
+    r"|\btest_\w|\w_tests?\b|\w\.(?:test|spec)\.\w",
+    re.I,
+)
+_TEST_CLASS_QUERY = re.compile(r"\b[A-Za-z]\w*[a-z0-9]Tests?\b")  # UserServiceTest
+_EXAMPLE_DIRS = frozenset({"example", "examples", "demo", "demos", "sample", "samples"})
+_EXAMPLE_QUERY = re.compile(r"\b(examples?|demos?|samples?)\b", re.I)
+_ABSOLUTE_PATH = re.compile(r"^(?:/|[A-Za-z]:/)")
 
 
-def _is_test_file(path: str) -> bool:
+def _project_relative(path: str, root: str | os.PathLike | None = None) -> str:
+    """``path`` with forward slashes, relative to ``root`` if it's absolute and inside it.
+
+    Graphs may store absolute source paths, and only the part inside the
+    project says what a file is: a checkout at ``/home/me/examples/app``
+    doesn't make ``src/app/core.py`` an example, nor one under ``tests/`` a
+    test. An absolute path outside ``root`` is returned as it is.
+    """
+    p = str(path).replace("\\", "/")
+    if root is None or not _ABSOLUTE_PATH.match(p):
+        return p
+    bases = {str(root).replace("\\", "/").rstrip("/")}
+    try:
+        bases.add(str(Path(root).resolve()).replace("\\", "/").rstrip("/"))
+    except OSError:
+        pass
+    for base in bases:
+        if base and len(p) > len(base) and p[len(base)] == "/":
+            head = p[: len(base)]
+            if head == base or (re.match(r"^[A-Za-z]:", base) and head.lower() == base.lower()):
+                return p[len(base) + 1 :]
+    return p
+
+
+def _is_test_file(path: str, root: str | os.PathLike | None = None) -> bool:
     """``tests/test_x.py``, ``pkg/x_test.go``, ``src/x.spec.ts`` and the like."""
-    parts = path.replace("\\", "/").lower().split("/")
+    parts = _project_relative(path, root).lower().split("/")
     name = parts[-1]
     if any(p in _TEST_DIRS for p in parts[:-1]):
         return True
@@ -262,24 +296,64 @@ def _is_test_file(path: str) -> bool:
     )
 
 
-def _demote_tests(results: list[dict], query: str, factor: float) -> list[dict]:
+def _is_example_file(path: str, root: str | os.PathLike | None = None) -> bool:
+    """A file under ``examples/``, ``demo(s)/`` or ``sample(s)/``: code that uses the project."""
+    parts = _project_relative(path, root).lower().split("/")
+    return any(p in _EXAMPLE_DIRS for p in parts[:-1])
+
+
+def _asks_about_tests(query: str) -> bool:
+    return bool(_TEST_QUERY.search(query or "") or _TEST_CLASS_QUERY.search(query or ""))
+
+
+def _demote(results: list[dict], factor: float, matches, mark: str) -> list[dict]:
+    """Scale the hits ``matches`` picks by ``factor``, mark them, and re-sort."""
+    if factor >= 1.0 or not results:
+        return results
+    out = []
+    for r in results:
+        if matches(r):
+            r = dict(r)
+            r["score"] = float(r.get("score") or 0.0) * factor
+            r[mark] = True
+        out.append(r)
+    out.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
+    return out
+
+
+def _demote_tests(
+    results: list[dict], query: str, factor: float, root: str | os.PathLike | None = None
+) -> list[dict]:
     """Scale test-file hits by ``factor`` unless the question is about tests.
 
     A test names the same functions as the code it tests, so on a large repo
     with its tests indexed they took up to seven of the eight L3 slots on
     "how does X work" questions. ``factor >= 1`` returns the list unchanged.
     """
-    if factor >= 1.0 or not results or _TEST_QUERY.search(query or ""):
+    if _asks_about_tests(query):
         return results
-    out = []
-    for r in results:
-        if _is_test_file(_module_of(r)):
-            r = dict(r)
-            r["score"] = float(r.get("score") or 0.0) * factor
-            r["_test_file"] = True
-        out.append(r)
-    out.sort(key=lambda r: float(r.get("score") or 0.0), reverse=True)
-    return out
+    return _demote(results, factor, lambda r: _is_test_file(_module_of(r), root), "_test_file")
+
+
+def _demote_examples(
+    results: list[dict], query: str, factor: float, root: str | os.PathLike | None = None
+) -> list[dict]:
+    """Scale example-script hits by ``factor`` unless the question asks for an example.
+
+    An example uses the words of a question about the feature it
+    demonstrates: on pallets/click, "which files handle parsing command-line
+    options?" put ``examples/repo/repo.py`` above ``core.py``, and four of 14
+    questions led with an example script. A hit already demoted as a test
+    isn't demoted again. ``factor >= 1`` returns the list unchanged.
+    """
+    if _EXAMPLE_QUERY.search(query or ""):
+        return results
+    return _demote(
+        results,
+        factor,
+        lambda r: not r.get("_test_file") and _is_example_file(_module_of(r), root),
+        "_example_file",
+    )
 
 
 def _diversify_files(results: list[dict], decay: float) -> list[dict]:
@@ -402,6 +476,11 @@ class ContextSelector:
     # 77% to 80% with nothing lost elsewhere. NEURALMIND_TEST_FILE_FACTOR
     # overrides; 1 turns it off.
     TEST_FILE_FACTOR = 0.5
+    # Example-script hits (examples/, demo(s)/, sample(s)/) keep this fraction
+    # of their score unless the question asks for an example (see
+    # _demote_examples). NEURALMIND_EXAMPLE_FILE_FACTOR overrides; 1 turns it
+    # off.
+    EXAMPLE_FILE_FACTOR = 0.5
 
     # Synapse-driven recall (see _apply_synapse_boost / get_l2_context):
     # number of top hits used to seed spreading activation, how strongly
@@ -1915,7 +1994,16 @@ class ContextSelector:
         # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
         results = self._apply_retrieval_enhancements(query, results, intent)
         results = _demote_tests(
-            results, query, _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR)
+            results,
+            query,
+            _env_number("NEURALMIND_TEST_FILE_FACTOR", self.TEST_FILE_FACTOR),
+            self.project_path,
+        )
+        results = _demote_examples(
+            results,
+            query,
+            _env_number("NEURALMIND_EXAMPLE_FILE_FACTOR", self.EXAMPLE_FILE_FACTOR),
+            self.project_path,
         )
         ranked_pool = _diversify_files(
             _collapse_duplicates(results),

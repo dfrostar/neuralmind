@@ -1,0 +1,40 @@
+# pallets/click @ 2247b35ea1c47c727d7a06e51fa280e12a863ff6, indexed from the repository root
+# (docs/, examples/ and tests/ included), for `neuralmind query`. The 14 prompts and
+# their gold files are PR #607's tests/benchmark/prompt_recall_click.json, whose expected
+# files were chosen by reading the code before any run. The example-file demotion was
+# checked on this set, so it is not held out; the held-out evidence is
+# `python -m evals.retrieval.run --full-repo` (bench/retrieval/examples-v4.12/).
+#
+#   git clone https://github.com/pallets/click
+#   git -C click checkout 2247b35ea1c47c727d7a06e51fa280e12a863ff6
+#   neuralmind build click
+#   neuralmind eval click --questions tests/benchmark/query_recall_click.eval.yaml --no-history
+#   NEURALMIND_EXAMPLE_FILE_FACTOR=1 neuralmind eval click --questions tests/benchmark/query_recall_click.eval.yaml --no-history
+- q: "which files in this repo handle parsing command-line options?"
+  gold: [src/click/parser.py, src/click/core.py]
+- q: "where is shell completion implemented?"
+  gold: [src/click/shell_completion.py]
+- q: "how do I make an option prompt for a password?"
+  gold: [src/click/core.py, src/click/termui.py, src/click/decorators.py]
+- q: "how does click decide the order parameters are processed?"
+  gold: [src/click/core.py]
+- q: "how can I test a click command and capture its output?"
+  gold: [src/click/testing.py]
+- q: "where are the built-in parameter types like IntRange and Choice defined?"
+  gold: [src/click/types.py]
+- q: "how does the help page get formatted and wrapped?"
+  gold: [src/click/formatting.py, src/click/_textwrap.py, src/click/core.py]
+- q: "how are environment variables mapped to options?"
+  gold: [src/click/core.py]
+- q: "how does click show a progress bar?"
+  gold: [src/click/termui.py, src/click/_termui_impl.py]
+- q: "what exception is raised for a missing required argument and how is it displayed?"
+  gold: [src/click/exceptions.py]
+- q: "how do command groups dispatch to subcommands?"
+  gold: [src/click/core.py]
+- q: "how does click open files lazily for File parameters?"
+  gold: [src/click/utils.py, src/click/types.py]
+- q: "where does echo handle colors on windows?"
+  gold: [src/click/utils.py, src/click/_compat.py, src/click/_winconsole.py]
+- q: "how does the decorator stack attach params to a function?"
+  gold: [src/click/decorators.py]
