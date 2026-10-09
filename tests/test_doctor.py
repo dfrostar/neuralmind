@@ -251,6 +251,20 @@ def test_turbovec_check_still_catches_a_quarantined_index(temp_project, config):
     assert "quarantined" in check.detail
 
 
+def test_turbovec_check_fails_when_the_live_index_is_unreadable(temp_project):
+    # A backup *and* a live index turbovec can't load: still broken.
+    pytest.importorskip("turbovec")
+    tv_dir = temp_project / ".neuralmind" / "neuralmind_turbovec"
+    tv_dir.mkdir(parents=True)
+    (tv_dir / "index.tvim.stale").write_bytes(b"")
+    (tv_dir / "index.tvim").write_bytes(b"corrupt \x00")
+    check = doctor._check_turbovec_version(temp_project)
+    assert check.status == doctor.FAIL
+    assert "quarantined" in check.detail
+    # Read-only: doctor must not quarantine or rebuild the file itself.
+    assert (tv_dir / "index.tvim").read_bytes() == b"corrupt \x00"
+
+
 def test_run_diagnostics_off_turbovec_creates_no_turbovec_store(temp_project):
     (temp_project / "neuralmind-backend.yaml").write_text("backend: in_memory\n", encoding="utf-8")
     checks = {c.name: c for c in doctor.run_diagnostics(str(temp_project))}

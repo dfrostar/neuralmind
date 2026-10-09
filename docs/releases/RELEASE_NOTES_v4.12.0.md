@@ -259,6 +259,13 @@ Send a given PreparedRequest.
   project with no graph. It now exits 1 when any check fails, with or without
   `--json`; warnings still exit 0. A regression test runs it on an unbuilt
   project. See [Upgrading](#upgrading) if a script relied on exit 0.
+- **`doctor` no longer fails on a repaired turbovec index.** When turbovec
+  can't read an index, NeuralMind keeps it as `index.tvim.stale` and rebuilds
+  it, and nothing removes the backup. The Turbovec compatibility check failed
+  whenever that file existed, so it kept failing after the rebuild worked:
+  with the exit code above, a gate on `doctor` would have stopped there. It
+  now loads the live index (read-only, with turbovec's own loader) and fails
+  only when that load fails; a leftover backup is named in an `ok` line.
 - **Dead code.** `QueryHandler` is removed. It was unused, and every method in
   it called something that doesn't exist.
 
