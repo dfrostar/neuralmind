@@ -84,7 +84,7 @@ Provider retains all intellectual property rights in the Software. This Agreemen
 Customer retains all rights to data they input into the Software.
 
 ### 7.2 Provider Data
-Provider may collect anonymized usage statistics for product improvement.
+The Software has no telemetry and sends Provider no usage statistics. Provider receives only the data described in the NeuralMind Privacy Policy for license issuance, billing and support.
 
 ### 7.3 Confidentiality
 Both parties agree to protect confidential information disclosed under this Agreement.

@@ -170,7 +170,7 @@ def _cmd_onboarding_eula(args) -> int:
 
   3. DATA & PRIVACY
      - You retain rights to your data
-     - We collect anonymized usage statistics
+     - The software has no telemetry and sends us no usage statistics
 
   4. TERM & TERMINATION
      - License is valid until the expiry date
