@@ -253,6 +253,21 @@ Send a given PreparedRequest.
   heading, not its body (turbovec embedded the body).
 - **Class matching.** A class was matched to its file by an id prefix without
   the separator, so `foo_py` matched classes in `foo_py.py`.
+- **`doctor` exits 1 when a check fails again.** v0.12.0 shipped it that way
+  and the CLI reference still says so, but from v0.55.0 it always exited 0:
+  the Tier 2 checks were inserted between the report and the `sys.exit(1)`,
+  which ended up unreachable inside the new helper, and a lint pass deleted
+  it. So `neuralmind doctor . && neuralmind wakeup .` ran `wakeup` on a
+  project with no graph. It now exits 1 when any check fails, with or without
+  `--json`; warnings still exit 0. A regression test runs it on an unbuilt
+  project. See [Upgrading](#upgrading) if a script relied on exit 0.
+- **`doctor` no longer fails on a repaired turbovec index.** When turbovec
+  can't read an index, NeuralMind keeps it as `index.tvim.stale` and rebuilds
+  it, and nothing removes the backup. The Turbovec compatibility check failed
+  whenever that file existed, so it kept failing after the rebuild worked:
+  with the exit code above, a gate on `doctor` would have stopped there. It
+  now loads the live index (read-only, with turbovec's own loader) and fails
+  only when that load fails; a leftover backup is named in an `ok` line.
 - **Dead code.** `QueryHandler` is removed. It was unused, and every method in
   it called something that doesn't exist.
 
@@ -399,6 +414,13 @@ The click question "how does echo print a message with a newline to stdout"
   NEURALMIND_AUTO_INTENT_BOOST=1 NEURALMIND_L3_FILE_DECAY=1
   NEURALMIND_TEST_FILE_FACTOR=1`.
 - **No index format change.** No hook re-install.
+- **`neuralmind doctor` can now exit 1.** A script that runs it under
+  `set -e`, or reads its exit code, stops on a failed check where it went on
+  before. To keep going, run `neuralmind doctor . || true`, or read
+  `--json`'s `status` field. NeuralMind's own Team install script
+  (`scripts/install-team.sh`) waited on `doctor` for its container. It now
+  checks that the CLI runs in a one-off container: the compose service has no
+  long-running process yet, so there is no server to wait for.
 
 ## Reproduce
 

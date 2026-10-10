@@ -33,14 +33,13 @@ echo "[3/4] Starting NeuralMind..."
 docker compose pull
 docker compose up -d
 
-echo "[4/4] Waiting for healthy..."
-for i in $(seq 1 30); do
-    if docker compose exec -T neuralmind neuralmind doctor >/dev/null 2>&1; then
-        echo "NeuralMind is up!"
-        break
-    fi
-    sleep 2
-done
+echo "[4/4] Checking the image runs..."
+# The service has no long-running process yet: the image's default command is
+# `neuralmind --help`, which exits (docs/specs/LOCAL-API-SPEC.md, finding A7),
+# so there is no server to wait for. Check that the CLI runs in the image, in a
+# one-off container, and stop here if it doesn't. Not `neuralmind doctor`: it
+# exits 1 while the mounted project has no built graph or index.
+docker compose run --rm -T neuralmind neuralmind --version
 
 echo ""
 echo "=== Deployment complete ==="

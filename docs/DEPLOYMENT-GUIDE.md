@@ -315,11 +315,15 @@ neuralmind health .          # exit 0 healthy, 1 stale index, 2 no index
 neuralmind health . --json
 
 neuralmind doctor .          # diagnoses graph, index, hooks, MCP, and synapses
-neuralmind doctor . --json   # read "status": doctor always exits 0
+neuralmind doctor . --json   # "status": ok / warn / fail; exit 1 on fail
 ```
 
-`doctor` exits 0 even when a check fails, so don't use its exit code as a
-health probe. Use `health`, or parse `doctor --json`.
+`doctor` exits 1 when any check fails; warnings don't fail it. v0.55.0
+through v4.11.0 always exited 0, so on those versions read `--json`'s
+`status`. It diagnoses the whole setup (graph, index, synapses, MCP SDK,
+security policy, storage encryption and more), which suits gating
+provisioning, not a liveness probe. For a probe use `health`, which checks
+only the index.
 
 While `neuralmind serve` is running:
 
