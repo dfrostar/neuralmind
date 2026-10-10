@@ -16,13 +16,16 @@ So this file holds two kinds of check:
 Codes that need a built index or a licence store are covered next to their
 feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
 `health` -> 1, `tests/test_doctor.py` for `doctor`, `tests/test_audit_cli.py`
-for `audit verify`).
+for `audit verify`). `doctor` on an unbuilt project -> 1 joins the table
+once #624 (which restores that exit) is on main.
 """
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -60,6 +63,35 @@ def _exit_code(argv: list[str], monkeypatch) -> int:
     return 0
 
 
+def _seed_licences(project: Path, **customers: object) -> None:
+    """Write Team licence records with expiries relative to now.
+
+    Each value is days until expiry, or a string stored as-is (an unreadable
+    expiry). The store lives under HOME, which `isolated` points at tmp.
+    """
+    from neuralmind.tier2.operations import LicenseOperations
+
+    now = datetime.now(timezone.utc)
+    ops = LicenseOperations("", Path.home() / ".neuralmind")
+    ops._save_customers(
+        {
+            "customers": {
+                name: {
+                    "customer_id": f"cus_{name}",
+                    "license_id": f"lic_{name}",
+                    "seats": 5,
+                    "tier": "team",
+                    "status": "active",
+                    "expires_at": (
+                        when if isinstance(when, str) else (now + timedelta(days=when)).isoformat()
+                    ),
+                }
+                for name, when in customers.items()
+            }
+        }
+    )
+
+
 def _with_aws_key(project: Path) -> None:
     # Split so this file doesn't itself look like it holds a key.
     (project / ".env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
@@ -74,6 +106,34 @@ CONTRACT = [
     ("feedback-memory-off", ["feedback", "good", "{p}"], None, {"NEURALMIND_MEMORY": "0"}, 1),
     ("daemon-status-not-running", ["daemon", "status"], None, {}, 3),
     ("unknown-option", ["health", "{p}", "--no-such-flag"], None, {}, 2),
+    (
+        "license-expiring-none-due",
+        ["license", "expiring"],
+        lambda p: _seed_licences(p, healthy=300),
+        {},
+        0,
+    ),
+    (
+        "license-expiring-renewal-due",
+        ["license", "expiring"],
+        lambda p: _seed_licences(p, healthy=300, soon=20),
+        {},
+        6,
+    ),
+    (
+        "license-expiring-already-expired",
+        ["license", "expiring"],
+        lambda p: _seed_licences(p, soon=20, lapsed=-10),
+        {},
+        7,
+    ),
+    (
+        "license-expiring-unreadable-expiry",
+        ["license", "expiring"],
+        lambda p: _seed_licences(p, garbled="not a date"),
+        {},
+        7,
+    ),
 ]
 
 
@@ -101,15 +161,44 @@ def _global_table_codes() -> dict[int, str]:
     }
 
 
+def _int_arg(call: ast.Call) -> int | None:
+    if call.args and isinstance(call.args[0], ast.Constant):
+        value = call.args[0].value
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return None
+
+
 def _emitted_codes() -> set[int]:
-    """Exit codes set anywhere in neuralmind/ with a literal integer."""
-    pattern = re.compile(
-        r"sys\.exit\(\s*(\d+)\s*\)|SystemExit\(\s*(\d+)\s*\)|[\"']exit_code[\"']\s*:\s*(\d+)"
-    )
+    """Literal exit codes in neuralmind/'s executable code.
+
+    Parsed, not grepped: `sys.exit(4)` in a comment, docstring or message
+    string must not count as emitting 4. Collects the literal argument of
+    `sys.exit(...)` / `SystemExit(...)` calls and the value of
+    `{"exit_code": N}` entries (`build --strict` returns its code that way).
+    """
     codes = {0, 2}  # 0 on success; argparse exits 2 on a usage error
     for path in (ROOT / "neuralmind").rglob("*.py"):
-        for m in pattern.finditer(path.read_text(encoding="utf-8")):
-            codes.add(int(next(g for g in m.groups() if g is not None)))
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), str(path))):
+            if isinstance(node, ast.Call):
+                func = node.func
+                is_exit = (
+                    isinstance(func, ast.Attribute)
+                    and func.attr == "exit"
+                    and isinstance(func.value, ast.Name)
+                    and func.value.id == "sys"
+                ) or (isinstance(func, ast.Name) and func.id == "SystemExit")
+                if is_exit and (code := _int_arg(node)) is not None:
+                    codes.add(code)
+            elif isinstance(node, ast.Dict):
+                for key, value in zip(node.keys, node.values, strict=True):
+                    if (
+                        isinstance(key, ast.Constant)
+                        and key.value == "exit_code"
+                        and isinstance(value, ast.Constant)
+                        and isinstance(value.value, int)
+                    ):
+                        codes.add(value.value)
     return codes
 
 
