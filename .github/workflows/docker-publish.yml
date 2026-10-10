@@ -127,12 +127,21 @@ jobs:
           cache-to: type=gha,mode=max
 
   verify-pull:
-    name: Verify image pulls + neuralmind --help works
+    name: Verify image pulls + neuralmind and neuralmind-mcp run
     needs: build-and-push
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: read
     steps:
+      # Only for scripts/mcp_stdio_smoke.py, at the tag the image was built
+      # from. Tags before v4.12.0 have no --entry-point flag, so dispatching
+      # this workflow for one fails the smoke test below.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          sparse-checkout: scripts
+
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
@@ -151,6 +160,16 @@ jobs:
           docker pull "${IMAGE}"
           echo "Running neuralmind --help"
           docker run --rm "${IMAGE}" neuralmind --help
+          # --help never starts the MCP server. This runs the smoke script with
+          # the image's python, fed on stdin so it needs no bind mount, and
+          # --entry-point has it start the `neuralmind-mcp` installed next to
+          # that python (the command in the Dockerfile's usage notes) and
+          # drive initialize / tools/list / tools/call over stdio. An image
+          # whose MCP server crashes on startup fails here, so this run
+          # doesn't move :latest to it.
+          echo "Running neuralmind-mcp over stdio"
+          docker run -i --rm "${IMAGE}" python - --entry-point \
+            < "${GITHUB_WORKSPACE}/scripts/mcp_stdio_smoke.py"
 
   # :latest follows the newest stable release, not whichever version was built
   # last. Rebuilding an older tag (a dispatch for v4.7.0, or an old tag pushed
