@@ -16,8 +16,11 @@ no response-time guarantee on the free tier.
 ## Team tier customers
 
 Email **hello@neuralmind.uk** from your licensed account. Include your license
-ID (`neuralmind --version` prints it) for priority routing. Security-relevant
-reports go through the process in [SECURITY.md](SECURITY.md) instead.
+ID for priority routing: it is the `license_id` field in the license file we
+sent you, which `neuralmind team license activate` installs at
+`~/.config/neuralmind/license.json` by default. (`neuralmind --version` shows
+your tier and seat count, not the ID.) Security-relevant reports go through the
+process in [SECURITY.md](SECURITY.md) instead.
 
 ## Security issues
 

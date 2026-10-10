@@ -1336,7 +1336,7 @@ a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
 `index.tvim.stale` is still there: doctor loads the live index, without
 changing any file, and fails only if it can't. The detail line names the
 backup, which you can delete when you no longer need it.
-*(v4.11.1+)* It runs only when the project's backend is turbovec. With
+*(v4.12.0+)* It runs only when the project's backend is turbovec. With
 `backend: graph`, `chroma`, `chromadb` or `in_memory` it reports
 `not applicable: the <backend> backend keeps no turbovec index` with status
 `ok`, and no longer creates `.neuralmind/neuralmind_turbovec/store.sqlite`
@@ -1348,7 +1348,7 @@ only on turbovec projects.
 check **failed** — so you can gate a CI step or an agent's provisioning on
 `neuralmind doctor`. `--json` exits the same way, after printing the report;
 its `status` field (`ok` / `warn` / `fail`) is the same verdict.
-*(v4.12.0+)* v0.55.0 through v4.11.1 always exited `0`, even when a check
+*(v4.12.0+)* v0.55.0 through v4.11.0 always exited `0`, even when a check
 failed; on those versions read `--json`'s `status` instead.
 
 **Example:**

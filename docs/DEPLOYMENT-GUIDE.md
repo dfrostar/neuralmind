@@ -319,7 +319,7 @@ neuralmind doctor . --json   # "status": ok / warn / fail; exit 1 on fail
 ```
 
 `doctor` exits 1 when any check fails; warnings don't fail it. v0.55.0
-through v4.11.1 always exited 0, so on those versions read `--json`'s
+through v4.11.0 always exited 0, so on those versions read `--json`'s
 `status`. It diagnoses the whole setup (graph, index, synapses, MCP SDK,
 security policy, storage encryption and more), which suits gating
 provisioning, not a liveness probe. For a probe use `health`, which checks
