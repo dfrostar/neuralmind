@@ -34,7 +34,7 @@ docker compose pull
 docker compose up -d
 
 echo "[4/4] Waiting for healthy..."
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
     if docker compose exec -T neuralmind neuralmind doctor >/dev/null 2>&1; then
         echo "NeuralMind is up!"
         break
