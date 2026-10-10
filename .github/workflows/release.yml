@@ -140,6 +140,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Only for scripts/mcp_stdio_smoke.py, at the tag this run released. Tags
+      # before v4.12.0 have no --entry-point flag, so dispatching this workflow
+      # for one fails the smoke test below.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          sparse-checkout: scripts
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -150,6 +158,11 @@ jobs:
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
           echo "Testing neuralmind==${VERSION}"
+          # Run from outside the checkout: `python -c` puts the working
+          # directory first on sys.path, so if the checkout ever held
+          # ./neuralmind/ it would be imported instead of the package installed
+          # from PyPI (Python 3.10 has no -P to switch that off).
+          cd "${RUNNER_TEMP}"
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
@@ -174,6 +187,15 @@ jobs:
             exit 1
           fi
           neuralmind --help
+          # --help never starts the MCP server. This runs the venv's
+          # `neuralmind-mcp` console script, the command MCP clients are
+          # configured with, and drives initialize / tools/list / tools/call
+          # over stdio, so an entry point naming a missing function, a module
+          # left out of the wheel, or an MCP SDK the server can't start on
+          # fails here and holds back the GitHub Release. --require-wheel
+          # fails unless that server imports neuralmind from the venv's
+          # site-packages.
+          python "${GITHUB_WORKSPACE}/scripts/mcp_stdio_smoke.py" --require-wheel --entry-point
 
   publish-testpypi:
     name: Publish to TestPyPI
