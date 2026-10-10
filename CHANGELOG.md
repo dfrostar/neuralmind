@@ -1,5 +1,25 @@
 # Changelog
 
+## [4.12.0](https://github.com/dfrostar/neuralmind/compare/v4.11.0...v4.12.0) (2026-10-09)
+
+
+### Features
+
+* **retrieval:** 8 hits from a 20-candidate pool spread across files, name+docstring embeddings, 14 ms queries — 93% hit@5, 40 of 40 public queries ([#622](https://github.com/dfrostar/neuralmind/issues/622)) ([3ab7ab2](https://github.com/dfrostar/neuralmind/commit/3ab7ab2495fb04a1565beae509b2955217fc3521))
+
+
+### Bug Fixes
+
+* public surfaces describe only the commercial machinery that exists ([#609](https://github.com/dfrostar/neuralmind/issues/609)) ([8017802](https://github.com/dfrostar/neuralmind/commit/8017802423ec19eaa18ae0737c5e02cb8edb909e))
+* skip the turbovec checks on projects that don't use turbovec ([#612](https://github.com/dfrostar/neuralmind/issues/612)) ([6308a4d](https://github.com/dfrostar/neuralmind/commit/6308a4d05756ec3fbbfa2cca4e6ef768ea4c95d4))
+
+
+### Documentation
+
+* fold the unreleased v4.11.1 into v4.12.0 ([#626](https://github.com/dfrostar/neuralmind/issues/626)) ([f03c7e5](https://github.com/dfrostar/neuralmind/commit/f03c7e583c63736566d82f1cedd5d5c93d93ec8c))
+* **spec:** N-17 retrieval resilience — fail-loud index health, self-healing recovery, watch safety ([#621](https://github.com/dfrostar/neuralmind/issues/621)) ([71d7370](https://github.com/dfrostar/neuralmind/commit/71d7370404b85c7d54f9aaf809c78fc9c3809734))
+* **spec:** N-18 persisted vectors — embedder-free index recovery from 1M up ([#623](https://github.com/dfrostar/neuralmind/issues/623)) ([50f9d39](https://github.com/dfrostar/neuralmind/commit/50f9d395135de194510ceb6f831527229f3cbebb))
+
 ## [4.11.0](https://github.com/dfrostar/neuralmind/compare/v4.10.0...v4.11.0) (2026-10-08)
 
 
