@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from neuralmind.tier2.license import (
+    GRACE_DAYS,
     LicenseInfo,
     LicenseValidator,
 )
@@ -133,6 +134,34 @@ class TestLicenseValidation:
         sidecar.write_text((datetime.now(timezone.utc) + timedelta(days=30)).isoformat())
 
         assert validator.validate() == "EXPIRED"
+
+    def test_grace_is_the_agreements_30_days(self) -> None:
+        """License agreement §4.2 grants a fixed 30-day grace period."""
+        assert GRACE_DAYS == 30
+
+    @pytest.mark.parametrize(
+        ("expired_days_ago", "expected"),
+        [(29, "OFFLINE_OK"), (31, "EXPIRED")],
+    )
+    def test_license_grace_bounded_by_expiry(
+        self,
+        license_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        expired_days_ago: int,
+        expected: str,
+    ) -> None:
+        """A recent validation can't stretch grace past expires_at + 30 days."""
+        past = (datetime.now(timezone.utc) - timedelta(days=expired_days_ago)).isoformat()
+        lic_path = license_dir / "license.json"
+        self._write_license(lic_path, expires_at=past)
+
+        validator = LicenseValidator("a" * 64, lic_path)
+        monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
+
+        sidecar = lic_path.with_suffix(".last_valid")
+        sidecar.write_text((datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+
+        assert validator.validate() == expected
 
     def test_license_seat_limit(self, license_dir: Path) -> None:
         # Verify LicenseInfo.seats reflects the license file value

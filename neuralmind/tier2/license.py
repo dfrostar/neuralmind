@@ -61,6 +61,12 @@ _ISSUER_PUBLIC_KEY_HEX = (
 
 LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK", "TAMPERED"]
 
+# Post-expiry grace window, fixed by the license agreement
+# (docs/NEURALMIND-LICENSE-AGREEMENT.md §4.2 "Expiration"). Deliberately not
+# configurable: a customer config must not extend a license past what the
+# agreement grants.
+GRACE_DAYS = 30
+
 
 @dataclass
 class LicenseInfo:
@@ -232,7 +238,7 @@ class LicenseValidator:
     def _is_within_grace(self, lic: LicenseInfo) -> bool:
         """True if license is expired but within the dual-bound grace window.
 
-        Dual-bound = min(expires_at + grace_days, last_validation + grace_days).
+        Dual-bound = min(expires_at + GRACE_DAYS, last_validation + GRACE_DAYS).
         Either bound alone is exploitable:
         - expires_at + grace alone → clock-set-back extends indefinitely.
         - last_validation + grace alone → long-dead license keeps extending.
@@ -248,10 +254,9 @@ class LicenseValidator:
         if last_val is None:
             return False  # No record — no grace
         last_val_dt = datetime.fromtimestamp(last_val, tz=timezone.utc)
-        gd = getattr(self, "offline_grace_days", 30)
         grace_deadline = min(
-            exp + timedelta(days=gd),
-            last_val_dt + timedelta(days=gd),
+            exp + timedelta(days=GRACE_DAYS),
+            last_val_dt + timedelta(days=GRACE_DAYS),
         )
         return now <= grace_deadline
 

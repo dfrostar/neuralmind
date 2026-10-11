@@ -70,14 +70,15 @@ class SelfHostedConfig:
         data_dir: Absolute path within user home for data storage.
         bind_address: Network bind address (default 127.0.0.1).
         port: Network port (1-65535).
-        offline_grace_days: Days to allow offline operation.
+
+    The post-expiry grace window is not configurable: it is fixed by the
+    license agreement (``neuralmind.tier2.license.GRACE_DAYS``).
     """
 
     enabled: bool = False
     data_dir: str = str(Path.home() / ".local" / "share" / "neuralmind")
     bind_address: str = "127.0.0.1"
     port: int = 8765
-    offline_grace_days: int = 30
 
 
 @dataclass
@@ -150,9 +151,9 @@ def load_config(path: Path | None = None, *, strict: bool = False) -> Tier2Confi
             an invalid value.
 
     Example:
-        >>> cfg = load_config()
+        >>> cfg = load_config(Path("/nonexistent/tier2.yaml"))
         >>> cfg.tier
-        'team'
+        'free'
     """
     p = Path(path) if path else DEFAULT_CONFIG_PATH
     if not p.exists():
@@ -229,7 +230,6 @@ def _from_dict(raw: dict[str, Any]) -> Tier2Config:
             ),
             bind_address=str(sh_raw.get("bind_address", "127.0.0.1")),
             port=validate_port(sh_raw.get("port", 8765)),
-            offline_grace_days=validate_grace_days(sh_raw.get("offline_grace_days", 30)),
         ),
     )
 
@@ -360,37 +360,6 @@ def validate_port(value: int | str | None) -> int:
         raise ValueError(f"Invalid port: {value!r}. Must be an integer.") from err
     if not (1 <= v <= 65535):
         raise ValueError(f"Invalid port: {v}. Must be 1-65535.")
-    return v
-
-
-def validate_grace_days(value: int | str | None) -> int:
-    """Validate offline grace days.
-
-    Args:
-        value: The number of grace days to validate.
-
-    Returns:
-        The validated grace days as an integer.
-
-    Raises:
-        ValueError: If ``value`` is not a non-negative integer.
-
-    Example:
-        >>> validate_grace_days(30)
-        30
-        >>> validate_grace_days(-1)
-        Traceback (most recent call last):
-            ...
-        ValueError: Invalid offline_grace_days: -1. Must be >= 0.
-    """
-    if value is None:
-        return 30
-    try:
-        v = int(value)
-    except (TypeError, ValueError) as err:
-        raise ValueError(f"Invalid offline_grace_days: {value!r}. Must be an integer.") from err
-    if v < 0:
-        raise ValueError(f"Invalid offline_grace_days: {v}. Must be >= 0.")
     return v
 
 

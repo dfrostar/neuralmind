@@ -133,6 +133,20 @@ class TestTier2ConfigLoadValidation:
         with pytest.raises(ValueError, match="Invalid seats"):
             load_config(p)
 
+    def test_legacy_offline_grace_days_ignored(self, tmp_path: Path) -> None:
+        """Configs written before the setting was removed still load, strict too.
+
+        Grace is fixed by the license agreement, so the old key has no effect
+        and isn't written back.
+        """
+        p = tmp_path / "tier2.yaml"
+        p.write_text("self_hosted:\n  offline_grace_days: 365\n")
+        cfg = load_config(p, strict=True)
+        assert not hasattr(cfg.self_hosted, "offline_grace_days")
+        out = tmp_path / "out.yaml"
+        save_config(cfg, out)
+        assert "offline_grace_days" not in out.read_text()
+
     def test_data_dir_non_absolute_rejected(self) -> None:
         with pytest.raises(ValueError, match="Invalid data_dir"):
             validate_data_dir("relative/path")
