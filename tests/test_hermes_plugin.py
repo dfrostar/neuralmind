@@ -192,6 +192,61 @@ def test_write_file_records_the_edit(tmp_path, calls, sync_threads):
     ]
 
 
+def test_read_file_inside_the_project_records_a_read(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    plugin.on_post_tool_call(
+        tool_name="read_file",
+        args={"path": "src/app.py"},
+        result='{"content": "1|x = 1", "total_lines": 1}',
+        session_id="s1",
+    )
+    assert calls == [
+        (
+            "read-activity",
+            {
+                "cwd": str(tmp_path),
+                "session_id": "s1",
+                "tool_input": {"file_path": str(tmp_path / "src" / "app.py")},
+            },
+        )
+    ]
+
+
+def test_read_path_is_normalized_so_one_file_has_one_key(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    for path in ("src/app.py", "src/../src/app.py", "./src/./app.py"):
+        plugin.on_post_tool_call(
+            tool_name="read_file", args={"path": path}, result="{}", session_id="s1"
+        )
+    keys = {payload["tool_input"]["file_path"] for _action, payload in calls}
+    assert keys == {str(tmp_path / "src" / "app.py")}
+
+
+def test_read_file_outside_the_project_is_not_recorded(tmp_path, calls, sync_threads, monkeypatch):
+    project = _built(tmp_path / "proj")
+    monkeypatch.setenv("NEURALMIND_PROJECT", str(project))
+    for path in (
+        str(tmp_path / "elsewhere" / "secrets.py"),
+        "../elsewhere/x.py",
+        "~/.hermes/config.yaml",
+    ):
+        plugin.on_post_tool_call(
+            tool_name="read_file", args={"path": path}, result="{}", session_id="s1"
+        )
+    assert calls == []
+
+
+def test_failed_read_is_not_recorded(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    plugin.on_post_tool_call(
+        tool_name="read_file",
+        args={"path": "missing.py"},
+        result='{"error": "File not found"}',
+        session_id="s1",
+    )
+    assert calls == []
+
+
 def test_v4a_patch_records_each_file(tmp_path, calls, sync_threads):
     _built(tmp_path)
     patch = (

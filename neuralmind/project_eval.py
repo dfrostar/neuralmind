@@ -25,12 +25,19 @@ shared team baseline — while the history stays in the untracked
 ``.neuralmind/`` because it is machine-specific. Reports print metrics and the
 question count only, unless ``--show-questions`` is passed, so questions that
 name internal code don't end up in pasted issues and posts.
+
+``eval --synapse-ab`` runs the questions a second time with synapse recall
+switched off and reports the difference (:func:`run_synapse_ab`): the
+on-your-own-repo test of whether the synapse layer is helping, recorded in the
+history with the layer's usage-learned size, so ``--report`` shows whether the
+gap grows as usage teaches it more.
 """
 
 from __future__ import annotations
 
 import ast
 import json
+import math
 import re
 import subprocess
 from dataclasses import asdict, dataclass, field
@@ -76,10 +83,13 @@ class EvalReport:
     baseline_tokens: int
     baseline_source: str
     results: list[QuestionResult] = field(default_factory=list)
+    synapse_ab: dict[str, Any] | None = None  # set by run_synapse_ab
 
     def history_row(self) -> dict[str, Any]:
         row = asdict(self)
         row.pop("results")
+        if row.get("synapse_ab") is None:
+            row.pop("synapse_ab", None)
         return row
 
     def to_dict(self, show_questions: bool = False) -> dict[str, Any]:
@@ -245,6 +255,137 @@ def run_eval(
 
 
 # --------------------------------------------------------------------------- #
+# Synapse recall on vs off
+# --------------------------------------------------------------------------- #
+def mcnemar_exact(wins: int, losses: int) -> float:
+    """Two-sided exact McNemar p-value for ``wins`` vs ``losses`` discordant pairs."""
+    n = wins + losses
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, k) for k in range(min(wins, losses) + 1)) / 2**n
+    return min(1.0, 2 * tail)
+
+
+def _learned_layer(mind: Any) -> dict[str, int]:
+    """Size of the synapse layer the "on" arm read.
+
+    ``edges`` counts build-seeded and usage-learned edges together; ``ltp_edges``
+    and ``transitions`` come only from usage (seeding adds neither).
+    """
+    store = mind._read_only_store() if hasattr(mind, "_read_only_store") else None
+    try:
+        stats = store.stats() if store is not None else {}
+    except Exception:
+        stats = {}
+    return {key: int(stats.get(key, 0) or 0) for key in ("edges", "ltp_edges", "transitions")}
+
+
+def _rank_key(rank: int | None) -> float:
+    return 1.0 / rank if rank else 0.0
+
+
+def _hit5(rank: int | None) -> bool:
+    return rank is not None and rank <= 5
+
+
+def run_synapse_ab(
+    project: str | Path,
+    questions: list[EvalQuestion] | None = None,
+    mind: Any = None,
+) -> EvalReport:
+    """Run the eval twice — synapse recall on, then off — and compare per question.
+
+    Same questions, same index, both read-only; the only difference is
+    ``NEURALMIND_SYNAPSE_INJECT=0`` on the second run, which switches off the
+    synapse re-ranking. The returned report is the "on" run (the normal eval)
+    with ``synapse_ab`` filled in: the "off" metrics, how many questions the
+    synapse layer moved up or down, an exact McNemar p-value on hit@5, and the
+    size of the layer it read.
+
+    The switch turns off the whole synapse layer, which holds two kinds of
+    edge: the call/import edges every build seeds from the graph, and what
+    usage taught it. So one run measures both together, and a fresh build can
+    already differ. Usage learning is what moves as the LTP-edge and transition
+    counts grow (seeding adds neither), which is why the history records them:
+    whether the gap grows with them is the usage-learning signal.
+    """
+    import os
+
+    root = Path(project).resolve()
+    if mind is None:
+        from .core import NeuralMind
+
+        mind = NeuralMind(str(root))
+    # Each arm sets the switch itself: a caller who already exported
+    # NEURALMIND_SYNAPSE_INJECT=0 would otherwise get two "off" runs labelled
+    # as on vs off. Their value comes back afterwards.
+    saved = os.environ.get("NEURALMIND_SYNAPSE_INJECT")
+    try:
+        os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+        on = run_eval(root, questions, mind=mind)
+        os.environ["NEURALMIND_SYNAPSE_INJECT"] = "0"
+        off = run_eval(root, questions, mind=mind)
+    finally:
+        if saved is None:
+            os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+        else:
+            os.environ["NEURALMIND_SYNAPSE_INJECT"] = saved
+
+    better = worse = wins = losses = 0
+    for a, b in zip(on.results, off.results, strict=True):
+        if _rank_key(a.rank) > _rank_key(b.rank):
+            better += 1
+        elif _rank_key(a.rank) < _rank_key(b.rank):
+            worse += 1
+        if _hit5(a.rank) and not _hit5(b.rank):
+            wins += 1
+        elif _hit5(b.rank) and not _hit5(a.rank):
+            losses += 1
+    on.synapse_ab = {
+        "off_hit_at_1": off.hit_at_1,
+        "off_hit_at_5": off.hit_at_5,
+        "off_mrr": off.mrr,
+        "off_avg_context_tokens": off.avg_context_tokens,
+        "better": better,
+        "worse": worse,
+        "same": on.n_questions - better - worse,
+        "hit5_wins": wins,
+        "hit5_losses": losses,
+        "p_value": round(mcnemar_exact(wins, losses), 4),
+        **_learned_layer(mind),
+    }
+    return on
+
+
+def render_synapse_ab(report: EvalReport) -> str:
+    """The on/off comparison, for under the normal summary."""
+    ab = report.synapse_ab or {}
+    if not ab:
+        return ""
+    lines = [
+        (
+            f"  synapse recall off: hit@1 {_pct(ab['off_hit_at_1'])} · "
+            f"hit@5 {_pct(ab['off_hit_at_5'])} · MRR {ab['off_mrr']:.2f}"
+        ),
+        (
+            f"  synapse recall moved {ab['better']} question(s) up, {ab['worse']} down, "
+            f"{ab['same']} unchanged · hit@5 {ab['hit5_wins']} won / {ab['hit5_losses']} lost "
+            f"(exact McNemar p = {ab['p_value']:.2f})"
+        ),
+        (
+            f"  synapse layer read: {ab['edges']:,} edges, seeded and learned "
+            f"(usage-learned: {ab['ltp_edges']:,} LTP edges, {ab['transitions']:,} transitions)"
+        ),
+    ]
+    if ab["better"] == 0 and ab["worse"] == 0:
+        lines.append(
+            "  No difference: the synapse layer changed no ranking here"
+            + (" (it is empty)." if ab["edges"] == 0 else ".")
+        )
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
 # History and reports
 # --------------------------------------------------------------------------- #
 def history_path(project: str | Path) -> Path:
@@ -328,6 +469,35 @@ def render_report(rows: list[dict[str, Any]], last_run: dict[str, Any] | None = 
             f"| {float(row.get('ratio_vs_gold', 0)):.1f}× "
             f"| {float(row.get('ratio_vs_indexed', 0)):,.1f}× |"
         )
+    ab_rows = [row for row in rows if isinstance(row.get("synapse_ab"), dict)]
+    if ab_rows:
+        # The trend that says whether usage learning is earning its keep: does
+        # on-minus-off grow as LTP edges and transitions (usage-only) grow?
+        out.append("")
+        out.append(
+            "Synapse recall on vs off (`--synapse-ab` runs; LTP edges and transitions "
+            "are what usage taught it):"
+        )
+        out.append("")
+        out.append(
+            "| Date | Commit | Edges | LTP | Transitions | hit@5 off → on | MRR off → on "
+            "| Up / down | p (hit@5) |"
+        )
+        out.append(
+            "|------|--------|------:|----:|------------:|---------------:|-------------:"
+            "|----------:|----------:|"
+        )
+        for row in ab_rows:
+            ab = row["synapse_ab"]
+            out.append(
+                f"| {str(row.get('date', ''))[:10]} | {row.get('git_sha') or '—'} "
+                f"| {int(ab.get('edges', 0)):,} | {int(ab.get('ltp_edges', 0)):,} "
+                f"| {int(ab.get('transitions', 0)):,} "
+                f"| {_pct(float(ab.get('off_hit_at_5', 0)))} → {_pct(float(row.get('hit_at_5', 0)))} "
+                f"| {float(ab.get('off_mrr', 0)):.2f} → {float(row.get('mrr', 0)):.2f} "
+                f"| {int(ab.get('better', 0))} / {int(ab.get('worse', 0))} "
+                f"| {float(ab.get('p_value', 1.0)):.2f} |"
+            )
     if last_run and last_run.get("results"):
         out.append("")
         out.append("Last run, per question:")

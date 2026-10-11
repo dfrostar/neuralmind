@@ -200,8 +200,14 @@
 
     <section>
         <div class="container" id="whats-new-v4140">
-            <h2>What&rsquo;s New in v4.14.0 &mdash; releases you can verify, and the evidence for a NIST SSDF attestation</h2>
-            <p><strong>You can check that the NeuralMind you install is the one this repository built.</strong> NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency asks the producer to attest to it, on CISA&rsquo;s form, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
+            <h2>What&rsquo;s New in v4.14.0 &mdash; measure the synapse layer on your own repo, and releases you can verify</h2>
+            <p><strong>A way to check the learning instead of taking it on trust.</strong> A field user had a second agent review their NeuralMind setup adversarially. The verdict: the demos showed the mechanism working, not the outcome, and nothing showed the synapse layer improving retrieval over time. Fair, so this release adds the measurement:</p>
+            <ul>
+                <li><strong><code>neuralmind eval . --synapse-ab</code></strong> &mdash; your own gold questions, run read-only with synapse recall on and then off: questions moved up or down, hit@5 won and lost with an exact McNemar p-value, and the size of the layer it read. <code>eval --report</code> keeps a table of these runs, so you can see whether the gap grows as the usage-learned part (LTP edges, transitions) does; the switch also covers the call and import edges every build seeds, so a fresh build can already differ (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md">walkthrough</a>)</li>
+                <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does (reinstall the plugin after upgrading)</li>
+                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
+            </ul>
+            <p><strong>Also: releases you can verify.</strong> You can check that the NeuralMind you install is the one this repository built. NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency asks the producer to attest to it, on CISA&rsquo;s form, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
             <ul>
                 <li><strong>Signed images</strong> &mdash; each <code>ghcr.io/dfrostar/neuralmind</code> image is signed keylessly with cosign by the release workflow, bound to its GitHub identity and recorded in Sigstore&rsquo;s transparency log</li>
                 <li><strong>Build provenance</strong> &mdash; the image, wheel and sdist carry GitHub build-provenance attestations, and the release verifies the image before <code>:latest</code> moves</li>
@@ -209,7 +215,6 @@
                 <li><strong>VEX</strong> &mdash; <code>security/neuralmind.openvex.json</code> publishes the dependency advisories that don&rsquo;t apply, and the CI gate ignores exactly those</li>
                 <li><strong>The SSDF mapping</strong> &mdash; every SP&nbsp;800-218 practice mapped to the evidence, and what a repository can&rsquo;t show (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/compliance/SSDF.md">SSDF.md</a>)</li>
             </ul>
-            <p>Nothing changes at runtime: no hook, tool, command or default.</p>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.14.0.md">v4.14.0 release notes</a></p>
         </div>
     </section>
@@ -1557,7 +1562,7 @@ $ neuralmind query . "CMMC gap analysis"
             <p>The agent gets exactly what it needs, in order, without bloat.</p>
 
             <h3>Learnable Patterns</h3>
-            <p>NeuralMind learns from how you actually use the codebase. Over time, the brain-like synapse layer (described below) improves retrieval quality based on which code you query, edit, and run tools over together — automatically and continuously, with no external training and no manual step.</p>
+            <p>NeuralMind learns from how you actually use the codebase. The brain-like synapse layer (described below) strengthens links between the code you query, edit, and run tools over together, with no external training and no manual step, and recall uses those links to re-rank results. CI checks that this never lowers the hit rate, on a small fixture; whether it improves retrieval on your codebase over time is something to measure, not assume: <code>neuralmind eval . --synapse-ab</code> <em>(v4.14.0+)</em> runs your own questions with it on and off.</p>
 
             <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
             <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>

@@ -559,6 +559,42 @@ def test_public_benchmark_ratios_are_registered_from_the_committed_run() -> None
     )
 
 
+def test_ripgrep_comparison_is_registered_from_the_committed_run() -> None:
+    """The grep-and-read comparison is recomputed like the whole-file one.
+
+    Pasting every file is the easiest baseline to beat, so the site quotes the
+    ripgrep baseline beside it. Both ends are rounded down (the conservative
+    reading), and ripgrep's found count travels with them.
+    """
+    data = json.loads(PUBLIC_RESULTS.read_text(encoding="utf-8"))
+    ratios: list[float] = []
+    rg_found = nm_found = total = 0
+    for repo in data["repos"]:
+        nm = repo["summary"].get("neuralmind")
+        rg = repo["summary"].get("ripgrep")
+        if not nm or not rg:
+            continue
+        ratios.append(rg["mean_tokens"] / nm["mean_tokens"])
+        rg_found += round(rg["found_rate"] * rg["n"])
+        nm_found += round(nm["found_rate"] * nm["n"])
+        total += nm["n"]
+    allowed = _allowed_ratios()
+    low, high = float(int(min(ratios))), float(int(max(ratios)))
+    missing = [f"{v:g}×" for v in (low, high) if v not in allowed]
+    assert not missing, (
+        "The committed public-benchmark run gives a vs-ripgrep range site/claims.json "
+        "does not list: " + ", ".join(missing)
+    )
+    expected = (
+        f"found the gold file on {rg_found} of {total} public-benchmark queries; "
+        f"NeuralMind on {nm_found} of {total}"
+    )
+    claims = [c["claim"] for c in _claims()["non_ratio_headline_claims"]]
+    assert any(
+        expected in c for c in claims
+    ), f"site/claims.json's ripgrep found count disagrees with the committed run: {expected!r}"
+
+
 def _stale_recall_percentages(lines: list[str], allowed: set[str]) -> list[tuple[int, str]]:
     """(lineno, value) for every percentage on a recall line that isn't canon."""
     stale: list[tuple[int, str]] = []

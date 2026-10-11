@@ -277,7 +277,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Tokens vs pasting files</dt>
                             <dd>
                                 <p className="metric text-[1.75rem] text-white leading-none mb-2">51–242×</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio.</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio. Against ripgrep opening its top five files, which found the gold file on 32 of 40: 31–67× fewer.</p>
                             </dd>
                         </div>
                         <div className="border-b border-r border-carbon-border p-5">
@@ -374,7 +374,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Not measured */}
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-2">What this benchmark does not measure</h2>
-                    <p className="text-slate-400 mb-6 leading-relaxed">Both omissions are deliberate, and both are measured elsewhere.</p>
+                    <p className="text-slate-400 mb-6 leading-relaxed">Three omissions. The first two are deliberate and measured elsewhere, though only partly; the third is not measured anywhere yet.</p>
                     <div className="space-y-5">
                         <div className="border-l-2 border-carbon-line pl-5">
                             <h3 className="text-white font-semibold text-sm mb-1.5">The synapse learning layer</h3>
@@ -384,7 +384,11 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 Injection is off for every run above. The learning lift is measured
                                 separately by the synapse A/B eval, where CI asserts the direction — recall
                                 on is never worse than recall off, at a neutral token budget — rather than
-                                a magnitude.
+                                a magnitude. That gate runs on a ~500-line fixture, so it shows direction,
+                                not that learning pays off on a real codebase over weeks of use: nothing
+                                published shows that yet. <code className="font-mono text-[0.85em] text-slate-300">neuralmind eval . --synapse-ab</code> measures
+                                it on your own repo (v4.14.0+): your questions, synapse recall on and off,
+                                recorded so you can see whether the gap grows as usage teaches the layer more.
                             </p>
                         </div>
                         <div className="border-l-2 border-carbon-line pl-5">
@@ -395,6 +399,16 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 answers built from each backend&rsquo;s actual window, with every transcript
                                 committed — but it is LLM-judged, so it stays a clearly labelled secondary
                                 signal and never the headline.
+                            </p>
+                        </div>
+                        <div className="border-l-2 border-carbon-line pl-5">
+                            <h3 className="text-white font-semibold text-sm mb-1.5">Whether agents get work done faster</h3>
+                            <p className="text-slate-400 text-sm leading-relaxed">
+                                Every figure on this page is retrieval: what reaches the agent&rsquo;s window and
+                                whether the right file is in it. Nothing here measures time to fix a bug, error
+                                rate, or how much of the needed context a real debugging session got. A small
+                                window that misses one caveat can cost more than a large one, and only an
+                                outcome benchmark would show it. We haven&rsquo;t run one, so we don&rsquo;t claim it.
                             </p>
                         </div>
                     </div>

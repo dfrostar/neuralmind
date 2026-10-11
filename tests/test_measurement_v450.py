@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from pathlib import Path
 
@@ -498,6 +499,52 @@ class TestProjectEval:
         cli.main()
         assert "| Date |" in capsys.readouterr().out
 
+    def test_synapse_ab_compares_synapse_recall_on_and_off(self, tmp_path, monkeypatch):
+        from neuralmind import project_eval
+
+        _eval_project(tmp_path)
+        mind = _mind(tmp_path)
+        mind.build()
+        mind.query("invoice_fn helper")  # learn something first
+        mind.close()
+        monkeypatch.delenv("NEURALMIND_SYNAPSE_INJECT", raising=False)
+        before = _db_state(tmp_path)
+
+        report = project_eval.run_synapse_ab(tmp_path, mind=_mind(tmp_path))
+
+        ab = report.synapse_ab
+        assert ab["better"] + ab["worse"] + ab["same"] == report.n_questions
+        assert ab["edges"] > 0
+        assert "NEURALMIND_SYNAPSE_INJECT" not in os.environ  # restored
+        assert _db_state(tmp_path) == before  # both runs read-only
+        assert "synapse layer read" in project_eval.render_synapse_ab(report)
+
+        project_eval.append_history(tmp_path, report)
+        project_eval.append_history(tmp_path, project_eval.run_eval(tmp_path, mind=_mind(tmp_path)))
+        rows = project_eval.read_history(tmp_path)
+        assert rows[0]["synapse_ab"] == ab
+        assert "synapse_ab" not in rows[1]  # a plain run doesn't carry the field
+        assert "Synapse recall on vs off" in project_eval.render_report(rows)
+        assert "Synapse recall on vs off" not in project_eval.render_report(rows[1:])
+
+    def test_cli_eval_synapse_ab(self, tmp_path, capsys, monkeypatch):
+        from neuralmind import cli, core
+
+        _eval_project(tmp_path)
+        _mind(tmp_path).build()
+        real = core.NeuralMind
+
+        def factory(*a, **k):
+            mind = real(*a, **k)
+            mind.embedder._embed_fn = _fake_embed
+            return mind
+
+        monkeypatch.setattr(core, "NeuralMind", factory)
+        monkeypatch.setattr("sys.argv", ["neuralmind", "eval", str(tmp_path), "--synapse-ab"])
+        cli.main()
+        out = capsys.readouterr().out
+        assert "synapse recall off:" in out and "synapse layer read:" in out
+
     def test_questions_file_is_validated(self, tmp_path):
         from neuralmind import project_eval
 
@@ -523,6 +570,96 @@ class TestProjectEval:
         assert any(d["q"] == "How does invoices work?" for d in drafts)
         text = project_eval.render_suggestions(drafts)
         assert project_eval.load_questions(tmp_path, _write(tmp_path / "s.yaml", text))
+
+
+class TestSynapseABCounting:
+    """The per-question comparison, on stubbed runs with known ranks."""
+
+    def _report(self, ranks):
+        from neuralmind import project_eval
+
+        results = [
+            project_eval.QuestionResult(
+                q=f"q{i}", gold=["g.py"], rank=r, files=[], tokens=100, gold_tokens=10
+            )
+            for i, r in enumerate(ranks)
+        ]
+        n = len(ranks)
+        return project_eval.EvalReport(
+            project="p",
+            date="2026-10-11T00:00:00",
+            git_sha="",
+            version="0",
+            node_count=0,
+            n_questions=n,
+            hit_at_1=sum(1 for r in ranks if r == 1) / n,
+            hit_at_5=sum(1 for r in ranks if r and r <= 5) / n,
+            mrr=sum(1 / r for r in ranks if r) / n,
+            avg_context_tokens=100.0,
+            ratio_vs_gold=0.1,
+            ratio_vs_indexed=1.0,
+            baseline_tokens=100,
+            baseline_source="measured",
+            results=results,
+        )
+
+    def test_moves_wins_and_losses(self, monkeypatch):
+        from neuralmind import project_eval
+
+        on_ranks = [1, 2, None, 3, 7, 1]
+        off_ranks = [2, 2, 4, None, 7, None]
+
+        def fake_run_eval(project, questions=None, mind=None):
+            off = os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0"
+            return self._report(off_ranks if off else on_ranks)
+
+        monkeypatch.setattr(project_eval, "run_eval", fake_run_eval)
+        monkeypatch.setattr(
+            project_eval,
+            "_learned_layer",
+            lambda mind: {"edges": 3, "ltp_edges": 0, "transitions": 1},
+        )
+        ab = project_eval.run_synapse_ab(".", mind=object()).synapse_ab
+
+        # q0 up (2 -> 1), q2 down (4 -> miss), q3 up (miss -> 3), q5 up (miss -> 1)
+        assert (ab["better"], ab["worse"], ab["same"]) == (3, 1, 2)
+        assert (ab["hit5_wins"], ab["hit5_losses"]) == (2, 1)
+        assert ab["p_value"] == 1.0
+        assert ab["transitions"] == 1
+
+    def test_on_arm_runs_with_recall_on_whatever_the_caller_exported(self, monkeypatch):
+        """A caller's NEURALMIND_SYNAPSE_INJECT=0 must not turn the on arm off too."""
+        from neuralmind import project_eval
+
+        seen = []
+
+        def fake_run_eval(project, questions=None, mind=None):
+            seen.append(os.environ.get("NEURALMIND_SYNAPSE_INJECT"))
+            return self._report([1, 2])
+
+        monkeypatch.setattr(project_eval, "run_eval", fake_run_eval)
+        monkeypatch.setattr(project_eval, "_learned_layer", lambda mind: {})
+        for exported in ("0", "1"):
+            seen.clear()
+            monkeypatch.setenv("NEURALMIND_SYNAPSE_INJECT", exported)
+            project_eval.run_synapse_ab(".", mind=object())
+            assert seen == [None, "0"]  # on arm: unset (recall on); off arm: "0"
+            assert os.environ["NEURALMIND_SYNAPSE_INJECT"] == exported  # restored
+
+    def test_mcnemar_exact(self):
+        from neuralmind.project_eval import mcnemar_exact
+
+        assert mcnemar_exact(0, 0) == 1.0
+        assert mcnemar_exact(5, 0) == 0.0625
+        assert mcnemar_exact(6, 0) == 0.03125
+        assert mcnemar_exact(3, 3) == 1.0
+
+    def test_cli_flag_parses_and_selects_the_project_eval(self):
+        from neuralmind.cli import _project_eval_requested, build_parser
+
+        args = build_parser().parse_args(["eval", "--synapse-ab"])
+        assert args.synapse_ab is True
+        assert _project_eval_requested(args)
 
 
 def _write(path: Path, text: str) -> Path:

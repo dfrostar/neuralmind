@@ -73,6 +73,16 @@ const steps: Step[] = [
     },
     {
         step: '5',
+        title: 'Check whether the learning helps (after a few weeks of use)',
+        body: 'Write down questions your team really asks, each with the file that answers it — past incidents work well, phrased as the symptom you saw, not the fix you found. Then run them twice, with the synapse layer’s recall on and off (v4.14.0+). Both runs are read-only. Recall also follows the call and import edges every build seeds, so a fresh build can already differ, and no difference is a normal result too. Rerun it as usage teaches the layer more: eval --report shows whether the gap grows with its usage-learned edges and transitions.',
+        code: [
+            'neuralmind eval . --suggest --write   # drafts .neuralmind.eval.yaml; edit it',
+            'neuralmind eval . --synapse-ab',
+            'neuralmind eval . --report',
+        ],
+    },
+    {
+        step: '6',
         title: 'Share your results',
         body: 'Emit a schema-ready submission and send it to us, or open a pull request against the community benchmarks. Nothing is uploaded — you choose what to paste, and whether it is attributed or anonymized.',
         code: ['neuralmind benchmark . --contribute'],
@@ -91,6 +101,10 @@ const whatYouGet = [
     {
         metric: 'Answerability & recall@k',
         desc: 'From probe: how often the right file is in the top k when you ask for one of your own symbols.',
+    },
+    {
+        metric: 'Synapse recall, on vs off',
+        desc: 'From eval --synapse-ab: how many of your questions the synapse layer moved up or down, hit@5 won and lost, and an exact McNemar p-value — with the size of the layer it read, seeded and usage-learned, so a zero is explained rather than hidden. Nothing we publish shows this improving over time on a real repo yet; this is how you would find out on yours.',
     },
     {
         metric: 'MRR and blind spots',
@@ -136,7 +150,8 @@ export default function MeasureYourOwnPage() {
                     </h1>
                     <p className="text-lg text-slate-300 leading-relaxed mb-6">
                         The number that decides anything for you is the one from your codebase. Three
-                        commands get it — and we want you to share it, good or bad.
+                        commands get it, a fourth checks the learning later — and we want you to share
+                        it, good or bad.
                     </p>
                     <p className="text-slate-400 leading-relaxed">
                         We do not have testimonials yet. What we have is a benchmark that runs locally,

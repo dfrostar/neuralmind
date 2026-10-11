@@ -7,10 +7,13 @@ import SectionHeader from '@/components/ui/SectionHeader';
 // a single-repo field report — because they are not the same strength of claim.
 const dataPoints = [
     { metric: 'Gold file found', value: '40 of 40', detail: 'pre-registered queries on 4 pinned OSS repos. A small sample: a 150-question eval on 5 repos puts the gold file in the top five 93.3% of the time, misses listed. Reproducible, not a CI gate' },
-    { metric: 'Tokens vs. pasting every file', value: '51–242×', detail: 'same 40 queries, against pasting every source file; cheaper than ripgrep on every repo' },
-    { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
+    { metric: 'Tokens vs. pasting every file', value: '51–242×', detail: 'same 40 queries, against pasting every source file — the easiest baseline to beat, so the next figure is the one to weigh' },
+    { metric: 'Tokens vs. grep-and-read', value: '31–67×', detail: 'same 40 queries, against ripgrep opening its top five files whole, which found the gold file on 32 of 40. An agent that reads only the matching lines pays less than this baseline; that is not measured' },
+    { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget — on a ~500-line fixture, so it shows direction, not size' },
+    { metric: 'Learning on your repo', value: 'Not yet shown', detail: 'nothing published shows the synapse layer improving retrieval on a real codebase over time. neuralmind eval . --synapse-ab measures it on yours: your own questions, synapse recall on and off' },
     { metric: 'Facts vs. naive truncation', value: '+0.26', detail: 'at an equal token budget on the prose-heavy CI fixture, measured at v4.12.0 with CI’s command (v4.11.1: +0.03; v4.3.4 was a published loss, −0.054). CI fails the build below −0.10' },
     { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the fixed 50K-token estimate the CLI used before v4.5.0 — method reproducible, not CI-gated' },
+    { metric: 'Task outcomes', value: 'Not measured', detail: 'every figure here is retrieval — what reaches the agent’s window and whether the right file is in it. Whether agents finish tasks faster or with fewer mistakes is not measured yet' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
 ];
 
@@ -20,7 +23,8 @@ export default function Benchmarks() {
             <div className="max-w-6xl mx-auto">
                 <SectionHeader eyebrow="Measured, not marketed" title="Benchmarks">
                     Two of these are recomputed by CI on every commit; the rest reproduce from a
-                    fresh clone with one command. Where a number comes from a single repo, it says so.
+                    fresh clone with one command. Where a number comes from a single repo, it says so,
+                    and two cells say what isn&rsquo;t measured yet.
                     Run <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">neuralmind benchmark .</code> for your own.
                 </SectionHeader>
 
