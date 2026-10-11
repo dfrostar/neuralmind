@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.13.0](https://github.com/dfrostar/neuralmind/compare/v4.12.1...v4.13.0) (2026-10-11)
+
+
+### Features
+
+* count queries and builds, attribute MCP calls to their client, name a leftover graphify graph ([#643](https://github.com/dfrostar/neuralmind/issues/643)) ([2b05b35](https://github.com/dfrostar/neuralmind/commit/2b05b35545e6c41798b7e3616c099d3c71a7e6a8))
+* **init-hook:** rebuild after pulls, merges, branch switches and rebases; work from any git client; don't block git ([#641](https://github.com/dfrostar/neuralmind/issues/641)) ([375e6e7](https://github.com/dfrostar/neuralmind/commit/375e6e7e61bea0dbf96cb62b7e8539cf328928c4))
+* show synapse growth on every build and in stats, and give staleness gates a stale_after grace period ([#645](https://github.com/dfrostar/neuralmind/issues/645)) ([d5cb2e9](https://github.com/dfrostar/neuralmind/commit/d5cb2e997e626630904020334513ea1f6a0121ec))
+
+
+### Bug Fixes
+
+* document ingestion works on FIPS-mode hosts; CI runs the suite under the OpenSSL FIPS provider ([#644](https://github.com/dfrostar/neuralmind/issues/644)) ([f167d97](https://github.com/dfrostar/neuralmind/commit/f167d97e0203095d417343179237555dabf8b5d9))
+
 ## [4.12.1](https://github.com/dfrostar/neuralmind/compare/v4.12.0...v4.12.1) (2026-10-11)
 
 
