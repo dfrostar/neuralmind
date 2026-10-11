@@ -199,6 +199,18 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4121">
+            <h2>What&rsquo;s New in v4.12.1 &mdash; <code>neuralmind doctor</code> exits 1 when a check fails, as documented</h2>
+            <p><strong>A v0.55.0 regression in an exit code scripts gate on.</strong> The CLI reference and the install-paths walkthrough (<code>neuralmind doctor . &amp;&amp; neuralmind wakeup .</code>) say <code>doctor</code> exits non-zero on a failed check, and v0.12.0 shipped it that way. From v0.55.0 through v4.12.0 it always exited 0: a helper inserted above its last lines left the <code>sys.exit(1)</code> unreachable, and a lint pass deleted it.</p>
+            <ul>
+                <li><strong>Exit 1 on a failed check</strong> &mdash; with or without <code>--json</code> (the report is printed first); warnings still exit 0. A script that ran <code>doctor</code> under <code>set -e</code> now stops on a failure: use <code>|| true</code>, or read <code>--json</code>&rsquo;s <code>status</code></li>
+                <li><strong>A repaired turbovec index passes</strong> &mdash; a leftover <code>index.tvim.stale</code> backup used to fail the Turbovec compatibility check even after the index was rebuilt. <code>doctor</code> now loads the live index, without changing any file, and fails only if that load fails</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.1.md">v4.12.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4120">
             <h2>What&rsquo;s New in v4.12.0 &mdash; retrieval that keeps what vector search finds: 93% hit@5 on the retrieval eval, 40 of 40 on the public benchmark, 13–14 ms queries</h2>
             <p><strong>The layers on top of vector search were taking accuracy away.</strong> On the public benchmark, the <code>embedding-rag</code> baseline &mdash; NeuralMind&rsquo;s own vector index, top 8, nothing added &mdash; matched or beat the full query pipeline on gold-file recall on all four repositories. L3 kept four hits and re-ranked after that cut, boosts were sized to outvote the ranking, question words reached the keyword search, a node was embedded as metadata, and with eight hits one file could take every slot. v4.12.0 fixes each one, measured on the 150-question retrieval eval and the 40-query public benchmark.</p>
@@ -210,7 +222,7 @@
                 <li><strong>JavaScript repositories get code nodes</strong> &mdash; <code>.js</code>, <code>.mjs</code>, <code>.cjs</code> and <code>.jsx</code> are parsed with the TypeScript grammars: functions, classes, methods, JSDoc docstrings, imports and calls</li>
                 <li><strong>Measured</strong> &mdash; retrieval eval hit@5 80.0% &rarr; 93.3% against v4.11.1 (21 questions won, 1 lost, exact McNemar p &lt; 0.0001), MRR 0.671 &rarr; 0.750, context tokens per question 930 &rarr; 830; public benchmark: the gold file found on 40 of 40 queries (v4.11.1 missed 3) at 51&ndash;242&times; fewer tokens than pasting every source file. Reproducible on demand, not CI gates. Query p50 of 13–14 ms on the library repositories and 21 ms on this one, and a full build of this repository in 5.1 minutes, were measured on one 4-core machine</li>
                 <li><strong>Losses, published</strong> &mdash; the retrieval eval still misses 10 of 150 questions, most of them where vector search ranks the gold file outside the 20 candidates NeuralMind re-ranks; on <code>flask</code> and <code>rich</code> NeuralMind&rsquo;s MRR (0.72, 0.83) is still below the plain vector baseline&rsquo;s (0.74, 0.94); answer quality with a model in the loop is not measured</li>
-                <li><strong>Fixes</strong> &mdash; with <code>--redact-secrets</code>, the turbovec backend now redacts a markdown section&rsquo;s body before storing it; an injected embedder&rsquo;s large batches no longer mix in MiniLM vectors; re-ranking no longer mutates the search cache; query reinforcement no longer wires in hits the synapse layer itself pulled in; synapse lookups use the node indexes instead of scanning the store (query p50 74 &rarr; 21 ms on this repository); <code>neuralmind doctor</code> exits 1 again when a check fails, as documented (since v0.55.0 it had always exited 0), and a leftover <code>index.tvim.stale</code> backup no longer fails it once the index is rebuilt</li>
+                <li><strong>Fixes</strong> &mdash; with <code>--redact-secrets</code>, the turbovec backend now redacts a markdown section&rsquo;s body before storing it; an injected embedder&rsquo;s large batches no longer mix in MiniLM vectors; re-ranking no longer mutates the search cache; query reinforcement no longer wires in hits the synapse layer itself pulled in; synapse lookups use the node indexes instead of scanning the store (query p50 74 &rarr; 21 ms on this repository)</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md">v4.12.0 release notes</a></p>
         </div>

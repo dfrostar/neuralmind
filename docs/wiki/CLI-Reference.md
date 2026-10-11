@@ -1332,7 +1332,7 @@ mode where the OS has one. Storage encryption only fails when the project sets
 **Turbovec compatibility** fails when the turbovec index was quarantined
 (`index.tvim.stale`: the installed turbovec couldn't read it), and the fix is
 a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
-*(v4.12.0+)* Once that rebuild works, the check is `ok` even though
+*(v4.12.1+)* Once that rebuild works, the check is `ok` even though
 `index.tvim.stale` is still there: doctor loads the live index, without
 changing any file, and fails only if it can't. The detail line names the
 backup, which you can delete when you no longer need it.
@@ -1348,7 +1348,7 @@ only on turbovec projects.
 check **failed** — so you can gate a CI step or an agent's provisioning on
 `neuralmind doctor`. `--json` exits the same way, after printing the report;
 its `status` field (`ok` / `warn` / `fail`) is the same verdict.
-*(v4.12.0+)* v0.55.0 through v4.11.0 always exited `0`, even when a check
+*(v4.12.1+)* v0.55.0 through v4.12.0 always exited `0`, even when a check
 failed; on those versions read `--json`'s `status` instead.
 
 **Example:**
