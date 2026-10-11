@@ -166,9 +166,10 @@ jobs:
         if: always()
         run: bandit -q -r neuralmind -f sarif -o bandit.sarif --exit-zero
 
-      # Fork PRs get a read-only token, so the upload would fail there.
+      # Fork and Dependabot PRs get a read-only token, so the upload would
+      # fail there.
       - name: Upload bandit report to code scanning
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: bandit.sarif

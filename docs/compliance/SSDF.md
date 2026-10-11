@@ -31,16 +31,23 @@ beyond reading it:
 ```bash
 # The container image: a keyless Sigstore signature from the release workflow
 cosign verify ghcr.io/dfrostar/neuralmind:vX.Y.Z \
-  --certificate-identity-regexp '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@' \
+  --certificate-identity-regexp '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # Its build provenance (which workflow, commit and runner built it)
-gh attestation verify oci://ghcr.io/dfrostar/neuralmind:vX.Y.Z --repo dfrostar/neuralmind
+gh attestation verify oci://ghcr.io/dfrostar/neuralmind:vX.Y.Z --repo dfrostar/neuralmind \
+  --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
 
 # The wheel or sdist you downloaded
 pip download --no-deps neuralmind==X.Y.Z -d dist/
-gh attestation verify dist/neuralmind-X.Y.Z-py3-none-any.whl --repo dfrostar/neuralmind
+gh attestation verify dist/neuralmind-X.Y.Z-py3-none-any.whl --repo dfrostar/neuralmind \
+  --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/release\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
 ```
+
+The identity patterns pin both the workflow and the git ref it ran from:
+`main`, where release-please dispatches releases, or a `vX.Y.Z` tag. A
+signature from the same workflow run on any other branch fails them. `--repo`
+alone would accept it.
 
 The release workflow runs the first two against every image it publishes and
 fails before `:latest` moves if either doesn't verify.

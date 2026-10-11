@@ -101,7 +101,10 @@ jobs:
       # NIST SP 800-218 (SSDF) PS.2 / PS.3: a signed statement of which
       # workflow, commit and runner built each file, so anyone can check that
       # a wheel or sdist came from this repository's release:
-      #   gh attestation verify neuralmind-X.Y.Z-py3-none-any.whl --repo dfrostar/neuralmind
+      #   gh attestation verify neuralmind-X.Y.Z-py3-none-any.whl --repo dfrostar/neuralmind \
+      #     --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/release\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
+      # The regex pins the ref: main (release-please dispatches without --ref)
+      # or a vX.Y.Z tag, so an attestation from another branch's run fails.
       # PyPI also gets PEP 740 attestations from trusted publishing below.
       - name: Attest build provenance (wheel + sdist)
         uses: actions/attest-build-provenance@v4

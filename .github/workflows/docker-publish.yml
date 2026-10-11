@@ -187,7 +187,10 @@ jobs:
 
       # The same checks SECURITY.md tells users to run. An image whose
       # signature or provenance doesn't verify fails here, so :latest never
-      # moves to it.
+      # moves to it. The identity is pinned to this workflow on the two refs a
+      # release runs from: main (release-please dispatches without --ref) and a
+      # vX.Y.Z tag (a tag push). A dispatch from any other branch signs as that
+      # branch and fails, so a modified copy of this workflow can't pass.
       - name: Verify the signature and build provenance
         env:
           GH_TOKEN: ${{ github.token }}
@@ -195,11 +198,13 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
+          IDENTITY="^https://github\.com/${GITHUB_REPOSITORY}/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$"
           cosign verify "${IMAGE}" \
-            --certificate-identity-regexp "^https://github\.com/${GITHUB_REPOSITORY}/\.github/workflows/docker-publish\.yml@" \
+            --certificate-identity-regexp "${IDENTITY}" \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             > /dev/null
-          gh attestation verify "oci://${IMAGE}" --repo "${GITHUB_REPOSITORY}"
+          gh attestation verify "oci://${IMAGE}" --repo "${GITHUB_REPOSITORY}" \
+            --cert-identity-regex "${IDENTITY}"
 
       - name: Pull + smoke-test the version-tagged image
         env:

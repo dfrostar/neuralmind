@@ -191,9 +191,10 @@ PIPAPI_PYTHON_LOCATION=/tmp/audit/bin/python \
 
 # A published image (v4.14.0 and later)
 cosign verify ghcr.io/dfrostar/neuralmind:v4.14.0 \
-  --certificate-identity-regexp '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@' \
+  --certificate-identity-regexp '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/dfrostar/neuralmind:v4.14.0 --repo dfrostar/neuralmind
+gh attestation verify oci://ghcr.io/dfrostar/neuralmind:v4.14.0 --repo dfrostar/neuralmind \
+  --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
 ```
 
 ## Related

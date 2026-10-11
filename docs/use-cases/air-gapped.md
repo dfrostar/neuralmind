@@ -181,7 +181,8 @@ you bundled is the one this repository's release workflow built. Do this
 before the transfer, because the check needs the network:
 
 ```bash
-gh attestation verify offline-bundle/neuralmind-*.whl --repo dfrostar/neuralmind
+gh attestation verify offline-bundle/neuralmind-*.whl --repo dfrostar/neuralmind \
+  --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/release\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
 ```
 
 It checks the wheel's GitHub build-provenance attestation, which names the
