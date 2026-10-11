@@ -127,8 +127,23 @@ jobs:
           echo "OPENSSL_CONF=$HOME/.cache/openssl-fips/openssl-fips.cnf" >> "$GITHUB_ENV"
           echo "OPENSSL_MODULES=$HOME/.cache/openssl-fips" >> "$GITHUB_ENV"
 
+      # Team-tier licence and seat-manifest signatures are Ed25519, which the
+      # OpenSSL 3.0 FIPS provider doesn't implement, so those tests can't run
+      # here (they run in every other test job). On a FIPS-mode host a valid
+      # Team licence reads as invalid: SECURITY-GUIDE.md "Requiring encrypted
+      # storage" says so, and the fix is open. Deselected by node id, so a new
+      # Ed25519 test fails here instead of hiding.
       - name: Run tests under the FIPS provider
-        run: pytest tests/ -q --tb=short
+        run: |
+          pytest tests/ -q --tb=short \
+            --ignore=tests/test_operations.py \
+            --deselect tests/test_paid_seats_sync.py::TestVerifyManifestSignature::test_verify_valid \
+            --deselect tests/test_paid_seats_sync.py::TestVerifyManifestSignature::test_verify_tampered_seat \
+            --deselect tests/test_paid_seats_sync.py::TestSyncSeats::test_sync_valid_manifest \
+            --deselect tests/test_paid_seats_sync.py::TestSyncSeats::test_sync_exceeds_limit \
+            --deselect tests/test_e2e_seat_governance.py::test_e2e_activate_add_admin \
+            --deselect tests/test_e2e_seat_governance.py::test_e2e_non_admin_rejected \
+            --deselect tests/test_e2e_seat_governance.py::test_e2e_audit_log_complete
 
   type-check:
     name: Type Check
