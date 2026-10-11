@@ -1,0 +1,104 @@
+name: Field report
+description: Tell us how NeuralMind is doing on your codebase, good or bad, with the numbers that let us act on it.
+title: "[field report] <one line: what worked or didn't>"
+labels: ["community"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for writing this up. Reports from real repositories are how
+        NeuralMind finds what its own benchmarks miss.
+
+        **Privacy:** every command below runs locally and prints numbers, not
+        code. Leave out anything you can't share: repository names, file
+        paths, and the questions in your eval file are all optional. Reports
+        that name a private codebase are paraphrased before anything from them
+        is quoted.
+
+        For a crash or a wrong result you can reproduce, the **Bug Report**
+        template is the better fit. For a vulnerability, see
+        [SECURITY.md](https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What you found
+      description: What worked, what didn't, and what you expected instead. A list is fine.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agents
+    attributes:
+      label: Agents using NeuralMind
+      multiple: true
+      options:
+        - Claude Code (hooks and/or MCP)
+        - Hermes-Agent plugin
+        - Cursor
+        - Cline
+        - Continue
+        - Other MCP client
+        - CLI only
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How NeuralMind is installed
+      options:
+        - pip into a project venv
+        - pipx
+        - uv tool
+        - Docker image
+        - From source
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `neuralmind --version`
+      placeholder: "neuralmind 4.14.0"
+    validations:
+      required: true
+
+  - type: input
+    id: repo_shape
+    attributes:
+      label: Codebase size and languages
+      description: Roughly. The node count is in `neuralmind stats .`.
+      placeholder: "~1,200 files, 19k nodes, Python + TypeScript"
+
+  - type: textarea
+    id: stats
+    attributes:
+      label: "`neuralmind stats .`"
+      description: Shows the synapse layer's size, including transitions, and its growth this week.
+      render: text
+
+  - type: textarea
+    id: health
+    attributes:
+      label: "`neuralmind doctor .` (and `neuralmind metrics .` if you have it)"
+      description: Index freshness, a leftover graph, and query and build counts. No query text is recorded.
+      render: text
+
+  - type: textarea
+    id: eval
+    attributes:
+      label: "`neuralmind eval . --synapse-ab` (v4.14.0+, optional)"
+      description: |
+        Only if you have a `.neuralmind.eval.yaml` with your own questions. The output shows
+        metrics and counts, not the questions themselves (unless you add `--show-questions`).
+        Walkthrough: https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: OS, how long it's been installed, how you measured, links to a public repo if there is one.

@@ -10,6 +10,16 @@ on:
   # GitHub's anti-recursion guard suppresses workflow runs for those pushes,
   # so the release PR otherwise shows these checks as never-started (#98).
   workflow_dispatch:
+  # A merge queue tests each PR on top of the ones queued ahead of it; its
+  # required checks must run on this event or the queue waits forever.
+  merge_group:
+
+# A new push to a PR cancels that PR's older run: the Windows job alone takes
+# ~25 minutes, and a stale result is never the one that decides the merge.
+# Pushes to main always run to completion.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Read-only token by default; a job that needs more declares its own
 # permissions: block, which replaces this one for that job.
@@ -74,6 +84,11 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          # Caches downloads, not the environment: pip still resolves from
+          # pyproject.toml every run. Not used by the FIPS and fresh-install
+          # jobs, whose point is a cold build and a cold install.
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
@@ -204,6 +219,8 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
