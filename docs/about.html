@@ -218,14 +218,14 @@
 
     <section>
         <div class="container" id="whats-new-v4111">
-            <h2>What&rsquo;s New in v4.11.1 &mdash; no turbovec store on a ChromaDB project</h2>
+            <h2>Also in v4.12.0 &mdash; no turbovec store on a ChromaDB project</h2>
             <p><strong>Two turbovec checks ran on every backend.</strong> <code>neuralmind build</code> and <code>neuralmind doctor</code> check whether the turbovec index was quarantined, and both opened the turbovec store to do it, which creates the file, even on a project with ChromaDB pinned.</p>
             <ul>
                 <li><strong><code>build</code> creates no turbovec store on other backends</strong> &mdash; with <code>backend: graph</code>, <code>chroma</code>, <code>chromadb</code> or <code>in_memory</code> in <code>neuralmind-backend.yaml</code>, no empty <code>.neuralmind/neuralmind_turbovec/store.sqlite</code> appears next to the real index</li>
                 <li><strong><code>doctor</code> says the check doesn&rsquo;t apply</strong> &mdash; <em>Turbovec compatibility</em> reads &ldquo;not applicable: the chroma backend keeps no turbovec index&rdquo; (status <code>ok</code>) instead of calling an index that doesn&rsquo;t exist compatible</li>
                 <li><strong>Turbovec projects are checked as before</strong> &mdash; a quarantined <code>index.tvim.stale</code> still warns at build time and fails the doctor check</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md">v4.11.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md#also-in-this-release-no-turbovec-store-on-a-chromadb-project">v4.12.0 release notes</a></p>
         </div>
     </section>
 

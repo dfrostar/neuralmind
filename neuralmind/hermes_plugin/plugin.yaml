@@ -1,5 +1,5 @@
 name: neuralmind
-version: "4.11.0" # x-release-please-version
+version: "4.12.0" # x-release-please-version
 description: "NeuralMind code memory: related files and decisions added to every turn, and the last session's recap to a session's first, with no tool call."
 author: NeuralMind
 license: MIT
