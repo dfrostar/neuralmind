@@ -5,8 +5,8 @@ whether it's helping, including the agent that installed it. Also teams being
 asked to keep paying for it.
 
 **Primary goal:** an answer you could defend to a skeptical reviewer, built
-from your own past incidents and a read-only A/B of the learned layer
-(v4.13.0+).
+from your own past incidents and a read-only A/B of the synapse layer
+(v4.14.0+).
 
 The easy way to judge a tool you chose yourself is to run a few queries, see the
 right symbols come back, and call it a win. A NeuralMind user did exactly that,
@@ -69,7 +69,7 @@ Compare it with what you'd have done without NeuralMind. For each question,
 run the grep you would actually have typed and see whether the gold file is in
 the first five files it lists. If grep finds them just as often, keep grep.
 
-## 3. A/B the learned layer
+## 3. A/B the synapse layer
 
 The synapse layer is the part that's supposed to improve with use. Measure it
 instead of assuming it:
@@ -79,20 +79,26 @@ neuralmind eval . --synapse-ab
 ```
 
 ```
-  learned recall off: hit@1 30% · hit@5 70% · MRR 0.46
-  learned recall moved 2 question(s) up, 0 down, 8 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
-  learned layer read: 3,612 edges (41 LTP), 0 transitions
+  synapse recall off: hit@1 30% · hit@5 70% · MRR 0.46
+  synapse recall moved 2 question(s) up, 0 down, 8 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
+  synapse layer read: 3,612 edges, seeded and learned (usage-learned: 0 LTP edges, 0 transitions)
 ```
 
 *(Illustrative.)* Both runs use the same questions and the same index, and
 both are read-only. The only difference is that the second run switches
-learned recall off (`NEURALMIND_SYNAPSE_INJECT=0`). How to read it:
+synapse recall off (`NEURALMIND_SYNAPSE_INJECT=0`). How to read it:
 
-- **No difference and an empty layer** is the expected result early on, not a
-  failure. The layer learns only what it's shown.
+- **It measures the whole synapse layer, not only what usage taught it.**
+  Every build seeds the layer with the code graph's call and import edges, so
+  a fresh build can already show a difference. That part is static structure.
+  The usage-learned part is the LTP edges and transitions on the last line;
+  seeding adds neither.
+
+- **Early on, any difference is the seeded structure's**, and no difference
+  is a normal result too, not a failure. The layer learns only what it's shown.
 - **0 transitions** means nothing has recorded the order you work through
   files in. Transitions come from the Claude Code hooks
-  (`neuralmind install-hooks`), the Hermes plugin (reads and edits, v4.13.0+),
+  (`neuralmind install-hooks`), the Hermes plugin (edits, and reads from v4.14.0),
   or `neuralmind watch .`. Queries alone never add them. `neuralmind stats .`
   shows the week's growth.
 - **A p-value near 1** on ten questions says nothing either way. Two questions
@@ -108,16 +114,17 @@ neuralmind eval . --report
 ```
 
 ```
-Learned recall on vs off (`--synapse-ab` runs):
+Synapse recall on vs off (`--synapse-ab` runs; LTP edges and transitions are what usage taught it):
 
-| Date       | Commit  | Edges | Transitions | hit@5 off → on | MRR off → on | Up / down | p (hit@5) |
-|------------|---------|------:|------------:|---------------:|-------------:|----------:|----------:|
-| 2026-10-12 | a1b2c3d | 3,612 |           0 |      70% → 70% |  0.46 → 0.52 |     2 / 0 |      1.00 |
-| 2026-11-09 | e4f5a6b | 5,980 |         214 |      70% → 80% |  0.48 → 0.61 |     4 / 1 |      0.50 |
+| Date       | Commit  | Edges | LTP | Transitions | hit@5 off → on | MRR off → on | Up / down | p (hit@5) |
+|------------|---------|------:|----:|------------:|---------------:|-------------:|----------:|----------:|
+| 2026-10-12 | a1b2c3d | 3,612 |   0 |           0 |      70% → 70% |  0.46 → 0.52 |     2 / 0 |      1.00 |
+| 2026-11-09 | e4f5a6b | 5,980 | 118 |         214 |      70% → 80% |  0.48 → 0.61 |     4 / 1 |      0.50 |
 ```
 
 *(Illustrative.)* "Compounding" is a claim about this table: the on-minus-off
-gap should grow as edges and transitions grow. If the layer grows and the gap
+gap should grow as LTP edges and transitions grow, since those are what usage
+adds (the first row's gap is the seeded structure's). If they grow and the gap
 doesn't, the learning isn't paying for itself on your repo, and you can say so
 with numbers. Either way, you'll have the evidence a reviewer would ask for.
 
@@ -156,4 +163,4 @@ Related: [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.m
 [Recover from a stale code graph](./recover-from-a-stale-graph.md) ·
 [The honest public benchmark](../benchmarks/public.md) ·
 [Learning Guide: what trains which part](../wiki/Learning-Guide.md) ·
-[Release notes v4.13.0](../releases/RELEASE_NOTES_v4.13.0.md)
+[Release notes v4.14.0](../releases/RELEASE_NOTES_v4.14.0.md)

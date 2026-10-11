@@ -387,8 +387,8 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 a magnitude. That gate runs on a ~500-line fixture, so it shows direction,
                                 not that learning pays off on a real codebase over weeks of use: nothing
                                 published shows that yet. <code className="font-mono text-[0.85em] text-slate-300">neuralmind eval . --synapse-ab</code> measures
-                                it on your own repo (v4.13.0+): your questions, learned recall on and off,
-                                recorded so you can see whether the gap grows as the layer does.
+                                it on your own repo (v4.14.0+): your questions, synapse recall on and off,
+                                recorded so you can see whether the gap grows as usage teaches the layer more.
                             </p>
                         </div>
                         <div className="border-l-2 border-carbon-line pl-5">

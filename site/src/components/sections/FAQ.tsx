@@ -18,7 +18,7 @@ const faqs = [
     },
     {
         q: 'Does NeuralMind get better the more I use it?',
-        a: 'It is built to: the synapse layer strengthens links between files you use together and lets unused ones fade, and recall uses those links to re-rank results. What is shown so far is narrower. CI checks that learned recall never lowers the hit rate, on a ~500-line fixture, which shows direction rather than size. Nothing we publish yet shows it improving retrieval on a real codebase over weeks of use, and nothing measures whether agents finish tasks faster. You can measure the first on your own repo: write down questions with the file that answers each (past incidents, phrased as the symptom), then run "neuralmind eval . --synapse-ab" (v4.13.0+), which runs them with learned recall on and off and records the difference each time.',
+        a: 'It is built to: the synapse layer strengthens links between files you use together and lets unused ones fade, and recall uses those links to re-rank results. What is shown so far is narrower. CI checks that learned recall never lowers the hit rate, on a ~500-line fixture, which shows direction rather than size. Nothing we publish yet shows it improving retrieval on a real codebase over weeks of use, and nothing measures whether agents finish tasks faster. You can measure the first on your own repo: write down questions with the file that answers each (past incidents, phrased as the symptom), then run "neuralmind eval . --synapse-ab" (v4.14.0+), which runs them with synapse recall on and off and records the difference each time.',
     },
     {
         q: 'How is NeuralMind different from CLAUDE.md or Cursor rules?',

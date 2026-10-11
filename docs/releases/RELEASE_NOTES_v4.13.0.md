@@ -1,4 +1,4 @@
-# NeuralMind v4.13.0 — the index stays fresh after pulls, merges, branch switches and rebases, and the git hooks work whatever PATH the git client has; usage and learning you can see, a grace period for staleness gates, MCP calls attributed to their client, no silent leftover graphify graph, and a way to measure whether the learned layer helps on your own repo
+# NeuralMind v4.13.0 — the index stays fresh after pulls, merges, branch switches and rebases, and the git hooks work whatever PATH the git client has; usage and learning you can see, a grace period for staleness gates, MCP calls attributed to their client, and no silent leftover graphify graph
 
 **Type:** Minor release | **Theme:** `neuralmind init-hook` keeps the index in step with the checked-out tree — not only with local commits — without making git wait, and without touching throwaway worktrees
 
@@ -121,46 +121,6 @@ repository was no longer read. This release closes three of those gaps.
   which learns from edits but doesn't re-index them, so anyone following it kept
   a drifting index.
 
-### Measuring the learned layer instead of assuming it
-
-A field user put NeuralMind to an adversarial review: the retrieval demos
-showed the right symbols coming back, but nothing showed the synapse layer
-making retrieval better over time, and the store had sat at 0 transitions for
-two months. That was a fair hit. The CI synapse gate is directional and runs on
-a ~500-line fixture; nothing published shows the layer paying off on a real
-codebase. This release adds the measurement, and the public pages now say what
-is and isn't shown.
-
-- **`neuralmind eval . --synapse-ab`** runs your `.neuralmind.eval.yaml`
-  questions twice, read-only, with the learned recall on and then off
-  (`NEURALMIND_SYNAPSE_INJECT=0` for the second run only). Under the usual
-  summary it prints the "off" hit@1, hit@5 and MRR, how many questions the
-  learned layer moved up or down, hit@5 won and lost with an exact McNemar
-  p-value, and the size of the layer it read:
-
-  ```
-  NeuralMind eval — shop (12 questions, read-only)
-    hit@1 50% · hit@5 83% · MRR 0.64
-    ...
-    learned recall off: hit@1 42% · hit@5 83% · MRR 0.60
-    learned recall moved 2 question(s) up, 0 down, 10 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
-    learned layer read: 3,612 edges (41 LTP), 12 transitions
-  ```
-
-  (illustrative). A cold layer gives identical runs and says so. The
-  comparison is stored in `.neuralmind/eval_history.jsonl` with the run, and
-  `neuralmind eval . --report` adds a **Learned recall on vs off** table, one
-  row per A/B run, so you can see whether the gap grows as the layer does.
-  `--json` includes it as `synapse_ab`.
-- **The Hermes plugin learns transitions from reads.** It recorded only
-  `write_file` and `patch`, so a Hermes session that read its way through a
-  codebase taught the store nothing about the order. A successful `read_file`
-  of a file inside the served project now records a transition step, as
-  Claude Code's Read hook does (`neuralmind _hook read-activity`). Reads
-  outside the project, such as Hermes's own config or another repository, are
-  never recorded. `NEURALMIND_NO_LEARN=1` turns it off with the rest of the
-  learning.
-
 ### FIPS-mode hosts
 
 - **Document ingestion works with the OS FIPS mode on.** It hashed a
@@ -203,19 +163,13 @@ what produces transitions. A cron job or CI step that runs
 `neuralmind health . --stale-after 30m` stops paging while a watcher catches up
 and pages once it falls behind for longer.
 
-An agent, or the person running it, can check the learned layer instead of
-trusting it: `neuralmind eval . --synapse-ab --json` returns the on and off
-metrics side by side. Under Hermes, a session that only reads files now builds
-transitions, so `neuralmind next` has something to say about what usually
-follows.
-
 ## Per-agent expectations
 
 | Agent | What changes |
 |---|---|
 | Claude Code (hooks + MCP) | The index follows git operations, not only commits; commits it runs return before the rebuild; its MCP calls are attributed to `claude-code` in the audit log; no hook, MCP tool or response field changed |
 | Cursor / Cline / Continue (MCP) | Same; each call's audit event names the client by its own `clientInfo` name |
-| Hermes-Agent plugin | Same; its prompt-time recall was already counted in `neuralmind metrics`, and queries Hermes makes through the MCP server are now counted too. A `read_file` of a file inside the project records a transition step, one background `neuralmind _hook read-activity` call per read |
+| Hermes-Agent plugin | Same; its prompt-time recall was already counted in `neuralmind metrics`, and queries Hermes makes through the MCP server are now counted too |
 | Generic MCP client | Same; a client that sends no `clientInfo` (allowed from the 2026-07-28 protocol on) is recorded without a `client` field |
 
 ## Upgrading
@@ -240,10 +194,6 @@ follows.
   exits 0.
 - The first build after upgrading prints synapse totals without a change;
   later builds show the change since the previous one.
-- `eval --synapse-ab` is opt-in; a plain `neuralmind eval .` and its history
-  rows are unchanged.
-- Under Hermes, each `read_file` inside the project starts one short
-  background NeuralMind process, as each edit already did.
 - `.neuralmind/metrics/` grows by one small line per query (30 days kept,
   10 MB a day at most, as before). Fields a query doesn't record (tool calls,
   retrieval reuse) are no longer shown as zeros in `neuralmind metrics`.
@@ -256,10 +206,6 @@ pytest tests/test_usage_metrics.py tests/test_metrics.py tests/test_mcp_security
 pytest tests/test_index_freshness.py -k "graphify or StaleAfter or Health" -v
 pytest tests/test_cli_exit_codes.py -v
 python scripts/mcp_stdio_smoke.py
-pytest tests/test_measurement_v450.py -k "synapse_ab or SynapseAB" -v
-pytest tests/test_hermes_plugin.py -k read -v
-pytest tests/test_hooks.py -k read_activity -v
-pytest tests/test_site_claims.py -v
 
 # FIPS-mode hosts: the static check, then the whole suite under the provider
 pytest tests/test_fips_hash_usage.py -v
@@ -281,4 +227,3 @@ main checkout rebuilds.
 - #316 — worktrees and NeuralMind state
 - [CLI reference: `init-hook`](../wiki/CLI-Reference.md#init-hook)
 - [Branch-isolated memory](../use-cases/branch-isolated-memory.md)
-- [Does NeuralMind earn its place on your repo?](../use-cases/does-it-earn-its-place.md) — replay past incidents as gold questions, and A/B the learned layer

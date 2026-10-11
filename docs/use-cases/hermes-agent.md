@@ -152,12 +152,12 @@ background thread, so the turn doesn't wait for it. The file goes into the
 session's record for the next recap, and into the synapse layer, as an Edit or
 Write does in Claude Code.
 
-*(v4.13.0+)* Reads count too. A successful `read_file` of a file inside the
+*(v4.14.0+)* Reads count too. A successful `read_file` of a file inside the
 project records a step in the synapse layer's file-to-file transitions, as
 Claude Code's Read hook does, so a session that reads its way through the code
 teaches `neuralmind next` what usually follows what. Reads aren't added to the
 recap, and a read outside the project (Hermes's own config, another
-repository) is never recorded. Before v4.13.0 only edits counted, so a Hermes
+repository) is never recorded. Before v4.14.0 only edits counted, so a Hermes
 project that was mostly read and queried stayed at 0 transitions.
 
 Not recorded:

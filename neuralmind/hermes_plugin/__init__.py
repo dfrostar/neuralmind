@@ -419,6 +419,11 @@ def _record_read(project: Path, session_id: str, args: dict) -> None:
     file_path = Path(path).expanduser()
     if not file_path.is_absolute():
         file_path = Path(os.environ.get("TERMINAL_CWD") or os.getcwd()) / file_path
+    # The path is the transition's key: ``src/a.py`` and ``sub/../src/a.py``
+    # must be one file, not two with a false step between them. normpath folds
+    # the ``..`` without following symlinks, so the key stays spelled the way
+    # edits and Claude Code's hooks spell it.
+    file_path = Path(os.path.normpath(file_path))
     try:
         file_path.resolve().relative_to(project.resolve())
     except (ValueError, OSError):

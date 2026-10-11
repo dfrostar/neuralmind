@@ -7263,7 +7263,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--synapse-ab",
         dest="synapse_ab",
         action="store_true",
-        help="Run the questions again with learned recall off and report the difference "
+        help="Run the questions again with synapse recall off and report the difference "
         "(questions moved up/down, hit@5 won/lost, exact McNemar p)",
     )
     eval_p.add_argument(

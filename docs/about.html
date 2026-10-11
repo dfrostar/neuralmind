@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4140">
+            <h2>What&rsquo;s New in v4.14.0 &mdash; measure whether the synapse layer helps on your own repo</h2>
+            <p><strong>A way to check the learning instead of taking it on trust.</strong> A field user had a second agent review their NeuralMind setup adversarially. The verdict: the demos showed the mechanism working, not the outcome, and nothing showed the synapse layer improving retrieval over time. Fair, so this release adds the measurement:</p>
+            <ul>
+                <li><strong><code>neuralmind eval . --synapse-ab</code></strong> &mdash; your own gold questions, run read-only with synapse recall on and then off: questions moved up or down, hit@5 won and lost with an exact McNemar p-value, and the size of the layer it read. <code>eval --report</code> keeps a table of these runs, so you can see whether the gap grows as the usage-learned part (LTP edges, transitions) does; the switch also covers the call and import edges every build seeds, so a fresh build can already differ (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md">walkthrough</a>)</li>
+                <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does (reinstall the plugin after upgrading)</li>
+                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.14.0.md">v4.14.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4130">
             <h2>What&rsquo;s New in v4.13.0 &mdash; the index stays fresh after pulls, merges, branch switches and rebases</h2>
             <p><strong>The git hooks follow the checked-out tree, not only local commits.</strong> <code>neuralmind init-hook</code> used to install one rebuild hook, <code>post-commit</code>: a <code>git pull</code>, branch switch, merge or rebase changed the files without a local commit, and the index kept describing the old tree until the next one. The hook also skipped itself without a word when the git client&rsquo;s PATH lacked <code>neuralmind</code>, and every commit waited for the rebuild.</p>
@@ -216,12 +229,6 @@
                 <li><strong><code>query --explain --json</code></strong> &mdash; the explanation (layers, communities, top hits with scores, synapses fired) is now in the JSON instead of dropped</li>
                 <li><strong>Learning you can see</strong> &mdash; each build prints the synapse store&rsquo;s growth since the last one, <code>neuralmind stats</code> shows the week&rsquo;s, and with no transitions learned they say what produces them</li>
                 <li><strong>A grace period for staleness gates</strong> &mdash; <code>stale_after: 30m</code> lets <code>health</code> report <code>catching_up</code> while a watcher catches up and makes <code>doctor</code> fail once the index has been behind for longer; doctor dates its drift (<code>newest modified 2h ago</code>)</li>
-            </ul>
-            <p><strong>And a way to check the learning instead of taking it on trust.</strong> A field user had a second agent review their NeuralMind setup adversarially. The verdict: the demos showed the mechanism working, not the outcome, and nothing showed the synapse layer improving retrieval over time. Fair, so this release adds the measurement:</p>
-            <ul>
-                <li><strong><code>neuralmind eval . --synapse-ab</code></strong> &mdash; your own gold questions, run read-only with learned recall on and then off: questions moved up or down, hit@5 won and lost with an exact McNemar p-value, and the size of the layer it read. <code>eval --report</code> keeps a table of these runs, so you can see whether the gap grows as the layer does (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md">walkthrough</a>)</li>
-                <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does</li>
-                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.13.0.md">v4.13.0 release notes</a></p>
         </div>
@@ -1547,7 +1554,7 @@ $ neuralmind query . "CMMC gap analysis"
             <p>The agent gets exactly what it needs, in order, without bloat.</p>
 
             <h3>Learnable Patterns</h3>
-            <p>NeuralMind learns from how you actually use the codebase. The brain-like synapse layer (described below) strengthens links between the code you query, edit, and run tools over together, with no external training and no manual step, and recall uses those links to re-rank results. CI checks that this never lowers the hit rate, on a small fixture; whether it improves retrieval on your codebase over time is something to measure, not assume: <code>neuralmind eval . --synapse-ab</code> <em>(v4.13.0+)</em> runs your own questions with it on and off.</p>
+            <p>NeuralMind learns from how you actually use the codebase. The brain-like synapse layer (described below) strengthens links between the code you query, edit, and run tools over together, with no external training and no manual step, and recall uses those links to re-rank results. CI checks that this never lowers the hit rate, on a small fixture; whether it improves retrieval on your codebase over time is something to measure, not assume: <code>neuralmind eval . --synapse-ab</code> <em>(v4.14.0+)</em> runs your own questions with it on and off.</p>
 
             <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
             <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>

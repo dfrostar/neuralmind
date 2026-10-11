@@ -210,7 +210,7 @@
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "neuralmind eval . --synapse-ab",
       "evidence": "disclosure",
-      "note": "A disclosure, not a result. `neuralmind eval . --synapse-ab` runs a project's own gold questions with learned recall on and off and records the difference in .neuralmind/eval_history.jsonl, so a user can see whether it grows as the layer does. No such history is published. Do not write that the layer 'compounds', 'gets smarter over time' or 'improves retrieval continuously' until one is."
+      "note": "A disclosure, not a result. `neuralmind eval . --synapse-ab` runs a project's own gold questions with synapse recall on and off and records the difference in .neuralmind/eval_history.jsonl, with the usage-learned counts (LTP edges, transitions), so a user can see whether it grows as usage teaches the layer more. Recall also follows the call and import edges every build seeds, so a fresh build can already differ. No such history is published. Do not write that the layer 'compounds', 'gets smarter over time' or 'improves retrieval continuously' until one is."
     }
   ],
   "unsourced_do_not_use": [

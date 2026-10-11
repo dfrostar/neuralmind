@@ -212,6 +212,16 @@ def test_read_file_inside_the_project_records_a_read(tmp_path, calls, sync_threa
     ]
 
 
+def test_read_path_is_normalized_so_one_file_has_one_key(tmp_path, calls, sync_threads):
+    _built(tmp_path)
+    for path in ("src/app.py", "src/../src/app.py", "./src/./app.py"):
+        plugin.on_post_tool_call(
+            tool_name="read_file", args={"path": path}, result="{}", session_id="s1"
+        )
+    keys = {payload["tool_input"]["file_path"] for _action, payload in calls}
+    assert keys == {str(tmp_path / "src" / "app.py")}
+
+
 def test_read_file_outside_the_project_is_not_recorded(tmp_path, calls, sync_threads, monkeypatch):
     project = _built(tmp_path / "proj")
     monkeypatch.setenv("NEURALMIND_PROJECT", str(project))

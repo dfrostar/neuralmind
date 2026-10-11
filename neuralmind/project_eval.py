@@ -26,10 +26,11 @@ shared team baseline — while the history stays in the untracked
 question count only, unless ``--show-questions`` is passed, so questions that
 name internal code don't end up in pasted issues and posts.
 
-``eval --synapse-ab`` runs the questions a second time with learned recall
+``eval --synapse-ab`` runs the questions a second time with synapse recall
 switched off and reports the difference (:func:`run_synapse_ab`): the
 on-your-own-repo test of whether the synapse layer is helping, recorded in the
-history so ``--report`` shows whether the gap grows as the layer does.
+history with the layer's usage-learned size, so ``--report`` shows whether the
+gap grows as usage teaches it more.
 """
 
 from __future__ import annotations
@@ -254,7 +255,7 @@ def run_eval(
 
 
 # --------------------------------------------------------------------------- #
-# Learned recall on vs off
+# Synapse recall on vs off
 # --------------------------------------------------------------------------- #
 def mcnemar_exact(wins: int, losses: int) -> float:
     """Two-sided exact McNemar p-value for ``wins`` vs ``losses`` discordant pairs."""
@@ -266,7 +267,11 @@ def mcnemar_exact(wins: int, losses: int) -> float:
 
 
 def _learned_layer(mind: Any) -> dict[str, int]:
-    """Size of the learned layer the "on" arm read; zeros before anything was learned."""
+    """Size of the synapse layer the "on" arm read.
+
+    ``edges`` counts build-seeded and usage-learned edges together; ``ltp_edges``
+    and ``transitions`` come only from usage (seeding adds neither).
+    """
     store = mind._read_only_store() if hasattr(mind, "_read_only_store") else None
     try:
         stats = store.stats() if store is not None else {}
@@ -288,15 +293,21 @@ def run_synapse_ab(
     questions: list[EvalQuestion] | None = None,
     mind: Any = None,
 ) -> EvalReport:
-    """Run the eval twice — learned recall on, then off — and compare per question.
+    """Run the eval twice — synapse recall on, then off — and compare per question.
 
     Same questions, same index, both read-only; the only difference is
     ``NEURALMIND_SYNAPSE_INJECT=0`` on the second run, which switches off the
     synapse re-ranking. The returned report is the "on" run (the normal eval)
     with ``synapse_ab`` filled in: the "off" metrics, how many questions the
-    learned layer moved up or down, an exact McNemar p-value on hit@5, and the
-    size of the learned layer it read. A cold layer gives identical runs —
-    that is the expected result, not a failure.
+    synapse layer moved up or down, an exact McNemar p-value on hit@5, and the
+    size of the layer it read.
+
+    The switch turns off the whole synapse layer, which holds two kinds of
+    edge: the call/import edges every build seeds from the graph, and what
+    usage taught it. So one run measures both together, and a fresh build can
+    already differ. Usage learning is what moves as the LTP-edge and transition
+    counts grow (seeding adds neither), which is why the history records them:
+    whether the gap grows with them is the usage-learning signal.
     """
     import os
 
@@ -305,10 +316,14 @@ def run_synapse_ab(
         from .core import NeuralMind
 
         mind = NeuralMind(str(root))
-    on = run_eval(root, questions, mind=mind)
+    # Each arm sets the switch itself: a caller who already exported
+    # NEURALMIND_SYNAPSE_INJECT=0 would otherwise get two "off" runs labelled
+    # as on vs off. Their value comes back afterwards.
     saved = os.environ.get("NEURALMIND_SYNAPSE_INJECT")
-    os.environ["NEURALMIND_SYNAPSE_INJECT"] = "0"
     try:
+        os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+        on = run_eval(root, questions, mind=mind)
+        os.environ["NEURALMIND_SYNAPSE_INJECT"] = "0"
         off = run_eval(root, questions, mind=mind)
     finally:
         if saved is None:
@@ -349,22 +364,22 @@ def render_synapse_ab(report: EvalReport) -> str:
         return ""
     lines = [
         (
-            f"  learned recall off: hit@1 {_pct(ab['off_hit_at_1'])} · "
+            f"  synapse recall off: hit@1 {_pct(ab['off_hit_at_1'])} · "
             f"hit@5 {_pct(ab['off_hit_at_5'])} · MRR {ab['off_mrr']:.2f}"
         ),
         (
-            f"  learned recall moved {ab['better']} question(s) up, {ab['worse']} down, "
+            f"  synapse recall moved {ab['better']} question(s) up, {ab['worse']} down, "
             f"{ab['same']} unchanged · hit@5 {ab['hit5_wins']} won / {ab['hit5_losses']} lost "
             f"(exact McNemar p = {ab['p_value']:.2f})"
         ),
         (
-            f"  learned layer read: {ab['edges']:,} edges ({ab['ltp_edges']:,} LTP), "
-            f"{ab['transitions']:,} transitions"
+            f"  synapse layer read: {ab['edges']:,} edges, seeded and learned "
+            f"(usage-learned: {ab['ltp_edges']:,} LTP edges, {ab['transitions']:,} transitions)"
         ),
     ]
     if ab["better"] == 0 and ab["worse"] == 0:
         lines.append(
-            "  No difference: the learned layer changed no ranking here"
+            "  No difference: the synapse layer changed no ranking here"
             + (" (it is empty)." if ab["edges"] == 0 else ".")
         )
     return "\n".join(lines)
@@ -456,23 +471,28 @@ def render_report(rows: list[dict[str, Any]], last_run: dict[str, Any] | None = 
         )
     ab_rows = [row for row in rows if isinstance(row.get("synapse_ab"), dict)]
     if ab_rows:
-        # The trend that says whether the learned layer is earning its keep:
-        # does on-minus-off grow as the layer grows?
-        out.append("")
-        out.append("Learned recall on vs off (`--synapse-ab` runs):")
+        # The trend that says whether usage learning is earning its keep: does
+        # on-minus-off grow as LTP edges and transitions (usage-only) grow?
         out.append("")
         out.append(
-            "| Date | Commit | Edges | Transitions | hit@5 off → on | MRR off → on "
+            "Synapse recall on vs off (`--synapse-ab` runs; LTP edges and transitions "
+            "are what usage taught it):"
+        )
+        out.append("")
+        out.append(
+            "| Date | Commit | Edges | LTP | Transitions | hit@5 off → on | MRR off → on "
             "| Up / down | p (hit@5) |"
         )
         out.append(
-            "|------|--------|------:|------------:|---------------:|-------------:|----------:|----------:|"
+            "|------|--------|------:|----:|------------:|---------------:|-------------:"
+            "|----------:|----------:|"
         )
         for row in ab_rows:
             ab = row["synapse_ab"]
             out.append(
                 f"| {str(row.get('date', ''))[:10]} | {row.get('git_sha') or '—'} "
-                f"| {int(ab.get('edges', 0)):,} | {int(ab.get('transitions', 0)):,} "
+                f"| {int(ab.get('edges', 0)):,} | {int(ab.get('ltp_edges', 0)):,} "
+                f"| {int(ab.get('transitions', 0)):,} "
                 f"| {_pct(float(ab.get('off_hit_at_5', 0)))} → {_pct(float(row.get('hit_at_5', 0)))} "
                 f"| {float(ab.get('off_mrr', 0)):.2f} → {float(row.get('mrr', 0)):.2f} "
                 f"| {int(ab.get('better', 0))} / {int(ab.get('worse', 0))} "

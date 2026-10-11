@@ -499,7 +499,7 @@ class TestProjectEval:
         cli.main()
         assert "| Date |" in capsys.readouterr().out
 
-    def test_synapse_ab_compares_learned_recall_on_and_off(self, tmp_path, monkeypatch):
+    def test_synapse_ab_compares_synapse_recall_on_and_off(self, tmp_path, monkeypatch):
         from neuralmind import project_eval
 
         _eval_project(tmp_path)
@@ -517,15 +517,15 @@ class TestProjectEval:
         assert ab["edges"] > 0
         assert "NEURALMIND_SYNAPSE_INJECT" not in os.environ  # restored
         assert _db_state(tmp_path) == before  # both runs read-only
-        assert "learned layer read" in project_eval.render_synapse_ab(report)
+        assert "synapse layer read" in project_eval.render_synapse_ab(report)
 
         project_eval.append_history(tmp_path, report)
         project_eval.append_history(tmp_path, project_eval.run_eval(tmp_path, mind=_mind(tmp_path)))
         rows = project_eval.read_history(tmp_path)
         assert rows[0]["synapse_ab"] == ab
         assert "synapse_ab" not in rows[1]  # a plain run doesn't carry the field
-        assert "Learned recall on vs off" in project_eval.render_report(rows)
-        assert "Learned recall on vs off" not in project_eval.render_report(rows[1:])
+        assert "Synapse recall on vs off" in project_eval.render_report(rows)
+        assert "Synapse recall on vs off" not in project_eval.render_report(rows[1:])
 
     def test_cli_eval_synapse_ab(self, tmp_path, capsys, monkeypatch):
         from neuralmind import cli, core
@@ -543,7 +543,7 @@ class TestProjectEval:
         monkeypatch.setattr("sys.argv", ["neuralmind", "eval", str(tmp_path), "--synapse-ab"])
         cli.main()
         out = capsys.readouterr().out
-        assert "learned recall off:" in out and "learned layer read:" in out
+        assert "synapse recall off:" in out and "synapse layer read:" in out
 
     def test_questions_file_is_validated(self, tmp_path):
         from neuralmind import project_eval
@@ -626,6 +626,25 @@ class TestSynapseABCounting:
         assert (ab["hit5_wins"], ab["hit5_losses"]) == (2, 1)
         assert ab["p_value"] == 1.0
         assert ab["transitions"] == 1
+
+    def test_on_arm_runs_with_recall_on_whatever_the_caller_exported(self, monkeypatch):
+        """A caller's NEURALMIND_SYNAPSE_INJECT=0 must not turn the on arm off too."""
+        from neuralmind import project_eval
+
+        seen = []
+
+        def fake_run_eval(project, questions=None, mind=None):
+            seen.append(os.environ.get("NEURALMIND_SYNAPSE_INJECT"))
+            return self._report([1, 2])
+
+        monkeypatch.setattr(project_eval, "run_eval", fake_run_eval)
+        monkeypatch.setattr(project_eval, "_learned_layer", lambda mind: {})
+        for exported in ("0", "1"):
+            seen.clear()
+            monkeypatch.setenv("NEURALMIND_SYNAPSE_INJECT", exported)
+            project_eval.run_synapse_ab(".", mind=object())
+            assert seen == [None, "0"]  # on arm: unset (recall on); off arm: "0"
+            assert os.environ["NEURALMIND_SYNAPSE_INJECT"] == exported  # restored
 
     def test_mcnemar_exact(self):
         from neuralmind.project_eval import mcnemar_exact

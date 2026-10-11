@@ -197,7 +197,7 @@ Three loss modes, reported plainly:
   across runs, CI-gated on direction, budget-neutral, on the ~500-line reference
   fixture. That shows the direction, not that the layer pays off on a real
   codebase over weeks of use: nothing published shows that yet.
-  `neuralmind eval . --synapse-ab` (v4.13.0+) measures it on your own repo, with
+  `neuralmind eval . --synapse-ab` (v4.14.0+) measures it on your own repo, with
   your own questions, and records whether the gap grows as the layer does
   ([walkthrough](../use-cases/does-it-earn-its-place.md)).
 - **A repository indexed from its root.** Each repo is indexed from its source

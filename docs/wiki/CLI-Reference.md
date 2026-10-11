@@ -1554,7 +1554,7 @@ Each run appends date, commit, NeuralMind version, node count and the metrics to
 | `--suggest` | Draft questions from module docstrings and README `##` headings, with the defining file as gold, for you to edit. `--write` saves them to `.neuralmind.eval.yaml` (never overwrites); `--count N` sets how many |
 | `--questions FILE` | Read questions from another file |
 | `--no-history` | Don't append this run to the history |
-| `--synapse-ab` *(v4.13.0+)* | Run the questions again with learned recall off and report the difference; see below |
+| `--synapse-ab` *(v4.14.0+)* | Run the questions again with synapse recall off and report the difference; see below |
 | `--json`, `-j` | Emit the report as JSON |
 
 ```bash
@@ -1571,26 +1571,32 @@ NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0's keyword in
 NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default research flag
 ```
 
-#### Learned recall on vs off (`--synapse-ab`) *(v4.13.0+)*
+#### Synapse recall on vs off (`--synapse-ab`) *(v4.14.0+)*
 
 `neuralmind eval . --synapse-ab` runs every question twice, both read-only:
-first as usual, then with the synapse layer's learned recall switched off
-(`NEURALMIND_SYNAPSE_INJECT=0` for that run only). The summary gains three
+first with synapse recall on, then with it switched off
+(`NEURALMIND_SYNAPSE_INJECT=0` for that run only; each run sets the variable
+itself, so an exported `NEURALMIND_SYNAPSE_INJECT=0` doesn't turn the first
+run off too, and its value is restored afterwards). The summary gains three
 lines:
 
 ```
-  learned recall off: hit@1 42% · hit@5 83% · MRR 0.60
-  learned recall moved 2 question(s) up, 0 down, 10 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
-  learned layer read: 3,612 edges (41 LTP), 12 transitions
+  synapse recall off: hit@1 42% · hit@5 83% · MRR 0.60
+  synapse recall moved 2 question(s) up, 0 down, 10 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
+  synapse layer read: 3,612 edges, seeded and learned (usage-learned: 41 LTP edges, 12 transitions)
 ```
 
 *(Illustrative.)* "Up" and "down" compare each question's gold-file rank (a
 miss ranks last); the McNemar p-value is two-sided and exact, over the
 questions whose hit@5 differs. With an empty layer, or one that changes no
-ranking, it says so. The history row carries a `synapse_ab` object (also in
-`--json`), and `--report` adds a **Learned recall on vs off** table: date,
-commit, edges, transitions, hit@5 and MRR off → on, questions up / down, and p.
-That table answers whether the gap grows as the layer does. Walkthrough:
+ranking, it says so. The switch covers the whole layer: the call and import
+edges every build seeds, and what usage taught it. So a fresh build can already
+differ; the usage-learned part is the LTP edges and transitions (seeding adds
+neither). The history row carries a `synapse_ab` object (also in
+`--json`), and `--report` adds a **Synapse recall on vs off** table: date,
+commit, edges, LTP edges, transitions, hit@5 and MRR off → on, questions up /
+down, and p. That table answers whether the gap grows as LTP edges and
+transitions do. Walkthrough:
 [Does NeuralMind earn its place on your repo?](../use-cases/does-it-earn-its-place.md)
 
 #### Retrieval eval harness (`python -m evals.retrieval.run`) *(v4.6.0+)*

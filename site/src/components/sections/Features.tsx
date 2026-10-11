@@ -17,7 +17,7 @@ const groups: Group[] = [
     {
         id: 'memory',
         heading: 'Memory that learns how you work',
-        lede: 'Associations strengthen when you use code together and fade when you stop, so recall can reflect how your team works, not just what the files say. Whether it helps on your repo is measurable: `neuralmind eval . --synapse-ab` runs your questions with learned recall on and off.',
+        lede: 'Associations strengthen when you use code together and fade when you stop, so recall can reflect how your team works, not just what the files say. Whether it helps on your repo is measurable: `neuralmind eval . --synapse-ab` runs your questions with synapse recall on and off.',
         features: [
             {
                 icon: 'synapse',
