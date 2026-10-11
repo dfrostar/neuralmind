@@ -2608,27 +2608,50 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 
 ### init-hook
 
-Install (or update) two Git hooks, both idempotent and both appended to any
-existing hook script rather than overwriting it:
+Install (or update) the Git hooks that keep the index in step with the
+checked-out tree. All are idempotent and appended to any existing hook script
+rather than overwriting it:
 
 - **`post-commit`** first runs `neuralmind decisions scan . --quiet`
   *(v4.6.0+)*, which marks STALE any recorded decision whose file the commit
   changed after the decision was recorded and prints them (see
   [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
-  Re-run `init-hook` on an existing checkout to get the scan; the managed
-  block is replaced in place.
+  The scan runs synchronously (it reads HEAD), and only where a decision
+  store exists.
+- **`post-merge`**, **`post-checkout`** and **`post-rewrite`** *(v4.13.0+)*
+  rebuild the index after merges and pulls, branch switches (only a branch
+  checkout that lands on a different commit) and rebases or amends: events
+  that change the tree without a local commit.
+- **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
+  staged diff — the commit-time drift guard described under
+  [`drift`](#drift-v320) below.
+
+How the rebuild runs *(v4.13.0+)*:
+
+- **In the background**, so git doesn't wait. A lock in `.neuralmind/`
+  serializes builds, and events that arrive while one runs coalesce into one
+  more build. The log is `.neuralmind/hook-build.log`. `--sync` restores the
+  foreground rebuild.
+- **With the `neuralmind` found at install time**, falling back to PATH, so
+  the hooks work from GUI clients, IDEs and service managers whose PATH lacks
+  it. Re-run `init-hook` after moving or reinstalling NeuralMind.
+- **Only in a built project** (`.neuralmind/build_status.json`, which only a
+  build writes). Linked worktrees share a repository's hooks; a worktree
+  nobody has built is left alone, even when a session hook has created its
+  `.neuralmind/`. In a new repository run `neuralmind build .` once —
+  `init-hook` warns when there is no index yet.
+
+Re-run `init-hook` on an existing checkout to pick up new hooks; the managed
+blocks are replaced in place.
 
 For a project in a subdirectory of its repository, or in a linked worktree,
 the hooks go in the repository's hooks directory and name the project by its
 path from the repository root, since git runs hooks from there (for example
 `neuralmind decisions scan services/api`). The managed block is one per hook
 file, so a second project in the same repository replaces the first's.
-- **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
-  staged diff — the commit-time drift guard described under
-  [`drift`](#drift-v320) below.
 
 ```bash
-neuralmind init-hook [project_path] [--no-drift] [--strict]
+neuralmind init-hook [project_path] [--no-drift] [--strict] [--sync]
 ```
 
 #### Arguments
@@ -2636,20 +2659,24 @@ neuralmind init-hook [project_path] [--no-drift] [--strict]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
-| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit hook only |
+| `--no-drift` | No | Skip installing the pre-commit drift guard; rebuild hooks only |
 | `--strict` | No | Make the installed drift guard block commits instead of warning |
+| `--sync` | No | Rebuild in the foreground (git waits for the build) instead of in the background *(v4.13.0+)* |
 
 #### Examples
 
 ```bash
-# Install both hooks (drift guard warns, never blocks)
+# Install all hooks (drift guard warns, never blocks)
 neuralmind init-hook .
 
-# Install both hooks, with drift blocking the commit
+# Install all hooks, with drift blocking the commit
 neuralmind init-hook . --strict
 
-# Install only the post-commit hook (decision scan + rebuild), no drift guard
+# Rebuild hooks only (decision scan + rebuilds), no drift guard
 neuralmind init-hook . --no-drift
+
+# Keep the foreground rebuild (git waits for it)
+neuralmind init-hook . --sync
 ```
 
 ---

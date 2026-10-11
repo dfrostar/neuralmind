@@ -1356,7 +1356,7 @@ class TestCLIInitHook:
         assert hook_path.exists()
         content = hook_path.read_text()
         assert "neuralmind-hook-start" in content
-        assert "neuralmind build" in content
+        assert '"$_nm_bin" build .' in content
 
     def test_cmd_init_hook_idempotent(self, tmp_path, capsys):
         """Running init-hook twice updates the block without duplicating."""

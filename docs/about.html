@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4130">
+            <h2>What&rsquo;s New in v4.13.0 &mdash; the index stays fresh after pulls, merges, branch switches and rebases</h2>
+            <p><strong>The git hooks follow the checked-out tree, not only local commits.</strong> <code>neuralmind init-hook</code> used to install one rebuild hook, <code>post-commit</code>: a <code>git pull</code>, branch switch, merge or rebase changed the files without a local commit, and the index kept describing the old tree until the next one. The hook also skipped itself without a word when the git client&rsquo;s PATH lacked <code>neuralmind</code>, and every commit waited for the rebuild.</p>
+            <ul>
+                <li><strong>More triggers</strong> &mdash; <code>post-merge</code>, <code>post-checkout</code> (a branch checkout that lands on another commit) and <code>post-rewrite</code> rebuild the index too; <code>post-commit</code> keeps its decision scan</li>
+                <li><strong>Any git client</strong> &mdash; the hooks call the <code>neuralmind</code> found at install time, falling back to PATH, so GUI clients, IDEs and service managers trigger rebuilds as well</li>
+                <li><strong>git doesn&rsquo;t wait</strong> &mdash; the rebuild runs in the background behind a lock that coalesces bursts of events; the log is <code>.neuralmind/hook-build.log</code>, and <code>--sync</code> keeps the foreground rebuild</li>
+                <li><strong>Throwaway worktrees are left alone</strong> &mdash; the shared hooks rebuild only a project that has been built (<code>build_status.json</code>), even when a session hook created its <code>.neuralmind/</code> directory</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.13.0.md">v4.13.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4121">
             <h2>What&rsquo;s New in v4.12.1 &mdash; <code>neuralmind doctor</code> exits 1 when a check fails, as documented</h2>
             <p><strong>A v0.55.0 regression in an exit code scripts gate on.</strong> The CLI reference and the install-paths walkthrough (<code>neuralmind doctor . &amp;&amp; neuralmind wakeup .</code>) say <code>doctor</code> exits non-zero on a failed check, and v0.12.0 shipped it that way. From v0.55.0 through v4.12.0 it always exited 0: a helper inserted above its last lines left the <code>sys.exit(1)</code> unreachable, and a lint pass deleted it.</p>

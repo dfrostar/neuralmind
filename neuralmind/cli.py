@@ -819,7 +819,9 @@ def cmd_build(args):
     # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
         print()
-        print("  💡 Keep the index fresh: neuralmind init-hook .  (auto-rebuild on every commit)")
+        print(
+            "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
+        )
         print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
 
 
@@ -6128,18 +6130,181 @@ def _git_hooks_location(project_path: str) -> tuple[str | None, str | None]:
     return hooks, top
 
 
+# Git events that change the checked-out tree without a local commit. Each gets a
+# rebuild-only block; ``post-commit`` additionally runs the decision scan.
+_LIFECYCLE_HOOKS = {
+    "post-merge": "a merge or pull",
+    "post-checkout": "a branch switch",
+    "post-rewrite": "a rebase or amend",
+}
+
+
+def _neuralmind_hook_binary() -> str:
+    """Absolute path of the ``neuralmind`` console script, or ``""``.
+
+    Git runs hooks with the *caller's* PATH. GUI clients, IDEs and service
+    managers (launchd, systemd) often lack ``~/.local/bin``, where pipx and
+    venv installs put the script, so a bare ``command -v neuralmind`` skips
+    the hook without a word. Baking the path in at install time, with
+    ``command -v`` as the fallback, keeps the hooks working from any caller.
+    """
+    import os
+    import shutil
+    import sys
+    import sysconfig
+
+    found = shutil.which("neuralmind")
+    if found:
+        return os.path.abspath(found)
+    # Not on this PATH either (e.g. run as `python -m neuralmind`): the script
+    # sits in this interpreter's scripts directory (a venv's bin/).
+    name = "neuralmind.exe" if sys.platform.startswith("win") else "neuralmind"
+    sibling = os.path.join(sysconfig.get_path("scripts"), name)
+    if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+        return sibling
+    return ""
+
+
+def _hook_resolve_binary_lines(bin_path: str) -> str:
+    """Shell lines that set ``$_nm_bin``: the install-time path, else PATH."""
+    import shlex
+
+    # Forward slashes: Git for Windows runs hooks in its POSIX shell.
+    quoted = shlex.quote(bin_path.replace("\\", "/")) if bin_path else "''"
+    return f'_nm_bin={quoted}\n[ -x "$_nm_bin" ] || _nm_bin=$(command -v neuralmind 2>/dev/null)\n'
+
+
+def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
+    """Shell lines (indented one level) that rebuild the index for ``target``.
+
+    Background (default): git doesn't wait. A ``mkdir`` lock serializes
+    builds; an event that arrives while one runs leaves a ``pending`` flag
+    and the running build goes round once more, so bursts (a rebase, a pull
+    right after a commit) coalesce instead of piling up or being lost. A lock
+    older than an hour belongs to a build that died and is cleared. Git's
+    per-invocation variables are unset because the build outlives the hook
+    (``GIT_INDEX_FILE`` can name a temporary index that is gone by then).
+
+    ``--sync``: the previous behavior — git waits for the build.
+    """
+    if sync:
+        if announce:
+            return (
+                '    echo "[neuralmind] Rebuilding neural index..."\n'
+                f'    "$_nm_bin" build {target} >/dev/null 2>&1 && \\\n'
+                '        echo "[neuralmind] OK" || \\\n'
+                '        echo "[neuralmind] Rebuild failed (non-critical)"\n'
+            )
+        return f'    "$_nm_bin" build {target} >/dev/null 2>&1 || true\n'
+    started = (
+        '        echo "[neuralmind] Rebuilding the index in the background (log: $_nm_dir/hook-build.log)"\n'
+        if announce
+        else ""
+    )
+    queued = (
+        '        echo "[neuralmind] A rebuild is already running; it will include this change"\n'
+        if announce
+        else ""
+    )
+    return (
+        f"    _nm_dir={target}/.neuralmind\n"
+        '    find "$_nm_dir/.hook-build.lock" -maxdepth 0 -mmin +60 -exec rmdir {} \\; 2>/dev/null\n'
+        '    if mkdir "$_nm_dir/.hook-build.lock" 2>/dev/null; then\n'
+        "        (\n"
+        "            unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX\n"
+        "            while :; do\n"
+        '                rm -f "$_nm_dir/.hook-build.pending"\n'
+        f'                "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1\n'
+        '                [ -e "$_nm_dir/.hook-build.pending" ] || break\n'
+        "            done\n"
+        '            rmdir "$_nm_dir/.hook-build.lock"\n'
+        "        ) </dev/null >/dev/null 2>&1 &\n"
+        f"{started}"
+        "    else\n"
+        '        : >"$_nm_dir/.hook-build.pending"\n'
+        f"{queued}"
+        "    fi\n"
+    )
+
+
+# What makes a project "built", as session_recap._project_built() defines it: the
+# SessionStart / UserPromptSubmit hooks create .neuralmind/ in any repository they
+# run in, and only a build writes build_status.json.
+_BUILT_MARKER = ".neuralmind/build_status.json"
+
+_HOOK_SCOPE_COMMENT = (
+    "# Managed by `neuralmind init-hook`. Rebuilds only a project that has been built\n"
+    "# (.neuralmind/build_status.json), so throwaway worktrees sharing these hooks stay\n"
+    "# untouched even after a session hook has created their .neuralmind/ directory.\n"
+)
+
+
+def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
+    """The ``post-commit`` block: decision scan (synchronous — it reads HEAD), then rebuild."""
+    return (
+        "# neuralmind-hook-start\n"
+        "# Retire decisions this commit made stale, then rebuild the NeuralMind index.\n"
+        + _HOOK_SCOPE_COMMENT
+        + _hook_resolve_binary_lines(bin_path)
+        # The scan's own precondition: no decision store, nothing to scan.
+        + f'if [ -n "$_nm_bin" ] && [ -f {target}/.neuralmind/memory.db ]; then\n'
+        + f'    "$_nm_bin" decisions scan {target} --quiet || true\n'
+        + "fi\n"
+        + f'if [ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
+        + _hook_rebuild_lines(target, sync, announce=True)
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
+
+
+def _lifecycle_block(hook: str, target: str, bin_path: str, sync: bool) -> str:
+    """A rebuild-only block for ``post-merge`` / ``post-checkout`` / ``post-rewrite``.
+
+    ``post-checkout`` fires for file checkouts too; only a branch checkout
+    (third argument ``1``) that lands on a different commit changes the tree.
+    No ``exit``: other tools' contributions to the same hook (git-lfs installs
+    ``post-checkout`` and ``post-merge``) must keep running after ours.
+    """
+    cond = '[ "$3" = "1" ] && [ "$1" != "$2" ] && ' if hook == "post-checkout" else ""
+    return (
+        "# neuralmind-hook-start\n"
+        f"# Rebuild the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
+        + _HOOK_SCOPE_COMMENT
+        + _hook_resolve_binary_lines(bin_path)
+        + f'if {cond}[ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
+        + _hook_rebuild_lines(target, sync, announce=False)
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
+
+
 def cmd_init_hook(args):
     """Initialize the Git hooks that keep the index fresh and the code honest.
 
-    Installs two hooks, both idempotent and both appended to any existing
+    Installs these hooks, all idempotent and all appended to any existing
     script rather than overwriting it:
 
     - ``post-commit`` marks recorded decisions STALE when the commit changed
       their files (``decisions scan``), then rebuilds the index so it never
       drifts stale;
+    - ``post-merge``, ``post-checkout`` (branch switches to another commit)
+      and ``post-rewrite`` rebuild the index after pulls, merges, branch
+      switches and rebases — events that change the tree without a local
+      commit;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
+
+    The rebuild runs in the background so git doesn't wait (``--sync`` keeps
+    the old foreground rebuild), serialized by a lock so overlapping events
+    coalesce, with its log at ``.neuralmind/hook-build.log``. The hooks call
+    the ``neuralmind`` found at install time, falling back to PATH, so they
+    work from GUI clients and service managers whose PATH lacks it. They
+    rebuild only a project that has been built (``build_status.json``, the
+    same test the session hooks use): linked worktrees share a repository's
+    hooks, and throwaway ones stay untouched (see #316) until someone runs
+    ``neuralmind build`` there — even after a session hook has created their
+    ``.neuralmind/`` directory.
 
     The pre-commit guard warns and exits 0 by default — a check that
     blocks commits on a heuristic loses its welcome fast. ``--strict``
@@ -6173,29 +6338,19 @@ def cmd_init_hook(args):
 
     hook_path = os.path.join(git_hooks_dir, "post-commit")
 
-    # The neuralmind block is delimited by sentinels so re-runs replace
-    # the block in place and coexist with other tools' hook contributions
-    # (e.g. `graphify hook install`).
-    #
-    # Note: `neuralmind build` has no --quiet flag; we redirect output to
-    # /dev/null instead. Using --force keeps it fast (skips nothing) but
-    # still reuses existing embeddings for unchanged nodes via hash checks.
+    # Blocks are delimited by sentinels so re-runs replace them in place and
+    # coexist with other tools' hook contributions (e.g. `graphify hook
+    # install`, git-lfs). `neuralmind build` has no --quiet flag, so its
+    # output goes to the log (background) or /dev/null (--sync).
     #
     # `decisions scan --quiet` prints only when a recorded decision went
     # stale, does nothing in a project with no decisions, and always exits 0;
     # `|| true` keeps a hook that can never fail the commit regardless.
-    nm_block = f"""# neuralmind-hook-start
-# Retire decisions this commit made stale, then rebuild the NeuralMind index.
-# Managed by `neuralmind init-hook`.
-if command -v neuralmind >/dev/null 2>&1; then
-    neuralmind decisions scan {target} --quiet || true
-    echo "[neuralmind] Rebuilding neural index..."
-    neuralmind build {target} >/dev/null 2>&1 && \\
-        echo "[neuralmind] OK" || \\
-        echo "[neuralmind] Rebuild failed (non-critical)"
-fi
-# neuralmind-hook-end
-"""
+    # `is True`: only a real --sync flag (argparse stores a bool) opts out of
+    # the background rebuild.
+    sync = getattr(args, "sync", False) is True
+    bin_path = _neuralmind_hook_binary()
+    nm_block = _post_commit_block(target, bin_path, sync)
 
     try:
         action = _write_hook(hook_path, nm_block)
@@ -6203,7 +6358,26 @@ fi
         if target != ".":
             print(f"  For the project at {rel} in the repository {repo_root}.")
         print("  After every commit: decisions whose files it changed are marked STALE,")
-        print("  then the index rebuilds.")
+        if sync:
+            print("  then the index rebuilds (git waits: --sync).")
+        else:
+            print("  then the index rebuilds in the background (git doesn't wait;")
+            print("  log: .neuralmind/hook-build.log).")
+        for hook in _LIFECYCLE_HOOKS:
+            lifecycle_path = os.path.join(git_hooks_dir, hook)
+            action = _write_hook(lifecycle_path, _lifecycle_block(hook, target, bin_path, sync))
+            print(f"✓ NeuralMind {hook} hook {action} at {lifecycle_path}")
+        print("  Pulls, merges, branch switches and rebases rebuild the index too.")
+        print("  They rebuild only a project that has been built, so throwaway worktrees")
+        print("  that share them are left alone.")
+        if bin_path:
+            print(f"  They run {bin_path} (falling back to `neuralmind` on PATH).")
+        else:
+            print("  They run `neuralmind` from PATH: no install path was found, so a")
+            print("  git client whose PATH lacks it will skip them.")
+        if not os.path.isfile(os.path.join(project_path, *_BUILT_MARKER.split("/"))):
+            print(f"  ⚠ No index yet in {project_path}: run `neuralmind build {target}` once;")
+            print("    the hooks keep it fresh from then on.")
     except Exception as e:
         print(f"Error installing hook: {e}")
         sys.exit(1)
@@ -6217,16 +6391,21 @@ fi
     # exits 0 without --strict, but a hook that can never block a commit by
     # accident is one people leave installed.
     strict = getattr(args, "strict", False)
-    drift_cmd = f"neuralmind drift {target} --staged" + (" --strict" if strict else "")
+    drift_cmd = f'"$_nm_bin" drift {target} --staged' + (" --strict" if strict else "")
     tail = "" if strict else " || true"
-    drift_block = f"""# neuralmind-hook-start
-# Flag staged changes that drift from a pattern their peers share.
-# Managed by `neuralmind init-hook`.
-if command -v neuralmind >/dev/null 2>&1; then
-    {drift_cmd}{tail}
-fi
-# neuralmind-hook-end
-"""
+    # Same install-time binary as the rebuild hooks, so a git client whose
+    # PATH lacks `neuralmind` doesn't skip the guard silently. With --strict
+    # the `if` block's status is drift's, so a drift still blocks the commit.
+    drift_block = (
+        "# neuralmind-hook-start\n"
+        "# Flag staged changes that drift from a pattern their peers share.\n"
+        "# Managed by `neuralmind init-hook`.\n"
+        + _hook_resolve_binary_lines(bin_path)
+        + 'if [ -n "$_nm_bin" ]; then\n'
+        + f"    {drift_cmd}{tail}\n"
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
 
     pre_commit_path = os.path.join(git_hooks_dir, "pre-commit")
     try:
@@ -7461,7 +7640,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser(
         "init-hook",
         help="Install Git hooks: post-commit decision scan + index rebuild, "
-        "pre-commit drift guard",
+        "post-merge/post-checkout/post-rewrite rebuilds, pre-commit drift guard",
     )
     init_parser.add_argument(
         "project_path",
@@ -7473,12 +7652,17 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--no-drift",
         action="store_true",
-        help="Skip the pre-commit drift guard; install the post-commit hook only",
+        help="Skip the pre-commit drift guard; install the rebuild hooks only",
     )
     init_parser.add_argument(
         "--strict",
         action="store_true",
         help="Make the pre-commit drift guard block the commit instead of warning",
+    )
+    init_parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="Rebuild in the foreground (git waits for the build) instead of in the background",
     )
     init_parser.set_defaults(func=cmd_init_hook)
 
