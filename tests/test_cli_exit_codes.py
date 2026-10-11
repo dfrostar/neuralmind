@@ -15,9 +15,8 @@ So this file holds two kinds of check:
 
 Codes that need a built index or a licence store are covered next to their
 feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
-`health` -> 1, `tests/test_doctor.py` for `doctor`, `tests/test_audit_cli.py`
-for `audit verify`). `doctor` on an unbuilt project -> 1 joins the table
-once #624 (which restores that exit) is on main.
+`health` -> 1, `tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
+for `audit verify`).
 """
 
 from __future__ import annotations
@@ -99,6 +98,10 @@ def _with_aws_key(project: Path) -> None:
 
 # (id, argv with {p} for the project dir, setup, env, expected code)
 CONTRACT = [
+    # The regression this file exists for: no graph -> the code-graph check
+    # fails -> exit 1, in text and --json (v0.55.0 through v4.12.0 exited 0).
+    ("doctor-unbuilt-project", ["doctor", "{p}"], None, {}, 1),
+    ("doctor-unbuilt-project-json", ["doctor", "{p}", "--json"], None, {}, 1),
     ("health-no-index", ["health", "{p}"], None, {}, 2),
     ("scan-clean", ["scan-for-secrets", "{p}"], None, {}, 0),
     ("scan-high-confidence", ["scan-for-secrets", "{p}"], _with_aws_key, {}, 1),
