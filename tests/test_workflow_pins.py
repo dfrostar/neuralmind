@@ -19,10 +19,13 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# GitHub accepts both spellings for workflows and action metadata.
 FILES = sorted(
     [
         *(ROOT / ".github" / "workflows").glob("*.yml"),
+        *(ROOT / ".github" / "workflows").glob("*.yaml"),
         *(ROOT / ".github" / "actions").rglob("action.yml"),
+        *(ROOT / ".github" / "actions").rglob("action.yaml"),
     ]
 )
 USES = re.compile(r"^\s*-?\s*uses:\s*(\S+)(.*)$")
