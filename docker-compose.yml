@@ -19,8 +19,10 @@ services:
       - NEURALMIND_DATA_DIR=/data
       - NEURALMIND_ACTOR_EMAIL=admin@localhost
     healthcheck:
-      # `neuralmind doctor` exits 0 even when a check fails, so it can't fail a
-      # probe. `health` exits 0 healthy, 1 stale index, 2 no index.
+      # Not `neuralmind doctor`: it diagnoses the whole setup (graph, index,
+      # synapses, security policy, storage, ...) and exits 1 if any of those
+      # checks fails. `health` probes the index only: 0 healthy, 1 stale
+      # index, 2 no index.
       test: ["CMD", "neuralmind", "health", "/project"]
       interval: 30s
       timeout: 10s

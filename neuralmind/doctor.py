@@ -466,8 +466,21 @@ def _check_turbovec_version(project: Path) -> Check:
         from neuralmind.turbovec_backend import TurboVecEmbedder
 
         backend = TurboVecEmbedder(str(project))
-        stale_path = backend._index_path.with_name(backend._index_path.name + ".stale")
+        index_path = backend._index_path
+        stale_path = index_path.with_name(index_path.name + ".stale")
         if stale_path.exists():
+            # A .stale file is a past quarantine, not necessarily a current
+            # fault: `build` (or the next search) rebuilds the index and leaves
+            # the backup behind. So try the live index, with turbovec's own
+            # load, never _load_index(), which renames and rebuilds files.
+            # doctor stays read-only.
+            if _index_loads(index_path):
+                return Check(
+                    "Turbovec compatibility",
+                    OK,
+                    f"Index loads (a backup from a repaired version mismatch is "
+                    f"still at {stale_path.name}; delete it once you no longer need it)",
+                )
             tv_version = backend.turbovec_index_version()
             return Check(
                 "Turbovec compatibility",
@@ -478,6 +491,19 @@ def _check_turbovec_version(project: Path) -> Check:
         return Check("Turbovec compatibility", OK, "Index version compatible")
     except ImportError:
         return Check("Turbovec compatibility", WARN, "turbovec not installed — skipping")
+
+
+def _index_loads(index_path: Path) -> bool:
+    """Whether the installed turbovec can load the index file, read-only."""
+    if not index_path.exists():
+        return False
+    try:
+        import turbovec
+
+        turbovec.IdMapIndex.load(str(index_path))
+    except Exception:
+        return False
+    return True
 
 
 def _check_security_policy(project: Path) -> Check:

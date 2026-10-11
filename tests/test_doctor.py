@@ -251,6 +251,20 @@ def test_turbovec_check_still_catches_a_quarantined_index(temp_project, config):
     assert "quarantined" in check.detail
 
 
+def test_turbovec_check_fails_when_the_live_index_is_unreadable(temp_project):
+    # A backup *and* a live index turbovec can't load: still broken.
+    pytest.importorskip("turbovec")
+    tv_dir = temp_project / ".neuralmind" / "neuralmind_turbovec"
+    tv_dir.mkdir(parents=True)
+    (tv_dir / "index.tvim.stale").write_bytes(b"")
+    (tv_dir / "index.tvim").write_bytes(b"corrupt \x00")
+    check = doctor._check_turbovec_version(temp_project)
+    assert check.status == doctor.FAIL
+    assert "quarantined" in check.detail
+    # Read-only: doctor must not quarantine or rebuild the file itself.
+    assert (tv_dir / "index.tvim").read_bytes() == b"corrupt \x00"
+
+
 def test_run_diagnostics_off_turbovec_creates_no_turbovec_store(temp_project):
     (temp_project / "neuralmind-backend.yaml").write_text("backend: in_memory\n", encoding="utf-8")
     checks = {c.name: c for c in doctor.run_diagnostics(str(temp_project))}
@@ -281,6 +295,42 @@ def test_run_diagnostics_json_serialisable(empty_project):
     payload = {"status": doctor.overall_status(checks), "checks": [c.to_dict() for c in checks]}
     # Must round-trip through JSON for the --json output / agent consumption.
     assert json.loads(json.dumps(payload))["status"] in {doctor.OK, doctor.WARN, doctor.FAIL}
+
+
+def _doctor_args(project, json_out=False):
+    import argparse
+
+    return argparse.Namespace(project_path=str(project), json=json_out, config_path=None)
+
+
+@pytest.mark.parametrize("json_out", [False, True])
+def test_cmd_doctor_exits_1_when_a_check_fails(empty_project, capsys, json_out):
+    # No graph -> the code-graph check fails, so doctor must exit 1 and a
+    # script can gate on it (v0.55.0 accidentally made it always exit 0).
+    from neuralmind import cli
+
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_doctor(_doctor_args(empty_project, json_out))
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    if json_out:
+        assert json.loads(out)["status"] == doctor.FAIL
+    else:
+        assert "[FAIL]" in out
+
+
+@pytest.mark.parametrize("worst", [doctor.OK, doctor.WARN])
+def test_cmd_doctor_returns_normally_without_a_failure(empty_project, monkeypatch, worst):
+    from neuralmind import cli
+
+    monkeypatch.setattr(
+        doctor,
+        "run_diagnostics",
+        lambda _p: [doctor.Check("a", doctor.OK, ""), doctor.Check("b", worst, "")],
+    )
+    monkeypatch.setattr(cli, "_tier2_doctor_checks", lambda _a: [])
+    # Warnings alone don't fail the run: no SystemExit means exit status 0.
+    cli.cmd_doctor(_doctor_args(empty_project))
 
 
 def test_query_without_graph_raises_friendly_error(empty_project):

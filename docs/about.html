@@ -199,6 +199,18 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4121">
+            <h2>What&rsquo;s New in v4.12.1 &mdash; <code>neuralmind doctor</code> exits 1 when a check fails, as documented</h2>
+            <p><strong>A v0.55.0 regression in an exit code scripts gate on.</strong> The CLI reference and the install-paths walkthrough (<code>neuralmind doctor . &amp;&amp; neuralmind wakeup .</code>) say <code>doctor</code> exits non-zero on a failed check, and v0.12.0 shipped it that way. From v0.55.0 through v4.12.0 it always exited 0: a helper inserted above its last lines left the <code>sys.exit(1)</code> unreachable, and a lint pass deleted it.</p>
+            <ul>
+                <li><strong>Exit 1 on a failed check</strong> &mdash; with or without <code>--json</code> (the report is printed first); warnings still exit 0. A script that ran <code>doctor</code> under <code>set -e</code> now stops on a failure: use <code>|| true</code>, or read <code>--json</code>&rsquo;s <code>status</code></li>
+                <li><strong>A repaired turbovec index passes</strong> &mdash; a leftover <code>index.tvim.stale</code> backup used to fail the Turbovec compatibility check even after the index was rebuilt. <code>doctor</code> now loads the live index, without changing any file, and fails only if that load fails</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.1.md">v4.12.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4120">
             <h2>What&rsquo;s New in v4.12.0 &mdash; retrieval that keeps what vector search finds: 93% hit@5 on the retrieval eval, 40 of 40 on the public benchmark, 13–14 ms queries</h2>
             <p><strong>The layers on top of vector search were taking accuracy away.</strong> On the public benchmark, the <code>embedding-rag</code> baseline &mdash; NeuralMind&rsquo;s own vector index, top 8, nothing added &mdash; matched or beat the full query pipeline on gold-file recall on all four repositories. L3 kept four hits and re-ranked after that cut, boosts were sized to outvote the ranking, question words reached the keyword search, a node was embedded as metadata, and with eight hits one file could take every slot. v4.12.0 fixes each one, measured on the 150-question retrieval eval and the 40-query public benchmark.</p>
