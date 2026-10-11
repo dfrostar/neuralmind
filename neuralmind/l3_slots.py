@@ -358,7 +358,7 @@ def _answer_files_from_probes(embedder: Any, catalog: NodeCatalog) -> list[set[s
     import hashlib
 
     def key(s: str) -> str:
-        return hashlib.sha1(s.encode("utf-8")).hexdigest()
+        return hashlib.sha1(s.encode("utf-8"), usedforsecurity=False).hexdigest()
 
     per_file: dict[str, list[str]] = {}
     for node in catalog.by_id.values():

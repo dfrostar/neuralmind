@@ -89,6 +89,47 @@ jobs:
           fail_ci_if_error: false
         continue-on-error: true
 
+  # CMMC SC.L2-3.13.11 has operators turn the OS FIPS mode on, and there
+  # OpenSSL refuses MD5 unless the caller passes usedforsecurity=False:
+  # document ingestion (`neuralmind ingest`) crashed on such hosts. This runs
+  # the whole suite with the OpenSSL FIPS provider enforced, so a new non-FIPS
+  # hash fails here.
+  # tests/test_fips_hash_usage.py is the static half, and runs in every job.
+  fips:
+    name: Test (OpenSSL FIPS provider)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,chromadb]"
+
+      - name: Cache the FIPS provider build
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/openssl-fips
+          key: openssl-fips-${{ runner.os }}-${{ hashFiles('scripts/setup_fips_openssl.sh') }}
+
+      # After the install, so pip itself doesn't run under the FIPS config.
+      - name: Enforce the OpenSSL FIPS provider
+        run: |
+          bash scripts/setup_fips_openssl.sh "$HOME/.cache/openssl-fips"
+          echo "OPENSSL_CONF=$HOME/.cache/openssl-fips/openssl-fips.cnf" >> "$GITHUB_ENV"
+          echo "OPENSSL_MODULES=$HOME/.cache/openssl-fips" >> "$GITHUB_ENV"
+
+      - name: Run tests under the FIPS provider
+        run: pytest tests/ -q --tb=short
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

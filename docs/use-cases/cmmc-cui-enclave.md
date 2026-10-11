@@ -83,8 +83,10 @@ neuralmind doctor .
 
 On Linux and Windows the storage line also reports whether the OS FIPS mode is
 on. If it's off while encryption is required, `doctor` warns: CMMC asks for
-FIPS-validated cryptography. A group-writable policy file is a warning too,
-since anyone in the group could change roles.
+FIPS-validated cryptography. NeuralMind's own hash calls work with the FIPS
+mode on *(v4.13.0+; before that, `neuralmind ingest` crashed there)*. A
+group-writable policy file is a warning too, since anyone in the group could
+change roles.
 
 ## 5. What an assessor can look at
 

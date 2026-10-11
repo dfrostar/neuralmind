@@ -39,7 +39,8 @@ def _fake_embed(texts: list[str]) -> list[list[float]]:
     for t in texts:
         vec = np.zeros(_DIM, dtype=np.float32)
         for tok in t.lower().replace("\n", " ").split():
-            vec[int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], "little") % _DIM] += 1.0
+            digest = hashlib.md5(tok.encode(), usedforsecurity=False).digest()
+            vec[int.from_bytes(digest[:4], "little") % _DIM] += 1.0
         out.append(vec.tolist())
     return out
 
@@ -1005,7 +1006,8 @@ def fake(texts):
     for t in texts:
         v = [0.0] * 384
         for tok in t.lower().split():
-            v[int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], "little") % 384] += 1.0
+            digest = hashlib.md5(tok.encode(), usedforsecurity=False).digest()
+            v[int.from_bytes(digest[:4], "little") % 384] += 1.0
         out.append(v)
     return out
 

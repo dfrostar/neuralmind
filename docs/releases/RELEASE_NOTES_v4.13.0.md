@@ -51,6 +51,21 @@ And every commit waited for the rebuild. The field report is #630.
   held (git-lfs installs `post-checkout` and `post-merge`), so other tools'
   hooks keep working.
 
+### FIPS-mode hosts
+
+- **Document ingestion works with the OS FIPS mode on.** It hashed a
+  file's parent directory with a bare `hashlib.md5()` to build node ids, and a
+  FIPS-mode OpenSSL refuses MD5, so `neuralmind ingest`, `ingest-content`,
+  book builds and the `neuralmind_ingest_document` MCP tool failed with
+  `UnsupportedDigestmodError` on the hosts the CMMC walkthrough tells you to
+  configure. The call now passes `usedforsecurity=False` (it's an id, not a
+  security control), and so does a SHA-1 sort key in the L3 slot ranking.
+  Node ids are unchanged, so no rebuild is needed.
+- **CI runs the test suite with the OpenSSL FIPS provider enforced**
+  (`scripts/setup_fips_openssl.sh`), and `tests/test_fips_hash_usage.py` fails
+  any MD5, SHA-1 or BLAKE2 call in the repo that doesn't say it's not for
+  security.
+
 ## What the agent actually sees
 
 The index an agent queries matches the checked-out tree after a pull, branch
@@ -87,6 +102,12 @@ worktree nobody built prints nothing from NeuralMind.
 
 ```bash
 pytest tests/test_init_hook_lifecycle.py -v
+
+# FIPS-mode hosts: the static check, then the whole suite under the provider
+pytest tests/test_fips_hash_usage.py -v
+bash scripts/setup_fips_openssl.sh ~/.cache/openssl-fips
+OPENSSL_CONF=~/.cache/openssl-fips/openssl-fips.cnf \
+  OPENSSL_MODULES=~/.cache/openssl-fips pytest tests/
 ```
 
 The end-to-end tests drive real git with a fake `neuralmind` that records its
