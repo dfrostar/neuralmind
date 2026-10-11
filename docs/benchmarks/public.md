@@ -197,7 +197,7 @@ across runs, CI-gated on direction, budget-
   examples and docs never compete with the library code for a slot. Indexed
   from the root, as `neuralmind build .` indexes a checkout, they do. The
   multi-repo retrieval eval measures that case on the same four repos and
-  commits (`python -m evals.retrieval.run --full-repo`, v4.12.0+; raw output in
+  commits (`python -m evals.retrieval.run --full-repo`, v4.12.1+; raw output in
   [`bench/retrieval/examples-v4.12/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
   metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds

@@ -44,10 +44,10 @@ Customer shall NOT:
 The License Term is specified in the License File (1, 3, 6, 12, 24, or 36 months).
 
 ### 4.2 Expiration
-Upon expiration:
-- The Software will enter a 30-day grace period with reduced functionality
-- After grace period, the Software will cease to function until renewed
-- Customer data is preserved for 90 days post-expiration, then deleted
+Upon expiration of the License Term:
+- A grace period of 30 days applies, during which the licensed features continue to operate so that Customer can renew without interruption
+- After the grace period, the licensed (Team) features stop operating until the license is renewed. The open-source (MIT-licensed) components of the Software are not affected
+- The Software stores Customer data only on Customer's own systems. Expiration does not delete or alter that data, and Customer remains responsible for it. Provider keeps its licensing and billing records as described in the NeuralMind Privacy Policy
 
 ### 4.3 Renewal
 Customer may renew by:
@@ -84,7 +84,7 @@ Provider retains all intellectual property rights in the Software. This Agreemen
 Customer retains all rights to data they input into the Software.
 
 ### 7.2 Provider Data
-Provider may collect anonymized usage statistics for product improvement.
+The Software has no telemetry and sends Provider no usage statistics. Provider receives only the data described in the NeuralMind Privacy Policy for license issuance, billing and support.
 
 ### 7.3 Confidentiality
 Both parties agree to protect confidential information disclosed under this Agreement.
@@ -176,27 +176,26 @@ When issuing a license, the following JSON file is delivered:
 
 ```bash
 # Issue a new license
-neuralmind issue-license \
+neuralmind license issue \
   --customer "Acme Corporation" \
   --seats 15 \
-  --term 12 \
-  --output ./acme-license.json
+  --term 12
 
 # Renew a license
-neuralmind renew-license \
+neuralmind license renew \
   --customer "Acme Corporation" \
   --term 12
 
 # Revoke a license
-neuralmind revoke-license \
+neuralmind license revoke \
   --customer "Acme Corporation" \
   --reason "non-payment"
 
 # Check status
-neuralmind license-status --customer "Acme Corporation"
+neuralmind license status --customer "Acme Corporation"
 
 # List all licenses
-neuralmind license-list
+neuralmind license list
 ```
 
 ---

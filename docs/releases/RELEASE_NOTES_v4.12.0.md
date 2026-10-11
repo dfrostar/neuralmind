@@ -32,6 +32,8 @@ by putting it back one at a time.
 
 ## The numbers
 
+"v4.11.1" here and below is `main` just before this release's retrieval change: v4.11.0 plus #612 and #619, neither of which changes retrieval. It was never published as a release of its own.
+
 | | v4.11.1 | **v4.12.0** |
 |---|---:|---:|
 | Retrieval eval: hit@5, 150 questions over 5 repos | 80.0% | **93.3%** |
@@ -102,38 +104,6 @@ by putting it back one at a time.
     interval [−0.036, −0.007].
   - click's `testing.py` is product code, not a test file, and is not
     demoted.
-  - A question that names a test asks about tests too: `test_parse_option()`,
-    `parse_test.go`, `cart.test.ts`, `UserServiceTest`.
-- **Example scripts rank below the code they demonstrate.** A hit from an
-  `examples/`, `demos/` or `samples/` folder anywhere, or a top-level
-  `example/`, `demo/` or `sample/` one, scores half, unless the question asks
-  for an example. An example uses the words of a question about the feature
-  it shows: on a freshly built pallets/click (commit `2247b35`, indexed from
-  its root), "which files in this repo handle parsing command-line options?"
-  led with `examples/repo/repo.py`, and 4 of 14 questions led with an example
-  script.
-  - On those 14 questions hit@1 went from 6 to 9 and MRR from 0.68 to 0.79;
-    hit@5 stays 14 of 14 (the set it was checked on; not held out).
-  - On the 120 retrieval-eval questions for requests, click, flask and rich,
-    run on each repository indexed from its root (`--full-repo`): rich gains
-    one question (hit@5 83% → 87%), click's MRR rises 0.75 → 0.76, and no
-    question ranks lower.
-  - The 150-question eval and the public benchmark index the libraries'
-    source folders, which hold no examples: identical with and without it,
-    question by question and byte for byte.
-  - A singular `example/` or `demo/` deeper down is not an example folder:
-    Java and Kotlin packages are folders, and Spring Initializr's default
-    package is `com.example.demo`.
-  - Test and example folders are recognised inside the project only, so a
-    graph that stores absolute paths doesn't turn a checkout under
-    `~/work/examples/` into examples. That fix covers the test-file demotion
-    too.
-  - A neighbour that structural or synapse recall pulls in from a test or
-    example file gets the same factor before it competes for a slot (synapse
-    recall scales its energy before the pull-in threshold), and a test file
-    inside an example folder is treated as a test. Neither changed a measured
-    question.
-  - `NEURALMIND_EXAMPLE_FILE_FACTOR=1` turns it off.
 ## 2. Boosts that no longer outvote the ranking
 
 - **Requested types only.** Code-or-docs re-weighting now applies only when the
@@ -321,12 +291,6 @@ Send a given PreparedRequest.
     (`.github/workflows/retrieval-eval.yml`, `--fail-on-regression`.)
 - **Comparing releases:** `--compare OLD NEW` pairs two runs, which is how
   `vs-v4.11` was made.
-- **Whole repositories:** `--full-repo` indexes requests, click, flask and rich
-  from their clones' roots, docs, tests and examples included, as
-  `neuralmind build .` would, and scores the same pre-registered questions
-  with the source folder prefixed to each gold path. The standard run indexes
-  only the source folders, as the public benchmark does, so example scripts
-  never compete there. `examples_equal` puts the example demotion back.
 
 ## What the agent actually sees
 
@@ -394,7 +358,6 @@ The click question "how does echo print a message with a newline to stdout"
 | `NEURALMIND_L3_POOL` | `20` | Fused candidates L3 is chosen from |
 | `NEURALMIND_L3_FILE_DECAY` | `0.6` | Score kept by each further hit from a file L3 already shows; `1` turns the spread off |
 | `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | Score multiplier for test-file hits unless the question mentions tests; `1` turns it off |
-| `NEURALMIND_EXAMPLE_FILE_FACTOR` | `0.5` | Score multiplier for example-script hits (`examples/`, `demos/`, `samples/`) unless the question asks for an example; `1` turns it off |
 | `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | Layers a query returns |
 | `NEURALMIND_AUTO_INTENT_BOOST` | unset | `1` re-weights hits by the intent detected from the question (v4.11 behaviour) |
 | `NEURALMIND_CODE_SIGNAL_CAP` | `1` (off) | `N` turns the code-signal boost back on, up to N× (v4.11: 10) |
@@ -434,7 +397,7 @@ The click question "how does echo print a message with a newline to stdout"
   - Later builds re-embed only what changed.
 - **Restore v4.11 ranking:** `NEURALMIND_L3_K=4 NEURALMIND_CODE_SIGNAL_CAP=10
   NEURALMIND_AUTO_INTENT_BOOST=1 NEURALMIND_L3_FILE_DECAY=1
-  NEURALMIND_TEST_FILE_FACTOR=1 NEURALMIND_EXAMPLE_FILE_FACTOR=1`.
+  NEURALMIND_TEST_FILE_FACTOR=1`.
 - **No index format change.** No hook re-install.
 
 ## Reproduce
@@ -450,9 +413,63 @@ python -m evals.retrieval.run --compare \
   bench/retrieval/vs-v4.11/results-v4.11.1.json bench/retrieval/vs-v4.11/results-v4.12.0.json
 ```
 
+## Also in this release: no turbovec store on a ChromaDB project
+
+`neuralmind build` and `neuralmind doctor` each check whether the turbovec
+index was quarantined, which happens when the installed turbovec can't read
+it. Both checks opened the turbovec store to do it, whatever backend the
+project uses, and opening it creates the file. So on a project with ChromaDB
+pinned, every build left an empty `.neuralmind/neuralmind_turbovec/store.sqlite`
+next to the real index in `.neuralmind/neuralmind_db/`, and `doctor` called
+that empty store "Index version compatible". Both checks now run only when
+the project's backend is turbovec.
+
+
+### CLI
+
+- **`neuralmind build` skips the turbovec check on other backends.** When
+  `neuralmind-backend.yaml` sets `backend: graph`, `chroma`, `chromadb` or
+  `in_memory`, the build no longer creates
+  `.neuralmind/neuralmind_turbovec/store.sqlite`. If the project has never
+  used turbovec, the `neuralmind_turbovec/` directory an earlier build left
+  behind holds no vectors, and you can delete it.
+- **`neuralmind doctor` says the check doesn't apply.** On those backends the
+  *Turbovec compatibility* line reads
+  `not applicable: the chroma backend keeps no turbovec index` (naming the
+  configured backend), with status `ok`, instead of reporting an index that
+  doesn't exist as compatible.
+- **Turbovec projects are checked as before.** With no backend configured,
+  or with `backend: turbovec`, `turboquant` or `auto`, a quarantined
+  `index.tvim.stale` still makes `build` print its warning before embedding
+  and makes `doctor` fail the check.
+
+Both checks resolve the backend the same way `neuralmind build` does: the
+`backend:` in `neuralmind-backend.yaml`, where `auto`, an empty value or no
+file all mean turbovec.
+
+### What the agent actually sees
+
+| Agent | Before | After |
+|-------|--------|-------|
+| **Claude Code** (MCP + hooks) | No change | Same |
+| **Cursor / Cline / Claude Desktop** (MCP) | No MCP tool changed | Same |
+| **Generic MCP client** | No MCP tool changed | Same |
+| **Agents that run the CLI** (Hermes skill, scripts) | On a ChromaDB or in-memory project, `doctor --json` reported `"Turbovec compatibility"` as `ok` with `"Index version compatible"`, and `build` created an empty turbovec store | The same check is `ok` with `"not applicable: the <backend> backend keeps no turbovec index"`, and `build` creates no turbovec store |
+
+An agent that gates on `doctor --json`'s `status` sees no difference: the
+check was `ok` before and is `ok` now. Only its `detail` text changed.
+
+### Environment variables
+
+None added or changed.
+
+### Upgrade notes
+
+None. No stored data changes shape, and no command takes new arguments.
+
 ## Related
 
 - [Public benchmark](../benchmarks/public.md)
 - [Retrieval eval reports](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)
 - [CLI reference: environment variables](../wiki/CLI-Reference.md#environment-variables)
-- [v4.11.1 release notes](RELEASE_NOTES_v4.11.1.md)
+- [v4.11.0 release notes](RELEASE_NOTES_v4.11.0.md)

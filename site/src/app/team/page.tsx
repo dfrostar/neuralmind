@@ -25,7 +25,8 @@ export const metadata: Metadata = pageMetadata({
 // --email … --org` syntax that has never existed, per-seat keypairs that do not
 // exist (seat *manifests* and licenses are what is Ed25519-signed), and SSO /
 // real-time sync as shipped Enterprise features — both are roadmap-only per
-// commercial-terms.json.
+// commercial-terms.json. `team seats sync` exists but is left out of the
+// commands: nothing issues the signed manifests it verifies.
 const steps = [
     {
         n: '1',
@@ -76,7 +77,6 @@ const seatCommands = [
     { comment: '# Add a teammate (admin only)', cmd: 'neuralmind team seats add dev@yourco.com --admin you@yourco.com' },
     { comment: '# List seats', cmd: 'neuralmind team seats list --json' },
     { comment: '# Deactivate a seat — the audit trail is kept', cmd: 'neuralmind team seats remove former@yourco.com --admin you@yourco.com' },
-    { comment: '# Reconcile seats from an Ed25519-signed manifest', cmd: 'neuralmind team seats sync seats-manifest.json --admin you@yourco.com' },
 ];
 
 type Cell = string | boolean;
@@ -209,10 +209,10 @@ export default async function TeamPage() {
                         Seat management
                     </h2>
                     <p className="text-slate-400 mb-6 max-w-3xl leading-relaxed">
-                        Seats are managed from the CLI and every change is logged. Rosters can be
-                        reconciled from an Ed25519-signed manifest — the signature is checked before
-                        anything changes — and adding a seat past your license limit fails instead of
-                        silently over-provisioning.
+                        Seats are managed from the CLI and every change is logged, and adding a seat
+                        past your license limit fails instead of silently over-provisioning. Syncing
+                        a roster from a signed seat manifest is not available yet: the CLI can verify
+                        one, but nothing issues them.
                     </p>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
                         <div className="font-mono text-xs md:text-sm text-slate-300 space-y-1 overflow-x-auto">

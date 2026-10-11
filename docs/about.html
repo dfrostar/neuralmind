@@ -199,11 +199,24 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4121">
+            <h2>What&rsquo;s New in v4.12.1 &mdash; <code>neuralmind doctor</code> exits 1 when a check fails, as documented</h2>
+            <p><strong>A v0.55.0 regression in an exit code scripts gate on.</strong> The CLI reference and the install-paths walkthrough (<code>neuralmind doctor . &amp;&amp; neuralmind wakeup .</code>) say <code>doctor</code> exits non-zero on a failed check, and v0.12.0 shipped it that way. From v0.55.0 through v4.12.0 it always exited 0: a helper inserted above its last lines left the <code>sys.exit(1)</code> unreachable, and a lint pass deleted it.</p>
+            <ul>
+                <li><strong>Exit 1 on a failed check</strong> &mdash; with or without <code>--json</code> (the report is printed first); warnings still exit 0. A script that ran <code>doctor</code> under <code>set -e</code> now stops on a failure: use <code>|| true</code>, or read <code>--json</code>&rsquo;s <code>status</code></li>
+                <li><strong>A repaired turbovec index passes</strong> &mdash; a leftover <code>index.tvim.stale</code> backup used to fail the Turbovec compatibility check even after the index was rebuilt. <code>doctor</code> now loads the live index, without changing any file, and fails only if that load fails</li>
+                <li><strong>Example scripts rank below the code they demonstrate</strong> &mdash; a hit from an <code>examples/</code>, <code>demos/</code> or <code>samples/</code> folder scores half unless the question asks for an example, as test files have since v4.12.0. On pallets/click indexed from its root, 4 of 14 questions had led with an example script; hit@1 there went from 6 to 9 of 14 (the set it was checked on, not held out). The 150-question eval and the public benchmark index source folders with no examples and are unchanged. <code>NEURALMIND_EXAMPLE_FILE_FACTOR=1</code> turns it off</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.1.md">v4.12.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4120">
             <h2>What&rsquo;s New in v4.12.0 &mdash; retrieval that keeps what vector search finds: 93% hit@5 on the retrieval eval, 40 of 40 on the public benchmark, 13–14 ms queries</h2>
             <p><strong>The layers on top of vector search were taking accuracy away.</strong> On the public benchmark, the <code>embedding-rag</code> baseline &mdash; NeuralMind&rsquo;s own vector index, top 8, nothing added &mdash; matched or beat the full query pipeline on gold-file recall on all four repositories. L3 kept four hits and re-ranked after that cut, boosts were sized to outvote the ranking, question words reached the keyword search, a node was embedded as metadata, and with eight hits one file could take every slot. v4.12.0 fixes each one, measured on the 150-question retrieval eval and the 40-query public benchmark.</p>
             <ul>
-                <li><strong>L3 holds 8 hits, chosen from a pool of 20</strong> &mdash; every re-ranking pass runs over the 20 best fused candidates before the cut to eight, hits that repeat the same text in the same file collapse into one, the eight spread across files, and test files and example scripts rank below the code they test or demonstrate unless the question asks about tests or examples. <code>NEURALMIND_L3_K</code> (default 8), <code>NEURALMIND_L3_POOL</code> (default 20), <code>NEURALMIND_L3_FILE_DECAY</code> (default 0.6), <code>NEURALMIND_TEST_FILE_FACTOR</code> and <code>NEURALMIND_EXAMPLE_FILE_FACTOR</code> (default 0.5 each) set them</li>
+                <li><strong>L3 holds 8 hits, chosen from a pool of 20</strong> &mdash; every re-ranking pass runs over the 20 best fused candidates before the cut to eight, hits that repeat the same text in the same file collapse into one, the eight spread across files, and test files rank below the code they test unless the question asks about tests. <code>NEURALMIND_L3_K</code> (default 8), <code>NEURALMIND_L3_POOL</code> (default 20), <code>NEURALMIND_L3_FILE_DECAY</code> (default 0.6) and <code>NEURALMIND_TEST_FILE_FACTOR</code> (default 0.5) set them</li>
                 <li><strong>Boosts no longer outvote the ranking</strong> &mdash; code-or-docs re-weighting applies only when you ask for a type (<code>--type</code>, MCP <code>query_type</code>); the code-signal boost is off by default; keyword search ignores &ldquo;the&rdquo;, &ldquo;how&rdquo; and similar words in the query. <code>NEURALMIND_AUTO_INTENT_BOOST=1</code> and <code>NEURALMIND_CODE_SIGNAL_CAP=N</code> restore the old behaviour</li>
                 <li><strong>L2 shows this query&rsquo;s candidates</strong> &mdash; the pool&rsquo;s candidates L3 doesn&rsquo;t show, grouped by cluster, instead of the same first seven nodes of each cluster for every query. <code>NEURALMIND_QUERY_LAYERS</code> picks which layers a query returns</li>
                 <li><strong>A node is embedded as its qualified name, module and docstring</strong> &mdash; <code>Session.send()</code> / <code>In module sessions</code> / its docstring, not a line number and a cluster number, so moving code no longer re-embeds it. Run <code>neuralmind build</code> once after upgrading</li>
@@ -218,14 +231,14 @@
 
     <section>
         <div class="container" id="whats-new-v4111">
-            <h2>What&rsquo;s New in v4.11.1 &mdash; no turbovec store on a ChromaDB project</h2>
+            <h2>Also in v4.12.0 &mdash; no turbovec store on a ChromaDB project</h2>
             <p><strong>Two turbovec checks ran on every backend.</strong> <code>neuralmind build</code> and <code>neuralmind doctor</code> check whether the turbovec index was quarantined, and both opened the turbovec store to do it, which creates the file, even on a project with ChromaDB pinned.</p>
             <ul>
                 <li><strong><code>build</code> creates no turbovec store on other backends</strong> &mdash; with <code>backend: graph</code>, <code>chroma</code>, <code>chromadb</code> or <code>in_memory</code> in <code>neuralmind-backend.yaml</code>, no empty <code>.neuralmind/neuralmind_turbovec/store.sqlite</code> appears next to the real index</li>
                 <li><strong><code>doctor</code> says the check doesn&rsquo;t apply</strong> &mdash; <em>Turbovec compatibility</em> reads &ldquo;not applicable: the chroma backend keeps no turbovec index&rdquo; (status <code>ok</code>) instead of calling an index that doesn&rsquo;t exist compatible</li>
                 <li><strong>Turbovec projects are checked as before</strong> &mdash; a quarantined <code>index.tvim.stale</code> still warns at build time and fails the doctor check</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md">v4.11.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md#also-in-this-release-no-turbovec-store-on-a-chromadb-project">v4.12.0 release notes</a></p>
         </div>
     </section>
 

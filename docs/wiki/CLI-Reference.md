@@ -1332,7 +1332,11 @@ mode where the OS has one. Storage encryption only fails when the project sets
 **Turbovec compatibility** fails when the turbovec index was quarantined
 (`index.tvim.stale`: the installed turbovec couldn't read it), and the fix is
 a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
-*(v4.11.1+)* It runs only when the project's backend is turbovec. With
+*(v4.12.1+)* Once that rebuild works, the check is `ok` even though
+`index.tvim.stale` is still there: doctor loads the live index, without
+changing any file, and fails only if it can't. The detail line names the
+backup, which you can delete when you no longer need it.
+*(v4.12.0+)* It runs only when the project's backend is turbovec. With
 `backend: graph`, `chroma`, `chromadb` or `in_memory` it reports
 `not applicable: the <backend> backend keeps no turbovec index` with status
 `ok`, and no longer creates `.neuralmind/neuralmind_turbovec/store.sqlite`
@@ -1342,7 +1346,10 @@ only on turbovec projects.
 
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any
 check **failed** — so you can gate a CI step or an agent's provisioning on
-`neuralmind doctor`.
+`neuralmind doctor`. `--json` exits the same way, after printing the report;
+its `status` field (`ok` / `warn` / `fail`) is the same verdict.
+*(v4.12.1+)* v0.55.0 through v4.12.0 always exited `0`, even when a check
+failed; on those versions read `--json`'s `status` instead.
 
 **Example:**
 
@@ -3898,8 +3905,8 @@ renewed — issue a new one.
 | `NEURALMIND_L3_K` | `8` | *(v4.12.0+)* Search results in L3 per query (v4.11 and earlier: 4). Putting it back to `4` lost 4 of 150 questions on the retrieval eval. |
 | `NEURALMIND_L3_POOL` | `20` | *(v4.12.0+)* Fused vector + keyword candidates L3 is chosen from. The intent, code-signal and duplicate passes rank the whole pool before it is cut to `NEURALMIND_L3_K`; L2 lists the pool's candidates that L3 doesn't show. |
 | `NEURALMIND_L3_FILE_DECAY` | `0.6` | *(v4.12.0+)* Spreads L3 across files: the k-th further hit from a file L3 already shows keeps `0.6^k` of its score, so one file can't take all eight slots. Each file's first hit keeps its place, and the hits it moves out are listed in L2. `1` turns it off. On the self-benchmark fixture it took the top-k hit rate from 88% to 97%; without it the public benchmark misses flask's `request-wrapper`. |
-| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. A question that names a test (`test_parse_option()`, `parse_test.go`) counts as mentioning tests, and folders are judged inside the project, so a graph with absolute paths doesn't make a checkout under `tests/` a test. |
-| `NEURALMIND_EXAMPLE_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from example scripts (an `examples/`, `demos/` or `samples/` folder anywhere in the project, or a top-level `example/`, `demo/` or `sample/`) unless the question asks for an example. `1` turns it off. On pallets/click indexed from its root, 4 of 14 questions led with an example script; with it, hit@1 there went from 6 to 9 of 14. A singular `example/` deeper down doesn't count: Java packages are folders, and Spring Initializr's default package is `com.example.demo`. |
+| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. *(v4.12.1+)* A question that names a test (`test_parse_option()`, `parse_test.go`) counts as mentioning tests, and folders are judged inside the project, so a graph with absolute paths doesn't make a checkout under `tests/` a test. |
+| `NEURALMIND_EXAMPLE_FILE_FACTOR` | `0.5` | *(v4.12.1+)* Multiplies the score of hits from example scripts (an `examples/`, `demos/` or `samples/` folder anywhere in the project, or a top-level `example/`, `demo/` or `sample/`) unless the question asks for an example. `1` turns it off. On pallets/click indexed from its root, 4 of 14 questions led with an example script; with it, hit@1 there went from 6 to 9 of 14. A singular `example/` deeper down doesn't count: Java packages are folders, and Spring Initializr's default package is `com.example.demo`. |
 | `NEURALMIND_CODE_SIGNAL_CAP` | `1` | *(v4.12.0+)* Ceiling on the code-signal boost (a hit whose file name, label or text shares words with a code-intent question). `1` turns it off (the default); `N` turns it on, up to N× (v4.11: 10×, matching substrings of the whole path). On, it lost 2 questions on the retrieval eval. A markdown file is still marked down (×0.3) under a code intent. |
 | `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | *(v4.12.0+)* Comma-separated layers a query returns. `L0,L3` cuts tokens by 57% on the retrieval eval at the same hit@5, but loses the facts L1 and L2 carry (fact recall on the faithfulness fixture). `wakeup` is unaffected. |
 | `NEURALMIND_ORT_SESSION_CACHE` | auto | *(v4.12.0+)* `1` reuses one ONNX Runtime session per process for the bundled MiniLM embedder; `0` builds a new one per batch. Auto reuses everywhere except Python 3.14, where onnxruntime 1.29 deadlocks after a few runs on one session. Reusing it, a query embeds in about 3 ms instead of about 275 ms. |

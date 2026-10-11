@@ -146,7 +146,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --private ~/work/your-rep
   library code. `--full-repo` indexes the whole checkout, as
   `neuralmind build .` would, and prefixes the gold paths with the source
   directory. A ranking change can be invisible one way and matter the other:
-  v4.12.0's example demotion changes nothing on the source directories and
+  v4.12.1's example demotion changes nothing on the source directories and
   wins a rich question on the whole checkout
   ([`bench/retrieval/examples-v4.12`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
 - **It applies the keep rule for you** — since v4.12.0 the paired rule

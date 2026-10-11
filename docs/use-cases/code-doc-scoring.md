@@ -35,9 +35,9 @@ NeuralMind detects query intent and applies type-aware boosting when you ask for
 Tests and example scripts are the other kind of hit that crowds out the code
 on a repository indexed from its root: a test repeats the names of the code
 it tests, and an example uses the words of a question about what it shows.
-Since v4.12.0 both score half (`NEURALMIND_TEST_FILE_FACTOR`,
-`NEURALMIND_EXAMPLE_FILE_FACTOR`) unless the question asks about tests or
-for an example, whatever the intent.
+Both score half (`NEURALMIND_TEST_FILE_FACTOR` since v4.12.0,
+`NEURALMIND_EXAMPLE_FILE_FACTOR` since v4.12.1) unless the question asks
+about tests or for an example, whatever the intent.
 
 ## Usage
 
