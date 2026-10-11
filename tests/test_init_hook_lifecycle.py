@@ -158,7 +158,9 @@ class TestHookText:
     def test_rebuilds_in_the_background_by_default(self, project, monkeypatch):
         _install(project, monkeypatch)
         text = _hook(project, "post-commit")
-        assert 'mkdir "$_nm_dir/.hook-build.lock"' in text
+        assert 'mkdir "$_nm_lock"' in text
+        # Pending is published before the lock is tried, so no event is lost.
+        assert text.index(': >"$_nm_dir/.hook-build.pending"') < text.index('mkdir "$_nm_lock"')
         assert ") </dev/null >/dev/null 2>&1 &\n" in text
         assert "hook-build.log" in text
         assert "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX" in text
@@ -362,7 +364,10 @@ class TestHooksEndToEnd:
 
     def test_overlapping_events_coalesce_into_one_extra_build(self, repo):
         repo.env["NM_FAKE_BUILD_SECONDS"] = "2"
-        for i in range(3):
+        repo.git("commit", "-q", "--allow-empty", "-m", "burst 0")
+        # Overlap for certain: the next two land while the first build runs.
+        assert _wait_for(lambda: _builds(repo)), "the first build never started"
+        for i in (1, 2):
             repo.git("commit", "-q", "--allow-empty", "-m", f"burst {i}")
         _settle(repo, timeout=30)
         assert len(_builds(repo)) == 2, _calls(repo)  # the first, plus one for the queued two
@@ -375,6 +380,96 @@ class TestHooksEndToEnd:
         os.utime(lock, (two_hours_ago, two_hours_ago))
         repo.git("commit", "-q", "--allow-empty", "-m", "after a crash")
         assert _wait_for(lambda: _builds(repo)), "a dead build's lock blocked rebuilds forever"
+        _settle(repo)
+
+    def test_a_lock_whose_build_died_is_cleared_at_once(self, repo):
+        """The lock names its build's PID; a dead PID frees it however young it is."""
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        lock = repo.root / ".neuralmind" / ".hook-build.lock"
+        lock.mkdir()
+        (lock / "pid").write_text(f"{dead.pid}\n")
+        repo.git("commit", "-q", "--allow-empty", "-m", "after a crash")
+        assert _wait_for(lambda: _builds(repo)), "a dead build's lock blocked the rebuild"
+        _settle(repo)
+
+    def test_a_long_running_build_keeps_its_lock_past_an_hour(self, repo):
+        """Age alone is no proof of death: a big index can take over an hour."""
+        alive = subprocess.Popen(["sleep", "30"])
+        try:
+            lock = repo.root / ".neuralmind" / ".hook-build.lock"
+            lock.mkdir()
+            (lock / "pid").write_text(f"{alive.pid}\n")
+            two_hours_ago = time.time() - 7200
+            os.utime(lock, (two_hours_ago, two_hours_ago))
+            repo.git("commit", "-q", "--allow-empty", "-m", "during a long build")
+            time.sleep(1.5)
+            assert _builds(repo) == [], "a second build started beside a live one"
+            assert (lock / "pid").read_text().strip() == str(alive.pid)
+            # Queued for the running build to pick up, not dropped.
+            assert (repo.root / ".neuralmind" / ".hook-build.pending").exists()
+        finally:
+            alive.kill()
+            alive.wait()
+
+    def test_an_event_during_the_lock_release_is_not_lost(self, repo):
+        """The worker re-checks pending after releasing the lock and takes it back.
+
+        An ``rmdir`` shim plays an event that failed to take the lock and
+        flagged pending in the window between the worker's in-loop check and
+        the lock's release: the window a check-then-release loop loses.
+        """
+        real = shutil.which("rmdir", path="/usr/bin:/bin")
+        shim = repo.tmp / "shim"
+        shim.mkdir()
+        (shim / "rmdir").write_text(
+            "#!/bin/sh\n"
+            'case "$1" in *.hook-build.lock)\n'
+            '    if [ ! -e "$NM_FAKE_LOG.once" ]; then\n'
+            '        : >"$NM_FAKE_LOG.once"\n'
+            '        : >"${1%/.hook-build.lock}/.hook-build.pending"\n'
+            "    fi ;;\n"
+            "esac\n"
+            f'exec {real} "$@"\n'
+        )
+        (shim / "rmdir").chmod(0o755)
+        repo.env["PATH"] = f"{shim}:/usr/bin:/bin"
+        repo.git("commit", "-q", "--allow-empty", "-m", "c1")
+        assert _wait_for(lambda: len(_builds(repo)) == 2), "the late event was stranded"
+        _settle(repo)
+        assert (repo.tmp / "calls.log.once").exists(), "the shim never ran"
+        assert not (repo.root / ".neuralmind" / ".hook-build.pending").exists()
+
+    @pytest.mark.parametrize("hook", ["pre-commit", "post-commit"])
+    def test_a_set_e_hook_is_not_cut_short_when_neuralmind_is_missing(
+        self, repo, monkeypatch, hook
+    ):
+        """An existing hook under `set -e`: a missing binary skips NeuralMind only."""
+        path = repo.root / ".git" / "hooks" / hook
+        path.write_text("#!/bin/sh\nset -e\n")
+        path.chmod(0o755)
+        monkeypatch.setattr(
+            "neuralmind.cli._neuralmind_hook_binary", lambda: "/nonexistent/neuralmind"
+        )
+        cmd_init_hook(
+            argparse.Namespace(
+                project_path=str(repo.root), no_drift=False, strict=False, sync=False
+            )
+        )
+        with path.open("a") as f:
+            f.write(f": >{repo.tmp / 'ran-after'}\n")
+        repo.git("commit", "-q", "--allow-empty", "-m", "no neuralmind")
+        assert (repo.tmp / "ran-after").exists(), f"{hook} stopped at the NeuralMind block"
+
+    def test_a_set_e_hook_runs_on_past_a_background_rebuild(self, repo):
+        path = repo.root / ".git" / "hooks" / "post-commit"
+        text = path.read_text()
+        path.write_text(text.replace("#!/bin/sh\n", "#!/bin/sh\nset -e\n", 1))
+        with path.open("a") as f:
+            f.write(f": >{repo.tmp / 'ran-after'}\n")
+        repo.git("commit", "-q", "--allow-empty", "-m", "set -e")
+        assert (repo.tmp / "ran-after").exists(), "post-commit stopped inside the rebuild block"
+        assert _wait_for(lambda: _builds(repo))
         _settle(repo)
 
     def test_a_strict_drift_guard_blocks_even_without_neuralmind_on_path(self, repo, monkeypatch):

@@ -33,8 +33,12 @@ And every commit waited for the rebuild. The field report is #630.
   `.neuralmind/hook-build.log`. A lock in `.neuralmind/` serializes builds:
   an event that arrives while one runs leaves a pending flag and the running
   build goes round once more, so a burst of events (a rebase, a pull right
-  after a commit) costs at most one extra build. A lock left by a build that
-  died is cleared after an hour. `--sync` keeps the foreground rebuild.
+  after a commit) costs at most one extra build, and an event that lands
+  while the lock is being released still gets its build. The lock records
+  the build's PID, so a lock left by a build that died is cleared on the next
+  event, while a build that runs for over an hour keeps its lock. The hooks
+  don't stop an existing hook that runs under `set -e`. `--sync` keeps the
+  foreground rebuild.
 - **Throwaway worktrees are left alone.** Linked worktrees share a
   repository's hooks (#316). The hooks now rebuild only a project that has
   been built — `.neuralmind/build_status.json`, the same test the session

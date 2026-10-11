@@ -6171,19 +6171,30 @@ def _hook_resolve_binary_lines(bin_path: str) -> str:
 
     # Forward slashes: Git for Windows runs hooks in its POSIX shell.
     quoted = shlex.quote(bin_path.replace("\\", "/")) if bin_path else "''"
-    return f'_nm_bin={quoted}\n[ -x "$_nm_bin" ] || _nm_bin=$(command -v neuralmind 2>/dev/null)\n'
+    # The trailing `|| _nm_bin=` keeps a hook that runs under `set -e` going
+    # when neither path finds the script: NeuralMind is skipped, not the hook.
+    return (
+        f"_nm_bin={quoted}\n"
+        '[ -x "$_nm_bin" ] || _nm_bin=$(command -v neuralmind 2>/dev/null) || _nm_bin=\n'
+    )
 
 
 def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
     """Shell lines (indented one level) that rebuild the index for ``target``.
 
     Background (default): git doesn't wait. A ``mkdir`` lock serializes
-    builds; an event that arrives while one runs leaves a ``pending`` flag
-    and the running build goes round once more, so bursts (a rebase, a pull
-    right after a commit) coalesce instead of piling up or being lost. A lock
-    older than an hour belongs to a build that died and is cleared. Git's
-    per-invocation variables are unset because the build outlives the hook
-    (``GIT_INDEX_FILE`` can name a temporary index that is gone by then).
+    builds. Every event first leaves a ``pending`` flag, then tries the lock;
+    the running build goes round again while the flag is set, and re-checks
+    it after releasing the lock, taking the lock back if nobody else has. So
+    bursts (a rebase, a pull right after a commit) coalesce, and an event
+    that finds the lock taken is never lost, even one that arrives while the
+    lock is being released. The build records its PID in the lock; a lock
+    whose PID is gone belongs to a build that died and is cleared (a lock
+    with no PID yet is cleared only after an hour), so a long build is never
+    mistaken for a dead one. Git's per-invocation variables are unset because
+    the build outlives the hook (``GIT_INDEX_FILE`` can name a temporary
+    index that is gone by then). Every command tolerates failure, so a hook
+    that runs under ``set -e`` isn't cut short.
 
     ``--sync``: the previous behavior — git waits for the build.
     """
@@ -6202,26 +6213,39 @@ def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
         else ""
     )
     queued = (
+        "    else\n"
         '        echo "[neuralmind] A rebuild is already running; it will include this change"\n'
         if announce
         else ""
     )
     return (
         f"    _nm_dir={target}/.neuralmind\n"
-        '    find "$_nm_dir/.hook-build.lock" -maxdepth 0 -mmin +60 -exec rmdir {} \\; 2>/dev/null\n'
-        '    if mkdir "$_nm_dir/.hook-build.lock" 2>/dev/null; then\n'
+        '    _nm_lock="$_nm_dir/.hook-build.lock"\n'
+        '    : >"$_nm_dir/.hook-build.pending"\n'
+        '    if [ -d "$_nm_lock" ]; then\n'
+        '        _nm_pid=$(cat "$_nm_lock/pid" 2>/dev/null) || _nm_pid=\n'
+        '        if [ -n "$_nm_pid" ]; then\n'
+        '            kill -0 "$_nm_pid" 2>/dev/null || rm -rf "$_nm_lock"\n'
+        '        elif [ -n "$(find "$_nm_lock" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then\n'
+        '            rm -rf "$_nm_lock"\n'
+        "        fi\n"
+        "    fi\n"
+        '    if mkdir "$_nm_lock" 2>/dev/null; then\n'
         "        (\n"
         "            unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX\n"
         "            while :; do\n"
+        # $PPID of a child is this subshell: POSIX sh has no $BASHPID.
+        '                sh -c \'echo "$PPID"\' >"$_nm_lock/pid" 2>/dev/null || :\n'
         '                rm -f "$_nm_dir/.hook-build.pending"\n'
-        f'                "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1\n'
-        '                [ -e "$_nm_dir/.hook-build.pending" ] || break\n'
+        f'                "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1 || :\n'
+        '                [ -e "$_nm_dir/.hook-build.pending" ] && continue\n'
+        '                rm -f "$_nm_lock/pid"\n'
+        '                rmdir "$_nm_lock" 2>/dev/null || :\n'
+        "                # An event that found the lock taken flagged pending first.\n"
+        '                [ -e "$_nm_dir/.hook-build.pending" ] && mkdir "$_nm_lock" 2>/dev/null || break\n'
         "            done\n"
-        '            rmdir "$_nm_dir/.hook-build.lock"\n'
         "        ) </dev/null >/dev/null 2>&1 &\n"
         f"{started}"
-        "    else\n"
-        '        : >"$_nm_dir/.hook-build.pending"\n'
         f"{queued}"
         "    fi\n"
     )
