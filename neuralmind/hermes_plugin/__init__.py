@@ -11,6 +11,9 @@ directory. It gives Hermes what NeuralMind's Claude Code hooks give Claude Code:
   session in the project comes first.
 - ``post_tool_call`` on ``write_file`` and ``patch``: the edited file is
   recorded, for the next session's recap and for the synapse layer.
+- ``post_tool_call`` on ``read_file``: a read of a file inside the project is
+  recorded as a step in the synapse layer's file-to-file transitions, as
+  Claude Code's Read hook does.
 
 It is a thin, stdlib-only shim. Each action runs ``neuralmind _hook <action>``
 with the same JSON payload Claude Code sends, so Hermes gets the same behavior,
@@ -50,6 +53,8 @@ DEFAULT_TIMEOUT = 8.0
 # Hermes's file-writing tools. ``patch`` also takes a V4A patch whose file
 # paths sit in its text.
 EDIT_TOOLS = ("write_file", "patch")
+# Hermes's file-reading tool: each read is a step in the transitions.
+READ_TOOLS = ("read_file",)
 _V4A_PATH = re.compile(r"^\*\*\* (?:Update|Add) File: (.+)$", re.MULTILINE)
 # Files a V4A patch removes: deleted ones, and the source side of a move.
 _V4A_GONE = re.compile(r"^\*\*\* (?:Delete File: (.+)|Move File: (.+?) ->)", re.MULTILINE)
@@ -402,6 +407,31 @@ def _failed(result, status=None) -> bool:
     )
 
 
+def _record_read(project: Path, session_id: str, args: dict) -> None:
+    """Record a read of a file inside ``project`` as a transition step.
+
+    A file outside the project (Hermes's own config, another repository) is not
+    part of this codebase, so it is never put in the project's synapse store.
+    """
+    path = args.get("path")
+    if not isinstance(path, str) or not path:
+        return
+    file_path = Path(path).expanduser()
+    if not file_path.is_absolute():
+        file_path = Path(os.environ.get("TERMINAL_CWD") or os.getcwd()) / file_path
+    try:
+        file_path.resolve().relative_to(project.resolve())
+    except (ValueError, OSError):
+        return
+    payload = {
+        "cwd": str(project),
+        "session_id": session_id,
+        "tool_input": {"file_path": str(file_path)},
+    }
+    # Not a daemon, for the same reason as the edits below.
+    threading.Thread(target=lambda: _run("read-activity", payload), daemon=False).start()
+
+
 def on_post_tool_call(
     tool_name: str = "",
     args=None,
@@ -412,9 +442,11 @@ def on_post_tool_call(
     task_id: str = "",
     **_: object,
 ) -> None:
-    """Record a successful file edit, in the background so the turn isn't held."""
+    """Record a successful file edit or read, in the background so the turn isn't held."""
     try:
-        if tool_name not in EDIT_TOOLS or not isinstance(args, dict) or not session_id:
+        if tool_name not in EDIT_TOOLS + READ_TOOLS or not isinstance(args, dict):
+            return
+        if not session_id:
             return
         if parent_session_id or session_id in _SUBAGENT_SESSIONS:
             return
@@ -422,6 +454,9 @@ def on_post_tool_call(
             return
         project = _project()
         if project is None:
+            return
+        if tool_name in READ_TOOLS:
+            _record_read(project, session_id, args)
             return
         patch_text = args.get("patch")
         # A V4A patch spans several files: each file gets only its own added

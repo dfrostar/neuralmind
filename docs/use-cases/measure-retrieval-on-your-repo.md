@@ -115,6 +115,21 @@ public-benchmark miss, and the private 383-file repo at 73% / 0.60 against an
 change of your own, see
 [A/B-test a ranking change on your own repo](./ab-test-a-ranking-change.md).
 
+## 6. Check whether the learned layer helps *(v4.13.0+)*
+
+The eval reads the learned synapse layer, so its numbers include whatever that
+layer adds, or costs. To separate the two, run the same questions with learned
+recall on and off:
+
+```bash
+neuralmind eval . --synapse-ab
+```
+
+It reports how many questions the layer moved up or down, hit@5 won and lost
+with an exact McNemar p-value, and how big the layer it read was. Rerun it as
+the layer grows; `--report` shows the trend. Walkthrough:
+[Does NeuralMind earn its place on your repo?](./does-it-earn-its-place.md)
+
 ---
 
 ## The potential use case: a retrieval gate on pull requests

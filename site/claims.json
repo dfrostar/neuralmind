@@ -4,7 +4,8 @@
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
     "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number on the same machine. Token counts, and the ratios built on them, can shift slightly from one machine to another; where that has been measured, recall and found-rate did not move, and the source page states the spread (docs/benchmarks/public.md: for the current run, per-repo mean tokens within 0.8% between CI runners with and without AVX-512, recall, found-rate and NeuralMind's MRR identical, the embedding-rag baseline's MRR on click 0.69 against 0.60).",
     "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
-    "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional."
+    "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional.",
+    "disclosure": "Not a result: something the site states is NOT measured or NOT shown, kept here so the copy can't quietly drop it. Its `reproduce` names how a reader could measure it."
   },
   "ratios": [
     {
@@ -47,6 +48,22 @@
     {
       "value": 242.0,
       "context": "rich @ 7f580bdcf0 — tokens vs full-file baseline.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 31,
+      "range_endpoint": true,
+      "context": "Low end of 'fewer tokens than ripgrep opening its top five files' across the 40-query public benchmark: flask, at 31.2x, rounded down. Both ends of this range are rounded down: it is the conservative comparison, quoted beside the whole-file one because grep-and-read is closer to how an agent works. It is still not the cheapest agent workflow: an agent that reads only the matching lines pays less than this baseline, and that is not measured. Measured at v4.12.0.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 67,
+      "range_endpoint": true,
+      "context": "High end of the same range (click, at 67.2x, rounded down). Per repo: requests 32.5x, click 67.2x, flask 31.2x, rich 45.2x — ripgrep mean tokens / NeuralMind mean tokens in bench/public/results.json.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
@@ -155,6 +172,13 @@
       "note": "This is canon for the data, not copy for the site: the site must NOT headline '100% recall' (tests/test_site_claims.py rejects it). Forty queries is a small sample, every earlier run had at least one miss, and the next retrieval change can bring one back. Say '40 of 40 queries' and pair it with the larger 150-question retrieval eval, where the same build puts a gold file in the top five for 93.3% of questions and misses 10 (bench/retrieval/on-v4.12; misses listed per question). At v4.12.0 the three v4.10.0 misses (requests xfile-status-codes, click echo-util, flask xfile-dispatch-context) are found. NeuralMind's recall is now at or above the embedding-rag baseline's on every repo (96.25% mean for the baseline; flask 1.00 vs 0.85), but its MRR is still below the baseline's on flask (0.72 vs 0.74) and rich (0.83 vs 0.94) — say so wherever recall is compared. The embedding-rag baseline is the top 8 entries of NeuralMind's own vector index (a symbol's name, module and docstring, not code bodies), so its token count is a floor, not what a chunk RAG sending code would pay. Backed by bench/public/results.json, regenerated at v4.12.0 (tokenizer tiktoken o200k_base, neuralmind backend run read-only and counted with the benchmark tokenizer). tests/test_site_claims.py recomputes the mean, the per-repo range, the found-rate and the per-repo ratios from that file."
     },
     {
+      "claim": "ripgrep (query keywords, top five files opened whole) found the gold file on 32 of 40 public-benchmark queries; NeuralMind on 40 of 40",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "NEURALMIND_ORT_THREADS=1 python -m evals.public.run",
+      "evidence": "reproducible",
+      "note": "Pair it with the 31-67x token figure wherever the site compares against grep. tests/test_site_claims.py recomputes both from bench/public/results.json."
+    },
+    {
       "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
@@ -173,6 +197,20 @@
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m evals.parity.run",
       "evidence": "ci-gated"
+    },
+    {
+      "claim": "Task outcomes are not measured: no benchmark here shows an agent finishing tasks faster or with fewer errors because of NeuralMind",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "not measurable here yet: needs an outcome benchmark (tasks, time, error rate) with committed raw data",
+      "evidence": "disclosure",
+      "note": "A disclosure, not a result. Every published figure is retrieval: what reaches the agent's window and whether the right file is in it. The site says so beside the numbers (Benchmarks section, benchmark page). Remove this entry only when an outcome benchmark with committed raw data exists."
+    },
+    {
+      "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "neuralmind eval . --synapse-ab",
+      "evidence": "disclosure",
+      "note": "A disclosure, not a result. `neuralmind eval . --synapse-ab` runs a project's own gold questions with learned recall on and off and records the difference in .neuralmind/eval_history.jsonl, so a user can see whether it grows as the layer does. No such history is published. Do not write that the layer 'compounds', 'gets smarter over time' or 'improves retrieval continuously' until one is."
     }
   ],
   "unsourced_do_not_use": [

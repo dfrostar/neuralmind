@@ -221,7 +221,7 @@ matches and the code linked to them to the prompt, and strengthens nothing.
 | Surface | Edges (co-activation) | Transitions (A → B) | Turn it off |
 |---|---|---|---|
 | `neuralmind query`, the MCP `neuralmind_query` tool, the daemon | Strengthened by the hits and communities each answer uses | Never | `--no-learn`, `NEURALMIND_NO_LEARN=1` |
-| Claude Code `PostToolUse` hook on Read | — | One per file read after another | `NEURALMIND_NO_LEARN=1` |
+| Claude Code `PostToolUse` hook on Read; Hermes plugin `read_file` of a file inside the project | — | One per file read after another | `NEURALMIND_NO_LEARN=1` |
 | Claude Code `PostToolUse` hook on Edit/Write, Hermes plugin edits | Reuse feedback: symbols the new code reuses | One per file edited after another | `NEURALMIND_REUSE_FEEDBACK=0` or `NEURALMIND_NO_LEARN=1` (both) |
 | `neuralmind watch` | Files changed together wire together | One per consecutive pair of files in a batch of changes | stop the watcher |
 | `neuralmind build` | Seeded from the code graph's structure (and from ingested business documents) | Never | — |

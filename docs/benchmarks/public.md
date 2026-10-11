@@ -131,10 +131,15 @@ benchmark had at least one miss, and the next code change can bring one back.
 
 1. **Against what developers actually do today — paste files or grep — NeuralMind
    is a large, real win, but not a perfect one.** It finds the gold file on all
-   40 queries **at 51.2–242.0× fewer tokens** than pasting the files. It
-   beats `ripgrep` on cost on every repo, and on recall it's ahead on 3 of 4
-   repos (`requests`, `click`, `flask`) and ties on the other one (`rich`),
-   never behind. Most agents don't have a tuned vector index sitting there; they
+   40 queries **at 51.2–242.0× fewer tokens** than pasting the files. Pasting
+   every file is the easiest baseline to beat, so weigh the next one more: against
+   `ripgrep` opening its top five files, NeuralMind uses **31.2–67.2× fewer
+   tokens** (requests 32.5×, click 67.2×, flask 31.2×, rich 45.2×), and
+   `ripgrep` finds the gold file on 32 of 40 queries to NeuralMind's 40. On
+   recall it's ahead on 3 of 4 repos (`requests`, `click`, `flask`) and ties on
+   the other one (`rich`), never behind. The `ripgrep` baseline still opens whole
+   files: an agent that greps and then reads only the matching lines pays less
+   than it, and that workflow is not a baseline here. Most agents don't have a tuned vector index sitting there; they
    read files or grep. That is the baseline NeuralMind replaces. It is not a
    claim of zero misses — see "Where NeuralMind loses" below.
 
@@ -189,9 +194,12 @@ Three loss modes, reported plainly:
   *fixed, reproducible* public number. Injection is OFF here. The learning lift
   is measured separately and reproducibly by the **synapse A/B eval**
   (`tests/benchmark/run.py`, Phase 2): **+3.5 to +14 points** top-k hit-rate
-across runs, CI-gated on direction, budget-
-  neutral, on the reference fixture. That is the differentiator a static index
-  structurally cannot copy.
+  across runs, CI-gated on direction, budget-neutral, on the ~500-line reference
+  fixture. That shows the direction, not that the layer pays off on a real
+  codebase over weeks of use: nothing published shows that yet.
+  `neuralmind eval . --synapse-ab` (v4.13.0+) measures it on your own repo, with
+  your own questions, and records whether the gap grows as the layer does
+  ([walkthrough](../use-cases/does-it-earn-its-place.md)).
 - **A repository indexed from its root.** Each repo is indexed from its source
   directory only (the manifest's `subdir`, e.g. `src/click`), so its tests,
   examples and docs never compete with the library code for a slot. Indexed
@@ -199,6 +207,13 @@ across runs, CI-gated on direction, budget-
   multi-repo retrieval eval measures that case on the same four repos and
   commits (`python -m evals.retrieval.run --full-repo`, v4.12.1+; raw output in
   [`bench/retrieval/examples-v4.12/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
+- **Task outcomes.** Nothing here, or anywhere in this repository, measures
+  whether an agent fixes a bug faster or makes fewer mistakes with NeuralMind.
+  Every number on this page is retrieval: what reaches the window, and whether
+  the right file is in it. A small window can also leave out a caveat a whole
+  file would have shown; only an outcome benchmark (real tasks, solved with and
+  without, timed and checked) would show whether that costs anything. None has
+  been run.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
   metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds
   the *answering* signal — see below — but it stays a clearly-labeled secondary,

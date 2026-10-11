@@ -840,7 +840,7 @@ def cmd_build(args):
 # looking at a count of 0: queries strengthen edges but never add transitions.
 TRANSITIONS_HINT = (
     "0 transitions: they are learned from the files an agent reads and edits in turn "
-    "(Claude Code hooks: neuralmind install-hooks; the Hermes plugin, from edits) or that "
+    "(Claude Code hooks: neuralmind install-hooks; the Hermes plugin) or that "
     "change together (neuralmind watch .). Queries strengthen edges but add no transitions."
 )
 
@@ -2716,7 +2716,8 @@ def cmd_eval(args):
 
 def _project_eval_requested(args) -> bool:
     return any(
-        getattr(args, name, False) is True for name in ("report", "suggest", "show_questions")
+        getattr(args, name, False) is True
+        for name in ("report", "suggest", "show_questions", "synapse_ab")
     ) or bool(getattr(args, "questions", None))
 
 
@@ -2755,7 +2756,10 @@ def _cmd_project_eval(args) -> None:
 
     try:
         questions = project_eval.load_questions(project, getattr(args, "questions", None))
-        report = project_eval.run_eval(project, questions)
+        if getattr(args, "synapse_ab", False) is True:
+            report = project_eval.run_synapse_ab(project, questions)
+        else:
+            report = project_eval.run_eval(project, questions)
     except (ValueError, GraphNotBuiltError) as exc:
         print(f"eval: {exc}", file=sys.stderr)
         sys.exit(2)
@@ -2765,6 +2769,8 @@ def _cmd_project_eval(args) -> None:
         print(json.dumps(report.to_dict(show_questions=show_questions), indent=2))
     else:
         print(project_eval.render_summary(report, show_questions=show_questions))
+        if report.synapse_ab:
+            print(project_eval.render_synapse_ab(report))
 
 
 def _cmd_eval_suite(args):
@@ -7254,6 +7260,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Don't append this run to .neuralmind/eval_history.jsonl",
     )
     eval_p.add_argument(
+        "--synapse-ab",
+        dest="synapse_ab",
+        action="store_true",
+        help="Run the questions again with learned recall off and report the difference "
+        "(questions moved up/down, hit@5 won/lost, exact McNemar p)",
+    )
+    eval_p.add_argument(
         "--suite",
         choices=["faithfulness", "onboarding"],
         default=None,
@@ -8385,6 +8398,7 @@ def build_parser() -> argparse.ArgumentParser:
             "cap-search",
             "offload",
             "edit-activity",
+            "read-activity",
             "session-start",
             "prompt-submit",
             "pre-compact",

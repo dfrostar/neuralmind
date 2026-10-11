@@ -98,6 +98,9 @@ keywords = [
     "agent-observability",
     "stale-index-gate",
     "learning-progress",
+    "synapse-ab-test",
+    "learned-recall-evaluation",
+    "incident-replay-eval",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

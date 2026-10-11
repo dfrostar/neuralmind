@@ -434,6 +434,29 @@ class TestRunHook:
         assert output == ""  # pure side effect, emits nothing
         assert calls == [(str(tmp_path), "api/routes.py", "authenticate_user()")]
 
+    def test_read_activity_records_a_transition(self, monkeypatch, tmp_path):
+        """read-activity (the Hermes plugin's read_file) records only the transition."""
+        import neuralmind.hooks as hooks_mod
+
+        (tmp_path / ".neuralmind").mkdir()
+        calls = []
+        monkeypatch.setattr(hooks_mod, "_record_tool_transition", lambda *a: calls.append(a))
+        for path in ("a.py", str(tmp_path / ".neuralmind" / "last_output.json")):
+            payload = {"tool_input": {"file_path": path}, "cwd": str(tmp_path)}
+            assert self._invoke("read-activity", payload, monkeypatch) == (0, "")
+        # NeuralMind's own state is not a step between files.
+        assert calls == [(str(tmp_path), "a.py")]
+
+    def test_read_activity_builds_transitions_between_reads(self, monkeypatch, tmp_path):
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        (tmp_path / ".neuralmind").mkdir()
+        for path in ("a.py", "b.py", "c.py"):
+            payload = {"tool_input": {"file_path": path}, "cwd": str(tmp_path)}
+            self._invoke("read-activity", payload, monkeypatch)
+        stats = SynapseStore(default_db_path(str(tmp_path))).stats()
+        assert stats["transitions"] == 2  # a -> b, b -> c
+
     def test_edit_activity_opt_out(self, monkeypatch, tmp_path):
         """NEURALMIND_REUSE_FEEDBACK=0 makes the branch a no-op."""
         import neuralmind.hooks as hooks_mod
@@ -695,6 +718,7 @@ class TestHooksStayOutOfUnindexedProjects:
             "tool_input": {"file_path": "a.py", "new_string": "def g():\n    return 2\n"},
         },
         "stale-guard": {"tool_input": {"file_path": "a.py"}},
+        "read-activity": {"tool_input": {"file_path": "a.py"}},
     }
 
     def _run(self, action, payload, monkeypatch):
@@ -762,6 +786,7 @@ class TestHookPayloadRobustness:
             ("prompt-submit", {"prompt": 123}),
             ("compress-bash", {"tool_response": {"stdout": "x", "exit_code": "abc"}}),
             ("stale-guard", {"tool_input": {"file_path": 7}}),
+            ("read-activity", {"tool_input": {"file_path": 7}}),
         ],
     )
     def test_wrongly_typed_fields_fail_open(self, action, payload, tmp_path, monkeypatch):

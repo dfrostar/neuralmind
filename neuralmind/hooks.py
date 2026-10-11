@@ -533,6 +533,18 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
             logger.exception("[hooks] stop cadence tick failed — no summary written")
         return 0
 
+    if action == "read-activity":
+        # A file read from an agent whose hook can't return output (the
+        # Hermes plugin's read_file): only the transition compress-read
+        # records, without its dedup.
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        if not (isinstance(file_path, str) and file_path):
+            return 0
+        if ".neuralmind" in Path(file_path).parts:
+            return 0
+        _record_tool_transition(payload.get("cwd") or os.getcwd(), file_path)
+        return 0
+
     if action == "edit-activity":
         # PostToolUse on Edit/Write: feed the reuse-vs-rewrite signal back
         # into the synapse layer (v0.38.0). Pure side effect — we emit nothing
