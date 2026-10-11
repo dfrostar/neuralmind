@@ -18,7 +18,10 @@
 #   3. Writes DEST/openssl-fips.cnf: FIPS, base and default providers loaded,
 #      default property query `fips=yes`. Non-FIPS algorithms then fail unless
 #      a caller asks for them with usedforsecurity=False, as on a FIPS host.
-#   4. Checks that the Python on PATH (or $PYTHON) really enforces it.
+#   4. Checks that the Python on PATH (or $PYTHON) really enforces it, and
+#      that `cryptography`, if installed, uses the same OpenSSL as hashlib.
+#      The PyPI wheel bundles its own, which mixes with the system one under
+#      this config; install it with `pip install --no-binary cryptography`.
 #
 # Usage:
 #   bash scripts/setup_fips_openssl.sh <dest-dir>
@@ -58,6 +61,14 @@ if [ ! -f "${DEST}/fips.so" ]; then
 fi
 
 openssl fipsinstall -quiet -out "${DEST}/fipsmodule.cnf" -module "${DEST}/fips.so"
+
+# OPENSSL_MODULES will point here, so link the system's legacy provider in too:
+# `cryptography` loads it explicitly and warns when it can't. It doesn't loosen
+# enforcement; the `fips=yes` default property still governs normal fetches.
+SYSTEM_MODULES="$(openssl version -m | sed -n 's/^MODULESDIR: "\(.*\)"$/\1/p')"
+if [ -f "${SYSTEM_MODULES}/legacy.so" ]; then
+  ln -sf "${SYSTEM_MODULES}/legacy.so" "${DEST}/legacy.so"
+fi
 
 cat >"${DEST}/openssl-fips.cnf" <<EOF
 config_diagnostics = 1
@@ -99,4 +110,16 @@ else:
     raise SystemExit("FIPS provider not enforced: hashlib.md5() succeeded")
 hashlib.md5(b"x", usedforsecurity=False)
 hashlib.sha256(b"x")
+
+try:
+    from cryptography.hazmat.backends.openssl import backend
+except ImportError:
+    pass
+else:
+    if backend.openssl_version_text() != ssl.OPENSSL_VERSION:
+        raise SystemExit(
+            f"cryptography uses {backend.openssl_version_text()}, hashlib uses "
+            f"{ssl.OPENSSL_VERSION}: the two mix under this config. Reinstall it "
+            "with `pip install --no-binary cryptography cryptography`."
+        )
 EOF

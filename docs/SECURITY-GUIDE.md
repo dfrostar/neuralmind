@@ -222,11 +222,9 @@ tests exercise, not every path (the embedding-model download isn't one), and
 it tests the provider's algorithm restrictions, not your host's validated
 module.
 
-**Known limitation:** Team-tier licence and seat-manifest signatures are
-Ed25519, which the OpenSSL 3.0 FIPS provider doesn't implement. With the FIPS
-mode on, a valid Team licence or signed seat manifest reads as invalid, and
-nothing says why. The free tier and every feature outside Team licensing are
-unaffected.
+Team-tier licence and seat-manifest signatures are Ed25519, which FIPS 186-5
+approves and the CI job verifies under the upstream provider. A FIPS policy
+that disables EdDSA would make a valid Team licence read as invalid.
 
 ---
 
