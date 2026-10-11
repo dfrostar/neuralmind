@@ -277,6 +277,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
     names = {c.name for c in checks}
     assert names == {
         "Code graph",
+        "Graph source",
         "Backend",
         "Semantic index",
         "Synapse memory",
@@ -326,7 +327,7 @@ def test_cmd_doctor_returns_normally_without_a_failure(empty_project, monkeypatc
     monkeypatch.setattr(
         doctor,
         "run_diagnostics",
-        lambda _p: [doctor.Check("a", doctor.OK, ""), doctor.Check("b", worst, "")],
+        lambda _p, **_kw: [doctor.Check("a", doctor.OK, ""), doctor.Check("b", worst, "")],
     )
     monkeypatch.setattr(cli, "_tier2_doctor_checks", lambda _a: [])
     # Warnings alone don't fail the run: no SystemExit means exit status 0.

@@ -206,3 +206,81 @@ def test_reader_still_cannot_write_decisions(temp_project):
     )
     assert parsed["code"] == "security_denied"
     assert "Access denied for role 'reader'" in parsed["error"]
+
+
+class _Info:
+    def __init__(self, name, version=None):
+        self.name = name
+        self.version = version
+
+
+class _Params:
+    """InitializeRequestParams on mcp 1.x (``clientInfo``) or 2.x (``client_info``)."""
+
+    def __init__(self, info, *, legacy):
+        if legacy:
+            self.clientInfo = info
+        else:
+            self.client_info = info
+
+
+class _Session:
+    def __init__(self, params):
+        self.client_params = params
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_client_from_session_reads_either_sdk(legacy):
+    from neuralmind.mcp_server import client_from_session
+
+    session = _Session(_Params(_Info("hermes", "0.9.1"), legacy=legacy))
+    assert client_from_session(session) == {"name": "hermes", "version": "0.9.1"}
+
+
+def test_client_from_session_without_client_info():
+    from neuralmind.mcp_server import client_from_session
+
+    assert client_from_session(None) is None
+    assert client_from_session(_Session(None)) is None
+    assert client_from_session(_Session(_Params(_Info(""), legacy=False))) is None
+    # The client picks these strings, so they are capped before the audit log.
+    capped = client_from_session(_Session(_Params(_Info("x" * 500, "v" * 500), legacy=False)))
+    assert len(capped["name"]) == 128
+    assert len(capped["version"]) == 64
+
+
+def test_mcp_calls_are_attributed_to_the_client(temp_project):
+    """Two agents on one project: the audit log says which one made each call."""
+    from neuralmind.mcp_server import handle_tool_call
+
+    for client in ({"name": "claude-code", "version": "2.1.0"}, {"name": "hermes"}):
+        result = json.loads(
+            handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)}, client)
+        )
+        assert "error" not in result
+    handle_tool_call("neuralmind_stats", {"project_path": str(temp_project)})
+
+    calls = [e for e in AuditTrail(temp_project).read_events() if e["action"] == "mcp_call"][-3:]
+    assert [e["details"].get("client") for e in calls] == [
+        {"name": "claude-code", "version": "2.1.0"},
+        {"name": "hermes"},
+        None,
+    ]
+    # The resolved role is a first-class field, not only buried in details.
+    assert {e["actor_role"] for e in calls} == {"builder"}
+
+
+def test_a_denied_call_still_names_the_client(temp_project):
+    manager = MCPSecurityManager(
+        project_path=str(temp_project),
+        policy=RBACPolicy({"reader": {"neuralmind_query"}}),
+        audit_trail=AuditTrail(temp_project),
+    )
+    with pytest.raises(AccessDeniedError):
+        manager.secure_call(
+            None, "reader", "neuralmind_build", lambda: None, client={"name": "hermes"}
+        )
+    denied = AuditTrail(temp_project).read_events()[-1]
+    assert denied["action"] == "mcp_call_denied"
+    assert denied["details"]["client"] == {"name": "hermes"}
+    assert denied["actor_role"] == "reader"

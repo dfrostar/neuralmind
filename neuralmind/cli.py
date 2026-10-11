@@ -502,6 +502,7 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             regenerate_graph=regenerate,
             strict=strict,
             prune=getattr(args, "prune", False) is True,
+            archive_graphify=getattr(args, "archive_graphify", False) is True,
             dry_run=False,
             json=False,
         )
@@ -785,6 +786,7 @@ def cmd_build(args):
         regenerate_graph=getattr(args, "regenerate_graph", False) is True,
         strict=getattr(args, "strict", False) is True,
         prune=getattr(args, "prune", False) is True,
+        archive_graphify=getattr(args, "archive_graphify", False) is True,
     )
     if result.get("success"):
         print("Build successful!")
@@ -808,6 +810,11 @@ def cmd_build(args):
             val = ir_meta.get("validation", {})
             status = "valid" if val.get("ok", True) else f"{val.get('errors', 0)} error(s)"
             print(f"   IR: v{ir_meta['ir_version']} ({status})")
+        synapses = result.get("synapses")
+        if isinstance(synapses, dict):
+            print(f"   Synapses: {_synapse_line(synapses)}")
+            if not synapses.get("transitions"):
+                print(f"      {TRANSITIONS_HINT}")
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
@@ -822,7 +829,36 @@ def cmd_build(args):
         print(
             "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
         )
-        print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
+        # Plain `watch` only learns from edits; --reindex is what re-indexes them.
+        print(
+            "     Files that change without a commit: neuralmind watch . --reindex  "
+            "(re-indexes edited files as they change)"
+        )
+
+
+# What a learned transition ("after A, you edit B") comes from, for anyone
+# looking at a count of 0: queries strengthen edges but never add transitions.
+TRANSITIONS_HINT = (
+    "0 transitions: they are learned from the files an agent reads and edits in turn "
+    "(Claude Code hooks: neuralmind install-hooks; the Hermes plugin, from edits) or that "
+    "change together (neuralmind watch .). Queries strengthen edges but add no transitions."
+)
+
+
+def _synapse_line(synapses: dict) -> str:
+    """``3,612 edges (+47 since last build), 12 transitions (+12)``"""
+
+    def part(key: str, label: str, since: str) -> str:
+        text = f"{int(synapses.get(key, 0)):,} {label}"
+        delta = synapses.get(f"{key}_delta")
+        if isinstance(delta, int):
+            text += f" ({delta:+,}{since})"
+        return text
+
+    return (
+        f"{part('edges', 'edges', ' since last build')}, "
+        f"{part('transitions', 'transitions', '')}"
+    )
 
 
 def _try_daemon():
@@ -849,6 +885,48 @@ def _print_trace(trace: dict | None) -> None:
     print(f"Retrieval trace ({len(trace.get('events', []))} events):")
     for e in trace.get("events", []):
         print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
+
+
+def _explain_data(result) -> dict:
+    """``query --explain --json``: what the human explanation shows, as data.
+
+    Token budget per layer, the layers and communities used, the query
+    intent, the top L3 hits with their scores, and the synapse events that
+    fired, so an agent can check *why* this context was chosen rather than
+    only how small it is.
+    """
+    budget = result.budget
+    hits = []
+    for h in (result.top_search_hits or [])[:5]:
+        meta = h.get("metadata") or {}
+        hits.append(
+            {
+                "id": h.get("id", ""),
+                "label": h.get("label") or meta.get("label") or h.get("id", ""),
+                "source_file": h.get("source_file") or meta.get("source_file", ""),
+                "score": round(float(h.get("score", 0.0) or 0.0), 4),
+            }
+        )
+    events = (result.trace or {}).get("events") or []
+    return {
+        "budget": {
+            "l0_identity": budget.l0_identity,
+            "l1_summary": budget.l1_summary,
+            "l2_communities": budget.l2_ondemand,
+            "l3_search": budget.l3_search,
+            "total": budget.total,
+        },
+        "reduction_ratio": round(result.reduction_ratio, 1),
+        "layers": list(result.layers_used),
+        "intent": getattr(result, "intent", ""),
+        "intent_source": getattr(result, "intent_source", ""),
+        "communities_loaded": list(result.communities_loaded),
+        "search_hits": result.search_hits,
+        "top_hits": hits,
+        "synapses_fired": [
+            e.get("summary", "") for e in events if "synapse" in (e.get("kind") or "")
+        ],
+    }
 
 
 def _print_explain(result) -> None:
@@ -1220,6 +1298,8 @@ def cmd_query(args):
             "context": result.context,
             "trace": result.trace,
         }
+        if explain:
+            output["explain"] = _explain_data(result)
         if relevance:
             from .relevance import build_relevance_sidecar
 
@@ -2078,6 +2158,10 @@ def cmd_stats(args):
             stats = client.stats(str(Path(args.project_path).resolve()))
             if not stats.get("error"):
                 stats.setdefault("via", "daemon")
+                # Read here, not by the daemon: it's the project's metrics log.
+                learning = _learning_summary(Path(args.project_path).resolve())
+                if learning:
+                    stats["learning"] = learning
                 if args.json:
                     print(json.dumps(stats, indent=2))
                 else:
@@ -2085,6 +2169,7 @@ def cmd_stats(args):
                     print(f"Built: {stats.get('built')}")
                     if stats.get("built"):
                         print(f"Nodes: {stats.get('nodes', stats.get('total_nodes', 0))}")
+                    _print_learning(learning)
                 return
         except Exception:
             pass
@@ -2112,6 +2197,9 @@ def cmd_stats(args):
             stats["synapses"] = mind.synapses.stats()
     except Exception:
         pass
+    learning = _learning_summary(mind.project_path)
+    if learning:
+        stats["learning"] = learning
     if args.json:
         print(json.dumps(stats, indent=2))
     else:
@@ -2129,6 +2217,9 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
+        _print_learning(learning)
+        if synapse_stats and not synapse_stats.get("transitions"):
+            print(TRANSITIONS_HINT)
 
 
 def cmd_cost(args):
@@ -2190,19 +2281,33 @@ def cmd_metrics(args):
 
     if queries:
         print(f"{'Queries':.<30} {queries.get('n_queries', 0):>12,}")
+        print(f"{'Last query':.<30} {_ago(queries.get('last_ts')):>12}")
         print(f"{'Mean latency (ms)':.<30} {queries.get('mean_latency_ms', 0):>12,.2f}")
         print(f"{'Mean tokens/query':.<30} {queries.get('mean_tokens_used', 0):>12,.0f}")
-        print(f"{'Mean retrieval reuse':.<30} {queries.get('mean_retrieval_reuse_rate', 0):>12.4f}")
-        print(f"{'Mean synapses fired':.<30} {queries.get('mean_synapses_activated', 0):>12.1f}")
+        # Recorded only by callers that measure them (not NeuralMind.query()).
+        if queries.get("mean_retrieval_reuse_rate"):
+            print(f"{'Mean retrieval reuse':.<30} {queries['mean_retrieval_reuse_rate']:>12.4f}")
+        if queries.get("mean_synapses_activated"):
+            print(f"{'Mean synapses fired':.<30} {queries['mean_synapses_activated']:>12.1f}")
         calls = queries.get("sum_tool_calls", 0)
-        successes = queries.get("sum_tool_successes", 0)
-        success_pct = (successes / calls * 100) if calls > 0 else 0.0
-        print(f"{'Tool success rate':.<30} {success_pct:>11.1f}%")
-        print(f"{'Total tool calls':.<30} {calls:>12,}")
+        if calls:
+            successes = queries.get("sum_tool_successes", 0)
+            print(f"{'Tool success rate':.<30} {successes / calls * 100:>11.1f}%")
+            print(f"{'Total tool calls':.<30} {calls:>12,}")
 
     if builds:
         print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
+        print(f"{'Last build':.<30} {_ago(builds.get('last_ts')):>12}")
         print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
+        if "synapse_edges" in builds:
+            delta = builds.get("synapse_edges_delta", 0)
+            print(f"{'Synapse edges':.<30} {builds['synapse_edges']:>12,} ({delta:+,} in window)")
+        if "synapse_transitions" in builds:
+            delta = builds.get("synapse_transitions_delta", 0)
+            print(
+                f"{'Synapse transitions':.<30} {builds['synapse_transitions']:>12,} "
+                f"({delta:+,} in window)"
+            )
 
     if recall:
         outcomes = recall.get("outcomes", {})
@@ -2211,6 +2316,74 @@ def cmd_metrics(args):
         print(f"{'Abstained: low similarity':.<30} {outcomes.get('low_similarity', 0):>12,}")
         print(f"{'Abstained: nothing to name':.<30} {outcomes.get('no_neighbors', 0):>12,}")
         print(f"{'Abstain rate':.<30} {recall.get('abstain_rate', 0) * 100:>11.1f}%")
+
+    per_day = summary.get("per_day") or {}
+    if per_day:
+        print()
+        print(f"{'Day (UTC)':<12} {'Queries':>8} {'Builds':>8} {'Recall':>8}")
+        for day, counts in per_day.items():
+            print(
+                f"{day:<12} {counts.get('query', 0):>8,} {counts.get('build', 0):>8,} "
+                f"{counts.get('recall', 0):>8,}"
+            )
+
+
+def _print_learning(learning: dict) -> None:
+    """The ``Learning (last 7 days)`` block of ``neuralmind stats``."""
+    if not learning:
+        return
+    print(f"Learning (last {learning['days']} days):")
+    if "edges_delta" in learning:
+        print(
+            f"  Synapses: {learning['edges']:,} edges ({learning['edges_delta']:+,}), "
+            f"{learning['transitions']:,} transitions "
+            f"({learning['transitions_delta']:+,}) across {learning['builds']} build(s)"
+        )
+    print(
+        f"  Queries: {learning['queries']:,}"
+        + (f", last {_ago(learning['last_query_ts'])}" if learning["queries"] else "")
+    )
+
+
+def _learning_summary(project_path, days: int = 7) -> dict:
+    """How the learned layer and its use changed over ``days``, from the metrics log.
+
+    Synapse growth comes from the build records (each holds the store's totals
+    after that build), query counts from the query records. Empty when the log
+    has nothing for the window.
+    """
+    summary = MetricsCollector(project_path).summarize(days=days)
+    if not summary or not summary.get("n_events"):
+        return {}
+    builds = summary.get("builds") or {}
+    queries = summary.get("queries") or {}
+    out: dict = {"days": days, "queries": queries.get("n_queries", 0)}
+    if queries:
+        out["last_query_ts"] = queries.get("last_ts")
+    if "synapse_edges" in builds:
+        out.update(
+            builds=builds.get("n_builds", 0),
+            edges=builds["synapse_edges"],
+            edges_delta=builds.get("synapse_edges_delta", 0),
+            transitions=builds.get("synapse_transitions", 0),
+            transitions_delta=builds.get("synapse_transitions_delta", 0),
+        )
+    return out
+
+
+def _ago(ts) -> str:
+    """``3h ago`` for a Unix timestamp; ``-`` when there is none."""
+    import time
+
+    if not isinstance(ts, (int, float)) or ts <= 0:
+        return "-"
+    seconds = max(0, time.time() - ts)
+    if seconds < 60:
+        return "just now"
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return "-"
 
 
 def cmd_validate(args):
@@ -2405,7 +2578,9 @@ def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
 
-    base_checks = doctor.run_diagnostics(args.project_path)
+    base_checks = doctor.run_diagnostics(
+        args.project_path, stale_after=getattr(args, "stale_after", None)
+    )
     # Tier 2 additional checks (license, self-hosted) — additive, never breaking.
     extra = []
     try:
@@ -2693,6 +2868,8 @@ def cmd_synapse_stats(args) -> None:
     print(f"  Dormant:        {stats.get('dormant', 0)}")
     print(f"  Transitions:    {stats['transitions']}")
     print(f"  Total weight:   {stats['total_weight']:.2f}")
+    if not stats["transitions"]:
+        print(f"  {TRANSITIONS_HINT}")
 
 
 def cmd_next(args):
@@ -2854,15 +3031,21 @@ def cmd_audit_recent(args):
         print("No audit events found.")
         return
     print(f"Recent audit events ({len(events)} shown):")
-    print(f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} Target")
-    print("  " + "-" * 80)
+    print(
+        f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} "
+        f"{'Client':<16} Target"
+    )
+    print("  " + "-" * 97)
     for evt in events:
         ts = evt.get("timestamp", "")[:19]
         cat = evt.get("category", "")[:11]
         act = evt.get("action", "")[:19]
         actor = evt.get("actor", "")[:11]
+        # The MCP client that made the call (its initialize clientInfo).
+        client = (evt.get("details") or {}).get("client") or {}
+        client_name = str(client.get("name", "-") if isinstance(client, dict) else "-")[:15]
         target = str(evt.get("target", ""))[:30]
-        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
+        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {client_name:<16} {target}")
 
 
 def _audit_review(action: str, args) -> None:
@@ -6516,6 +6699,18 @@ def _positive_int(value: str) -> int:
     return n
 
 
+def _duration_arg(value: str) -> float:
+    """argparse ``type=`` for ``--stale-after``: ``30m``, ``2h``, ``1d`` -> seconds."""
+    from neuralmind.freshness import parse_duration
+
+    seconds = parse_duration(value)
+    if seconds is None:
+        raise argparse.ArgumentTypeError(
+            f"invalid duration: {value!r} (use a number with s, m, h or d, e.g. 30m)"
+        )
+    return seconds
+
+
 def _confidence_arg(value: str) -> float:
     """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
     from neuralmind.memory.store import validate_confidence
@@ -6600,6 +6795,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Remove orphaned vectors even when they are more than half the store "
         "(normally kept as a safety valve against a graph that shrank by mistake).",
+    )
+    build_p.add_argument(
+        "--archive-graphify",
+        dest="archive_graphify",
+        action="store_true",
+        help="Rename an unused graphify-out/graph.json (left from a graphify-era build) "
+        "to graph.json.archived-<timestamp> before building, so it stops looking like "
+        "a live graph. Refused under graph_source: graphify.",
     )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.add_argument(
@@ -6905,6 +7108,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_p.add_argument("project_path", nargs="?", default=".")
     doctor_p.add_argument("--json", "-j", action="store_true")
+    doctor_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Fail the code-graph check (exit 1) when the index has been behind the "
+        "files for longer than this, e.g. 30m, 2h, 1d. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
@@ -6947,6 +7160,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     health_p.add_argument("project_path", nargs="?", default=".")
     health_p.add_argument("--json", "-j", action="store_true")
+    health_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Exit 0 ('catching up') while the index has been behind the files for no "
+        "longer than this, e.g. 30m; exit 1 after. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     health_p.set_defaults(func=cmd_health)
 
     metrics_p = subparsers.add_parser(

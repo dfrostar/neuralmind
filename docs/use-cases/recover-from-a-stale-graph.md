@@ -86,6 +86,21 @@ both ways out (`--regenerate-graph`, or `graph_source: graphify`) instead of
 quietly serving an old graphify graph. Every build prints which graph it used
 on a `Graph:` line, and `neuralmind build-status` shows it afterwards.
 
+**The graphify graph you upgraded past** *(v4.13.0+)*. Once the built-in graph
+exists, `auto` never reads `graphify-out/graph.json` again, but the file still
+looks like a live graph to anyone (or any script) inspecting the repository.
+Every build names it until you deal with it, and `neuralmind doctor` warns
+under **Graph source**:
+
+```
+  [warn] Graph source: builds read .neuralmind/graph.json; graphify-out/graph.json is unused (graph_source: auto picks the built-in graph once it exists)
+         -> Archive it: neuralmind build . --archive-graphify (or set graph_source: builtin in .neuralmind.yaml to keep it)
+```
+
+`--archive-graphify` renames it to `graphify-out/graph.json.archived-<timestamp>`
+and leaves the rest of `graphify-out/` alone; rename it back to undo. If you
+still run graphify for something else, set `graph_source: builtin` instead.
+
 ## 4. Gate it in CI
 
 ```bash
@@ -96,6 +111,23 @@ neuralmind build . --strict    # exits 3 before embedding when the graph FAILs
 `health` used to fail whenever the index was older than 24 hours. It now fails
 only when the graph and the code disagree, so a nightly job stops rebuilding a
 current index and starts catching a stale one.
+
+**A watcher, and a grace period** *(v4.13.0+)*. When files change without
+commits, run `neuralmind watch . --reindex` and give it time to catch up:
+
+```yaml
+# .neuralmind.yaml
+stale_after: 30m
+```
+
+```bash
+neuralmind health .    # 0 "catching_up" while behind for under 30m; 1 after
+neuralmind doctor .    # Code graph FAILs once behind for over 30m: "behind for 3h, over stale_after 30m"
+```
+
+A cron job can gate on either without a monitor of its own. Doctor's file lines
+now end with when the newest unindexed file changed (`; newest modified 2h
+ago`), so a file written during an incident stands out from months-old drift.
 
 ---
 

@@ -47,7 +47,7 @@ class Check:
         }
 
 
-def _check_graph(project: Path) -> Check:
+def _check_graph(project: Path, stale_after: float | None = None) -> Check:
     """Is there a code graph, and does it match the files on disk?
 
     Delegates to :func:`neuralmind.freshness.graph_freshness`, which compares
@@ -84,9 +84,42 @@ def _check_graph(project: Path) -> Check:
         return Check("Code graph", OK, f"{nodes} nodes at {graph}")
     detail = f"{report.header()}, {nodes:,} nodes"
     problems = report.problem_lines()
+    status = report.status
+    if stale_after is None:
+        stale_after, invalid = _configured_stale_after(project)
+        if invalid is not None:
+            # Set but unusable: say the gate is off rather than pass quietly.
+            note = (
+                f"stale_after: {invalid!r} in .neuralmind.yaml isn't a duration "
+                "(use s, m, h or d, e.g. 30m), so no stale_after gate applies"
+            )
+            problems = [*problems, note]
+            if status == OK:
+                status = WARN
+    if stale_after is not None:
+        from .freshness import track_drift
+
+        track_drift(project, report)
+    overdue = report.overdue_reason(stale_after) if stale_after is not None else ""
+    if overdue:
+        # Behind for longer than the project allows: a failure, so `doctor`
+        # exits 1 and a cron job or CI step can gate on it.
+        problems = [*problems, overdue]
+        status = FAIL
     if problems:
         detail += "\n         " + "\n         ".join(problems)
-    return Check("Code graph", report.status, detail, fix=report.fix_command(str(project)))
+    return Check("Code graph", status, detail, fix=report.fix_command(str(project)))
+
+
+def _configured_stale_after(project: Path) -> tuple[float | None, str | None]:
+    """``(seconds, invalid raw value)`` for ``stale_after`` in ``.neuralmind.yaml``."""
+    try:
+        from .neuralmind_config import NeuralmindConfig
+
+        config = NeuralmindConfig.load(project)
+        return config.stale_after, config.stale_after_invalid
+    except Exception:
+        return None, None
 
 
 def _graph_node_ids(project: Path) -> set[str] | None:
@@ -100,6 +133,40 @@ def _graph_node_ids(project: Path) -> set[str] | None:
         for n in g.get("nodes", []) or []
         if isinstance(n, dict) and n.get("id", n.get("label", ""))
     }
+
+
+def _check_graph_source(project: Path) -> Check:
+    """Which graph builds read, and whether an unused graphify graph remains.
+
+    Upgrading past v4.3.x moves an ``auto`` project to the built-in graph and
+    leaves ``graphify-out/graph.json`` where it was; nothing reads it again,
+    but it looks like a live graph to anyone inspecting the project.
+    """
+    from .paths import graph_source_setting, unused_legacy_graph
+
+    name = "Graph source"
+    try:
+        setting = graph_source_setting(project)
+        graph = graph_json_path(project)
+        leftover = unused_legacy_graph(project)
+    except Exception as e:  # pragma: no cover - diagnostic must never raise
+        return Check(name, WARN, f"could not resolve the graph source ({e})")
+    try:
+        active = graph.relative_to(project).as_posix()
+    except ValueError:
+        active = str(graph)
+    if leftover is not None:
+        return Check(
+            name,
+            WARN,
+            f"builds read {active}; graphify-out/graph.json is unused "
+            "(graph_source: auto picks the built-in graph once it exists)",
+            fix=(
+                f"Archive it: neuralmind build {project} --archive-graphify "
+                "(or set graph_source: builtin in .neuralmind.yaml to keep it)"
+            ),
+        )
+    return Check(name, OK, f"{active} (graph_source: {setting})")
 
 
 def _check_index(project: Path) -> Check:
@@ -620,11 +687,16 @@ def _check_storage_encryption(project: Path) -> Check:
     return Check(name, OK, f"{state} ({status.detail}); not required by this project")
 
 
-def run_diagnostics(project_path: str) -> list[Check]:
-    """Run every check against ``project_path`` and return the results."""
+def run_diagnostics(project_path: str, stale_after: float | None = None) -> list[Check]:
+    """Run every check against ``project_path`` and return the results.
+
+    ``stale_after`` (seconds) overrides ``stale_after`` in ``.neuralmind.yaml``:
+    a code graph behind the files for longer than that FAILs.
+    """
     project = Path(project_path).resolve()
     return [
-        _check_graph(project),
+        _check_graph(project, stale_after),
+        _check_graph_source(project),
         _check_backend(project),
         _check_index(project),
         _check_synapses(project),

@@ -259,8 +259,18 @@ class MCPSecurityManager:
         role: str | None,
         tool_name: str,
         call: Callable[[], Any],
+        client: dict[str, str] | None = None,
     ) -> Any:
+        """Run *call* if the caller may, auditing the attempt either way.
+
+        *client* is the MCP client's ``clientInfo`` from the initialize
+        handshake (``{"name", "version"}``). It is recorded under
+        ``details.client`` on every event so several agents sharing a project
+        can be told apart. It is what the client says it is, so it attributes
+        calls but never decides access.
+        """
         self.refuse_if_misconfigured(actor, tool_name)
+        attribution = {"client": client} if client else {}
 
         try:
             actor, role, identity = self.resolve_caller(actor, role)
@@ -275,15 +285,17 @@ class MCPSecurityManager:
                 action="mcp_call_denied",
                 status="denied",
                 target=tool_name,
-                details={"reason": "identity", "error": str(exc), **claimed},
+                details={"reason": "identity", "error": str(exc), **claimed, **attribution},
             )
             raise
+        identity = {**identity, **attribution}
 
         if not self.policy.is_allowed(role, tool_name):
             self.audit.append_event(
                 category="security",
                 action="mcp_call_denied",
                 actor=actor,
+                actor_role=role,
                 status="denied",
                 target=tool_name,
                 details={"reason": "rbac", "role": role, **identity},
@@ -295,6 +307,7 @@ class MCPSecurityManager:
                 category="security",
                 action="mcp_call_denied",
                 actor=actor,
+                actor_role=role,
                 status="denied",
                 target=tool_name,
                 details={"reason": "rate_limit", "role": role, **identity},
@@ -307,6 +320,7 @@ class MCPSecurityManager:
                 category="security",
                 action="mcp_call",
                 actor=actor,
+                actor_role=role,
                 status="success",
                 target=tool_name,
                 details={"role": role, **identity},
@@ -317,6 +331,7 @@ class MCPSecurityManager:
                 category="security",
                 action="mcp_call",
                 actor=actor,
+                actor_role=role,
                 status="failure",
                 target=tool_name,
                 details={"role": role, "error": str(exc), **identity},

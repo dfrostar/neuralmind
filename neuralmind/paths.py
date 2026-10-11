@@ -157,6 +157,49 @@ def graph_json_path(project_path: str | Path, graph_source: str | None = None) -
     return canonical
 
 
+def unused_legacy_graph(project_path: str | Path) -> Path | None:
+    """``graphify-out/graph.json`` when it exists but no build will read it.
+
+    Under ``graph_source: auto`` the built-in ``.neuralmind/graph.json`` wins
+    once it exists, so a graphify graph left from before (v4.3.x and earlier
+    built from it) sits beside it unused. An explicit ``graph_source`` is a
+    choice already made, so it returns None there.
+    """
+    base = _resolve_base(project_path)
+    if graph_source_setting(base) != "auto":
+        return None
+    canonical = _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, CANONICAL_DIR, "graph.json")))
+    )
+    legacy = _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, LEGACY_DIR, "graph.json")))
+    )
+    if canonical.exists() and legacy.is_file():
+        return legacy
+    return None
+
+
+def archive_legacy_graph(project_path: str | Path) -> Path | None:
+    """Rename ``graphify-out/graph.json`` so graph resolution stops seeing it.
+
+    It becomes ``graphify-out/graph.json.archived-<UTC timestamp>`` beside the
+    rest of ``graphify-out/``, which is left alone; renaming it back undoes
+    this. Returns the new path, or None when there is no graphify graph.
+    """
+    import time
+
+    base = _resolve_base(project_path)
+    legacy = _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, LEGACY_DIR, "graph.json")))
+    )
+    if not legacy.is_file():
+        return None
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    target = legacy.with_name(f"graph.json.archived-{stamp}")
+    legacy.rename(target)
+    return target
+
+
 def baseline_path(project_path: str | Path) -> Path:
     """Return the path to ``baseline.json`` (always canonical)."""
     base = _resolve_base(project_path)

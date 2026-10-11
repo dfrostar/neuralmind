@@ -14,6 +14,16 @@
 > the transition graph, not just the edits that happen while a query
 > is open.
 
+> **Learning is not re-indexing** *(v4.13.0 note)*. The templates run
+> `neuralmind watch . --quiet`, which feeds the synapse layer but leaves the
+> index as it is. If files change without commits (generated code, synced
+> folders, edits from tools without NeuralMind hooks), add `--reindex` to
+> `ExecStart` / `ProgramArguments` so edited files are re-indexed as they
+> change, and set `stale_after` (for example `stale_after: 30m` in
+> `.neuralmind.yaml`) so `neuralmind health` and `doctor` tell you when the
+> watcher has fallen behind. Each build and `neuralmind stats .` show whether
+> transitions are accumulating.
+
 Three platforms, same shape: pick the template, point it at your
 project, enable it. The templates live in [`scripts/systemd/`](../../scripts/systemd/)
 and [`scripts/launchd/`](../../scripts/launchd/) in this repo.
