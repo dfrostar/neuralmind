@@ -810,6 +810,11 @@ def cmd_build(args):
             val = ir_meta.get("validation", {})
             status = "valid" if val.get("ok", True) else f"{val.get('errors', 0)} error(s)"
             print(f"   IR: v{ir_meta['ir_version']} ({status})")
+        synapses = result.get("synapses")
+        if isinstance(synapses, dict):
+            print(f"   Synapses: {_synapse_line(synapses)}")
+            if not synapses.get("transitions"):
+                print(f"      {TRANSITIONS_HINT}")
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
@@ -824,7 +829,36 @@ def cmd_build(args):
         print(
             "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
         )
-        print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
+        # Plain `watch` only learns from edits; --reindex is what re-indexes them.
+        print(
+            "     Files that change without a commit: neuralmind watch . --reindex  "
+            "(re-indexes edited files as they change)"
+        )
+
+
+# What a learned transition ("after A, you edit B") comes from, for anyone
+# looking at a count of 0: queries strengthen edges but never add transitions.
+TRANSITIONS_HINT = (
+    "0 transitions: they are learned from the files an agent reads and edits in turn "
+    "(Claude Code hooks: neuralmind install-hooks; the Hermes plugin, from edits) or that "
+    "change together (neuralmind watch .). Queries strengthen edges but add no transitions."
+)
+
+
+def _synapse_line(synapses: dict) -> str:
+    """``3,612 edges (+47 since last build), 12 transitions (+12)``"""
+
+    def part(key: str, label: str, since: str) -> str:
+        text = f"{int(synapses.get(key, 0)):,} {label}"
+        delta = synapses.get(f"{key}_delta")
+        if isinstance(delta, int):
+            text += f" ({delta:+,}{since})"
+        return text
+
+    return (
+        f"{part('edges', 'edges', ' since last build')}, "
+        f"{part('transitions', 'transitions', '')}"
+    )
 
 
 def _try_daemon():
@@ -2158,6 +2192,9 @@ def cmd_stats(args):
             stats["synapses"] = mind.synapses.stats()
     except Exception:
         pass
+    learning = _learning_summary(mind.project_path)
+    if learning:
+        stats["learning"] = learning
     if args.json:
         print(json.dumps(stats, indent=2))
     else:
@@ -2175,6 +2212,20 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
+        if learning:
+            print(f"Learning (last {learning['days']} days):")
+            if "edges_delta" in learning:
+                print(
+                    f"  Synapses: {learning['edges']:,} edges ({learning['edges_delta']:+,}), "
+                    f"{learning['transitions']:,} transitions "
+                    f"({learning['transitions_delta']:+,}) across {learning['builds']} build(s)"
+                )
+            print(
+                f"  Queries: {learning['queries']:,}"
+                + (f", last {_ago(learning['last_query_ts'])}" if learning["queries"] else "")
+            )
+        if synapse_stats and not synapse_stats.get("transitions"):
+            print(TRANSITIONS_HINT)
 
 
 def cmd_cost(args):
@@ -2281,6 +2332,32 @@ def cmd_metrics(args):
                 f"{day:<12} {counts.get('query', 0):>8,} {counts.get('build', 0):>8,} "
                 f"{counts.get('recall', 0):>8,}"
             )
+
+
+def _learning_summary(project_path, days: int = 7) -> dict:
+    """How the learned layer and its use changed over ``days``, from the metrics log.
+
+    Synapse growth comes from the build records (each holds the store's totals
+    after that build), query counts from the query records. Empty when the log
+    has nothing for the window.
+    """
+    summary = MetricsCollector(project_path).summarize(days=days)
+    if not summary or not summary.get("n_events"):
+        return {}
+    builds = summary.get("builds") or {}
+    queries = summary.get("queries") or {}
+    out: dict = {"days": days, "queries": queries.get("n_queries", 0)}
+    if queries:
+        out["last_query_ts"] = queries.get("last_ts")
+    if "synapse_edges" in builds:
+        out.update(
+            builds=builds.get("n_builds", 0),
+            edges=builds["synapse_edges"],
+            edges_delta=builds.get("synapse_edges_delta", 0),
+            transitions=builds.get("synapse_transitions", 0),
+            transitions_delta=builds.get("synapse_transitions_delta", 0),
+        )
+    return out
 
 
 def _ago(ts) -> str:
@@ -2490,7 +2567,9 @@ def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
 
-    base_checks = doctor.run_diagnostics(args.project_path)
+    base_checks = doctor.run_diagnostics(
+        args.project_path, stale_after=getattr(args, "stale_after", None)
+    )
     # Tier 2 additional checks (license, self-hosted) — additive, never breaking.
     extra = []
     try:
@@ -2778,6 +2857,8 @@ def cmd_synapse_stats(args) -> None:
     print(f"  Dormant:        {stats.get('dormant', 0)}")
     print(f"  Transitions:    {stats['transitions']}")
     print(f"  Total weight:   {stats['total_weight']:.2f}")
+    if not stats["transitions"]:
+        print(f"  {TRANSITIONS_HINT}")
 
 
 def cmd_next(args):
@@ -6607,6 +6688,18 @@ def _positive_int(value: str) -> int:
     return n
 
 
+def _duration_arg(value: str) -> float:
+    """argparse ``type=`` for ``--stale-after``: ``30m``, ``2h``, ``1d`` -> seconds."""
+    from neuralmind.freshness import parse_duration
+
+    seconds = parse_duration(value)
+    if seconds is None:
+        raise argparse.ArgumentTypeError(
+            f"invalid duration: {value!r} (use a number with s, m, h or d, e.g. 30m)"
+        )
+    return seconds
+
+
 def _confidence_arg(value: str) -> float:
     """argparse ``type=`` for ``decisions record --confidence``: a number from 0 to 1."""
     from neuralmind.memory.store import validate_confidence
@@ -7004,6 +7097,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_p.add_argument("project_path", nargs="?", default=".")
     doctor_p.add_argument("--json", "-j", action="store_true")
+    doctor_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Fail the code-graph check (exit 1) when the index has been behind the "
+        "files for longer than this, e.g. 30m, 2h, 1d. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
@@ -7046,6 +7149,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     health_p.add_argument("project_path", nargs="?", default=".")
     health_p.add_argument("--json", "-j", action="store_true")
+    health_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Exit 0 ('catching up') while the index has been behind the files for no "
+        "longer than this, e.g. 30m; exit 1 after. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     health_p.set_defaults(func=cmd_health)
 
     metrics_p = subparsers.add_parser(

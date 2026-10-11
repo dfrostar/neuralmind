@@ -216,6 +216,32 @@ and `SessionStart` ages them:
 The `UserPromptSubmit` hook only reads the graph: it adds the files the prompt
 matches and the code linked to them to the prompt, and strengthens nothing.
 
+### What trains which part *(v4.13.0+ table)*
+
+| Surface | Edges (co-activation) | Transitions (A → B) | Turn it off |
+|---|---|---|---|
+| `neuralmind query`, the MCP `neuralmind_query` tool, the daemon | Strengthened by the hits and communities each answer uses | Never | `--no-learn`, `NEURALMIND_NO_LEARN=1` |
+| Claude Code `PostToolUse` hook on Read | — | One per file read after another | `NEURALMIND_NO_LEARN=1` |
+| Claude Code `PostToolUse` hook on Edit/Write, Hermes plugin edits | Reuse feedback: symbols the new code reuses | One per file edited after another | `NEURALMIND_REUSE_FEEDBACK=0` or `NEURALMIND_NO_LEARN=1` (both) |
+| `neuralmind watch` | Files changed together wire together | One per consecutive pair of files in a batch of changes | stop the watcher |
+| `neuralmind build` | Seeded from the code graph's structure (and from ingested business documents) | Never | — |
+| `SessionStart`, `neuralmind wakeup`, prompt-time recall (`UserPromptSubmit`, Hermes `pre_llm_call`) | Never (`SessionStart` runs decay) | Never | — |
+
+So a project that is queried a lot but whose files are edited outside an
+agent with these hooks, and with no watcher, gains edges and stays at 0
+transitions, and `neuralmind next` has nothing to say.
+
+### Seeing it learn *(v4.13.0+)*
+
+- Every `neuralmind build` prints the store's totals and the change since the
+  previous build: `Synapses: 3,612 edges (+47 since last build), 12 transitions (+12)`.
+- `neuralmind stats .` adds **Learning (last 7 days)**: edges and transitions
+  after the latest build, their change across the window's builds, and how
+  many queries ran and when the last one did.
+- `neuralmind metrics .` has the same counts per day.
+- With 0 transitions, `build`, `stats` and `synapse stats` each say where
+  transitions come from.
+
 The synapse layer has been namespace-aware since v0.24.0:
 `branch:<name>` / `personal` / `shared` / `ephemeral` memory live
 separately in the same store, with a transparent merged read view. See

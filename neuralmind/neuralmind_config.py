@@ -20,6 +20,9 @@ project root and exposes the build-time knobs NeuralMind honors:
                             #   gitignored files too (the pre-v4.5 behaviour)
     include_ignored:        # (optional) globs pulled back in despite .gitignore
       - "generated/api/**"
+    stale_after: 30m        # (optional) how long the index may lag the files
+                            #   before `doctor` fails and `health` exits 1
+                            #   (s, m, h or d); unset: any lag counts at once
 
 Example:
     >>> from pathlib import Path
@@ -75,6 +78,9 @@ class NeuralmindConfig:
             ``"builtin"`` (tree-sitter only) or ``"graphify"`` (graphify only).
         respect_gitignore: Index only what git covers (default True).
         include_ignored: Globs for gitignored paths to index anyway.
+        stale_after: Seconds the index may lag the files on disk before
+            ``doctor`` fails and ``health`` exits 1; None (default) when
+            unset or not a valid duration.
     """
 
     mode: str = "auto"
@@ -83,6 +89,7 @@ class NeuralmindConfig:
     graph_source: str = "auto"
     respect_gitignore: bool = True
     include_ignored: tuple[str, ...] = field(default_factory=tuple)
+    stale_after: float | None = None
 
     @classmethod
     def load(cls, project_path: str | Path) -> NeuralmindConfig:
@@ -111,6 +118,7 @@ class NeuralmindConfig:
                     graph_source=_normalize_graph_source(parsed.get("graph_source")),
                     respect_gitignore=_normalize_bool(parsed.get("respect_gitignore"), True),
                     include_ignored=_normalize_globs(parsed.get("include_ignored")),
+                    stale_after=_normalize_duration(parsed.get("stale_after")),
                 )
             # PyYAML missing or the document won't parse: salvage just the
             # ``mode:`` and ``graph_source:`` lines — globs without a real
@@ -177,6 +185,13 @@ def _normalize_graph_source(raw: Any) -> str:
         if value in _VALID_GRAPH_SOURCES:
             return value
     return "auto"
+
+
+def _normalize_duration(raw: Any) -> float | None:
+    """``30m`` -> 1800.0; anything that isn't a duration -> None."""
+    from .freshness import parse_duration
+
+    return parse_duration(raw)
 
 
 def _normalize_bool(raw: Any, default: bool) -> bool:

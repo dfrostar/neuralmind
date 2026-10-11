@@ -886,6 +886,8 @@ class NeuralMind:
                 logger = logging.getLogger(__name__)
                 logger.exception("seed_from_documents failed during build")
 
+        synapse_totals = self._synapse_totals()
+
         # Get final stats
         final_stats = self.embedder.get_stats()
 
@@ -913,6 +915,15 @@ class NeuralMind:
             self._build_stats["baseline_tokens"] = measured_baseline["tokens"]
         if freshness is not None:
             self._build_stats["freshness"] = freshness.to_dict()
+        if synapse_totals is not None:
+            # Growth since the previous build: what queries, edits and this
+            # build's seeding added in between (negative after decay or pruning).
+            previous = self._read_build_status().get("synapses") or {}
+            synapse_report = dict(synapse_totals)
+            for key in ("edges", "transitions"):
+                if isinstance(previous.get(key), int):
+                    synapse_report[f"{key}_delta"] = synapse_totals[key] - previous[key]
+            self._build_stats["synapses"] = synapse_report
         # The graph this index was embedded from, so read paths can tell when
         # it has been regenerated since (graphify update, a pull) without a build.
         from . import l3_slots
@@ -929,6 +940,8 @@ class NeuralMind:
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
+        if synapse_totals is not None:
+            status_updates["synapses"] = synapse_totals
         self._record_build_status(status_updates)
         self._write_unified_bm25()
         if _structural_edge_count:
@@ -2373,17 +2386,25 @@ class NeuralMind:
         except Exception:
             pass
 
+    def _synapse_totals(self) -> dict | None:
+        """``{"edges", "transitions"}`` in the synapse store; None without one."""
+        store = self.synapses if self.enable_synapses else None
+        if store is None:
+            return None
+        try:
+            stats = store.stats()
+            return {
+                "edges": int(stats.get("edges", 0)),
+                "transitions": int(stats.get("transitions", 0)),
+            }
+        except Exception:
+            return None
+
     def _log_build_metrics(self, stats: dict) -> None:
         """Record the build, with the synapse store's totals, in the metrics log."""
-        edges = transitions = 0
-        store = self.synapses if self.enable_synapses else None
-        if store is not None:
-            try:
-                synapse_stats = store.stats()
-                edges = int(synapse_stats.get("edges", 0))
-                transitions = int(synapse_stats.get("transitions", 0))
-            except Exception:
-                pass
+        totals = stats.get("synapses") or {}
+        edges = int(totals.get("edges", 0))
+        transitions = int(totals.get("transitions", 0))
         try:
             MetricsCollector(self.project_path).log_build_metrics(
                 duration_s=float(stats.get("duration_seconds", 0)),

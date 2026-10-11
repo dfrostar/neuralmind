@@ -96,6 +96,8 @@ keywords = [
     "usage-metrics",
     "mcp-client-attribution",
     "agent-observability",
+    "stale-index-gate",
+    "learning-progress",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

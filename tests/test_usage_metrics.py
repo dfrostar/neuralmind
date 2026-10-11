@@ -76,3 +76,67 @@ def test_explain_json_carries_the_reasons(built):
     assert set(top) == {"id", "label", "source_file", "score"}
     assert any(h["source_file"].endswith("auth.py") for h in explain["top_hits"])
     assert isinstance(explain["synapses_fired"], list)
+
+
+def test_each_build_reports_synapse_growth_since_the_last(built):
+    """``Synapses: 3,612 edges (+47 since last build), 0 transitions (+0)``."""
+    from neuralmind.cli import _synapse_line
+
+    first = json.loads((built / ".neuralmind" / "build_status.json").read_text())["synapses"]
+    mind = _mind(built)
+    mind.query("where is auth handled")  # learning between builds
+    mind.synapses.record_sequence(["auth.py", "billing.py"])  # as an edit hook would
+    result = _mind(built).build()
+
+    synapses = result["synapses"]
+    assert synapses["transitions"] == first["transitions"] + 1
+    assert synapses["transitions_delta"] == 1
+    assert synapses["edges_delta"] == synapses["edges"] - first["edges"]
+    line = _synapse_line(synapses)
+    assert f"{synapses['edges']:,} edges ({synapses['edges_delta']:+,} since last build)" in line
+    assert line.endswith(f"{synapses['transitions']:,} transitions (+1)")
+
+
+def test_first_build_has_totals_but_no_delta():
+    from neuralmind.cli import _synapse_line
+
+    assert _synapse_line({"edges": 3612, "transitions": 0}) == "3,612 edges, 0 transitions"
+
+
+def test_stats_shows_learning_over_the_window(built, capsys, monkeypatch):
+    from argparse import Namespace
+
+    from neuralmind.cli import TRANSITIONS_HINT, _learning_summary, cmd_stats
+
+    monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+    mind = _mind(built)
+    mind.query("billing helper")
+    mind.synapses.record_sequence(["auth.py", "billing.py"])
+    _mind(built).build()
+
+    learning = _learning_summary(built)
+    assert (learning["queries"], learning["builds"]) == (1, 2)
+    assert learning["transitions_delta"] == 1
+    assert learning["last_query_ts"] > 0
+
+    cmd_stats(Namespace(project_path=str(built), json=True))
+    assert json.loads(capsys.readouterr().out)["learning"]["transitions_delta"] == 1
+    cmd_stats(Namespace(project_path=str(built), json=False))
+    text = capsys.readouterr().out
+    assert "Learning (last 7 days):" in text
+    assert "transitions (+1) across 2 build(s)" in text
+    # With a transition learned, no hint about where they come from.
+    assert TRANSITIONS_HINT not in text
+
+
+def test_zero_transitions_says_what_teaches_them(built, capsys, monkeypatch):
+    from argparse import Namespace
+
+    from neuralmind.cli import TRANSITIONS_HINT, cmd_stats, cmd_synapse_stats
+
+    monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+    cmd_stats(Namespace(project_path=str(built), json=False))
+    assert TRANSITIONS_HINT in capsys.readouterr().out
+    cmd_synapse_stats(Namespace(project_path=str(built), json=False))
+    assert TRANSITIONS_HINT in capsys.readouterr().out
+    assert "neuralmind watch" in TRANSITIONS_HINT and "install-hooks" in TRANSITIONS_HINT

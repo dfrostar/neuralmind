@@ -15,7 +15,8 @@ So this file holds two kinds of check:
 
 Codes that need a built index or a licence store are covered next to their
 feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
-`health` -> 1, `tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
+`health` -> 1, and `doctor --stale-after` past its limit,
+`tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
 for `audit verify`).
 """
 
@@ -91,6 +92,30 @@ def _seed_licences(project: Path, **customers: object) -> None:
     )
 
 
+def _three_hours_behind(project: Path) -> None:
+    """An index whose graph has never seen one file, last written 3h ago."""
+    import json
+    import os
+    import time
+
+    rels = [f"m{i}.py" for i in range(20)]
+    for rel in [*rels, "new.py"]:
+        (project / rel).write_text(f"def {rel[:-3]}_fn():\n    return 1\n", encoding="utf-8")
+    then = time.time() - 3 * 3600
+    os.utime(project / "new.py", (then, then))
+    graph = {
+        "nodes": [
+            {"id": rel, "label": rel, "file_type": "code", "source_file": rel, "community": 0}
+            for rel in rels
+        ],
+        "links": [],
+    }
+    (project / "graphify-out").mkdir()
+    (project / "graphify-out" / "graph.json").write_text(json.dumps(graph), encoding="utf-8")
+    (project / ".neuralmind").mkdir()
+    (project / ".neuralmind" / "index_ir.json").write_text('{"node_count": 20}', encoding="utf-8")
+
+
 def _with_aws_key(project: Path) -> None:
     # Split so this file doesn't itself look like it holds a key.
     (project / ".env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
@@ -103,6 +128,23 @@ CONTRACT = [
     ("doctor-unbuilt-project", ["doctor", "{p}"], None, {}, 1),
     ("doctor-unbuilt-project-json", ["doctor", "{p}", "--json"], None, {}, 1),
     ("health-no-index", ["health", "{p}"], None, {}, 2),
+    # v4.13.0: drift younger than --stale-after is "catching up" (0); older is stale (1).
+    ("health-behind-no-grace", ["health", "{p}"], _three_hours_behind, {}, 1),
+    (
+        "health-behind-within-stale-after",
+        ["health", "{p}", "--stale-after", "1d"],
+        _three_hours_behind,
+        {},
+        0,
+    ),
+    (
+        "health-behind-past-stale-after",
+        ["health", "{p}", "--stale-after", "30m"],
+        _three_hours_behind,
+        {},
+        1,
+    ),
+    ("health-stale-after-needs-a-unit", ["health", "{p}", "--stale-after", "30"], None, {}, 2),
     ("scan-clean", ["scan-for-secrets", "{p}"], None, {}, 0),
     ("scan-high-confidence", ["scan-for-secrets", "{p}"], _with_aws_key, {}, 1),
     ("scan-missing-path", ["scan-for-secrets", "{p}/does-not-exist"], None, {}, 2),

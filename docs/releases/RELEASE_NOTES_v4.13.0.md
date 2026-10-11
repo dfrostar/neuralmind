@@ -1,4 +1,4 @@
-# NeuralMind v4.13.0 — the index stays fresh after pulls, merges, branch switches and rebases, and the git hooks work whatever PATH the git client has; usage you can see, MCP calls attributed to their client, and no silent leftover graphify graph
+# NeuralMind v4.13.0 — the index stays fresh after pulls, merges, branch switches and rebases, and the git hooks work whatever PATH the git client has; usage and learning you can see, a grace period for staleness gates, MCP calls attributed to their client, and no silent leftover graphify graph
 
 **Type:** Minor release | **Theme:** `neuralmind init-hook` keeps the index in step with the checked-out tree — not only with local commits — without making git wait, and without touching throwaway worktrees
 
@@ -93,6 +93,31 @@ repository was no longer read. This release closes three of those gaps.
   it; the output now has an `explain` object with the per-layer budget,
   layers, intent, communities, top hits with their scores, and the synapse
   events that fired.
+- **Every build shows what the synapse layer learned.** `neuralmind build`
+  prints `Synapses: 3,612 edges (+47 since last build), 12 transitions (+12)`,
+  and `neuralmind stats` adds **Learning (last 7 days)**: synapse growth across
+  the window's builds, the number of queries and when the last one ran. The
+  same field report had 3,612 edges and 0 transitions with no way to tell
+  whether that was expected. It was: transitions come only from the files an
+  agent reads and edits in turn, through the Claude Code hooks or the Hermes
+  plugin, or from `neuralmind watch`; queries strengthen edges and never add
+  transitions. With 0 transitions, `build`, `stats` and `synapse stats` now say
+  so, and the Learning Guide has a table of which surface trains what and how to
+  turn each off.
+- **Staleness gates get a grace period, and drift gets a date.** Set
+  `stale_after: 30m` in `.neuralmind.yaml` (or pass `--stale-after 30m`):
+  `neuralmind health` exits 0 with status `catching_up` while the index has been
+  behind the files for under 30 minutes and 1 after, and `neuralmind doctor`
+  fails its Code graph check (exit 1) once it has been behind for longer.
+  "Behind" is dated from the oldest unindexed change, by file modification
+  time; deleted files and graphs built on another OS have no date and always
+  count. Doctor's lines for missing and changed files now end with
+  `; newest modified 2h ago`, so a file written during an incident stands out
+  from old drift.
+- **The build hint for files that change without commits now says
+  `neuralmind watch . --reindex`.** It used to suggest plain `neuralmind watch .`,
+  which learns from edits but doesn't re-index them, so anyone following it kept
+  a drifting index.
 
 ## What the agent actually sees
 
@@ -114,6 +139,12 @@ when it last did. An MCP call's audit event names the agent that made it:
 
 An agent that asks `query --explain --json` gets the reasons with the context,
 so it can check which files and scores the answer rests on before trusting it.
+
+A build an agent runs now ends with the synapse line, for example
+`Synapses: 3,612 edges (+47 since last build), 0 transitions (+0)` followed by
+what produces transitions. A cron job or CI step that runs
+`neuralmind health . --stale-after 30m` stops paging while a watcher catches up
+and pages once it falls behind for longer.
 
 ## Per-agent expectations
 
@@ -140,6 +171,12 @@ so it can check which files and scores the answer rests on before trusting it.
 - A project with an unused `graphify-out/graph.json` prints a notice on every
   build until you run `neuralmind build . --archive-graphify` or set
   `graph_source`.
+- `neuralmind health` and `doctor` behave as before unless you set
+  `stale_after` or pass `--stale-after`. `health --json` gains
+  `stale_after_seconds` and `behind_seconds`, and a `catching_up` status that
+  exits 0.
+- The first build after upgrading prints synapse totals without a change;
+  later builds show the change since the previous one.
 - `.neuralmind/metrics/` grows by one small line per query (30 days kept,
   10 MB a day at most, as before). Fields a query doesn't record (tool calls,
   retrieval reuse) are no longer shown as zeros in `neuralmind metrics`.
@@ -149,7 +186,8 @@ so it can check which files and scores the answer rests on before trusting it.
 ```bash
 pytest tests/test_init_hook_lifecycle.py -v
 pytest tests/test_usage_metrics.py tests/test_metrics.py tests/test_mcp_security.py -v
-pytest tests/test_index_freshness.py -k "graphify" -v
+pytest tests/test_index_freshness.py -k "graphify or StaleAfter or Health" -v
+pytest tests/test_cli_exit_codes.py -v
 python scripts/mcp_stdio_smoke.py
 ```
 

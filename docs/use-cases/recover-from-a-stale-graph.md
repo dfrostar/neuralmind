@@ -112,6 +112,23 @@ neuralmind build . --strict    # exits 3 before embedding when the graph FAILs
 only when the graph and the code disagree, so a nightly job stops rebuilding a
 current index and starts catching a stale one.
 
+**A watcher, and a grace period** *(v4.13.0+)*. When files change without
+commits, run `neuralmind watch . --reindex` and give it time to catch up:
+
+```yaml
+# .neuralmind.yaml
+stale_after: 30m
+```
+
+```bash
+neuralmind health .    # 0 "catching_up" while behind for under 30m; 1 after
+neuralmind doctor .    # Code graph FAILs once behind for over 30m: "behind for 3h, over stale_after 30m"
+```
+
+A cron job can gate on either without a monitor of its own. Doctor's file lines
+now end with when the newest unindexed file changed (`; newest modified 2h
+ago`), so a file written during an incident stands out from months-old drift.
+
 ---
 
 ## The potential use case: a pre-merge freshness gate

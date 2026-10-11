@@ -392,6 +392,128 @@ class TestHealth:
         assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("unknown", False, 1)
 
 
+# --------------------------------------------------------------------------- #
+# v4.13.0 — how long the index has been behind, and a stale_after grace period
+# --------------------------------------------------------------------------- #
+def _behind_repo(root: Path, hours_ago: float) -> None:
+    """A graph of 20 files plus one file on disk it has never seen (WARN)."""
+    rels = [f"m{i}.py" for i in range(20)]
+    _write_files(root, rels + ["new.py"])
+    _write_graphify(root, _graphify_graph(rels))
+    then = time.time() - hours_ago * 3600
+    os.utime(root / "new.py", (then, then))
+
+
+class TestStaleAfter:
+    @pytest.mark.parametrize(
+        ("raw", "seconds"),
+        [("30m", 1800.0), ("2h", 7200.0), ("1d", 86400.0), ("45s", 45.0), ("1.5h", 5400.0)],
+    )
+    def test_durations(self, raw, seconds):
+        assert freshness.parse_duration(raw) == seconds
+
+    @pytest.mark.parametrize("raw", ["30", "", "soon", "-5m", None, True, "5w"])
+    def test_a_bare_number_or_anything_else_is_refused(self, raw):
+        assert freshness.parse_duration(raw) is None
+
+    def test_the_report_says_when_the_unindexed_file_changed(self, tmp_path):
+        _behind_repo(tmp_path, hours_ago=3)
+        report = graph_freshness(tmp_path)
+        assert report.status == WARN
+        assert "newest modified 3h ago" in report.render()
+        assert 3 * 3600 - 60 < report.behind_seconds() < 3 * 3600 + 60
+        assert report.exceeds(1800)  # behind 3h, allowed 30m
+        assert not report.exceeds(86400)  # allowed a day
+        assert report.to_dict()["behind_seconds"] > 3 * 3600 - 60
+
+    def test_a_deleted_file_has_no_date_so_always_exceeds(self, tmp_path):
+        rels = [f"m{i}.py" for i in range(20)]
+        _write_files(tmp_path, rels)
+        _write_graphify(tmp_path, _graphify_graph(rels))
+        (tmp_path / "m3.py").unlink()
+        report = graph_freshness(tmp_path)
+        assert report.status == WARN
+        assert report.exceeds(86400 * 365)
+
+    def test_doctor_fails_past_stale_after_and_only_then(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        assert doctor._check_graph(tmp_path).status == WARN
+        assert doctor._check_graph(tmp_path, stale_after=86400).status == WARN
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "behind for 3h, over stale_after 30m" in check.detail
+        # The same, set once in .neuralmind.yaml.
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30m\n", encoding="utf-8")
+        assert doctor._check_graph(tmp_path).status == FAIL
+
+    def test_health_gives_a_watcher_time_to_catch_up(self, tmp_path, capsys):
+        from neuralmind.cli_health import cmd_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)  # six minutes behind
+        TestHealth()._index(tmp_path)
+
+        def run(stale_after):
+            with pytest.raises(SystemExit) as exc:
+                cmd_health(
+                    SimpleNamespace(project_path=str(tmp_path), json=True, stale_after=stale_after)
+                )
+            return exc.value.code, json.loads(capsys.readouterr().out)
+
+        code, data = run(1800)  # 6m behind, 30m allowed
+        assert (code, data["status"], data["healthy"]) == (0, "catching_up", True)
+        assert 300 < data["behind_seconds"] < 420
+        code, data = run(60)  # 1m allowed
+        assert (code, data["status"]) == (1, "stale")
+        code, data = run(None)  # no grace: as before
+        assert (code, data["status"]) == (1, "stale")
+
+    def test_health_text_says_how_far_behind(self, tmp_path, capsys):
+        from neuralmind.cli_health import cmd_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)
+        TestHealth()._index(tmp_path)
+        with pytest.raises(SystemExit):
+            cmd_health(SimpleNamespace(project_path=str(tmp_path), json=False, stale_after=1800))
+        out = capsys.readouterr().out
+        assert "catching up (behind 6m, within stale_after 30m)" in out
+
+    def test_a_deleted_file_is_reported_as_undated_not_as_how_far_behind(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=0.1)  # dated: 6m behind
+        (tmp_path / "m3.py").unlink()  # undated
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "drift with no date" in check.detail
+        assert "behind for" not in check.detail
+
+    def test_limits_print_as_written(self):
+        assert freshness.format_duration(5400) == "90m"
+        assert freshness.format_duration(7200) == "2h"
+        assert freshness.format_duration(45) == "45s"
+
+    def test_mcp_health_honours_stale_after(self, tmp_path):
+        from neuralmind.mcp_server import tool_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)
+        TestHealth()._index(tmp_path)
+        assert tool_health(str(tmp_path))["status"] == "stale"
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30m\n", encoding="utf-8")
+        mcp = tool_health(str(tmp_path))
+        assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("catching_up", True, 0)
+
+    def test_stale_after_in_config(self, tmp_path):
+        from neuralmind.neuralmind_config import NeuralmindConfig
+
+        assert NeuralmindConfig.load(tmp_path).stale_after is None
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 2h\n", encoding="utf-8")
+        assert NeuralmindConfig.load(tmp_path).stale_after == 7200.0
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30\n", encoding="utf-8")
+        assert NeuralmindConfig.load(tmp_path).stale_after is None
+
+
 class TestMcpWakeupLine:
     def test_stale_graph_prefixes_one_line(self, tmp_path):
         from neuralmind.mcp_server import _freshness_line

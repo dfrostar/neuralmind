@@ -43,7 +43,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -84,6 +86,13 @@ class FreshnessReport:
     age_note: str = ""  # why graph_age_commits is None, when it is
     index_mismatch: str = ""  # why the vectors don't match this graph, when they don't
     project: Path | None = None
+    # When the files behind the drift were last modified (Unix time): the
+    # newest per list, and the oldest dated change of all, i.e. how long the
+    # index has been behind. Files gone from disk and foreign separators have
+    # no date of their own.
+    newest_missing_mtime: float | None = None
+    newest_changed_mtime: float | None = None
+    oldest_change_mtime: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -120,7 +129,7 @@ class FreshnessReport:
             lines.append(
                 f"{len(self.missing_from_graph):,} file"
                 f"{'s' if len(self.missing_from_graph) != 1 else ''} on disk not in graph"
-                f"{_examples(self.missing_from_graph)}"
+                f"{_examples(self.missing_from_graph)}{_newest(self.newest_missing_mtime)}"
             )
         if self.gone_from_disk:
             lines.append(
@@ -138,6 +147,7 @@ class FreshnessReport:
                 f"{len(self.changed_since_graph):,} file"
                 f"{'s' if len(self.changed_since_graph) != 1 else ''} changed since the graph "
                 f"was built{_examples(self.changed_since_graph)}"
+                f"{_newest(self.newest_changed_mtime)}"
             )
         if self.index_mismatch:
             lines.append(f"{self.index_mismatch}: the stored vectors still describe the old graph")
@@ -150,6 +160,41 @@ class FreshnessReport:
             or self.foreign_separators
             or self.changed_since_graph
         )
+
+    def behind_seconds(self, now: float | None = None) -> float | None:
+        """How long the index has been behind: since its oldest dated change.
+
+        None when the report is OK or none of its drift has a date.
+        """
+        if self.status == OK or self.oldest_change_mtime is None:
+            return None
+        now = time.time() if now is None else now
+        return max(0.0, now - self.oldest_change_mtime)
+
+    def exceeds(self, stale_after: float, now: float | None = None) -> bool:
+        """Whether the drift is older than ``stale_after`` seconds (``stale_after``).
+
+        Drift with no date (files gone from disk, a graph built on another
+        OS) can't be shown to be recent, so it always exceeds.
+        """
+        if self.status == OK:
+            return False
+        if self.gone_from_disk or self.foreign_separators:
+            return True
+        behind = self.behind_seconds(now)
+        return behind is None or behind > stale_after
+
+    def overdue_reason(self, stale_after: float) -> str:
+        """Why :meth:`exceeds` is true, for the doctor line; "" when it isn't."""
+        if not self.exceeds(stale_after):
+            return ""
+        limit = format_duration(stale_after)
+        if self.gone_from_disk or self.foreign_separators:
+            return f"drift with no date (deleted files or another OS's paths) never fits stale_after {limit}"
+        behind = self.behind_seconds()
+        if behind is None:
+            return f"drift with no date never fits stale_after {limit}"
+        return f"behind for {format_age(behind)}, over stale_after {limit}"
 
     def fix_command(self, project_arg: str = ".") -> str:
         if self.status == OK:
@@ -203,7 +248,85 @@ class FreshnessReport:
             "graph_age_commits": self.graph_age_commits,
             "age_note": self.age_note,
             "index_mismatch": self.index_mismatch,
+            "newest_missing_mtime": self.newest_missing_mtime,
+            "newest_changed_mtime": self.newest_changed_mtime,
+            "oldest_change_mtime": self.oldest_change_mtime,
+            "behind_seconds": _round(self.behind_seconds()),
         }
+
+
+def _round(value: float | None) -> float | None:
+    return None if value is None else round(value, 1)
+
+
+def format_age(seconds: float) -> str:
+    """``45s``, ``12m``, ``3h``, ``2d``: the largest whole unit."""
+    seconds = max(0.0, seconds)
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit}"
+    return f"{int(seconds)}s"
+
+
+def format_duration(seconds: float) -> str:
+    """A ``stale_after`` limit as written: the largest unit it fills exactly (``90m``)."""
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size and seconds % size == 0:
+            return f"{int(seconds // size)}{unit}"
+    return f"{seconds:g}s"
+
+
+def health_status(report: FreshnessReport | None, stale_after: float | None) -> str:
+    """``healthy``, ``catching_up``, ``stale`` or ``unknown``: the health verdict.
+
+    Shared by ``neuralmind health`` and the MCP ``neuralmind_health`` tool.
+    No report is ``unknown``, never healthy. With ``stale_after``, drift that
+    hasn't lasted that long is ``catching_up``; only ``stale`` and ``unknown``
+    are failures.
+    """
+    if report is None:
+        return "unknown"
+    if report.status == OK:
+        return "healthy"
+    if stale_after is not None and not report.exceeds(stale_after):
+        return "catching_up"
+    return "stale"
+
+
+def _newest(mtime: float | None) -> str:
+    """``; newest modified 2h ago``: when the most recent file in a list changed."""
+    if mtime is None:
+        return ""
+    return f"; newest modified {format_age(time.time() - mtime)} ago"
+
+
+_DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([smhd])\s*$", re.IGNORECASE)
+_DURATION_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def parse_duration(raw: str | float | int | None) -> float | None:
+    """``"30m"`` -> 1800.0 seconds. Units: s, m, h, d. None for anything else.
+
+    A bare number is refused rather than guessed at: ``30`` could mean
+    seconds or minutes, and a stale-after gate set to the wrong one is quietly
+    useless.
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    match = _DURATION_RE.match(str(raw))
+    if not match:
+        return None
+    return float(match.group(1)) * _DURATION_UNITS[match.group(2).lower()]
+
+
+def _mtimes(root: Path, rels: list[str]) -> list[float]:
+    out: list[float] = []
+    for rel in rels:
+        try:
+            out.append((root / rel).stat().st_mtime)
+        except OSError:
+            continue
+    return out
 
 
 def _examples(items: list[str]) -> str:
@@ -523,8 +646,29 @@ def graph_freshness(
 
     if check_index:
         report.index_mismatch = index_graph_mismatch(root, gpath)
+    _date_drift(report, root, gpath)
     report.status = classify(report)
     return report
+
+
+def _date_drift(report: FreshnessReport, root: Path, gpath: Path) -> None:
+    """Fill in when the drifted files changed (their mtimes).
+
+    A file the graph has never seen, or one changed since it was built, has
+    been waiting for a rebuild since it was last written. A graph that changed
+    after the last build has been waiting since the graph was written.
+    """
+    missing = _mtimes(root, report.missing_from_graph)
+    changed = _mtimes(root, report.changed_since_graph)
+    report.newest_missing_mtime = max(missing) if missing else None
+    report.newest_changed_mtime = max(changed) if changed else None
+    dated = missing + changed
+    if report.index_mismatch:
+        try:
+            dated.append(gpath.stat().st_mtime)
+        except OSError:
+            pass
+    report.oldest_change_mtime = min(dated) if dated else None
 
 
 def graph_fingerprint(path: str | Path) -> dict | None:

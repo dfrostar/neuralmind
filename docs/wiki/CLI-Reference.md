@@ -213,7 +213,19 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 - Delta: new / updated / skipped / **removed** — `removed` counts vectors purged
   because their node left the graph (v4.4.0+)
 - Number of communities indexed
+- *(v4.13.0+)* The synapse store after the build, and how it changed since the
+  previous build (what queries, edits and the build's own seeding added, less
+  decay): `Synapses: 3,612 edges (+47 since last build), 12 transitions (+12)`.
+  The first build after upgrading shows totals only. With 0 transitions it says
+  where they come from: the files an agent reads and edits in turn (the Claude
+  Code hooks; the Hermes plugin, from edits) or that change together
+  (`neuralmind watch`). Queries strengthen edges but add no transitions.
 - Build time elapsed
+
+*(v4.13.0+)* The closing hint for files that change without a commit is now
+`neuralmind watch . --reindex`. Earlier versions suggested plain
+`neuralmind watch .`, which learns from edits but doesn't re-index them, so
+the index went on drifting.
 
 #### Graph source *(v4.4.0+)*
 
@@ -259,6 +271,33 @@ respect_gitignore: false   # index ignored files again (v4.4 behaviour)
 include_ignored:           # or pull specific ignored paths back in
   - "generated/api/**"
 ```
+
+#### How long the index may lag: `stale_after` *(v4.13.0+)*
+
+```yaml
+# .neuralmind.yaml
+stale_after: 30m   # s, m, h or d; a bare number is refused
+```
+
+The index is *behind* from the moment a file it hasn't seen is written: a new
+file, or one changed since the graph was built (dated by its modification
+time; a graph changed after the last build, by the graph's). `stale_after`
+says how long that may last before the gates trip:
+
+- `neuralmind doctor` fails the **Code graph** check (exit `1`) once the index
+  has been behind for longer, adding `behind for 3h, over stale_after 30m`.
+  Within the limit the check is as before: WARN for small drift, FAIL past
+  10% of files.
+- `neuralmind health` exits `0` with status `catching_up` while the index is
+  behind for no longer than that, and `1` after. Without `stale_after` it
+  exits `1` on any drift, as before.
+
+Drift with no date of its own (files deleted from disk, a graph built on
+another OS) is never "within" the limit, and doctor says so instead of a
+time. `--stale-after` on either command overrides the setting; the MCP
+`neuralmind_health` tool follows the setting too. For a project whose files change without commits, run
+`neuralmind watch . --reindex` and set `stale_after` a little above its
+debounce.
 
 Git can't re-include a file under an excluded *directory*: to ignore a directory
 except one file, write `projects/*` then `!projects/keep.py`, not `projects/`.
@@ -1075,6 +1114,11 @@ Displays:
 - Community statistics
 - Synapse edge count and total weight
 - Embedding model and backend info
+- *(v4.13.0+)* **Learning (last 7 days)**, from `.neuralmind/metrics/`: the
+  synapse store's edges and transitions after the latest build, how much they
+  changed across the window's builds, the number of queries and when the last
+  one ran. `--json` has it as `learning`. With 0 transitions, a line saying what
+  produces them (see [`build`](#build)).
 
 #### Examples
 
@@ -1178,6 +1222,7 @@ Detailed synapse diagnostics.
   in `SYNAPSE_MEMORY.md` use the same rule.
 - Stale (30+ days inactive)
 - Dormant (≤1 activation)
+- Transitions *(v4.13.0+: with 0, a line saying what produces them)*
 - Total weight
 
 #### Examples
@@ -1319,7 +1364,7 @@ anything that isn't wired up. Read-only — it never builds or mutates
 state.
 
 ```bash
-neuralmind doctor [project_path] [--json]
+neuralmind doctor [project_path] [--json] [--stale-after DURATION]
 ```
 
 **Arguments:**
@@ -1328,6 +1373,7 @@ neuralmind doctor [project_path] [--json]
 |----------|----------|---------|-------------|
 | `project_path` | No | `.` | Project root to inspect |
 | `--json`, `-j` | No | `false` | Emit machine-readable JSON |
+| `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* Fail the Code graph check, so doctor exits `1`, once the index has been behind the files for longer than this (`30m`, `2h`, `1d`). See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
 **Checks:** code graph, semantic index, **backend** *(v0.22.0+)*, synapse
 memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
@@ -1401,7 +1447,7 @@ graphs carry no `embedded_at`, so before v4.4.0 they passed unexamined:
 
 ```
   [FAIL] Code graph: graphify-out/graph.json (graphify, 2026-04-22, 214 commits behind HEAD), 3,197 nodes
-         51 files on disk not in graph (lib/render/overlay.tsx, scripts/collect_stats.py, ...)
+         51 files on disk not in graph (lib/render/overlay.tsx, scripts/collect_stats.py, ...); newest modified 2h ago
          3,176 node paths (319 files) use '\' separators (built on Windows)
          -> neuralmind build . --regenerate-graph
 ```
@@ -1413,7 +1459,12 @@ the stored vectors still describe the old graph, so the fix is a plain
 `neuralmind build`); WARN for smaller drift or files changed since the graph
 was built (from `git diff` for a committed graph, so checkout mtimes never
 count); OK otherwise. On a shallow clone the graph's age is reported as
-unknown. SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML
+unknown. *(v4.13.0+)* The lines for files missing from the graph and files
+changed since it end with when the newest of them was modified
+(`; newest modified 2h ago`), so a file written during an incident stands out
+from months-old drift; `neuralmind health --json` has the times in its
+`freshness` report as `newest_missing_mtime`, `newest_changed_mtime` and
+`behind_seconds`. SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML
 counts once the graph holds it (other YAML never becomes a node).
 
 **Semantic index vs graph (v4.4.0+).** Stored vectors are compared with the
@@ -3427,6 +3478,7 @@ Check NeuralMind health status.
 | Argument | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `--json` | No | `false` | Output as JSON |
+| `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* A duration (`30m`, `2h`, `1d`): exit `0` with status `catching_up` while the index has been behind the files for no longer than this, `1` after. `--json` adds `behind_seconds` and `stale_after_seconds`. See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
 #### Output
 
@@ -3441,8 +3493,8 @@ it exits `1`, never `0`. `--json` includes the full `freshness` report.
 
 | Code | Meaning |
 |------|---------|
-| 0 | Healthy — the graph matches the files on disk |
-| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, a graph built on another OS, or a graph changed after the last build — or unknown: no readable graph to check the index against |
+| 0 | Healthy — the graph matches the files on disk. *(v4.13.0+)* Also `catching_up`: behind, but for no longer than `--stale-after` / `stale_after` |
+| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, a graph built on another OS, or a graph changed after the last build (*v4.13.0+*: with `--stale-after`, only once the index has been behind for longer) — or unknown: no readable graph to check the index against |
 | 2 | No index |
 
 #### Examples
