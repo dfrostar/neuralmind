@@ -52,8 +52,10 @@ jobs:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     # Windows runners pay a per-commit fsync cost the synapse tests are bound
-    # by; the same suite that takes ~7 min on Linux has run 19-28+ min there.
-    timeout-minutes: ${{ matrix.os == 'windows-latest' && 45 || 30 }}
+    # by; the same suite that takes ~4 min on Linux takes 30 min there on a
+    # fast-disk runner and 43 min on a slow one (#649: every fsync-heavy file
+    # 1.4-1.8x slower, nothing else). 45 left no headroom, so 60.
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
