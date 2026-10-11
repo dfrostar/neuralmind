@@ -11,6 +11,11 @@ on:
   # so the release PR otherwise shows these checks as never-started (#98).
   workflow_dispatch:
 
+# Read-only token by default; a job that needs more declares its own
+# permissions: block, which replaces this one for that job.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint

@@ -67,7 +67,7 @@ directly.
 | **PO.2** Roles and responsibilities | [`GOVERNANCE.md`](../../GOVERNANCE.md) (maintainer acting for Cheval-Volant LLC), [`.github/CODEOWNERS`](../../.github/CODEOWNERS), contributions under the [DCO](../DCO.md) | Security training records |
 | **PO.3** Supporting toolchains | GitHub Actions workflows under `.github/workflows/`, Dependabot for pip, npm and Actions ([`.github/dependabot.yml`](../../.github/dependabot.yml)), CodeQL default setup | |
 | **PO.4** Criteria for security checks | CI fails a change on high-severity bandit findings, on any dependency advisory not marked `not_affected` in the [VEX](../../security/neuralmind.openvex.json), and on weak-hash use that breaks FIPS-mode hosts (`tests/test_fips_hash_usage.py`) | |
-| **PO.5** Secure development environments | Builds run on ephemeral GitHub-hosted runners, and every workflow declares explicit `permissions:` for its token | Maintainer account 2FA and workstation security |
+| **PO.5** Secure development environments | Builds run on ephemeral GitHub-hosted runners. The CI and release workflows (`ci.yml`, `release.yml`, `docker-publish.yml`, `sbom.yml`) give the token `contents: read` by default, and only the jobs that sign, attest, publish or upload scan results get write scopes, each in its own `permissions:` block | Maintainer account 2FA and workstation security |
 
 ### PS: Protect the Software
 
