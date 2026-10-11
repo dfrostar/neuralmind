@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.12.1](https://github.com/dfrostar/neuralmind/compare/v4.12.0...v4.12.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* neuralmind doctor exits 1 when a check fails, as documented ([#624](https://github.com/dfrostar/neuralmind/issues/624)) ([fa72224](https://github.com/dfrostar/neuralmind/commit/fa72224183b5c8361aab2a28e3ce750f42c8054f))
+* **query:** rank example scripts below the code they demonstrate ([#625](https://github.com/dfrostar/neuralmind/issues/625)) ([7e17783](https://github.com/dfrostar/neuralmind/commit/7e17783416cafd6b76cf90f8665d755672a01a17))
+
 ## [4.12.0](https://github.com/dfrostar/neuralmind/compare/v4.11.0...v4.12.0) (2026-10-09)
 
 
