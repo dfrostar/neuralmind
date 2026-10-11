@@ -66,7 +66,8 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write   # for cosign/sigstore in a later iteration
+      id-token: write       # keyless cosign signature + provenance attestation
+      attestations: write
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tags: ${{ steps.meta.outputs.tags }}
@@ -112,6 +113,7 @@ jobs:
             latest=false
 
       - name: Build + push (linux/amd64 + linux/arm64)
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -126,6 +128,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # NIST SP 800-218 (SSDF) PS.2 / PS.3: sign the image and attest how it
+      # was built, so anyone can check the image they pulled is the one this
+      # workflow pushed. Keyless: the signature is bound to this workflow's
+      # GitHub OIDC identity and recorded in Sigstore's public transparency
+      # log; there is no signing key to hold or leak. SECURITY.md has the
+      # verify commands, and verify-pull below runs them.
+      - name: Resolve the pushed image name
+        id: image
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          built="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
+          echo "name=${built%:*}" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Sign the image (keyless)
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
   verify-pull:
     name: Verify image pulls + neuralmind and neuralmind-mcp run
     needs: build-and-push
@@ -133,6 +165,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      attestations: read
     steps:
       # Only for scripts/mcp_stdio_smoke.py, at the tag the image was built
       # from. Tags before v4.12.0 have no --entry-point flag, so dispatching
@@ -148,6 +181,25 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      # The same checks SECURITY.md tells users to run. An image whose
+      # signature or provenance doesn't verify fails here, so :latest never
+      # moves to it.
+      - name: Verify the signature and build provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.tags }}
+        run: |
+          set -euo pipefail
+          IMAGE="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
+          cosign verify "${IMAGE}" \
+            --certificate-identity-regexp "^https://github\.com/${GITHUB_REPOSITORY}/\.github/workflows/docker-publish\.yml@" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            > /dev/null
+          gh attestation verify "oci://${IMAGE}" --repo "${GITHUB_REPOSITORY}"
 
       - name: Pull + smoke-test the version-tagged image
         env:

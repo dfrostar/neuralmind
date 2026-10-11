@@ -98,6 +98,9 @@ keywords = [
     "agent-observability",
     "stale-index-gate",
     "learning-progress",
+    "nist-ssdf",
+    "sigstore-signed",
+    "openvex",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

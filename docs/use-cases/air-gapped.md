@@ -174,6 +174,26 @@ export NEURALMIND_ONNX_MODEL_DIR=/opt/models/all-MiniLM-L6-v2/onnx
 
 ---
 
+## Step 2b — Verify the wheel before it crosses the gap
+
+*(v4.14.0+)* On the connected machine, check that the NeuralMind wheel
+you bundled is the one this repository's release workflow built. Do this
+before the transfer, because the check needs the network:
+
+```bash
+gh attestation verify offline-bundle/neuralmind-*.whl --repo dfrostar/neuralmind
+```
+
+It checks the wheel's GitHub build-provenance attestation, which names the
+workflow, commit and runner that built it. Container images are also signed
+with cosign. For those commands, and the NIST SSDF evidence behind them,
+see [SSDF.md](../compliance/SSDF.md#2-how-to-verify-a-release-yourself).
+This covers NeuralMind's own wheel. Its dependencies' wheels come from PyPI
+as usual; check them against the release SBOM and VEX document
+(`security/neuralmind.openvex.json`).
+
+---
+
 ## Step 3 — Transfer to the air-gapped machine
 
 Bundle both pieces into a single tarball for transfer:

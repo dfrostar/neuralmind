@@ -17,6 +17,7 @@
 | Certifications held | **None.** NeuralMind has no SOC 2 report and no CMMC assessment. Both frameworks assess an organization's environment; the sections below show what NeuralMind gives your assessor |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
+| Secure development (NIST SP 800-218 SSDF) | **Practice-by-practice evidence** in [`compliance/SSDF.md`](compliance/SSDF.md). *(v4.14.0+)* Container images are signed (cosign, keyless), releases carry build-provenance attestations, and a VEX document lists the dependency advisories that don't apply. NIST doesn't certify against the SSDF: a federal buyer asks for CISA's attestation form, signed by Cheval-Volant LLC |
 | License | **MIT** — full source review, no vendor lock-in |
 | Source available | **Yes** — entire codebase on GitHub, every claim verifiable |
 
@@ -146,6 +147,7 @@ Container builds from v0.9.0 onward are auto-published to GHCR ([workflow source
 - **User:** non-root (`neuralmind` UID)
 - **Network:** no outbound calls at build time (all transitive wheels pre-downloaded in the builder stage; runtime install uses `--no-index`)
 - **OCI labels:** `org.opencontainers.image.source`, `version`, `licenses=MIT`
+- **Signature and provenance** *(v4.14.0+)*: each image is signed keylessly with cosign by the release workflow and carries a GitHub build-provenance attestation. The workflow verifies both before moving `:latest`. To check them yourself, see [`compliance/SSDF.md`](compliance/SSDF.md#2-how-to-verify-a-release-yourself)
 
 ---
 
@@ -188,6 +190,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 This is the **summary** view. For depth:
 
 - [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, SOC 2 and CMMC 2.0 summaries
+- [`compliance/SSDF.md`](compliance/SSDF.md) — NIST SP 800-218 practice-by-practice evidence, release verification commands, and the VEX document
 - [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) — precise, code-cited answer to "does any client content (including media files) ever reach a third-party LLM"
 - [`use-cases/air-gapped.md`](use-cases/air-gapped.md) — strictest deployment posture, step-by-step
 - [`use-cases/offline-regulated.md`](use-cases/offline-regulated.md) — broader regulated-industry walkthrough

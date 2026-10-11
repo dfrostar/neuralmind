@@ -135,6 +135,59 @@ jobs:
       - name: Run tests under the FIPS provider
         run: pytest tests/ -q --tb=short
 
+  # NIST SP 800-218 (SSDF) PW.7 / RV.1: scan our code and our dependencies on
+  # every change. CodeQL already runs through GitHub's default setup.
+  security:
+    name: Security scan (bandit, pip-audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # bandit's SARIF report goes to code scanning
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install the scanners
+        run: |
+          python -m pip install --upgrade pip
+          pip install "bandit[sarif]" pip-audit
+
+      # High severity fails the build; a reviewed false positive carries a
+      # `# nosec <id>  # <reason>` on its line. Lower severities go to the
+      # Security tab below for triage rather than failing the build.
+      - name: Bandit (fails on high severity)
+        run: bandit -q -r neuralmind --severity-level high
+
+      - name: Bandit report (all severities)
+        if: always()
+        run: bandit -q -r neuralmind -f sarif -o bandit.sarif --exit-zero
+
+      # Fork PRs get a read-only token, so the upload would fail there.
+      - name: Upload bandit report to code scanning
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+
+      # Audit what users install, in its own environment so the scanners'
+      # dependencies aren't in it: the default install plus the chromadb extra.
+      # The only advisories ignored are the ones security/neuralmind.openvex.json
+      # marks not_affected (argued in SECURITY.md), so the published VEX and
+      # this gate can't disagree.
+      - name: pip-audit (installed dependencies)
+        run: |
+          python -m venv "$RUNNER_TEMP/audit"
+          "$RUNNER_TEMP/audit/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/audit/bin/pip" install -e ".[chromadb]"
+          # shellcheck disable=SC2046  # the flags must split into words
+          PIPAPI_PYTHON_LOCATION="$RUNNER_TEMP/audit/bin/python" \
+            pip-audit --progress-spinner off --skip-editable $(python scripts/vex_ignores.py)
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

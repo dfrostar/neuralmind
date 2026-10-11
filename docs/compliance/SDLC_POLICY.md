@@ -35,6 +35,8 @@ All changes must pass:
 - **Type checks:** `mypy neuralmind/` (where configured)
 - **Lint:** `ruff check neuralmind/`
 - **Benchmarks:** `neuralmind benchmark .` (for retrieval changes)
+- **Security scans (CI):** CodeQL; bandit, where high severity fails the change; and `pip-audit` over the installed dependencies, failing on any advisory not marked `not_affected` in `security/neuralmind.openvex.json`
+- **FIPS mode (CI):** the test suite with the OpenSSL FIPS provider enforced
 
 ### 2.4 Review
 
