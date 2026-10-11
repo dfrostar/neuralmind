@@ -19,6 +19,9 @@ the producer's CEO or a designee. For NeuralMind that is Cheval-Volant LLC.
 This document is the evidence behind that signature. It isn't the attestation
 itself.
 
+For the other NIST documents (FIPS 140-3, SP 800-171, SP 800-53, AI RMF)
+and what's planned, see [NIST.md](NIST.md).
+
 ## 2. How to verify a release yourself
 
 Every release from the version that ships this document onward is signed and

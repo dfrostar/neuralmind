@@ -434,7 +434,9 @@ yourself.
   not affected by, so a VEX-aware scanner doesn't report them as open.
 
 The commands are in [`docs/compliance/SSDF.md`](docs/compliance/SSDF.md#2-how-to-verify-a-release-yourself),
-along with the NIST SP 800-218 (SSDF) practice-by-practice evidence.
+along with the NIST SP 800-218 (SSDF) practice-by-practice evidence. For
+which NIST documents apply, where each stands and what's next, see
+[`docs/compliance/NIST.md`](docs/compliance/NIST.md).
 
 ## Auditability & Explainability
 

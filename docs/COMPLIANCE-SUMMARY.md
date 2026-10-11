@@ -190,6 +190,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 This is the **summary** view. For depth:
 
 - [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, SOC 2 and CMMC 2.0 summaries
+- [`compliance/NIST.md`](compliance/NIST.md) — which NIST documents apply to NeuralMind, where each stands, and what's next
 - [`compliance/SSDF.md`](compliance/SSDF.md) — NIST SP 800-218 practice-by-practice evidence, release verification commands, and the VEX document
 - [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) — precise, code-cited answer to "does any client content (including media files) ever reach a third-party LLM"
 - [`use-cases/air-gapped.md`](use-cases/air-gapped.md) — strictest deployment posture, step-by-step
