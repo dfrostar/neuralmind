@@ -47,7 +47,17 @@ def _flags_non_security(call: ast.Call) -> bool:
 def violations(source: str, filename: str = "<string>") -> list[str]:
     """Each weak-hash use in ``source`` that doesn't pass ``usedforsecurity=False``."""
     found: list[str] = []
-    for node in ast.walk(ast.parse(source, filename)):
+    tree = ast.parse(source, filename)
+    # Every name the module binds to hashlib (``import hashlib as h`` too), so
+    # an alias can't hide a call from the check.
+    modules = {"hashlib"} | {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name == "hashlib"
+    }
+    for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module == "hashlib":
             for alias in node.names:
                 if alias.name in WEAK_CONSTRUCTORS:
@@ -62,15 +72,20 @@ def violations(source: str, filename: str = "<string>") -> list[str]:
         if not (
             isinstance(func, ast.Attribute)
             and isinstance(func.value, ast.Name)
-            and func.value.id == "hashlib"
+            and func.value.id in modules
         ):
             continue
         if func.attr in WEAK_CONSTRUCTORS:
             weak = True
-        elif func.attr == "new" and node.args:
-            name = node.args[0]
+        elif func.attr == "new":
+            # The algorithm, positional or ``name=``.
+            name = node.args[0] if node.args else None
+            if name is None:
+                name = next((kw.value for kw in node.keywords if kw.arg == "name"), None)
             # A name only known at runtime could be any of them.
-            weak = not isinstance(name, ast.Constant) or (str(name.value).lower() in WEAK_NEW_NAMES)
+            weak = name is not None and (
+                not isinstance(name, ast.Constant) or str(name.value).lower() in WEAK_NEW_NAMES
+            )
         else:
             weak = False
         if weak and not _flags_non_security(node):
@@ -121,6 +136,18 @@ def test_scanner_catches_each_shape():
     )
     lines = sorted(int(v.split(":")[1]) for v in violations(src))
     assert lines == [2, 3, 4, 5, 6, 7]
+
+
+def test_scanner_sees_through_aliases_and_keyword_names():
+    src = (
+        "import hashlib as hashes\n"
+        "hashes.md5(b'x')\n"
+        "hashes.new(name='sha1')\n"
+        "hashes.sha256(b'x')\n"
+        "hashes.md5(b'x', usedforsecurity=False)\n"
+    )
+    lines = sorted(int(v.split(":")[1]) for v in violations(src))
+    assert lines == [2, 3]
 
 
 def test_scanner_accepts_non_security_and_approved_hashes():
