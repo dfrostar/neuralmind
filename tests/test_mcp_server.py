@@ -696,8 +696,19 @@ class TestRunMcpServer:
             call_result = asyncio.run(kwargs["on_call_tool"](None, params))
             assert call_result.content[0].text == '{"ok": true}'
             mock_handle.assert_called_once_with(
-                "neuralmind_stats", {"project_path": "/tmp/project"}
+                "neuralmind_stats", {"project_path": "/tmp/project"}, None
             )
+            # The request context's session carries the client's initialize
+            # clientInfo, which the call passes on for the audit log.
+            ctx = SimpleNamespace(
+                session=SimpleNamespace(
+                    client_params=SimpleNamespace(
+                        client_info=SimpleNamespace(name="hermes", version="1.0")
+                    )
+                )
+            )
+            asyncio.run(kwargs["on_call_tool"](ctx, params))
+            assert mock_handle.call_args.args[2] == {"name": "hermes", "version": "1.0"}
 
         kwargs = created["kwargs"]
         assert created["name"] == "neuralmind"

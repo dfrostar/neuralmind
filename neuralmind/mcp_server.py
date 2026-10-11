@@ -1353,8 +1353,33 @@ def _project_not_found(project_path: str) -> dict[str, str] | None:
     return None
 
 
-def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
-    """Handle a tool call and return the result as JSON string."""
+def client_from_session(session: Any) -> dict[str, str] | None:
+    """The MCP client's ``{"name", "version"}`` from its initialize handshake.
+
+    ``clientInfo`` on mcp 1.x, ``client_info`` on 2.x; None when the session
+    has none (a 2026-07-28+ client may omit it). Values are capped, since the
+    client chooses them and they go into the audit log.
+    """
+    params = getattr(session, "client_params", None)
+    info = getattr(params, "client_info", None) or getattr(params, "clientInfo", None)
+    name = getattr(info, "name", None)
+    if not name:
+        return None
+    client = {"name": str(name)[:128]}
+    version = getattr(info, "version", None)
+    if version:
+        client["version"] = str(version)[:64]
+    return client
+
+
+def handle_tool_call(
+    name: str, arguments: dict[str, Any], client: dict[str, str] | None = None
+) -> str:
+    """Handle a tool call and return the result as JSON string.
+
+    *client* is the calling MCP client (see :func:`client_from_session`),
+    recorded in the audit event for the call.
+    """
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
         "neuralmind_query": lambda args: tool_query(
@@ -1469,7 +1494,9 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         # check it first: the broken policy is the cause worth reporting.
         security.refuse_if_misconfigured(actor, name)
         enforce_storage_policy(project_path)
-        result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
+        result = security.secure_call(
+            actor, role, name, lambda: handlers[name](arguments), client=client
+        )
         return json.dumps(result, indent=2, default=str)
     # Only the security manager's own refusals are security denials. A tool
     # that fails with a RuntimeError (a missing parser, an unreadable PDF) or
@@ -1510,9 +1537,10 @@ async def run_mcp_server():
     async def list_tools_v2(_ctx, _params):
         return mcp_types.ListToolsResult(tools=[Tool(**t) for t in TOOLS])
 
-    async def call_tool_v2(_ctx, params):
+    async def call_tool_v2(ctx, params):
         arguments = params.arguments or {}
-        result = await asyncio.to_thread(handle_tool_call, params.name, arguments)
+        client = client_from_session(getattr(ctx, "session", None))
+        result = await asyncio.to_thread(handle_tool_call, params.name, arguments, client)
         return mcp_types.CallToolResult(content=[TextContent(type="text", text=result)])
 
     try:
@@ -1539,7 +1567,11 @@ async def run_mcp_server():
 
         @server.call_tool()
         async def call_tool(name: str, arguments: dict):
-            result = await asyncio.to_thread(handle_tool_call, name, arguments)
+            try:
+                client = client_from_session(server.request_context.session)
+            except Exception:  # no request in flight, or an SDK without it
+                client = None
+            result = await asyncio.to_thread(handle_tool_call, name, arguments, client)
             return [TextContent(type="text", text=result)]
 
     async with stdio_server() as (read_stream, write_stream):

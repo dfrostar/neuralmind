@@ -645,6 +645,58 @@ class TestGraphSourceBuild:
         assert result["graph"]["kind"] == "built-in"
         assert opened == []
 
+    def test_a_leftover_graphify_graph_is_named_until_archived(self, tmp_path):
+        from neuralmind import doctor
+
+        rels = ["a.py", "b.py"]
+        _write_files(tmp_path, rels)
+        assert _mind(tmp_path).build()["graph"]["kind"] == "built-in"
+        # A graphify-era graph.json beside the built-in one: nothing reads it.
+        legacy = _write_graphify(tmp_path, _graphify_graph(rels))
+
+        result = _mind(tmp_path).build()
+        assert result["graph"]["kind"] == "built-in"
+        notices = "\n".join(result["notices"])
+        assert "Ignoring graphify-out/graph.json" in notices
+        assert "--archive-graphify" in notices
+        check = doctor._check_graph_source(tmp_path)
+        assert check.status == doctor.WARN
+        assert "--archive-graphify" in check.fix
+
+        archived = _mind(tmp_path).build(archive_graphify=True)
+        assert archived["success"]
+        assert not legacy.exists()
+        kept = list(legacy.parent.glob("graph.json.archived-*"))
+        assert len(kept) == 1
+        assert json.loads(kept[0].read_text(encoding="utf-8")) == _graphify_graph(rels)
+        assert any("Archived graphify-out/graph.json" in n for n in archived["notices"])
+        assert not any("Ignoring graphify-out" in n for n in archived["notices"])
+        assert doctor._check_graph_source(tmp_path).status == doctor.OK
+
+    def test_an_explicit_graph_source_is_not_flagged(self, tmp_path):
+        from neuralmind import doctor
+
+        rels = ["a.py"]
+        _write_files(tmp_path, rels)
+        assert _mind(tmp_path).build()["success"]
+        _write_graphify(tmp_path, _graphify_graph(rels))
+        _set_graph_source(tmp_path, "builtin")
+
+        result = _mind(tmp_path).build()
+        assert not any("Ignoring graphify-out" in n for n in result["notices"])
+        assert doctor._check_graph_source(tmp_path).status == doctor.OK
+
+    def test_archive_graphify_is_refused_when_it_is_the_source(self, tmp_path):
+        rels = ["a.py"]
+        _write_files(tmp_path, rels)
+        legacy = _write_graphify(tmp_path, _graphify_graph(rels))
+        _set_graph_source(tmp_path, "graphify")
+
+        result = _mind(tmp_path).build(archive_graphify=True)
+        assert not result["success"]
+        assert "graph_source: graphify" in result["error"]
+        assert legacy.exists()
+
     def test_graphify_setting_requires_the_graph(self, tmp_path):
         _write_files(tmp_path, ["a.py"])
         _set_graph_source(tmp_path, "graphify")

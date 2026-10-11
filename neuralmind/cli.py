@@ -502,6 +502,7 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             regenerate_graph=regenerate,
             strict=strict,
             prune=getattr(args, "prune", False) is True,
+            archive_graphify=getattr(args, "archive_graphify", False) is True,
             dry_run=False,
             json=False,
         )
@@ -785,6 +786,7 @@ def cmd_build(args):
         regenerate_graph=getattr(args, "regenerate_graph", False) is True,
         strict=getattr(args, "strict", False) is True,
         prune=getattr(args, "prune", False) is True,
+        archive_graphify=getattr(args, "archive_graphify", False) is True,
     )
     if result.get("success"):
         print("Build successful!")
@@ -849,6 +851,48 @@ def _print_trace(trace: dict | None) -> None:
     print(f"Retrieval trace ({len(trace.get('events', []))} events):")
     for e in trace.get("events", []):
         print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
+
+
+def _explain_data(result) -> dict:
+    """``query --explain --json``: what the human explanation shows, as data.
+
+    Token budget per layer, the layers and communities used, the query
+    intent, the top L3 hits with their scores, and the synapse events that
+    fired, so an agent can check *why* this context was chosen rather than
+    only how small it is.
+    """
+    budget = result.budget
+    hits = []
+    for h in (result.top_search_hits or [])[:5]:
+        meta = h.get("metadata") or {}
+        hits.append(
+            {
+                "id": h.get("id", ""),
+                "label": h.get("label") or meta.get("label") or h.get("id", ""),
+                "source_file": h.get("source_file") or meta.get("source_file", ""),
+                "score": round(float(h.get("score", 0.0) or 0.0), 4),
+            }
+        )
+    events = (result.trace or {}).get("events") or []
+    return {
+        "budget": {
+            "l0_identity": budget.l0_identity,
+            "l1_summary": budget.l1_summary,
+            "l2_communities": budget.l2_ondemand,
+            "l3_search": budget.l3_search,
+            "total": budget.total,
+        },
+        "reduction_ratio": round(result.reduction_ratio, 1),
+        "layers": list(result.layers_used),
+        "intent": getattr(result, "intent", ""),
+        "intent_source": getattr(result, "intent_source", ""),
+        "communities_loaded": list(result.communities_loaded),
+        "search_hits": result.search_hits,
+        "top_hits": hits,
+        "synapses_fired": [
+            e.get("summary", "") for e in events if "synapse" in (e.get("kind") or "")
+        ],
+    }
 
 
 def _print_explain(result) -> None:
@@ -1220,6 +1264,8 @@ def cmd_query(args):
             "context": result.context,
             "trace": result.trace,
         }
+        if explain:
+            output["explain"] = _explain_data(result)
         if relevance:
             from .relevance import build_relevance_sidecar
 
@@ -2190,19 +2236,33 @@ def cmd_metrics(args):
 
     if queries:
         print(f"{'Queries':.<30} {queries.get('n_queries', 0):>12,}")
+        print(f"{'Last query':.<30} {_ago(queries.get('last_ts')):>12}")
         print(f"{'Mean latency (ms)':.<30} {queries.get('mean_latency_ms', 0):>12,.2f}")
         print(f"{'Mean tokens/query':.<30} {queries.get('mean_tokens_used', 0):>12,.0f}")
-        print(f"{'Mean retrieval reuse':.<30} {queries.get('mean_retrieval_reuse_rate', 0):>12.4f}")
-        print(f"{'Mean synapses fired':.<30} {queries.get('mean_synapses_activated', 0):>12.1f}")
+        # Recorded only by callers that measure them (not NeuralMind.query()).
+        if queries.get("mean_retrieval_reuse_rate"):
+            print(f"{'Mean retrieval reuse':.<30} {queries['mean_retrieval_reuse_rate']:>12.4f}")
+        if queries.get("mean_synapses_activated"):
+            print(f"{'Mean synapses fired':.<30} {queries['mean_synapses_activated']:>12.1f}")
         calls = queries.get("sum_tool_calls", 0)
-        successes = queries.get("sum_tool_successes", 0)
-        success_pct = (successes / calls * 100) if calls > 0 else 0.0
-        print(f"{'Tool success rate':.<30} {success_pct:>11.1f}%")
-        print(f"{'Total tool calls':.<30} {calls:>12,}")
+        if calls:
+            successes = queries.get("sum_tool_successes", 0)
+            print(f"{'Tool success rate':.<30} {successes / calls * 100:>11.1f}%")
+            print(f"{'Total tool calls':.<30} {calls:>12,}")
 
     if builds:
         print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
+        print(f"{'Last build':.<30} {_ago(builds.get('last_ts')):>12}")
         print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
+        if "synapse_edges" in builds:
+            delta = builds.get("synapse_edges_delta", 0)
+            print(f"{'Synapse edges':.<30} {builds['synapse_edges']:>12,} ({delta:+,} in window)")
+        if "synapse_transitions" in builds:
+            delta = builds.get("synapse_transitions_delta", 0)
+            print(
+                f"{'Synapse transitions':.<30} {builds['synapse_transitions']:>12,} "
+                f"({delta:+,} in window)"
+            )
 
     if recall:
         outcomes = recall.get("outcomes", {})
@@ -2211,6 +2271,31 @@ def cmd_metrics(args):
         print(f"{'Abstained: low similarity':.<30} {outcomes.get('low_similarity', 0):>12,}")
         print(f"{'Abstained: nothing to name':.<30} {outcomes.get('no_neighbors', 0):>12,}")
         print(f"{'Abstain rate':.<30} {recall.get('abstain_rate', 0) * 100:>11.1f}%")
+
+    per_day = summary.get("per_day") or {}
+    if per_day:
+        print()
+        print(f"{'Day (UTC)':<12} {'Queries':>8} {'Builds':>8} {'Recall':>8}")
+        for day, counts in per_day.items():
+            print(
+                f"{day:<12} {counts.get('query', 0):>8,} {counts.get('build', 0):>8,} "
+                f"{counts.get('recall', 0):>8,}"
+            )
+
+
+def _ago(ts) -> str:
+    """``3h ago`` for a Unix timestamp; ``-`` when there is none."""
+    import time
+
+    if not isinstance(ts, (int, float)) or ts <= 0:
+        return "-"
+    seconds = max(0, time.time() - ts)
+    if seconds < 60:
+        return "just now"
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return "-"
 
 
 def cmd_validate(args):
@@ -2854,15 +2939,21 @@ def cmd_audit_recent(args):
         print("No audit events found.")
         return
     print(f"Recent audit events ({len(events)} shown):")
-    print(f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} Target")
-    print("  " + "-" * 80)
+    print(
+        f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} "
+        f"{'Client':<16} Target"
+    )
+    print("  " + "-" * 97)
     for evt in events:
         ts = evt.get("timestamp", "")[:19]
         cat = evt.get("category", "")[:11]
         act = evt.get("action", "")[:19]
         actor = evt.get("actor", "")[:11]
+        # The MCP client that made the call (its initialize clientInfo).
+        client = (evt.get("details") or {}).get("client") or {}
+        client_name = str(client.get("name", "-") if isinstance(client, dict) else "-")[:15]
         target = str(evt.get("target", ""))[:30]
-        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
+        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {client_name:<16} {target}")
 
 
 def _audit_review(action: str, args) -> None:
@@ -6600,6 +6691,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Remove orphaned vectors even when they are more than half the store "
         "(normally kept as a safety valve against a graph that shrank by mistake).",
+    )
+    build_p.add_argument(
+        "--archive-graphify",
+        dest="archive_graphify",
+        action="store_true",
+        help="Rename an unused graphify-out/graph.json (left from a graphify-era build) "
+        "to graph.json.archived-<timestamp> before building, so it stops looking like "
+        "a live graph. Refused under graph_source: graphify.",
     )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.add_argument(

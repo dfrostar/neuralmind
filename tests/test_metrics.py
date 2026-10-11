@@ -166,6 +166,82 @@ class TestMetricsCollector(unittest.TestCase):
         self.assertEqual(summary["recall"]["n_prompts"], 4)
         self.assertEqual(summary["builds"]["n_builds"], 1)
 
+    def test_a_query_record_holds_no_question_text_unless_given(self) -> None:
+        collector = MetricsCollector(self.project)
+        collector.log_query_metrics(
+            latency_ms=12.345, tokens_used=700, search_hits=4, reduction_ratio=71.43
+        )
+        (record,) = [
+            json.loads(line)
+            for f in (self.project / ".neuralmind" / "metrics").glob("*.jsonl")
+            for line in f.read_text().splitlines()
+        ]
+        self.assertEqual(
+            set(record),
+            {"event", "ts", "latency_ms", "tokens_used", "search_hits", "reduction_ratio"},
+        )
+        self.assertEqual(record["latency_ms"], 12.35)
+        self.assertEqual(record["reduction_ratio"], 71.4)
+
+    def test_summary_counts_events_per_day_and_when_last_seen(self) -> None:
+        metrics = self.project / ".neuralmind" / "metrics"
+        metrics.mkdir(parents=True)
+        now = time.time()
+        yesterday = now - 86400
+        rows = [
+            {"event": "query", "ts": yesterday, "latency_ms": 5, "tokens_used": 600},
+            {"event": "query", "ts": now - 60, "latency_ms": 7, "tokens_used": 800},
+            {
+                "event": "build",
+                "ts": yesterday,
+                "duration_s": 2.0,
+                "synapse_edges": 100,
+                "synapse_transitions": 0,
+            },
+            {
+                "event": "build",
+                "ts": now - 30,
+                "duration_s": 1.0,
+                "synapse_edges": 147,
+                "synapse_transitions": 12,
+            },
+            {"event": "recall", "ts": now, "outcome": "injected"},
+        ]
+        for r in rows:
+            day = metrics / f"metrics_{time.strftime('%Y-%m-%d', time.gmtime(r['ts']))}.jsonl"
+            with open(day, "a", encoding="utf-8") as f:
+                f.write(json.dumps(r) + "\n")
+
+        summary = MetricsCollector(self.project).summarize(days=7)
+        day_y = time.strftime("%Y-%m-%d", time.gmtime(yesterday))
+        day_t = time.strftime("%Y-%m-%d", time.gmtime(now))
+        self.assertEqual(summary["per_day"][day_y], {"query": 1, "build": 1})
+        self.assertEqual(summary["per_day"][day_t], {"query": 1, "build": 1, "recall": 1})
+        self.assertEqual(summary["queries"]["last_ts"], now - 60)
+        builds = summary["builds"]
+        self.assertEqual(builds["last_ts"], now - 30)
+        self.assertEqual((builds["synapse_edges"], builds["synapse_edges_delta"]), (147, 47))
+        self.assertEqual(
+            (builds["synapse_transitions"], builds["synapse_transitions_delta"]), (12, 12)
+        )
+
+        import contextlib
+        import io
+        from argparse import Namespace
+
+        from neuralmind.cli import cmd_metrics
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cmd_metrics(Namespace(project_path=str(self.project), days=7, json=False))
+        text = out.getvalue()
+        self.assertIn("1m ago", text)
+        self.assertIn("+47 in window", text)
+        self.assertIn(day_y, text)
+        # Fields NeuralMind.query() never records aren't shown as zeros.
+        self.assertNotIn("Tool success rate", text)
+        self.assertNotIn("Mean retrieval reuse", text)
+
     def test_starting_a_new_day_applies_retention(self) -> None:
         metrics = self.project / ".neuralmind" / "metrics"
         metrics.mkdir(parents=True)

@@ -86,6 +86,21 @@ both ways out (`--regenerate-graph`, or `graph_source: graphify`) instead of
 quietly serving an old graphify graph. Every build prints which graph it used
 on a `Graph:` line, and `neuralmind build-status` shows it afterwards.
 
+**The graphify graph you upgraded past** *(v4.13.0+)*. Once the built-in graph
+exists, `auto` never reads `graphify-out/graph.json` again, but the file still
+looks like a live graph to anyone (or any script) inspecting the repository.
+Every build names it until you deal with it, and `neuralmind doctor` warns
+under **Graph source**:
+
+```
+  [warn] Graph source: builds read .neuralmind/graph.json; graphify-out/graph.json is unused (graph_source: auto picks the built-in graph once it exists)
+         -> Archive it: neuralmind build . --archive-graphify (or set graph_source: builtin in .neuralmind.yaml to keep it)
+```
+
+`--archive-graphify` renames it to `graphify-out/graph.json.archived-<timestamp>`
+and leaves the rest of `graphify-out/` alone; rename it back to undo. If you
+still run graphify for something else, set `graph_source: builtin` instead.
+
 ## 4. Gate it in CI
 
 ```bash

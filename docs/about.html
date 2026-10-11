@@ -208,6 +208,13 @@
                 <li><strong>git doesn&rsquo;t wait</strong> &mdash; the rebuild runs in the background behind a lock that coalesces bursts of events; the log is <code>.neuralmind/hook-build.log</code>, and <code>--sync</code> keeps the foreground rebuild</li>
                 <li><strong>Throwaway worktrees are left alone</strong> &mdash; the shared hooks rebuild only a project that has been built (<code>build_status.json</code>), even when a session hook created its <code>.neuralmind/</code> directory</li>
             </ul>
+            <p><strong>Also: usage you can see, and calls you can attribute.</strong> For teams whose agents depend on NeuralMind every day, not once in a demo:</p>
+            <ul>
+                <li><strong>Usage counters</strong> &mdash; every query and build is recorded in <code>.neuralmind/metrics/</code> without its text, so it needs no memory-logging consent; <code>neuralmind metrics</code> shows the last query and build, synapse growth across builds, and a per-day table</li>
+                <li><strong>MCP client attribution</strong> &mdash; each MCP call&rsquo;s audit event names the client that made it (<code>details.client</code>, from the MCP handshake), and <code>neuralmind audit recent</code> shows it, so two agents on one project can be told apart</li>
+                <li><strong>No silent leftover graph</strong> &mdash; an unused <code>graphify-out/graph.json</code> is named on every build and by <code>doctor</code>, and <code>neuralmind build . --archive-graphify</code> retires it</li>
+                <li><strong><code>query --explain --json</code></strong> &mdash; the explanation (layers, communities, top hits with scores, synapses fired) is now in the JSON instead of dropped</li>
+            </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.13.0.md">v4.13.0 release notes</a></p>
         </div>
     </section>

@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -43,6 +44,7 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
+from .metrics_pipeline import MetricsCollector
 from .paths import graph_json_path
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
@@ -651,6 +653,7 @@ class NeuralMind:
         regenerate_graph: bool = False,
         strict: bool = False,
         prune: bool = False,
+        archive_graphify: bool = False,
     ) -> dict:
         """
         Build or update the neural knowledge base.
@@ -667,6 +670,9 @@ class NeuralMind:
             strict: Stop before embedding (``exit_code`` 3) when the graph
                 FAILs the freshness check.
             prune: Purge orphaned vectors even past the 50% safety valve.
+            archive_graphify: First rename ``graphify-out/graph.json`` to
+                ``graph.json.archived-<timestamp>`` so no build reads it
+                again (refused under ``graph_source: graphify``).
 
         Returns:
             Build statistics including nodes processed and time taken. Also
@@ -680,6 +686,11 @@ class NeuralMind:
         from neuralmind.neuralmind_config import NeuralmindConfig
 
         self._neuralmind_config = NeuralmindConfig.load(self.project_path)
+
+        if archive_graphify:
+            archived = self._archive_graphify()
+            if archived is not None:
+                return archived
 
         # Pick the graph source and, when it's ours, (re)generate it from a
         # tree-sitter parse so `pip install neuralmind && neuralmind build`
@@ -930,6 +941,7 @@ class NeuralMind:
             self._build_stats["ir"] = ir_summary
 
         self._built = True
+        self._log_build_metrics(self._build_stats)
         audit_details = {
             "backend": self.backend_manager.backend_name,
             "nodes_total": self._build_stats.get("nodes_total", 0),
@@ -944,6 +956,46 @@ class NeuralMind:
             details=audit_details,
         )
         return self._build_stats
+
+    def _archive_graphify(self) -> dict | None:
+        """``build --archive-graphify``: retire ``graphify-out/graph.json``.
+
+        Returns a failed build result when it must not be archived, else None
+        (the build goes on, now resolving without it).
+        """
+        legacy = paths_mod.graph_json_path(self.project_path, "graphify")
+        legacy_rel = self._display_path(legacy)
+        if paths_mod.graph_source_setting(self.project_path) == "graphify":
+            error = (
+                f"graph_source: graphify is set, so {legacy_rel} is the graph builds read. "
+                "Set graph_source: auto or builtin in .neuralmind.yaml before archiving it."
+            )
+            self._notify(error)
+            return {
+                "success": False,
+                "error": error,
+                "notices": list(self._notices),
+                "duration_seconds": 0,
+            }
+        try:
+            archived = paths_mod.archive_legacy_graph(self.project_path)
+        except OSError as exc:
+            error = f"could not archive {legacy_rel}: {exc}"
+            self._notify(error)
+            return {
+                "success": False,
+                "error": error,
+                "notices": list(self._notices),
+                "duration_seconds": 0,
+            }
+        if archived is None:
+            self._notify(f"No {legacy_rel} to archive.")
+        else:
+            self._notify(
+                f"Archived {legacy_rel} -> {self._display_path(archived)} "
+                "(rename it back to restore it)."
+            )
+        return None
 
     def _maybe_announce_gitignore(self, info: dict) -> bool:
         """Say once what honoring ``.gitignore`` keeps out of the index.
@@ -1793,6 +1845,15 @@ class NeuralMind:
 
         # --- auto ---------------------------------------------------------
         if canonical.exists():
+            if legacy.is_file():
+                # Left from a graphify-era build: say so on every build until
+                # it is archived or the source is pinned, not once in passing.
+                self._notify(
+                    f"Ignoring {legacy_rel}: graph_source: auto uses {canonical_rel} once "
+                    "it exists, so nothing reads the graphify graph. Archive it with "
+                    f"`neuralmind build {self.project_path} --archive-graphify`, or set "
+                    "graph_source: builtin (or graphify) in .neuralmind.yaml."
+                )
             try:
                 existing = json.loads(canonical.read_text(encoding="utf-8"))
             except (OSError, ValueError):
@@ -2203,6 +2264,7 @@ class NeuralMind:
         *,
         learn: bool,
     ) -> ContextResult:
+        started = time.perf_counter()
         if learn:
             self._ensure_built()
         else:
@@ -2234,6 +2296,7 @@ class NeuralMind:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)
             self._reinforce_from_query(question, result)
+            self._log_query_metrics(result, (time.perf_counter() - started) * 1000)
         # The audit trail records every query, read-only or not: it is the
         # compliance record of what was asked, not part of the learned layer.
         self._emit_audit(
@@ -2292,6 +2355,47 @@ class NeuralMind:
             max_entries=self.RECENT_QUERIES_MAX,
             compact_bytes=self.RECENT_QUERIES_COMPACT_BYTES,
         )
+
+    def _log_query_metrics(self, result: ContextResult, latency_ms: float) -> None:
+        """Count the query in ``.neuralmind/metrics/``: no question text.
+
+        A usage counter needs no consent the way the query-text logs do, so it
+        is written whenever the query learns; ``neuralmind metrics`` reads it.
+        Fail-open, like every metrics write.
+        """
+        try:
+            MetricsCollector(self.project_path).log_query_metrics(
+                latency_ms=latency_ms,
+                tokens_used=result.budget.total,
+                search_hits=result.search_hits,
+                reduction_ratio=result.reduction_ratio,
+            )
+        except Exception:
+            pass
+
+    def _log_build_metrics(self, stats: dict) -> None:
+        """Record the build, with the synapse store's totals, in the metrics log."""
+        edges = transitions = 0
+        store = self.synapses if self.enable_synapses else None
+        if store is not None:
+            try:
+                synapse_stats = store.stats()
+                edges = int(synapse_stats.get("edges", 0))
+                transitions = int(synapse_stats.get("transitions", 0))
+            except Exception:
+                pass
+        try:
+            MetricsCollector(self.project_path).log_build_metrics(
+                duration_s=float(stats.get("duration_seconds", 0)),
+                files_processed=int(stats.get("nodes_added", 0))
+                + int(stats.get("nodes_updated", 0)),
+                synapse_edges=edges,
+                graph_edges=int(stats.get("structural_edges", 0)),
+                nodes_total=int(stats.get("nodes_total", 0)),
+                synapse_transitions=transitions,
+            )
+        except Exception:
+            pass
 
     def recent_queries(self, n: int = 20) -> list[dict]:
         """Return the N most-recent recorded queries, newest first."""

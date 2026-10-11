@@ -101,7 +101,11 @@ Query recent audit trail events.
 
 #### Output
 
-Recent audit events in tabular format.
+Recent audit events in tabular format. *(v4.13.0+)* A **Client** column names
+the MCP client that made each `mcp_call` (the `clientInfo` name it sent when
+it connected, e.g. `claude-code` or `hermes`), so two agents pointed at one
+project can be told apart; it shows `-` for CLI, hook and daemon events. The
+full `{"name", "version"}` is in `details.client` (`--json`, `audit export`).
 
 #### Examples
 
@@ -191,6 +195,7 @@ neuralmind build <project_path> [OPTIONS]
 | `--regenerate-graph` | False | Always rebuild `.neuralmind/graph.json` with the built-in tree-sitter backend, whatever graph exists — the way out of a stale graphify graph. `graphify-out/` is never written (v4.4.0+) |
 | `--strict` | False | Exit `3` before embedding when the code graph FAILs the freshness check (v4.4.0+) |
 | `--prune` | False | Remove orphaned vectors even when they are more than half the store; otherwise they're kept with a warning as a safety valve against a graph that shrank by mistake (v4.4.0+) |
+| `--archive-graphify` | False | *(v4.13.0+)* First rename an unused `graphify-out/graph.json` to `graph.json.archived-<UTC timestamp>` (the rest of `graphify-out/` is left alone; renaming it back restores it), then build. Refused under `graph_source: graphify`, where that file is the graph |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
@@ -223,6 +228,18 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 NeuralMind never switches source silently: if the previous build used the
 built-in graph and it has gone, the build stops and asks for
 `--regenerate-graph` or `graph_source: graphify`.
+
+*(v4.13.0+)* Under `auto`, once `.neuralmind/graph.json` exists a
+`graphify-out/graph.json` left from a graphify-era build (v4.3.x and earlier
+built from it) is never read again. Every build now says so, until it is dealt
+with:
+
+```
+Ignoring graphify-out/graph.json: graph_source: auto uses .neuralmind/graph.json once it exists, so nothing reads the graphify graph. Archive it with `neuralmind build . --archive-graphify`, or set graph_source: builtin (or graphify) in .neuralmind.yaml.
+```
+
+`doctor`'s **Graph source** check warns about the same file. Setting
+`graph_source` explicitly is a choice already made, so neither warns then.
 
 #### What gets indexed: `.gitignore` *(v4.5.0+)*
 
@@ -415,7 +432,7 @@ Results are tagged with source project and deduplicated by ID.
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
-| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`). *(v4.6.0+)* Also prints the query intent L3 ranked with and how it was decided, and labels each top hit with its name and file |
+| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`). *(v4.6.0+)* Also prints the query intent L3 ranked with and how it was decided, and labels each top hit with its name and file. *(v4.13.0+)* With `--json`, the same breakdown is an `explain` object (`budget`, `layers`, `intent`, `communities_loaded`, `top_hits` with scores, `synapses_fired`); before, `--json` dropped it |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
 | `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
 | `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
@@ -1328,6 +1345,12 @@ volume is encrypted (FileVault, BitLocker, or dm-crypt/LUKS) with the OS FIPS
 mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
 "not required".
+
+**Graph source** *(v4.13.0+)* names the graph builds read and the
+`graph_source` setting. It warns when `graph_source: auto` has left a
+`graphify-out/graph.json` unused beside the built-in graph, with
+`neuralmind build . --archive-graphify` as the fix (see
+[Graph source](#graph-source-v440)).
 
 **Turbovec compatibility** fails when the turbovec index was quarantined
 (`index.tvim.stale`: the installed turbovec couldn't read it), and the fix is
@@ -3432,6 +3455,36 @@ neuralmind health .
 neuralmind health . || echo "Index needs rebuild"
 ```
 
+### metrics *(v0.50.0+)*
+
+Counts of what NeuralMind did, from the daily JSONL files in
+`.neuralmind/metrics/` (30 days kept, 10 MB a day at most).
+
+```bash
+neuralmind metrics [project_path] [--days 7] [--json]
+```
+
+*(v4.13.0+)* Every query that learns (not `--no-learn` or
+`NEURALMIND_NO_LEARN=1`) and every build is recorded, whether it came from the
+CLI, an MCP tool or the daemon. Prompt-time recall from the hooks and the
+Hermes plugin was already recorded, as its own `recall` events. A query record holds when it ran, its latency,
+tokens, search hits and reduction ratio, **and no question text**, so it is
+written without the memory-logging consent that `recent_queries.jsonl` and
+`query_events.jsonl` wait for. Before v4.13.0 only prompt-time recall was
+recorded, so this was the only place a monitor could look, and it never saw a
+query.
+
+The report shows queries, the last query (`3h ago`), mean latency and tokens;
+builds, the last build, and the synapse store's edges and transitions after the
+latest build with the change across the window (`147 (+47 in window)`); the
+prompt-time recall outcomes; and a table of queries, builds and recall prompts
+per UTC day. `--json` has the same figures, with `per_day` and Unix-time
+`last_ts` fields.
+
+To check that an index is in use from a cron job, read `queries.last_ts` from
+`neuralmind metrics . --json`, or count `"event": "query"` lines in the
+`metrics_*.jsonl` files directly.
+
 ### status *(v3.1.4+; index reporting v3.4.0+)*
 
 Two independent halves of a project's state in one glance: what is **indexed**
@@ -4025,6 +4078,13 @@ rather than silently ignored (v4.7.0 checked only `identity` and
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
+
+*(v4.13.0+)* Every `mcp_call` and `mcp_call_denied` event also records the
+calling client as `details.client`: the `clientInfo` name and version it sent
+in the MCP handshake (capped at 128 and 64 characters), and the resolved role
+as `actor_role`. The client names itself, so this attributes calls without
+authenticating them: roles and rate limits never depend on it. `neuralmind
+audit recent` shows it in a Client column.
 
 ---
 

@@ -277,6 +277,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
     names = {c.name for c in checks}
     assert names == {
         "Code graph",
+        "Graph source",
         "Backend",
         "Semantic index",
         "Synapse memory",

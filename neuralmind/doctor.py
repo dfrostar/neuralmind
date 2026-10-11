@@ -102,6 +102,40 @@ def _graph_node_ids(project: Path) -> set[str] | None:
     }
 
 
+def _check_graph_source(project: Path) -> Check:
+    """Which graph builds read, and whether an unused graphify graph remains.
+
+    Upgrading past v4.3.x moves an ``auto`` project to the built-in graph and
+    leaves ``graphify-out/graph.json`` where it was; nothing reads it again,
+    but it looks like a live graph to anyone inspecting the project.
+    """
+    from .paths import graph_source_setting, unused_legacy_graph
+
+    name = "Graph source"
+    try:
+        setting = graph_source_setting(project)
+        graph = graph_json_path(project)
+        leftover = unused_legacy_graph(project)
+    except Exception as e:  # pragma: no cover - diagnostic must never raise
+        return Check(name, WARN, f"could not resolve the graph source ({e})")
+    try:
+        active = graph.relative_to(project).as_posix()
+    except ValueError:
+        active = str(graph)
+    if leftover is not None:
+        return Check(
+            name,
+            WARN,
+            f"builds read {active}; graphify-out/graph.json is unused "
+            "(graph_source: auto picks the built-in graph once it exists)",
+            fix=(
+                f"Archive it: neuralmind build {project} --archive-graphify "
+                "(or set graph_source: builtin in .neuralmind.yaml to keep it)"
+            ),
+        )
+    return Check(name, OK, f"{active} (graph_source: {setting})")
+
+
 def _check_index(project: Path) -> Check:
     try:
         from neuralmind.core import NeuralMind
@@ -625,6 +659,7 @@ def run_diagnostics(project_path: str) -> list[Check]:
     project = Path(project_path).resolve()
     return [
         _check_graph(project),
+        _check_graph_source(project),
         _check_backend(project),
         _check_index(project),
         _check_synapses(project),
