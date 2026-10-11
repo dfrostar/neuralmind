@@ -76,9 +76,11 @@ def cmd_health(args) -> None:
         freshness = graph_freshness(project_path, check_index=True)
     except Exception:
         freshness = None
-    from neuralmind.freshness import format_age, format_duration, health_status
+    from neuralmind.freshness import format_age, format_duration, health_status, track_drift
 
     stale_after = _stale_after(args, project_path)
+    if stale_after is not None:
+        track_drift(project_path, freshness)
     status = health_status(freshness, stale_after)
     unknown = status == "unknown"
     catching_up = status == "catching_up"

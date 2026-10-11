@@ -109,8 +109,10 @@ repository was no longer read. This release closes three of those gaps.
   `neuralmind health` exits 0 with status `catching_up` while the index has been
   behind the files for under 30 minutes and 1 after, and `neuralmind doctor`
   fails its Code graph check (exit 1) once it has been behind for longer.
-  "Behind" is dated from the oldest unindexed change, by file modification
-  time; deleted files and graphs built on another OS have no date and always
+  "Behind" is dated from the oldest unindexed change: when each such file was
+  first seen (kept in `.neuralmind/drift_seen.json`, so a file rewritten while
+  the watcher is down doesn't restart the clock), or its modification time if
+  earlier. Deleted files and graphs built on another OS have no date and always
   count. Doctor's lines for missing and changed files now end with
   `; newest modified 2h ago`, so a file written during an incident stands out
   from old drift.

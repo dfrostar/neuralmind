@@ -504,6 +504,42 @@ class TestStaleAfter:
         mcp = tool_health(str(tmp_path))
         assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("catching_up", True, 0)
 
+    def test_rewriting_an_unindexed_file_does_not_restart_the_clock(self, tmp_path):
+        """A dead watcher and a file a tool keeps rewriting must still trip the gate."""
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        (tmp_path / ".neuralmind").mkdir()
+        assert doctor._check_graph(tmp_path, stale_after=1800).status == FAIL  # first seen 3h ago
+        (tmp_path / "new.py").write_text("def new_fn():\n    return 2\n", encoding="utf-8")
+        # Its mtime is now seconds old, but it has been waiting since the first sighting.
+        assert graph_freshness(tmp_path).behind_seconds() < 60
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "behind for 3h" in check.detail
+
+    def test_the_record_goes_once_nothing_drifts(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        (tmp_path / ".neuralmind").mkdir()
+        seen = tmp_path / ".neuralmind" / freshness.DRIFT_SEEN_FILE
+        doctor._check_graph(tmp_path, stale_after=1800)
+        assert json.loads(seen.read_text()).keys() == {"new.py"}
+        (tmp_path / "new.py").unlink()  # back in step with the graph
+        doctor._check_graph(tmp_path, stale_after=1800)
+        assert not seen.exists()
+
+    def test_tracking_needs_the_gate_and_never_creates_state(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        doctor._check_graph(tmp_path, stale_after=1800)  # no .neuralmind/: nothing written
+        assert not (tmp_path / ".neuralmind").exists()
+        (tmp_path / ".neuralmind").mkdir()
+        doctor._check_graph(tmp_path)  # no stale_after: nothing written
+        assert not (tmp_path / ".neuralmind" / freshness.DRIFT_SEEN_FILE).exists()
+
     def test_stale_after_in_config(self, tmp_path):
         from neuralmind.neuralmind_config import NeuralmindConfig
 

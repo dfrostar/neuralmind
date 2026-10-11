@@ -298,11 +298,14 @@ def tool_health(project_path: str) -> dict[str, Any]:
         freshness = graph_freshness(project_path, check_index=True)
     except Exception:
         freshness = None
-    from neuralmind.freshness import health_status
+    from neuralmind.freshness import health_status, track_drift
     from neuralmind.neuralmind_config import NeuralmindConfig
 
     # stale_after in .neuralmind.yaml gives a watcher time to catch up, as on the CLI.
-    status = health_status(freshness, NeuralmindConfig.load(Path(project_path)).stale_after)
+    stale_after = NeuralmindConfig.load(Path(project_path)).stale_after
+    if stale_after is not None:
+        track_drift(project_path, freshness)
+    status = health_status(freshness, stale_after)
     stale = status in ("stale", "unknown")
 
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)

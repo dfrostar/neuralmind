@@ -276,6 +276,62 @@ def format_duration(seconds: float) -> str:
     return f"{seconds:g}s"
 
 
+DRIFT_SEEN_FILE = "drift_seen.json"
+
+
+def track_drift(project: str | Path, report: FreshnessReport | None) -> None:
+    """Date the drift from when each unindexed file was first seen, not its mtime.
+
+    A file rewritten while it waits for a rebuild (generated code, a file a
+    tool keeps touching while the watcher is down) gets a new mtime each time,
+    so the mtime alone would restart the clock and keep a ``stale_after`` gate
+    passing forever. ``.neuralmind/drift_seen.json`` keeps, per file that is
+    missing from the graph or changed since it, the time it was first seen;
+    a file drops out once it is indexed, and the record goes when nothing
+    drifts. Written only when the gate is in use, never creates
+    ``.neuralmind/``, and fail-open.
+    """
+    if report is None:
+        return
+    root = Path(project).resolve()
+    state_dir = root / CANONICAL_DIR
+    if not state_dir.is_dir():
+        return
+    path = state_dir / DRIFT_SEEN_FILE
+    drifted = set(report.missing_from_graph) | set(report.changed_since_graph)
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except (OSError, ValueError):
+        seen = {}
+    if not isinstance(seen, dict):
+        seen = {}
+    now = time.time()
+    current: dict[str, float] = {}
+    for rel in sorted(drifted):
+        first = seen.get(rel)
+        if isinstance(first, (int, float)):
+            current[rel] = float(first)
+            continue
+        try:
+            current[rel] = min((root / rel).stat().st_mtime, now)
+        except OSError:
+            current[rel] = now
+    if current:
+        oldest = min(current.values())
+        if report.oldest_change_mtime is None or oldest < report.oldest_change_mtime:
+            report.oldest_change_mtime = oldest
+    try:
+        if not current:
+            if path.exists():
+                path.unlink()
+        elif current != seen:
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(current, indent=1, sort_keys=True), encoding="utf-8")
+            os.replace(tmp, path)
+    except OSError:
+        pass
+
+
 def health_status(report: FreshnessReport | None, stale_after: float | None) -> str:
     """``healthy``, ``catching_up``, ``stale`` or ``unknown``: the health verdict.
 

@@ -140,3 +140,24 @@ def test_zero_transitions_says_what_teaches_them(built, capsys, monkeypatch):
     cmd_synapse_stats(Namespace(project_path=str(built), json=False))
     assert TRANSITIONS_HINT in capsys.readouterr().out
     assert "neuralmind watch" in TRANSITIONS_HINT and "install-hooks" in TRANSITIONS_HINT
+
+
+def test_stats_via_the_daemon_still_shows_learning(built, capsys, monkeypatch):
+    """The CLI prefers a running daemon; the learning block must not vanish there."""
+    from argparse import Namespace
+
+    from neuralmind import cli
+
+    _mind(built).query("billing helper")
+
+    class FakeDaemon:
+        def stats(self, path):
+            return {"project": "proj", "built": True, "nodes": 7}
+
+    monkeypatch.setattr(cli, "_try_daemon", lambda: FakeDaemon())
+    cli.cmd_stats(Namespace(project_path=str(built), json=True))
+    data = json.loads(capsys.readouterr().out)
+    assert data["via"] == "daemon"
+    assert data["learning"]["queries"] == 1
+    cli.cmd_stats(Namespace(project_path=str(built), json=False))
+    assert "Learning (last 7 days):" in capsys.readouterr().out

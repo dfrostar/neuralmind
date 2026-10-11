@@ -87,6 +87,10 @@ def _check_graph(project: Path, stale_after: float | None = None) -> Check:
     status = report.status
     if stale_after is None:
         stale_after = _configured_stale_after(project)
+    if stale_after is not None:
+        from .freshness import track_drift
+
+        track_drift(project, report)
     overdue = report.overdue_reason(stale_after) if stale_after is not None else ""
     if overdue:
         # Behind for longer than the project allows: a failure, so `doctor`

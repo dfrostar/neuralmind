@@ -281,7 +281,12 @@ stale_after: 30m   # s, m, h or d; a bare number is refused
 
 The index is *behind* from the moment a file it hasn't seen is written: a new
 file, or one changed since the graph was built (dated by its modification
-time; a graph changed after the last build, by the graph's). `stale_after`
+time; a graph changed after the last build, by the graph's). A file rewritten
+while it waits doesn't restart the clock: with a limit set, `health` and
+`doctor` keep the time each unindexed file was first seen in
+`.neuralmind/drift_seen.json` (the only thing either writes, and only when
+`.neuralmind/` exists), drop a file once it is indexed, and delete the record
+when nothing drifts. `stale_after`
 says how long that may last before the gates trip:
 
 - `neuralmind doctor` fails the **Code graph** check (exit `1`) once the index
@@ -1361,7 +1366,9 @@ VALID — 0 errors, 0 warning(s).
 
 Diagnose a project's NeuralMind setup and print an actionable fix for
 anything that isn't wired up. Read-only — it never builds or mutates
-state.
+state, except that with a `stale_after` limit it records when it first saw
+each unindexed file (`.neuralmind/drift_seen.json`, see
+[`stale_after`](#how-long-the-index-may-lag-stale_after-v4130)).
 
 ```bash
 neuralmind doctor [project_path] [--json] [--stale-after DURATION]

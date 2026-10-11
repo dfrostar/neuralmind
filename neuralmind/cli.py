@@ -2158,6 +2158,10 @@ def cmd_stats(args):
             stats = client.stats(str(Path(args.project_path).resolve()))
             if not stats.get("error"):
                 stats.setdefault("via", "daemon")
+                # Read here, not by the daemon: it's the project's metrics log.
+                learning = _learning_summary(Path(args.project_path).resolve())
+                if learning:
+                    stats["learning"] = learning
                 if args.json:
                     print(json.dumps(stats, indent=2))
                 else:
@@ -2165,6 +2169,7 @@ def cmd_stats(args):
                     print(f"Built: {stats.get('built')}")
                     if stats.get("built"):
                         print(f"Nodes: {stats.get('nodes', stats.get('total_nodes', 0))}")
+                    _print_learning(learning)
                 return
         except Exception:
             pass
@@ -2212,18 +2217,7 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
-        if learning:
-            print(f"Learning (last {learning['days']} days):")
-            if "edges_delta" in learning:
-                print(
-                    f"  Synapses: {learning['edges']:,} edges ({learning['edges_delta']:+,}), "
-                    f"{learning['transitions']:,} transitions "
-                    f"({learning['transitions_delta']:+,}) across {learning['builds']} build(s)"
-                )
-            print(
-                f"  Queries: {learning['queries']:,}"
-                + (f", last {_ago(learning['last_query_ts'])}" if learning["queries"] else "")
-            )
+        _print_learning(learning)
         if synapse_stats and not synapse_stats.get("transitions"):
             print(TRANSITIONS_HINT)
 
@@ -2332,6 +2326,23 @@ def cmd_metrics(args):
                 f"{day:<12} {counts.get('query', 0):>8,} {counts.get('build', 0):>8,} "
                 f"{counts.get('recall', 0):>8,}"
             )
+
+
+def _print_learning(learning: dict) -> None:
+    """The ``Learning (last 7 days)`` block of ``neuralmind stats``."""
+    if not learning:
+        return
+    print(f"Learning (last {learning['days']} days):")
+    if "edges_delta" in learning:
+        print(
+            f"  Synapses: {learning['edges']:,} edges ({learning['edges_delta']:+,}), "
+            f"{learning['transitions']:,} transitions "
+            f"({learning['transitions_delta']:+,}) across {learning['builds']} build(s)"
+        )
+    print(
+        f"  Queries: {learning['queries']:,}"
+        + (f", last {_ago(learning['last_query_ts'])}" if learning["queries"] else "")
+    )
 
 
 def _learning_summary(project_path, days: int = 7) -> dict:
