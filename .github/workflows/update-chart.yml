@@ -19,7 +19,7 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Push to main with the write-enabled deploy key: the ruleset on main
           # requires PRs and passing CI, and a deploy key is its only bypass
@@ -29,7 +29,7 @@ jobs:
           ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip

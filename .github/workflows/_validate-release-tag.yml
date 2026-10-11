@@ -33,7 +33,7 @@ jobs:
       # ancestry check below needs enough of the graph to compute a real
       # merge-base against `main`, and a shallow clone gives either a false
       # "not an ancestor" or an outright "no merge base" error.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag }}
           fetch-depth: 0

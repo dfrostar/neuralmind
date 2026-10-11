@@ -43,12 +43,22 @@ updates:
   # is exactly the noise that justified leaving this ecosystem out before;
   # `groups` buys the quiet back without giving up the updates.
   #
-  # Note: pypa/gh-action-pypi-publish is pinned to `release/v1`, a branch
-  # rather than a tag, so Dependabot cannot version-update it — it tracks
-  # upstream on its own. That is deliberate; don't "fix" it into a tag
-  # without checking the publish workflow still authenticates.
+  # Every third-party action is pinned to a full commit SHA with its exact
+  # version in a trailing comment (`@<sha> # v7.0.1`); Dependabot reads that
+  # comment and bumps SHA and comment together. A tag can be moved to
+  # malicious code after the fact; a SHA can't, and these workflows sign and
+  # publish releases. tests/test_workflow_pins.py fails on an unpinned ref.
+  #
+  # pypa/gh-action-pypi-publish used to track its `release/v1` branch. Pinned
+  # by SHA it runs ghcr.io/pypa/gh-action-pypi-publish:<sha>, an image
+  # upstream publishes for every commit, so trusted publishing is unchanged.
+  #
+  # `directories` covers the composite action under .github/actions too;
+  # `directory: "/"` alone scans only .github/workflows.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"
       day: "monday"

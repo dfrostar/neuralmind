@@ -25,10 +25,10 @@ jobs:
     env:
       NEURALMIND_ORT_THREADS: "1"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip
@@ -185,7 +185,7 @@ jobs:
         run: python scripts/generate_chart.py
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         # always(): the regression gate runs BEFORE this step, so on a failure
         # the job exited here and results.json — the probe digest and per-query
         # hit_modules that test_synapse_recall_does_not_reduce_hit_rate's own
@@ -228,7 +228,7 @@ jobs:
 
       - name: Post PR comment
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v3
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: neuralmind-self-benchmark
           message: ${{ steps.comment.outputs.body }}
@@ -250,10 +250,10 @@ jobs:
       # that depends on which runner it drew.
       NEURALMIND_ORT_THREADS: "1"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip
@@ -288,7 +288,7 @@ jobs:
 
       - name: Upload parity report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: parity-report
           path: |
@@ -298,7 +298,7 @@ jobs:
 
       - name: Post PR comment
         if: always() && github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v3
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: neuralmind-parity-gate
           path: evals/parity/parity_report.md

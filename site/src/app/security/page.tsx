@@ -9,6 +9,28 @@ const COMPLIANCE_URL = `${GITHUB_URL}/blob/main/docs/COMPLIANCE-SUMMARY.md`;
 const SECURITY_MD = `${GITHUB_URL}/blob/main/SECURITY.md`;
 const LLM_DISCLOSURE = `${GITHUB_URL}/blob/main/docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`;
 const AIR_GAPPED = 'https://docs.neuralmind.uk/use-cases/air-gapped.html';
+const SSDF_DOC = 'https://docs.neuralmind.uk/compliance/SSDF.html';
+// The VEX is a living statement of current knowledge, so it links to main
+// rather than to the release tag; each tag also carries the copy it shipped.
+const VEX_URL = `${GITHUB_URL}/blob/main/security/neuralmind.openvex.json`;
+const OIDC_ISSUER = 'https://token.actions.githubusercontent.com';
+// Pins the workflow and the two refs a release runs from (main, a vX.Y.Z
+// tag); the same patterns as docs/compliance/SSDF.md §2.
+const identity = (workflow: string) =>
+    `'^https://github\\.com/dfrostar/neuralmind/\\.github/workflows/${workflow}\\.yml@refs/(heads/main|tags/v[0-9]+\\.[0-9]+\\.[0-9]+)$'`;
+
+// Signing and build provenance start with v4.14.0; older releases have
+// nothing to verify, so the page says so instead of printing commands
+// that would fail.
+const FIRST_SIGNED: [number, number, number] = [4, 14, 0];
+function isSigned(tag: string): boolean {
+    const parts = tag.replace(/^v/, '').split('.').map((p) => parseInt(p, 10));
+    if (parts.length < 3 || parts.some(Number.isNaN)) return false;
+    for (let i = 0; i < 3; i++) {
+        if (parts[i] !== FIRST_SIGNED[i]) return parts[i] > FIRST_SIGNED[i];
+    }
+    return true;
+}
 
 // Everything NeuralMind itself puts on the wire. Security reviews ask this
 // first, and the honest answer is short but not "nothing" — the first build
@@ -36,7 +58,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/security',
     title: 'Security & Supply Chain — NeuralMind',
     description:
-        'What NeuralMind sends over the network (no telemetry), a CycloneDX SBOM per release, release integrity checks, vulnerability disclosure and the audit trail.',
+        'What NeuralMind sends over the network (no telemetry), a CycloneDX SBOM per release, signed releases with build provenance, OpenVEX for dependency advisories, vulnerability disclosure and the audit trail.',
     keywords: [
         'NeuralMind security',
         'AI coding tool security review',
@@ -44,6 +66,9 @@ export const metadata: Metadata = pageMetadata({
         'no telemetry',
         'air-gapped AI coding agent',
         'hash-chained audit log',
+        'signed container image',
+        'OpenVEX',
+        'NIST SSDF',
     ],
 });
 
@@ -55,6 +80,8 @@ export default async function SecurityPage() {
     const pypiUrl = rel.pypiUrl;                      // verified at build time
     const sbomUrl = rel.sbomUrl;                      // direct download, or null if none yet
     const tarballUrl = `${GITHUB_URL}/archive/refs/tags/${version}.tar.gz`;
+    const image = `ghcr.io/dfrostar/neuralmind:${version}`;
+    const signed = isSigned(version);
 
     return (
         <>
@@ -138,6 +165,61 @@ export default async function SecurityPage() {
                                    className="text-electric hover:text-electric-bright">SBOM workflow →</a>
                             </p>
                         )}
+                    </div>
+                </section>
+
+                {/* Release verification (NIST SP 800-218 PS.2) */}
+                <section className="mb-10">
+                    <h2 className="font-display text-2xl font-bold text-white mb-4">Verify a Release</h2>
+                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
+                        <p className="text-slate-300 mb-4 text-sm">
+                            From v4.14.0, each container image is signed with cosign. The signing is
+                            keyless: the signature is bound to the release workflow&apos;s GitHub
+                            identity and logged in Sigstore&apos;s public transparency log. The image,
+                            wheel and sdist also carry build-provenance attestations naming the
+                            workflow and commit that built them. The release workflow runs the same
+                            checks before <code className="font-mono">:latest</code> moves.
+                        </p>
+                        {signed ? (
+                            <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 break-all overflow-x-auto mb-4">
+                                <p className="text-faint"># The image signature</p>
+                                <p className="mb-3">
+                                    cosign verify {image} --certificate-identity-regexp {identity('docker-publish')}{' '}
+                                    --certificate-oidc-issuer {OIDC_ISSUER}
+                                </p>
+                                <p className="text-faint"># The image&apos;s build provenance</p>
+                                <p className="mb-3">
+                                    gh attestation verify oci://{image} --repo dfrostar/neuralmind --cert-identity-regex{' '}
+                                    {identity('docker-publish')}
+                                </p>
+                                <p className="text-faint"># A wheel or sdist you downloaded</p>
+                                <p>
+                                    gh attestation verify neuralmind-{rel.version}-py3-none-any.whl --repo dfrostar/neuralmind{' '}
+                                    --cert-identity-regex {identity('release')}
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="text-slate-400 text-sm mb-4">
+                                {version} was released before signing began, so it has no signature or
+                                attestation to verify. The commands appear here once a signed release is current.
+                            </p>
+                        )}
+                        <p className="text-slate-300 text-sm mb-2">
+                            <strong className="text-white">Dependency advisories that don&apos;t apply.</strong>{' '}
+                            ChromaDB advisories that NeuralMind&apos;s use of ChromaDB can&apos;t reach are recorded as not affected, with the reason for each, in an{' '}
+                            <a href={VEX_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                OpenVEX document
+                            </a>
+                            . ChromaDB is an opt-in extra and isn&apos;t in the default install or the image. If you install it
+                            and scan your environment, pass the document to your scanner (Grype or Trivy{' '}
+                            <code className="font-mono">--vex</code>) so those advisories show as not affected.
+                        </p>
+                        <p className="text-slate-400 text-sm">
+                            Every NIST SP 800-218 (SSDF) practice, mapped to its evidence:{' '}
+                            <a href={SSDF_DOC} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                SSDF.md →
+                            </a>
+                        </p>
                     </div>
                 </section>
 

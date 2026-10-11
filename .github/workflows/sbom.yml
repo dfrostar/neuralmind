@@ -54,7 +54,7 @@ jobs:
       contents: write   # to upload to the GitHub Release + push the site copy
       actions: write    # to dispatch deploy-site.yml after publishing
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.RELEASE_TAG }}
           # Push to main with the write-enabled deploy key: the ruleset on main
@@ -65,7 +65,7 @@ jobs:
           ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
 
@@ -75,7 +75,7 @@ jobs:
           pip install .
 
       - name: Generate SBOM (CycloneDX JSON) with syft
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           # Scan the active Python environment for the full transitive
           # dep tree rather than just the source directory's manifests.
@@ -169,7 +169,7 @@ jobs:
           gh workflow run deploy-site.yml --repo "${GITHUB_REPOSITORY}"
 
       - name: Upload SBOM as workflow artifact (fallback if release attach fails)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom-${{ env.RELEASE_TAG }}
           path: neuralmind-${{ env.RELEASE_TAG }}.sbom.json

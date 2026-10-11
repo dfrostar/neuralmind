@@ -1,7 +1,7 @@
 # Secure Software Development (NIST SP 800-218 SSDF)
 
 **Date:** 2026-10-11
-**Version:** 1.0
+**Version:** 1.1
 **Framework:** NIST SP 800-218 v1.1, Secure Software Development Framework (SSDF)
 
 ---
@@ -65,7 +65,7 @@ directly.
 |---|---|---|
 | **PO.1** Define security requirements for development | [`SECURITY.md`](../../SECURITY.md), [`SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) threat model, the [SDLC policy](SDLC_POLICY.md) and the [risk assessment](RISK_ASSESSMENT.md) | |
 | **PO.2** Roles and responsibilities | [`GOVERNANCE.md`](../../GOVERNANCE.md) (maintainer acting for Cheval-Volant LLC), [`.github/CODEOWNERS`](../../.github/CODEOWNERS), contributions under the [DCO](../DCO.md) | Security training records |
-| **PO.3** Supporting toolchains | GitHub Actions workflows under `.github/workflows/`, Dependabot for pip, npm and Actions ([`.github/dependabot.yml`](../../.github/dependabot.yml)), CodeQL default setup | |
+| **PO.3** Supporting toolchains | GitHub Actions workflows under `.github/workflows/`, with every third-party action pinned to a full commit SHA, so a moved tag can't change what runs (`tests/test_workflow_pins.py` fails on an unpinned one). Dependabot for pip, npm and Actions, which keeps those pins current ([`.github/dependabot.yml`](../../.github/dependabot.yml)). CodeQL default setup | |
 | **PO.4** Criteria for security checks | CI fails a change on high-severity bandit findings, on any dependency advisory not marked `not_affected` in the [VEX](../../security/neuralmind.openvex.json), and on weak-hash use that breaks FIPS-mode hosts (`tests/test_fips_hash_usage.py`) | |
 | **PO.5** Secure development environments | Builds run on ephemeral GitHub-hosted runners. The CI and release workflows (`ci.yml`, `release.yml`, `docker-publish.yml`, `sbom.yml`) give the token `contents: read` by default, and only the jobs that sign, attest, publish or upload scan results get write scopes, each in its own `permissions:` block | Maintainer account 2FA and workstation security |
 
