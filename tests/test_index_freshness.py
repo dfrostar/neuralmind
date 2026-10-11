@@ -547,7 +547,27 @@ class TestStaleAfter:
         (tmp_path / ".neuralmind.yaml").write_text("stale_after: 2h\n", encoding="utf-8")
         assert NeuralmindConfig.load(tmp_path).stale_after == 7200.0
         (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30\n", encoding="utf-8")
-        assert NeuralmindConfig.load(tmp_path).stale_after is None
+        config = NeuralmindConfig.load(tmp_path)
+        assert (config.stale_after, config.stale_after_invalid) == (None, "30")
+
+    def test_an_invalid_stale_after_is_reported_not_ignored(self, tmp_path, capsys):
+        from neuralmind import doctor
+        from neuralmind.cli_health import cmd_health
+
+        rels = [f"m{i}.py" for i in range(3)]
+        _write_files(tmp_path, rels)
+        _write_graphify(tmp_path, _graphify_graph(rels))  # in step: OK
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30\n", encoding="utf-8")
+        check = doctor._check_graph(tmp_path)
+        assert check.status == WARN
+        assert "isn't a duration" in check.detail and "no stale_after gate" in check.detail
+
+        TestHealth()._index(tmp_path)
+        with pytest.raises(SystemExit):
+            cmd_health(SimpleNamespace(project_path=str(tmp_path), json=True, stale_after=None))
+        out = capsys.readouterr()
+        assert json.loads(out.out)["stale_after_invalid"] == "30"
+        assert "isn't a duration" in out.err
 
 
 class TestMcpWakeupLine:

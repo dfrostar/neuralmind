@@ -81,6 +81,9 @@ class NeuralmindConfig:
         stale_after: Seconds the index may lag the files on disk before
             ``doctor`` fails and ``health`` exits 1; None (default) when
             unset or not a valid duration.
+        stale_after_invalid: The raw ``stale_after`` value when it is set but
+            isn't a duration (``30`` without a unit), so ``doctor`` and
+            ``health`` can say the gate is off instead of silently ignoring it.
     """
 
     mode: str = "auto"
@@ -90,6 +93,7 @@ class NeuralmindConfig:
     respect_gitignore: bool = True
     include_ignored: tuple[str, ...] = field(default_factory=tuple)
     stale_after: float | None = None
+    stale_after_invalid: str | None = None
 
     @classmethod
     def load(cls, project_path: str | Path) -> NeuralmindConfig:
@@ -119,6 +123,7 @@ class NeuralmindConfig:
                     respect_gitignore=_normalize_bool(parsed.get("respect_gitignore"), True),
                     include_ignored=_normalize_globs(parsed.get("include_ignored")),
                     stale_after=_normalize_duration(parsed.get("stale_after")),
+                    stale_after_invalid=_invalid_duration(parsed.get("stale_after")),
                 )
             # PyYAML missing or the document won't parse: salvage just the
             # ``mode:`` and ``graph_source:`` lines — globs without a real
@@ -192,6 +197,13 @@ def _normalize_duration(raw: Any) -> float | None:
     from .freshness import parse_duration
 
     return parse_duration(raw)
+
+
+def _invalid_duration(raw: Any) -> str | None:
+    """The raw value when ``stale_after`` is set but isn't a duration, else None."""
+    if raw is None or _normalize_duration(raw) is not None:
+        return None
+    return str(raw)
 
 
 def _normalize_bool(raw: Any, default: bool) -> bool:

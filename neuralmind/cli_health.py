@@ -79,6 +79,14 @@ def cmd_health(args) -> None:
     from neuralmind.freshness import format_age, format_duration, health_status, track_drift
 
     stale_after = _stale_after(args, project_path)
+    invalid = None if stale_after is not None else _invalid_stale_after(project_path)
+    if invalid is not None:
+        # Without a limit any drift exits 1, so this errs strict, but say so.
+        print(
+            f"neuralmind health: stale_after: {invalid!r} in .neuralmind.yaml isn't a "
+            "duration (use s, m, h or d, e.g. 30m); no grace period applies",
+            file=sys.stderr,
+        )
     if stale_after is not None:
         track_drift(project_path, freshness)
     status = health_status(freshness, stale_after)
@@ -120,6 +128,7 @@ def cmd_health(args) -> None:
         },
         "freshness": freshness.to_dict() if freshness is not None else None,
         "stale_after_seconds": stale_after,
+        "stale_after_invalid": invalid,
         "behind_seconds": round(behind, 1) if behind is not None else None,
         "disk_usage_mb": round(disk_mb, 2),
         "synapse_edges": synapse_count,
@@ -158,6 +167,15 @@ def cmd_health(args) -> None:
             print("  " + freshness.render(str(project_path), indent="    ").replace("\n", "\n  "))
 
     sys.exit(1 if is_stale else 0)
+
+
+def _invalid_stale_after(project_path: Path) -> str | None:
+    try:
+        from neuralmind.neuralmind_config import NeuralmindConfig
+
+        return NeuralmindConfig.load(project_path).stale_after_invalid
+    except Exception:
+        return None
 
 
 def _stale_after(args, project_path: Path) -> float | None:

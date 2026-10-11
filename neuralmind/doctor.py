@@ -86,7 +86,16 @@ def _check_graph(project: Path, stale_after: float | None = None) -> Check:
     problems = report.problem_lines()
     status = report.status
     if stale_after is None:
-        stale_after = _configured_stale_after(project)
+        stale_after, invalid = _configured_stale_after(project)
+        if invalid is not None:
+            # Set but unusable: say the gate is off rather than pass quietly.
+            note = (
+                f"stale_after: {invalid!r} in .neuralmind.yaml isn't a duration "
+                "(use s, m, h or d, e.g. 30m), so no stale_after gate applies"
+            )
+            problems = [*problems, note]
+            if status == OK:
+                status = WARN
     if stale_after is not None:
         from .freshness import track_drift
 
@@ -102,13 +111,15 @@ def _check_graph(project: Path, stale_after: float | None = None) -> Check:
     return Check("Code graph", status, detail, fix=report.fix_command(str(project)))
 
 
-def _configured_stale_after(project: Path) -> float | None:
+def _configured_stale_after(project: Path) -> tuple[float | None, str | None]:
+    """``(seconds, invalid raw value)`` for ``stale_after`` in ``.neuralmind.yaml``."""
     try:
         from .neuralmind_config import NeuralmindConfig
 
-        return NeuralmindConfig.load(project).stale_after
+        config = NeuralmindConfig.load(project)
+        return config.stale_after, config.stale_after_invalid
     except Exception:
-        return None
+        return None, None
 
 
 def _graph_node_ids(project: Path) -> set[str] | None:

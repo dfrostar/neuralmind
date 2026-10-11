@@ -279,6 +279,11 @@ include_ignored:           # or pull specific ignored paths back in
 stale_after: 30m   # s, m, h or d; a bare number is refused
 ```
 
+A value that isn't a duration (`stale_after: 30`) turns no gate on, and says
+so: doctor's Code graph check warns `stale_after: '30' in .neuralmind.yaml
+isn't a duration`, and `health` prints the same on stderr and returns it as
+`stale_after_invalid` in `--json`.
+
 The index is *behind* from the moment a file it hasn't seen is written: a new
 file, or one changed since the graph was built (dated by its modification
 time; a graph changed after the last build, by the graph's). A file rewritten
