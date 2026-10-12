@@ -166,6 +166,32 @@ That's the multi-agent story. NeuralMind is the shared associative
 memory; the live graph is how you watch it work; the JSONL bridge
 is what makes it work across processes.
 
+## Which agent did what *(v4.13.0+)*
+
+When Claude Code on one machine and a Hermes-Agent beside it both call the
+same project's MCP server, each call's audit event names the client that made
+it: the `clientInfo` name it sent when it connected.
+
+```bash
+neuralmind audit recent . --category security
+```
+
+```
+  Timestamp                Category     Action               Actor        Client           Target
+  2026-10-11T09:14:02      security     mcp_call             anonymous    claude-code      neuralmind_query
+  2026-10-11T09:15:40      security     mcp_call             anonymous    hermes           neuralmind_wakeup
+```
+
+The full name and version are in `details.client` in `--json` and
+`audit export`. A client names itself, so this tells you who called; it isn't
+an access control. For that, bind roles to OS accounts with
+`security.identity: os`.
+
+To see whether the agents use the index at all, `neuralmind metrics .` counts
+every query and build (without the question text) with the last query's age
+and a per-day table, whether they came from the CLI, an MCP tool or the
+daemon; prompt-time recall from the hooks is counted beside them.
+
 ## What you should pin on the canvas
 
 The graph view supports persistent pins (drag a node, it stays).

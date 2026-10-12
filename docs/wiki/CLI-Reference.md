@@ -101,7 +101,11 @@ Query recent audit trail events.
 
 #### Output
 
-Recent audit events in tabular format.
+Recent audit events in tabular format. *(v4.13.0+)* A **Client** column names
+the MCP client that made each `mcp_call` (the `clientInfo` name it sent when
+it connected, e.g. `claude-code` or `hermes`), so two agents pointed at one
+project can be told apart; it shows `-` for CLI, hook and daemon events. The
+full `{"name", "version"}` is in `details.client` (`--json`, `audit export`).
 
 #### Examples
 
@@ -191,6 +195,7 @@ neuralmind build <project_path> [OPTIONS]
 | `--regenerate-graph` | False | Always rebuild `.neuralmind/graph.json` with the built-in tree-sitter backend, whatever graph exists — the way out of a stale graphify graph. `graphify-out/` is never written (v4.4.0+) |
 | `--strict` | False | Exit `3` before embedding when the code graph FAILs the freshness check (v4.4.0+) |
 | `--prune` | False | Remove orphaned vectors even when they are more than half the store; otherwise they're kept with a warning as a safety valve against a graph that shrank by mistake (v4.4.0+) |
+| `--archive-graphify` | False | *(v4.13.0+)* First rename an unused `graphify-out/graph.json` to `graph.json.archived-<UTC timestamp>` (the rest of `graphify-out/` is left alone; renaming it back restores it), then build. Refused under `graph_source: graphify`, where that file is the graph |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
@@ -208,7 +213,19 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 - Delta: new / updated / skipped / **removed** — `removed` counts vectors purged
   because their node left the graph (v4.4.0+)
 - Number of communities indexed
+- *(v4.13.0+)* The synapse store after the build, and how it changed since the
+  previous build (what queries, edits and the build's own seeding added, less
+  decay): `Synapses: 3,612 edges (+47 since last build), 12 transitions (+12)`.
+  The first build after upgrading shows totals only. With 0 transitions it says
+  where they come from: the files an agent reads and edits in turn (the Claude
+  Code hooks; the Hermes plugin, from reads and edits) or that change together
+  (`neuralmind watch`). Queries strengthen edges but add no transitions.
 - Build time elapsed
+
+*(v4.13.0+)* The closing hint for files that change without a commit is now
+`neuralmind watch . --reindex`. Earlier versions suggested plain
+`neuralmind watch .`, which learns from edits but doesn't re-index them, so
+the index went on drifting.
 
 #### Graph source *(v4.4.0+)*
 
@@ -223,6 +240,18 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 NeuralMind never switches source silently: if the previous build used the
 built-in graph and it has gone, the build stops and asks for
 `--regenerate-graph` or `graph_source: graphify`.
+
+*(v4.13.0+)* Under `auto`, once `.neuralmind/graph.json` exists a
+`graphify-out/graph.json` left from a graphify-era build (v4.3.x and earlier
+built from it) is never read again. Every build now says so, until it is dealt
+with:
+
+```
+Ignoring graphify-out/graph.json: graph_source: auto uses .neuralmind/graph.json once it exists, so nothing reads the graphify graph. Archive it with `neuralmind build . --archive-graphify`, or set graph_source: builtin (or graphify) in .neuralmind.yaml.
+```
+
+`doctor`'s **Graph source** check warns about the same file. Setting
+`graph_source` explicitly is a choice already made, so neither warns then.
 
 #### What gets indexed: `.gitignore` *(v4.5.0+)*
 
@@ -242,6 +271,43 @@ respect_gitignore: false   # index ignored files again (v4.4 behaviour)
 include_ignored:           # or pull specific ignored paths back in
   - "generated/api/**"
 ```
+
+#### How long the index may lag: `stale_after` *(v4.13.0+)*
+
+```yaml
+# .neuralmind.yaml
+stale_after: 30m   # s, m, h or d; a bare number is refused
+```
+
+A value that isn't a duration (`stale_after: 30`) turns no gate on, and says
+so: doctor's Code graph check warns `stale_after: '30' in .neuralmind.yaml
+isn't a duration`, and `health` prints the same on stderr and returns it as
+`stale_after_invalid` in `--json`.
+
+The index is *behind* from the moment a file it hasn't seen is written: a new
+file, or one changed since the graph was built (dated by its modification
+time; a graph changed after the last build, by the graph's). A file rewritten
+while it waits doesn't restart the clock: with a limit set, `health` and
+`doctor` keep the time each unindexed file was first seen in
+`.neuralmind/drift_seen.json` (the only thing either writes, and only when
+`.neuralmind/` exists), drop a file once it is indexed, and delete the record
+when nothing drifts. `stale_after`
+says how long that may last before the gates trip:
+
+- `neuralmind doctor` fails the **Code graph** check (exit `1`) once the index
+  has been behind for longer, adding `behind for 3h, over stale_after 30m`.
+  Within the limit the check is as before: WARN for small drift, FAIL past
+  10% of files.
+- `neuralmind health` exits `0` with status `catching_up` while the index is
+  behind for no longer than that, and `1` after. Without `stale_after` it
+  exits `1` on any drift, as before.
+
+Drift with no date of its own (files deleted from disk, a graph built on
+another OS) is never "within" the limit, and doctor says so instead of a
+time. `--stale-after` on either command overrides the setting; the MCP
+`neuralmind_health` tool follows the setting too. For a project whose files change without commits, run
+`neuralmind watch . --reindex` and set `stale_after` a little above its
+debounce.
 
 Git can't re-include a file under an excluded *directory*: to ignore a directory
 except one file, write `projects/*` then `!projects/keep.py`, not `projects/`.
@@ -302,7 +368,7 @@ rotated **before** they reach the index, a commit, or an agent's context.
 
 ```bash
 neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict]
-                            [--use-neuralmindignore] [--json]
+                            [--include-ignored] [--use-neuralmindignore] [--json]
 ```
 
 | Option | Effect |
@@ -310,18 +376,41 @@ neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict]
 | `PROJECT_PATH` | Project root (default `.`). |
 | `--high-confidence-only` | Report only vendor-shaped credentials; suppress the generic-assignment heuristic. |
 | `--strict` | Exit non-zero on heuristic findings too (default: high-confidence only). |
+| `--include-ignored` | Also scan files `.gitignore` excludes, for a full sweep *(v4.15.0)*. By default a scan inside a git repository covers what can be committed and what `build` indexes. |
 | `--use-neuralmindignore` | Also apply `.neuralmindignore` globs. **Off by default** — see below. |
 | `--json` / `-j` | Machine-readable output. |
 
 ```
 NeuralMind secret scan — /home/dev/myproject
 
-  [HIGH ] .env:1  anthropic-api-key  (sk-a…(43 chars))
-  [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))
-  [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))
+  [HIGH ] scratch.py:1  anthropic-api-key  (sk-a…(43 chars))  [untracked]
+  [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))  [tracked]
+  [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))  [tracked]
 
-  2 high-confidence, 1 heuristic.
+  2 high-confidence (1 in tracked files), 1 heuristic.
+  ...
+
+  Skipped 1 linked worktree (.worktrees/a1): other checkouts of a repository; run the scan inside one to check it.
+  Skipped 1 file that .gitignore excludes (never committed or indexed). --include-ignored scans them too.
 ```
+
+**What a scan covers** *(v4.15.0)*. Inside a git repository, the files
+`build` indexes, from the same `git ls-files` listing: tracked files, and
+untracked files `.gitignore` doesn't exclude. A gitignored `.env` can't be
+committed and isn't indexed, so it isn't reported unless you pass
+`--include-ignored`; the report always ends with how many ignored files it
+skipped, so a clean scan never hides them. Linked worktrees inside the
+checkout (`.worktrees/<id>/`, `.claude/worktrees/<id>/`, any directory whose
+`.git` file names a `git worktree add` checkout) are skipped even with
+`--include-ignored`, because each is another copy of a repository and would
+repeat every finding; they are listed instead. Submodules and nested
+repositories are scanned. Outside a git repository everything is read.
+
+**Each finding says whether git tracks its file** *(v4.15.0)*: `[tracked]` or
+`[untracked]`, and `"tracked": true | false` in `--json` (`null` outside a
+repository). A credential in a tracked file is already in history, or one
+commit from it, so rotate that one first. `--json` also reports
+`gitignore_respected`, `ignored_files_skipped` and `skipped_worktrees`.
 
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
@@ -350,7 +439,8 @@ a length — so scan output is safe to paste into an issue or a CI log.
 | Path does not exist | `2` |
 
 The scanner reads files directly rather than going through the indexer, so
-it sees `.env` and other files `build` never parses. It skips the usual
+it sees a `.env` that isn't gitignored, and other files `build` never parses
+(a gitignored one with `--include-ignored`). It skips the usual
 vendored/build directories (`node_modules`, `.venv`, `dist`, `target`,
 `.git`, `.neuralmind`), binary files, and anything over 5 MB.
 
@@ -415,7 +505,7 @@ Results are tagged with source project and deduplicated by ID.
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
-| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`). *(v4.6.0+)* Also prints the query intent L3 ranked with and how it was decided, and labels each top hit with its name and file |
+| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`). *(v4.6.0+)* Also prints the query intent L3 ranked with and how it was decided, and labels each top hit with its name and file. *(v4.13.0+)* With `--json`, the same breakdown is an `explain` object (`budget`, `layers`, `intent`, `communities_loaded`, `top_hits` with scores, `synapses_fired`); before, `--json` dropped it |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
 | `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
 | `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
@@ -1058,6 +1148,11 @@ Displays:
 - Community statistics
 - Synapse edge count and total weight
 - Embedding model and backend info
+- *(v4.13.0+)* **Learning (last 7 days)**, from `.neuralmind/metrics/`: the
+  synapse store's edges and transitions after the latest build, how much they
+  changed across the window's builds, the number of queries and when the last
+  one ran. `--json` has it as `learning`. With 0 transitions, a line saying what
+  produces them (see [`build`](#build)).
 
 #### Examples
 
@@ -1161,6 +1256,7 @@ Detailed synapse diagnostics.
   in `SYNAPSE_MEMORY.md` use the same rule.
 - Stale (30+ days inactive)
 - Dormant (≤1 activation)
+- Transitions *(v4.13.0+: with 0, a line saying what produces them)*
 - Total weight
 
 #### Examples
@@ -1299,10 +1395,12 @@ VALID — 0 errors, 0 warning(s).
 
 Diagnose a project's NeuralMind setup and print an actionable fix for
 anything that isn't wired up. Read-only — it never builds or mutates
-state.
+state, except that with a `stale_after` limit it records when it first saw
+each unindexed file (`.neuralmind/drift_seen.json`, see
+[`stale_after`](#how-long-the-index-may-lag-stale_after-v4130)).
 
 ```bash
-neuralmind doctor [project_path] [--json]
+neuralmind doctor [project_path] [--json] [--stale-after DURATION]
 ```
 
 **Arguments:**
@@ -1311,6 +1409,7 @@ neuralmind doctor [project_path] [--json]
 |----------|----------|---------|-------------|
 | `project_path` | No | `.` | Project root to inspect |
 | `--json`, `-j` | No | `false` | Emit machine-readable JSON |
+| `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* Fail the Code graph check, so doctor exits `1`, once the index has been behind the files for longer than this (`30m`, `2h`, `1d`). See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
 **Checks:** code graph, semantic index, **backend** *(v0.22.0+)*, synapse
 memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
@@ -1329,10 +1428,20 @@ mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
 "not required".
 
+**Graph source** *(v4.13.0+)* names the graph builds read and the
+`graph_source` setting. It warns when `graph_source: auto` has left a
+`graphify-out/graph.json` unused beside the built-in graph, with
+`neuralmind build . --archive-graphify` as the fix (see
+[Graph source](#graph-source-v440)).
+
 **Turbovec compatibility** fails when the turbovec index was quarantined
 (`index.tvim.stale`: the installed turbovec couldn't read it), and the fix is
 a plain `neuralmind build`, which tries to rebuild it from the stored vectors.
-*(v4.11.1+)* It runs only when the project's backend is turbovec. With
+*(v4.12.1+)* Once that rebuild works, the check is `ok` even though
+`index.tvim.stale` is still there: doctor loads the live index, without
+changing any file, and fails only if it can't. The detail line names the
+backup, which you can delete when you no longer need it.
+*(v4.12.0+)* It runs only when the project's backend is turbovec. With
 `backend: graph`, `chroma`, `chromadb` or `in_memory` it reports
 `not applicable: the <backend> backend keeps no turbovec index` with status
 `ok`, and no longer creates `.neuralmind/neuralmind_turbovec/store.sqlite`
@@ -1342,7 +1451,10 @@ only on turbovec projects.
 
 **Exit codes:** `0` when no check failed (warnings allowed), `1` when any
 check **failed** — so you can gate a CI step or an agent's provisioning on
-`neuralmind doctor`.
+`neuralmind doctor`. `--json` exits the same way, after printing the report;
+its `status` field (`ok` / `warn` / `fail`) is the same verdict.
+*(v4.12.1+)* v0.55.0 through v4.12.0 always exited `0`, even when a check
+failed; on those versions read `--json`'s `status` instead.
 
 **Example:**
 
@@ -1371,7 +1483,7 @@ graphs carry no `embedded_at`, so before v4.4.0 they passed unexamined:
 
 ```
   [FAIL] Code graph: graphify-out/graph.json (graphify, 2026-04-22, 214 commits behind HEAD), 3,197 nodes
-         51 files on disk not in graph (lib/render/overlay.tsx, scripts/collect_stats.py, ...)
+         51 files on disk not in graph (lib/render/overlay.tsx, scripts/collect_stats.py, ...); newest modified 2h ago
          3,176 node paths (319 files) use '\' separators (built on Windows)
          -> neuralmind build . --regenerate-graph
 ```
@@ -1383,7 +1495,12 @@ the stored vectors still describe the old graph, so the fix is a plain
 `neuralmind build`); WARN for smaller drift or files changed since the graph
 was built (from `git diff` for a committed graph, so checkout mtimes never
 count); OK otherwise. On a shallow clone the graph's age is reported as
-unknown. SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML
+unknown. *(v4.13.0+)* The lines for files missing from the graph and files
+changed since it end with when the newest of them was modified
+(`; newest modified 2h ago`), so a file written during an incident stands out
+from months-old drift; `neuralmind health --json` has the times in its
+`freshness` report as `newest_missing_mtime`, `newest_changed_mtime` and
+`behind_seconds`. SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML
 counts once the graph holds it (other YAML never becomes a node).
 
 **Semantic index vs graph (v4.4.0+).** Stored vectors are compared with the
@@ -1421,7 +1538,7 @@ Score retrieval on **this project** against gold answers you write — or, with
 `--suite`, run a built-in self-test.
 
 ```bash
-neuralmind eval [project_path] [--report] [--show-questions] [--suggest [--write]] [--json]
+neuralmind eval [project_path] [--report] [--show-questions] [--suggest [--write]] [--synapse-ab] [--json]
 neuralmind eval --suite faithfulness|onboarding [project_path] [--selfcheck] [--json]
 ```
 
@@ -1461,6 +1578,7 @@ Each run appends date, commit, NeuralMind version, node count and the metrics to
 | `--suggest` | Draft questions from module docstrings and README `##` headings, with the defining file as gold, for you to edit. `--write` saves them to `.neuralmind.eval.yaml` (never overwrites); `--count N` sets how many |
 | `--questions FILE` | Read questions from another file |
 | `--no-history` | Don't append this run to the history |
+| `--synapse-ab` *(v4.14.0+)* | Run the questions again with synapse recall off and report the difference; see below |
 | `--json`, `-j` | Emit the report as JSON |
 
 ```bash
@@ -1476,6 +1594,34 @@ without a rebuild — pass `--no-history` so the variant stays out of your trend
 NEURALMIND_BM25_UNIFIED=0 neuralmind eval . --no-history   # v4.5.0's keyword index, for comparison
 NEURALMIND_L3_PER_FILE=2 neuralmind eval . --no-history    # an off-by-default research flag
 ```
+
+#### Synapse recall on vs off (`--synapse-ab`) *(v4.14.0+)*
+
+`neuralmind eval . --synapse-ab` runs every question twice, both read-only:
+first with synapse recall on, then with it switched off
+(`NEURALMIND_SYNAPSE_INJECT=0` for that run only; each run sets the variable
+itself, so an exported `NEURALMIND_SYNAPSE_INJECT=0` doesn't turn the first
+run off too, and its value is restored afterwards). The summary gains three
+lines:
+
+```
+  synapse recall off: hit@1 42% · hit@5 83% · MRR 0.60
+  synapse recall moved 2 question(s) up, 0 down, 10 unchanged · hit@5 0 won / 0 lost (exact McNemar p = 1.00)
+  synapse layer read: 3,612 edges, seeded and learned (usage-learned: 41 LTP edges, 12 transitions)
+```
+
+*(Illustrative.)* "Up" and "down" compare each question's gold-file rank (a
+miss ranks last); the McNemar p-value is two-sided and exact, over the
+questions whose hit@5 differs. With an empty layer, or one that changes no
+ranking, it says so. The switch covers the whole layer: the call and import
+edges every build seeds, and what usage taught it. So a fresh build can already
+differ; the usage-learned part is the LTP edges and transitions (seeding adds
+neither). The history row carries a `synapse_ab` object (also in
+`--json`), and `--report` adds a **Synapse recall on vs off** table: date,
+commit, edges, LTP edges, transitions, hit@5 and MRR off → on, questions up /
+down, and p. That table answers whether the gap grows as LTP edges and
+transitions do. Walkthrough:
+[Does NeuralMind earn its place on your repo?](../use-cases/does-it-earn-its-place.md)
 
 #### Retrieval eval harness (`python -m evals.retrieval.run`) *(v4.6.0+)*
 
@@ -2601,27 +2747,50 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 
 ### init-hook
 
-Install (or update) two Git hooks, both idempotent and both appended to any
-existing hook script rather than overwriting it:
+Install (or update) the Git hooks that keep the index in step with the
+checked-out tree. All are idempotent and appended to any existing hook script
+rather than overwriting it:
 
 - **`post-commit`** first runs `neuralmind decisions scan . --quiet`
   *(v4.6.0+)*, which marks STALE any recorded decision whose file the commit
   changed after the decision was recorded and prints them (see
   [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
-  Re-run `init-hook` on an existing checkout to get the scan; the managed
-  block is replaced in place.
+  The scan runs synchronously (it reads HEAD), and only where a decision
+  store exists.
+- **`post-merge`**, **`post-checkout`** and **`post-rewrite`** *(v4.13.0+)*
+  rebuild the index after merges and pulls, branch switches (only a branch
+  checkout that lands on a different commit) and rebases or amends: events
+  that change the tree without a local commit.
+- **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
+  staged diff — the commit-time drift guard described under
+  [`drift`](#drift-v320) below.
+
+How the rebuild runs *(v4.13.0+)*:
+
+- **In the background**, so git doesn't wait. A lock in `.neuralmind/`
+  serializes builds, and events that arrive while one runs coalesce into one
+  more build. The log is `.neuralmind/hook-build.log`. `--sync` restores the
+  foreground rebuild.
+- **With the `neuralmind` found at install time**, falling back to PATH, so
+  the hooks work from GUI clients, IDEs and service managers whose PATH lacks
+  it. Re-run `init-hook` after moving or reinstalling NeuralMind.
+- **Only in a built project** (`.neuralmind/build_status.json`, which only a
+  build writes). Linked worktrees share a repository's hooks; a worktree
+  nobody has built is left alone, even when a session hook has created its
+  `.neuralmind/`. In a new repository run `neuralmind build .` once —
+  `init-hook` warns when there is no index yet.
+
+Re-run `init-hook` on an existing checkout to pick up new hooks; the managed
+blocks are replaced in place.
 
 For a project in a subdirectory of its repository, or in a linked worktree,
 the hooks go in the repository's hooks directory and name the project by its
 path from the repository root, since git runs hooks from there (for example
 `neuralmind decisions scan services/api`). The managed block is one per hook
 file, so a second project in the same repository replaces the first's.
-- **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
-  staged diff — the commit-time drift guard described under
-  [`drift`](#drift-v320) below.
 
 ```bash
-neuralmind init-hook [project_path] [--no-drift] [--strict]
+neuralmind init-hook [project_path] [--no-drift] [--strict] [--sync]
 ```
 
 #### Arguments
@@ -2629,20 +2798,24 @@ neuralmind init-hook [project_path] [--no-drift] [--strict]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
-| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit hook only |
+| `--no-drift` | No | Skip installing the pre-commit drift guard; rebuild hooks only |
 | `--strict` | No | Make the installed drift guard block commits instead of warning |
+| `--sync` | No | Rebuild in the foreground (git waits for the build) instead of in the background *(v4.13.0+)* |
 
 #### Examples
 
 ```bash
-# Install both hooks (drift guard warns, never blocks)
+# Install all hooks (drift guard warns, never blocks)
 neuralmind init-hook .
 
-# Install both hooks, with drift blocking the commit
+# Install all hooks, with drift blocking the commit
 neuralmind init-hook . --strict
 
-# Install only the post-commit hook (decision scan + rebuild), no drift guard
+# Rebuild hooks only (decision scan + rebuilds), no drift guard
 neuralmind init-hook . --no-drift
+
+# Keep the foreground rebuild (git waits for it)
+neuralmind init-hook . --sync
 ```
 
 ---
@@ -3370,6 +3543,7 @@ Check NeuralMind health status.
 | Argument | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `--json` | No | `false` | Output as JSON |
+| `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* A duration (`30m`, `2h`, `1d`): exit `0` with status `catching_up` while the index has been behind the files for no longer than this, `1` after. `--json` adds `behind_seconds` and `stale_after_seconds`. See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
 #### Output
 
@@ -3384,8 +3558,8 @@ it exits `1`, never `0`. `--json` includes the full `freshness` report.
 
 | Code | Meaning |
 |------|---------|
-| 0 | Healthy — the graph matches the files on disk |
-| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, a graph built on another OS, or a graph changed after the last build — or unknown: no readable graph to check the index against |
+| 0 | Healthy — the graph matches the files on disk. *(v4.13.0+)* Also `catching_up`: behind, but for no longer than `--stale-after` / `stale_after` |
+| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, a graph built on another OS, or a graph changed after the last build (*v4.13.0+*: with `--stale-after`, only once the index has been behind for longer) — or unknown: no readable graph to check the index against |
 | 2 | No index |
 
 #### Examples
@@ -3397,6 +3571,36 @@ neuralmind health .
 # Use in CI/CD
 neuralmind health . || echo "Index needs rebuild"
 ```
+
+### metrics *(v0.50.0+)*
+
+Counts of what NeuralMind did, from the daily JSONL files in
+`.neuralmind/metrics/` (30 days kept, 10 MB a day at most).
+
+```bash
+neuralmind metrics [project_path] [--days 7] [--json]
+```
+
+*(v4.13.0+)* Every query that learns (not `--no-learn` or
+`NEURALMIND_NO_LEARN=1`) and every build is recorded, whether it came from the
+CLI, an MCP tool or the daemon. Prompt-time recall from the hooks and the
+Hermes plugin was already recorded, as its own `recall` events. A query record holds when it ran, its latency,
+tokens, search hits and reduction ratio, **and no question text**, so it is
+written without the memory-logging consent that `recent_queries.jsonl` and
+`query_events.jsonl` wait for. Before v4.13.0 only prompt-time recall was
+recorded, so this was the only place a monitor could look, and it never saw a
+query.
+
+The report shows queries, the last query (`3h ago`), mean latency and tokens;
+builds, the last build, and the synapse store's edges and transitions after the
+latest build with the change across the window (`147 (+47 in window)`); the
+prompt-time recall outcomes; and a table of queries, builds and recall prompts
+per UTC day. `--json` has the same figures, with `per_day` and Unix-time
+`last_ts` fields.
+
+To check that an index is in use from a cron job, read `queries.last_ts` from
+`neuralmind metrics . --json`, or count `"event": "query"` lines in the
+`metrics_*.jsonl` files directly.
 
 ### status *(v3.1.4+; index reporting v3.4.0+)*
 
@@ -3824,11 +4028,15 @@ renewed — issue a new one.
 | 0 | Success |
 | 1 | General error |
 | 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist |
-| 3 | graph.json not found |
-| 4 | Index not built (run `build` first) |
-| 5 | Database error |
+| 3 | `build --strict`: the code graph fails the freshness check; `daemon status`: the daemon isn't running |
 | 6 | `license expiring`: renewals due inside the window |
 | 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |
+
+Most commands exit `1` when the code graph or index is missing, with a hint to
+run `neuralmind build` or `neuralmind doctor` (`health` uses `2` for "no
+index"). A command's own section lists any other code it uses.
+`tests/test_cli_exit_codes.py` checks that this table names only codes the CLI
+emits, and runs the documented cases.
 
 ---
 
@@ -3898,7 +4106,8 @@ renewed — issue a new one.
 | `NEURALMIND_L3_K` | `8` | *(v4.12.0+)* Search results in L3 per query (v4.11 and earlier: 4). Putting it back to `4` lost 4 of 150 questions on the retrieval eval. |
 | `NEURALMIND_L3_POOL` | `20` | *(v4.12.0+)* Fused vector + keyword candidates L3 is chosen from. The intent, code-signal and duplicate passes rank the whole pool before it is cut to `NEURALMIND_L3_K`; L2 lists the pool's candidates that L3 doesn't show. |
 | `NEURALMIND_L3_FILE_DECAY` | `0.6` | *(v4.12.0+)* Spreads L3 across files: the k-th further hit from a file L3 already shows keeps `0.6^k` of its score, so one file can't take all eight slots. Each file's first hit keeps its place, and the hits it moves out are listed in L2. `1` turns it off. On the self-benchmark fixture it took the top-k hit rate from 88% to 97%; without it the public benchmark misses flask's `request-wrapper`. |
-| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. |
+| `NEURALMIND_TEST_FILE_FACTOR` | `0.5` | *(v4.12.0+)* Multiplies the score of hits from test files (`tests/`, `test_*.py`, `*_test.go`, `*.spec.ts`, `conftest.py`, …) unless the question mentions tests. `1` turns it off. On this repository test files took two to seven of the eight L3 slots; with it, the retrieval eval's MRR there went from 0.54 to 0.64. *(v4.12.1+)* A question that names a test (`test_parse_option()`, `parse_test.go`) counts as mentioning tests, and folders are judged inside the project, so a graph with absolute paths doesn't make a checkout under `tests/` a test. |
+| `NEURALMIND_EXAMPLE_FILE_FACTOR` | `0.5` | *(v4.12.1+)* Multiplies the score of hits from example scripts (an `examples/`, `demos/` or `samples/` folder anywhere in the project, or a top-level `example/`, `demo/` or `sample/`) unless the question asks for an example. `1` turns it off. On pallets/click indexed from its root, 4 of 14 questions led with an example script; with it, hit@1 there went from 6 to 9 of 14. A singular `example/` deeper down doesn't count: Java packages are folders, and Spring Initializr's default package is `com.example.demo`. |
 | `NEURALMIND_CODE_SIGNAL_CAP` | `1` | *(v4.12.0+)* Ceiling on the code-signal boost (a hit whose file name, label or text shares words with a code-intent question). `1` turns it off (the default); `N` turns it on, up to N× (v4.11: 10×, matching substrings of the whole path). On, it lost 2 questions on the retrieval eval. A markdown file is still marked down (×0.3) under a code intent. |
 | `NEURALMIND_QUERY_LAYERS` | `L0,L1,L2,L3` | *(v4.12.0+)* Comma-separated layers a query returns. `L0,L3` cuts tokens by 57% on the retrieval eval at the same hit@5, but loses the facts L1 and L2 carry (fact recall on the faithfulness fixture). `wakeup` is unaffected. |
 | `NEURALMIND_ORT_SESSION_CACHE` | auto | *(v4.12.0+)* `1` reuses one ONNX Runtime session per process for the bundled MiniLM embedder; `0` builds a new one per batch. Auto reuses everywhere except Python 3.14, where onnxruntime 1.29 deadlocks after a few runs on one session. Reusing it, a query embeds in about 3 ms instead of about 275 ms. |
@@ -3986,6 +4195,13 @@ rather than silently ignored (v4.7.0 checked only `identity` and
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
+
+*(v4.13.0+)* Every `mcp_call` and `mcp_call_denied` event also records the
+calling client as `details.client`: the `clientInfo` name and version it sent
+in the MCP handshake (capped at 128 and 64 characters), and the resolved role
+as `actor_role`. The client names itself, so this attributes calls without
+authenticating them: roles and rate limits never depend on it. `neuralmind
+audit recent` shows it in a Client column.
 
 ---
 

@@ -144,30 +144,44 @@ class MetricsCollector:
     def log_query_metrics(
         self,
         *,
-        session_id: str,
-        query: str,
         latency_ms: float,
-        retrieval_reuse_rate: float,
-        tool_calls: int,
-        tool_successes: int,
         tokens_used: int,
-        synapses_activated: int,
+        session_id: str | None = None,
+        query: str | None = None,
+        retrieval_reuse_rate: float | None = None,
+        tool_calls: int | None = None,
+        tool_successes: int | None = None,
+        synapses_activated: int | None = None,
+        search_hits: int | None = None,
+        reduction_ratio: float | None = None,
     ) -> bool:
-        """Log metrics for a single query event."""
-        return self._append(
-            {
-                "event": "query",
-                "ts": time.time(),
-                "session_id": session_id,
-                "query": query,
-                "latency_ms": round(latency_ms, 2),
-                "retrieval_reuse_rate": round(retrieval_reuse_rate, 4),
-                "tool_calls": tool_calls,
-                "tool_successes": tool_successes,
-                "tokens_used": tokens_used,
-                "synapses_activated": synapses_activated,
-            }
-        )
+        """Log metrics for a single query event.
+
+        Only the fields passed are written. ``NeuralMind.query()`` passes no
+        ``query`` or ``session_id``, so the record it writes on every query is
+        a content-free usage counter (when, how long, how many tokens) that
+        needs no memory-logging consent, unlike ``recent_queries.jsonl``.
+        """
+        record: dict[str, Any] = {
+            "event": "query",
+            "ts": time.time(),
+            "latency_ms": round(latency_ms, 2),
+            "tokens_used": tokens_used,
+        }
+        optional = {
+            "session_id": session_id,
+            "query": query,
+            "retrieval_reuse_rate": (
+                round(retrieval_reuse_rate, 4) if retrieval_reuse_rate is not None else None
+            ),
+            "tool_calls": tool_calls,
+            "tool_successes": tool_successes,
+            "synapses_activated": synapses_activated,
+            "search_hits": search_hits,
+            "reduction_ratio": round(reduction_ratio, 1) if reduction_ratio is not None else None,
+        }
+        record.update({k: v for k, v in optional.items() if v is not None})
+        return self._append(record)
 
     def log_recall_metrics(
         self,
@@ -199,18 +213,27 @@ class MetricsCollector:
         files_processed: int,
         synapse_edges: int,
         graph_edges: int,
+        nodes_total: int | None = None,
+        synapse_transitions: int | None = None,
     ) -> bool:
-        """Log metrics for a build event."""
-        return self._append(
-            {
-                "event": "build",
-                "ts": time.time(),
-                "duration_s": round(duration_s, 2),
-                "files_processed": files_processed,
-                "synapse_edges": synapse_edges,
-                "graph_edges": graph_edges,
-            }
-        )
+        """Log metrics for a build event.
+
+        ``synapse_edges`` / ``synapse_transitions`` are the store's totals after
+        the build, so consecutive build records show how the learned layer grew.
+        """
+        record: dict[str, Any] = {
+            "event": "build",
+            "ts": time.time(),
+            "duration_s": round(duration_s, 2),
+            "files_processed": files_processed,
+            "synapse_edges": synapse_edges,
+            "graph_edges": graph_edges,
+        }
+        if nodes_total is not None:
+            record["nodes_total"] = nodes_total
+        if synapse_transitions is not None:
+            record["synapse_transitions"] = synapse_transitions
+        return self._append(record)
 
     def rotate(self) -> int:
         """
@@ -324,6 +347,18 @@ class MetricsCollector:
 
         summary: dict[str, Any] = {"days": days, "n_events": len(events)}
 
+        # Events per UTC day and type, so usage is visible as a trend rather
+        # than one window total.
+        per_day: dict[str, dict[str, int]] = {}
+        for e in events:
+            ts = e.get("ts")
+            if not isinstance(ts, (int, float)):
+                continue
+            day = per_day.setdefault(_day_key(ts), {})
+            kind = str(e.get("event", "unknown"))
+            day[kind] = day.get(kind, 0) + 1
+        summary["per_day"] = dict(sorted(per_day.items()))
+
         if query_events:
             latencies = [e["latency_ms"] for e in query_events if "latency_ms" in e]
             reuse = [e["retrieval_reuse_rate"] for e in query_events if "retrieval_reuse_rate" in e]
@@ -342,6 +377,7 @@ class MetricsCollector:
                 ),
                 "sum_tool_calls": sum(e.get("tool_calls", 0) for e in query_events),
                 "sum_tool_successes": sum(e.get("tool_successes", 0) for e in query_events),
+                "last_ts": max(e.get("ts", 0) for e in query_events),
             }
 
         if build_events:
@@ -349,7 +385,25 @@ class MetricsCollector:
             summary["builds"] = {
                 "n_builds": len(build_events),
                 "mean_duration_s": round(sum(durations) / len(durations), 2) if durations else 0,
+                "last_ts": max(e.get("ts", 0) for e in build_events),
             }
+            # Growth of the learned layer across the window's builds.
+            with_edges = [
+                e
+                for e in sorted(build_events, key=lambda e: e.get("ts", 0))
+                if "synapse_edges" in e
+            ]
+            if with_edges:
+                first, last = with_edges[0], with_edges[-1]
+                summary["builds"]["synapse_edges"] = last["synapse_edges"]
+                summary["builds"]["synapse_edges_delta"] = (
+                    last["synapse_edges"] - first["synapse_edges"]
+                )
+                if "synapse_transitions" in last:
+                    summary["builds"]["synapse_transitions"] = last["synapse_transitions"]
+                    summary["builds"]["synapse_transitions_delta"] = last[
+                        "synapse_transitions"
+                    ] - first.get("synapse_transitions", last["synapse_transitions"])
 
         if recall_events:
             outcomes: dict[str, int] = {}

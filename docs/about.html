@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files and finds a decision by meaning as well as by its words, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -199,6 +199,76 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4150">
+            <h2>What&rsquo;s New in v4.15.0 &mdash; a secret scan you can act on</h2>
+            <p>A 12-repository field audit found <code>neuralmind scan-for-secrets</code> hard to read where it mattered most: worktrees kept inside the checkout repeated every finding, and none of the HIGH findings was a committed secret. The scan now covers what you can commit, once:</p>
+            <ul>
+                <li><strong>Linked worktrees are skipped</strong> &mdash; <code>.worktrees/&lt;id&gt;/</code>, <code>.claude/worktrees/&lt;id&gt;/</code> and any other <code>git worktree add</code> checkout inside the project are listed, not walked, so each finding appears once. Submodules and nested repositories are still scanned</li>
+                <li><strong><code>.gitignore</code> is honoured</strong> &mdash; inside a git repository the scan covers what <code>build</code> indexes; <code>--include-ignored</code> adds ignored files for a full sweep, and the report always says how many it skipped</li>
+                <li><strong>Tracked or untracked</strong> &mdash; each finding says whether git tracks its file (<code>"tracked"</code> in <code>--json</code>), because a credential already in history is the one to rotate first</li>
+            </ul>
+            <p>Exit codes are unchanged. Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.15.0.md">v4.15.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4140">
+            <h2>What&rsquo;s New in v4.14.0 &mdash; measure the synapse layer on your own repo, and releases you can verify</h2>
+            <p><strong>A way to check the learning instead of taking it on trust.</strong> A field user had a second agent review their NeuralMind setup adversarially. The verdict: the demos showed the mechanism working, not the outcome, and nothing showed the synapse layer improving retrieval over time. Fair, so this release adds the measurement:</p>
+            <ul>
+                <li><strong><code>neuralmind eval . --synapse-ab</code></strong> &mdash; your own gold questions, run read-only with synapse recall on and then off: questions moved up or down, hit@5 won and lost with an exact McNemar p-value, and the size of the layer it read. <code>eval --report</code> keeps a table of these runs, so you can see whether the gap grows as the usage-learned part (LTP edges, transitions) does; the switch also covers the call and import edges every build seeds, so a fresh build can already differ (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md">walkthrough</a>)</li>
+                <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does (reinstall the plugin after upgrading)</li>
+                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
+            </ul>
+            <p><strong>Also: releases you can verify.</strong> You can check that the NeuralMind you install is the one this repository built. NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency asks the producer to attest to it, on CISA&rsquo;s form, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
+            <ul>
+                <li><strong>Signed images</strong> &mdash; each <code>ghcr.io/dfrostar/neuralmind</code> image is signed keylessly with cosign by the release workflow, bound to its GitHub identity and recorded in Sigstore&rsquo;s transparency log</li>
+                <li><strong>Build provenance</strong> &mdash; the image, wheel and sdist carry GitHub build-provenance attestations, and the release verifies the image before <code>:latest</code> moves</li>
+                <li><strong>Scans on every change</strong> &mdash; bandit (high severity fails the change) and pip-audit over the installed dependencies, alongside CodeQL</li>
+                <li><strong>VEX</strong> &mdash; <code>security/neuralmind.openvex.json</code> publishes the dependency advisories that don&rsquo;t apply, and the CI gate ignores exactly those</li>
+                <li><strong>The SSDF mapping</strong> &mdash; every SP&nbsp;800-218 practice mapped to the evidence, and what a repository can&rsquo;t show (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/compliance/SSDF.md">SSDF.md</a>)</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.14.0.md">v4.14.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4130">
+            <h2>What&rsquo;s New in v4.13.0 &mdash; the index stays fresh after pulls, merges, branch switches and rebases</h2>
+            <p><strong>The git hooks follow the checked-out tree, not only local commits.</strong> <code>neuralmind init-hook</code> used to install one rebuild hook, <code>post-commit</code>: a <code>git pull</code>, branch switch, merge or rebase changed the files without a local commit, and the index kept describing the old tree until the next one. The hook also skipped itself without a word when the git client&rsquo;s PATH lacked <code>neuralmind</code>, and every commit waited for the rebuild.</p>
+            <ul>
+                <li><strong>More triggers</strong> &mdash; <code>post-merge</code>, <code>post-checkout</code> (a branch checkout that lands on another commit) and <code>post-rewrite</code> rebuild the index too; <code>post-commit</code> keeps its decision scan</li>
+                <li><strong>Any git client</strong> &mdash; the hooks call the <code>neuralmind</code> found at install time, falling back to PATH, so GUI clients, IDEs and service managers trigger rebuilds as well</li>
+                <li><strong>git doesn&rsquo;t wait</strong> &mdash; the rebuild runs in the background behind a lock that coalesces bursts of events; the log is <code>.neuralmind/hook-build.log</code>, and <code>--sync</code> keeps the foreground rebuild</li>
+                <li><strong>Throwaway worktrees are left alone</strong> &mdash; the shared hooks rebuild only a project that has been built (<code>build_status.json</code>), even when a session hook created its <code>.neuralmind/</code> directory</li>
+            </ul>
+            <p><strong>Also: usage you can see, and calls you can attribute.</strong> For teams whose agents depend on NeuralMind every day, not once in a demo:</p>
+            <ul>
+                <li><strong>Usage counters</strong> &mdash; every query and build is recorded in <code>.neuralmind/metrics/</code> without its text, so it needs no memory-logging consent; <code>neuralmind metrics</code> shows the last query and build, synapse growth across builds, and a per-day table</li>
+                <li><strong>MCP client attribution</strong> &mdash; each MCP call&rsquo;s audit event names the client that made it (<code>details.client</code>, from the MCP handshake), and <code>neuralmind audit recent</code> shows it, so two agents on one project can be told apart</li>
+                <li><strong>No silent leftover graph</strong> &mdash; an unused <code>graphify-out/graph.json</code> is named on every build and by <code>doctor</code>, and <code>neuralmind build . --archive-graphify</code> retires it</li>
+                <li><strong><code>query --explain --json</code></strong> &mdash; the explanation (layers, communities, top hits with scores, synapses fired) is now in the JSON instead of dropped</li>
+                <li><strong>Learning you can see</strong> &mdash; each build prints the synapse store&rsquo;s growth since the last one, <code>neuralmind stats</code> shows the week&rsquo;s, and with no transitions learned they say what produces them</li>
+                <li><strong>A grace period for staleness gates</strong> &mdash; <code>stale_after: 30m</code> lets <code>health</code> report <code>catching_up</code> while a watcher catches up and makes <code>doctor</code> fail once the index has been behind for longer; doctor dates its drift (<code>newest modified 2h ago</code>)</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.13.0.md">v4.13.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4121">
+            <h2>What&rsquo;s New in v4.12.1 &mdash; <code>neuralmind doctor</code> exits 1 when a check fails, as documented</h2>
+            <p><strong>A v0.55.0 regression in an exit code scripts gate on.</strong> The CLI reference and the install-paths walkthrough (<code>neuralmind doctor . &amp;&amp; neuralmind wakeup .</code>) say <code>doctor</code> exits non-zero on a failed check, and v0.12.0 shipped it that way. From v0.55.0 through v4.12.0 it always exited 0: a helper inserted above its last lines left the <code>sys.exit(1)</code> unreachable, and a lint pass deleted it.</p>
+            <ul>
+                <li><strong>Exit 1 on a failed check</strong> &mdash; with or without <code>--json</code> (the report is printed first); warnings still exit 0. A script that ran <code>doctor</code> under <code>set -e</code> now stops on a failure: use <code>|| true</code>, or read <code>--json</code>&rsquo;s <code>status</code></li>
+                <li><strong>A repaired turbovec index passes</strong> &mdash; a leftover <code>index.tvim.stale</code> backup used to fail the Turbovec compatibility check even after the index was rebuilt. <code>doctor</code> now loads the live index, without changing any file, and fails only if that load fails</li>
+                <li><strong>Example scripts rank below the code they demonstrate</strong> &mdash; a hit from an <code>examples/</code>, <code>demos/</code> or <code>samples/</code> folder scores half unless the question asks for an example, as test files have since v4.12.0. On pallets/click indexed from its root, 4 of 14 questions had led with an example script; hit@1 there went from 6 to 9 of 14 (the set it was checked on, not held out). The 150-question eval and the public benchmark index source folders with no examples and are unchanged. <code>NEURALMIND_EXAMPLE_FILE_FACTOR=1</code> turns it off</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.1.md">v4.12.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4120">
             <h2>What&rsquo;s New in v4.12.0 &mdash; retrieval that keeps what vector search finds: 93% hit@5 on the retrieval eval, 40 of 40 on the public benchmark, 13–14 ms queries</h2>
             <p><strong>The layers on top of vector search were taking accuracy away.</strong> On the public benchmark, the <code>embedding-rag</code> baseline &mdash; NeuralMind&rsquo;s own vector index, top 8, nothing added &mdash; matched or beat the full query pipeline on gold-file recall on all four repositories. L3 kept four hits and re-ranked after that cut, boosts were sized to outvote the ranking, question words reached the keyword search, a node was embedded as metadata, and with eight hits one file could take every slot. v4.12.0 fixes each one, measured on the 150-question retrieval eval and the 40-query public benchmark.</p>
@@ -218,14 +288,14 @@
 
     <section>
         <div class="container" id="whats-new-v4111">
-            <h2>What&rsquo;s New in v4.11.1 &mdash; no turbovec store on a ChromaDB project</h2>
+            <h2>Also in v4.12.0 &mdash; no turbovec store on a ChromaDB project</h2>
             <p><strong>Two turbovec checks ran on every backend.</strong> <code>neuralmind build</code> and <code>neuralmind doctor</code> check whether the turbovec index was quarantined, and both opened the turbovec store to do it, which creates the file, even on a project with ChromaDB pinned.</p>
             <ul>
                 <li><strong><code>build</code> creates no turbovec store on other backends</strong> &mdash; with <code>backend: graph</code>, <code>chroma</code>, <code>chromadb</code> or <code>in_memory</code> in <code>neuralmind-backend.yaml</code>, no empty <code>.neuralmind/neuralmind_turbovec/store.sqlite</code> appears next to the real index</li>
                 <li><strong><code>doctor</code> says the check doesn&rsquo;t apply</strong> &mdash; <em>Turbovec compatibility</em> reads &ldquo;not applicable: the chroma backend keeps no turbovec index&rdquo; (status <code>ok</code>) instead of calling an index that doesn&rsquo;t exist compatible</li>
                 <li><strong>Turbovec projects are checked as before</strong> &mdash; a quarantined <code>index.tvim.stale</code> still warns at build time and fails the doctor check</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md">v4.11.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md#also-in-this-release-no-turbovec-store-on-a-chromadb-project">v4.12.0 release notes</a></p>
         </div>
     </section>
 
@@ -1505,7 +1575,7 @@ $ neuralmind query . "CMMC gap analysis"
             <p>The agent gets exactly what it needs, in order, without bloat.</p>
 
             <h3>Learnable Patterns</h3>
-            <p>NeuralMind learns from how you actually use the codebase. Over time, the brain-like synapse layer (described below) improves retrieval quality based on which code you query, edit, and run tools over together — automatically and continuously, with no external training and no manual step.</p>
+            <p>NeuralMind learns from how you actually use the codebase. The brain-like synapse layer (described below) strengthens links between the code you query, edit, and run tools over together, with no external training and no manual step, and recall uses those links to re-rank results. CI checks that this never lowers the hit rate, on a small fixture; whether it improves retrieval on your codebase over time is something to measure, not assume: <code>neuralmind eval . --synapse-ab</code> <em>(v4.14.0+)</em> runs your own questions with it on and off.</p>
 
             <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
             <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>

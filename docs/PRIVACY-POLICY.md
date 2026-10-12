@@ -1,7 +1,7 @@
 # Privacy Policy — NeuralMind
 
 **Effective Date:** July 19, 2026
-**Last Updated:** July 19, 2026
+**Last Updated:** October 9, 2026
 
 ---
 
@@ -9,31 +9,30 @@
 
 Cheval-Volant LLC (operating as NeuralMind)
 Operator: Darren Frost (dfrostar)
-Email: <EMAIL>
+Email: hello@neuralmind.uk
 Location: Texas, USA
 
-For all inquiries regarding this Privacy Policy or your personal data, contact: <EMAIL>
+For all inquiries regarding this Privacy Policy or your personal data, contact: hello@neuralmind.uk
 
 ---
 
 ## 2. Data We Collect
 
 ### 2.1 Data You Provide
-- **Email address** — when you purchase a Team tier license or create an account
+- **Email address** — when you purchase a Team tier license
 - **Company name** — optional, when associated with a license
-- **Seat assignments** — email addresses of team members you add to your license (each member can request deletion)
 
 ### 2.2 Data Collected Automatically
-- **IP address** — recorded in audit logs when you interact with our systems (license issuance, management actions)
-- **User agent** — recorded when you access the license portal via browser
-- **Stripe customer ID** — stored after purchase for payment reconciliation
 - **License metadata** — tier, seats, expiry, signature hash (stored for license validation)
 
+There is no license portal yet: licenses are issued manually and sent to you directly. No portal records your IP address or user agent, and no payment-processor customer ID is stored.
+
 ### 2.3 Data We Do NOT Collect
-- No payment card data (handled entirely by Stripe)
+- No payment card data. No payment processor is integrated; Team licenses are invoiced manually, in USD
+- No seat assignments. Seats are administered on your own machines with `neuralmind team seats`, and the email addresses you add are not sent to us
 - No usage data from the OSS tool (NeuralMind OSS operates entirely locally)
-- No telemetry, analytics, or tracking pixels
-- No cookies except session cookies for portal authentication
+- No telemetry, analytics, or tracking pixels in the NeuralMind software or in licensing. The neuralmind.uk website is separate: [its privacy page](https://neuralmind.uk/privacy) describes the cookieless Cloudflare Web Analytics it uses
+- No cookies (there is no license portal yet)
 
 ---
 
@@ -44,12 +43,12 @@ We process your personal data under the following legal bases:
 | Purpose | Legal Basis |
 |---------|-------------|
 | License issuance and renewal | Performance of contract (6.1.b) |
-| Audit logging (IP, actor, action) | Legitimate interest — fraud prevention, security, dispute resolution (6.1.f) |
-| Billing and payment processing | Performance of contract (6.1.b) |
+| Audit logging (actor, action) | Legitimate interest — fraud prevention, security, dispute resolution (6.1.f) |
+| Billing (manual invoicing) | Performance of contract (6.1.b) |
 | Customer support | Performance of contract (6.1.b) |
 | GDPR/similar regulation compliance | Legal obligation (6.1.c) |
 
-For users in the EU/EEA: You have the right to object to processing based on legitimate interest. Contact <EMAIL> to discuss.
+For users in the EU/EEA: You have the right to object to processing based on legitimate interest. Contact hello@neuralmind.uk to discuss.
 
 ---
 
@@ -59,8 +58,6 @@ For users in the EU/EEA: You have the right to object to processing based on leg
 |------|---------|
 | Email | License identification, renewal reminders, security alerts |
 | Company name | License attribution (optional) |
-| Stripe customer ID | Payment reconciliation, subscription management |
-| IP address (audit logs) | Security monitoring, dispute resolution, fraud prevention |
 | License metadata | License validation, renewal processing |
 
 We do NOT use your data for marketing without separate consent.
@@ -72,8 +69,8 @@ We do NOT use your data for marketing without separate consent.
 | Data Category | Retention Period |
 |---------------|------------------|
 | Active license data | Duration of license + 3 years after expiry |
-| Audit logs (with IP) | 3 years after creation, then anonymized |
-| Financial records (Stripe) | 7 years (required for tax compliance) |
+| Audit logs | 3 years after creation, then anonymized |
+| Financial records | 7 years (required for tax compliance) |
 | Deleted customer records | Anonymized immediately; financial records retained per above |
 
 After the retention period, we anonymize (not delete) financial records to comply with tax law, and delete personal data entirely.
@@ -86,15 +83,16 @@ We use the following processors to deliver our service:
 
 | Processor | Data Accessed | Purpose | DPA Available |
 |-----------|---------------|---------|---------------|
-| **Stripe** | Email, payment data, billing address | Payment processing, subscription management | https://stripe.com/privacy |
 | **GitHub** | Username (via GitHub login, if used) | Community forum, issue tracking | https://docs.github.com/en/site-policy |
 
-We do not share your data with any other third parties. We do not sell your data. We do not use your data for advertising.
+No payment processor or invoicing service is integrated: Team licenses are invoiced manually, in USD, and invoices are sent by email.
+
+We do not sell your data, share it with third parties for their own purposes, or use it for advertising. Email you send us is held by our business email provider, as with any business email.
 
 If a new sub-processor is added, we will update this Policy and notify existing customers via email 30 days before the new processor begins processing.
 
 **Scope note:** this section covers data collected by NeuralMind's own
-commercial operations (license portal, billing). It does not cover the
+commercial operations (license issuance, billing). It does not cover the
 runtime behavior of the OSS tool running against your codebase — that is
 documented separately in
 [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md),
@@ -105,9 +103,8 @@ third-party LLM (Anthropic), disabled by default.
 
 ## 7. International Data Transfers
 
-Your data is processed in the United States (where we and Stripe operate). For EU/EEA residents:
+Your data is processed in the United States (where we operate). For EU/EEA residents:
 
-- Stripe relies on Standard Contractual Clauses (SCCs) for EU-US data transfers
 - We rely on SCCs where required for any supplemental data flows
 - Post-Schrems II, data transfers to the US are a legal gray area — consult your legal advisor if this concerns you
 
@@ -127,7 +124,7 @@ You have the right to:
 6. **Object** — Object to processing based on legitimate interests
 7. **Withdraw consent** — Where processing relies on consent, withdraw at any time
 
-**To exercise any right:** Email <EMAIL>. We respond within 30 days.
+**To exercise any right:** Email hello@neuralmind.uk. We respond within 30 days.
 
 **Deletion process:**
 1. We verify your identity
@@ -136,20 +133,15 @@ You have the right to:
 4. We delete AuditLog entries containing your personal data
 5. We confirm completion via email
 
-**Exception:** Financial records (Stripe customer ID, license hash, signature, transaction amount) are retained in anonymized form for 7 years per US tax law (26 USC 6501).
+**Exception:** Financial records (license hash, signature, transaction amount) are retained in anonymized form for 7 years per US tax law (26 USC 6501).
 
 ---
 
 ## 9. Cookie Policy
 
-The license portal uses one session cookie (`session`) for authentication:
+There is no license portal yet, so licensing sets no cookies.
 
-- **Purpose:** Maintain your logged-in session during portal use
-- **Type:** Strictly necessary (session cookie, no tracking)
-- **Duration:** Session-only (deleted when browser closes)
-- **Third parties:** None
-
-We do NOT use analytics cookies, advertising cookies, or social media cookies. No cookie consent banner is required because all cookies are strictly necessary for service delivery.
+We do NOT use analytics cookies, advertising cookies, or social media cookies. No cookie consent banner is required because we set no cookies.
 
 If we add analytics in the future, we will update this Policy and implement a cookie consent mechanism.
 
@@ -162,7 +154,6 @@ We implement the following security measures:
 - **Ed25519 signing** for license integrity (cryptographic proof of issuance)
 - **Hash-chained audit logs** (tamper-evident: any modification breaks the chain)
 - **Encrypted key storage** for signing keys (private key never stored in repo)
-- **Stripe** for all payment processing (PCI-DSS Level 1 certified)
 - **SQLite with WAL mode** for local data durability
 - **All data in transit** encrypted via TLS 1.3
 
@@ -172,7 +163,7 @@ We will notify affected customers within 72 hours of becoming aware of a persona
 
 ## 11. Children's Privacy
 
-NeuralMind is a developer tool. We do not knowingly collect data from anyone under 16. If you believe a child under 16 has provided personal data, contact <EMAIL> for immediate deletion.
+NeuralMind is a developer tool. We do not knowingly collect data from anyone under 16. If you believe a child under 16 has provided personal data, contact hello@neuralmind.uk for immediate deletion.
 
 ---
 
@@ -191,7 +182,7 @@ Non-material changes (clarifications, formatting) take effect on posting.
 ## 13. Contact
 
 **Data Controller:** Cheval-Volant LLC / NeuralMind
-**Email:** <EMAIL>
+**Email:** hello@neuralmind.uk
 **GitHub:** https://github.com/dfrostar/neuralmind
 **Response time:** Within 72 hours for data inquiries; 30 days for formal rights requests
 

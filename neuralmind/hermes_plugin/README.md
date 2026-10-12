@@ -92,7 +92,8 @@ session's directory elsewhere, so with those, pin a project or set
 A pin applies to every Hermes session that uses that Hermes home, in any
 directory. Each one gets the pinned project's context, has its prompts
 recorded in that project, and adds the paths of the files it edits to that
-project's synapse store. `neuralmind memory publish` can carry those paths
+project's synapse store. (Files it reads are added only when they are inside
+the project.) `neuralmind memory publish` can carry those paths
 into the project's committed team-memory bundle. If you use Hermes across
 several projects, don't pin one.
 
@@ -112,8 +113,10 @@ several projects, don't pin one.
 
 - **Runs NeuralMind in a separate process.** The plugin runs
   `neuralmind _hook <action>` once per turn (twice on a session's first:
-  the recap, then recall), and once for each file a `write_file` or `patch`
-  call wrote, on a background thread. Each call is stopped after
+  the recap, then recall), once for each file a `write_file` or `patch`
+  call wrote, and once for each `read_file` of a file inside the project
+  (recorded as a step in the synapse layer's file-to-file transitions, as
+  Claude Code's Read hook does), on a background thread. Each call is stopped after
   `NEURALMIND_HERMES_TIMEOUT` seconds.
 - **Reads and writes the project's `.neuralmind/` directory.** NeuralMind
   stores what it learns there and, for the recap, each session's prompts

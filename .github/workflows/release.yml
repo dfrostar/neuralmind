@@ -20,6 +20,11 @@ on:
 env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
+# Read-only token by default; a job that needs more declares its own
+# permissions: block, which replaces this one for that job.
+permissions:
+  contents: read
+
 jobs:
   validate-version:
     name: Validate Tag vs Package Version
@@ -65,6 +70,10 @@ jobs:
     needs: smoke-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write       # signs the provenance attestation below
+      attestations: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -93,6 +102,19 @@ jobs:
           # rather than upgrading to latest to keep releases reproducible.
           pip install twine "packaging>=26"
           twine check dist/*
+
+      # NIST SP 800-218 (SSDF) PS.2 / PS.3: a signed statement of which
+      # workflow, commit and runner built each file, so anyone can check that
+      # a wheel or sdist came from this repository's release:
+      #   gh attestation verify neuralmind-X.Y.Z-py3-none-any.whl --repo dfrostar/neuralmind \
+      #     --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/release\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$'
+      # The regex pins the ref: main (release-please dispatches without --ref)
+      # or a vX.Y.Z tag, so an attestation from another branch's run fails.
+      # PyPI also gets PEP 740 attestations from trusted publishing below.
+      - name: Attest build provenance (wheel + sdist)
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: 'dist/*'
 
       - name: Store build artifacts
         uses: actions/upload-artifact@v7
@@ -140,6 +162,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Only for scripts/mcp_stdio_smoke.py, at the tag this run released. Tags
+      # before v4.12.0 have no --entry-point flag, so dispatching this workflow
+      # for one fails the smoke test below.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          sparse-checkout: scripts
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -150,6 +180,11 @@ jobs:
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
           echo "Testing neuralmind==${VERSION}"
+          # Run from outside the checkout: `python -c` puts the working
+          # directory first on sys.path, so if the checkout ever held
+          # ./neuralmind/ it would be imported instead of the package installed
+          # from PyPI (Python 3.10 has no -P to switch that off).
+          cd "${RUNNER_TEMP}"
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
@@ -174,6 +209,15 @@ jobs:
             exit 1
           fi
           neuralmind --help
+          # --help never starts the MCP server. This runs the venv's
+          # `neuralmind-mcp` console script, the command MCP clients are
+          # configured with, and drives initialize / tools/list / tools/call
+          # over stdio, so an entry point naming a missing function, a module
+          # left out of the wheel, or an MCP SDK the server can't start on
+          # fails here and holds back the GitHub Release. --require-wheel
+          # fails unless that server imports neuralmind from the venv's
+          # site-packages.
+          python "${GITHUB_WORKSPACE}/scripts/mcp_stdio_smoke.py" --require-wheel --entry-point
 
   publish-testpypi:
     name: Publish to TestPyPI

@@ -173,8 +173,8 @@ arbitrary client files.
 - [`../SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) — "No Calls Home"
   principle; same caveat applies.
 - [`../PRIVACY-POLICY.md`](../PRIVACY-POLICY.md) §6 — covers NeuralMind's
-  own commercial/SaaS operations (license portal: Stripe, GitHub). That
-  section is scoped to the paid-license/portal side of the business, not
+  own commercial operations (manual license issuance and invoicing; GitHub).
+  That section is scoped to the paid-license side of the business, not
   OSS-tool runtime behavior; this document is the runtime-behavior
   disclosure for the OSS tool itself.
 - [`RISK_ASSESSMENT.md`](RISK_ASSESSMENT.md) R-03 — data exfiltration via

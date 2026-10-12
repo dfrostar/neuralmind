@@ -7,6 +7,8 @@ on:
   # Manual trigger for release-please's branch, whose GITHUB_TOKEN pushes
   # can't fire pull_request workflows — see ci.yml (#98).
   workflow_dispatch:
+  # Required checks must also run in a merge queue (see ci.yml).
+  merge_group:
 
 permissions:
   contents: read

@@ -419,6 +419,25 @@ see [`docs/VULNERABILITY-MANAGEMENT-POLICY.md`](docs/VULNERABILITY-MANAGEMENT-PO
 for dispositions, remediation targets, and the commands to reproduce the audit
 yourself.
 
+## Verifying a Release
+
+*(v4.14.0+)* Every release can be checked against what this repository built:
+
+- **Container image** (`ghcr.io/dfrostar/neuralmind`): signed keylessly with
+  cosign by `.github/workflows/docker-publish.yml`, and carrying a GitHub
+  build-provenance attestation.
+- **Wheel and sdist**: GitHub build-provenance attestations from
+  `.github/workflows/release.yml`, and PEP 740 attestations on PyPI from
+  trusted publishing.
+- **Dependencies**: a CycloneDX SBOM per release, and a VEX document
+  (`security/neuralmind.openvex.json`) listing the advisories NeuralMind is
+  not affected by, so a VEX-aware scanner doesn't report them as open.
+
+The commands are in [`docs/compliance/SSDF.md`](docs/compliance/SSDF.md#2-how-to-verify-a-release-yourself),
+along with the NIST SP 800-218 (SSDF) practice-by-practice evidence. For
+which NIST documents apply, where each stands and what's next, see
+[`docs/compliance/NIST.md`](docs/compliance/NIST.md).
+
 ## Auditability & Explainability
 
 One of the biggest enterprise concerns with AI tools is the "black box" problem — models make decisions without clear justification, leading to hallucinations and liability.

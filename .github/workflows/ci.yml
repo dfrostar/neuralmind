@@ -10,6 +10,23 @@ on:
   # GitHub's anti-recursion guard suppresses workflow runs for those pushes,
   # so the release PR otherwise shows these checks as never-started (#98).
   workflow_dispatch:
+  # A merge queue tests each PR on top of the ones queued ahead of it; its
+  # required checks must run on this event or the queue waits forever.
+  merge_group:
+
+# A new push to a PR cancels that PR's older run: the Windows job alone takes
+# ~25 minutes, and a stale result is never the one that decides the merge.
+# Every other run (pushes to main, dispatches, merge-queue entries) gets a
+# group of its own: a shared group holds one running and one pending run, and
+# a third arrival would silently replace the pending one, losing that CI run.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only token by default; a job that needs more declares its own
+# permissions: block, which replaces this one for that job.
+permissions:
+  contents: read
 
 jobs:
   lint:
@@ -33,6 +50,15 @@ jobs:
 
       - name: Lint with Ruff
         run: ruff check .
+
+      # ruff has no unreachable-code rule; this is how doctor's exit 1 was lost.
+      - name: Check for unreachable code
+        run: python scripts/check_unreachable.py
+
+      # Scripts nothing runs rot silently (scripts/test_self_hosted.sh did).
+      # shellcheck ships on the ubuntu runner image.
+      - name: Lint shell scripts
+        run: find scripts -name '*.sh' -print0 | xargs -0 shellcheck --severity=warning
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
@@ -60,6 +86,11 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          # Caches downloads, not the environment: pip still resolves from
+          # pyproject.toml every run. Not used by the FIPS and fresh-install
+          # jobs, whose point is a cold build and a cold install.
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
@@ -80,6 +111,106 @@ jobs:
           fail_ci_if_error: false
         continue-on-error: true
 
+  # CMMC SC.L2-3.13.11 has operators turn the OS FIPS mode on, and there
+  # OpenSSL refuses MD5 unless the caller passes usedforsecurity=False:
+  # document ingestion (`neuralmind ingest`) crashed on such hosts. This runs
+  # the whole suite with the OpenSSL FIPS provider enforced, so a new non-FIPS
+  # hash fails here.
+  # tests/test_fips_hash_usage.py is the static half, and runs in every job.
+  fips:
+    name: Test (OpenSSL FIPS provider)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # The cryptography wheel bundles its own OpenSSL. Under this config the
+      # two copies mix once hashlib has loaded the system one, and every
+      # cryptography call fails for reasons no real host has. Built from
+      # source, it links the system OpenSSL, as a distro-packaged one does on
+      # a FIPS host (Rust and libssl-dev ship on the runner image).
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-binary cryptography -e ".[dev,chromadb]"
+
+      - name: Cache the FIPS provider build
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/openssl-fips
+          key: openssl-fips-${{ runner.os }}-${{ hashFiles('scripts/setup_fips_openssl.sh') }}
+
+      # After the install, so pip itself doesn't run under the FIPS config.
+      - name: Enforce the OpenSSL FIPS provider
+        run: |
+          bash scripts/setup_fips_openssl.sh "$HOME/.cache/openssl-fips"
+          echo "OPENSSL_CONF=$HOME/.cache/openssl-fips/openssl-fips.cnf" >> "$GITHUB_ENV"
+          echo "OPENSSL_MODULES=$HOME/.cache/openssl-fips" >> "$GITHUB_ENV"
+
+      - name: Run tests under the FIPS provider
+        run: pytest tests/ -q --tb=short
+
+  # NIST SP 800-218 (SSDF) PW.7 / RV.1: scan our code and our dependencies on
+  # every change. CodeQL already runs through GitHub's default setup.
+  security:
+    name: Security scan (bandit, pip-audit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # bandit's SARIF report goes to code scanning
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install the scanners
+        run: |
+          python -m pip install --upgrade pip
+          pip install "bandit[sarif]" pip-audit
+
+      # High severity fails the build; a reviewed false positive carries a
+      # `# nosec <id>  # <reason>` on its line. Lower severities go to the
+      # Security tab below for triage rather than failing the build.
+      - name: Bandit (fails on high severity)
+        run: bandit -q -r neuralmind --severity-level high
+
+      - name: Bandit report (all severities)
+        if: always()
+        run: bandit -q -r neuralmind -f sarif -o bandit.sarif --exit-zero
+
+      # Fork and Dependabot PRs get a read-only token, so the upload would
+      # fail there.
+      - name: Upload bandit report to code scanning
+        if: always() && github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+
+      # Audit what users install, in its own environment so the scanners'
+      # dependencies aren't in it: the default install plus the chromadb extra.
+      # The only advisories ignored are the ones security/neuralmind.openvex.json
+      # marks not_affected (argued in SECURITY.md), so the published VEX and
+      # this gate can't disagree.
+      - name: pip-audit (installed dependencies)
+        run: |
+          python -m venv "$RUNNER_TEMP/audit"
+          "$RUNNER_TEMP/audit/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/audit/bin/pip" install -e ".[chromadb]"
+          # shellcheck disable=SC2046  # the flags must split into words
+          PIPAPI_PYTHON_LOCATION="$RUNNER_TEMP/audit/bin/python" \
+            pip-audit --progress-spinner off --skip-editable $(python scripts/vex_ignores.py)
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
@@ -90,6 +221,8 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |

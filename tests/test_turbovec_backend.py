@@ -44,7 +44,7 @@ _VOCAB_TOKENS = ("auth", "login", "billing", "invoice", "user", "db", "token", "
 def _stable_bucket(tok: str) -> int:
     """Process-stable token→bucket (unlike ``hash()``, which PYTHONHASHSEED
     randomises per run — the source of prior flakiness in these tests)."""
-    digest = hashlib.md5(tok.encode("utf-8")).digest()
+    digest = hashlib.md5(tok.encode("utf-8"), usedforsecurity=False).digest()
     return int.from_bytes(digest[:4], "little") % _DIM
 
 

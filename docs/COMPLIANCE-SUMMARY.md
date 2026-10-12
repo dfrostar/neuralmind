@@ -17,6 +17,7 @@
 | Certifications held | **None.** NeuralMind has no SOC 2 report and no CMMC assessment. Both frameworks assess an organization's environment; the sections below show what NeuralMind gives your assessor |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
+| Secure development (NIST SP 800-218 SSDF) | **Practice-by-practice evidence** in [`compliance/SSDF.md`](compliance/SSDF.md). *(v4.14.0+)* Container images are signed (cosign, keyless), releases carry build-provenance attestations, and a VEX document lists the dependency advisories that don't apply. NIST doesn't certify against the SSDF: a federal buyer asks for CISA's attestation form, signed by Cheval-Volant LLC |
 | License | **MIT** — full source review, no vendor lock-in |
 | Source available | **Yes** — entire codebase on GitHub, every claim verifiable |
 
@@ -89,7 +90,7 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 | **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log, a record without a hash once the chain has started, and a line that isn't a JSON object (v4.8.0 and earlier missed those at the end of the log). It cannot detect removal of the newest records, or a rewrite that recomputes the chain, which has no secret key | Write protection and forwarding to your SIEM, so a local rewrite can't go unseen |
 | **CM.L2-3.4.1** | Baseline configurations and inventories | CycloneDX SBOM on every tagged release | Recording the pinned version in your baseline |
 | **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to `127.0.0.1` by default (`neuralmind serve --host` can change it); [air-gapped install](use-cases/air-gapped.md) | Not exposing the HTTP transport beyond the enclave |
-| **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | NeuralMind doesn't encrypt data itself. `doctor` reports the OS FIPS mode on Linux and Windows | FIPS-validated full-disk encryption on the host, with the OS FIPS mode on |
+| **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | NeuralMind doesn't encrypt data itself. Its own hash calls work with the OS FIPS mode on *(v4.13.0+; earlier, document ingestion crashed there)*, and CI runs the test suite with the OpenSSL FIPS provider enforced. `doctor` reports the OS FIPS mode on Linux and Windows | FIPS-validated full-disk encryption on the host, with the OS FIPS mode on |
 | **SC.L2-3.13.16** | Protect CUI at rest | With `security.require_encrypted_storage: true` *(v4.7.0+)*, NeuralMind verifies FileVault, BitLocker, or dm-crypt/LUKS on every volume holding its state (project, `.neuralmind/`, a custom index path), refuses to build, query, serve MCP tools, or run hooks without it, and logs each check | The encryption itself, covering `.neuralmind/`, `.neuralmind-team-memory.json`, and any `graphify-out/` |
 | **SI.L2-3.14.1** | Identify and correct system flaws | [Vulnerability disclosure policy](../SECURITY.md), SBOM for your scanner | Staying on the latest release |
 
@@ -146,6 +147,7 @@ Container builds from v0.9.0 onward are auto-published to GHCR ([workflow source
 - **User:** non-root (`neuralmind` UID)
 - **Network:** no outbound calls at build time (all transitive wheels pre-downloaded in the builder stage; runtime install uses `--no-index`)
 - **OCI labels:** `org.opencontainers.image.source`, `version`, `licenses=MIT`
+- **Signature and provenance** *(v4.14.0+)*: each image is signed keylessly with cosign by the release workflow and carries a GitHub build-provenance attestation. The workflow verifies both before moving `:latest`. To check them yourself, see [`compliance/SSDF.md`](compliance/SSDF.md#2-how-to-verify-a-release-yourself)
 
 ---
 
@@ -188,6 +190,8 @@ Choose the strictest your operational needs allow — all four use the same Neur
 This is the **summary** view. For depth:
 
 - [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, SOC 2 and CMMC 2.0 summaries
+- [`compliance/NIST.md`](compliance/NIST.md) — which NIST documents apply to NeuralMind, where each stands, and what's next
+- [`compliance/SSDF.md`](compliance/SSDF.md) — NIST SP 800-218 practice-by-practice evidence, release verification commands, and the VEX document
 - [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) — precise, code-cited answer to "does any client content (including media files) ever reach a third-party LLM"
 - [`use-cases/air-gapped.md`](use-cases/air-gapped.md) — strictest deployment posture, step-by-step
 - [`use-cases/offline-regulated.md`](use-cases/offline-regulated.md) — broader regulated-industry walkthrough

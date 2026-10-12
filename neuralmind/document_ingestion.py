@@ -309,8 +309,9 @@ def _make_node_id(path: Path, index: int = 0) -> str:
     """
     stem = path.stem.replace(" ", "_")
     ext = path.suffix.lstrip(".").replace(" ", "_")
-    # Include parent dirs (hashed) to disambiguate same-named files
-    parent_hash = hashlib.md5(str(path.parent).encode()).hexdigest()[:8]
+    # Include parent dirs (hashed) to disambiguate same-named files. Not a
+    # security hash: usedforsecurity=False keeps it working on FIPS-mode hosts.
+    parent_hash = hashlib.md5(str(path.parent).encode(), usedforsecurity=False).hexdigest()[:8]
     base = f"{stem}.{ext}.{parent_hash}" if ext else f"{stem}.{parent_hash}"
     if index == 0:
         return f"doc:{base}"

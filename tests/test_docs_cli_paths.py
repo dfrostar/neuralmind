@@ -39,18 +39,14 @@ REPO = Path(__file__).resolve().parents[1]
 # commands that do NOT exist anywhere in neuralmind/cli.py. The first run
 # also found audit-reporting and backend-management commands; those pages
 # now use the real `audit export|verify` and `neuralmind-backend.yaml`. The
-# licensing-administration commands below remain — either planned features
-# or a different tool's CLI. Removing/rewriting those docs is tracked as R3b;
-# until then the commands are excused HERE (explicitly, with file
-# provenance) so that any NEW drift still fails CI.
+# last entries (R3b) were docs/NEURALMIND-LICENSE-AGREEMENT.md's
+# `issue-license`, `renew-license`, `revoke-license`, `license-status` and
+# `license-list` — invented names for the real `neuralmind license
+# issue|renew|revoke|status|list`, which that page now uses. Excuse a command
+# here only if it genuinely belongs to another tool, with file provenance, so
+# that any NEW drift still fails CI.
 # ---------------------------------------------------------------------------
-ALLOWED_MISSING_COMMANDS = {
-    "issue-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "renew-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "revoke-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "license-status",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "license-list",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-}
+ALLOWED_MISSING_COMMANDS: set[str] = set()
 
 # ---------------------------------------------------------------------------
 # Top-level docs/ directories that are point-in-time records, not current docs.

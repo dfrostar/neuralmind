@@ -139,6 +139,28 @@ allowlist in the same change.
   the benchmark's retention gates passing
   (`tests/test_compression_benchmark.py`).
 
+## Behaviour contracts — keep code, docs and tests in step
+
+`neuralmind doctor`'s documented `exit 1` was lost in v0.55.0: a new helper
+left it unreachable, a lint pass deleted it, and three months later a docs
+change described the regression as the design. These rules prevent a repeat:
+
+- **A documented exit code has a test.** Exit codes are an interface scripts
+  gate on. When you document one, add a row to `tests/test_cli_exit_codes.py`
+  (or a test next to the feature, named in that file's docstring). The same
+  file holds the CLI reference's global "Exit Codes" table to codes the CLI
+  actually emits.
+- **Lint and style commits never delete code.** If code looks dead, find out
+  why it is dead and remove it in its own commit that says so.
+  `scripts/check_unreachable.py` (CI Lint job) fails on statements after a
+  `return`/`raise`/`sys.exit`, so stranded code is caught where it's stranded.
+- **When code and docs disagree, read the history before "aligning" either.**
+  `git log -S'<the line>'` shows which side changed last and why. Aligning the
+  docs to a regression makes the bug permanent.
+- **Every script in `scripts/` runs somewhere or goes.** CI shellchecks every
+  `scripts/*.sh`. A script no workflow runs and nobody can run as written is
+  deleted rather than left to mislead.
+
 ## Commercial terms — single source of truth
 
 **`commercial-terms.json` (repo root) is canon** for entity, pricing, and
@@ -187,7 +209,8 @@ agent-visible behavior:
   the "After install, your agent:" list) with the new
   behavior. Show what the agent actually sees, not just what the
   code does.
-- [ ] `docs/index.html` — top banner block + earlier-releases trail.
+- [ ] `docs/index.html` is a redirect to `wiki/Home` now, with no banner:
+  only refresh its `<meta>` description and keywords (see SEO below).
 - [ ] `docs/about.html` — new "What's New in v<X.Y.Z>" section above
   the prior one; never delete old sections, demote them.
 - [ ] `docs/wiki/CLI-Reference.md` — add new commands, document any

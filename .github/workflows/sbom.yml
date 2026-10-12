@@ -31,6 +31,11 @@ on:
 env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
+# Read-only token by default; a job that needs more declares its own
+# permissions: block, which replaces this one for that job.
+permissions:
+  contents: read
+
 jobs:
   validate-version:
     name: Validate Tag vs Package Version

@@ -1,0 +1,527 @@
+{
+  "configs": {
+    "baseline": {},
+    "v45_bm25": {
+      "NEURALMIND_BM25_UNIFIED": "0"
+    },
+    "per_file": {
+      "NEURALMIND_L3_PER_FILE": "2"
+    },
+    "handoff": {
+      "NEURALMIND_DOC_HANDOFF": "1"
+    },
+    "hub": {
+      "NEURALMIND_HUB_DAMPEN": "1"
+    },
+    "code_bm25": {
+      "NEURALMIND_BM25_CODE": "1"
+    },
+    "bm25_off": {
+      "NEURALMIND_BM25": "0"
+    },
+    "intent": {
+      "NEURALMIND_INTENT_RULES": "1"
+    },
+    "bm25_unified": {
+      "NEURALMIND_BM25_UNIFIED": "1"
+    },
+    "intent_pool": {
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "unified_intent_pool": {
+      "NEURALMIND_BM25_UNIFIED": "1",
+      "NEURALMIND_INTENT_RULES": "1",
+      "NEURALMIND_INTENT_POOL": "1"
+    },
+    "l3_k4": {
+      "NEURALMIND_L3_K": "4"
+    },
+    "code_signal": {
+      "NEURALMIND_CODE_SIGNAL_CAP": "10"
+    },
+    "auto_intent": {
+      "NEURALMIND_AUTO_INTENT_BOOST": "1"
+    },
+    "l3_only": {
+      "NEURALMIND_QUERY_LAYERS": "L0,L3"
+    },
+    "no_diversity": {
+      "NEURALMIND_L3_FILE_DECAY": "1"
+    },
+    "tests_equal": {
+      "NEURALMIND_TEST_FILE_FACTOR": "1"
+    },
+    "examples_equal": {
+      "NEURALMIND_EXAMPLE_FILE_FACTOR": "1"
+    },
+    "all": {
+      "NEURALMIND_L3_PER_FILE": "2",
+      "NEURALMIND_DOC_HANDOFF": "1",
+      "NEURALMIND_HUB_DAMPEN": "1",
+      "NEURALMIND_BM25_CODE": "1",
+      "NEURALMIND_INTENT_RULES": "1"
+    }
+  },
+  "results": {
+    "requests": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.7,
+        "hit_at_5": 1.0,
+        "mrr": 0.8333,
+        "avg_tokens": 751.0,
+        "latency_ms_p50": 4.3,
+        "latency_ms_p95": 6.2,
+        "ranks": [
+          1,
+          3,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          3,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      },
+      "examples_equal": {
+        "n": 30,
+        "hit_at_1": 0.7,
+        "hit_at_5": 1.0,
+        "mrr": 0.8333,
+        "avg_tokens": 751.0,
+        "latency_ms_p50": 4.2,
+        "latency_ms_p95": 5.2,
+        "ranks": [
+          1,
+          3,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          3,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      }
+    },
+    "click": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.7,
+        "hit_at_5": 1.0,
+        "mrr": 0.8333,
+        "avg_tokens": 660.2,
+        "latency_ms_p50": 4.3,
+        "latency_ms_p95": 5.3,
+        "ranks": [
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          3,
+          1,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          3
+        ]
+      },
+      "examples_equal": {
+        "n": 30,
+        "hit_at_1": 0.7,
+        "hit_at_5": 1.0,
+        "mrr": 0.8333,
+        "avg_tokens": 660.2,
+        "latency_ms_p50": 4.3,
+        "latency_ms_p95": 5.4,
+        "ranks": [
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          3,
+          1,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "flask": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.6333,
+        "hit_at_5": 0.9667,
+        "mrr": 0.7667,
+        "avg_tokens": 795.8,
+        "latency_ms_p50": 4.4,
+        "latency_ms_p95": 5.5,
+        "ranks": [
+          2,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          3,
+          3,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          4,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "examples_equal": {
+        "n": 30,
+        "hit_at_1": 0.6333,
+        "hit_at_5": 0.9667,
+        "mrr": 0.7667,
+        "avg_tokens": 795.8,
+        "latency_ms_p50": 4.3,
+        "latency_ms_p95": 5.1,
+        "ranks": [
+          2,
+          1,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          3,
+          3,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          4,
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "rich": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.5333,
+        "hit_at_5": 0.9,
+        "mrr": 0.6611,
+        "avg_tokens": 792.5,
+        "latency_ms_p50": 4.0,
+        "latency_ms_p95": 4.8,
+        "ranks": [
+          4,
+          1,
+          null,
+          1,
+          1,
+          4,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          3,
+          null,
+          null,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          1,
+          2,
+          1,
+          3,
+          2,
+          1,
+          4,
+          4
+        ]
+      },
+      "examples_equal": {
+        "n": 30,
+        "hit_at_1": 0.5333,
+        "hit_at_5": 0.9,
+        "mrr": 0.6611,
+        "avg_tokens": 792.5,
+        "latency_ms_p50": 3.9,
+        "latency_ms_p95": 5.2,
+        "ranks": [
+          4,
+          1,
+          null,
+          1,
+          1,
+          4,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          1,
+          3,
+          null,
+          null,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          1,
+          2,
+          1,
+          3,
+          2,
+          1,
+          4,
+          4
+        ]
+      }
+    },
+    "neuralmind": {
+      "baseline": {
+        "n": 30,
+        "hit_at_1": 0.5333,
+        "hit_at_5": 0.8,
+        "mrr": 0.6372,
+        "avg_tokens": 1146.5,
+        "latency_ms_p50": 6.8,
+        "latency_ms_p95": 13.1,
+        "ranks": [
+          5,
+          4,
+          3,
+          1,
+          null,
+          2,
+          3,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          null,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          null,
+          null,
+          1,
+          2,
+          null,
+          1,
+          1
+        ]
+      },
+      "examples_equal": {
+        "n": 30,
+        "hit_at_1": 0.5333,
+        "hit_at_5": 0.8,
+        "mrr": 0.6372,
+        "avg_tokens": 1146.5,
+        "latency_ms_p50": 6.4,
+        "latency_ms_p95": 9.2,
+        "ranks": [
+          5,
+          4,
+          3,
+          1,
+          null,
+          2,
+          3,
+          1,
+          1,
+          null,
+          1,
+          1,
+          1,
+          1,
+          null,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          null,
+          null,
+          1,
+          2,
+          null,
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "gates": [
+    {
+      "config": "examples_equal",
+      "wins": 0,
+      "losses": 0,
+      "p_value": 1.0,
+      "mean_mrr_delta": 0.0,
+      "mrr_delta_ci95": [
+        0.0,
+        0.0
+      ],
+      "worst_repo_delta_questions": 0,
+      "per_repo_delta_questions": {
+        "requests": 0,
+        "click": 0,
+        "flask": 0,
+        "rich": 0,
+        "neuralmind": 0
+      },
+      "mean_token_rise": 0.0,
+      "checks": {
+        "wins > losses, McNemar p < 0.05": false,
+        "no repo drops >2 questions": true,
+        "tokens \u2264 +10%": true
+      },
+      "keep": false
+    }
+  ],
+  "public": {
+    "baseline": 1.0,
+    "examples_equal": 1.0
+  },
+  "baseline_reproduced": {
+    "requests": true,
+    "click": true,
+    "flask": true,
+    "rich": true,
+    "neuralmind": true
+  }
+}

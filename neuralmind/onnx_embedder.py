@@ -155,7 +155,7 @@ class OnnxMiniLMEmbedder:
                 f"{_ARCHIVE_SHA256} (corrupted or tampered download)"
             )
         with tarfile.open(archive, "r:gz") as tar:
-            tar.extractall(root)  # noqa: S202 - trusted, hash-verified archive
+            tar.extractall(root)  # nosec B202  # SHA-256 pinned and checked above
         archive.unlink(missing_ok=True)
 
     # ---------------------------------------------------------------- lazy load

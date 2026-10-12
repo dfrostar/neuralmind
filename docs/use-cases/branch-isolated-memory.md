@@ -138,6 +138,11 @@ neuralmind build .
 daemon / `serve` from your main working tree. Short-lived worktrees get a
 fresh local index; long-term associations keep accruing in the one place
 that isn't going away.
+Since v4.13.0 the git hooks do this for you: every worktree shares the
+repository's hooks, and they rebuild only a project that has been built
+(`.neuralmind/build_status.json`), so a throwaway worktree costs nothing
+until you run `neuralmind build .` in it. After that, its own pulls, branch
+switches and commits keep its index fresh.
 
 *Shared — symlink the store, let branch namespaces isolate.* Point every
 worktree's synapse store at your main checkout's:

@@ -65,7 +65,10 @@ neuralmind team self-hosted status
 
 # Doctor (tier2 checks additive)
 echo "[16] doctor"
-neuralmind doctor 2>&1 | grep -q "Tier 2 license" && echo "  PASS: tier2 doctor check present" || echo "  WARN: no tier2 doctor check (MIT path)"
+# Capture first: doctor exits 1 on a failed check (this checkout has no built
+# graph), which under pipefail would make the grep pipeline fail too.
+doctor_out="$(neuralmind doctor 2>&1 || true)"
+grep -q "Tier 2 license" <<<"$doctor_out" && echo "  PASS: tier2 doctor check present" || echo "  WARN: no tier2 doctor check (MIT path)"
 
 # Version
 echo "[17] version"

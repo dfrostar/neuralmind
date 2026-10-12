@@ -210,6 +210,22 @@ per process. `neuralmind doctor` shows what the check sees, plus the OS FIPS
 mode on Linux and Windows. macOS has no FIPS switch; FileVault uses Apple
 corecrypto, which Apple lists in its CMVP certificates.
 
+*(v4.13.0+)* NeuralMind's own code works with the OS FIPS mode on. Its MD5
+and SHA-1 calls build ids and sort keys, not security controls, and pass
+`usedforsecurity=False`, which a FIPS-mode OpenSSL allows; the audit log's hash
+chain uses SHA-256. Earlier releases crashed with `UnsupportedDigestmodError`
+in document ingestion (`neuralmind ingest`, `ingest-content`, book builds and
+the `neuralmind_ingest_document` MCP tool) on a FIPS-mode host. CI runs the
+test suite with the OpenSSL FIPS provider enforced
+(`scripts/setup_fips_openssl.sh`). That covers the dependency code the
+tests exercise, not every path (the embedding-model download isn't one), and
+it tests the provider's algorithm restrictions, not your host's validated
+module.
+
+Team-tier licence and seat-manifest signatures are Ed25519, which FIPS 186-5
+approves and the CI job verifies under the upstream provider. A FIPS policy
+that disables EdDSA would make a valid Team licence read as invalid.
+
 ---
 
 ## Data Protection

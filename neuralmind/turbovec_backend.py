@@ -1065,7 +1065,6 @@ class TurboVecEmbedder(EmbeddingBackend):
                 except Exception:
                     pass
         return meta
-        return meta
 
     def get_nodes_by_ids(self, node_ids: list[str]) -> list[dict]:
         """Fetch indexed nodes by id (synapse-recall pull-in). Missing ids skipped."""

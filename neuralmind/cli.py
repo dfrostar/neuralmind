@@ -334,7 +334,7 @@ def cmd_scan_for_secrets(args):
     present so CI can gate on it; heuristic-only findings warn but pass
     unless ``--strict`` is given.
     """
-    from neuralmind.secret_scan import scan_project
+    from neuralmind.secret_scan import scan_project_report
 
     project_path = args.project_path or "."
     path = Path(project_path)
@@ -343,11 +343,14 @@ def cmd_scan_for_secrets(args):
         sys.exit(2)
 
     include_heuristic = not args.high_confidence_only
-    findings = scan_project(
+    include_ignored = getattr(args, "include_ignored", False) is True
+    report = scan_project_report(
         project_path,
         include_heuristic=include_heuristic,
         respect_ignore_file=args.use_neuralmindignore,
+        respect_gitignore=not include_ignored,
     )
+    findings = report.findings
 
     high = [f for f in findings if f.confidence == "high"]
     heuristic = [f for f in findings if f.confidence != "high"]
@@ -360,6 +363,9 @@ def cmd_scan_for_secrets(args):
                     "findings": [f.to_dict() for f in findings],
                     "high_confidence": len(high),
                     "heuristic": len(heuristic),
+                    "gitignore_respected": report.git and not include_ignored,
+                    "ignored_files_skipped": report.ignored_files_skipped,
+                    "skipped_worktrees": report.skipped_worktrees,
                 },
                 indent=2,
             )
@@ -372,14 +378,35 @@ def cmd_scan_for_secrets(args):
         else:
             for f in findings:
                 tag = "HIGH " if f.confidence == "high" else "maybe"
-                print(f"  [{tag}] {f.path}:{f.line}  {f.kind}  ({f.preview})")
+                where = {True: "  [tracked]", False: "  [untracked]", None: ""}[f.tracked]
+                print(f"  [{tag}] {f.path}:{f.line}  {f.kind}  ({f.preview}){where}")
             print()
-            print(f"  {len(high)} high-confidence, {len(heuristic)} heuristic.")
+            in_tracked = sum(1 for f in high if f.tracked)
+            tracked_note = f" ({in_tracked} in tracked files)" if report.git else ""
+            print(f"  {len(high)} high-confidence{tracked_note}, {len(heuristic)} heuristic.")
             print()
             print("  Previews are truncated — no full secret is printed.")
             print("  Remove these and rotate the credentials before building.")
+            if report.git:
+                print("  A credential in a tracked file is in git history: rotate it first.")
             print("  To keep a file out of the index entirely, add it to .neuralmindignore.")
             print("  To scrub secrets from the index itself: neuralmind build . --redact-secrets")
+        # What was left out, so a clean scan never hides it.
+        if report.skipped_worktrees or report.ignored_files_skipped:
+            print()
+        if report.skipped_worktrees:
+            n = len(report.skipped_worktrees)
+            shown = ", ".join(report.skipped_worktrees[:3]) + (", ..." if n > 3 else "")
+            print(
+                f"  Skipped {n} linked worktree{'s' if n != 1 else ''} ({shown}): "
+                "other checkouts of a repository; run the scan inside one to check it."
+            )
+        if report.ignored_files_skipped:
+            n = report.ignored_files_skipped
+            print(
+                f"  Skipped {n:,} file{'s' if n != 1 else ''} that .gitignore excludes "
+                "(never committed or indexed). --include-ignored scans them too."
+            )
 
     if high or (args.strict and heuristic):
         sys.exit(1)
@@ -502,6 +529,7 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             regenerate_graph=regenerate,
             strict=strict,
             prune=getattr(args, "prune", False) is True,
+            archive_graphify=getattr(args, "archive_graphify", False) is True,
             dry_run=False,
             json=False,
         )
@@ -785,6 +813,7 @@ def cmd_build(args):
         regenerate_graph=getattr(args, "regenerate_graph", False) is True,
         strict=getattr(args, "strict", False) is True,
         prune=getattr(args, "prune", False) is True,
+        archive_graphify=getattr(args, "archive_graphify", False) is True,
     )
     if result.get("success"):
         print("Build successful!")
@@ -808,6 +837,11 @@ def cmd_build(args):
             val = ir_meta.get("validation", {})
             status = "valid" if val.get("ok", True) else f"{val.get('errors', 0)} error(s)"
             print(f"   IR: v{ir_meta['ir_version']} ({status})")
+        synapses = result.get("synapses")
+        if isinstance(synapses, dict):
+            print(f"   Synapses: {_synapse_line(synapses)}")
+            if not synapses.get("transitions"):
+                print(f"      {TRANSITIONS_HINT}")
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
@@ -819,8 +853,39 @@ def cmd_build(args):
     # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
         print()
-        print("  💡 Keep the index fresh: neuralmind init-hook .  (auto-rebuild on every commit)")
-        print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
+        print(
+            "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
+        )
+        # Plain `watch` only learns from edits; --reindex is what re-indexes them.
+        print(
+            "     Files that change without a commit: neuralmind watch . --reindex  "
+            "(re-indexes edited files as they change)"
+        )
+
+
+# What a learned transition ("after A, you edit B") comes from, for anyone
+# looking at a count of 0: queries strengthen edges but never add transitions.
+TRANSITIONS_HINT = (
+    "0 transitions: they are learned from the files an agent reads and edits in turn "
+    "(Claude Code hooks: neuralmind install-hooks; the Hermes plugin) or that "
+    "change together (neuralmind watch .). Queries strengthen edges but add no transitions."
+)
+
+
+def _synapse_line(synapses: dict) -> str:
+    """``3,612 edges (+47 since last build), 12 transitions (+12)``"""
+
+    def part(key: str, label: str, since: str) -> str:
+        text = f"{int(synapses.get(key, 0)):,} {label}"
+        delta = synapses.get(f"{key}_delta")
+        if isinstance(delta, int):
+            text += f" ({delta:+,}{since})"
+        return text
+
+    return (
+        f"{part('edges', 'edges', ' since last build')}, "
+        f"{part('transitions', 'transitions', '')}"
+    )
 
 
 def _try_daemon():
@@ -847,6 +912,48 @@ def _print_trace(trace: dict | None) -> None:
     print(f"Retrieval trace ({len(trace.get('events', []))} events):")
     for e in trace.get("events", []):
         print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
+
+
+def _explain_data(result) -> dict:
+    """``query --explain --json``: what the human explanation shows, as data.
+
+    Token budget per layer, the layers and communities used, the query
+    intent, the top L3 hits with their scores, and the synapse events that
+    fired, so an agent can check *why* this context was chosen rather than
+    only how small it is.
+    """
+    budget = result.budget
+    hits = []
+    for h in (result.top_search_hits or [])[:5]:
+        meta = h.get("metadata") or {}
+        hits.append(
+            {
+                "id": h.get("id", ""),
+                "label": h.get("label") or meta.get("label") or h.get("id", ""),
+                "source_file": h.get("source_file") or meta.get("source_file", ""),
+                "score": round(float(h.get("score", 0.0) or 0.0), 4),
+            }
+        )
+    events = (result.trace or {}).get("events") or []
+    return {
+        "budget": {
+            "l0_identity": budget.l0_identity,
+            "l1_summary": budget.l1_summary,
+            "l2_communities": budget.l2_ondemand,
+            "l3_search": budget.l3_search,
+            "total": budget.total,
+        },
+        "reduction_ratio": round(result.reduction_ratio, 1),
+        "layers": list(result.layers_used),
+        "intent": getattr(result, "intent", ""),
+        "intent_source": getattr(result, "intent_source", ""),
+        "communities_loaded": list(result.communities_loaded),
+        "search_hits": result.search_hits,
+        "top_hits": hits,
+        "synapses_fired": [
+            e.get("summary", "") for e in events if "synapse" in (e.get("kind") or "")
+        ],
+    }
 
 
 def _print_explain(result) -> None:
@@ -1218,6 +1325,8 @@ def cmd_query(args):
             "context": result.context,
             "trace": result.trace,
         }
+        if explain:
+            output["explain"] = _explain_data(result)
         if relevance:
             from .relevance import build_relevance_sidecar
 
@@ -2076,6 +2185,10 @@ def cmd_stats(args):
             stats = client.stats(str(Path(args.project_path).resolve()))
             if not stats.get("error"):
                 stats.setdefault("via", "daemon")
+                # Read here, not by the daemon: it's the project's metrics log.
+                learning = _learning_summary(Path(args.project_path).resolve())
+                if learning:
+                    stats["learning"] = learning
                 if args.json:
                     print(json.dumps(stats, indent=2))
                 else:
@@ -2083,6 +2196,7 @@ def cmd_stats(args):
                     print(f"Built: {stats.get('built')}")
                     if stats.get("built"):
                         print(f"Nodes: {stats.get('nodes', stats.get('total_nodes', 0))}")
+                    _print_learning(learning)
                 return
         except Exception:
             pass
@@ -2110,6 +2224,9 @@ def cmd_stats(args):
             stats["synapses"] = mind.synapses.stats()
     except Exception:
         pass
+    learning = _learning_summary(mind.project_path)
+    if learning:
+        stats["learning"] = learning
     if args.json:
         print(json.dumps(stats, indent=2))
     else:
@@ -2127,6 +2244,9 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
+        _print_learning(learning)
+        if synapse_stats and not synapse_stats.get("transitions"):
+            print(TRANSITIONS_HINT)
 
 
 def cmd_cost(args):
@@ -2188,19 +2308,33 @@ def cmd_metrics(args):
 
     if queries:
         print(f"{'Queries':.<30} {queries.get('n_queries', 0):>12,}")
+        print(f"{'Last query':.<30} {_ago(queries.get('last_ts')):>12}")
         print(f"{'Mean latency (ms)':.<30} {queries.get('mean_latency_ms', 0):>12,.2f}")
         print(f"{'Mean tokens/query':.<30} {queries.get('mean_tokens_used', 0):>12,.0f}")
-        print(f"{'Mean retrieval reuse':.<30} {queries.get('mean_retrieval_reuse_rate', 0):>12.4f}")
-        print(f"{'Mean synapses fired':.<30} {queries.get('mean_synapses_activated', 0):>12.1f}")
+        # Recorded only by callers that measure them (not NeuralMind.query()).
+        if queries.get("mean_retrieval_reuse_rate"):
+            print(f"{'Mean retrieval reuse':.<30} {queries['mean_retrieval_reuse_rate']:>12.4f}")
+        if queries.get("mean_synapses_activated"):
+            print(f"{'Mean synapses fired':.<30} {queries['mean_synapses_activated']:>12.1f}")
         calls = queries.get("sum_tool_calls", 0)
-        successes = queries.get("sum_tool_successes", 0)
-        success_pct = (successes / calls * 100) if calls > 0 else 0.0
-        print(f"{'Tool success rate':.<30} {success_pct:>11.1f}%")
-        print(f"{'Total tool calls':.<30} {calls:>12,}")
+        if calls:
+            successes = queries.get("sum_tool_successes", 0)
+            print(f"{'Tool success rate':.<30} {successes / calls * 100:>11.1f}%")
+            print(f"{'Total tool calls':.<30} {calls:>12,}")
 
     if builds:
         print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
+        print(f"{'Last build':.<30} {_ago(builds.get('last_ts')):>12}")
         print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
+        if "synapse_edges" in builds:
+            delta = builds.get("synapse_edges_delta", 0)
+            print(f"{'Synapse edges':.<30} {builds['synapse_edges']:>12,} ({delta:+,} in window)")
+        if "synapse_transitions" in builds:
+            delta = builds.get("synapse_transitions_delta", 0)
+            print(
+                f"{'Synapse transitions':.<30} {builds['synapse_transitions']:>12,} "
+                f"({delta:+,} in window)"
+            )
 
     if recall:
         outcomes = recall.get("outcomes", {})
@@ -2209,6 +2343,74 @@ def cmd_metrics(args):
         print(f"{'Abstained: low similarity':.<30} {outcomes.get('low_similarity', 0):>12,}")
         print(f"{'Abstained: nothing to name':.<30} {outcomes.get('no_neighbors', 0):>12,}")
         print(f"{'Abstain rate':.<30} {recall.get('abstain_rate', 0) * 100:>11.1f}%")
+
+    per_day = summary.get("per_day") or {}
+    if per_day:
+        print()
+        print(f"{'Day (UTC)':<12} {'Queries':>8} {'Builds':>8} {'Recall':>8}")
+        for day, counts in per_day.items():
+            print(
+                f"{day:<12} {counts.get('query', 0):>8,} {counts.get('build', 0):>8,} "
+                f"{counts.get('recall', 0):>8,}"
+            )
+
+
+def _print_learning(learning: dict) -> None:
+    """The ``Learning (last 7 days)`` block of ``neuralmind stats``."""
+    if not learning:
+        return
+    print(f"Learning (last {learning['days']} days):")
+    if "edges_delta" in learning:
+        print(
+            f"  Synapses: {learning['edges']:,} edges ({learning['edges_delta']:+,}), "
+            f"{learning['transitions']:,} transitions "
+            f"({learning['transitions_delta']:+,}) across {learning['builds']} build(s)"
+        )
+    print(
+        f"  Queries: {learning['queries']:,}"
+        + (f", last {_ago(learning['last_query_ts'])}" if learning["queries"] else "")
+    )
+
+
+def _learning_summary(project_path, days: int = 7) -> dict:
+    """How the learned layer and its use changed over ``days``, from the metrics log.
+
+    Synapse growth comes from the build records (each holds the store's totals
+    after that build), query counts from the query records. Empty when the log
+    has nothing for the window.
+    """
+    summary = MetricsCollector(project_path).summarize(days=days)
+    if not summary or not summary.get("n_events"):
+        return {}
+    builds = summary.get("builds") or {}
+    queries = summary.get("queries") or {}
+    out: dict = {"days": days, "queries": queries.get("n_queries", 0)}
+    if queries:
+        out["last_query_ts"] = queries.get("last_ts")
+    if "synapse_edges" in builds:
+        out.update(
+            builds=builds.get("n_builds", 0),
+            edges=builds["synapse_edges"],
+            edges_delta=builds.get("synapse_edges_delta", 0),
+            transitions=builds.get("synapse_transitions", 0),
+            transitions_delta=builds.get("synapse_transitions_delta", 0),
+        )
+    return out
+
+
+def _ago(ts) -> str:
+    """``3h ago`` for a Unix timestamp; ``-`` when there is none."""
+    import time
+
+    if not isinstance(ts, (int, float)) or ts <= 0:
+        return "-"
+    seconds = max(0, time.time() - ts)
+    if seconds < 60:
+        return "just now"
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return "-"
 
 
 def cmd_validate(args):
@@ -2403,7 +2605,9 @@ def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
 
-    base_checks = doctor.run_diagnostics(args.project_path)
+    base_checks = doctor.run_diagnostics(
+        args.project_path, stale_after=getattr(args, "stale_after", None)
+    )
     # Tier 2 additional checks (license, self-hosted) — additive, never breaking.
     extra = []
     try:
@@ -2435,6 +2639,13 @@ def cmd_doctor(args):
             doctor.FAIL: "Setup incomplete — run the fixes above, then re-check.",
         }
         print(summary.get(status, ""))
+
+    # Exit 1 on a failed check (warnings don't count) so a script or CI step
+    # can gate on `neuralmind doctor`. Same for --json: the payload is printed
+    # first. Keep this in cmd_doctor itself — v0.55.0 lost it once when the
+    # Tier 2 helper was inserted above it.
+    if status == doctor.FAIL:
+        sys.exit(1)
 
 
 def _tier2_doctor_checks(args) -> list:
@@ -2532,7 +2743,8 @@ def cmd_eval(args):
 
 def _project_eval_requested(args) -> bool:
     return any(
-        getattr(args, name, False) is True for name in ("report", "suggest", "show_questions")
+        getattr(args, name, False) is True
+        for name in ("report", "suggest", "show_questions", "synapse_ab")
     ) or bool(getattr(args, "questions", None))
 
 
@@ -2571,7 +2783,10 @@ def _cmd_project_eval(args) -> None:
 
     try:
         questions = project_eval.load_questions(project, getattr(args, "questions", None))
-        report = project_eval.run_eval(project, questions)
+        if getattr(args, "synapse_ab", False) is True:
+            report = project_eval.run_synapse_ab(project, questions)
+        else:
+            report = project_eval.run_eval(project, questions)
     except (ValueError, GraphNotBuiltError) as exc:
         print(f"eval: {exc}", file=sys.stderr)
         sys.exit(2)
@@ -2581,6 +2796,8 @@ def _cmd_project_eval(args) -> None:
         print(json.dumps(report.to_dict(show_questions=show_questions), indent=2))
     else:
         print(project_eval.render_summary(report, show_questions=show_questions))
+        if report.synapse_ab:
+            print(project_eval.render_synapse_ab(report))
 
 
 def _cmd_eval_suite(args):
@@ -2684,6 +2901,8 @@ def cmd_synapse_stats(args) -> None:
     print(f"  Dormant:        {stats.get('dormant', 0)}")
     print(f"  Transitions:    {stats['transitions']}")
     print(f"  Total weight:   {stats['total_weight']:.2f}")
+    if not stats["transitions"]:
+        print(f"  {TRANSITIONS_HINT}")
 
 
 def cmd_next(args):
@@ -2845,15 +3064,21 @@ def cmd_audit_recent(args):
         print("No audit events found.")
         return
     print(f"Recent audit events ({len(events)} shown):")
-    print(f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} Target")
-    print("  " + "-" * 80)
+    print(
+        f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} "
+        f"{'Client':<16} Target"
+    )
+    print("  " + "-" * 97)
     for evt in events:
         ts = evt.get("timestamp", "")[:19]
         cat = evt.get("category", "")[:11]
         act = evt.get("action", "")[:19]
         actor = evt.get("actor", "")[:11]
+        # The MCP client that made the call (its initialize clientInfo).
+        client = (evt.get("details") or {}).get("client") or {}
+        client_name = str(client.get("name", "-") if isinstance(client, dict) else "-")[:15]
         target = str(evt.get("target", ""))[:30]
-        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
+        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {client_name:<16} {target}")
 
 
 def _audit_review(action: str, args) -> None:
@@ -6121,18 +6346,205 @@ def _git_hooks_location(project_path: str) -> tuple[str | None, str | None]:
     return hooks, top
 
 
+# Git events that change the checked-out tree without a local commit. Each gets a
+# rebuild-only block; ``post-commit`` additionally runs the decision scan.
+_LIFECYCLE_HOOKS = {
+    "post-merge": "a merge or pull",
+    "post-checkout": "a branch switch",
+    "post-rewrite": "a rebase or amend",
+}
+
+
+def _neuralmind_hook_binary() -> str:
+    """Absolute path of the ``neuralmind`` console script, or ``""``.
+
+    Git runs hooks with the *caller's* PATH. GUI clients, IDEs and service
+    managers (launchd, systemd) often lack ``~/.local/bin``, where pipx and
+    venv installs put the script, so a bare ``command -v neuralmind`` skips
+    the hook without a word. Baking the path in at install time, with
+    ``command -v`` as the fallback, keeps the hooks working from any caller.
+    """
+    import os
+    import shutil
+    import sys
+    import sysconfig
+
+    found = shutil.which("neuralmind")
+    if found:
+        return os.path.abspath(found)
+    # Not on this PATH either (e.g. run as `python -m neuralmind`): the script
+    # sits in this interpreter's scripts directory (a venv's bin/).
+    name = "neuralmind.exe" if sys.platform.startswith("win") else "neuralmind"
+    sibling = os.path.join(sysconfig.get_path("scripts"), name)
+    if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+        return sibling
+    return ""
+
+
+def _hook_resolve_binary_lines(bin_path: str) -> str:
+    """Shell lines that set ``$_nm_bin``: the install-time path, else PATH."""
+    import shlex
+
+    # Forward slashes: Git for Windows runs hooks in its POSIX shell.
+    quoted = shlex.quote(bin_path.replace("\\", "/")) if bin_path else "''"
+    # The trailing `|| _nm_bin=` keeps a hook that runs under `set -e` going
+    # when neither path finds the script: NeuralMind is skipped, not the hook.
+    return (
+        f"_nm_bin={quoted}\n"
+        '[ -x "$_nm_bin" ] || _nm_bin=$(command -v neuralmind 2>/dev/null) || _nm_bin=\n'
+    )
+
+
+def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
+    """Shell lines (indented one level) that rebuild the index for ``target``.
+
+    Background (default): git doesn't wait. A ``mkdir`` lock serializes
+    builds. Every event first leaves a ``pending`` flag, then tries the lock;
+    the running build goes round again while the flag is set, and re-checks
+    it after releasing the lock, taking the lock back if nobody else has. So
+    bursts (a rebase, a pull right after a commit) coalesce, and an event
+    that finds the lock taken is never lost, even one that arrives while the
+    lock is being released. The build records its PID in the lock; a lock
+    whose PID is gone belongs to a build that died and is cleared (a lock
+    with no PID yet is cleared only after an hour), so a long build is never
+    mistaken for a dead one. Git's per-invocation variables are unset because
+    the build outlives the hook (``GIT_INDEX_FILE`` can name a temporary
+    index that is gone by then). Every command tolerates failure, so a hook
+    that runs under ``set -e`` isn't cut short.
+
+    ``--sync``: the previous behavior — git waits for the build.
+    """
+    if sync:
+        if announce:
+            return (
+                '    echo "[neuralmind] Rebuilding neural index..."\n'
+                f'    "$_nm_bin" build {target} >/dev/null 2>&1 && \\\n'
+                '        echo "[neuralmind] OK" || \\\n'
+                '        echo "[neuralmind] Rebuild failed (non-critical)"\n'
+            )
+        return f'    "$_nm_bin" build {target} >/dev/null 2>&1 || true\n'
+    started = (
+        '        echo "[neuralmind] Rebuilding the index in the background (log: $_nm_dir/hook-build.log)"\n'
+        if announce
+        else ""
+    )
+    queued = (
+        "    else\n"
+        '        echo "[neuralmind] A rebuild is already running; it will include this change"\n'
+        if announce
+        else ""
+    )
+    return (
+        f"    _nm_dir={target}/.neuralmind\n"
+        '    _nm_lock="$_nm_dir/.hook-build.lock"\n'
+        '    : >"$_nm_dir/.hook-build.pending"\n'
+        '    if [ -d "$_nm_lock" ]; then\n'
+        '        _nm_pid=$(cat "$_nm_lock/pid" 2>/dev/null) || _nm_pid=\n'
+        '        if [ -n "$_nm_pid" ]; then\n'
+        '            kill -0 "$_nm_pid" 2>/dev/null || rm -rf "$_nm_lock"\n'
+        '        elif [ -n "$(find "$_nm_lock" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then\n'
+        '            rm -rf "$_nm_lock"\n'
+        "        fi\n"
+        "    fi\n"
+        '    if mkdir "$_nm_lock" 2>/dev/null; then\n'
+        "        (\n"
+        "            unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX\n"
+        "            while :; do\n"
+        # $PPID of a child is this subshell: POSIX sh has no $BASHPID.
+        '                sh -c \'echo "$PPID"\' >"$_nm_lock/pid" 2>/dev/null || :\n'
+        '                rm -f "$_nm_dir/.hook-build.pending"\n'
+        f'                "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1 || :\n'
+        '                [ -e "$_nm_dir/.hook-build.pending" ] && continue\n'
+        '                rm -f "$_nm_lock/pid"\n'
+        '                rmdir "$_nm_lock" 2>/dev/null || :\n'
+        "                # An event that found the lock taken flagged pending first.\n"
+        '                [ -e "$_nm_dir/.hook-build.pending" ] && mkdir "$_nm_lock" 2>/dev/null || break\n'
+        "            done\n"
+        "        ) </dev/null >/dev/null 2>&1 &\n"
+        f"{started}"
+        f"{queued}"
+        "    fi\n"
+    )
+
+
+# What makes a project "built", as session_recap._project_built() defines it: the
+# SessionStart / UserPromptSubmit hooks create .neuralmind/ in any repository they
+# run in, and only a build writes build_status.json.
+_BUILT_MARKER = ".neuralmind/build_status.json"
+
+_HOOK_SCOPE_COMMENT = (
+    "# Managed by `neuralmind init-hook`. Rebuilds only a project that has been built\n"
+    "# (.neuralmind/build_status.json), so throwaway worktrees sharing these hooks stay\n"
+    "# untouched even after a session hook has created their .neuralmind/ directory.\n"
+)
+
+
+def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
+    """The ``post-commit`` block: decision scan (synchronous — it reads HEAD), then rebuild."""
+    return (
+        "# neuralmind-hook-start\n"
+        "# Retire decisions this commit made stale, then rebuild the NeuralMind index.\n"
+        + _HOOK_SCOPE_COMMENT
+        + _hook_resolve_binary_lines(bin_path)
+        # The scan's own precondition: no decision store, nothing to scan.
+        + f'if [ -n "$_nm_bin" ] && [ -f {target}/.neuralmind/memory.db ]; then\n'
+        + f'    "$_nm_bin" decisions scan {target} --quiet || true\n'
+        + "fi\n"
+        + f'if [ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
+        + _hook_rebuild_lines(target, sync, announce=True)
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
+
+
+def _lifecycle_block(hook: str, target: str, bin_path: str, sync: bool) -> str:
+    """A rebuild-only block for ``post-merge`` / ``post-checkout`` / ``post-rewrite``.
+
+    ``post-checkout`` fires for file checkouts too; only a branch checkout
+    (third argument ``1``) that lands on a different commit changes the tree.
+    No ``exit``: other tools' contributions to the same hook (git-lfs installs
+    ``post-checkout`` and ``post-merge``) must keep running after ours.
+    """
+    cond = '[ "$3" = "1" ] && [ "$1" != "$2" ] && ' if hook == "post-checkout" else ""
+    return (
+        "# neuralmind-hook-start\n"
+        f"# Rebuild the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
+        + _HOOK_SCOPE_COMMENT
+        + _hook_resolve_binary_lines(bin_path)
+        + f'if {cond}[ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
+        + _hook_rebuild_lines(target, sync, announce=False)
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
+
+
 def cmd_init_hook(args):
     """Initialize the Git hooks that keep the index fresh and the code honest.
 
-    Installs two hooks, both idempotent and both appended to any existing
+    Installs these hooks, all idempotent and all appended to any existing
     script rather than overwriting it:
 
     - ``post-commit`` marks recorded decisions STALE when the commit changed
       their files (``decisions scan``), then rebuilds the index so it never
       drifts stale;
+    - ``post-merge``, ``post-checkout`` (branch switches to another commit)
+      and ``post-rewrite`` rebuild the index after pulls, merges, branch
+      switches and rebases — events that change the tree without a local
+      commit;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
+
+    The rebuild runs in the background so git doesn't wait (``--sync`` keeps
+    the old foreground rebuild), serialized by a lock so overlapping events
+    coalesce, with its log at ``.neuralmind/hook-build.log``. The hooks call
+    the ``neuralmind`` found at install time, falling back to PATH, so they
+    work from GUI clients and service managers whose PATH lacks it. They
+    rebuild only a project that has been built (``build_status.json``, the
+    same test the session hooks use): linked worktrees share a repository's
+    hooks, and throwaway ones stay untouched (see #316) until someone runs
+    ``neuralmind build`` there — even after a session hook has created their
+    ``.neuralmind/`` directory.
 
     The pre-commit guard warns and exits 0 by default — a check that
     blocks commits on a heuristic loses its welcome fast. ``--strict``
@@ -6166,29 +6578,19 @@ def cmd_init_hook(args):
 
     hook_path = os.path.join(git_hooks_dir, "post-commit")
 
-    # The neuralmind block is delimited by sentinels so re-runs replace
-    # the block in place and coexist with other tools' hook contributions
-    # (e.g. `graphify hook install`).
-    #
-    # Note: `neuralmind build` has no --quiet flag; we redirect output to
-    # /dev/null instead. Using --force keeps it fast (skips nothing) but
-    # still reuses existing embeddings for unchanged nodes via hash checks.
+    # Blocks are delimited by sentinels so re-runs replace them in place and
+    # coexist with other tools' hook contributions (e.g. `graphify hook
+    # install`, git-lfs). `neuralmind build` has no --quiet flag, so its
+    # output goes to the log (background) or /dev/null (--sync).
     #
     # `decisions scan --quiet` prints only when a recorded decision went
     # stale, does nothing in a project with no decisions, and always exits 0;
     # `|| true` keeps a hook that can never fail the commit regardless.
-    nm_block = f"""# neuralmind-hook-start
-# Retire decisions this commit made stale, then rebuild the NeuralMind index.
-# Managed by `neuralmind init-hook`.
-if command -v neuralmind >/dev/null 2>&1; then
-    neuralmind decisions scan {target} --quiet || true
-    echo "[neuralmind] Rebuilding neural index..."
-    neuralmind build {target} >/dev/null 2>&1 && \\
-        echo "[neuralmind] OK" || \\
-        echo "[neuralmind] Rebuild failed (non-critical)"
-fi
-# neuralmind-hook-end
-"""
+    # `is True`: only a real --sync flag (argparse stores a bool) opts out of
+    # the background rebuild.
+    sync = getattr(args, "sync", False) is True
+    bin_path = _neuralmind_hook_binary()
+    nm_block = _post_commit_block(target, bin_path, sync)
 
     try:
         action = _write_hook(hook_path, nm_block)
@@ -6196,7 +6598,26 @@ fi
         if target != ".":
             print(f"  For the project at {rel} in the repository {repo_root}.")
         print("  After every commit: decisions whose files it changed are marked STALE,")
-        print("  then the index rebuilds.")
+        if sync:
+            print("  then the index rebuilds (git waits: --sync).")
+        else:
+            print("  then the index rebuilds in the background (git doesn't wait;")
+            print("  log: .neuralmind/hook-build.log).")
+        for hook in _LIFECYCLE_HOOKS:
+            lifecycle_path = os.path.join(git_hooks_dir, hook)
+            action = _write_hook(lifecycle_path, _lifecycle_block(hook, target, bin_path, sync))
+            print(f"✓ NeuralMind {hook} hook {action} at {lifecycle_path}")
+        print("  Pulls, merges, branch switches and rebases rebuild the index too.")
+        print("  They rebuild only a project that has been built, so throwaway worktrees")
+        print("  that share them are left alone.")
+        if bin_path:
+            print(f"  They run {bin_path} (falling back to `neuralmind` on PATH).")
+        else:
+            print("  They run `neuralmind` from PATH: no install path was found, so a")
+            print("  git client whose PATH lacks it will skip them.")
+        if not os.path.isfile(os.path.join(project_path, *_BUILT_MARKER.split("/"))):
+            print(f"  ⚠ No index yet in {project_path}: run `neuralmind build {target}` once;")
+            print("    the hooks keep it fresh from then on.")
     except Exception as e:
         print(f"Error installing hook: {e}")
         sys.exit(1)
@@ -6210,16 +6631,21 @@ fi
     # exits 0 without --strict, but a hook that can never block a commit by
     # accident is one people leave installed.
     strict = getattr(args, "strict", False)
-    drift_cmd = f"neuralmind drift {target} --staged" + (" --strict" if strict else "")
+    drift_cmd = f'"$_nm_bin" drift {target} --staged' + (" --strict" if strict else "")
     tail = "" if strict else " || true"
-    drift_block = f"""# neuralmind-hook-start
-# Flag staged changes that drift from a pattern their peers share.
-# Managed by `neuralmind init-hook`.
-if command -v neuralmind >/dev/null 2>&1; then
-    {drift_cmd}{tail}
-fi
-# neuralmind-hook-end
-"""
+    # Same install-time binary as the rebuild hooks, so a git client whose
+    # PATH lacks `neuralmind` doesn't skip the guard silently. With --strict
+    # the `if` block's status is drift's, so a drift still blocks the commit.
+    drift_block = (
+        "# neuralmind-hook-start\n"
+        "# Flag staged changes that drift from a pattern their peers share.\n"
+        "# Managed by `neuralmind init-hook`.\n"
+        + _hook_resolve_binary_lines(bin_path)
+        + 'if [ -n "$_nm_bin" ]; then\n'
+        + f"    {drift_cmd}{tail}\n"
+        + "fi\n"
+        "# neuralmind-hook-end\n"
+    )
 
     pre_commit_path = os.path.join(git_hooks_dir, "pre-commit")
     try:
@@ -6304,6 +6730,18 @@ def _positive_int(value: str) -> int:
     if n < 1:
         raise argparse.ArgumentTypeError(f"must be at least 1, got {n}")
     return n
+
+
+def _duration_arg(value: str) -> float:
+    """argparse ``type=`` for ``--stale-after``: ``30m``, ``2h``, ``1d`` -> seconds."""
+    from neuralmind.freshness import parse_duration
+
+    seconds = parse_duration(value)
+    if seconds is None:
+        raise argparse.ArgumentTypeError(
+            f"invalid duration: {value!r} (use a number with s, m, h or d, e.g. 30m)"
+        )
+    return seconds
 
 
 def _confidence_arg(value: str) -> float:
@@ -6391,6 +6829,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Remove orphaned vectors even when they are more than half the store "
         "(normally kept as a safety valve against a graph that shrank by mistake).",
     )
+    build_p.add_argument(
+        "--archive-graphify",
+        dest="archive_graphify",
+        action="store_true",
+        help="Rename an unused graphify-out/graph.json (left from a graphify-era build) "
+        "to graph.json.archived-<timestamp> before building, so it stops looking like "
+        "a live graph. Refused under graph_source: graphify.",
+    )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.add_argument(
         "--scope",
@@ -6430,6 +6876,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also apply .neuralmindignore globs. Off by default: that file is "
         "tuned for retrieval quality (it commonly excludes docs/ and tests/), "
         "and inheriting it would skip places credentials actually sit.",
+    )
+    scan_secrets_p.add_argument(
+        "--include-ignored",
+        dest="include_ignored",
+        action="store_true",
+        help="Also scan files .gitignore excludes (a full sweep). By default the "
+        "scan covers what git can commit and build indexes: tracked and "
+        "untracked files that .gitignore doesn't exclude.",
     )
     scan_secrets_p.add_argument("--json", "-j", action="store_true")
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
@@ -6695,6 +7149,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor_p.add_argument("project_path", nargs="?", default=".")
     doctor_p.add_argument("--json", "-j", action="store_true")
+    doctor_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Fail the code-graph check (exit 1) when the index has been behind the "
+        "files for longer than this, e.g. 30m, 2h, 1d. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     doctor_p.set_defaults(func=cmd_doctor)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
@@ -6737,6 +7201,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     health_p.add_argument("project_path", nargs="?", default=".")
     health_p.add_argument("--json", "-j", action="store_true")
+    health_p.add_argument(
+        "--stale-after",
+        dest="stale_after",
+        type=_duration_arg,
+        default=None,
+        metavar="DURATION",
+        help="Exit 0 ('catching up') while the index has been behind the files for no "
+        "longer than this, e.g. 30m; exit 1 after. Overrides stale_after in "
+        ".neuralmind.yaml.",
+    )
     health_p.set_defaults(func=cmd_health)
 
     metrics_p = subparsers.add_parser(
@@ -6819,6 +7293,13 @@ def build_parser() -> argparse.ArgumentParser:
         dest="no_history",
         action="store_true",
         help="Don't append this run to .neuralmind/eval_history.jsonl",
+    )
+    eval_p.add_argument(
+        "--synapse-ab",
+        dest="synapse_ab",
+        action="store_true",
+        help="Run the questions again with synapse recall off and report the difference "
+        "(questions moved up/down, hit@5 won/lost, exact McNemar p)",
     )
     eval_p.add_argument(
         "--suite",
@@ -7454,7 +7935,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser(
         "init-hook",
         help="Install Git hooks: post-commit decision scan + index rebuild, "
-        "pre-commit drift guard",
+        "post-merge/post-checkout/post-rewrite rebuilds, pre-commit drift guard",
     )
     init_parser.add_argument(
         "project_path",
@@ -7466,12 +7947,17 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--no-drift",
         action="store_true",
-        help="Skip the pre-commit drift guard; install the post-commit hook only",
+        help="Skip the pre-commit drift guard; install the rebuild hooks only",
     )
     init_parser.add_argument(
         "--strict",
         action="store_true",
         help="Make the pre-commit drift guard block the commit instead of warning",
+    )
+    init_parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="Rebuild in the foreground (git waits for the build) instead of in the background",
     )
     init_parser.set_defaults(func=cmd_init_hook)
 
@@ -7947,6 +8433,7 @@ def build_parser() -> argparse.ArgumentParser:
             "cap-search",
             "offload",
             "edit-activity",
+            "read-activity",
             "session-start",
             "prompt-submit",
             "pre-compact",

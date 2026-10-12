@@ -142,7 +142,7 @@ imports and inheritance, so the connected files start out structural and
 come to reflect what you edit together as you work in the project. When
 neither part has anything for a message, nothing is added.
 
-## 4. Edits are recorded
+## 4. Edits (and reads) are recorded
 
 After Hermes's `write_file` or `patch` tool lands an edit (Hermes reports its
 status as `ok`), the plugin's `post_tool_call` hook records the edited file, by
@@ -151,6 +151,14 @@ touches several files records each one it adds or updates. Recording runs on a
 background thread, so the turn doesn't wait for it. The file goes into the
 session's record for the next recap, and into the synapse layer, as an Edit or
 Write does in Claude Code.
+
+*(v4.14.0+)* Reads count too. A successful `read_file` of a file inside the
+project records a step in the synapse layer's file-to-file transitions, as
+Claude Code's Read hook does, so a session that reads its way through the code
+teaches `neuralmind next` what usually follows what. Reads aren't added to the
+recap, and a read outside the project (Hermes's own config, another
+repository) is never recorded. Before v4.14.0 only edits counted, so a Hermes
+project that was mostly read and queried stayed at 0 transitions.
 
 Not recorded:
 

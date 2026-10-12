@@ -91,6 +91,31 @@ def test_unreadable_index_is_quarantined_not_deleted(tmp_path):
     assert _index_path(tmp_path).exists(), "a fresh index should have been written"
 
 
+def test_doctor_reports_a_repaired_index_as_ok(tmp_path):
+    # After recovery the .stale backup stays behind. doctor used to report
+    # FAIL from that file alone, so a gate on `neuralmind doctor` failed on a
+    # working index (N-17 F3). It loads the live index instead, read-only.
+    from neuralmind import doctor
+
+    _ingest(tmp_path)
+    _index_path(tmp_path).write_bytes(b"corrupt \x00")
+    emb = TurboVecEmbedder(tmp_path)
+    try:
+        emb.search(QUERY, n=1)  # quarantines and rebuilds
+    finally:
+        emb.close()
+    tv_dir = _index_path(tmp_path).parent
+    before = {f.name: f.read_bytes() for f in tv_dir.iterdir() if f.suffix != ".sqlite"}
+    assert "index.tvim.stale" in before
+
+    check = doctor._check_turbovec_version(tmp_path)
+
+    assert check.status == doctor.OK, check.detail
+    assert "index.tvim.stale" in check.detail
+    after = {f.name: f.read_bytes() for f in tv_dir.iterdir() if f.suffix != ".sqlite"}
+    assert after == before, "doctor must not rename, rebuild or delete index files"
+
+
 def test_rebuild_is_a_noop_for_an_empty_store(tmp_path):
     # No rows to rebuild from: recovery must not invent an index or raise.
     emb = TurboVecEmbedder(tmp_path)

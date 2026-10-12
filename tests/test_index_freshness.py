@@ -39,7 +39,8 @@ def _fake_embed(texts: list[str]) -> list[list[float]]:
     for t in texts:
         vec = np.zeros(_DIM, dtype=np.float32)
         for tok in t.lower().replace("\n", " ").split():
-            vec[int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], "little") % _DIM] += 1.0
+            digest = hashlib.md5(tok.encode(), usedforsecurity=False).digest()
+            vec[int.from_bytes(digest[:4], "little") % _DIM] += 1.0
         out.append(vec.tolist())
     return out
 
@@ -392,6 +393,184 @@ class TestHealth:
         assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("unknown", False, 1)
 
 
+# --------------------------------------------------------------------------- #
+# v4.13.0 — how long the index has been behind, and a stale_after grace period
+# --------------------------------------------------------------------------- #
+def _behind_repo(root: Path, hours_ago: float) -> None:
+    """A graph of 20 files plus one file on disk it has never seen (WARN)."""
+    rels = [f"m{i}.py" for i in range(20)]
+    _write_files(root, rels + ["new.py"])
+    _write_graphify(root, _graphify_graph(rels))
+    then = time.time() - hours_ago * 3600
+    os.utime(root / "new.py", (then, then))
+
+
+class TestStaleAfter:
+    @pytest.mark.parametrize(
+        ("raw", "seconds"),
+        [("30m", 1800.0), ("2h", 7200.0), ("1d", 86400.0), ("45s", 45.0), ("1.5h", 5400.0)],
+    )
+    def test_durations(self, raw, seconds):
+        assert freshness.parse_duration(raw) == seconds
+
+    @pytest.mark.parametrize("raw", ["30", "", "soon", "-5m", None, True, "5w"])
+    def test_a_bare_number_or_anything_else_is_refused(self, raw):
+        assert freshness.parse_duration(raw) is None
+
+    def test_the_report_says_when_the_unindexed_file_changed(self, tmp_path):
+        _behind_repo(tmp_path, hours_ago=3)
+        report = graph_freshness(tmp_path)
+        assert report.status == WARN
+        assert "newest modified 3h ago" in report.render()
+        assert 3 * 3600 - 60 < report.behind_seconds() < 3 * 3600 + 60
+        assert report.exceeds(1800)  # behind 3h, allowed 30m
+        assert not report.exceeds(86400)  # allowed a day
+        assert report.to_dict()["behind_seconds"] > 3 * 3600 - 60
+
+    def test_a_deleted_file_has_no_date_so_always_exceeds(self, tmp_path):
+        rels = [f"m{i}.py" for i in range(20)]
+        _write_files(tmp_path, rels)
+        _write_graphify(tmp_path, _graphify_graph(rels))
+        (tmp_path / "m3.py").unlink()
+        report = graph_freshness(tmp_path)
+        assert report.status == WARN
+        assert report.exceeds(86400 * 365)
+
+    def test_doctor_fails_past_stale_after_and_only_then(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        assert doctor._check_graph(tmp_path).status == WARN
+        assert doctor._check_graph(tmp_path, stale_after=86400).status == WARN
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "behind for 3h, over stale_after 30m" in check.detail
+        # The same, set once in .neuralmind.yaml.
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30m\n", encoding="utf-8")
+        assert doctor._check_graph(tmp_path).status == FAIL
+
+    def test_health_gives_a_watcher_time_to_catch_up(self, tmp_path, capsys):
+        from neuralmind.cli_health import cmd_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)  # six minutes behind
+        TestHealth()._index(tmp_path)
+
+        def run(stale_after):
+            with pytest.raises(SystemExit) as exc:
+                cmd_health(
+                    SimpleNamespace(project_path=str(tmp_path), json=True, stale_after=stale_after)
+                )
+            return exc.value.code, json.loads(capsys.readouterr().out)
+
+        code, data = run(1800)  # 6m behind, 30m allowed
+        assert (code, data["status"], data["healthy"]) == (0, "catching_up", True)
+        assert 300 < data["behind_seconds"] < 420
+        code, data = run(60)  # 1m allowed
+        assert (code, data["status"]) == (1, "stale")
+        code, data = run(None)  # no grace: as before
+        assert (code, data["status"]) == (1, "stale")
+
+    def test_health_text_says_how_far_behind(self, tmp_path, capsys):
+        from neuralmind.cli_health import cmd_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)
+        TestHealth()._index(tmp_path)
+        with pytest.raises(SystemExit):
+            cmd_health(SimpleNamespace(project_path=str(tmp_path), json=False, stale_after=1800))
+        out = capsys.readouterr().out
+        assert "catching up (behind 6m, within stale_after 30m)" in out
+
+    def test_a_deleted_file_is_reported_as_undated_not_as_how_far_behind(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=0.1)  # dated: 6m behind
+        (tmp_path / "m3.py").unlink()  # undated
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "drift with no date" in check.detail
+        assert "behind for" not in check.detail
+
+    def test_limits_print_as_written(self):
+        assert freshness.format_duration(5400) == "90m"
+        assert freshness.format_duration(7200) == "2h"
+        assert freshness.format_duration(45) == "45s"
+
+    def test_mcp_health_honours_stale_after(self, tmp_path):
+        from neuralmind.mcp_server import tool_health
+
+        _behind_repo(tmp_path, hours_ago=0.1)
+        TestHealth()._index(tmp_path)
+        assert tool_health(str(tmp_path))["status"] == "stale"
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30m\n", encoding="utf-8")
+        mcp = tool_health(str(tmp_path))
+        assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("catching_up", True, 0)
+
+    def test_rewriting_an_unindexed_file_does_not_restart_the_clock(self, tmp_path):
+        """A dead watcher and a file a tool keeps rewriting must still trip the gate."""
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        (tmp_path / ".neuralmind").mkdir()
+        assert doctor._check_graph(tmp_path, stale_after=1800).status == FAIL  # first seen 3h ago
+        (tmp_path / "new.py").write_text("def new_fn():\n    return 2\n", encoding="utf-8")
+        # Its mtime is now seconds old, but it has been waiting since the first sighting.
+        assert graph_freshness(tmp_path).behind_seconds() < 60
+        check = doctor._check_graph(tmp_path, stale_after=1800)
+        assert check.status == FAIL
+        assert "behind for 3h" in check.detail
+
+    def test_the_record_goes_once_nothing_drifts(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        (tmp_path / ".neuralmind").mkdir()
+        seen = tmp_path / ".neuralmind" / freshness.DRIFT_SEEN_FILE
+        doctor._check_graph(tmp_path, stale_after=1800)
+        assert json.loads(seen.read_text()).keys() == {"new.py"}
+        (tmp_path / "new.py").unlink()  # back in step with the graph
+        doctor._check_graph(tmp_path, stale_after=1800)
+        assert not seen.exists()
+
+    def test_tracking_needs_the_gate_and_never_creates_state(self, tmp_path):
+        from neuralmind import doctor
+
+        _behind_repo(tmp_path, hours_ago=3)
+        doctor._check_graph(tmp_path, stale_after=1800)  # no .neuralmind/: nothing written
+        assert not (tmp_path / ".neuralmind").exists()
+        (tmp_path / ".neuralmind").mkdir()
+        doctor._check_graph(tmp_path)  # no stale_after: nothing written
+        assert not (tmp_path / ".neuralmind" / freshness.DRIFT_SEEN_FILE).exists()
+
+    def test_stale_after_in_config(self, tmp_path):
+        from neuralmind.neuralmind_config import NeuralmindConfig
+
+        assert NeuralmindConfig.load(tmp_path).stale_after is None
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 2h\n", encoding="utf-8")
+        assert NeuralmindConfig.load(tmp_path).stale_after == 7200.0
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30\n", encoding="utf-8")
+        config = NeuralmindConfig.load(tmp_path)
+        assert (config.stale_after, config.stale_after_invalid) == (None, "30")
+
+    def test_an_invalid_stale_after_is_reported_not_ignored(self, tmp_path, capsys):
+        from neuralmind import doctor
+        from neuralmind.cli_health import cmd_health
+
+        rels = [f"m{i}.py" for i in range(3)]
+        _write_files(tmp_path, rels)
+        _write_graphify(tmp_path, _graphify_graph(rels))  # in step: OK
+        (tmp_path / ".neuralmind.yaml").write_text("stale_after: 30\n", encoding="utf-8")
+        check = doctor._check_graph(tmp_path)
+        assert check.status == WARN
+        assert "isn't a duration" in check.detail and "no stale_after gate" in check.detail
+
+        TestHealth()._index(tmp_path)
+        with pytest.raises(SystemExit):
+            cmd_health(SimpleNamespace(project_path=str(tmp_path), json=True, stale_after=None))
+        out = capsys.readouterr()
+        assert json.loads(out.out)["stale_after_invalid"] == "30"
+        assert "isn't a duration" in out.err
+
+
 class TestMcpWakeupLine:
     def test_stale_graph_prefixes_one_line(self, tmp_path):
         from neuralmind.mcp_server import _freshness_line
@@ -644,6 +823,58 @@ class TestGraphSourceBuild:
         assert result["success"]
         assert result["graph"]["kind"] == "built-in"
         assert opened == []
+
+    def test_a_leftover_graphify_graph_is_named_until_archived(self, tmp_path):
+        from neuralmind import doctor
+
+        rels = ["a.py", "b.py"]
+        _write_files(tmp_path, rels)
+        assert _mind(tmp_path).build()["graph"]["kind"] == "built-in"
+        # A graphify-era graph.json beside the built-in one: nothing reads it.
+        legacy = _write_graphify(tmp_path, _graphify_graph(rels))
+
+        result = _mind(tmp_path).build()
+        assert result["graph"]["kind"] == "built-in"
+        notices = "\n".join(result["notices"])
+        assert "Ignoring graphify-out/graph.json" in notices
+        assert "--archive-graphify" in notices
+        check = doctor._check_graph_source(tmp_path)
+        assert check.status == doctor.WARN
+        assert "--archive-graphify" in check.fix
+
+        archived = _mind(tmp_path).build(archive_graphify=True)
+        assert archived["success"]
+        assert not legacy.exists()
+        kept = list(legacy.parent.glob("graph.json.archived-*"))
+        assert len(kept) == 1
+        assert json.loads(kept[0].read_text(encoding="utf-8")) == _graphify_graph(rels)
+        assert any("Archived graphify-out/graph.json" in n for n in archived["notices"])
+        assert not any("Ignoring graphify-out" in n for n in archived["notices"])
+        assert doctor._check_graph_source(tmp_path).status == doctor.OK
+
+    def test_an_explicit_graph_source_is_not_flagged(self, tmp_path):
+        from neuralmind import doctor
+
+        rels = ["a.py"]
+        _write_files(tmp_path, rels)
+        assert _mind(tmp_path).build()["success"]
+        _write_graphify(tmp_path, _graphify_graph(rels))
+        _set_graph_source(tmp_path, "builtin")
+
+        result = _mind(tmp_path).build()
+        assert not any("Ignoring graphify-out" in n for n in result["notices"])
+        assert doctor._check_graph_source(tmp_path).status == doctor.OK
+
+    def test_archive_graphify_is_refused_when_it_is_the_source(self, tmp_path):
+        rels = ["a.py"]
+        _write_files(tmp_path, rels)
+        legacy = _write_graphify(tmp_path, _graphify_graph(rels))
+        _set_graph_source(tmp_path, "graphify")
+
+        result = _mind(tmp_path).build(archive_graphify=True)
+        assert not result["success"]
+        assert "graph_source: graphify" in result["error"]
+        assert legacy.exists()
 
     def test_graphify_setting_requires_the_graph(self, tmp_path):
         _write_files(tmp_path, ["a.py"])
@@ -1005,7 +1236,8 @@ def fake(texts):
     for t in texts:
         v = [0.0] * 384
         for tok in t.lower().split():
-            v[int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], "little") % 384] += 1.0
+            digest = hashlib.md5(tok.encode(), usedforsecurity=False).digest()
+            v[int.from_bytes(digest[:4], "little") % 384] += 1.0
         out.append(v)
     return out
 

@@ -37,6 +37,16 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.12.1 — `doctor` exits 1 on a failed check; examples rank below code (October 2026)
+
+`neuralmind doctor` exits 1 again when a check fails, as documented (v0.55.0
+through v4.12.0 always exited 0), and a leftover `index.tvim.stale` backup no
+longer fails it once the index is rebuilt. Example scripts (`examples/`,
+`demos/`, `samples/`) now rank below the code they demonstrate, as test files
+have since v4.12.0, unless the question asks for an example
+(`NEURALMIND_EXAMPLE_FILE_FACTOR=1` turns it off). See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.1.md).
+
 ### v4.12.0 — Retrieval that keeps what vector search finds (October 2026)
 
 On the public benchmark, NeuralMind's own vector index alone — top 8, nothing
@@ -62,7 +72,7 @@ baseline's (0.74, 0.94). Query p50 was 13–14 ms on the library repos and
 it. Run `neuralmind build` once after upgrading.
 [Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md).
 
-### v4.11.1 — No turbovec store on a ChromaDB project (October 2026)
+### Also in v4.12.0 — No turbovec store on a ChromaDB project (October 2026)
 
 `neuralmind build` and `neuralmind doctor` check whether the turbovec index
 was quarantined, and both opened the turbovec store to do it, whatever the
@@ -71,7 +81,7 @@ every build left an empty `.neuralmind/neuralmind_turbovec/store.sqlite`
 behind, and `doctor` called it "Index version compatible". Both checks now
 run only on turbovec projects; elsewhere `doctor` reports the check as not
 applicable.
-[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.1.md).
+[Release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.12.0.md#also-in-this-release-no-turbovec-store-on-a-chromadb-project).
 
 ### v4.11.0 — Prompt recall that names the files a prompt is about and stays quiet when the prompt isn't about the code, and a session's own record back after compaction (October 2026)
 
