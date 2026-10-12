@@ -334,7 +334,7 @@ def cmd_scan_for_secrets(args):
     present so CI can gate on it; heuristic-only findings warn but pass
     unless ``--strict`` is given.
     """
-    from neuralmind.secret_scan import scan_project
+    from neuralmind.secret_scan import scan_project_report
 
     project_path = args.project_path or "."
     path = Path(project_path)
@@ -343,11 +343,14 @@ def cmd_scan_for_secrets(args):
         sys.exit(2)
 
     include_heuristic = not args.high_confidence_only
-    findings = scan_project(
+    include_ignored = getattr(args, "include_ignored", False) is True
+    report = scan_project_report(
         project_path,
         include_heuristic=include_heuristic,
         respect_ignore_file=args.use_neuralmindignore,
+        respect_gitignore=not include_ignored,
     )
+    findings = report.findings
 
     high = [f for f in findings if f.confidence == "high"]
     heuristic = [f for f in findings if f.confidence != "high"]
@@ -360,6 +363,9 @@ def cmd_scan_for_secrets(args):
                     "findings": [f.to_dict() for f in findings],
                     "high_confidence": len(high),
                     "heuristic": len(heuristic),
+                    "gitignore_respected": report.git and not include_ignored,
+                    "ignored_files_skipped": report.ignored_files_skipped,
+                    "skipped_worktrees": report.skipped_worktrees,
                 },
                 indent=2,
             )
@@ -372,14 +378,35 @@ def cmd_scan_for_secrets(args):
         else:
             for f in findings:
                 tag = "HIGH " if f.confidence == "high" else "maybe"
-                print(f"  [{tag}] {f.path}:{f.line}  {f.kind}  ({f.preview})")
+                where = {True: "  [tracked]", False: "  [untracked]", None: ""}[f.tracked]
+                print(f"  [{tag}] {f.path}:{f.line}  {f.kind}  ({f.preview}){where}")
             print()
-            print(f"  {len(high)} high-confidence, {len(heuristic)} heuristic.")
+            in_tracked = sum(1 for f in high if f.tracked)
+            tracked_note = f" ({in_tracked} in tracked files)" if report.git else ""
+            print(f"  {len(high)} high-confidence{tracked_note}, {len(heuristic)} heuristic.")
             print()
             print("  Previews are truncated — no full secret is printed.")
             print("  Remove these and rotate the credentials before building.")
+            if report.git:
+                print("  A credential in a tracked file is in git history: rotate it first.")
             print("  To keep a file out of the index entirely, add it to .neuralmindignore.")
             print("  To scrub secrets from the index itself: neuralmind build . --redact-secrets")
+        # What was left out, so a clean scan never hides it.
+        if report.skipped_worktrees or report.ignored_files_skipped:
+            print()
+        if report.skipped_worktrees:
+            n = len(report.skipped_worktrees)
+            shown = ", ".join(report.skipped_worktrees[:3]) + (", ..." if n > 3 else "")
+            print(
+                f"  Skipped {n} linked worktree{'s' if n != 1 else ''} ({shown}): "
+                "other checkouts of a repository; run the scan inside one to check it."
+            )
+        if report.ignored_files_skipped:
+            n = report.ignored_files_skipped
+            print(
+                f"  Skipped {n:,} file{'s' if n != 1 else ''} that .gitignore excludes "
+                "(never committed or indexed). --include-ignored scans them too."
+            )
 
     if high or (args.strict and heuristic):
         sys.exit(1)
@@ -6849,6 +6876,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also apply .neuralmindignore globs. Off by default: that file is "
         "tuned for retrieval quality (it commonly excludes docs/ and tests/), "
         "and inheriting it would skip places credentials actually sit.",
+    )
+    scan_secrets_p.add_argument(
+        "--include-ignored",
+        dest="include_ignored",
+        action="store_true",
+        help="Also scan files .gitignore excludes (a full sweep). By default the "
+        "scan covers what git can commit and build indexes: tracked and "
+        "untracked files that .gitignore doesn't exclude.",
     )
     scan_secrets_p.add_argument("--json", "-j", action="store_true")
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)

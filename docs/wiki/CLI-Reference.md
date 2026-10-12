@@ -368,7 +368,7 @@ rotated **before** they reach the index, a commit, or an agent's context.
 
 ```bash
 neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict]
-                            [--use-neuralmindignore] [--json]
+                            [--include-ignored] [--use-neuralmindignore] [--json]
 ```
 
 | Option | Effect |
@@ -376,18 +376,41 @@ neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict]
 | `PROJECT_PATH` | Project root (default `.`). |
 | `--high-confidence-only` | Report only vendor-shaped credentials; suppress the generic-assignment heuristic. |
 | `--strict` | Exit non-zero on heuristic findings too (default: high-confidence only). |
+| `--include-ignored` | Also scan files `.gitignore` excludes, for a full sweep *(v4.15.0)*. By default a scan inside a git repository covers what can be committed and what `build` indexes. |
 | `--use-neuralmindignore` | Also apply `.neuralmindignore` globs. **Off by default** — see below. |
 | `--json` / `-j` | Machine-readable output. |
 
 ```
 NeuralMind secret scan — /home/dev/myproject
 
-  [HIGH ] .env:1  anthropic-api-key  (sk-a…(43 chars))
-  [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))
-  [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))
+  [HIGH ] scratch.py:1  anthropic-api-key  (sk-a…(43 chars))  [untracked]
+  [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))  [tracked]
+  [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))  [tracked]
 
-  2 high-confidence, 1 heuristic.
+  2 high-confidence (1 in tracked files), 1 heuristic.
+  ...
+
+  Skipped 1 linked worktree (.worktrees/a1): other checkouts of a repository; run the scan inside one to check it.
+  Skipped 1 file that .gitignore excludes (never committed or indexed). --include-ignored scans them too.
 ```
+
+**What a scan covers** *(v4.15.0)*. Inside a git repository, the files
+`build` indexes, from the same `git ls-files` listing: tracked files, and
+untracked files `.gitignore` doesn't exclude. A gitignored `.env` can't be
+committed and isn't indexed, so it isn't reported unless you pass
+`--include-ignored`; the report always ends with how many ignored files it
+skipped, so a clean scan never hides them. Linked worktrees inside the
+checkout (`.worktrees/<id>/`, `.claude/worktrees/<id>/`, any directory whose
+`.git` file names a `git worktree add` checkout) are skipped even with
+`--include-ignored`, because each is another copy of a repository and would
+repeat every finding; they are listed instead. Submodules and nested
+repositories are scanned. Outside a git repository everything is read.
+
+**Each finding says whether git tracks its file** *(v4.15.0)*: `[tracked]` or
+`[untracked]`, and `"tracked": true | false` in `--json` (`null` outside a
+repository). A credential in a tracked file is already in history, or one
+commit from it, so rotate that one first. `--json` also reports
+`gitignore_respected`, `ignored_files_skipped` and `skipped_worktrees`.
 
 **Two confidence tiers.** `HIGH` matches a vendor-specific shape and
 effectively never fires on prose: Anthropic and OpenAI keys, AWS access
@@ -416,7 +439,8 @@ a length — so scan output is safe to paste into an issue or a CI log.
 | Path does not exist | `2` |
 
 The scanner reads files directly rather than going through the indexer, so
-it sees `.env` and other files `build` never parses. It skips the usual
+it sees a `.env` that isn't gitignored, and other files `build` never parses
+(a gitignored one with `--include-ignored`). It skips the usual
 vendored/build directories (`node_modules`, `.venv`, `dist`, `target`,
 `.git`, `.neuralmind`), binary files, and anything over 5 MB.
 

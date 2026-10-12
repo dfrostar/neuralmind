@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.15.0](https://github.com/dfrostar/neuralmind/compare/v4.14.0...v4.15.0) (2026-10-12)
+
+
+### Features
+
+* **scan-for-secrets:** skip linked worktrees, honour .gitignore, mark findings tracked or untracked ([#652](https://github.com/dfrostar/neuralmind/issues/652)) ([0116055](https://github.com/dfrostar/neuralmind/commit/0116055daef669b8170c322cdafe7caf032996ee)), closes [#635](https://github.com/dfrostar/neuralmind/issues/635)
+
+## [4.14.0](https://github.com/dfrostar/neuralmind/compare/v4.13.0...v4.14.0) (2026-10-11)
+
+
+### Features
+
+* measure the synapse layer on your own repo (eval --synapse-ab), let Hermes reads train transitions, and say what the public numbers don't measure ([#646](https://github.com/dfrostar/neuralmind/issues/646)) ([c53302e](https://github.com/dfrostar/neuralmind/commit/c53302e3b9b35d013ef6c2de0261994dc34c079d))
+* **release:** sign images, attest builds, scan with bandit and pip-audit, publish VEX (NIST SSDF) ([#647](https://github.com/dfrostar/neuralmind/issues/647)) ([aa52eae](https://github.com/dfrostar/neuralmind/commit/aa52eae831f4bfe6dba90ec758437f6daed7a691))
+
 ## [4.13.0](https://github.com/dfrostar/neuralmind/compare/v4.12.1...v4.13.0) (2026-10-11)
 
 

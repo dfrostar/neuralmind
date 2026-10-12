@@ -171,6 +171,10 @@ class SecretFinding:
     kind: str
     confidence: str
     preview: str
+    # Whether git tracks the file: True / False inside a repository, None
+    # outside one. A credential in a tracked file is already in history (or
+    # one commit away from it); one in an untracked file is not.
+    tracked: bool | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -179,7 +183,24 @@ class SecretFinding:
             "kind": self.kind,
             "confidence": self.confidence,
             "preview": self.preview,
+            "tracked": self.tracked,
         }
+
+
+@dataclass(frozen=True)
+class ScanReport:
+    """What :func:`scan_project_report` scanned, found and left out."""
+
+    findings: list[SecretFinding]
+    # Linked worktrees found inside the project (POSIX, relative). Each is a
+    # second checkout of a repository, so scanning it repeats every finding.
+    skipped_worktrees: list[str]
+    # Files git ignores that were not read; 0 with ``respect_gitignore=False``
+    # or outside a repository.
+    ignored_files_skipped: int
+    # True when the file list came from git, so ``.gitignore`` applied and
+    # ``SecretFinding.tracked`` is known.
+    git: bool
 
 
 @dataclass(frozen=True)
@@ -816,24 +837,99 @@ def _matches_ignore(rel_path: str, patterns: list[str]) -> bool:
     return False
 
 
+def _is_linked_worktree(directory: Path) -> bool:
+    """True when ``directory`` is a linked worktree (``git worktree add``).
+
+    A linked worktree's ``.git`` is a file naming a gitdir under the main
+    repository's ``.git/worktrees/``, and that gitdir holds a ``commondir``
+    file. A submodule's ``.git`` is a file too, but its gitdir (under
+    ``.git/modules/``) has no ``commondir``: a submodule is separate code
+    that ``build`` indexes, so it is still scanned, as is a nested repository
+    with a ``.git`` directory.
+    """
+    marker = directory / ".git"
+    if not marker.is_file():
+        return False
+    try:
+        first = marker.read_text(encoding="utf-8", errors="replace").splitlines()[0]
+    except (OSError, IndexError):
+        return False
+    if not first.startswith("gitdir:"):
+        return False
+    gitdir = Path(first[len("gitdir:") :].strip())
+    if not gitdir.is_absolute():
+        gitdir = directory / gitdir
+    if (gitdir / "commondir").is_file():
+        return True
+    # A worktree whose gitdir is gone (moved, or pruned from another clone)
+    # can't be checked that way; its path still says what it was.
+    return "worktrees" in gitdir.parts and not gitdir.exists()
+
+
+def _git_tracked_files(root: Path) -> set[str] | None:
+    """Files git tracks under ``root`` (POSIX, relative), submodules included.
+
+    None when git can't say, so a failed listing reads as "unknown", not as
+    every file untracked.
+    """
+    from neuralmind import ignore as _ignore
+
+    listed = _ignore._git_lines(root, "ls-files", "-z", "--cached", "--recurse-submodules")
+    return None if listed is None else set(listed)
+
+
 def scan_project(
     root: str | Path,
     include_heuristic: bool = True,
     ignore_dirs: frozenset[str] | None = None,
     respect_ignore_file: bool = False,
+    respect_gitignore: bool = True,
 ) -> list[SecretFinding]:
-    """Walk ``root`` and scan every non-binary file.
+    """Findings of :func:`scan_project_report` — see there."""
+    return scan_project_report(
+        root,
+        include_heuristic=include_heuristic,
+        ignore_dirs=ignore_dirs,
+        respect_ignore_file=respect_ignore_file,
+        respect_gitignore=respect_gitignore,
+    ).findings
 
-    Reads everything except vendored/build directories. ``.neuralmindignore``
-    is honoured **only** when ``respect_ignore_file`` is True — see
-    :func:`_load_neuralmindignore` for why that is not the default. Paths in
-    the result are project-relative so output is stable across machines (and
-    safe to paste into an issue).
+
+def scan_project_report(
+    root: str | Path,
+    include_heuristic: bool = True,
+    ignore_dirs: frozenset[str] | None = None,
+    respect_ignore_file: bool = False,
+    respect_gitignore: bool = True,
+) -> ScanReport:
+    """Walk ``root`` and scan every non-binary file in scope.
+
+    Skips vendored/build directories and linked worktrees inside the project
+    (each is another checkout of a repository, so it would repeat every
+    finding). Inside a git repository the scope is what ``build`` indexes:
+    tracked and untracked files minus what ``.gitignore`` excludes, as
+    :func:`neuralmind.ignore.git_visible_files` lists them. Pass
+    ``respect_gitignore=False`` to read ignored files too (a full sweep).
+    By default the report counts the ignored files it left out, so a clean
+    scan never hides them. ``.neuralmindignore`` is honoured **only** when
+    ``respect_ignore_file`` is True — see :func:`_load_neuralmindignore` for
+    why that is not the default. Paths in the result are project-relative so
+    output is stable across machines (and safe to paste into an issue).
     """
+    from neuralmind import ignore as _ignore
+
     root_path = Path(root).resolve()
     ignores = ignore_dirs if ignore_dirs is not None else _SCAN_IGNORE_DIRS
     globs = _load_neuralmindignore(root_path) if respect_ignore_file else []
     findings: list[SecretFinding] = []
+    skipped_worktrees: list[str] = []
+    ignored_skipped = 0
+
+    visible = _ignore.git_visible_files(root_path)
+    tracked = _git_tracked_files(root_path) if visible is not None else None
+
+    def is_tracked(rel: str) -> bool | None:
+        return None if tracked is None else rel in tracked
 
     # The state directory is pruned below, but a cache written by a version
     # before redaction existed is plaintext and untracked — so neither
@@ -850,11 +946,20 @@ def scan_project(
                     kind=finding.kind,
                     confidence=finding.confidence,
                     preview=finding.preview,
+                    tracked=is_tracked(f"{STATE_DIR_NAME}/{LEGACY_CACHE_FILENAME}"),
                 )
             )
 
     for dirpath, dirnames, filenames in os.walk(root_path):
-        dirnames[:] = sorted(d for d in dirnames if d not in ignores)
+        kept = []
+        for d in sorted(dirnames):
+            if d in ignores:
+                continue
+            if _is_linked_worktree(Path(dirpath) / d):
+                skipped_worktrees.append((Path(dirpath) / d).relative_to(root_path).as_posix())
+                continue
+            kept.append(d)
+        dirnames[:] = kept
         if globs:
             dirnames[:] = [
                 d
@@ -865,8 +970,13 @@ def scan_project(
             fpath = Path(dirpath) / name
             if fpath.is_symlink():
                 continue
-            if globs and _matches_ignore(fpath.relative_to(root_path).as_posix(), globs):
+            rel_posix = fpath.relative_to(root_path).as_posix()
+            if globs and _matches_ignore(rel_posix, globs):
                 continue
+            if visible is not None and rel_posix not in visible:
+                ignored_skipped += 1
+                if respect_gitignore:
+                    continue
             for finding in scan_file(fpath, include_heuristic=include_heuristic):
                 try:
                     rel = str(Path(finding.path).resolve().relative_to(root_path))
@@ -879,6 +989,12 @@ def scan_project(
                         kind=finding.kind,
                         confidence=finding.confidence,
                         preview=finding.preview,
+                        tracked=is_tracked(rel_posix),
                     )
                 )
-    return findings
+    return ScanReport(
+        findings=findings,
+        skipped_worktrees=skipped_worktrees,
+        ignored_files_skipped=ignored_skipped if respect_gitignore else 0,
+        git=visible is not None,
+    )

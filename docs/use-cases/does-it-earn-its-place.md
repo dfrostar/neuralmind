@@ -158,6 +158,11 @@ pre-registered record of how often the retrieval layer pointed at the fix
 before anyone knew what it was. That is evidence for or against keeping any
 retrieval tool, not only this one.
 
+If you're willing to share what you find, good or bad, the
+[field report form](https://github.com/dfrostar/neuralmind/issues/new?template=field-report.yml)
+asks for the same numbers: `stats`, `doctor` and the `--synapse-ab` lines, not
+your code or your questions.
+
 Related: [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md) ·
 [A/B-test a ranking change](./ab-test-a-ranking-change.md) ·
 [Recover from a stale code graph](./recover-from-a-stale-graph.md) ·

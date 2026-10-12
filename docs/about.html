@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4150">
+            <h2>What&rsquo;s New in v4.15.0 &mdash; a secret scan you can act on</h2>
+            <p>A 12-repository field audit found <code>neuralmind scan-for-secrets</code> hard to read where it mattered most: worktrees kept inside the checkout repeated every finding, and none of the HIGH findings was a committed secret. The scan now covers what you can commit, once:</p>
+            <ul>
+                <li><strong>Linked worktrees are skipped</strong> &mdash; <code>.worktrees/&lt;id&gt;/</code>, <code>.claude/worktrees/&lt;id&gt;/</code> and any other <code>git worktree add</code> checkout inside the project are listed, not walked, so each finding appears once. Submodules and nested repositories are still scanned</li>
+                <li><strong><code>.gitignore</code> is honoured</strong> &mdash; inside a git repository the scan covers what <code>build</code> indexes; <code>--include-ignored</code> adds ignored files for a full sweep, and the report always says how many it skipped</li>
+                <li><strong>Tracked or untracked</strong> &mdash; each finding says whether git tracks its file (<code>"tracked"</code> in <code>--json</code>), because a credential already in history is the one to rotate first</li>
+            </ul>
+            <p>Exit codes are unchanged. Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.15.0.md">v4.15.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4140">
             <h2>What&rsquo;s New in v4.14.0 &mdash; measure the synapse layer on your own repo, and releases you can verify</h2>
             <p><strong>A way to check the learning instead of taking it on trust.</strong> A field user had a second agent review their NeuralMind setup adversarially. The verdict: the demos showed the mechanism working, not the outcome, and nothing showed the synapse layer improving retrieval over time. Fair, so this release adds the measurement:</p>
