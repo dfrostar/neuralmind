@@ -742,7 +742,12 @@ def serve(
     editor: str | None = None,
 ) -> None:
     """Build the index and serve the graph-view UI until interrupted."""
+    from .security_profile import refuse_exposed_listener
+
     project_path = Path(project_path).resolve()
+    # Before building or binding anything: a CUI project is never served
+    # beyond loopback or without its token (raises ProfileRefusedError).
+    refuse_exposed_listener(project_path, host, auth, "serve")
     _ensure_graph_or_explain(project_path)
 
     mind = NeuralMind(str(project_path))

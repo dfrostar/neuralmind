@@ -104,6 +104,9 @@ keywords = [
     "nist-ssdf",
     "sigstore-signed",
     "openvex",
+    "nist-800-171",
+    "cmmc-level-2",
+    "cui-security-profile",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

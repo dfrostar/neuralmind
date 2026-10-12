@@ -1341,11 +1341,20 @@ class SynapseStore:
         edges at moderate weight (0.25-0.40).
 
         Requires ``NEURALMIND_LLM_SEED=1`` and a configured LLM provider.
-        Fail-open: if the LLM call fails, returns 0.
+        Fail-open: if the LLM call fails, returns 0. Refused outright, whatever
+        the environment says, for a project under ``security.profile: cui``:
+        that prose would leave the enclave for the model provider.
         """
         import os
 
         if os.environ.get("NEURALMIND_LLM_SEED") != "1":
+            return 0
+
+        from .security_profile import llm_seeding_refusal, record_refusal
+
+        refusal = llm_seeding_refusal(docs_root)
+        if refusal:
+            record_refusal(docs_root, "llm_seed", refusal)
             return 0
 
         if not os.environ.get("ANTHROPIC_API_KEY"):

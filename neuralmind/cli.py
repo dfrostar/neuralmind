@@ -5041,6 +5041,7 @@ def cmd_serve(args):
     browser, and semantic quick-switch search. The HTTP handlers
     themselves are read-only.
     """
+    from neuralmind.security_profile import ProfileRefusedError
     from neuralmind.server import serve
 
     project_path = args.project_path or "."
@@ -5059,6 +5060,11 @@ def cmd_serve(args):
         )
     except RuntimeError as exc:
         print(f"serve failed: {exc}")
+        sys.exit(1)
+    except ProfileRefusedError as exc:
+        # A PermissionError, so it must be caught before OSError: it is a
+        # refusal, not a bind failure.
+        print(f"serve refused: {exc}")
         sys.exit(1)
     except OSError as exc:
         print(f"serve failed: could not bind {args.host}:{args.port} ({exc})")

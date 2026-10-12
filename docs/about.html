@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files and finds a decision by meaning as well as by its words, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, NIST SP 800-171, CMMC Level 2 security profile, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -195,6 +195,20 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, local-first processing with no telemetry, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4160">
+            <h2>What&rsquo;s New in v4.16.0 &mdash; the CUI-enclave posture as one setting</h2>
+            <p>Running NeuralMind on CUI source code took four separate decisions, set and checked by hand. <code>security.profile: cui</code> in <code>neuralmind-backend.yaml</code> makes them one, enforced at run time:</p>
+            <ul>
+                <li><strong>OS-account identity and encrypted storage</strong> &mdash; it forces <code>identity: os</code> and <code>require_encrypted_storage: true</code>; a contradicting or misspelled setting fails closed</li>
+                <li><strong>No listener beyond loopback</strong> &mdash; <code>neuralmind serve</code> refuses a non-loopback <code>--host</code> and <code>--no-auth</code> (exit 1), and a daemon started that way refuses the project while still serving others</li>
+                <li><strong>No LLM documentation seeding</strong> &mdash; refused even with <code>NEURALMIND_LLM_SEED=1</code> set</li>
+                <li><strong>Audited and checked as a unit</strong> &mdash; each refusal is a <code>profile_refused</code> audit event, and <code>neuralmind doctor</code> fails the project when the OS FIPS mode is off (CMMC SC.L2-3.13.11)</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.16.0.md">v4.16.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">CUI enclave walkthrough</a></p>
         </div>
     </section>
 

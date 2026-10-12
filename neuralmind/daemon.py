@@ -51,6 +51,7 @@ from .http_util import (
     token_matches,
 )
 from .paths import ProjectNotFoundError
+from .security_profile import PROFILE_CUI, ProfileRefusedError, listener_problem, project_profile
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787
@@ -325,6 +326,9 @@ class DaemonContext:
     jobs: JobManager
     version: str = ""
     on_shutdown: Callable[[], None] | None = None
+    # Why this daemon's listener would expose a CUI project (a non-loopback
+    # bind or no token), or None. Set once, when the socket is bound.
+    exposure: str | None = None
 
 
 # Seconds a client may stall mid-request before its connection is closed.
@@ -482,6 +486,8 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
         raise DaemonError(404, f"no route for {method} {route}")
     except DaemonError as exc:
         return exc.status, {"error": exc.message}
+    except ProfileRefusedError as exc:
+        return 403, {"error": str(exc), "code": "security_denied", "reason": "profile"}
     except ProjectNotFoundError as exc:
         # A mistyped project path is the client's error, not the daemon's.
         return 404, {"error": str(exc), "code": "project_not_found"}
@@ -517,6 +523,7 @@ def _query(
     trace: bool = False,
     trace_verbose: bool = False,
 ) -> dict:
+    _admit(ctx, project)
     mind = ctx.registry.ensure_built(project)
     with ctx.registry.lock_for(project):
         result = mind.query(question, trace=trace, trace_verbose=trace_verbose)
@@ -531,7 +538,23 @@ def _query(
     }
 
 
+def _admit(ctx: DaemonContext, project: str) -> None:
+    """Refuse a CUI project when this daemon listens beyond loopback or without
+    its token. The daemon is shared by every project of the user who started
+    it, so the profile can't stop it from binding; it stops it from serving."""
+    if ctx.exposure is None or project_profile(project) != PROFILE_CUI:
+        return
+    from .security_profile import record_refusal
+
+    record_refusal(project, "daemon", ctx.exposure)
+    raise ProfileRefusedError(
+        f"security.profile: cui refuses to serve this project through this daemon because "
+        f"{ctx.exposure}. Restart it with `neuralmind daemon restart` (127.0.0.1, token on)."
+    )
+
+
 def _search(ctx: DaemonContext, project: str, query: str, n: int) -> dict:
+    _admit(ctx, project)
     mind = ctx.registry.ensure_built(project)
     with ctx.registry.lock_for(project):
         results = mind.search(query, n=n)
@@ -539,6 +562,7 @@ def _search(ctx: DaemonContext, project: str, query: str, n: int) -> dict:
 
 
 def _stats(ctx: DaemonContext, project: str) -> dict:
+    _admit(ctx, project)
     mind = ctx.registry.get(project)
     with ctx.registry.lock_for(project):
         # A fresh registry entry hasn't loaded its index, and get_stats()
@@ -554,6 +578,7 @@ def _savings(ctx: DaemonContext, project: str, cost: bool, model: str | None, qp
     # Reads the on-disk event log; no index or registry lock needed.
     from neuralmind.savings import compute_savings
 
+    _admit(ctx, project)
     return compute_savings(project, cost=cost, model=model, queries_per_day=qpd)
 
 
@@ -562,6 +587,7 @@ def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[i
     # registry's NeuralMind refuses a path that isn't a directory
     # (ProjectNotFoundError, a 404). Inside the job, an async build of a
     # mistyped project answered 202 and only failed later.
+    _admit(ctx, project)
     mind = ctx.registry.get(project)
 
     def _do() -> dict:
@@ -582,6 +608,7 @@ def _validate(ctx: DaemonContext, project: str, write: bool) -> dict:
     # Backend-free: validate_project never touches the embedding engine.
     from .core import validate_project
 
+    _admit(ctx, project)
     return validate_project(project, write=write)
 
 
@@ -680,6 +707,7 @@ def create_server(
         jobs=jobs,
         version=__version__,
         on_shutdown=lambda: threading.Thread(target=httpd.shutdown, daemon=True).start(),
+        exposure=listener_problem(host, auth),
     )
     httpd.nm_token = token  # type: ignore[attr-defined]
 
