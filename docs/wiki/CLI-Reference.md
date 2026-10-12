@@ -3815,6 +3815,15 @@ $ neuralmind onboarding --quick
 Run `neuralmind team license status` to view.
 ```
 
+#### Exit codes
+
+| Exit | Meaning |
+|-----:|---------|
+| 0 | Finished, including when you choose not to activate a license in step 1 |
+| 1 | The license agreement was declined, or the free license couldn't be written; onboarding stops at that step |
+
+*(v4.15.1+. Earlier versions printed the same message and exited 0.)*
+
 #### Honest scope
 
 - Free tier: `onboarding --quick` configures governance but doesn't issue paid license
@@ -3873,7 +3882,43 @@ seat and license actions, and, since v4.6.0, every team-memory `publish`
 `NEURALMIND_ACTOR_EMAIL`, the repository's `git config user.email`, or the OS
 user.
 
+Exit codes: 0 on success, 1 on any failure (see the
+[table below](#team-license-seats-audit-self-hosted), which covers every
+`team` command).
+
 Walkthrough: [Govern what your team's agents share](../use-cases/govern-team-memory.md).
+
+---
+
+### team license, seats, audit, self-hosted
+
+The other customer-side Team commands. The
+[Tier2-Operator-Guide](Tier2-Operator-Guide.md) walks through them.
+
+```bash
+neuralmind team license status | portal
+neuralmind team license activate FILE
+neuralmind team seats list [--json]
+neuralmind team seats add | remove EMAIL [--admin EMAIL]
+neuralmind team seats sync MANIFEST [--admin EMAIL]
+neuralmind team audit list [--since TS] [--until TS] [--actor EMAIL] [--json]
+neuralmind team audit export --format csv|json --output FILE
+neuralmind team audit verify
+neuralmind team self-hosted init [--data-dir DIR] | status | validate-license
+```
+
+#### Exit codes
+
+Every `team` command, `governance` included, exits 0 on success and 1 on
+failure; `seats sync` adds 2. *(v4.15.1+. Earlier versions printed the same
+messages and always exited 0, so a script couldn't tell an activated license
+from a refused one.)*
+
+| Exit | When |
+|-----:|------|
+| 0 | Success. `license status`, `license portal`, `self-hosted status` and `self-hosted validate-license` report a missing, expired or invalid license in their output and still exit 0 |
+| 1 | `license activate`: the file is missing or doesn't validate (`EXPIRED`, `INVALID`, …), and nothing is installed. `governance`, `seats` and `audit`: no usable license (a Team license file is missing, corrupted or expired), `--admin` isn't an admin, a seat limit, an unknown seat, or an invalid value. `seats sync`: the manifest is missing, malformed, the wrong version, expired, or not signed by the issuer. `audit verify`: the hash chain is broken. `self-hosted init`: the data dir is refused or can't be created |
+| 2 | `seats sync`: the manifest was applied only in part, because the license's seat limit refused some seats (listed under `failed` in its JSON report). argparse also exits 2 on a usage error |
 
 ---
 
@@ -4027,7 +4072,7 @@ renewed — issue a new one.
 |------|----------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist |
+| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist; *(v4.15.1+)* `team seats sync`: the manifest was applied only in part |
 | 3 | `build --strict`: the code graph fails the freshness check; `daemon status`: the daemon isn't running |
 | 6 | `license expiring`: renewals due inside the window |
 | 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |

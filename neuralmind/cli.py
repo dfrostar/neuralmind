@@ -8669,7 +8669,7 @@ def main():
         parser.print_help()
         sys.exit(1)
     try:
-        args.func(args)
+        code = args.func(args)
     except GraphNotBuiltError as e:
         # Turn the "no graph yet" failure into a readable setup hint instead
         # of a stack trace. `neuralmind doctor` gives the full picture.
@@ -8687,6 +8687,12 @@ def main():
         # up front: NeuralMind / DecisionStore refused it before writing.
         print(f"neuralmind: error: {e}", file=sys.stderr)
         sys.exit(2)
+    # A handler reports failure by calling sys.exit itself or by returning a
+    # non-zero int: the `team` commands and `onboarding` return theirs. This
+    # value used to be discarded, so those commands exited 0 on failure. None,
+    # or anything that isn't an int, is success, as it always was.
+    if isinstance(code, int) and not isinstance(code, bool) and code != 0:
+        sys.exit(code)
 
 
 if __name__ == "__main__":
