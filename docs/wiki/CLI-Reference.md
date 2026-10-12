@@ -3921,7 +3921,7 @@ from a refused one.)*
 | Exit | When |
 |-----:|------|
 | 0 | Success. `license status`, `license portal`, `self-hosted status` and `self-hosted validate-license` report a missing, expired or invalid license in their output and still exit 0 |
-| 1 | `license activate`: the file is missing or doesn't validate (`EXPIRED`, `INVALID`, …), and nothing is installed. `governance`, `seats` and `audit`: no usable license (a Team license file is missing, corrupted or expired), `--admin` isn't an admin, a seat limit, an unknown seat, or an invalid value. `seats sync`: the manifest is missing, malformed, the wrong version, expired, or not signed by the issuer. `audit verify`: the hash chain is broken. `self-hosted init`: the data dir is refused or can't be created |
+| 1 | `license activate`: the file is missing or doesn't validate (`EXPIRED`, `INVALID`, …), and nothing is installed. `governance`, `seats` and `audit`: no usable license (a Team license file is missing, corrupted, or past its 30-day grace period), `--admin` isn't an admin, a seat limit, an unknown seat, or an invalid value. `seats sync`: the manifest is missing, malformed, the wrong version, expired, or not signed by the issuer. `audit verify`: the hash chain is broken. `self-hosted init`: the data dir is refused or can't be created |
 | 2 | `seats sync`: the manifest was applied only in part, because the license's seat limit refused some seats (listed under `failed` in its JSON report). argparse also exits 2 on a usage error |
 
 ---

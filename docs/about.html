@@ -200,8 +200,14 @@
 
     <section>
         <div class="container" id="whats-new-v4151">
-            <h2>What&rsquo;s New in v4.15.1 &mdash; <code>neuralmind team</code> and <code>onboarding</code> exit 1 when they fail</h2>
-            <p><strong>Exit codes the Team commands computed and the CLI threw away.</strong> <code>neuralmind team license activate</code> on an expired license printed &ldquo;EXPIRED. Nothing was installed.&rdquo; and exited 0, and so did every other <code>team</code> and <code>onboarding</code> failure: each command returned its exit code, and <code>neuralmind</code> ignored it. The CLI reference had documented one of them, a non-admin <code>team governance remove-edge</code>, as exit 1 since v4.6.0.</p>
+            <h2>What&rsquo;s New in v4.15.1 &mdash; the full 30-day grace period after a Team license expires, and <code>neuralmind team</code> exits 1 when it fails</h2>
+            <p>The <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEURALMIND-LICENSE-AGREEMENT.md#42-expiration">license agreement</a> (&sect;4.2) grants 30 days after a Team license expires during which Team features keep working. The license check ended grace 30 days after expiry or 30 days after the software last validated the license, whichever came first, so a team that hadn&rsquo;t run NeuralMind in the weeks before expiry got less, and a machine with no validation on record got none.</p>
+            <ul>
+                <li><strong>Grace runs 30 days from the expiry date</strong> &mdash; <code>neuralmind team license status</code> reports <code>OFFLINE_OK</code> and the governance, seats and audit commands keep working, however long ago the software last ran</li>
+                <li><strong>A clock set back still gets no grace</strong> &mdash; a validation recorded later than the current time means the clock was moved back</li>
+                <li><strong><code>self_hosted.offline_grace_days</code> is gone</strong> &mdash; nothing read it; a config that still has it loads as before</li>
+            </ul>
+            <p><strong>Also: exit codes the Team commands computed and the CLI threw away.</strong> <code>neuralmind team license activate</code> on an expired license printed &ldquo;EXPIRED. Nothing was installed.&rdquo; and exited 0, and so did every other <code>team</code> and <code>onboarding</code> failure: each command returned its exit code, and <code>neuralmind</code> ignored it. The CLI reference had documented one of them, a non-admin <code>team governance remove-edge</code>, as exit 1 since v4.6.0.</p>
             <ul>
                 <li><strong>Exit 1 on failure</strong> &mdash; a license that doesn&rsquo;t validate, no usable license, a non-admin, a seat limit, an unknown seat, a broken audit chain, a data dir that can&rsquo;t be created, a declined license agreement. A provisioning script under <code>set -e</code> now stops there</li>
                 <li><strong>Exit 2 for a partial seat sync</strong> &mdash; <code>team seats sync</code> when the license&rsquo;s seat limit refused some of the manifest&rsquo;s seats</li>
