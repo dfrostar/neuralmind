@@ -10,10 +10,12 @@ body:
         NeuralMind finds what its own benchmarks miss.
 
         **Privacy:** every command below runs locally and prints numbers, not
-        code. Leave out anything you can't share: repository names, file
-        paths, and the questions in your eval file are all optional. Reports
-        that name a private codebase are paraphrased before anything from them
-        is quoted.
+        code, but some output names your project. `stats` and `metrics` start
+        with the project name, and `doctor` starts with the project's full path
+        and can repeat it in its suggested fixes. Replace those with a placeholder such
+        as `<repo>` before pasting. Repository names, file paths and the
+        questions in your eval file are all optional. Reports that name a
+        private codebase are paraphrased before anything from them is quoted.
 
         For a crash or a wrong result you can reproduce, the **Bug Report**
         template is the better fit. For a vulnerability, see
@@ -77,14 +79,14 @@ body:
     id: stats
     attributes:
       label: "`neuralmind stats .`"
-      description: Shows the synapse layer's size, including transitions, and its growth this week.
+      description: Shows the synapse layer's size, including transitions, and its growth this week. The first line names the project; replace it with `<repo>`.
       render: text
 
   - type: textarea
     id: health
     attributes:
       label: "`neuralmind doctor .` (and `neuralmind metrics .` if you have it)"
-      description: Index freshness, a leftover graph, and query and build counts. No query text is recorded.
+      description: Index freshness, a leftover graph, and query and build counts. No query text is recorded. `doctor` prints the project's full path in its header and fix lines, and `metrics` names the project; replace both with `<repo>`.
       render: text
 
   - type: textarea

@@ -16,9 +16,11 @@ on:
 
 # A new push to a PR cancels that PR's older run: the Windows job alone takes
 # ~25 minutes, and a stale result is never the one that decides the merge.
-# Pushes to main always run to completion.
+# Every other run (pushes to main, dispatches, merge-queue entries) gets a
+# group of its own: a shared group holds one running and one pending run, and
+# a third arrival would silently replace the pending one, losing that CI run.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Read-only token by default; a job that needs more declares its own
