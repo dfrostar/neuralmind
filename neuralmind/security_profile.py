@@ -20,6 +20,7 @@ was enforced, not just configured.
 from __future__ import annotations
 
 import ipaddress
+import sys
 from pathlib import Path
 
 from .security_config import PROFILE_CUI, load_security_settings
@@ -96,5 +97,11 @@ def record_refusal(project_path: str | Path, surface: str, reason: str) -> None:
             target=surface,
             details={"profile": PROFILE_CUI, "reason": reason},
         )
-    except Exception:
-        pass  # the refusal itself must not depend on the audit log being writable
+    except Exception as exc:
+        # The refusal itself must not depend on the audit log being writable,
+        # but a refusal that leaves no record must not pass silently either.
+        print(
+            f"neuralmind: {surface} refused by security.profile: cui, "
+            f"but the audit log could not record it: {exc}",
+            file=sys.stderr,
+        )

@@ -154,6 +154,19 @@ def test_loopback_with_token_is_allowed(tmp_path):
     assert _refusals(tmp_path) == []
 
 
+def test_a_refusal_the_audit_log_cannot_record_is_reported(tmp_path, monkeypatch, capsys):
+    import neuralmind.audit as audit
+
+    def unwritable(_project):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(audit, "get_audit_trail", unwritable)
+    sp.record_refusal(tmp_path, "serve", "it runs without its access token (--no-auth)")
+    captured = capsys.readouterr()
+    assert captured.out == ""  # hooks keep stdout clean
+    assert "audit log could not record it: disk full" in captured.err
+
+
 def test_a_project_without_the_profile_may_still_listen_widely(tmp_path):
     assert sp.refuse_exposed_listener(tmp_path, "0.0.0.0", False, "serve") is None
 
