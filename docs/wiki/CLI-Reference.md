@@ -3896,15 +3896,19 @@ The other customer-side Team commands. The
 [Tier2-Operator-Guide](Tier2-Operator-Guide.md) walks through them.
 
 ```bash
-neuralmind team license status | portal
+neuralmind team license status
+neuralmind team license portal
 neuralmind team license activate FILE
 neuralmind team seats list [--json]
-neuralmind team seats add | remove EMAIL [--admin EMAIL]
+neuralmind team seats add EMAIL [--admin EMAIL]
+neuralmind team seats remove EMAIL [--admin EMAIL]
 neuralmind team seats sync MANIFEST [--admin EMAIL]
 neuralmind team audit list [--since TS] [--until TS] [--actor EMAIL] [--json]
-neuralmind team audit export --format csv|json --output FILE
+neuralmind team audit export --format csv --output FILE   # or --format json
 neuralmind team audit verify
-neuralmind team self-hosted init [--data-dir DIR] | status | validate-license
+neuralmind team self-hosted init [--data-dir DIR]
+neuralmind team self-hosted status
+neuralmind team self-hosted validate-license
 ```
 
 #### Exit codes
