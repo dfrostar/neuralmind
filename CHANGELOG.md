@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.15.0](https://github.com/dfrostar/neuralmind/compare/v4.14.0...v4.15.0) (2026-10-12)
+
+
+### Features
+
+* **scan-for-secrets:** skip linked worktrees, honour .gitignore, mark findings tracked or untracked ([#652](https://github.com/dfrostar/neuralmind/issues/652)) ([0116055](https://github.com/dfrostar/neuralmind/commit/0116055daef669b8170c322cdafe7caf032996ee)), closes [#635](https://github.com/dfrostar/neuralmind/issues/635)
+
 ## [4.14.0](https://github.com/dfrostar/neuralmind/compare/v4.13.0...v4.14.0) (2026-10-11)
 
 
