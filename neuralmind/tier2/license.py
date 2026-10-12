@@ -213,35 +213,33 @@ class LicenseValidator:
         except OSError:
             pass  # Sidecar is best-effort; validation still succeeds
 
-    def _get_last_validation(self) -> float | None:
-        """Read last recorded validation timestamp.
+    def _clock_set_back(self) -> bool:
+        """True if the last recorded validation is later than the current time.
 
-        Returns:
-            Unix timestamp of last successful validation, or None if absent.
-
-        Raises no errors — missing/corrupt sidecar returns None (treated as
-        "no prior validation" = first validation).
+        Every successful validation writes its time to the ``.last_valid``
+        sidecar, so a sidecar from the future means the system clock has been
+        moved back since. A missing or unreadable sidecar proves nothing
+        either way and returns False.
         """
         sidecar = self.license_path.with_suffix(".last_valid")
-        if not sidecar.exists():
-            return None
         try:
-            ts = datetime.fromisoformat(sidecar.read_text(encoding="utf-8"))
-            # Reject future timestamps (clock-set-back anti-tamper)
-            now = datetime.now(timezone.utc)
-            if ts > now:
-                return None  # Clock was set back — untrustworthy
-            return ts.timestamp()
-        except (ValueError, OSError):
-            return None
+            ts = datetime.fromisoformat(sidecar.read_text(encoding="utf-8").strip())
+            return ts > datetime.now(timezone.utc)
+        except (OSError, ValueError, TypeError):  # TypeError: naive timestamp
+            return False
 
     def _is_within_grace(self, lic: LicenseInfo) -> bool:
-        """True if license is expired but within the dual-bound grace window.
+        """True if the license is expired but within its grace period.
 
-        Dual-bound = min(expires_at + GRACE_DAYS, last_validation + GRACE_DAYS).
-        Either bound alone is exploitable:
-        - expires_at + grace alone → clock-set-back extends indefinitely.
-        - last_validation + grace alone → long-dead license keeps extending.
+        Grace runs ``GRACE_DAYS`` from ``expires_at``, as the license agreement
+        grants, however long ago the software last ran. The one exception is
+        a clock moved back since the last validation, which gets no grace.
+
+        Grace is deliberately not also capped at ``GRACE_DAYS`` after the last
+        validation: that cut the agreement's 30 days short for a customer who
+        hadn't run the software in the weeks before expiry, and gave none with
+        no validation on record, while adding no protection. A clock set back
+        to before ``expires_at`` makes the license valid outright, grace or not.
         """
         if lic.expires_at == "never":
             return False  # Never-expired licenses don't need grace
@@ -249,16 +247,9 @@ class LicenseValidator:
             exp = datetime.fromisoformat(lic.expires_at.replace("Z", "+00:00"))
         except ValueError:
             return False
-        now = datetime.now(timezone.utc)
-        last_val = self._get_last_validation()
-        if last_val is None:
-            return False  # No record — no grace
-        last_val_dt = datetime.fromtimestamp(last_val, tz=timezone.utc)
-        grace_deadline = min(
-            exp + timedelta(days=GRACE_DAYS),
-            last_val_dt + timedelta(days=GRACE_DAYS),
-        )
-        return now <= grace_deadline
+        if self._clock_set_back():
+            return False
+        return datetime.now(timezone.utc) <= exp + timedelta(days=GRACE_DAYS)
 
     def validate(self) -> LicenseStatus:
         """Return license status string.

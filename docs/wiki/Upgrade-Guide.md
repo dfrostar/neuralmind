@@ -1,6 +1,6 @@
 # Upgrade Guide — Free to Team
 
-**Last updated:** 2026-07-22  
+**Last updated:** 2026-10-12  
 **Version:** v1.7.0  
 **Audience:** Free users who want Team tier (governance, audit, seats)
 
@@ -55,7 +55,7 @@ Purchase a Team license key (.json file), then:
 neuralmind team license activate <path-to-license.json>
 ```
 
-The license is Ed25519-signed with 30-day offline grace. If you're air-gapped, the license keeps working for 30 days without phoning home.
+The license is Ed25519-signed and checked locally, with no licensing server to contact, so it works offline or air-gapped for its whole term. After it expires, a 30-day grace period keeps Team features working while you renew.
 
 ### Step 4: Verify
 
@@ -81,9 +81,9 @@ Seats are idempotent — adding an existing seat errors softly.
 There's no downgrade guard. If you stop paying:
 
 1. License expires at end of annual term
-2. Commands still work (grace period applies)
-3. `neuralmind license status` shows `EXPIRED`
-4. Free tier auto-reactivates — `neuralmind wakeup .` re-issues free license
+2. For 30 days after the expiry date, `neuralmind team license status` shows `OFFLINE_OK` and the governance, seats and audit commands keep working (the [license agreement](../NEURALMIND-LICENSE-AGREEMENT.md#42-expiration), §4.2). This doesn't depend on when NeuralMind last ran (v4.15.1+; earlier versions could end it sooner)
+3. From day 31 it shows `EXPIRED`, and those commands stop until you activate a renewed license with `neuralmind team license activate`
+4. To drop to the free tier instead, run `neuralmind onboarding`: once the license has expired, its first step offers to replace it with a free license
 
 No data loss. The MIT core doesn't check license status.
 
