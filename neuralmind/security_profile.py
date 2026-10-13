@@ -20,6 +20,7 @@ was enforced, not just configured.
 from __future__ import annotations
 
 import ipaddress
+import socket
 import sys
 from pathlib import Path
 
@@ -41,15 +42,26 @@ def project_profile(project_path: str | Path) -> str | None:
 def is_loopback(host: str) -> bool:
     """Whether ``host`` names only this machine.
 
-    ``localhost`` and loopback addresses (127.0.0.0/8, ::1) count. Anything
-    else, including the wildcard ``0.0.0.0``/``::``, a LAN address or another
-    hostname, does not.
+    Loopback addresses (127.0.0.0/8, ::1) count, and so does ``localhost``
+    when every address it resolves to is loopback: the listener binds to what
+    the name resolves to, not to the name. Anything else, including the
+    wildcard ``0.0.0.0``/``::``, a LAN address, another hostname or a name
+    that doesn't resolve, does not.
     """
     value = (host or "").strip().strip("[]").lower()
     if value == "localhost":
-        return True
+        try:
+            infos = socket.getaddrinfo(value, None)
+        except OSError:
+            return False
+        addresses = {info[4][0] for info in infos}
+        return bool(addresses) and all(_is_loopback_address(a) for a in addresses)
+    return _is_loopback_address(value)
+
+
+def _is_loopback_address(value: str) -> bool:
     try:
-        return ipaddress.ip_address(value).is_loopback
+        return ipaddress.ip_address(value.split("%", 1)[0]).is_loopback
     except ValueError:
         return False
 

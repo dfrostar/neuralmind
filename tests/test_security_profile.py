@@ -110,7 +110,36 @@ def test_unparseable_file_naming_a_profile_is_held_to_it(tmp_path):
     )
 
 
+def test_a_malformed_section_naming_a_profile_is_held_to_it(tmp_path):
+    _config(tmp_path, "security:\n  - profile: cui\n")
+    s = load_security_settings(tmp_path)
+    assert (s.profile, s.identity, s.require_encrypted_storage) == (
+        PROFILE_CUI,
+        IDENTITY_INVALID,
+        True,
+    )
+    assert sp.listener_problem("0.0.0.0", True) is not None
+    with pytest.raises(sp.ProfileRefusedError):
+        sp.refuse_exposed_listener(tmp_path, "0.0.0.0", True, "serve")
+
+
 # --- listeners --------------------------------------------------------------
+
+
+def test_localhost_counts_only_when_it_resolves_to_loopback(monkeypatch):
+    def resolves_to(*addresses):
+        return lambda *_a, **_k: [(None, None, None, "", (a, 0)) for a in addresses]
+
+    monkeypatch.setattr(sp.socket, "getaddrinfo", resolves_to("127.0.0.1", "::1"))
+    assert sp.is_loopback("localhost")
+    monkeypatch.setattr(sp.socket, "getaddrinfo", resolves_to("127.0.0.1", "192.168.1.5"))
+    assert not sp.is_loopback("localhost")
+
+    def unresolvable(*_a, **_k):
+        raise OSError("no such host")
+
+    monkeypatch.setattr(sp.socket, "getaddrinfo", unresolvable)
+    assert not sp.is_loopback("localhost")
 
 
 @pytest.mark.parametrize(

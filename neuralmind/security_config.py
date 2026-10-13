@@ -88,6 +88,9 @@ def load_security_settings(project_path: str | Path) -> SecuritySettings:
         return SecuritySettings(
             identity=IDENTITY_INVALID,
             require_encrypted_storage=True,
+            # As for a file that doesn't parse: a malformed section that
+            # names a profile is held to the strictest one.
+            profile=PROFILE_CUI if config_mentions(path, ("profile",)) else None,
             config_path=path,
             problem="`security` must be a mapping",
         )
