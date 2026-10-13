@@ -9,8 +9,8 @@ export const SITE_URL = 'https://neuralmind.uk';
  */
 const OG_IMAGE = {
     url: '/social-preview.png',
-    width: 1200,
-    height: 630,
+    width: 2400,
+    height: 1260,
     alt: 'NeuralMind — Code Memory for AI Coding Agents',
 };
 

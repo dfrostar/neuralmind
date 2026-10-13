@@ -7,7 +7,7 @@ const SOURCE_PATH = 'docs/publications/defensive-budget-neutral-synaptic-recall.
 
 export const metadata = {
     title: 'Budget-Neutral Synaptic Recall — NeuralMind',
-    description: 'A method for injecting learned associative recall into an AI agent’s context window without increasing token cost: Hebbian co-activation, learned per-edge decay, hub-normalized spreading activation, and one-for-one displacement injection.',
+    description: 'Budget-neutral recall for AI coding agents: Hebbian co-activation, learned per-edge decay and hub-normalized spreading activation, at no extra token cost.',
     keywords: [
         'defensive publication',
         'prior art',

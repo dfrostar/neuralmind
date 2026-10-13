@@ -48,7 +48,7 @@ export default function Hero() {
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] gap-12 lg:gap-14 items-center">
                     {/* ── Copy ───────────────────────────────────────────── */}
                     <div>
-                        <div className="inline-flex items-center gap-2.5 mb-8 pl-3 pr-4 py-1.5 rounded-full border border-carbon-border bg-carbon-raised">
+                        <div className="inline-flex items-center gap-2.5 mb-6 pl-3 pr-4 py-1.5 rounded-full border border-carbon-border bg-carbon-raised">
                             <span className="w-1.5 h-1.5 rounded-full bg-proton" />
                             <span className="text-faint text-[0.8125rem]">Native for</span>
                             <span className="relative grid text-slate-100 font-medium text-[0.8125rem]">
@@ -67,6 +67,11 @@ export default function Hero() {
                                 ))}
                             </span>
                         </div>
+
+                        {/* The H1 is the brand line; this names the search terms it doesn't. */}
+                        <p className="eyebrow mb-4">
+                            Persistent codebase memory · MCP server for Claude Code, Codex &amp; Cursor
+                        </p>
 
                         <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.04] tracking-tightest mb-6">
                             Your coding agent forgets your codebase.{' '}

@@ -3,7 +3,7 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for Claude Code, Cursor and any MCP agent: the right file at 51–242× fewer tokens than pasting every source file, on a public benchmark with every miss published. Free, MIT core.';
+    'Codebase memory for Claude Code and any MCP agent: the right file at 51–242× fewer tokens than pasting every source file, every miss published. Free MIT core.';
 
 export const metadata = {
     title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
@@ -44,8 +44,8 @@ export const metadata = {
         images: [
             {
                 url: '/social-preview.png',
-                width: 1200,
-                height: 630,
+                width: 2400,
+                height: 1260,
                 alt: 'NeuralMind — Code Memory for AI Coding Agents',
             },
         ],

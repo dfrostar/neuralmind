@@ -7,9 +7,9 @@ const WALKTHROUGH_URL = `${GITHUB_URL}/blob/main/docs/use-cases/measure-memory-a
 const PUBLISHED = '2026-07-20';
 
 export const metadata = {
-    title: 'Field Report: 48.8× Fewer Tokens Across a Refactor | NeuralMind',
+    title: 'Field Report: 48.8× Fewer Tokens in a Refactor — NeuralMind',
     description:
-        'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction vs the CLI’s pre-v4.5.0 fixed 50K-token estimate, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
+        'Codebase memory case study: a ~9,300-node TypeScript platform rebuilt with NeuralMind — 48.8× fewer tokens vs the CLI’s pre-v4.5.0 fixed 50K-token estimate.',
     keywords: [
         'AI coding agent memory',
         'token reduction case study',

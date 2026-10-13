@@ -3,7 +3,7 @@ import Footer from '@/components/sections/Footer';
 
 export const metadata = {
     title: 'Research & Publications — NeuralMind',
-    description: 'Research reports, setup guides and defensive publications from the NeuralMind project: Hebbian synapse learning, budget-neutral recall, and using NeuralMind with Claude Code and Codex.',
+    description: 'Research on codebase memory for AI coding agents: Hebbian synapse learning, budget-neutral recall, and guides to using NeuralMind with Claude Code and Codex.',
     keywords: [
         'NeuralMind research',
         'defensive publication',

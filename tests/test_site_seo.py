@@ -21,6 +21,10 @@ The bugs these rules exist to prevent all shipped to production:
 3. **An FAQ whose answers are not in the HTML.** The accordion rendered each
    answer only while open, so the export carried 11 questions and no answers.
 
+4. **A title or description too long for a search result.** Twelve
+   descriptions (up to 264 characters) and five titles (up to 83) were cut
+   off mid-sentence in the snippet.
+
 Stdlib-only, so it runs without the full dep set.
 """
 
@@ -128,4 +132,53 @@ def test_no_route_page_is_missing_a_title() -> None:
     assert not offenders, (
         "these routes have no metadata export, so they serve the homepage's "
         "title and description: " + ", ".join(offenders)
+    )
+
+
+# Mirrors rule 4 of scripts/check_site_seo.py, which measures the built HTML.
+TITLE_MAX = 60
+DESCRIPTION_MIN, DESCRIPTION_MAX = 50, 160
+_STR = r"'((?:[^'\\]|\\.)*)'"
+_TITLE_RE = re.compile(r"\btitle:\s*" + _STR)
+_DESCRIPTION_RE = re.compile(r"\bdescription:\s*" + _STR)
+
+
+def _page_snippet(page: Path) -> tuple[str | None, str | None]:
+    """The page's own title and description: the first of each after its
+    metadata export (the openGraph/twitter overrides come later)."""
+    src = page.read_text(encoding="utf-8")
+    head = src.split("export const metadata", 1)[-1]
+    title = _TITLE_RE.search(head)
+    description = _DESCRIPTION_RE.search(head)
+    return (
+        title.group(1) if title else None,
+        description.group(1) if description else None,
+    )
+
+
+def test_titles_and_descriptions_fit_a_search_result() -> None:
+    """Twelve descriptions (up to 264 chars) and five titles (up to 83) were
+    being truncated in search results. Measured on the source literal, which
+    for these pages is the rendered text (no entities, no title template)."""
+    offenders = []
+    for page in _route_pages():
+        title, description = _page_snippet(page)
+        route = _route_of(page)
+        if title is not None and len(title) > TITLE_MAX:
+            offenders.append(f"{route}: title is {len(title)} chars (max {TITLE_MAX})")
+        if description is not None and not (DESCRIPTION_MIN <= len(description) <= DESCRIPTION_MAX):
+            offenders.append(
+                f"{route}: description is {len(description)} chars "
+                f"(want {DESCRIPTION_MIN}-{DESCRIPTION_MAX})"
+            )
+
+    layout = (APP_ROOT / "layout.tsx").read_text(encoding="utf-8")
+    home = re.search(r"SITE_DESCRIPTION\s*=\s*" + _STR, layout)
+    assert home, "layout.tsx no longer defines SITE_DESCRIPTION as a string literal"
+    if not DESCRIPTION_MIN <= len(home.group(1)) <= DESCRIPTION_MAX:
+        offenders.append(f"/: description is {len(home.group(1))} chars")
+
+    assert not offenders, (
+        "titles over 60 or descriptions outside 50-160 characters get truncated "
+        "in search results:\n  " + "\n  ".join(offenders)
     )

@@ -60,7 +60,7 @@ export default function Footer() {
 
                     {groups.map((group) => (
                         <nav key={group.heading} aria-label={group.heading}>
-                            <h2 className="eyebrow mb-4">{group.heading}</h2>
+                            <p className="eyebrow mb-4">{group.heading}</p>
                             <ul className="space-y-2.5">
                                 {group.links.map((link) => (
                                     <li key={link.label}>
