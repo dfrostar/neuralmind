@@ -24,6 +24,7 @@ Stdlib-only, so it runs without the full dep set.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +76,18 @@ def test_pages_without_a_leading_heading_are_titled_in_config() -> None:
         "these pages don't open with a '# ' heading, so they render titled "
         "'NeuralMind Docs'; give each a title in docs/_config.yml defaults: " + ", ".join(offenders)
     )
+
+
+def test_config_scopes_name_files_that_exist() -> None:
+    """A mistyped scope path matches nothing, silently.
+
+    The first draft scoped noindex to ``specs/SESSION_HANDOFF_2026-08-05.md``;
+    the file is under ``releases/``, so the note stayed indexable.
+    """
+    config = CONFIG.read_text(encoding="utf-8")
+    scoped = re.findall(r'^\s*path: "([^"]+)"', config, re.M)
+    missing = [p for p in scoped if not (DOCS / p).exists()]
+    assert not missing, "docs/_config.yml scopes paths that don't exist: " + ", ".join(missing)
 
 
 def test_guards_trip_on_the_markup_that_shipped() -> None:

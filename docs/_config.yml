@@ -75,6 +75,6 @@ defaults:
     values:
       noindex: true
   - scope:
-      path: "specs/SESSION_HANDOFF_2026-08-05.md"
+      path: "releases/SESSION_HANDOFF_2026-08-05.md"
     values:
       noindex: true
