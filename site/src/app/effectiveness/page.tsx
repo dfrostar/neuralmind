@@ -7,7 +7,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/effectiveness',
     title: 'NeuralMind Results: Before & After on a Production Repo',
     description:
-        'AI coding agent memory on a ~9,300-node repo: 48.8× fewer tokens vs the CLI’s pre-v4.5.0 fixed 50K estimate, synapse edges 36→135, and what we can’t claim.',
+        'Field report from one ~9,300-node repo: 48.8× fewer tokens vs the CLI’s pre-v4.5.0 fixed 50K estimate, synapse edges 36→135, and what we can’t claim.',
 });
 
 const headlineStats = [

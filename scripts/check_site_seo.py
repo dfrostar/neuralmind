@@ -47,6 +47,7 @@ SITE_URL = "https://neuralmind.uk"
 CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]+)"', re.I)
 OG_URL_RE = re.compile(r'<meta property="og:url" content="([^"]+)"', re.I)
 OG_IMAGE_RE = re.compile(r'<meta property="og:image" content="([^"]+)"', re.I)
+ROBOTS_RE = re.compile(r'<meta name="robots" content="([^"]+)"', re.I)
 LOC_RE = re.compile(r"<loc>([^<]+)</loc>", re.I)
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 DESCRIPTION_RE = re.compile(r'<meta name="description" content="([^"]*)"', re.I)
@@ -138,6 +139,19 @@ def main(argv: list[str]) -> int:
             failures.append(f"{url} — no og:image (a declared openGraph block replaces the root's)")
 
         failures.extend(snippet_failures(url, html_text=html, descriptions=descriptions))
+
+    # The 404 is left out of the canonical and sitemap rules above, but it is
+    # still served and crawled: hold it to the snippet rules, and require that
+    # it asks not to be indexed (it had shipped with the layout's
+    # `index, follow` beside Next's `noindex`, and two <title>s).
+    not_found = out_dir / "404.html"
+    if not_found.is_file():
+        html = not_found.read_text(encoding="utf-8", errors="replace")
+        url = f"{SITE_URL}/404.html"
+        failures.extend(snippet_failures(url, html_text=html, descriptions=descriptions))
+        robots = [r.lower() for r in ROBOTS_RE.findall(html)]
+        if not robots or any("noindex" not in r for r in robots):
+            failures.append(f"{url} — robots must say noindex everywhere, got {robots}")
 
     sitemap = out_dir / "sitemap.xml"
     if not sitemap.is_file():
