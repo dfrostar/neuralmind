@@ -73,8 +73,7 @@ def test_pages_without_a_leading_heading_are_titled_in_config() -> None:
             offenders.append(rel)
     assert not offenders, (
         "these pages don't open with a '# ' heading, so they render titled "
-        "'NeuralMind Docs'; give each a title in docs/_config.yml defaults: "
-        + ", ".join(offenders)
+        "'NeuralMind Docs'; give each a title in docs/_config.yml defaults: " + ", ".join(offenders)
     )
 
 
