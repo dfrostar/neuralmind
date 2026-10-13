@@ -107,6 +107,8 @@ keywords = [
     "nist-800-171",
     "cmmc-level-2",
     "cui-security-profile",
+    "tamper-evident-audit-log",
+    "signed-audit-checkpoints",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

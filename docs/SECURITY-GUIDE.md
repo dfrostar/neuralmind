@@ -526,13 +526,49 @@ Records from before the hash chain existed (written by versions before
 v0.46.2) carry no hash. `verify` accepts them only ahead of the first hashed
 record and reports how many there are; the chain doesn't cover them.
 
-It can't detect records deleted from the end, or a chain recomputed by
-anyone who can write the file: the hash has no secret key. A passing check is
-therefore weak evidence on its own. Ship `audit export` output off the host,
-and compare against that copy.
+The chain alone can't detect records deleted from the end, or a chain
+recomputed by anyone who can write the file: the hash has no secret key. A
+passing chain is therefore weak evidence on its own.
 
-NeuralMind doesn't rotate or expire the log, and it has no report command:
-build compliance reports from the export.
+#### Checkpoints (v4.17.0+)
+
+Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8, protection of
+audit information). Set them up once, as the administrator:
+
+```bash
+# In the administrator's account, which developers can't read:
+neuralmind audit keygen ~/.neuralmind-audit/checkpoint.pem
+# Pin the printed key in the admin-owned neuralmind-backend.yaml:
+#   security:
+#     audit_checkpoint_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...
+#     audit_anchor_dir: /var/lib/neuralmind-anchor   # writable by the admin only
+# Then, daily from the administrator's crontab:
+neuralmind audit checkpoint /path/to/project --key ~/.neuralmind-audit/checkpoint.pem
+```
+
+Each checkpoint records how many records the log holds and the hashes of the
+first and last, chains to the checkpoint before it, and is signed with the
+ECDSA P-256 key (FIPS 186-5, available under every OpenSSL FIPS provider).
+`audit verify` then fails when the log holds fewer records than a checkpoint
+covers, when a covered record's hash changed (a recomputed chain), when a
+signature doesn't verify against the pinned key, or when a checkpoint is
+missing from every copy.
+
+What each part protects against:
+
+| Part | Without it |
+|------|-----------|
+| The signature, with the private key in another account | Someone who can write the log could rewrite it and write a matching checkpoint |
+| The anchored copy, in a directory only the administrator can write | Deleting `.neuralmind/audit_checkpoints.jsonl` along with the newest records would leave nothing to compare against |
+| A short interval | Records written since the newest checkpoint are covered by the chain alone |
+
+`audit checkpoint --json` prints each checkpoint as one line for your SIEM, and
+`audit verify --checkpoint FILE` checks the log against such a copy. Keep
+shipping `audit export` output off the host as well: a checkpoint proves the
+log is intact, and the export is the copy you would restore from.
+
+NeuralMind doesn't rotate or expire the log on its own, and it has no report
+command: build compliance reports from the export.
 
 ### NIST AI RMF Mapping
 

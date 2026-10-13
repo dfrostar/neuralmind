@@ -17,7 +17,8 @@ Codes that need a built index or a licence store are covered next to their
 feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
 `health` -> 1, and `doctor --stale-after` past its limit,
 `tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
-for `audit verify`).
+for `audit verify`, `tests/test_audit_checkpoint.py` for `audit keygen`,
+`audit checkpoint` and `audit verify` against checkpoints).
 """
 
 from __future__ import annotations

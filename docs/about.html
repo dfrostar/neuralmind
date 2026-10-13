@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files and finds a decision by meaning as well as by its words, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, NIST SP 800-171, CMMC Level 2 security profile, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, NIST SP 800-171, CMMC Level 2 security profile, tamper-evident audit log, signed audit checkpoints, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -195,6 +195,20 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, local-first processing with no telemetry, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4170">
+            <h2>What&rsquo;s New in v4.17.0 &mdash; an audit log you can&rsquo;t silently shorten</h2>
+            <p>The audit log&rsquo;s hash chain shows a record changed or removed in the middle of the log. On its own it can&rsquo;t show the newest records removed, or a chain recomputed by anyone who can write the file. Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8):</p>
+            <ul>
+                <li><strong><code>neuralmind audit keygen</code></strong> &mdash; an ECDSA P-256 key (available under every OpenSSL FIPS provider) for an administrator account; its public key is pinned as <code>security.audit_checkpoint_key</code></li>
+                <li><strong><code>neuralmind audit checkpoint</code></strong> &mdash; signs the record count and the last record&rsquo;s hash, chains to the previous checkpoint, and anchors a copy in <code>security.audit_anchor_dir</code>, a directory only the administrator can write</li>
+                <li><strong><code>neuralmind audit verify</code></strong> &mdash; fails when covered records were removed from the end, the chain was recomputed, or a checkpoint is forged or missing; <code>--checkpoint FILE</code> checks against a copy kept in your SIEM</li>
+                <li><strong><code>neuralmind doctor</code></strong> &mdash; fails on a checkpoint that shows tampering, and under <code>security.profile: cui</code> warns when the key or anchor isn&rsquo;t set or the newest checkpoint is over a week old</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.0.md">v4.17.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md#5-what-an-assessor-can-look-at">CUI enclave walkthrough</a></p>
         </div>
     </section>
 

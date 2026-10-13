@@ -3015,12 +3015,25 @@ def cmd_audit_export(args):
 
 
 def cmd_audit_verify(args):
-    """Verify audit log integrity — walk the hash chain."""
+    """Verify audit log integrity — walk the hash chain, then the checkpoints."""
+    from .audit_checkpoint import verify_checkpoints
+
     trail = AuditTrail(args.project_path)
     result = trail.verify()
+    if result["ok"]:
+        report = verify_checkpoints(
+            args.project_path, extra_sources=getattr(args, "checkpoint", None) or []
+        )
+        result["checkpoints"] = report.to_dict()
+        if not report.ok:
+            result.update(ok=False, reason=report.reason)
     if args.json:
         print(json.dumps(result, indent=2))
         sys.exit(0 if result["ok"] else 1)
+    checkpoints = result.get("checkpoints")
+    if checkpoints and not checkpoints["ok"]:
+        print(f"✗ Audit checkpoint check failed: {checkpoints['reason']}", file=sys.stderr)
+        sys.exit(1)
     if result["ok"]:
         print(f"✓ Audit trail integrity OK ({result['total']} events)")
         if result.get("unchained"):
@@ -3035,6 +3048,7 @@ def cmd_audit_verify(args):
                 else "archive not found, so the link wasn't checked"
             )
             print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
+        _print_checkpoint_summary(checkpoints)
     else:
         if result["first_bad_line"] is None:
             print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
@@ -3045,6 +3059,66 @@ def cmd_audit_verify(args):
                 file=sys.stderr,
             )
         sys.exit(1)
+
+
+def _print_checkpoint_summary(checkpoints: dict | None) -> None:
+    if not checkpoints or not checkpoints.get("latest_seq"):
+        print(
+            "  No checkpoints: records removed from the end of the log, or a recomputed "
+            "chain, would go undetected (see `neuralmind audit checkpoint`)"
+        )
+        return
+    if checkpoints["key_id"]:
+        signature = f"signatures verified with key {checkpoints['key_id']}"
+    elif checkpoints["signed"]:
+        signature = "signed, but no security.audit_checkpoint_key is set to check them"
+    else:
+        signature = "unsigned, so they show truncation but not a recomputed chain"
+    print(
+        f"  {checkpoints['checked']} checkpoint(s) hold; the latest "
+        f"(#{checkpoints['latest_seq']}, {checkpoints['latest_created_at']}) covers the "
+        f"first {checkpoints['records_covered']} record(s); {signature}"
+    )
+    if checkpoints.get("predate_rotation"):
+        print(
+            f"  {checkpoints['predate_rotation']} checkpoint(s) predate the log's rotation "
+            "and weren't compared"
+        )
+
+
+def cmd_audit_keygen(args):
+    """Create the ECDSA P-256 key that signs audit checkpoints."""
+    from .audit_checkpoint import CheckpointError, generate_key
+
+    try:
+        public = generate_key(args.key_path, force=args.force)
+    except CheckpointError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Wrote the private key to {args.key_path} (mode 0600).")
+    print("Keep it in an account the developers can't read. Pin its public key in")
+    print("neuralmind-backend.yaml, a file only the administrator can write:")
+    print()
+    print("security:")
+    print(f"  audit_checkpoint_key: {public}")
+
+
+def cmd_audit_checkpoint(args):
+    """Sign and anchor a checkpoint of the audit log as it stands."""
+    from .audit_checkpoint import KEY_ENV, CheckpointError, create_checkpoint
+
+    key_path = args.key or os.environ.get(KEY_ENV) or None
+    anchor_dir = Path(args.anchor_dir).expanduser() if args.anchor_dir else None
+    try:
+        checkpoint = create_checkpoint(args.project_path, key_path=key_path, anchor_dir=anchor_dir)
+    except CheckpointError as exc:
+        print(f"✗ Checkpoint not written: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(checkpoint, sort_keys=True))
+        return
+    signed = f"signed with key {checkpoint['key_id']}" if checkpoint["key_id"] else "unsigned"
+    print(f"✓ Checkpoint #{checkpoint['seq']} covers {checkpoint['records']} record(s) ({signed})")
 
 
 def cmd_audit_recent(args):
@@ -7547,8 +7621,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify audit log hash chain integrity",
     )
     audit_verify.add_argument("project_path", nargs="?", default=".")
+    audit_verify.add_argument(
+        "--checkpoint",
+        action="append",
+        metavar="FILE",
+        help="Also check the checkpoints in FILE (e.g. exported from your SIEM); repeatable",
+    )
     audit_verify.add_argument("--json", "-j", action="store_true")
     audit_verify.set_defaults(func=cmd_audit_verify)
+
+    audit_keygen = audit_sub.add_parser(
+        "keygen",
+        help="Create the key that signs audit checkpoints",
+    )
+    audit_keygen.add_argument("key_path", help="Where to write the private key (PEM, mode 0600)")
+    audit_keygen.add_argument("--force", action="store_true", help="Replace an existing file")
+    audit_keygen.set_defaults(func=cmd_audit_keygen)
+
+    audit_checkpoint = audit_sub.add_parser(
+        "checkpoint",
+        help="Sign and anchor a checkpoint so truncation or a rewritten chain is detected",
+    )
+    audit_checkpoint.add_argument("project_path", nargs="?", default=".")
+    audit_checkpoint.add_argument(
+        "--key", help="Private key from `neuralmind audit keygen` (or NEURALMIND_AUDIT_KEY)"
+    )
+    audit_checkpoint.add_argument(
+        "--anchor-dir",
+        help="Also write the checkpoint here (default: security.audit_anchor_dir)",
+    )
+    audit_checkpoint.add_argument(
+        "--json", "-j", action="store_true", help="Print the checkpoint record, for a SIEM"
+    )
+    audit_checkpoint.set_defaults(func=cmd_audit_checkpoint)
 
     audit_recent = audit_sub.add_parser(
         "recent",

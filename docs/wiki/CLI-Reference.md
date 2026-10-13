@@ -126,10 +126,11 @@ Requires an initialized project with audit trail.
 
 ### audit verify
 
-Check the hash chain of `.neuralmind/audit_events.jsonl`.
+Check the hash chain of `.neuralmind/audit_events.jsonl`, then every
+checkpoint of it *(v4.17.0+)*.
 
 ```bash
-neuralmind audit verify [project_path] [--json]
+neuralmind audit verify [project_path] [--checkpoint FILE ...] [--json]
 ```
 
 #### Arguments
@@ -137,14 +138,15 @@ neuralmind audit verify [project_path] [--json]
 | Argument | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `project_path` | No | `.` | Project root |
+| `--checkpoint FILE` | No | — | Also check the checkpoints in `FILE`, such as a copy kept in your SIEM. Repeatable. A named file that doesn't exist fails |
 | `--json`, `-j` | No | — | Print the result as JSON |
 
 #### Exit codes
 
 | Code | Meaning |
 |------|---------|
-| `0` | Every hashed record checks out |
-| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started |
+| `0` | Every hashed record checks out, and so does every checkpoint |
+| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started. Or a checkpoint fails: records were removed from the end of the log, the chain was rewritten, a signature doesn't verify, a checkpoint is missing or two claim the same number, or the checkpoint settings are malformed |
 
 #### Output
 
@@ -152,10 +154,17 @@ neuralmind audit verify [project_path] [--json]
 before the hash chain (written by versions before v0.46.2, so the chain doesn't
 cover them), and which rotated archive the log continues, if any, and whether
 its link to that archive was checked (it can't be once the archive is pruned).
-On failure, the line number in the file and the reason go to stderr. `--json`
-prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
-`archive_checked` and `reason`. `first_bad_line` is `null` when the file can't
-be read at all.
+A last line says how many checkpoints hold, which records the newest covers,
+and whether their signatures were verified, or that there are none.
+
+On failure, the line number in the file and the reason go to stderr, or
+`✗ Audit checkpoint check failed: <reason>`, for example
+`2 record(s) removed from the end of the log since checkpoint 4 (…), which covers 120`.
+`--json` prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
+`archive_checked` and `reason`, plus a `checkpoints` object (`ok`, `reason`,
+`checked`, `latest_seq`, `latest_created_at`, `records_covered`, `signed`,
+`key_id`, `predate_rotation`, `sources`). `first_bad_line` is `null` when the
+file can't be read at all.
 
 v4.8.0 and earlier accepted a record without a hash anywhere in the log,
 skipped lines they couldn't parse, and never compared `prev_sha256`. So records
@@ -164,10 +173,62 @@ the log, passed.
 
 #### What it can't detect
 
-Records deleted from the end, or a chain recomputed by anyone who can write the
-file (the hash has no secret key). Keep an exported copy off the host with
-`neuralmind audit export . -o audit.jsonl`. See the
-[Security Guide](../SECURITY-GUIDE.md#audit-trail).
+The hash chain alone can't show records deleted from the end, or a chain
+recomputed by anyone who can write the file (the hash has no secret key).
+Checkpoints *(v4.17.0+)* close both gaps for the records they cover; see
+[audit checkpoint](#audit-checkpoint). Records written after the newest
+checkpoint are covered by the chain alone until the next one.
+
+### audit keygen
+
+*(v4.17.0+)* Create the ECDSA P-256 key that signs audit checkpoints.
+
+```bash
+neuralmind audit keygen KEY_PATH [--force]
+```
+
+Writes the private key to `KEY_PATH` as PEM, mode 0600, and prints the public
+key as the `security.audit_checkpoint_key` line to pin in
+`neuralmind-backend.yaml`. Run it in an administrator account and keep the
+private key there: anyone who can read it can sign a checkpoint for a log they
+rewrote. ECDSA P-256 is used, not Ed25519, because every OpenSSL FIPS provider
+offers it.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Key written |
+| `1` | `KEY_PATH` exists and `--force` wasn't given |
+
+### audit checkpoint
+
+*(v4.17.0+)* Sign a checkpoint of the audit log as it stands, and anchor it
+where the developer can't write.
+
+```bash
+neuralmind audit checkpoint [project_path] [--key KEY_PATH] [--anchor-dir DIR] [--json]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--key` | When `security.audit_checkpoint_key` is set | `NEURALMIND_AUDIT_KEY` | Private key from `audit keygen`. It must match the pinned public key |
+| `--anchor-dir` | No | `security.audit_anchor_dir` | Directory for the anchored copy |
+| `--json`, `-j` | No | — | Print the checkpoint record, for forwarding to a SIEM |
+
+A checkpoint records how many records the log holds, the hash of the first and
+the last, and the hash of the checkpoint before it, signed with the key. It is
+appended to the anchored file first (one file per project in the anchor
+directory), then to `.neuralmind/audit_checkpoints.jsonl`, and an
+`audit_checkpoint` event is added to the log. It refuses to vouch for a log
+whose chain or existing checkpoints already fail.
+
+Run it on a schedule as the key's owner, for example daily from the
+administrator's crontab: the interval is how long a record can go uncovered.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Checkpoint written |
+| `1` | Not written: the chain or an existing checkpoint fails, the log has no hashed record yet, the key is missing, isn't P-256 or doesn't match the pinned one, the anchor directory can't be written, or the checkpoint settings are malformed |
 
 ### build
 
@@ -1436,6 +1497,14 @@ embedding model isn't on disk for the default turbovec backend (the first build
 would download it), and when a
 running daemon listens beyond loopback or without its token. Without a profile
 it reports `ok` with "none".
+
+**Audit checkpoints** *(v4.17.0+)* fails when a checkpoint shows records
+removed from the end of the audit log, a rewritten chain, or a checkpoint that
+doesn't verify. Under `security.profile: cui` it warns when
+`security.audit_checkpoint_key` or `security.audit_anchor_dir` isn't set. When
+a key is set, or under the profile, it warns when no checkpoint has been taken
+or the newest is more than 7 days old. Otherwise it reports the newest
+checkpoint, or `ok` with "none".
 
 **Graph source** *(v4.13.0+)* names the graph builds read and the
 `graph_source` setting. It warns when `graph_source: auto` has left a
@@ -4059,6 +4128,7 @@ emits, and runs the documented cases.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LLM_SEED` | unset | Set to `1`, with `ANTHROPIC_API_KEY`, to let `neuralmind ingest` send README and architecture-doc prose (never code) to Anthropic to seed synapse edges. *(v4.16.0+)* Refused for a project under `security.profile: cui` |
+| `NEURALMIND_AUDIT_KEY` | unset | *(v4.17.0+)* Path to the private key `neuralmind audit checkpoint` signs with, when `--key` isn't given |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`) and from the full outputs `NEURALMIND_BASH_REPLACE` keeps (`.neuralmind/bash_outputs/`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
@@ -4186,6 +4256,8 @@ process, so restart the MCP server after changing it.
 | `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
 | `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless every volume holding state (the project, `.neuralmind/`, a custom `db_path`) is verified encrypted. Only `false`, `0`, `no` or `off` turns it off; a blank value counts as on |
 | `profile` *(v4.16.0+)* | unset | `cui` turns on the CUI-enclave posture as one unit: it forces `identity: os` and `require_encrypted_storage: true`, refuses `serve` beyond loopback or with `--no-auth`, makes a daemon started that way refuse the project, and refuses LLM documentation seeding even with `NEURALMIND_LLM_SEED=1`. It can't be loosened: `identity: declared`, `require_encrypted_storage: false`, or a blank or misspelled profile fails closed |
+| `audit_checkpoint_key` *(v4.17.0+)* | unset | The base64 DER ECDSA P-256 public key printed by `neuralmind audit keygen`. Every audit checkpoint must carry a valid signature from it, so a rewritten log can't be re-vouched for without the private key. A malformed value fails `audit verify` |
+| `audit_anchor_dir` *(v4.17.0+)* | unset | Directory where `neuralmind audit checkpoint` also writes each checkpoint, one file per project. Relative paths are relative to the project. Make it writable only by the administrator, so deleting the local copy can't hide truncation |
 
 ```yaml
 security:
