@@ -733,9 +733,15 @@ def _check_security_profile(project: Path) -> Check:
     if os.environ.get("NEURALMIND_LLM_SEED") == "1":
         warns.append("NEURALMIND_LLM_SEED=1 is set (the profile refuses it)")
         fixes.append("Unset NEURALMIND_LLM_SEED.")
+    from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
     from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
 
-    if OnnxMiniLMEmbedder().local_model_dir() is None:
+    # Only the turbovec backend loads this model; the in-memory backend never
+    # downloads one, and ChromaDB keeps its own model cache.
+    if (
+        project_backend(project) in TURBOVEC_BACKENDS
+        and OnnxMiniLMEmbedder().local_model_dir() is None
+    ):
         warns.append("the embedding model isn't on disk, so the first build downloads it")
         fixes.append(
             "Pre-seed it and set NEURALMIND_ONNX_MODEL_DIR (see the air-gapped walkthrough)."

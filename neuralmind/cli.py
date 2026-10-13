@@ -4657,6 +4657,12 @@ def cmd_ingest(args):
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")
+        elif os.environ.get("NEURALMIND_LLM_SEED") == "1":
+            from .security_profile import llm_seeding_refusal
+
+            refusal = llm_seeding_refusal(project_path)
+            if refusal:
+                print(f"  Doc synapse seeding refused: {refusal}")
 
 
 def cmd_learn(args):

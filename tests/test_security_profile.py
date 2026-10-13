@@ -337,6 +337,35 @@ def test_doctor_warns(tmp_path, host, monkeypatch, change, needle):
     assert check.status == doctor.WARN and needle in check.detail
 
 
+def test_doctor_skips_the_model_check_on_a_backend_without_one(tmp_path, host):
+    # The in-memory backend never loads or downloads the embedding model.
+    _config(tmp_path, "backend: in_memory\n" + CUI)
+    host["model"] = False
+    assert doctor._check_security_profile(tmp_path).status == doctor.OK
+
+
+def test_cli_ingest_reports_a_seeding_refusal(temp_project, monkeypatch, capsys):
+    from unittest.mock import MagicMock
+
+    from neuralmind import cli
+
+    monkeypatch.setenv("NEURALMIND_LLM_SEED", "1")
+    monkeypatch.setattr(sp, "llm_seeding_refusal", lambda _p: "the profile refuses it")
+    note = temp_project / "notes.md"
+    note.write_text("# Notes\n\nSome content.\n")
+    args = MagicMock(
+        file_path=str(note),
+        type="auto",
+        json=False,
+        project_path=str(temp_project),
+        dry_run=False,
+        quiet=False,
+        no_recursive=False,
+    )
+    cli.cmd_ingest(args)
+    assert "Doc synapse seeding refused: the profile refuses it" in capsys.readouterr().out
+
+
 def test_doctor_ignores_a_dead_daemon(tmp_path, monkeypatch):
     monkeypatch.setattr(daemon_mod, "read_discovery", lambda: {"pid": 0, "host": "0.0.0.0"})
     assert doctor._running_daemon_exposure() is None

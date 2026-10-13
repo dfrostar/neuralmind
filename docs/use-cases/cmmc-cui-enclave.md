@@ -112,8 +112,8 @@ enforce on its own:
   confirm by hand.
 - **`NEURALMIND_LLM_SEED=1` left set:** a warning. The profile refuses it, but
   it shouldn't be in the enclave's environment.
-- **Embedding model not on disk:** a warning, because the first build would
-  download it. Pre-seed it as in step 2.
+- **Embedding model not on disk** (the default turbovec backend): a warning,
+  because the first build would download it. Pre-seed it as in step 2.
 - **A running daemon listening beyond loopback or without its token:** a
   warning, because it refuses this project.
 

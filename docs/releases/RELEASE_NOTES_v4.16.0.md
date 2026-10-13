@@ -74,7 +74,7 @@ own:
 | OS FIPS mode off (CMMC SC.L2-3.13.11) | fail. Without the profile this is a warning on the storage line |
 | OS FIPS mode can't be read (macOS) | warn |
 | `NEURALMIND_LLM_SEED=1` left set | warn: the profile refuses it, but it shouldn't be in the enclave's environment |
-| Embedding model not on disk | warn: the first build would download it |
+| Embedding model not on disk (default turbovec backend) | warn: the first build would download it |
 | A running daemon listening beyond loopback or without its token | warn: it refuses this project |
 | None of the above | ok, naming what the profile enforces |
 

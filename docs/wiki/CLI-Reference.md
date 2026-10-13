@@ -1432,7 +1432,8 @@ mode where the OS has one. Storage encryption only fails when the project sets
 as one unit. It fails when the profile is contradicted or misspelled, or when
 the OS FIPS mode is off. It warns when the FIPS mode can't be read, when
 `NEURALMIND_LLM_SEED=1` is set (the profile refuses it anyway), when the
-embedding model isn't on disk (the first build would download it), and when a
+embedding model isn't on disk for the default turbovec backend (the first build
+would download it), and when a
 running daemon listens beyond loopback or without its token. Without a profile
 it reports `ok` with "none".
 
