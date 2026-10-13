@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.15.1](https://github.com/dfrostar/neuralmind/compare/v4.15.0...v4.15.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **tier2:** an expired Team license gets the full 30-day grace period from expiry ([#656](https://github.com/dfrostar/neuralmind/issues/656)) ([d47264c](https://github.com/dfrostar/neuralmind/commit/d47264c0cdfe87bae304195ca510bcf1eab41e85))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([6689cf9](https://github.com/dfrostar/neuralmind/commit/6689cf9dde0691dff82b7b575a7ffd0ac2f0ddb5))
+
 ## [4.15.0](https://github.com/dfrostar/neuralmind/compare/v4.14.0...v4.15.0) (2026-10-12)
 
 

@@ -213,6 +213,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4151">
+            <h2>What&rsquo;s New in v4.15.1 &mdash; the full 30-day grace period after a Team license expires</h2>
+            <p>The <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEURALMIND-LICENSE-AGREEMENT.md#42-expiration">license agreement</a> (&sect;4.2) grants 30 days after a Team license expires during which Team features keep working. The license check ended grace 30 days after expiry or 30 days after the software last validated the license, whichever came first, so a team that hadn&rsquo;t run NeuralMind in the weeks before expiry got less, and a machine with no validation on record got none.</p>
+            <ul>
+                <li><strong>Grace runs 30 days from the expiry date</strong> &mdash; <code>neuralmind team license status</code> reports <code>OFFLINE_OK</code> and the governance, seats and audit commands keep working, however long ago the software last ran</li>
+                <li><strong>A clock set back still gets no grace</strong> &mdash; a validation recorded later than the current time means the clock was moved back</li>
+                <li><strong><code>self_hosted.offline_grace_days</code> is gone</strong> &mdash; nothing read it; a config that still has it loads as before</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.15.1.md">v4.15.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4150">
             <h2>What&rsquo;s New in v4.15.0 &mdash; a secret scan you can act on</h2>
             <p>A 12-repository field audit found <code>neuralmind scan-for-secrets</code> hard to read where it mattered most: worktrees kept inside the checkout repeated every finding, and none of the HIGH findings was a committed secret. The scan now covers what you can commit, once:</p>
