@@ -548,7 +548,10 @@ neuralmind audit checkpoint /path/to/project --key ~/.neuralmind-audit/checkpoin
 
 Each checkpoint records how many records the log holds and the hashes of the
 first and last, chains to the checkpoint before it, and is signed with the
-ECDSA P-256 key (FIPS 186-5, available under every OpenSSL FIPS provider).
+ECDSA P-256 key (FIPS 186-5, available under every OpenSSL FIPS provider). On a
+FIPS host, install `cryptography` linked to the system OpenSSL
+(`pip install --no-binary cryptography cryptography`): the prebuilt wheel
+bundles its own OpenSSL, which isn't FIPS-validated.
 `audit verify` then fails when the log holds fewer records than a checkpoint
 covers, when a covered record's hash changed (a recomputed chain), when a
 signature doesn't verify against the pinned key, or when a checkpoint is
