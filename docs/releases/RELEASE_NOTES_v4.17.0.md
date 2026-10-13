@@ -69,7 +69,7 @@ exported from your SIEM). It exits 1 when:
 |---|---|
 | Records a checkpoint covers were removed from the end | `2 record(s) removed from the end of the log since checkpoint 4 (…), which covers 120` |
 | The chain was edited and recomputed | `record 120 no longer has the hash checkpoint 4 (…) recorded: the chain was rewritten` |
-| The whole log was replaced | `the log's first record no longer matches checkpoint 1 …` |
+| The whole log was replaced, even behind a hand-written rotation marker | `neither the log nor a rotated archive begins with the record checkpoint 1 (…) starts from: the log was replaced or rewritten` |
 | A checkpoint was forged, or edited and re-signed with another key | `checkpoint 4's signature doesn't verify with security.audit_checkpoint_key` |
 | A checkpoint was deleted from every copy | `checkpoint 3 is missing from every copy (the next is 4)` |
 | The local copy and the anchor disagree | `two different checkpoints claim seq 4` |
@@ -78,6 +78,10 @@ exported from your SIEM). It exits 1 when:
 On success, a last line says how many checkpoints hold, which records the
 newest covers, and whether their signatures were verified. With no checkpoints,
 it says what the chain alone can't see.
+
+A checkpoint taken before the log was rotated is checked against the rotated
+archive it covers. Only an older checkpoint whose archive has been pruned goes
+unchecked (`archive_pruned` in `--json`); the newest must always be found.
 
 ### `neuralmind doctor` gets an **Audit checkpoints** line
 

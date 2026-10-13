@@ -163,7 +163,7 @@ On failure, the line number in the file and the reason go to stderr, or
 `--json` prints `ok`, `first_bad_line`, `total`, `unchained`, `continues_from`,
 `archive_checked` and `reason`, plus a `checkpoints` object (`ok`, `reason`,
 `checked`, `latest_seq`, `latest_created_at`, `records_covered`, `signed`,
-`key_id`, `predate_rotation`, `sources`). `first_bad_line` is `null` when the
+`key_id`, `archive_pruned`, `sources`). `first_bad_line` is `null` when the
 file can't be read at all.
 
 v4.8.0 and earlier accepted a record without a hash anywhere in the log,

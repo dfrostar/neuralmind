@@ -195,7 +195,7 @@ def test_a_recomputed_chain_is_detected(tmp_path):
     _rehash_log(project, keep=6)
     assert AuditTrail(project).verify()["ok"]  # the chain alone can't tell
     report = ac.verify_checkpoints(project)
-    assert not report.ok and "no longer matches" in report.reason
+    assert not report.ok and "replaced or rewritten" in report.reason
 
 
 def test_a_recomputed_chain_with_extra_records_is_detected(tmp_path):
@@ -301,14 +301,58 @@ def test_records_appended_after_a_checkpoint_are_fine(tmp_path):
     assert ac.verify_checkpoints(project).ok
 
 
-def test_checkpoints_from_before_a_rotation_are_not_compared(tmp_path):
+def test_a_checkpoint_from_before_a_rotation_is_checked_against_its_archive(tmp_path):
     project = _project(tmp_path)
     ac.create_checkpoint(project)
     AuditTrail(project).rotate(max_bytes=1)
     AuditTrail(project).append_event("query", "run")
     report = ac.verify_checkpoints(project)
-    assert report.ok and report.predate_rotation == 1
+    assert report.ok and report.checked == 1 and report.archive_pruned == 0
     assert ac.create_checkpoint(project)["seq"] == 2
+    assert ac.verify_checkpoints(project).checked == 2
+
+
+def test_a_truncated_archive_fails(tmp_path):
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    archive = Path(AuditTrail(project).rotate(max_bytes=1)["archived_to"])
+    archive.write_text("".join(archive.read_text().splitlines(keepends=True)[:-2]))
+    report = ac.verify_checkpoints(project)
+    assert not report.ok and "removed from the end" in report.reason
+
+
+def test_an_older_checkpoint_whose_archive_was_pruned_is_skipped(tmp_path):
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    archive = Path(AuditTrail(project).rotate(max_bytes=1)["archived_to"])
+    ac.create_checkpoint(project)
+    archive.unlink()
+    report = ac.verify_checkpoints(project)
+    assert report.ok and report.checked == 1 and report.archive_pruned == 1
+
+
+def test_a_forged_rotation_marker_does_not_hide_a_replaced_log(tmp_path):
+    """Anyone who can write the log can write a rotation marker naming an
+    archive that doesn't exist. Replacing the log with one must not pass."""
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    marker = {
+        "timestamp": "2099-01-01T00:00:00+00:00",
+        "category": "system",
+        "action": "rotation_continuation",
+        "actor": "system",
+        "status": "success",
+        "target": "",
+        "details": {"archive": "audit_events.20990101_000000.jsonl"},
+    }
+    prev = "0" * 64
+    payload = prev + json.dumps(marker, sort_keys=True, separators=(",", ":"))
+    marker["prev_sha256"] = prev
+    marker["sha256"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    _log(project).write_text(json.dumps(marker, sort_keys=True) + "\n")
+    assert AuditTrail(project).verify()["ok"]
+    report = ac.verify_checkpoints(project)
+    assert not report.ok and "replaced or rewritten" in report.reason
 
 
 # --- settings fail closed ------------------------------------------------------

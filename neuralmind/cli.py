@@ -3079,10 +3079,10 @@ def _print_checkpoint_summary(checkpoints: dict | None) -> None:
         f"(#{checkpoints['latest_seq']}, {checkpoints['latest_created_at']}) covers the "
         f"first {checkpoints['records_covered']} record(s); {signature}"
     )
-    if checkpoints.get("predate_rotation"):
+    if checkpoints.get("archive_pruned"):
         print(
-            f"  {checkpoints['predate_rotation']} checkpoint(s) predate the log's rotation "
-            "and weren't compared"
+            f"  {checkpoints['archive_pruned']} older checkpoint(s) cover a rotated archive "
+            "that has been pruned, so they weren't compared"
         )
 
 

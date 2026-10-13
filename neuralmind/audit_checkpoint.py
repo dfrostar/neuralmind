@@ -50,7 +50,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .audit import AUDIT_FILE_NAME, AuditTrail
+from .audit import _ARCHIVE_NAME, AUDIT_FILE_NAME, AuditTrail
 from .backend_manager import backend_config_path, read_backend_config_file
 from .security_config import config_mentions
 
@@ -414,8 +414,9 @@ class CheckpointReport:
     ok: bool = True
     reason: str | None = None
     checked: int = 0
-    # Checkpoints from before the log was rotated, which can't be compared.
-    predate_rotation: int = 0
+    # Older checkpoints whose rotated archive has been pruned, so there is
+    # nothing left to compare them with. Never the newest checkpoint.
+    archive_pruned: int = 0
     signed: bool = False
     key_id: str | None = None
     latest: dict[str, Any] | None = None
@@ -433,7 +434,7 @@ class CheckpointReport:
             "ok": self.ok,
             "reason": self.reason,
             "checked": self.checked,
-            "predate_rotation": self.predate_rotation,
+            "archive_pruned": self.archive_pruned,
             "signed": self.signed,
             "key_id": self.key_id,
             "latest_seq": latest.get("seq"),
@@ -502,21 +503,32 @@ def verify_checkpoints(
     lines, read_error = trail._read_lines_strict()
     if read_error:
         return report.fail(read_error)
-    hashes = [str(evt.get("sha256", "")) for _, evt, _ in lines]
-    first = next((h for h in hashes if h), None)
-    rotation_at = None
-    if lines and lines[0][1].get("action") == "rotation_continuation":
-        rotation_at = str(lines[0][1].get("timestamp", ""))
+    # Each log a checkpoint can cover, keyed by its first hashed record: the
+    # active log and every rotated archive still beside it. A checkpoint is
+    # compared with the log it began on, so one taken before a rotation is
+    # checked against its archive. The active log's rotation marker is never
+    # taken on trust: anyone who can write the log can write one.
+    logs: dict[str, list[str]] = {}
+    for hashes in [_archive_hashes(p) for p in _archives(trail)] + [
+        [str(evt.get("sha256", "")) for _, evt, _ in lines]
+    ]:
+        first = next((h for h in hashes if h), None)
+        if first:
+            logs[first] = hashes
 
     # Newest first, so a failure reports the most the log has lost.
     for checkpoint in reversed(ordered):
-        if first != checkpoint["first_sha256"]:
-            if rotation_at is not None and checkpoint["created_at"] <= rotation_at:
-                report.predate_rotation += 1
+        hashes = logs.get(checkpoint["first_sha256"])
+        if hashes is None:
+            # rotate() prunes old archives, so an older checkpoint can outlive
+            # its log. The newest can't: it must always be found and match.
+            if checkpoint is not ordered[-1]:
+                report.archive_pruned += 1
                 continue
             return report.fail(
-                f"the log's first record no longer matches checkpoint {checkpoint['seq']} "
-                f"({checkpoint['created_at']}): the log was replaced or rewritten"
+                f"neither the log nor a rotated archive begins with the record "
+                f"checkpoint {checkpoint['seq']} ({checkpoint['created_at']}) starts "
+                "from: the log was replaced or rewritten"
             )
         covered = checkpoint["records"]
         if len(hashes) < covered:
@@ -533,6 +545,43 @@ def verify_checkpoints(
         report.checked += 1
     report.latest = ordered[-1]
     return report
+
+
+def _archives(trail: AuditTrail) -> list[Path]:
+    """The rotated archives beside the log, named the way rotate() names them."""
+    folder = trail.events_file.parent
+    if not folder.is_dir():
+        return []
+    return sorted(p for p in folder.iterdir() if _ARCHIVE_NAME.fullmatch(p.name))
+
+
+def _archive_hashes(path: Path) -> list[str]:
+    """Each record's sha256 in an archive, in file order.
+
+    Counted the way the active log is (non-empty lines). A line that isn't a
+    record counts with an empty hash, so a damaged archive fails the
+    comparison instead of shifting the count.
+    """
+    hashes: list[str] = []
+    try:
+        with path.open("rb") as handle:
+            for raw in handle:
+                try:
+                    text = raw.decode("utf-8").strip()
+                except UnicodeDecodeError:
+                    hashes.append("")
+                    continue
+                if not text:
+                    continue
+                try:
+                    obj = json.loads(text)
+                except json.JSONDecodeError:
+                    obj = None
+                sha = obj.get("sha256") if isinstance(obj, dict) else None
+                hashes.append(sha if isinstance(sha, str) else "")
+    except OSError:
+        return []
+    return hashes
 
 
 def _check_signatures(
