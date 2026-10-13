@@ -1428,6 +1428,15 @@ mode where the OS has one. Storage encryption only fails when the project sets
 `require_encrypted_storage`; otherwise an unencrypted disk reports `ok` with
 "not required".
 
+**Security profile** *(v4.16.0+)* checks a project under `security.profile: cui`
+as one unit. It fails when the profile is contradicted or misspelled, or when
+the OS FIPS mode is off. It warns when the FIPS mode can't be read, when
+`NEURALMIND_LLM_SEED=1` is set (the profile refuses it anyway), when the
+embedding model isn't on disk for the default turbovec backend (the first build
+would download it), and when a
+running daemon listens beyond loopback or without its token. Without a profile
+it reports `ok` with "none".
+
 **Graph source** *(v4.13.0+)* names the graph builds read and the
 `graph_source` setting. It warns when `graph_source: auto` has left a
 `graphify-out/graph.json` unused beside the built-in graph, with
@@ -3253,11 +3262,11 @@ neuralmind serve [project_path] [--host HOST] [--port PORT] [--no-browser] [--ed
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--host` | `127.0.0.1` | Address to bind to. The token stays on |
+| `--host` | `127.0.0.1` | Address to bind to. The token stays on. *(v4.16.0+)* Refused (exit 1) for a project under `security.profile: cui` unless it is a loopback address |
 | `--port` | `8787` | TCP port to bind to |
 | `--no-browser` | off | Don't auto-open a browser tab on startup |
 | `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
-| `--no-auth` | off | Disable the auth token. Only use on a trusted host. |
+| `--no-auth` | off | Disable the auth token. Only use on a trusted host. *(v4.16.0+)* Refused (exit 1) under `security.profile: cui` |
 
 #### Examples
 
@@ -3366,6 +3375,10 @@ neuralmind daemon {start|stop|restart|status} [OPTIONS]
   (`health` / `status` / `query` / `search` / `stats` / `build` / `validate` /
   `jobs`); the `neuralmind-daemon` console script runs it directly. Token-guarded
   even on loopback.
+- **CUI projects** *(v4.16.0+)*. A daemon started on a non-loopback address or
+  without its token refuses every request for a project under
+  `security.profile: cui` (`403`, `reason: profile`), and the CLI then runs that
+  command directly instead. It still serves projects without the profile.
 
 ```bash
 # Warm daemon, then fast repeat queries
@@ -3822,7 +3835,7 @@ Run `neuralmind team license status` to view.
 | 0 | Finished, including when you choose not to activate a license in step 1 |
 | 1 | The license agreement was declined, or the free license couldn't be written; onboarding stops at that step |
 
-*(v4.15.1+. Earlier versions printed the same message and exited 0.)*
+*(v4.16.0+. Earlier versions printed the same message and exited 0.)*
 
 #### Honest scope
 
@@ -3914,7 +3927,7 @@ neuralmind team self-hosted validate-license
 #### Exit codes
 
 Every `team` command, `governance` included, exits 0 on success and 1 on
-failure; `seats sync` adds 2. *(v4.15.1+. Earlier versions printed the same
+failure; `seats sync` adds 2. *(v4.16.0+. Earlier versions printed the same
 messages and always exited 0, so a script couldn't tell an activated license
 from a refused one.)*
 
@@ -4076,7 +4089,7 @@ renewed — issue a new one.
 |------|----------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist; *(v4.15.1+)* `team seats sync`: the manifest was applied only in part |
+| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist; *(v4.16.0+)* `team seats sync`: the manifest was applied only in part |
 | 3 | `build --strict`: the code graph fails the freshness check; `daemon status`: the daemon isn't running |
 | 6 | `license expiring`: renewals due inside the window |
 | 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |
@@ -4094,6 +4107,7 @@ emits, and runs the documented cases.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
+| `NEURALMIND_LLM_SEED` | unset | Set to `1`, with `ANTHROPIC_API_KEY`, to let `neuralmind ingest` send README and architecture-doc prose (never code) to Anthropic to seed synapse edges. *(v4.16.0+)* Refused for a project under `security.profile: cui` |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`) and from the full outputs `NEURALMIND_BASH_REPLACE` keeps (`.neuralmind/bash_outputs/`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
@@ -4220,6 +4234,7 @@ process, so restart the MCP server after changing it.
 | `users` *(v4.7.0+)* | `{}` | OS account name → role, used with `identity: os` |
 | `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
 | `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless every volume holding state (the project, `.neuralmind/`, a custom `db_path`) is verified encrypted. Only `false`, `0`, `no` or `off` turns it off; a blank value counts as on |
+| `profile` *(v4.16.0+)* | unset | `cui` turns on the CUI-enclave posture as one unit: it forces `identity: os` and `require_encrypted_storage: true`, refuses `serve` beyond loopback or with `--no-auth`, makes a daemon started that way refuse the project, and refuses LLM documentation seeding even with `NEURALMIND_LLM_SEED=1`. It can't be loosened: `identity: declared`, `require_encrypted_storage: false`, or a blank or misspelled profile fails closed |
 
 ```yaml
 security:
@@ -4244,6 +4259,12 @@ rather than silently ignored (v4.7.0 checked only `identity` and
 `.neuralmind/audit_events.jsonl` with `reason: identity`, `storage`, or `config`,
 and the actor and role a call claimed are kept as `claimed_actor` and
 `claimed_role`.
+
+*(v4.16.0+)* With `profile: cui`, each refusal the profile adds is written to the
+same log as a `profile_refused` event with status `denied`. Its `target` is
+`serve`, `daemon` or `llm_seed`, and `details.reason` says why. A daemon that
+refuses a project answers `403` with `code: security_denied` and
+`reason: profile`. See the [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md).
 
 *(v4.13.0+)* Every `mcp_call` and `mcp_call_denied` event also records the
 calling client as `details.client`: the `clientInfo` name and version it sent

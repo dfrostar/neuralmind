@@ -687,6 +687,97 @@ def _check_storage_encryption(project: Path) -> Check:
     return Check(name, OK, f"{state} ({status.detail}); not required by this project")
 
 
+def _check_security_profile(project: Path) -> Check:
+    """Whether ``security.profile: cui`` holds as a unit on this machine.
+
+    The profile's own settings are enforced at run time; this checks what a
+    project setting can't: the host's FIPS mode, an LLM-seeding switch left on
+    in the environment, an embedding model that would be downloaded on first
+    build, and a running daemon that would refuse this project.
+    """
+    import os
+
+    from neuralmind.security_config import PROFILE_CUI, load_security_settings
+
+    name = "Security profile"
+    settings = load_security_settings(project)
+    if settings.profile != PROFILE_CUI:
+        return Check(
+            name,
+            OK,
+            "none; each security setting applies on its own",
+            fix="For a CUI enclave, set security.profile: cui to enforce them as one unit.",
+        )
+    if settings.problem:
+        return Check(
+            name,
+            FAIL,
+            f"profile: cui, but {settings.problem}; MCP calls are refused",
+            fix="Correct the security: section.",
+        )
+
+    from neuralmind.storage_guard import check_storage
+
+    fails: list[str] = []
+    warns: list[str] = []
+    fixes: list[str] = []
+    fips = check_storage(project).fips_mode
+    if fips is False:
+        fails.append("OS FIPS mode is off")
+        fixes.append(
+            "CMMC SC.L2-3.13.11 needs FIPS-validated cryptography: enable the OS FIPS mode."
+        )
+    elif fips is None:
+        warns.append("OS FIPS mode could not be determined")
+        fixes.append("Confirm the OS FIPS mode is on.")
+    if os.environ.get("NEURALMIND_LLM_SEED") == "1":
+        warns.append("NEURALMIND_LLM_SEED=1 is set (the profile refuses it)")
+        fixes.append("Unset NEURALMIND_LLM_SEED.")
+    from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
+    from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
+
+    # Only the turbovec backend loads this model; the in-memory backend never
+    # downloads one, and ChromaDB keeps its own model cache.
+    if (
+        project_backend(project) in TURBOVEC_BACKENDS
+        and OnnxMiniLMEmbedder().local_model_dir() is None
+    ):
+        warns.append("the embedding model isn't on disk, so the first build downloads it")
+        fixes.append(
+            "Pre-seed it and set NEURALMIND_ONNX_MODEL_DIR (see the air-gapped walkthrough)."
+        )
+    exposure = _running_daemon_exposure()
+    if exposure:
+        warns.append(f"the running daemon refuses this project: {exposure}")
+        fixes.append("Run `neuralmind daemon restart` (127.0.0.1, token on).")
+
+    enforced = (
+        "identity: os, encrypted storage required, servers on loopback with their "
+        "token only, LLM seeding refused"
+    )
+    if fails:
+        return Check(name, FAIL, f"profile: cui; {'; '.join(fails + warns)}", fix=" ".join(fixes))
+    if warns:
+        return Check(name, WARN, f"profile: cui; {'; '.join(warns)}", fix=" ".join(fixes))
+    return Check(name, OK, f"profile: cui ({enforced}); OS FIPS mode on")
+
+
+def _running_daemon_exposure() -> str | None:
+    """Why the running daemon, if any, would refuse a CUI project, or None."""
+    try:
+        from neuralmind.daemon import _pid_alive, read_discovery
+        from neuralmind.security_profile import listener_problem
+
+        info = read_discovery()
+        pid = int((info or {}).get("pid") or 0)
+        # pid 0 would make os.kill probe our own process group, not a daemon.
+        if pid <= 0 or not _pid_alive(pid):
+            return None
+        return listener_problem(str(info.get("host", "")), bool(info.get("token")))
+    except Exception:
+        return None
+
+
 def run_diagnostics(project_path: str, stale_after: float | None = None) -> list[Check]:
     """Run every check against ``project_path`` and return the results.
 
@@ -707,6 +798,7 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_turbovec_version(project),
         _check_security_policy(project),
         _check_storage_encryption(project),
+        _check_security_profile(project),
     ]
 
 

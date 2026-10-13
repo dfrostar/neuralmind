@@ -123,6 +123,10 @@ def _with_aws_key(project: Path) -> None:
     (project / ".env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
 
 
+def _cui_profile(project: Path) -> None:
+    (project / "neuralmind-backend.yaml").write_text("security:\n  profile: cui\n")
+
+
 # (id, argv with {p} for the project dir, setup, env, expected code)
 CONTRACT = [
     # The regression this file exists for: no graph -> the code-graph check
@@ -152,6 +156,14 @@ CONTRACT = [
     ("scan-missing-path", ["scan-for-secrets", "{p}/does-not-exist"], None, {}, 2),
     ("feedback-memory-off", ["feedback", "good", "{p}"], None, {"NEURALMIND_MEMORY": "0"}, 1),
     ("daemon-status-not-running", ["daemon", "status"], None, {}, 3),
+    # security.profile: cui refuses a listener beyond loopback before it builds or binds.
+    (
+        "serve-refused-by-cui-profile",
+        ["serve", "{p}", "--host", "0.0.0.0", "--no-browser"],
+        _cui_profile,
+        {},
+        1,
+    ),
     ("unknown-option", ["health", "{p}", "--no-such-flag"], None, {}, 2),
     (
         "license-expiring-none-due",
@@ -200,7 +212,7 @@ def test_documented_exit_code(isolated, monkeypatch, capsys, argv, setup, env, e
 
 
 # `neuralmind team ...` and `onboarding` return their exit code instead of
-# calling sys.exit. Through v4.15.0 main() discarded it, so every failure row
+# calling sys.exit. Through v4.15.1 main() discarded it, so every failure row
 # below exited 0.
 
 

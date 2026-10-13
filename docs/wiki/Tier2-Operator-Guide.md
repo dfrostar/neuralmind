@@ -132,7 +132,7 @@ neuralmind team self-hosted validate-license
 
 ### Scripting: exit codes
 
-Since v4.15.1 every `team` command and `onboarding` exits 1 when it fails, so
+Since v4.16.0 every `team` command and `onboarding` exits 1 when it fails, so
 a provisioning script can stop on a refused license:
 
 ```bash

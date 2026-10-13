@@ -288,6 +288,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Turbovec compatibility",
         "Security policy",
         "Storage encryption",
+        "Security profile",
     }
 
 

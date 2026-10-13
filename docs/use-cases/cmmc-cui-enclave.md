@@ -2,13 +2,15 @@
 
 > Goal: run NeuralMind on source code that is Controlled Unclassified
 > Information (CUI), inside an environment assessed against CMMC 2.0 Level 2,
-> with each MCP role tied to a real OS account and the index refused on any
-> disk that isn't encrypted.
+> with each MCP role tied to a real OS account, the index refused on any
+> disk that isn't encrypted, and *(v4.16.0+)* the whole posture switched on and
+> checked as one setting, `security.profile: cui`.
 
 CMMC assesses a defense contractor's environment, not a tool, so NeuralMind
 itself has nothing to be assessed against. What matters is what NeuralMind does inside
 your assessment scope and what evidence it leaves. This walkthrough sets up the
-two controls added in v4.7.0 and shows what an assessor can check.
+controls added in v4.7.0, turns them on together with the CUI profile added in
+v4.16.0, and shows what an assessor can check.
 
 **Existing use case it improves:** [offline and regulated
 environments](offline-regulated.md) and [air-gapped installs](air-gapped.md),
@@ -43,29 +45,46 @@ owned by them and writable only by them:
 
 ```yaml
 security:
-  identity: os
+  profile: cui            # v4.16.0+
   users:
     alice: builder
     bob: reader
   roles:
     builder: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton, neuralmind_build]
     reader: [neuralmind_wakeup, neuralmind_query, neuralmind_search, neuralmind_skeleton]
-  require_encrypted_storage: true
 ```
 
 ```bash
 chmod 644 neuralmind-backend.yaml
 ```
 
-- `identity: os` takes each MCP caller's identity from the OS account the
+`profile: cui` switches on every setting below as one unit. Each is enforced at
+run time, and a refusal is written to the audit log:
+
+- **`identity: os`.** Each MCP caller's identity comes from the OS account the
   server runs as. Over the stdio transport that is the developer who launched
   the agent. The `role` a call declares is ignored and logged as a claim.
-- `users` maps OS accounts to roles. An account that isn't listed is refused,
-  unless you add `default_role`.
-- `roles` without `admin` means no account can reach admin-only tools.
-- `require_encrypted_storage` makes NeuralMind refuse to build, query, serve MCP
-  tools or run hooks until it has verified FileVault, BitLocker or
-  dm-crypt/LUKS on the project's volume.
+  `users` maps OS accounts to roles; an account that isn't listed is refused,
+  unless you add `default_role`. `roles` without `admin` means no account can
+  reach admin-only tools.
+- **`require_encrypted_storage: true`.** NeuralMind refuses to build, query,
+  serve MCP tools or run hooks until it has verified FileVault, BitLocker or
+  dm-crypt/LUKS on every volume holding the project's state.
+- **Local listeners only.** `neuralmind serve` refuses to start on an address
+  other than loopback, or with `--no-auth`. A shared `neuralmind daemon`
+  started that way refuses this project's requests, while still serving
+  projects without the profile. Reach the graph view from another machine
+  through an SSH tunnel.
+- **No LLM documentation seeding.** It is refused even with
+  `NEURALMIND_LLM_SEED=1` set, so no README or architecture prose goes to a
+  model provider.
+
+The profile can't be loosened from the same file. `profile: cui` with
+`identity: declared` or `require_encrypted_storage: false` is a contradiction,
+and so is a misspelled or blank profile. NeuralMind then refuses every MCP call
+and holds the project to the profile until the file is fixed. Before v4.16.0,
+set `identity: os` and `require_encrypted_storage: true` yourself; there was no
+listener or seeding refusal.
 
 Keep the MCP server on stdio. `identity: os` refuses the HTTP transport,
 because over HTTP the server's account isn't the caller's.
@@ -78,12 +97,27 @@ neuralmind doctor .
 
 ```
   [ ok ] Security policy: identity: os; account 'alice' gets role 'builder'
-  [ ok ] Storage encryption: /System/Volumes/Data: FileVault on (macOS has no FIPS mode switch; FileVault uses Apple corecrypto, whose validation is listed in Apple's CMVP certificates)
+  [ ok ] Storage encryption: /dev/mapper/luks-root: dm-crypt layer present; OS FIPS mode on
+  [ ok ] Security profile: profile: cui (identity: os, encrypted storage required, servers on loopback with their token only, LLM seeding refused); OS FIPS mode on
 ```
 
-On Linux and Windows the storage line also reports whether the OS FIPS mode is
-on. If it's off while encryption is required, `doctor` warns: CMMC asks for
-FIPS-validated cryptography. NeuralMind's own hash calls work with the FIPS
+The **Security profile** line *(v4.16.0+)* checks what the project file can't
+enforce on its own:
+
+- **OS FIPS mode off:** a failure. CMMC SC.L2-3.13.11 asks for FIPS-validated
+  cryptography protecting CUI. Without the profile this is only a warning on
+  the storage line.
+- **FIPS mode that can't be read** (macOS has no FIPS mode switch; FileVault
+  uses Apple corecrypto, listed in Apple's CMVP certificates): a warning to
+  confirm by hand.
+- **`NEURALMIND_LLM_SEED=1` left set:** a warning. The profile refuses it, but
+  it shouldn't be in the enclave's environment.
+- **Embedding model not on disk** (the default turbovec backend): a warning,
+  because the first build would download it. Pre-seed it as in step 2.
+- **A running daemon listening beyond loopback or without its token:** a
+  warning, because it refuses this project.
+
+`doctor` exits 1 on any failure, so the check can gate a provisioning script. NeuralMind's own hash calls work with the FIPS
 mode on *(v4.13.0+; before that, `neuralmind ingest` crashed there)*. A
 group-writable policy file is a warning too, since anyone in the group could
 change roles.
@@ -98,7 +132,10 @@ Everything lands in `.neuralmind/audit_events.jsonl`, hash-chained:
   account, with `claimed_role` / `claimed_actor` whenever a call declared
   something else;
 - `mcp_call_denied` with `reason: identity` for any call the server couldn't
-  attribute.
+  attribute;
+- *(v4.16.0+)* a `profile_refused` event, status `denied`, each time the CUI
+  profile stops something: `target` names what it stopped (`serve`, `daemon`
+  or `llm_seed`) and `details.reason` says why.
 
 `neuralmind audit verify` walks the hash chain. It detects a changed or removed
 record in the middle of the log, but not removal of the newest records or a
@@ -123,6 +160,8 @@ Summary](../COMPLIANCE-SUMMARY.md).
 
 ## Related
 
+- [v4.16.0 release notes](../releases/RELEASE_NOTES_v4.16.0.md): the CUI profile
 - [v4.7.0 release notes](../releases/RELEASE_NOTES_v4.7.0.md)
+- [NIST: what applies, where it stands, what's next](../compliance/NIST.md)
 - [Security Guide — Access Control](../SECURITY-GUIDE.md#access-control)
 - [Security settings reference](../wiki/CLI-Reference.md)

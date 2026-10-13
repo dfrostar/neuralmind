@@ -80,8 +80,9 @@ class TestServerSurfaces:
         assert any(t["name"] == "neuralmind_savings" for t in TOOLS)
 
     def test_daemon_handler_returns_report(self, tmp_path: Path):
-        from neuralmind.daemon import _savings
+        from neuralmind.daemon import DaemonContext, JobManager, ProjectRegistry, _savings
 
         _write_memory_event(tmp_path, tokens=500)
-        report = _savings(None, str(tmp_path), False, None, 100)
+        ctx = DaemonContext(registry=ProjectRegistry(), jobs=JobManager())
+        report = _savings(ctx, str(tmp_path), False, None, 100)
         assert report["total_queries"] == 1

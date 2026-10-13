@@ -97,7 +97,7 @@ neuralmind team audit verify                                   # walk the SHA-25
 neuralmind team audit export --format csv --output audit.csv   # or --format json
 ```
 
-`audit verify` exits 1 when the chain is broken *(v4.15.1+; earlier versions
+`audit verify` exits 1 when the chain is broken *(v4.16.0+; earlier versions
 printed `TAMPERED` and exited 0)*, so a scheduled job can alert on a rewritten
 entry without parsing its output:
 

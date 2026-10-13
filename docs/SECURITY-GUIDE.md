@@ -267,7 +267,10 @@ deployment guide.
   ```
 
   If you have to expose it, terminate TLS in a reverse proxy you operate and
-  leave the token on.
+  leave the token on. *(v4.16.0+)* For a project under
+  `security.profile: cui`, NeuralMind won't: `serve` refuses a non-loopback
+  `--host` and `--no-auth`, and a daemon started that way refuses the project,
+  so the SSH tunnel is the only route.
 - **Streamable HTTP MCP** (`NEURALMIND_MCP_TRANSPORT=streamable_http`) is an
   unfinished skeleton. It binds to `127.0.0.1:8765` with no authentication and
   no TLS, so don't expose it.
@@ -679,6 +682,7 @@ Before deploying NeuralMind to production:
 - [ ] `security.roles` set in `neuralmind-backend.yaml`, without `admin` unless you need it
 - [ ] `security.identity: os` with each OS account in `security.users`, and the policy file writable only by its owner
 - [ ] `security.require_encrypted_storage: true` where the index holds CUI, and `neuralmind doctor` shows Storage encryption `ok`
+- [ ] *(v4.16.0+)* `security.profile: cui` where the index holds CUI, and `neuralmind doctor` shows Security profile `ok`
 - [ ] MCP server reachable only by the agent that launched it (stdio), or the HTTP transport kept on localhost
 - [ ] MFA on the OS accounts that can run the agent or read the project
 - [ ] Regular access reviews scheduled

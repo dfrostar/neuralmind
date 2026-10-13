@@ -4657,6 +4657,12 @@ def cmd_ingest(args):
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")
+        elif os.environ.get("NEURALMIND_LLM_SEED") == "1":
+            from .security_profile import llm_seeding_refusal
+
+            refusal = llm_seeding_refusal(project_path)
+            if refusal:
+                print(f"  Doc synapse seeding refused: {refusal}")
 
 
 def cmd_learn(args):
@@ -5041,6 +5047,7 @@ def cmd_serve(args):
     browser, and semantic quick-switch search. The HTTP handlers
     themselves are read-only.
     """
+    from neuralmind.security_profile import ProfileRefusedError
     from neuralmind.server import serve
 
     project_path = args.project_path or "."
@@ -5059,6 +5066,11 @@ def cmd_serve(args):
         )
     except RuntimeError as exc:
         print(f"serve failed: {exc}")
+        sys.exit(1)
+    except ProfileRefusedError as exc:
+        # A PermissionError, so it must be caught before OSError: it is a
+        # refusal, not a bind failure.
+        print(f"serve refused: {exc}")
         sys.exit(1)
     except OSError as exc:
         print(f"serve failed: could not bind {args.host}:{args.port} ({exc})")

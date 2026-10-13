@@ -1410,7 +1410,12 @@ class NeuralMind:
                     if synapse_doc_edges == 0:
                         import os
 
-                        if os.environ.get("NEURALMIND_LLM_SEED") != "1":
+                        from .security_profile import llm_seeding_refusal
+
+                        refusal = llm_seeding_refusal(self.project_path)
+                        if refusal and os.environ.get("NEURALMIND_LLM_SEED") == "1":
+                            print(f"  ℹ Doc synapse seeding refused: {refusal}")
+                        elif os.environ.get("NEURALMIND_LLM_SEED") != "1":
                             print(
                                 "  ℹ Doc synapse seeding disabled (set NEURALMIND_LLM_SEED=1 + ANTHROPIC_API_KEY to enable)"
                             )

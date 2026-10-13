@@ -17,6 +17,13 @@ settings that change what NeuralMind *refuses*:
     When true, NeuralMind refuses to build, query, serve MCP tools or run
     hooks for a project whose volume it can't verify as encrypted (see
     ``storage_guard.py``).
+``profile``
+    ``cui`` turns on the settings a CUI enclave needs as one unit: it forces
+    ``identity: os`` and ``require_encrypted_storage: true``, and adds the
+    refusals in ``security_profile.py`` (no listener beyond loopback or
+    without its token, no LLM documentation seeding). A profile can't be
+    loosened: ``profile: cui`` with ``identity: declared`` or
+    ``require_encrypted_storage: false`` is a contradiction and fails closed.
 
 The general config loader treats a file that doesn't parse as empty, which is
 right for backend tuning and wrong for a security policy: a YAML typo would
@@ -38,7 +45,10 @@ IDENTITY_OS = "os"
 # setting, which the MCP server answers by refusing every call.
 IDENTITY_INVALID = "invalid"
 
-_ENFORCEMENT_KEYS = ("identity", "require_encrypted_storage")
+PROFILE_CUI = "cui"
+_PROFILES = (PROFILE_CUI,)
+
+_ENFORCEMENT_KEYS = ("identity", "require_encrypted_storage", "profile")
 _FALSE_WORDS = {"false", "no", "off", "0"}
 
 
@@ -48,6 +58,7 @@ class SecuritySettings:
     users: dict[str, str] = field(default_factory=dict)
     default_role: str | None = None
     require_encrypted_storage: bool = False
+    profile: str | None = None
     config_path: Path | None = None
     # Why the settings were forced to their strictest values, if they were.
     problem: str | None = None
@@ -64,6 +75,9 @@ def load_security_settings(project_path: str | Path) -> SecuritySettings:
             return SecuritySettings(
                 identity=IDENTITY_INVALID,
                 require_encrypted_storage=True,
+                # An unreadable file that names a profile is held to the
+                # strictest one, not to none.
+                profile=PROFILE_CUI if config_mentions(path, ("profile",)) else None,
                 config_path=path,
                 problem=f"{path.name} does not parse ({exc}); refusing rather than ignoring its security settings",
             )
@@ -74,6 +88,9 @@ def load_security_settings(project_path: str | Path) -> SecuritySettings:
         return SecuritySettings(
             identity=IDENTITY_INVALID,
             require_encrypted_storage=True,
+            # As for a file that doesn't parse: a malformed section that
+            # names a profile is held to the strictest one.
+            profile=PROFILE_CUI if config_mentions(path, ("profile",)) else None,
             config_path=path,
             problem="`security` must be a mapping",
         )
@@ -82,13 +99,37 @@ def load_security_settings(project_path: str | Path) -> SecuritySettings:
 
 def _parse(security: dict[str, Any], path: Path) -> SecuritySettings:
     require = _required(security)
-    raw_identity = security.get("identity", IDENTITY_DECLARED)
+    raw_profile = security.get("profile")
+    profile = str(raw_profile).strip().lower() if raw_profile is not None else None
+    if profile == PROFILE_CUI:
+        require = True
+    default_identity = IDENTITY_OS if profile == PROFILE_CUI else IDENTITY_DECLARED
+    raw_identity = security.get("identity", default_identity)
     identity = str(raw_identity).strip().lower() if raw_identity is not None else ""
     users_raw = security.get("users", {}) or {}
     default_role = security.get("default_role")
 
     problem = None
-    if identity not in (IDENTITY_DECLARED, IDENTITY_OS):
+    if "profile" in security and profile not in _PROFILES:
+        # A blank or misspelled profile is never read as "no profile": it is
+        # held to the strictest one, and MCP calls are refused until it's fixed.
+        problem = f"security.profile must be 'cui', not {raw_profile!r}"
+        require = True
+        profile = PROFILE_CUI
+    elif profile == PROFILE_CUI and identity != IDENTITY_OS:
+        problem = (
+            "security.profile: cui requires identity: os; remove security.identity or set it to os"
+        )
+    elif (
+        profile == PROFILE_CUI
+        and not _required(security)
+        and "require_encrypted_storage" in security
+    ):
+        problem = (
+            "security.profile: cui requires encrypted storage; remove "
+            "security.require_encrypted_storage or set it to true"
+        )
+    elif identity not in (IDENTITY_DECLARED, IDENTITY_OS):
         problem = f"security.identity must be 'declared' or 'os', not {raw_identity!r}"
     elif not isinstance(users_raw, dict):
         problem = "security.users must map OS account names to roles"
@@ -98,6 +139,7 @@ def _parse(security: dict[str, Any], path: Path) -> SecuritySettings:
         return SecuritySettings(
             identity=IDENTITY_INVALID,
             require_encrypted_storage=require,
+            profile=profile if profile in _PROFILES else None,
             config_path=path,
             problem=problem,
         )
@@ -108,6 +150,7 @@ def _parse(security: dict[str, Any], path: Path) -> SecuritySettings:
         users=users,
         default_role=default_role,
         require_encrypted_storage=require,
+        profile=profile,
         config_path=path,
     )
 
