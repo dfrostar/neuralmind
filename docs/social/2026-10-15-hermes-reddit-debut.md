@@ -43,7 +43,33 @@ v4.12.0). Every figure here comes from the current `site/claims.json`.
 2. I wrote a Hermes-Agent plugin so the agent stops starting cold on my repo
 3. Persistent code memory for Hermes-Agent: a `pre_llm_call` plugin, local index, published benchmark misses included
 
-## Body
+## Body (posting version, ~1,900 characters)
+
+I built NeuralMind (MIT, runs locally) and just shipped a Hermes-Agent plugin for it. I'd like feedback from people using Hermes on real codebases.
+
+**Why:** Hermes could already use NeuralMind over MCP, but only when the model decided to call the tool. When it didn't, the turn started cold.
+
+**What the plugin does:**
+
+- **Every turn:** looks up your message in a local index of the repo and appends the matching files (with symbols and line numbers), the files linked to them, and any recorded decisions from git trailers. It goes on the user message, so Hermes's prompt cache isn't invalidated. If nothing matches, nothing is added.
+- **First turn of a session:** a short recap of your last session in that repo, covering your prompts and the files you edited.
+- **As you work:** successful edits and reads are recorded, so files you work on together get linked and links you stop using fade.
+
+**Install:**
+
+    pip install -U neuralmind
+    neuralmind build /path/to/repo
+    neuralmind install-hermes-plugin
+
+**Numbers, misses included:** on 40 queries written before tuning, across requests, click, flask and rich, the right file was in the context for 40 of 40, at 51–242x fewer tokens than pasting whole files. 40 is a small sample: on a 150-question eval it gets the right file into the top five 93.3% of the time and misses 10. A bare vector lookup always costs fewer tokens and ranks the right file higher on two of the four repos. To reproduce, run `python -m evals.public.run` from a clone.
+
+**What runs where:** the index lives in `<repo>/.neuralmind/` and there's no telemetry. The one exception is that the first build downloads the embedding model (SHA256-checked) unless you pre-seed it. Whatever the plugin adds goes to whichever model Hermes uses.
+
+Repo: https://github.com/dfrostar/neuralmind
+
+Does the per-turn block help on your setup, or is it noise?
+
+## Long version (reference: fuller detail for replies)
 
 I build NeuralMind, an MIT-licensed local code-memory tool for coding agents.
 I just shipped a Hermes-Agent plugin for it and would like feedback from
