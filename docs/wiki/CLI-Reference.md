@@ -146,7 +146,7 @@ neuralmind audit verify [project_path] [--checkpoint FILE ...] [--json]
 | Code | Meaning |
 |------|---------|
 | `0` | Every hashed record checks out, and so does every checkpoint |
-| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started. Or a checkpoint fails: records were removed from the end of the log, the chain was rewritten, a signature doesn't verify, a checkpoint is missing or two claim the same number, or the checkpoint settings are malformed |
+| `1` | A line fails: it isn't a JSON object, its hash or `prev_sha256` doesn't match, or it has no hash after the chain started. Or a checkpoint fails: records were removed from the end of the log, the chain was rewritten, a signature doesn't verify, a checkpoint is missing or two claim the same number, the rotated archive a checkpoint covers fails its own hash chain, the configured anchored copy is missing while other copies hold checkpoints, or the checkpoint settings are malformed |
 
 #### Output
 

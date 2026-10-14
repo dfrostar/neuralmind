@@ -466,8 +466,9 @@ def verify_checkpoints(
     anchor_dir = anchor_dir or settings.anchor_dir
 
     sources = [local_checkpoints_path(root)]
-    if anchor_dir is not None:
-        sources.append(anchor_checkpoints_path(root, anchor_dir))
+    anchor_path = anchor_checkpoints_path(root, anchor_dir) if anchor_dir is not None else None
+    if anchor_path is not None:
+        sources.append(anchor_path)
     named = [Path(p) for p in extra_sources or []]
     sources.extend(named)
 
@@ -490,6 +491,15 @@ def verify_checkpoints(
             by_seq[checkpoint["seq"]] = checkpoint
     if not by_seq:
         return report
+    # The anchored copy is the one the developer can't edit. If it's gone
+    # (deleted, or its volume unmounted) while other copies hold checkpoints,
+    # those copies alone could have been rolled back along with the log.
+    if anchor_path is not None and not anchor_path.exists():
+        return report.fail(
+            f"the anchored checkpoint copy {anchor_path} is missing, so the local copy "
+            "can't be trusted on its own (if the anchor was set up after the first "
+            f"checkpoint, copy {local_checkpoints_path(root)} there)"
+        )
 
     ordered = [by_seq[seq] for seq in sorted(by_seq)]
     problem = _check_signatures(ordered, settings, report)
@@ -500,26 +510,24 @@ def verify_checkpoints(
         return report.fail(problem)
 
     trail = AuditTrail(root)
-    lines, read_error = trail._read_lines_strict()
-    if read_error:
-        return report.fail(read_error)
     # Each log a checkpoint can cover, keyed by its first hashed record: the
     # active log and every rotated archive still beside it. A checkpoint is
     # compared with the log it began on, so one taken before a rotation is
     # checked against its archive. The active log's rotation marker is never
-    # taken on trust: anyone who can write the log can write one.
-    logs: dict[str, list[str]] = {}
-    for hashes in [_archive_hashes(p) for p in _archives(trail)] + [
-        [str(evt.get("sha256", "")) for _, evt, _ in lines]
-    ]:
+    # taken on trust: anyone who can write the log can write one. A log's
+    # stored hashes count only once its chain verifies, or a record's body
+    # could be edited with its sha256 left as it was.
+    logs: dict[str, tuple[list[str], str | None]] = {}
+    for path in _archives(trail) + [trail.events_file]:
+        hashes, problem = _log_chain(root, path)
         first = next((h for h in hashes if h), None)
         if first:
-            logs[first] = hashes
+            logs[first] = (hashes, problem)
 
     # Newest first, so a failure reports the most the log has lost.
     for checkpoint in reversed(ordered):
-        hashes = logs.get(checkpoint["first_sha256"])
-        if hashes is None:
+        found_log = logs.get(checkpoint["first_sha256"])
+        if found_log is None:
             # rotate() prunes old archives, so an older checkpoint can outlive
             # its log. The newest can't: it must always be found and match.
             if checkpoint is not ordered[-1]:
@@ -529,6 +537,12 @@ def verify_checkpoints(
                 f"neither the log nor a rotated archive begins with the record "
                 f"checkpoint {checkpoint['seq']} ({checkpoint['created_at']}) starts "
                 "from: the log was replaced or rewritten"
+            )
+        hashes, chain_problem = found_log
+        if chain_problem:
+            return report.fail(
+                f"the log checkpoint {checkpoint['seq']} ({checkpoint['created_at']}) "
+                f"covers fails its hash chain: {chain_problem}"
             )
         covered = checkpoint["records"]
         if len(hashes) < covered:
@@ -555,33 +569,22 @@ def _archives(trail: AuditTrail) -> list[Path]:
     return sorted(p for p in folder.iterdir() if _ARCHIVE_NAME.fullmatch(p.name))
 
 
-def _archive_hashes(path: Path) -> list[str]:
-    """Each record's sha256 in an archive, in file order.
+def _log_chain(root: Path, path: Path) -> tuple[list[str], str | None]:
+    """Each record's sha256 in ``path``, in file order, and why its chain fails.
 
-    Counted the way the active log is (non-empty lines). A line that isn't a
-    record counts with an empty hash, so a damaged archive fails the
-    comparison instead of shifting the count.
+    The chain is walked as ``audit verify`` walks the active log. The hashes
+    are returned either way, so a failing log can still be matched to the
+    checkpoint that covers it and reported.
     """
-    hashes: list[str] = []
-    try:
-        with path.open("rb") as handle:
-            for raw in handle:
-                try:
-                    text = raw.decode("utf-8").strip()
-                except UnicodeDecodeError:
-                    hashes.append("")
-                    continue
-                if not text:
-                    continue
-                try:
-                    obj = json.loads(text)
-                except json.JSONDecodeError:
-                    obj = None
-                sha = obj.get("sha256") if isinstance(obj, dict) else None
-                hashes.append(sha if isinstance(sha, str) else "")
-    except OSError:
-        return []
-    return hashes
+    trail = AuditTrail(root)
+    trail.events_file = path
+    result = trail.verify()
+    lines, _ = trail._read_lines_strict()
+    hashes = [str(evt.get("sha256", "")) for _, evt, _ in lines]
+    if result["ok"]:
+        return hashes, None
+    where = f"{path.name} line {result['first_bad_line']}: " if result["first_bad_line"] else ""
+    return hashes, f"{where}{result['reason']}"
 
 
 def _check_signatures(

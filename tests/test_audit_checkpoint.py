@@ -274,6 +274,31 @@ def test_the_anchored_copy_survives_deletion_of_the_local_one(tmp_path):
     assert not report.ok and "removed from the end" in report.reason
 
 
+def test_a_missing_anchor_copy_fails_once_checkpoints_exist(tmp_path):
+    """With the anchor unavailable, the local copy could be rolled back to an
+    older checkpoint along with the log, leaving no gap to see."""
+    project = _project(tmp_path, records=3)
+    anchor = tmp_path / "anchor"
+    _pin(project, anchor=anchor)
+    ac.create_checkpoint(project)
+    for _ in range(3):
+        AuditTrail(project).append_event("query", "run")
+    ac.create_checkpoint(project)
+    local = ac.local_checkpoints_path(project)
+    local.write_text(local.read_text().splitlines(keepends=True)[0])
+    _log(project).write_text("".join(_log(project).read_text().splitlines(keepends=True)[:3]))
+    ac.anchor_checkpoints_path(project, anchor).unlink()
+    report = ac.verify_checkpoints(project)
+    assert not report.ok and "anchored checkpoint copy" in report.reason
+
+
+def test_an_anchor_with_no_checkpoints_anywhere_is_fine(tmp_path):
+    project = _project(tmp_path)
+    _pin(project, anchor=tmp_path / "anchor")
+    assert ac.verify_checkpoints(project).ok
+    assert ac.create_checkpoint(project)["seq"] == 1
+
+
 def test_a_checkpoint_kept_elsewhere_can_be_checked(tmp_path):
     project = _project(tmp_path)
     ac.create_checkpoint(project)
@@ -319,6 +344,21 @@ def test_a_truncated_archive_fails(tmp_path):
     archive.write_text("".join(archive.read_text().splitlines(keepends=True)[:-2]))
     report = ac.verify_checkpoints(project)
     assert not report.ok and "removed from the end" in report.reason
+
+
+def test_an_edited_archive_record_fails_even_with_its_hash_kept(tmp_path):
+    """The archive's stored hashes count only once its chain verifies."""
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    archive = Path(AuditTrail(project).rotate(max_bytes=1)["archived_to"])
+    lines = archive.read_text().splitlines()
+    record = json.loads(lines[1])
+    record["target"] = "edited"
+    lines[1] = json.dumps(record, sort_keys=True)
+    archive.write_text("\n".join(lines) + "\n")
+    assert AuditTrail(project).verify()["ok"]  # the active log alone can't tell
+    report = ac.verify_checkpoints(project)
+    assert not report.ok and "fails its hash chain" in report.reason
 
 
 def test_an_older_checkpoint_whose_archive_was_pruned_is_skipped(tmp_path):

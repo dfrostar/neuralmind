@@ -558,7 +558,7 @@ signature doesn't verify against the pinned key, or when a checkpoint is
 missing from every copy.
 
 A checkpoint taken before the log was rotated is checked against the rotated
-archive it covers. The newest checkpoint must always be found, in the log or
+archive it covers, once that archive's own hash chain verifies. The newest checkpoint must always be found, in the log or
 an archive beside it, so a rotation marker written by hand can't pass off a
 replaced log as a rotated one. Only older checkpoints whose archive has been
 pruned go unchecked, and `audit verify` counts them.
@@ -568,7 +568,7 @@ What each part protects against:
 | Part | Without it |
 |------|-----------|
 | The signature, with the private key in another account | Someone who can write the log could rewrite it and write a matching checkpoint |
-| The anchored copy, in a directory only the administrator can write | Deleting `.neuralmind/audit_checkpoints.jsonl` along with the newest records would leave nothing to compare against |
+| The anchored copy, in a directory only the administrator can write | Deleting `.neuralmind/audit_checkpoints.jsonl` along with the newest records would leave nothing to compare against. Once checkpoints exist, `verify` fails while the anchored copy is missing, so unmounting it doesn't fall back to the local copy alone |
 | A short interval | Records written since the newest checkpoint are covered by the chain alone |
 
 `audit checkpoint --json` prints each checkpoint as one line for your SIEM, and

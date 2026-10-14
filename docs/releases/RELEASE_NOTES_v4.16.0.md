@@ -150,6 +150,8 @@ exported from your SIEM). It exits 1 when:
 | A checkpoint was forged, or edited and re-signed with another key | `checkpoint 4's signature doesn't verify with security.audit_checkpoint_key` |
 | A checkpoint was deleted from every copy | `checkpoint 3 is missing from every copy (the next is 4)` |
 | The local copy and the anchor disagree | `two different checkpoints claim seq 4` |
+| The anchored copy is gone (deleted, or its volume unmounted) while the local copy holds checkpoints | `the anchored checkpoint copy … is missing, so the local copy can't be trusted on its own …` |
+| A record in a rotated archive was edited, its hash left as it was | `the log checkpoint 1 (…) covers fails its hash chain: … sha256 doesn't match …` |
 | A checkpoint setting is malformed | `checkpoint settings: …`, never a quietly weaker check |
 
 On success, a last line says how many checkpoints hold, which records the
@@ -157,7 +159,7 @@ newest covers, and whether their signatures were verified. With no checkpoints,
 it says what the chain alone can't see.
 
 A checkpoint taken before the log was rotated is checked against the rotated
-archive it covers. Only an older checkpoint whose archive has been pruned goes
+archive it covers, once that archive's own hash chain verifies. Only an older checkpoint whose archive has been pruned goes
 unchecked (`archive_pruned` in `--json`); the newest must always be found.
 
 #### `neuralmind doctor` gets an **Audit checkpoints** line
