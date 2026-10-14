@@ -105,7 +105,9 @@ def run_tests(
     """
     report = workspace / ".bench-junit.xml"
     report.unlink(missing_ok=True)
-    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "NEURALMIND_BYPASS")}
+    env = {
+        k: v for k, v in os.environ.items() if k != "PYTHONPATH" and not k.startswith("NEURALMIND_")
+    }
     try:
         subprocess.run(
             [python, "-m", "pytest", "-p", "no:cacheprovider", f"--junitxml={report}", *test_files],

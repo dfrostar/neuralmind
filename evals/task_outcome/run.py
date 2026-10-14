@@ -65,6 +65,26 @@ you can't see. You can run the existing tests with `python -m pytest <path>`. \
 Stop when the fix is done."""
 
 
+class RunAbortedError(RuntimeError):
+    """The harness, not the agent, failed: nothing is recorded, a rerun retries."""
+
+
+def _clean_path(host_path: str) -> list[str]:
+    """The host's ``PATH`` minus every directory holding a ``neuralmind`` executable.
+
+    A NeuralMind install already on the host (``~/.local/bin`` here) would
+    otherwise reach the baseline arm, and in the other arm could shadow the
+    pinned release the hooks are meant to call.
+    """
+    keep = []
+    for d in host_path.split(os.pathsep):
+        if d and not any(
+            os.access(Path(d) / name, os.X_OK) for name in ("neuralmind", "neuralmind-mcp")
+        ):
+            keep.append(d)
+    return keep
+
+
 def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
     env = {k: v for k, v in os.environ.items() if not k.startswith("NEURALMIND_")}
     env.pop("PYTHONPATH", None)
@@ -73,7 +93,11 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
         path.append(str(tool_venv / "bin"))
     else:
         env["NEURALMIND_BYPASS"] = "1"
-    env["PATH"] = os.pathsep.join(path + [os.environ.get("PATH", "")])
+    env["PATH"] = os.pathsep.join(path + _clean_path(os.environ.get("PATH", "")))
+    found = shutil.which("neuralmind", path=env["PATH"])
+    expected = str(tool_venv / "bin" / "neuralmind") if arm == "neuralmind" else None
+    if found != expected:
+        raise RunAbortedError(f"{arm} arm: `neuralmind` resolves to {found}, expected {expected}")
     return env
 
 
@@ -100,10 +124,12 @@ def _prepare(task: dict, arm: str, ws: Path, tool_venv: Path, env: dict) -> dict
     return {"mcp_file": mcp_file, "build_seconds": build_seconds}
 
 
-def claude_command(prompt: str, arm: str, model: str, mcp_file: Path, budget: float) -> list[str]:
+def claude_command(
+    claude_bin: str, prompt: str, arm: str, model: str, mcp_file: Path, budget: float
+) -> list[str]:
     tools = BASE_TOOLS + (["mcp__neuralmind"] if arm == "neuralmind" else [])
     return [
-        "claude",
+        claude_bin,
         "-p",
         prompt,
         "--model",
@@ -185,6 +211,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     env = _arm_env(arm, args.tool_venv, args.test_python)
     prep = _prepare(task, arm, ws, args.tool_venv, env)
     cmd = claude_command(
+        args.claude_bin,
         PROMPT.format(symptom=task["prompt"].strip()),
         arm,
         args.model,
@@ -198,15 +225,35 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         proc = subprocess.run(
             cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=args.timeout
         )
-        stdout, timed_out = proc.stdout, False
+        stdout, exit_code, timed_out = proc.stdout, proc.returncode, False
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-        timed_out = True
+        exit_code, timed_out = None, True
     transcript.write_text(stdout)
     agent = parse_stream(stdout.splitlines())
-    changed = subprocess.run(
-        ["git", "diff", "--name-only"], cwd=ws, capture_output=True, text=True
-    ).stdout.split()
+    if not timed_out and agent["subtype"] is None:
+        # No final result event: authentication, model or CLI failure. That is
+        # the harness failing, not the agent, so it must not become an outcome.
+        shutil.rmtree(ws, ignore_errors=True)
+        raise RunAbortedError(
+            f"{task['id']} {arm} s{seed}: claude exited {exit_code} without a result; "
+            f"stderr: {proc.stderr.strip()[-500:]}"
+        )
+    changed = sorted(
+        set(
+            subprocess.run(
+                ["git", "diff", "--name-only"], cwd=ws, capture_output=True, text=True
+            ).stdout.split()
+        )
+        | set(
+            subprocess.run(
+                ["git", "ls-files", "--others", "--exclude-standard"],
+                cwd=ws,
+                capture_output=True,
+                text=True,
+            ).stdout.split()
+        )
+    )
     verdict = judge(task, ws, args.test_python)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
@@ -215,14 +262,29 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         "arm": arm,
         "seed": seed,
         "model": args.model,
+        **args.versions,
         "harness_version": HARNESS_VERSION,
+        "budget_usd": args.budget,
         "started_at": started,
         "timed_out": timed_out,
+        "exit_code": exit_code,
         "build_seconds": prep["build_seconds"],
         "changed_files": changed,
         "gold_touched": bool(set(changed) & set(task["gold_files"])),
         **agent,
         **verdict,
+    }
+
+
+def probe_versions(claude_bin: str, tool_venv: Path) -> dict[str, str]:
+    """The pinned binaries, recorded on every run so one file can't mix them."""
+
+    def version(cmd: list[str]) -> str:
+        return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+
+    return {
+        "claude_code_version": version([claude_bin, "--version"]),
+        "neuralmind_version": version([str(tool_venv / "bin" / "neuralmind"), "--version"]),
     }
 
 
@@ -264,6 +326,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     arms = tuple(a for a in args.arms.split(",") if a)
     by_id = {t["id"]: t for t in tasks}
+    args.claude_bin = shutil.which("claude")
+    if not args.claude_bin:
+        print("error: `claude` is not on PATH", file=sys.stderr)
+        return 2
+    args.versions = probe_versions(args.claude_bin, args.tool_venv)
     triples = plan(tasks, arms, args.seeds, args.order_seed)
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -273,13 +340,21 @@ def main(argv: list[str] | None = None) -> int:
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
             done.add((r["task"], r["arm"], r["seed"]))
+            mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
+            if mixed:
+                print(
+                    f"error: {runs_file} was recorded with other versions: {mixed}", file=sys.stderr
+                )
+                return 2
     todo = [t for t in triples if t not in done]
     print(f"{len(triples)} run(s) planned, {len(todo)} to do")
 
     if args.dry_run:
         if todo:
             tid, arm, _ = todo[0]
+            print(f"versions: {args.versions}")
             cmd = claude_command(
+                args.claude_bin,
                 PROMPT.format(symptom=by_id[tid]["prompt"].strip()),
                 arm,
                 args.model,
@@ -287,11 +362,18 @@ def main(argv: list[str] | None = None) -> int:
                 args.budget,
             )
             print(" ".join(cmd[:2] + ["<prompt>"] + cmd[3:]))
+            for a in arms:
+                _arm_env(a, args.tool_venv, args.test_python)  # raises if PATH leaks
+            print("PATH isolation: ok for every arm")
         return 0
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
     for i, (tid, arm, seed) in enumerate(todo, 1):
-        record = run_one(by_id[tid], arm, seed, args)
+        try:
+            record = run_one(by_id[tid], arm, seed, args)
+        except RunAbortedError as exc:
+            print(f"aborted, nothing recorded: {exc}", file=sys.stderr)
+            return 3
         with runs_file.open("a") as fh:
             fh.write(json.dumps(record) + "\n")
         print(

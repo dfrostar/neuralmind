@@ -95,6 +95,18 @@ The unit of analysis is the task: each arm's runs on a task are averaged.
    - turns and wall-clock time;
    - whether the agent's edit touched a gold file.
 
+**Missing data.**
+- **A run that hits the harness timeout** has no reported cost. It counts as
+  unsolved, at its arm's budget cap: the worst case for that arm, so a failure
+  can never make an arm look cheaper.
+- **A run where Claude Code exits without a result** (authentication, model or
+  CLI failure) is a harness failure, not an outcome. It is not recorded and is
+  retried.
+- **Any other gap means no verdict.** The analyzer refuses unless every (task,
+  arm) holds the same complete set of seeds.
+- **Versions are recorded on every run.** That's the Claude Code and NeuralMind
+  version, and a resumed run refuses to mix them.
+
 ## Decision rule
 
 The sentence **"NeuralMind lowers a coding agent's cost per task without
@@ -152,3 +164,8 @@ drawn by the same rule, that the pilot didn't use.
 ## Change log
 
 - 2026-10-14 — design, endpoints and decision rule pre-registered. Model for the pilot: Sonnet 5.5. Tasks, prompts and the Claude Code version follow in a separate commit, before any run.
+- 2026-10-14 — before any run, after review on #665:
+  - the missing-data rule above;
+  - the harvester enforces the eligibility gates itself;
+  - both arms run with a `PATH` cleaned of any host NeuralMind install;
+  - turns and wall-clock time are added to the report.

@@ -107,3 +107,49 @@ def test_plan_is_deterministic_and_complete() -> None:
     first = run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)
     assert first == run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)
     assert len(first) == len(set(first)) == 12
+
+
+def test_analyzer_refuses_an_incomplete_run_matrix() -> None:
+    runs = _runs([1.0] * 4, [0.6] * 4)
+    runs.append({"task": "t0", "arm": "baseline", "seed": 1, "cost_usd": 1.0, "solved": True})
+    try:
+        analyze.analyze(runs)
+    except analyze.IncompleteRunsError as exc:
+        assert "t0/neuralmind" in str(exc)
+    else:
+        raise AssertionError("a task with an extra baseline seed was analysed")
+
+
+def test_a_run_without_a_cost_is_scored_at_its_budget_cap_and_unsolved() -> None:
+    runs = _runs([1.0] * 8, [0.6] * 8)
+    for r in runs:
+        r["budget_usd"] = 2.0
+    timed_out = next(r for r in runs if r["arm"] == "neuralmind")
+    timed_out.update(cost_usd=None, timed_out=True)
+    result = analyze.analyze(runs)
+    assert result["cost"]["tasks_dearer_with_neuralmind"] == 1
+    assert result["timed_out_runs"]["neuralmind"] == 1
+    assert analyze.run_cost(timed_out) == 2.0
+
+
+def test_harvest_enforces_the_pre_registered_gates() -> None:
+    from evals.task_outcome import harvest
+
+    ok = ["neuralmind/a.py"]
+    assert harvest.eligible("fix: x", "2026-07-01T00:00:00+00:00", ok) is None
+    assert "fix" in harvest.eligible("feat: x", "2026-08-01T00:00:00+00:00", ok)
+    assert "before" in harvest.eligible("fix: x", "2026-06-30T23:59:59+00:00", ok)
+    four = [f"neuralmind/{i}.py" for i in range(4)]
+    assert "4 source" in harvest.eligible("fix: x", "2026-08-01T00:00:00+00:00", four)
+
+
+def test_baseline_path_drops_directories_holding_neuralmind(tmp_path) -> None:
+    import os
+
+    nm_dir, other = tmp_path / "nm", tmp_path / "other"
+    nm_dir.mkdir()
+    other.mkdir()
+    exe = nm_dir / "neuralmind"
+    exe.write_text("#!/bin/sh\n")
+    exe.chmod(0o755)
+    assert run._clean_path(os.pathsep.join([str(nm_dir), str(other)])) == [str(other)]

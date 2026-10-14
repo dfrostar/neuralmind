@@ -25,6 +25,20 @@ from pathlib import Path
 
 from evals.task_outcome import harness
 
+CUTOFF = "2026-07-01"  # committed on or after (committer date, UTC)
+MAX_SOURCE_FILES = 3
+
+
+def eligible(subject: str, committed: str, source_files: list[str]) -> str | None:
+    """``None`` when a commit meets the pre-registered gates, else the reason it doesn't."""
+    if not subject.startswith("fix"):
+        return "subject does not start with 'fix'"
+    if committed[:10] < CUTOFF:
+        return f"committed {committed[:10]}, before {CUTOFF}"
+    if not 1 <= len(source_files) <= MAX_SOURCE_FILES:
+        return f"changes {len(source_files)} source file(s), not 1-{MAX_SOURCE_FILES}"
+    return None
+
 
 def harvest_one(commit: str, python: str, work: Path) -> dict | None:
     commit = harness.git("rev-parse", commit).decode().strip()
@@ -36,7 +50,12 @@ def harvest_one(commit: str, python: str, work: Path) -> dict | None:
     ]
     tests = harness.test_files_of(commit)
     run_files = [p for p in tests if Path(p).name.startswith("test_") and p.endswith(".py")]
-    if not src or not run_files:
+    subject, committed = (
+        harness.git("log", "-1", "--format=%s%n%cI", commit).decode().strip().split("\n", 1)
+    )
+    reason = eligible(subject, committed, src)
+    if reason or not run_files:
+        print(f"{commit[:10]}: ineligible — {reason or 'no tests/test_*.py changed'}", flush=True)
         return None
 
     before_ws = harness.snapshot(parent, work / f"{commit[:10]}-before")
@@ -51,7 +70,6 @@ def harvest_one(commit: str, python: str, work: Path) -> dict | None:
     p2p = sorted(t for t, o in after.items() if o == "passed" and before.get(t) == "passed")
     if not f2p:
         return None
-    subject = harness.git("log", "-1", "--format=%s", commit).decode().strip()
     return {
         "id": commit[:10],
         "fix_commit": commit,

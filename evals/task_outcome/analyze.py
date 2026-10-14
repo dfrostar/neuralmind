@@ -17,6 +17,11 @@ Endpoints, fixed in docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md before any run:
 * **Effect size.** Median per-task relative cost change, d / baseline cost,
   with a 95% bootstrap interval over tasks (seeded, so the report reproduces).
 
+**Missing data, pre-registered.** A run that produced no final cost (it hit
+the harness timeout) is scored unsolved at its budget cap, the worst case for
+its arm, so a failure can never make an arm look cheaper. Any other gap fails
+closed: every (task, arm) must hold the same seeds, or no verdict is given.
+
 The claim "NeuralMind lowers the agent's cost per task without lowering its
 solve rate" is made only when all three hold: the Wilcoxon p < 0.05, the
 interval's upper bound is below zero, and NeuralMind solves no fewer tasks
@@ -95,6 +100,37 @@ def bootstrap_ci(values: list[float], stat=statistics.median, level: float = 0.9
     return (lo, hi)
 
 
+class IncompleteRunsError(ValueError):
+    """The run matrix has gaps; analysing it would weight the arms unequally."""
+
+
+def run_cost(run: dict) -> float:
+    """The run's reported cost, or its budget cap when it never reported one."""
+    if run.get("cost_usd") is not None:
+        return run["cost_usd"]
+    if run.get("budget_usd") is None:
+        raise IncompleteRunsError(
+            f"{run['task']} {run['arm']} s{run.get('seed')}: no cost and no budget"
+        )
+    return run["budget_usd"]
+
+
+def check_complete(runs: list[dict], arms: tuple[str, ...]) -> None:
+    """Every task has every arm, every (task, arm) the same seeds, none twice."""
+    seen: dict[tuple[str, str], list] = {}
+    for r in runs:
+        seen.setdefault((r["task"], r["arm"]), []).append(r.get("seed"))
+    seeds = {s for v in seen.values() for s in v}
+    problems = []
+    for task in sorted({t for t, _ in seen}):
+        for arm in arms:
+            got = seen.get((task, arm), [])
+            if sorted(got) != sorted(seeds):
+                problems.append(f"{task}/{arm}: seeds {sorted(got)}, expected {sorted(seeds)}")
+    if problems:
+        raise IncompleteRunsError("incomplete or duplicated runs: " + "; ".join(problems))
+
+
 def per_task(runs: list[dict]) -> dict[str, dict[str, dict]]:
     """``{task: {arm: {cost, solved_share, solved_majority, explore, turns, n}}}``."""
     grouped: dict[str, dict[str, list[dict]]] = {}
@@ -104,22 +140,24 @@ def per_task(runs: list[dict]) -> dict[str, dict[str, dict]]:
     for task, arms in grouped.items():
         out[task] = {}
         for arm, rs in arms.items():
-            costs = [r["cost_usd"] for r in rs if r.get("cost_usd") is not None]
-            solved = [bool(r.get("solved")) for r in rs]
+            costs = [run_cost(r) for r in rs]
+            solved = [bool(r.get("solved")) and not r.get("timed_out") for r in rs]
             out[task][arm] = {
                 "n": len(rs),
-                "cost": statistics.fmean(costs) if costs else None,
+                "cost": statistics.fmean(costs),
                 "solved_share": sum(solved) / len(solved),
                 "solved_majority": sum(solved) * 2 > len(solved),
                 "explore": statistics.fmean(
                     r.get("explore_calls_before_first_edit", 0) for r in rs
                 ),
                 "turns": statistics.fmean((r.get("num_turns") or 0) for r in rs),
+                "minutes": statistics.fmean((r.get("duration_ms") or 0) / 60000 for r in rs),
             }
     return out
 
 
 def analyze(runs: list[dict], base: str = "baseline", treat: str = "neuralmind") -> dict:
+    check_complete(runs, (base, treat))
     tasks = per_task(runs)
     paired = {
         t: a
@@ -147,8 +185,8 @@ def analyze(runs: list[dict], base: str = "baseline", treat: str = "neuralmind")
 
     def cost_per_solved(arm: str) -> float | None:
         rs = [r for r in runs if r["arm"] == arm and r["task"] in paired]
-        cost = sum(r.get("cost_usd") or 0 for r in rs)
-        solved = sum(bool(r.get("solved")) for r in rs)
+        cost = sum(run_cost(r) for r in rs)
+        solved = sum(bool(r.get("solved")) and not r.get("timed_out") for r in rs)
         return cost / solved if solved else None
 
     explore_diffs = [a[treat]["explore"] - a[base]["explore"] for a in paired.values()]
@@ -179,6 +217,18 @@ def analyze(runs: list[dict], base: str = "baseline", treat: str = "neuralmind")
             "mcnemar_p": mcnemar_exact(only_base, only_treat),
         },
         "cost_per_solved_task": {base: cost_per_solved(base), treat: cost_per_solved(treat)},
+        "turns_per_task_median": {
+            arm: statistics.median(a[arm]["turns"] for a in paired.values()) if paired else None
+            for arm in (base, treat)
+        },
+        "minutes_per_task_median": {
+            arm: statistics.median(a[arm]["minutes"] for a in paired.values()) if paired else None
+            for arm in (base, treat)
+        },
+        "timed_out_runs": {
+            arm: sum(bool(r.get("timed_out")) for r in runs if r["arm"] == arm)
+            for arm in (base, treat)
+        },
         "exploration_calls_before_first_edit": {
             "median_change": statistics.median(explore_diffs) if explore_diffs else None,
             "wilcoxon": wilcoxon_signed_rank(explore_diffs),
@@ -220,6 +270,20 @@ def report(result: dict) -> str:
         ),
         f"Cost per solved task: {cps}",
         (
+            "Median turns per task: "
+            + ", ".join(
+                f"{k} {v:.1f}" for k, v in result["turns_per_task_median"].items() if v is not None
+            )
+            + "; median minutes per task: "
+            + ", ".join(
+                f"{k} {v:.1f}"
+                for k, v in result["minutes_per_task_median"].items()
+                if v is not None
+            )
+        ),
+        "Runs that hit the timeout (scored unsolved at the budget cap): "
+        + ", ".join(f"{k} {v}" for k, v in result["timed_out_runs"].items()),
+        (
             f"Claim supported: {'YES' if d['claim_supported'] else 'NO'}"
             f" (p<{ALPHA}: {d['cost_lower_p_lt_alpha']},"
             f" CI below 0: {d['relative_change_ci_below_zero']},"
@@ -237,7 +301,11 @@ def main(argv: list[str] | None = None) -> int:
     runs = [
         json.loads(line) for line in (args.out_dir / "runs.jsonl").read_text().splitlines() if line
     ]
-    result = analyze(runs)
+    try:
+        result = analyze(runs)
+    except IncompleteRunsError as exc:
+        print(f"no verdict: {exc}", file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2) if args.json else report(result))
     return 0
 
