@@ -31,8 +31,12 @@ neuralmind team governance set-weight-threshold 0.5
 echo "[5] seats add alice"
 neuralmind team seats add alice@test.local
 
-echo "[6] seats add bob"
-neuralmind team seats add bob@test.local
+echo "[6] seats add bob (refused: the free license has one seat)"
+if neuralmind team seats add bob@test.local; then
+  echo "  FAIL: a second seat was added on the 1-seat free license"
+  exit 1
+fi
+echo "  PASS: second seat refused with a non-zero exit"
 
 echo "[7] seats list"
 neuralmind team seats list

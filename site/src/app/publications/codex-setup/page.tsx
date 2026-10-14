@@ -6,7 +6,7 @@ const POST_COMMIT = '3fe5a61';
 
 export const metadata = {
     title: 'NeuralMind + OpenAI Codex: MCP Setup & Token Savings Guide',
-    description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, run the self-improvement loop, and verify real dollar savings. Verified against the live codebase.',
+    description: 'Set up NeuralMind as an MCP server for OpenAI Codex: install it, register with any MCP client, measure L0–L3 token budgets and check your real dollar savings.',
     keywords: [
         'OpenAI Codex',
         'Codex CLI',
@@ -118,15 +118,6 @@ export default function PublicationPage() {
                     </p>
                     <div className="flex items-center gap-4 text-sm text-slate-400">
                         <span>Darren Frost (dfrostar)</span>
-                        <span>•</span>
-                        <a
-                            href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/research/neuralmind-codex-setup-guide.md`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
-                        >
-                            View source →
-                        </a>
                     </div>
                 </header>
 
@@ -470,14 +461,6 @@ export default function PublicationPage() {
                     <p className="text-faint text-sm mb-2">
                         This guide was verified against the live codebase and corrected by DeepSeek v4 Pro QA.
                     </p>
-                    <a
-                        href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/research/neuralmind-codex-setup-guide.md`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-electric hover:text-electric-bright text-sm transition-colors"
-                    >
-                        View on GitHub →
-                    </a>
                 </footer>
             </main>
             <Footer />

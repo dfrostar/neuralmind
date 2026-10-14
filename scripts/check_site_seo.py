@@ -4,7 +4,7 @@
 Run against ``site/out`` after ``npm run build``. Stdlib-only, like
 ``scripts/check_commercial_terms.py``.
 
-Three rules, each of which had been broken in production before this existed:
+Four rules, each of which had been broken in production before this existed:
 
 1. **Every page canonicalizes to itself.** The root layout sets
    ``alternates: { canonical: '/' }`` and Next.js merges metadata shallowly on
@@ -24,6 +24,14 @@ Three rules, each of which had been broken in production before this existed:
    dropped ``/team/`` and listed ``/publications/*`` without the trailing
    slash the pages resolve to.
 
+4. **Every page's snippet fits, and is its own.** One ``<title>`` of at most
+   60 characters and a ``<meta name="description">`` of 50 to 160, measured
+   after HTML-unescaping — the length a search result actually shows. Twelve
+   descriptions (up to 264 characters) and five titles (up to 83) were being
+   truncated mid-sentence; the field report's lost the baseline its 48.8×
+   ratio is measured against. No two pages may share a description either: a
+   page that inherits the root's reads as a duplicate of ``/``.
+
 Exit 0 when clean, 1 with the offending pages named otherwise.
 """
 
@@ -31,6 +39,7 @@ from __future__ import annotations
 
 import re
 import sys
+from html import unescape
 from pathlib import Path
 
 SITE_URL = "https://neuralmind.uk"
@@ -38,13 +47,52 @@ SITE_URL = "https://neuralmind.uk"
 CANONICAL_RE = re.compile(r'<link rel="canonical" href="([^"]+)"', re.I)
 OG_URL_RE = re.compile(r'<meta property="og:url" content="([^"]+)"', re.I)
 OG_IMAGE_RE = re.compile(r'<meta property="og:image" content="([^"]+)"', re.I)
+ROBOTS_RE = re.compile(r'<meta name="robots" content="([^"]+)"', re.I)
 LOC_RE = re.compile(r"<loc>([^<]+)</loc>", re.I)
+TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
+DESCRIPTION_RE = re.compile(r'<meta name="description" content="([^"]*)"', re.I)
+
+TITLE_MAX = 60
+DESCRIPTION_MIN = 50
+DESCRIPTION_MAX = 160
 
 
 def page_url(html_file: Path, out_dir: Path) -> str:
     """The absolute URL a built ``index.html`` is served at (trailingSlash: true)."""
     rel = html_file.relative_to(out_dir).parent.as_posix()
     return f"{SITE_URL}/" if rel == "." else f"{SITE_URL}/{rel}/"
+
+
+def snippet_failures(url: str, *, html_text: str, descriptions: dict[str, str]) -> list[str]:
+    """Rule 4: title and description lengths, and description uniqueness.
+
+    *descriptions* maps each description seen so far to the page that used it,
+    and is updated in place.
+    """
+    failures: list[str] = []
+
+    titles = TITLE_RE.findall(html_text)
+    if len(titles) != 1:
+        failures.append(f"{url} — {len(titles)} <title> elements (want exactly 1)")
+    if titles:
+        title = unescape(titles[0]).strip()
+        if len(title) > TITLE_MAX:
+            failures.append(f"{url} — title is {len(title)} chars (max {TITLE_MAX}): {title!r}")
+
+    found = DESCRIPTION_RE.findall(html_text)
+    if not found:
+        failures.append(f"{url} — no meta description")
+        return failures
+    description = unescape(found[0]).strip()
+    if not DESCRIPTION_MIN <= len(description) <= DESCRIPTION_MAX:
+        failures.append(
+            f"{url} — description is {len(description)} chars "
+            f"(want {DESCRIPTION_MIN}–{DESCRIPTION_MAX}): {description[:80]!r}…"
+        )
+    first = descriptions.setdefault(description, url)
+    if first != url:
+        failures.append(f"{url} — same meta description as {first}")
+    return failures
 
 
 def main(argv: list[str]) -> int:
@@ -65,6 +113,7 @@ def main(argv: list[str]) -> int:
 
     failures: list[str] = []
     seen: set[str] = set()
+    descriptions: dict[str, str] = {}
 
     for page in pages:
         url = page_url(page, out_dir)
@@ -89,6 +138,21 @@ def main(argv: list[str]) -> int:
         if not OG_IMAGE_RE.search(html):
             failures.append(f"{url} — no og:image (a declared openGraph block replaces the root's)")
 
+        failures.extend(snippet_failures(url, html_text=html, descriptions=descriptions))
+
+    # The 404 is left out of the canonical and sitemap rules above, but it is
+    # still served and crawled: hold it to the snippet rules, and require that
+    # it asks not to be indexed (it had shipped with the layout's
+    # `index, follow` beside Next's `noindex`, and two <title>s).
+    not_found = out_dir / "404.html"
+    if not_found.is_file():
+        html = not_found.read_text(encoding="utf-8", errors="replace")
+        url = f"{SITE_URL}/404.html"
+        failures.extend(snippet_failures(url, html_text=html, descriptions=descriptions))
+        robots = [r.lower() for r in ROBOTS_RE.findall(html)]
+        if not robots or any("noindex" not in r for r in robots):
+            failures.append(f"{url} — robots must say noindex everywhere, got {robots}")
+
     sitemap = out_dir / "sitemap.xml"
     if not sitemap.is_file():
         failures.append("sitemap.xml missing from the export (app/sitemap.ts should generate it)")
@@ -105,7 +169,11 @@ def main(argv: list[str]) -> int:
             print(f"  - {f}")
         return 1
 
-    print(f"site SEO check passed: {len(pages)} page(s), each self-canonical and in the sitemap")
+    print(
+        f"site SEO check passed: {len(pages)} page(s), each self-canonical, in the "
+        f"sitemap, with one title <= {TITLE_MAX} chars and a unique "
+        f"{DESCRIPTION_MIN}-{DESCRIPTION_MAX} char description"
+    )
     return 0
 
 

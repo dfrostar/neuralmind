@@ -70,6 +70,7 @@ is the [Billing Runbook](Billing-Runbook.md).
 neuralmind team seats list            # list all seats
 neuralmind team seats add <email>     # invite a seat (idempotent, soft-delete aware)
 neuralmind team seats remove <email>  # remove a seat (soft-delete)
+neuralmind team seats sync <manifest.json>  # add the seats in a signed seat manifest
 ```
 
 ### Governance
@@ -128,6 +129,21 @@ neuralmind team self-hosted init      # initialize self-hosted data dir (0700 pe
 neuralmind team self-hosted status
 neuralmind team self-hosted validate-license
 ```
+
+### Scripting: exit codes
+
+Since v4.16.0 every `team` command and `onboarding` exits 1 when it fails, so
+a provisioning script can stop on a refused license:
+
+```bash
+set -e
+neuralmind team license activate ./license.json   # exits 1, installing nothing, if it doesn't validate
+neuralmind team seats sync ./seat-manifest.json --admin you@example.com   # exits 2 if the seat limit refused some seats
+```
+
+Earlier versions printed the same messages and exited 0. The
+[CLI reference](CLI-Reference.md#team-license-seats-audit-self-hosted) lists
+every case.
 
 ---
 

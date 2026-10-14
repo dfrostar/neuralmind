@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/team',
     title: 'Team Memory for AI Coding Agents — NeuralMind for Teams',
     description:
-        'Shared codebase memory for Claude Code and MCP agents: it travels with git, follows your admin’s publish policy, and every change is hash-chain audited. Free at 1 seat.',
+        'Shared codebase memory for Claude Code and MCP agents: it travels with git, follows your admin’s policy, and every change is hash-chain audited. Free at 1 seat.',
     keywords: [
         'team memory for AI coding agents',
         'shared Claude Code memory',

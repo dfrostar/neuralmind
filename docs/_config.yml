@@ -34,3 +34,47 @@ defaults:
       path: ""
     values:
       layout: default
+
+  # Two wiki pages open with an HTML comment, so jekyll-titles-from-headings
+  # finds no heading on line 1 and they rendered as "NeuralMind Docs" — the
+  # site's two most important pages. Name them here: front matter would show
+  # as text in the GitHub Wiki mirror.
+  - scope:
+      path: "wiki/Home.md"
+    values:
+      title: "Docs: Codebase Memory for AI Coding Agents"
+      description: >-
+        NeuralMind docs: persistent codebase memory for Claude Code, Codex,
+        Cursor, Hermes and any MCP client. Setup, CLI, architecture,
+        benchmarks and use cases.
+  - scope:
+      path: "wiki/CLI-Reference.md"
+    values:
+      title: "CLI Reference"
+      description: >-
+        Every neuralmind command, flag, environment variable and exit code:
+        build, query, watch, serve, eval, doctor, install-hooks, the MCP
+        server and the team commands.
+  - scope:
+      path: "releases/RELEASE_NOTES_v1.4.0.md"
+    values:
+      title: "NeuralMind v1.4.0 release notes"
+
+  # Working notes and social drafts: public in the repo, not pages anyone
+  # should land on from search. The layout emits robots noindex for these.
+  - scope:
+      path: "social"
+    values:
+      noindex: true
+  - scope:
+      path: "specs/LOCAL-API-PR1-SESSION-PROMPT.md"
+    values:
+      noindex: true
+  - scope:
+      path: "specs/SEO-2026-PLAN.md"
+    values:
+      noindex: true
+  - scope:
+      path: "releases/SESSION_HANDOFF_2026-08-05.md"
+    values:
+      noindex: true

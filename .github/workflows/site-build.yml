@@ -49,6 +49,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: app/sitemap.ts dates each route by `git log -1 -- <page>`,
+          # and a shallow clone gives every page the latest commit's date.
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

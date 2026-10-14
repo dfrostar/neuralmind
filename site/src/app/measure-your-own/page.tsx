@@ -7,7 +7,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/measure-your-own',
     title: 'Measure AI Agent Token Usage on Your Own Repo — NeuralMind',
     description:
-        'Measure NeuralMind on your codebase: tokens per question, token reduction and retrieval recall on your own symbols. Three commands, about 15 minutes, no account.',
+        'Measure NeuralMind on your codebase: tokens per question, token reduction and retrieval recall on your own symbols. Three commands, ~15 minutes, no account.',
     keywords: [
         'measure Claude Code token usage',
         'AI coding agent benchmark',

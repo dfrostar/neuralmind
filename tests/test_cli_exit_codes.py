@@ -10,6 +10,8 @@ So this file holds two kinds of check:
 - **Contract rows** run real CLI invocations through `main()` (including its
   exception-to-exit-code mapping) and assert the code the CLI reference
   documents for that case. Add a row when you document an exit code.
+  `TEAM_CONTRACT` does the same for `neuralmind team ...` and `onboarding`,
+  in `temp_seat_env`'s throwaway tier2 config dir with its own issuer key.
 - **The global table** in `docs/wiki/CLI-Reference.md` ("## Exit Codes") must
   list only codes something in `neuralmind/` actually emits.
 
@@ -208,6 +210,237 @@ def test_documented_exit_code(isolated, monkeypatch, capsys, argv, setup, env, e
     code = _exit_code([a.format(p=isolated) for a in argv], monkeypatch)
     out = capsys.readouterr()
     assert code == expected, f"exit {code}, expected {expected}\n{out.out}\n{out.err}"
+
+
+# `neuralmind team ...` and `onboarding` return their exit code instead of
+# calling sys.exit. Through v4.15.1 main() discarded it, so every failure row
+# below exited 0.
+
+
+def _signed_licence(env: dict, name: str, *, days: int, tamper: bool = False) -> None:
+    """A Team licence signed by the test issuer, expiring `days` from now."""
+    import json
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    now = datetime.now(timezone.utc)
+    body = {
+        "tier": "team",
+        "seats": 5,
+        "issued_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=days)).isoformat(),
+        "issued_to": "example",
+    }
+    key = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(env["private_key_hex"]))
+    signed = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    licence = {**body, "signature": key.sign(signed).hex()}
+    if tamper:
+        licence["seats"] = 50  # changed after signing
+    (env["config_dir"] / name).write_text(json.dumps(licence), encoding="utf-8")
+
+
+def _seat_manifest(env: dict, *emails: str, days: int = 30, tamper: bool = False) -> None:
+    """A seat manifest signed by the test issuer, written to manifest.json."""
+    import json
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    now = datetime.now(timezone.utc)
+    body = {
+        "manifest_id": "sm_test",
+        "version": 1,
+        "issued_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=days)).isoformat(),
+        "seats": [{"email": e, "role": "member", "added_at": now.isoformat()} for e in emails],
+    }
+    key = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(env["private_key_hex"]))
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    manifest = {**body, "signature": key.sign(b"seat-manifest:v1" + canonical.encode()).hex()}
+    if tamper:
+        manifest["seats"].append({"email": "extra@example.com", "role": "admin"})
+    (env["config_dir"] / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def _answer(monkeypatch, *answers: str) -> None:
+    """Run onboarding interactively, typing `answers` at its prompts in turn."""
+    from neuralmind import onboarding
+
+    replies = iter(answers)
+    monkeypatch.setattr(onboarding, "_stdin_is_tty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(replies))
+
+
+def _licence_path_is_a_directory(env: dict, monkeypatch) -> None:
+    # Onboarding can neither read license.json nor replace it with the free one.
+    (env["config_dir"] / "license.json").mkdir()
+
+
+def _tampered_audit_log(env: dict, monkeypatch) -> None:
+    import json
+
+    from neuralmind.tier2.audit import AuditLog
+
+    path = env["config_dir"] / "audit.db"
+    AuditLog(path).log(actor="admin", action="seat_add", target="a@example.com")
+    entry = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    entry["target"] = "b@example.com"  # rewritten after it was hashed
+    path.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+
+
+_SYNC = ["team", "seats", "sync", "{d}/manifest.json"]
+
+# (id, argv with {d} for the tier2 config dir, setup(env, monkeypatch),
+#  expected code, text the output must contain so the row is known to have
+#  failed for the reason it names)
+TEAM_CONTRACT = [
+    (
+        "team-license-activate-missing-file",
+        ["team", "license", "activate", "{d}/nope.json"],
+        None,
+        1,
+        "License file not found",
+    ),
+    (
+        "team-license-activate-expired",
+        ["team", "license", "activate", "{d}/expired.json"],
+        # Past the 30-day grace period too, which would report OFFLINE_OK.
+        lambda env, mp: _signed_licence(env, "expired.json", days=-45),
+        1,
+        ": EXPIRED. Nothing was installed.",
+    ),
+    (
+        "team-license-activate-tampered",
+        ["team", "license", "activate", "{d}/tampered.json"],
+        lambda env, mp: _signed_licence(env, "tampered.json", days=365, tamper=True),
+        1,
+        ": INVALID. Nothing was installed.",
+    ),
+    (
+        "team-license-activate-valid",
+        ["team", "license", "activate", "{d}/valid.json"],
+        lambda env, mp: _signed_licence(env, "valid.json", days=365),
+        0,
+        "License activated: team tier, 5 seats",
+    ),
+    # `seats sync` runs on the free licence these rows auto-issue: one seat,
+    # whose default admin is `self`.
+    (
+        "team-seats-sync-missing-manifest",
+        [*_SYNC, "--admin", "self"],
+        None,
+        1,
+        "Manifest not found",
+    ),
+    (
+        "team-seats-sync-bad-signature",
+        [*_SYNC, "--admin", "self"],
+        lambda env, mp: _seat_manifest(env, "a@example.com", tamper=True),
+        1,
+        "Manifest signature invalid",
+    ),
+    (
+        "team-seats-sync-expired-manifest",
+        [*_SYNC, "--admin", "self"],
+        lambda env, mp: _seat_manifest(env, "a@example.com", days=-1),
+        1,
+        "Manifest expired at",
+    ),
+    (
+        "team-seats-sync-not-admin",
+        [*_SYNC, "--admin", "intruder@example.com"],
+        lambda env, mp: _seat_manifest(env, "a@example.com"),
+        1,
+        "Permission denied",
+    ),
+    (
+        "team-seats-sync-ok",
+        [*_SYNC, "--admin", "self"],
+        lambda env, mp: _seat_manifest(env, "a@example.com"),
+        0,
+        '"status": "ok"',
+    ),
+    (
+        "team-seats-sync-partial",
+        [*_SYNC, "--admin", "self"],
+        lambda env, mp: _seat_manifest(env, "a@example.com", "b@example.com"),
+        2,
+        '"status": "partial"',
+    ),
+    (
+        "team-seats-remove-unknown",
+        ["team", "seats", "remove", "nobody@example.com", "--admin", "self"],
+        None,
+        1,
+        "Seat not found",
+    ),
+    (
+        "team-seats-list-corrupt-licence",
+        ["team", "seats", "list"],
+        lambda env, mp: (env["config_dir"] / "license.json").write_text("{", encoding="utf-8"),
+        1,
+        "License file is corrupted",
+    ),
+    (
+        "team-governance-remove-edge-not-admin",
+        ["team", "governance", "remove-edge", "a.py", "b.py", "--project", "{d}"]
+        + ["--admin", "intruder@example.com"],
+        None,
+        1,
+        "Permission denied",
+    ),
+    ("team-audit-verify-tampered", ["team", "audit", "verify"], _tampered_audit_log, 1, "TAMPERED"),
+    (
+        "team-self-hosted-init-unwritable",
+        ["team", "self-hosted", "init", "--data-dir", "{d}/a-file/data"],
+        lambda env, mp: (env["config_dir"] / "a-file").write_text("", encoding="utf-8"),
+        1,
+        "Cannot create",
+    ),
+    (
+        "onboarding-eula-declined",
+        ["onboarding"],
+        lambda env, mp: _answer(mp, "y", "n"),  # issue the free licence, decline the EULA
+        1,
+        "You must accept the EULA",
+    ),
+    (
+        "onboarding-licence-unwritable",
+        ["onboarding", "--quick"],
+        _licence_path_is_a_directory,
+        1,
+        "Failed to create license",
+    ),
+]
+
+
+@pytest.fixture
+def tier2_env(isolated, temp_seat_env, monkeypatch):
+    """`temp_seat_env`'s config dir and issuer key, everywhere the CLI reads them.
+
+    `team seats` and onboarding copy TIER2_CONFIG_DIR at import, and `team
+    license activate` the issuer key, so those copies are patched too.
+    """
+    from neuralmind import onboarding
+    from neuralmind.tier2 import cli as tier2_cli
+
+    monkeypatch.setattr(tier2_cli, "TIER2_CONFIG_DIR", temp_seat_env["config_dir"])
+    monkeypatch.setattr(tier2_cli, "_ISSUER_PUBLIC_KEY_HEX", temp_seat_env["public_key_hex"])
+    monkeypatch.setattr(onboarding, "TIER2_CONFIG_DIR", temp_seat_env["config_dir"])
+    return temp_seat_env
+
+
+@pytest.mark.parametrize(
+    "argv, setup, expected, says",
+    [row[1:] for row in TEAM_CONTRACT],
+    ids=[row[0] for row in TEAM_CONTRACT],
+)
+def test_documented_team_exit_code(tier2_env, monkeypatch, capsys, argv, setup, expected, says):
+    if setup:
+        setup(tier2_env, monkeypatch)
+    code = _exit_code([a.format(d=tier2_env["config_dir"]) for a in argv], monkeypatch)
+    out = capsys.readouterr()
+    assert code == expected, f"exit {code}, expected {expected}\n{out.out}\n{out.err}"
+    assert says in out.out + out.err, f"{says!r} not in output\n{out.out}\n{out.err}"
 
 
 def _global_table_codes() -> dict[int, str]:

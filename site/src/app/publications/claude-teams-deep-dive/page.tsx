@@ -3,10 +3,12 @@ import Footer from '@/components/sections/Footer';
 
 const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '3fe5a61';
+// POST_COMMIT was never pushed; link the source at the commit that carries it on main.
+const SOURCE_COMMIT = '3f654b5d';
 
 export const metadata = {
-    title: 'Claude Code Teams: Shared Memory & Token Savings — NeuralMind',
-    description: 'Deep-dive research report: how to use NeuralMind with Claude Code teams, measure token reduction, and eliminate agent amnesia via committed team memory bundles. Verified against the live codebase.',
+    title: 'Claude Code Team Memory & Token Savings — NeuralMind',
+    description: 'Claude Code team memory with NeuralMind: setup, committed memory bundles that prevent agent amnesia, and token measurement at every layer. Verified in code.',
     keywords: [
         'Claude Code team memory',
         'token reduction',
@@ -118,7 +120,7 @@ export default function PublicationPage() {
                         <span>Darren Frost (dfrostar)</span>
                         <span>•</span>
                         <a
-                            href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
+                            href={`${GITHUB_URL}/blob/${SOURCE_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-electric hover:text-electric-bright transition-colors"
@@ -399,7 +401,7 @@ export default function PublicationPage() {
                         This report was verified against the live codebase and corrected by DeepSeek v4 Pro QA.
                     </p>
                     <a
-                        href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
+                        href={`${GITHUB_URL}/blob/${SOURCE_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-electric hover:text-electric-bright text-sm transition-colors"

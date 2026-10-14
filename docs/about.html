@@ -20,10 +20,10 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-10-08",
-      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
+      "dateModified": "2026-10-13",
+      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure that finds the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens than pasting every source file, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
-      "publisher": { "@type": "Person", "name": "Darren Frost" },
+      "publisher": { "@type": "Organization", "name": "Cheval-Volant LLC", "alternateName": "NeuralMind", "url": "https://neuralmind.uk" },
       "about": "AI coding agents, semantic code intelligence, token optimization, multi-language code indexing",
       "keywords": "AI coding agent memory, code intelligence, token reduction, Hebbian synapses, MCP server, tree-sitter code graph, ten-language code indexing",
       "url": "https://docs.neuralmind.uk/about.html",
@@ -150,7 +150,7 @@
             </ul>
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no calls home), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
         </div>
     </section>
 
@@ -221,6 +221,12 @@
                 <li><strong>No listener beyond loopback</strong> &mdash; <code>neuralmind serve</code> refuses a non-loopback <code>--host</code> and <code>--no-auth</code> (exit 1), and a daemon started that way refuses the project while still serving others</li>
                 <li><strong>No LLM documentation seeding</strong> &mdash; refused even with <code>NEURALMIND_LLM_SEED=1</code> set</li>
                 <li><strong>Audited and checked as a unit</strong> &mdash; each refusal is a <code>profile_refused</code> audit event, and <code>neuralmind doctor</code> fails the project when the OS FIPS mode is off (CMMC SC.L2-3.13.11)</li>
+            </ul>
+            <p><strong>Also: exit codes the Team commands computed and the CLI threw away.</strong> <code>neuralmind team license activate</code> on an expired license printed &ldquo;EXPIRED. Nothing was installed.&rdquo; and exited 0, and so did every other <code>team</code> and <code>onboarding</code> failure: each command returned its exit code, and <code>neuralmind</code> ignored it. The CLI reference had documented one of them, a non-admin <code>team governance remove-edge</code>, as exit 1 since v4.6.0. Every other command&rsquo;s exit status is unchanged.</p>
+            <ul>
+                <li><strong>Exit 1 on failure</strong> &mdash; a license that doesn&rsquo;t validate, no usable license, a non-admin, a seat limit, an unknown seat, a broken audit chain, a data dir that can&rsquo;t be created, a declined license agreement. A provisioning script under <code>set -e</code> now stops there</li>
+                <li><strong>Exit 2 for a partial seat sync</strong> &mdash; <code>team seats sync</code> when the license&rsquo;s seat limit refused some of the manifest&rsquo;s seats</li>
+                <li><strong>Status commands still exit 0</strong> &mdash; <code>team license status</code> and <code>portal</code>, <code>team self-hosted status</code> and <code>validate-license</code> report the license&rsquo;s state in their output</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.16.0.md">v4.16.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">CUI enclave walkthrough</a></p>
         </div>
@@ -834,7 +840,7 @@ $ neuralmind query . "CMMC gap analysis"
             <h3>One traversal, not two</h3>
             <p>Nothing about the underlying BFS changed. <code>structural --blast-radius</code> stays byte-identical — it's now a one-line wrapper over the same <code>blast_radius_detail()</code> this release adds, so there's exactly one "what depends on X" implementation, not two independently drifting ones.</p>
             <div class="quote">A naming and discoverability release, not a new capability — and that's a more credible story than pretending it's a from-scratch build.</div>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.52.0.md">Full v0.52.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/blast-radius-before-a-rename.md">Blast-radius-before-a-rename walkthrough &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/releases/tag/v0.52.0">v0.52.0 release &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/blast-radius-before-a-rename.md">Blast-radius-before-a-rename walkthrough &rarr;</a></p>
         </div>
     </section>
 
@@ -1666,7 +1672,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">See the next-release plan →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
         </div>
     </section>
 

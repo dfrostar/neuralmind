@@ -10,7 +10,7 @@ const MANIFEST = `${GITHUB_URL}/blob/main/evals/public/manifest.json`;
 
 export const metadata: Metadata = pageMetadata({
     path: '/benchmark',
-    title: 'Public Code-Retrieval Benchmark: Recall vs. Tokens — NeuralMind',
+    title: 'Code Retrieval Benchmark: Recall vs. Tokens — NeuralMind',
     description:
         'NeuralMind vs. pasting files, ripgrep and vector RAG on 40 pre-registered queries over four pinned OSS repos — recall and tokens together, every miss published.',
     keywords: [

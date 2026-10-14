@@ -5,8 +5,8 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '31aac0e';
 
 export const metadata = {
-    title: 'Quality-Weighted Merge with Conflict-Driven Decay — NeuralMind',
-    description: 'A method for resolving conflicting assertions in a distributed edge-weight graph. Each edge carries a quality score from reinforcement, recency, and conflict rate. The loser is excluded, forcing consensus.',
+    title: 'Quality-Weighted Merge & Conflict-Driven Decay — NeuralMind',
+    description: 'Resolving conflicting edges in a shared team memory graph: each edge is scored on reinforcement, recency and conflict rate, and the loser is excluded.',
     keywords: [
         'defensive publication',
         'prior art',

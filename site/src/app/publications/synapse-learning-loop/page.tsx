@@ -5,8 +5,8 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const IMPL_COMMIT = '4256418';
 
 export const metadata = {
-    title: 'Hebbian Co-Activation with LTP and Hub-Normalized Spreading Activation — NeuralMind',
-    description: 'A learning loop for local-first code intelligence: debounced file-edit co-activation strengthens weighted edges, wall-clock half-life decay forgets, long-term potentiation preserves habits, and hub-normalized spreading activation recalls.',
+    title: 'Hebbian Synapse Learning Loop for Code Agents — NeuralMind',
+    description: 'Hebbian learning for AI coding agent memory: edits strengthen edges by co-activation, half-life decay forgets, LTP keeps habits, spreading activation recalls.',
     keywords: [
         'defensive publication',
         'prior art',

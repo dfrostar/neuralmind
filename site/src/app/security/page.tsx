@@ -58,7 +58,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/security',
     title: 'Security & Supply Chain — NeuralMind',
     description:
-        'What NeuralMind sends over the network (no telemetry), a CycloneDX SBOM per release, signed releases with build provenance, OpenVEX for dependency advisories, vulnerability disclosure and the audit trail.',
+        'NeuralMind security: what goes over the network (no telemetry), a CycloneDX SBOM per release, signed releases with provenance, OpenVEX and disclosure policy.',
     keywords: [
         'NeuralMind security',
         'AI coding tool security review',
