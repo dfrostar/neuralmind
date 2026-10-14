@@ -1,6 +1,6 @@
 # Task-outcome benchmark — pre-registration
 
-**Status:** design pre-registered; the 20 pilot tasks and their prompts are drawn by `select_tasks.py` and committed before the first run · **Harness:** `evals/task_outcome/`
+**Status:** pre-registered — design, 20 pilot tasks, prompts and pinned versions committed; not yet run · **Harness:** `evals/task_outcome/`
 
 Every number NeuralMind publishes today measures retrieval: whether the right
 file reaches the agent's context, and at what token cost. None measures what a
@@ -46,6 +46,11 @@ by `evals/task_outcome/harvest.py`:
    - the failing tests check documentation, wording or test infrastructure
      rather than the program's behaviour;
    - the symptom can't be stated without naming the file or function to change.
+   - the FAIL_TO_PASS tests depend on something a symptom can't reach: a
+     name, parameter, constant or file format the fix itself introduces, or
+     an internal input no user-facing path produces. A correct fix written
+     from the symptom would still fail them, in both arms. SWE-bench Verified
+     drops tasks for the same reason.
 3. It harvests every other candidate a second time, and rejects it as flaky if
    the oracle comes out different.
 4. It keeps the first 20 that remain.
@@ -169,3 +174,21 @@ drawn by the same rule, that the pilot didn't use.
   - the harvester enforces the eligibility gates itself;
   - both arms run with a `PATH` cleaned of any host NeuralMind install;
   - turns and wall-clock time are added to the report.
+- 2026-10-14 — before any run, while drawing tasks:
+  - Added exclusion reason (c). Writing the prompts showed that 12 of the
+    first 38 candidates have tests that import a name the fix created, so no
+    symptom-only fix could pass them. That was first filed under (b) and is
+    now recorded under its own reason.
+  - Prompts and exclusions were written by a separate agent session from
+    each fix's message, diff and tests. They are committed here before any
+    run.
+- 2026-10-14 — task draw complete, before any run:
+  - `select_tasks.py` walked the seeded order and recorded 14 exclusions
+    (2 under (a), 12 under (c)).
+  - It accepted 20 tasks, and every one gave the same oracle on a second
+    harvest, so none was rejected as flaky.
+  - Pinned for the pilot: model `claude-sonnet-5-5`, Claude Code 2.1.287 and
+    NeuralMind 4.15.1.
+  - A smoke test of 4 runs comes first: the first two tasks in `tasks.json`,
+    one seed per arm. It checks the harness end to end. Its runs go to
+    `bench/task_outcome/smoke/` and are never pooled with the pilot.

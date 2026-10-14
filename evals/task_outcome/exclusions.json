@@ -1,1 +1,16 @@
-{}
+{
+  "7e17783416": "(c): the failing tests call new private helpers (_is_example_file, _asks_about_tests, _demote_examples, and a new root argument to _is_test_file) that a symptom report can't reach without naming them, and four further FAIL_TO_PASS tests check the retrieval eval harness (evals/retrieval/run.py --full-repo/--no-build), which is test infrastructure outside the gold file.",
+  "d47264c0cd": "(c): every test in the license test module imports a new module constant GRACE_DAYS from the gold file (its import failure is also why the tier2 config tests are listed), and the symptom can't be stated without the gold file's stem 'license'.",
+  "18e2e9bc46": "(c): every FAIL_TO_PASS test imports a new build_parser() function from the CLI module (a testability refactor no user can observe), and three of them are a docs CLI-path lint, i.e. documentation checks.",
+  "f167d97e02": "(a): the only failing test is a static AST lint that every md5/sha1/blake2 call in the repo passes usedforsecurity=False, which checks source text rather than the program's behaviour.",
+  "21239ae033": "(c): the tests import new private functions (_expansion_enabled, _enhancement_candidates) and pin a new off-by-default flag design, which can't be reached from a symptom without naming them.",
+  "8017802423": "(a): the only failing test is the docs CLI-path lint (documentation must reference existing commands), which checks documentation, not program behaviour.",
+  "d1a20a849d": "(c): one FAIL_TO_PASS test imports a new private helper _add_months from the gold module, which a symptom report can't make reachable without naming it.",
+  "6308a4d057": "(c): a FAIL_TO_PASS test requires new module constants SUPPORTED_BACKENDS and TURBOVEC_BACKENDS in the backend manager, which can't be reached without naming them.",
+  "5013b17892": "(c): the ONNX tests call a new static method _session_options() on the embedder, which can't be reached from a symptom without naming it.",
+  "0fcbee1a91": "(c): the pass/fail tests depend on a new '.last_valid' sidecar file next to the license that the fix invents (P2P tests require EXPIRED with no or an old sidecar), and the symptom can't be stated without the gold file's stem 'license'.",
+  "7e48303fba": "(c): the server tests import a new private function _resolve_server_token (its import error is why the whole server/embedder suites are listed), which can't be reached without naming it.",
+  "52d7a97c9b": "(c): a FAIL_TO_PASS test calls a new private method _rebuild_index_from_store() directly, which can't be reached without naming it.",
+  "bbd24510c2": "(c): the only failing test calls the heading-score function directly with uppercase tokens; every user-facing path already lowercases the query, so the symptom exists only by naming that function.",
+  "6ac26d1574": "(c): all three failing tests import a new private function _sanitize_query, which can't be reached from a symptom without naming it."
+}

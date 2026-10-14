@@ -153,3 +153,13 @@ def test_baseline_path_drops_directories_holding_neuralmind(tmp_path) -> None:
     exe.write_text("#!/bin/sh\n")
     exe.chmod(0o755)
     assert run._clean_path(os.pathsep.join([str(nm_dir), str(other)])) == [str(other)]
+
+
+def test_test_keys_hide_parameters_but_keep_cases_distinct() -> None:
+    from evals.task_outcome.harness import test_key
+
+    assert test_key("tests.test_x::test_y") == "tests.test_x::test_y"
+    a = test_key("tests.test_s::test_t[slack-xoxb-fake-1]")
+    b = test_key("tests.test_s::test_t[slack-xoxb-fake-2]")
+    assert a != b and "xoxb" not in a + b
+    assert a.startswith("tests.test_s::test_t[") and a.endswith("]")

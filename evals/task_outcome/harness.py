@@ -11,6 +11,7 @@ Stdlib only.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 import subprocess
@@ -93,6 +94,20 @@ def overlay(commit: str, paths: list[str], dest: Path) -> None:
         target.write_bytes(git("show", f"{commit}:{path}"))
 
 
+def test_key(test_id: str) -> str:
+    """``test_id`` with any parametrize suffix replaced by a short digest.
+
+    The secret-scanner tests are parametrized with fake credentials, and pytest
+    puts the parameter in the test's name. Stored literally, the oracle would
+    hold credential-shaped strings, which push protection rightly blocks; the
+    digest keeps each case distinct without them.
+    """
+    base, sep, param = test_id.partition("[")
+    if not sep:
+        return test_id
+    return f"{base}[{hashlib.sha256(param.rstrip(']').encode()).hexdigest()[:12]}]"
+
+
 def run_tests(
     workspace: Path, test_files: list[str], python: str, timeout: int = 900
 ) -> dict[str, str]:
@@ -122,7 +137,7 @@ def run_tests(
         return {}
     outcomes: dict[str, str] = {}
     for case in ET.parse(report).getroot().iter("testcase"):
-        test_id = f"{case.get('classname')}::{case.get('name')}"
+        test_id = test_key(f"{case.get('classname')}::{case.get('name')}")
         if case.find("failure") is not None:
             outcomes[test_id] = "failed"
         elif case.find("error") is not None:
