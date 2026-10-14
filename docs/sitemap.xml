@@ -175,14 +175,8 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.17.0.html</loc>
-    <lastmod>2026-10-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.16.0.html</loc>
-    <lastmod>2026-10-12</lastmod>
+    <lastmod>2026-10-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

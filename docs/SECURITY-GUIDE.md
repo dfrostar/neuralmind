@@ -530,7 +530,7 @@ The chain alone can't detect records deleted from the end, or a chain
 recomputed by anyone who can write the file: the hash has no secret key. A
 passing chain is therefore weak evidence on its own.
 
-#### Checkpoints (v4.17.0+)
+#### Checkpoints (v4.16.0+)
 
 Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8, protection of
 audit information). Set them up once, as the administrator:

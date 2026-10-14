@@ -127,7 +127,7 @@ Requires an initialized project with audit trail.
 ### audit verify
 
 Check the hash chain of `.neuralmind/audit_events.jsonl`, then every
-checkpoint of it *(v4.17.0+)*.
+checkpoint of it *(v4.16.0+)*.
 
 ```bash
 neuralmind audit verify [project_path] [--checkpoint FILE ...] [--json]
@@ -175,13 +175,13 @@ the log, passed.
 
 The hash chain alone can't show records deleted from the end, or a chain
 recomputed by anyone who can write the file (the hash has no secret key).
-Checkpoints *(v4.17.0+)* close both gaps for the records they cover; see
+Checkpoints *(v4.16.0+)* close both gaps for the records they cover; see
 [audit checkpoint](#audit-checkpoint). Records written after the newest
 checkpoint are covered by the chain alone until the next one.
 
 ### audit keygen
 
-*(v4.17.0+)* Create the ECDSA P-256 key that signs audit checkpoints.
+*(v4.16.0+)* Create the ECDSA P-256 key that signs audit checkpoints.
 
 ```bash
 neuralmind audit keygen KEY_PATH [--force]
@@ -201,7 +201,7 @@ offers it.
 
 ### audit checkpoint
 
-*(v4.17.0+)* Sign a checkpoint of the audit log as it stands, and anchor it
+*(v4.16.0+)* Sign a checkpoint of the audit log as it stands, and anchor it
 where the developer can't write.
 
 ```bash
@@ -1498,7 +1498,7 @@ would download it), and when a
 running daemon listens beyond loopback or without its token. Without a profile
 it reports `ok` with "none".
 
-**Audit checkpoints** *(v4.17.0+)* fails when a checkpoint shows records
+**Audit checkpoints** *(v4.16.0+)* fails when a checkpoint shows records
 removed from the end of the audit log, a rewritten chain, or a checkpoint that
 doesn't verify. Under `security.profile: cui` it warns when
 `security.audit_checkpoint_key` or `security.audit_anchor_dir` isn't set. When
@@ -4177,7 +4177,7 @@ emits, and runs the documented cases.
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LLM_SEED` | unset | Set to `1`, with `ANTHROPIC_API_KEY`, to let `neuralmind ingest` send README and architecture-doc prose (never code) to Anthropic to seed synapse edges. *(v4.16.0+)* Refused for a project under `security.profile: cui` |
-| `NEURALMIND_AUDIT_KEY` | unset | *(v4.17.0+)* Path to the private key `neuralmind audit checkpoint` signs with, when `--key` isn't given |
+| `NEURALMIND_AUDIT_KEY` | unset | *(v4.16.0+)* Path to the private key `neuralmind audit checkpoint` signs with, when `--key` isn't given |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to switch off every NeuralMind hook action temporarily (session memory, prompt recall, stale-decision guard, the `neuralmind last` cache, the session recap), including *(v4.9.0+)* the Hermes plugin's |
 | `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`) and from the full outputs `NEURALMIND_BASH_REPLACE` keeps (`.neuralmind/bash_outputs/`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
@@ -4305,8 +4305,8 @@ process, so restart the MCP server after changing it.
 | `default_role` *(v4.7.0+)* | unset | Role for an OS account missing from `users`. Unset refuses such accounts |
 | `require_encrypted_storage` *(v4.7.0+)* | `false` | Refuse to build, query, serve MCP tools, or run hooks unless every volume holding state (the project, `.neuralmind/`, a custom `db_path`) is verified encrypted. Only `false`, `0`, `no` or `off` turns it off; a blank value counts as on |
 | `profile` *(v4.16.0+)* | unset | `cui` turns on the CUI-enclave posture as one unit: it forces `identity: os` and `require_encrypted_storage: true`, refuses `serve` beyond loopback or with `--no-auth`, makes a daemon started that way refuse the project, and refuses LLM documentation seeding even with `NEURALMIND_LLM_SEED=1`. It can't be loosened: `identity: declared`, `require_encrypted_storage: false`, or a blank or misspelled profile fails closed |
-| `audit_checkpoint_key` *(v4.17.0+)* | unset | The base64 DER ECDSA P-256 public key printed by `neuralmind audit keygen`. Every audit checkpoint must carry a valid signature from it, so a rewritten log can't be re-vouched for without the private key. A malformed value fails `audit verify` |
-| `audit_anchor_dir` *(v4.17.0+)* | unset | Directory where `neuralmind audit checkpoint` also writes each checkpoint, one file per project. Relative paths are relative to the project. Make it writable only by the administrator, so deleting the local copy can't hide truncation |
+| `audit_checkpoint_key` *(v4.16.0+)* | unset | The base64 DER ECDSA P-256 public key printed by `neuralmind audit keygen`. Every audit checkpoint must carry a valid signature from it, so a rewritten log can't be re-vouched for without the private key. A malformed value fails `audit verify` |
+| `audit_anchor_dir` *(v4.16.0+)* | unset | Directory where `neuralmind audit checkpoint` also writes each checkpoint, one file per project. Relative paths are relative to the project. Make it writable only by the administrator, so deleting the local copy can't hide truncation |
 
 ```yaml
 security:

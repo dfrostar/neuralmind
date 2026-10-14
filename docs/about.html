@@ -199,28 +199,21 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v4170">
-            <h2>What&rsquo;s New in v4.17.0 &mdash; an audit log you can&rsquo;t silently shorten</h2>
-            <p>The audit log&rsquo;s hash chain shows a record changed or removed in the middle of the log. On its own it can&rsquo;t show the newest records removed, or a chain recomputed by anyone who can write the file. Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8):</p>
-            <ul>
-                <li><strong><code>neuralmind audit keygen</code></strong> &mdash; an ECDSA P-256 key (available under every OpenSSL FIPS provider) for an administrator account; its public key is pinned as <code>security.audit_checkpoint_key</code></li>
-                <li><strong><code>neuralmind audit checkpoint</code></strong> &mdash; signs the record count and the last record&rsquo;s hash, chains to the previous checkpoint, and anchors a copy in <code>security.audit_anchor_dir</code>, a directory only the administrator can write</li>
-                <li><strong><code>neuralmind audit verify</code></strong> &mdash; fails when covered records were removed from the end, the chain was recomputed, or a checkpoint is forged or missing; <code>--checkpoint FILE</code> checks against a copy kept in your SIEM</li>
-                <li><strong><code>neuralmind doctor</code></strong> &mdash; fails on a checkpoint that shows tampering, and under <code>security.profile: cui</code> warns when the key or anchor isn&rsquo;t set or the newest checkpoint is over a week old</li>
-            </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.0.md">v4.17.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md#5-what-an-assessor-can-look-at">CUI enclave walkthrough</a></p>
-        </div>
-    </section>
-
-    <section>
         <div class="container" id="whats-new-v4160">
-            <h2>What&rsquo;s New in v4.16.0 &mdash; the CUI-enclave posture as one setting</h2>
+            <h2>What&rsquo;s New in v4.16.0 &mdash; the CUI-enclave posture as one setting, and an audit log you can&rsquo;t silently shorten</h2>
             <p>Running NeuralMind on CUI source code took four separate decisions, set and checked by hand. <code>security.profile: cui</code> in <code>neuralmind-backend.yaml</code> makes them one, enforced at run time:</p>
             <ul>
                 <li><strong>OS-account identity and encrypted storage</strong> &mdash; it forces <code>identity: os</code> and <code>require_encrypted_storage: true</code>; a contradicting or misspelled setting fails closed</li>
                 <li><strong>No listener beyond loopback</strong> &mdash; <code>neuralmind serve</code> refuses a non-loopback <code>--host</code> and <code>--no-auth</code> (exit 1), and a daemon started that way refuses the project while still serving others</li>
                 <li><strong>No LLM documentation seeding</strong> &mdash; refused even with <code>NEURALMIND_LLM_SEED=1</code> set</li>
                 <li><strong>Audited and checked as a unit</strong> &mdash; each refusal is a <code>profile_refused</code> audit event, and <code>neuralmind doctor</code> fails the project when the OS FIPS mode is off (CMMC SC.L2-3.13.11)</li>
+            </ul>
+<p><strong>Signed, anchored audit checkpoints.</strong> The audit log&rsquo;s hash chain shows a record changed or removed in the middle of the log. On its own it can&rsquo;t show the newest records removed, or a chain recomputed by anyone who can write the file. Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8):</p>
+            <ul>
+                <li><strong><code>neuralmind audit keygen</code></strong> &mdash; an ECDSA P-256 key (available under every OpenSSL FIPS provider) for an administrator account; its public key is pinned as <code>security.audit_checkpoint_key</code></li>
+                <li><strong><code>neuralmind audit checkpoint</code></strong> &mdash; signs the record count and the last record&rsquo;s hash, chains to the previous checkpoint, and anchors a copy in <code>security.audit_anchor_dir</code>, a directory only the administrator can write</li>
+                <li><strong><code>neuralmind audit verify</code></strong> &mdash; fails when covered records were removed from the end, the chain was recomputed, or a checkpoint is forged or missing; <code>--checkpoint FILE</code> checks against a copy kept in your SIEM</li>
+                <li><strong><code>neuralmind doctor</code></strong> &mdash; fails on a checkpoint that shows tampering, and under <code>security.profile: cui</code> warns when the key or anchor isn&rsquo;t set or the newest checkpoint is over a week old</li>
             </ul>
             <p><strong>Also: exit codes the Team commands computed and the CLI threw away.</strong> <code>neuralmind team license activate</code> on an expired license printed &ldquo;EXPIRED. Nothing was installed.&rdquo; and exited 0, and so did every other <code>team</code> and <code>onboarding</code> failure: each command returned its exit code, and <code>neuralmind</code> ignored it. The CLI reference had documented one of them, a non-admin <code>team governance remove-edge</code>, as exit 1 since v4.6.0. Every other command&rsquo;s exit status is unchanged.</p>
             <ul>

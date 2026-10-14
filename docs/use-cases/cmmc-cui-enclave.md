@@ -137,11 +137,11 @@ Everything lands in `.neuralmind/audit_events.jsonl`, hash-chained:
   profile stops something: `target` names what it stopped (`serve`, `daemon`
   or `llm_seed`) and `details.reason` says why.
 
-- *(v4.17.0+)* an `audit_checkpoint` event each time a checkpoint is taken.
+- *(v4.16.0+)* an `audit_checkpoint` event each time a checkpoint is taken.
 
 `neuralmind audit verify` walks the hash chain. On its own it detects a changed
 or removed record in the middle of the log, but not removal of the newest
-records or a rewritten chain. *(v4.17.0+)* Signed, anchored checkpoints close
+records or a rewritten chain. *(v4.16.0+)* Signed, anchored checkpoints close
 both gaps (AU.L2-3.3.8). As the administrator:
 
 ```bash
