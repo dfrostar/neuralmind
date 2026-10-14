@@ -80,6 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     found = json.loads(args.out.read_text()) if args.out.is_file() else []
     done = {t["fix_commit"][:10] for t in found}
     for commit in args.commits:
+        commit = harness.git("rev-parse", commit).decode().strip()
         if commit[:10] in done:
             continue
         task = harvest_one(commit, args.python, args.work_dir)
