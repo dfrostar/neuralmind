@@ -138,6 +138,14 @@ drawn by the same rule, that the pilot didn't use.
 
 - `bench/task_outcome/<run>/runs.jsonl` (one line per run) and the analyzer's
   report are committed, whatever the result.
+- Transcripts stay out of git: agents read the repo's test files, and those
+  hold fake credentials that push protection blocks. Each run records its
+  transcript's SHA-256, so an archive published separately can be checked
+  against `runs.jsonl`.
+- Every `neuralmind`-arm run records whether NeuralMind's hooks ran inside
+  the session (`hook_prompts_recorded`, `hook_edits_recorded`). That's the
+  manipulation check: a run where they didn't is a harness failure, not
+  evidence.
 - A result quoted on the site gets a `site/claims.json` entry naming this
   spec and the command that reproduces it.
 - A null or negative result is published with the same prominence as a

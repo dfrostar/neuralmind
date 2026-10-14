@@ -29,6 +29,7 @@ passes. Each run appends one JSON line to ``<out>/runs.jsonl``; a rerun skips
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -193,6 +194,22 @@ def parse_stream(lines: list[str]) -> dict:
     }
 
 
+def hook_activity(ws: Path) -> dict:
+    """Manipulation check: did NeuralMind's hooks run inside this session?
+
+    Claude Code's event stream shows only the SessionStart hook, so the
+    evidence is NeuralMind's own session recap, which its prompt and edit
+    hooks append to while the session runs.
+    """
+    prompts = edits = 0
+    for recap in (ws / ".neuralmind" / "recaps").glob("*.jsonl"):
+        for line in recap.read_text().splitlines():
+            kind = json.loads(line).get("kind") if line.strip() else None
+            prompts += kind == "prompt"
+            edits += kind == "edit"
+    return {"hook_prompts_recorded": prompts, "hook_edits_recorded": edits}
+
+
 def judge(task: dict, ws: Path, test_python: str) -> dict:
     harness.overlay(task["fix_commit"], task["test_files"], ws)
     outcomes = harness.run_tests(ws, task["run_files"], test_python)
@@ -230,6 +247,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
         exit_code, timed_out = None, True
     transcript.write_text(stdout)
+    transcript_sha256 = hashlib.sha256(stdout.encode()).hexdigest()
     agent = parse_stream(stdout.splitlines())
     if not timed_out and agent["subtype"] is None:
         # No final result event: authentication, model or CLI failure. That is
@@ -254,6 +272,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             ).stdout.split()
         )
     )
+    hooks = hook_activity(ws) if arm == "neuralmind" else {}
     verdict = judge(task, ws, args.test_python)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
@@ -268,9 +287,11 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         "started_at": started,
         "timed_out": timed_out,
         "exit_code": exit_code,
+        "transcript_sha256": transcript_sha256,
         "build_seconds": prep["build_seconds"],
         "changed_files": changed,
         "gold_touched": bool(set(changed) & set(task["gold_files"])),
+        **hooks,
         **agent,
         **verdict,
     }

@@ -106,3 +106,6 @@ evals/parity/parity_report.md
 **/.neuralmind/extraction_cache.json
 tests/fixtures/sample_project/chapters/
 tests/fixtures/sample_project_dynamic_py/chapters/
+
+# Task-outcome transcripts hold fake test credentials; see docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md
+bench/task_outcome/*/transcripts/
