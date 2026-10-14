@@ -89,11 +89,22 @@ def generate_key(path: str | Path, *, force: bool = False) -> str:
         serialization.NoEncryption(),
     )
     target.parent.mkdir(parents=True, exist_ok=True)
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-    fd = os.open(target, flags, 0o600)
-    with os.fdopen(fd, "wb") as handle:
-        handle.write(pem)
-    os.chmod(target, 0o600)  # O_CREAT's mode doesn't apply to an existing file
+    # The key only ever goes into a file this call creates, mode 0600. Opening
+    # an existing file keeps its permissions, so --force writes a new file
+    # and moves it over the old one rather than truncating it in place.
+    staging = target.with_name(f".{target.name}.{os.getpid()}.tmp") if force else target
+    try:
+        fd = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise CheckpointError(f"{target} already exists; pass --force to replace it") from exc
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(pem)
+        if force:
+            os.replace(staging, target)
+    finally:
+        if force:
+            staging.unlink(missing_ok=True)
     return public_key_b64(key.public_key())
 
 
@@ -511,14 +522,16 @@ def verify_checkpoints(
 
     trail = AuditTrail(root)
     # Each log a checkpoint can cover, keyed by its first hashed record: the
-    # active log and every rotated archive still beside it. A checkpoint is
+    # active log and the rotated archives its rotation markers lead back to.
+    # An archive-named file nothing links to doesn't count, or a copy of the
+    # original log could vouch for a replaced one. A checkpoint is
     # compared with the log it began on, so one taken before a rotation is
     # checked against its archive. The active log's rotation marker is never
     # taken on trust: anyone who can write the log can write one. A log's
     # stored hashes count only once its chain verifies, or a record's body
     # could be edited with its sha256 left as it was.
     logs: dict[str, tuple[list[str], str | None]] = {}
-    for path in _archives(trail) + [trail.events_file]:
+    for path in _linked_logs(trail):
         hashes, problem = _log_chain(root, path)
         first = next((h for h in hashes if h), None)
         if first:
@@ -561,12 +574,30 @@ def verify_checkpoints(
     return report
 
 
-def _archives(trail: AuditTrail) -> list[Path]:
-    """The rotated archives beside the log, named the way rotate() names them."""
-    folder = trail.events_file.parent
-    if not folder.is_dir():
-        return []
-    return sorted(p for p in folder.iterdir() if _ARCHIVE_NAME.fullmatch(p.name))
+def _linked_logs(trail: AuditTrail) -> list[Path]:
+    """The active log, then each archive its rotation markers name, newest first.
+
+    Follows ``rotation_continuation`` markers back from the active log for as
+    long as the archive a marker names is still beside it. Whether each link
+    holds (the marker's ``prev_sha256`` against the archive's last hash) is
+    checked when that log's chain is walked.
+    """
+    logs = [trail.events_file]
+    current = trail.events_file
+    while True:
+        probe = AuditTrail(trail.project_path)
+        probe.events_file = current
+        lines, _ = probe._read_lines_strict()
+        if not lines or lines[0][1].get("action") != "rotation_continuation":
+            return logs
+        details = lines[0][1].get("details")
+        name = details.get("archive") if isinstance(details, dict) else None
+        if not isinstance(name, str) or not _ARCHIVE_NAME.fullmatch(name):
+            return logs
+        current = trail.events_file.parent / name
+        if not current.exists() or current in logs:
+            return logs
+        logs.append(current)
 
 
 def _log_chain(root: Path, path: Path) -> tuple[list[str], str | None]:

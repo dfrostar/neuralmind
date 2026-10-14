@@ -86,6 +86,20 @@ def test_keygen_refuses_to_overwrite(tmp_path):
     ac.generate_key(path, force=True)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+def test_keygen_force_over_a_readable_file_never_exposes_the_key(tmp_path):
+    """Opening an existing file keeps its mode, so --force must not write the
+    key into it: the replacement is a new 0600 file moved into place."""
+    path = tmp_path / "key.pem"
+    path.write_text("old")
+    path.chmod(0o644)
+    old_inode = path.stat().st_ino
+    ac.generate_key(path, force=True)
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert path.stat().st_ino != old_inode
+    assert [p.name for p in tmp_path.iterdir()] == ["key.pem"]  # no staging file left
+
+
 def test_a_non_p256_key_is_refused(tmp_path):
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import ec
@@ -361,6 +375,20 @@ def test_an_edited_archive_record_fails_even_with_its_hash_kept(tmp_path):
     assert not report.ok and "fails its hash chain" in report.reason
 
 
+def test_an_archive_nothing_links_to_cannot_vouch_for_a_replaced_log(tmp_path):
+    """A copy of the original log, given an archive's name, and a new log
+    rehashed from genesis: the copy matches the checkpoint, but no rotation
+    marker leads to it, so it doesn't count."""
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    log = _log(project)
+    (log.parent / "audit_events.20261014_000000.jsonl").write_text(log.read_text())
+    _rehash_log(project, keep=6)
+    assert AuditTrail(project).verify()["ok"]
+    report = ac.verify_checkpoints(project)
+    assert not report.ok and "replaced or rewritten" in report.reason
+
+
 def test_an_older_checkpoint_whose_archive_was_pruned_is_skipped(tmp_path):
     project = _project(tmp_path)
     ac.create_checkpoint(project)
@@ -462,6 +490,23 @@ def test_doctor_warns_under_the_cui_profile_without_key_or_anchor(tmp_path):
     check = doctor._check_audit_checkpoints(project)
     assert check.status == doctor.WARN
     assert "audit_checkpoint_key" in check.detail and "audit_anchor_dir" in check.detail
+
+
+def test_doctor_fails_on_a_record_edited_after_the_checkpoint(tmp_path):
+    """The log a checkpoint covers must verify as a whole, so doctor fails on
+    tampering the checkpoint's endpoints alone wouldn't show."""
+    from neuralmind import doctor
+
+    project = _project(tmp_path)
+    ac.create_checkpoint(project)
+    AuditTrail(project).append_event("query", "run", target="later")
+    lines = _log(project).read_text().splitlines()
+    record = json.loads(lines[-1])
+    record["target"] = "edited"
+    lines[-1] = json.dumps(record, sort_keys=True)
+    _log(project).write_text("\n".join(lines) + "\n")
+    check = doctor._check_audit_checkpoints(project)
+    assert check.status == doctor.FAIL and "fails its hash chain" in check.detail
 
 
 def test_doctor_warns_when_the_newest_checkpoint_is_stale(tmp_path, monkeypatch):
