@@ -214,7 +214,12 @@
                 <li><strong>Exit 2 for a partial seat sync</strong> &mdash; <code>team seats sync</code> when the license&rsquo;s seat limit refused some of the manifest&rsquo;s seats</li>
                 <li><strong>Status commands still exit 0</strong> &mdash; <code>team license status</code> and <code>portal</code>, <code>team self-hosted status</code> and <code>validate-license</code> report the license&rsquo;s state in their output</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.16.0.md">v4.16.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">CUI enclave walkthrough</a></p>
+            <p><strong>Also: a reversed decision stops reaching your agent.</strong> Each prompt in Claude Code and Hermes gets the <code>Decision:</code> git trailers it mentions, and a commit message can&rsquo;t change, so a decision you had reversed kept arriving. Now <code>neuralmind decisions scan</code>, which the post-commit hook runs, imports trailers into the decision store, where they get its lifecycle:</p>
+            <ul>
+                <li><strong>Retract</strong> &mdash; <code>neuralmind decisions invalidate &lt;id&gt;</code> takes a trailer out of every later prompt and <code>neuralmind why</code>; importing again never brings it back</li>
+                <li><strong>Stale with its code</strong> &mdash; a later commit that changes the files its commit changed marks it <code>[STALE: &hellip;]</code> until you <code>restore</code> or invalidate it</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.16.0.md">v4.16.0 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">CUI enclave walkthrough</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/decision-provenance.md">decision provenance walkthrough</a></p>
         </div>
     </section>
 

@@ -678,7 +678,8 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
             if spread:
                 blocks.append(spread)
         # Decision provenance: surface the recorded *why* when its symbols
-        # light up in the prompt. Git history is the store; fails open.
+        # light up in the prompt. Git history holds the decisions, the
+        # decision store their status; fails open.
         if os.environ.get("NEURALMIND_PROVENANCE_INJECT") != "0":
             decisions = _decisions_for_prompt(cwd, prompt)
             if decisions:
@@ -847,13 +848,15 @@ def _decisions_for_prompt(project_path: str, prompt: str) -> str:
     """Surface recorded decisions whose subjects the prompt mentions.
 
     Harvests ``Decision:`` trailers from git history and recalls the ones the
-    prompt is about. Fails open to '' so a provenance miss never disrupts the
-    prompt-submit hook.
+    prompt is about, leaving out those the decision store holds as
+    INVALIDATED and marking the STALE ones. Fails open to '' so a provenance
+    miss never disrupts the prompt-submit hook.
     """
     try:
-        from .provenance import format_decisions, harvest, recall
+        from .provenance import format_decisions, harvest, recall, with_lifecycle
 
-        return format_decisions(recall(harvest(project_path), prompt))
+        records = with_lifecycle(project_path, harvest(project_path))
+        return format_decisions(recall(records, prompt))
     except Exception:
         return ""
 

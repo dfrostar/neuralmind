@@ -2900,6 +2900,15 @@ STALE or INVALIDATED.
 Marks decisions STALE when the `HEAD` commit changed their files. The
 post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
 
+*(v4.16.0+)* First it imports the `Decision:` trailers in the last 300 commits
+(the window [`why`](#why-v0430) and the prompt hooks read) into the store:
+each once, ACTIVE, tagged `trailer`, anchored to its commit, naming the files
+its commit changed (relative to the project directory). Its id is derived
+from the rationale, so a rebase that rewrites the commit keeps it. A trailer
+already in the store, in any status, is left alone, so importing never revives
+an invalidated one. It prints `Imported N Decision: trailer(s) …` (nothing
+under `--quiet`), and `--json` lists the ids under `imported`.
+
 - The commit is diffed against its first parent (a merge commit counts
   everything it brought in; a rename counts both paths), relative to the
   project directory.
@@ -2915,9 +2924,10 @@ post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
 - Dependents (`dependency_constraints`) cascade. The reason is appended to
   each decision's evidence (`Marked STALE: commit 3f9c2ab changed … after this
   decision was recorded`).
-- A project with no decision store is left alone (none is created). Always
-  exits 0, so it can never fail the commit it follows. Off-switch
-  `NEURALMIND_DECISION_SCAN=0`.
+- A project with no decision store and no trailers in those commits is left
+  alone (none is created). Always exits 0, so it can never fail the commit it
+  follows. Off-switch `NEURALMIND_DECISION_SCAN=0`, which skips the import
+  too.
 - Pulls and rebases don't run post-commit hooks: a decision whose files changed
   only in pulled commits stays ACTIVE until one of your commits touches them.
   Files are matched by exact path (project-relative or absolute).
@@ -2925,7 +2935,7 @@ post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
 | Option | Description |
 |--------|-------------|
 | `--quiet`, `-q` | Print only when a decision went stale (what the git hook uses) |
-| `--json`, `-j` | `{"commit": SHA, "stale": [{"id", "title", "reason"}]}` |
+| `--json`, `-j` | `{"commit": SHA, "stale": [{"id", "title", "reason"}], "imported": [id, …]}` (`imported` v4.16.0+) |
 
 ```
 $ neuralmind decisions scan .
@@ -3470,7 +3480,9 @@ Memory logging must be enabled: answer yes when an interactive `neuralmind query
 
 Recall the recorded rationale behind code — the decision provenance a human authored, not something inferred.
 
-Harvests `Decision:` git trailers from history and surfaces the ones whose subjects the query mentions. The trailer **is** the store: no database, nothing to build, and it works retroactively on commits already in history.
+Harvests `Decision:` git trailers from history and surfaces the ones whose subjects the query mentions. The trailer holds the decision: nothing to build, and it works retroactively on commits already in history.
+
+*(v4.16.0+)* The decision store holds each trailer's status, since a commit message can't change. [`decisions scan`](#decisions-scan-v460) imports the trailers into it; then `decisions invalidate <id>` retracts one, a later commit that changes its files marks it STALE, and `decisions restore <id>` brings it back. `why` and the prompt hooks leave out INVALIDATED trailers and mark STALE ones `[STALE: …]`. A trailer the store doesn't hold is shown as before, and a project without a store is read as before: `why` and the hooks never create one.
 
 ```bash
 neuralmind why "<symbol or question>" [--project-path PATH]
@@ -4115,7 +4127,7 @@ emits, and runs the documented cases.
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable prompt-time recall in the `UserPromptSubmit` hook (and the Hermes plugin's `pre_llm_call`): the files a prompt matches and the code linked to them *(v4.11.0; before, spreading-activation neighbors)* |
 | `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.11.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce from a source checkout (the harness is in `tests/`, not in the pip package) with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
-| `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
+| `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history, and *(v4.16.0+)* each trailer's status in the decision store when there is one: INVALIDATED trailers are left out, STALE ones marked; fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.44.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
