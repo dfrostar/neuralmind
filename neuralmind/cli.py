@@ -3429,6 +3429,7 @@ def cmd_decisions_query(args):
     print()
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
+        print(f"   ID: {d.id}")
         print(f"   Commit: {d.commit_sha}")
         if d.files_affected:
             print(f"   Files: {', '.join(d.files_affected)}")
@@ -3602,24 +3603,35 @@ def cmd_decisions_scan(args):
         elif not quiet:
             print(f"Decision scan skipped: {exc}", file=sys.stderr)
         return
+    head = get_current_commit(project)
     # Decision: trailers join the store first, so they can be invalidated,
     # restored, and marked STALE below like any recorded decision.
     try:
-        imported = import_trailers(store, str(project), trailers)
+        imported = import_trailers(store, str(project), trailers, head=head)
     except Exception as exc:  # never fail the commit this follows
         imported = []
         if not quiet:
             print(f"Importing Decision: trailers failed: {exc}", file=sys.stderr)
-    if imported and not quiet and not as_json:
-        print(f"Imported {len(imported)} Decision: trailer(s) into the decision store.")
+    if imported and not as_json:
+        # A trailer whose files changed after its commit comes in STALE.
+        late = [i for i in imported if (r := store.get(i)) is not None and r.status == "STALE"]
+        if not quiet:
+            note = f" ({len(late)} STALE: their files changed after their commit)" if late else ""
+            print(f"Imported {len(imported)} Decision: trailer(s) into the decision store{note}.")
+        elif late:
+            print(
+                f"[neuralmind] {len(late)} imported Decision: trailer(s) marked STALE: their "
+                "files changed after their commit. Review: neuralmind decisions audit --stale"
+            )
     engine = InvalidationEngine(str(project), store)
     try:
         stale_ids = engine.scan()
     except Exception as exc:  # never fail the commit this follows
-        if not quiet:
+        if as_json:
+            print(json.dumps({"commit": head, "stale": [], "imported": imported}))
+        elif not quiet:
             print(f"Decision scan failed: {exc}", file=sys.stderr)
         return
-    head = get_current_commit(project)
     if not head:
         if as_json:
             print(json.dumps({"commit": "", "stale": [], "imported": imported}))

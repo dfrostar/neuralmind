@@ -38,6 +38,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 # The trailer token authors write. Git-trailer convention: "Token: value" at
 # the end of a commit message, values may continue on indented lines.
@@ -244,7 +245,9 @@ def with_lifecycle(project_path: str, records: list[DecisionRecord]) -> list[Dec
 
     Reads only: a project without a store gets ``records`` unchanged.
     """
-    if not records:
+    # Checked before importing the store module, which costs the prompt hook
+    # ~0.1 s; most projects with trailers have no store.
+    if not records or not (Path(project_path) / ".neuralmind" / "memory.db").is_file():
         return records
     from .memory.store import read_statuses
 
@@ -306,21 +309,21 @@ def harvest(
 def read_commit_files(project_path: str, sha: str) -> list[str]:
     """Files commit ``sha`` changed, relative to ``project_path`` (``[]`` on failure).
 
-    ``--relative`` limits the list to the project directory when it is a
-    subdirectory of the repository, matching how ``decisions scan`` names
-    changed files.
+    The same diff ``decisions scan`` takes of HEAD: against the first parent,
+    so a merge lists what it brought in; limited to the project directory; and
+    NUL-separated, so no path comes back quoted. A trailer's files are then in
+    exactly the form the scan matches.
     """
-    import subprocess
+    from .memory.invalidate import get_changed_files
 
-    try:
-        out = subprocess.check_output(
-            ["git", "-C", project_path, "show", "--name-only", "--relative", "--format=", sha],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception:
-        return []
-    return [line.strip() for line in out.splitlines() if line.strip()]
+    return get_changed_files(project_path, sha)
+
+
+def read_commit_blobs(project_path: str, files: list[str], sha: str) -> dict[str, str]:
+    """``{path: git blob id}`` for ``files`` as commit ``sha`` stores them."""
+    from .memory.invalidate import committed_blob_ids
+
+    return committed_blob_ids(project_path, files, sha)
 
 
 def _title(rationale: str, width: int = 80) -> str:
@@ -329,39 +332,81 @@ def _title(rationale: str, width: int = 80) -> str:
     return first if len(first) <= width else first[: width - 1].rstrip() + "…"
 
 
+def _shown(paths: list[str]) -> str:
+    """Up to three paths, then a count, as ``decisions scan`` names them."""
+    shown = ", ".join(paths[:3])
+    return shown + (f" (+{len(paths) - 3} more)" if len(paths) > 3 else "")
+
+
 def import_trailers(
     store,
     project_path: str,
     records: list[DecisionRecord],
+    *,
+    head: str = "",
     files_reader=read_commit_files,
+    blobs_reader=read_commit_blobs,
 ) -> list[str]:
-    """Record each trailer decision the store doesn't hold yet; return their ids.
+    """Bring trailer decisions into the decision store; return the ids newly recorded.
 
-    Each is stored ACTIVE under :func:`trailer_decision_id`, anchored to its
-    commit, tagged ``trailer``, with the files its commit changed so
-    ``decisions scan`` can mark it STALE later. A trailer the store already
-    holds, in any status, is left alone: re-importing never revives an
-    invalidated decision. Records are expected newest first (git-log order),
-    so a rationale repeated in several commits is anchored to the newest.
+    A trailer the store doesn't hold is recorded under
+    :func:`trailer_decision_id`, anchored to its commit, tagged ``trailer``,
+    naming the files its commit changed, and fingerprinted with the blobs that
+    commit stores, so it is judged against the code it described rather than
+    today's working tree. If any of those files changed between its commit and
+    ``head``, it is marked STALE straight away, with the files named.
+
+    A trailer the store already holds is left alone, so importing again never
+    revives an invalidated one. The exception is a trailer on ``head`` itself
+    (an amended commit, or the same rationale committed again) that isn't
+    INVALIDATED: it is re-anchored to ``head`` and made ACTIVE, so the commit
+    that carries a decision never marks it STALE.
+
+    Records are expected newest first (git-log order), so a rationale repeated
+    in several commits is anchored to the newest.
     """
     imported: list[str] = []
     seen: set[str] = set()
     for rec in records:
         decision_id = trailer_decision_id(rec)
-        if decision_id in seen:
+        if decision_id in seen or not rec.sha:
             continue
         seen.add(decision_id)
-        if store.get(decision_id) is not None:
-            continue
-        store.record(
-            title=_title(rec.rationale),
-            rationale=rec.rationale,
-            commit_sha=rec.sha,
-            files_affected=files_reader(project_path, rec.sha) if rec.sha else [],
-            evidence=[f"Decision: trailer on commit {rec.short_sha or '?'}"],
-            tags=["trailer"],
-            id=decision_id,
-        )
-        if store.get(decision_id) is not None:
+        existing = store.get(decision_id)
+        if existing is None:
+            files = files_reader(project_path, rec.sha)
+            store.record(
+                title=_title(rec.rationale),
+                rationale=rec.rationale,
+                commit_sha=rec.sha,
+                files_affected=files,
+                evidence=[f"Decision: trailer on commit {rec.short_sha}"],
+                tags=["trailer"],
+                id=decision_id,
+            )
+            if store.get(decision_id) is None:
+                continue  # the write failed (logged by the store)
+            at_commit = blobs_reader(project_path, files, rec.sha)
+            store.set_fingerprints(decision_id, at_commit)
             imported.append(decision_id)
+            if head and rec.sha != head:
+                now = blobs_reader(project_path, files, head)
+                changed = [f for f in files if now.get(f) != at_commit.get(f)]
+                if changed:
+                    store.mark_stale(
+                        decision_id,
+                        f"{_shown(changed)} changed after commit {rec.short_sha} "
+                        "recorded this decision",
+                    )
+        elif rec.sha == head and existing.status != "INVALIDATED" and existing.commit_sha != head:
+            files = files_reader(project_path, head)
+            existing.commit_sha = head
+            existing.files_affected = files
+            existing.status = "ACTIVE"
+            existing.evidence = [
+                *existing.evidence,
+                f"Re-anchored to commit {rec.short_sha}, which carries this trailer",
+            ]
+            store.update(existing)
+            store.set_fingerprints(decision_id, blobs_reader(project_path, files, head))
     return imported

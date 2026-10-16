@@ -88,7 +88,12 @@ changes the files the trailer's commit changed marks it STALE, and the hooks
 show it with `[STALE: its code changed after this was decided; check it still
 holds]` until you run `neuralmind decisions restore <id>` or invalidate it.
 Importing again never brings an invalidated trailer back, and a rebase keeps
-its id, since the id comes from the rationale.
+its id, since the id comes from the rationale. A trailer is judged against the
+code its own commit stored, so one whose files changed since comes in STALE.
+
+The status lives in `.neuralmind/memory.db`, which isn't committed: it applies
+to your clone. A teammate who wants the same retraction runs the same
+`invalidate`.
 
 ## Why git history is the store
 

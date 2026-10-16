@@ -145,10 +145,16 @@ prompt hooks never read it.
   The post-commit hook from `neuralmind init-hook` runs it after every commit
   in a project with a decision store and, in a built project without one, on
   the first commit that carries a trailer (a `git log` + `grep` check, so
-  other commits start no Python). Each trailer in the same 300 commits is recorded once, ACTIVE, tagged
-  `trailer`, anchored to its commit, naming the files its commit changed. Its
-  id is derived from the rationale, so a rebase that rewrites the commit
-  keeps the same decision. `--json` gains an `imported` list.
+  other commits start no Python). Each trailer in the same 300 commits is
+  recorded once, tagged `trailer`, anchored to its commit, naming the files
+  its commit changed (diffed against the first parent, as the scan diffs
+  HEAD). It is judged against the code its own commit stored, not your
+  working tree: one whose files changed after its commit comes in STALE,
+  with the files named; the rest come in ACTIVE. Its id is derived from the
+  rationale, so a rebase that rewrites the commit keeps the same decision,
+  and amending the trailer's commit, or committing the same rationale again,
+  re-anchors it to the new commit instead of marking it STALE. `--json` gains
+  an `imported` list.
 - **The prompt hooks and `neuralmind why` read the store's status.** An
   INVALIDATED trailer is left out. A STALE one is still shown, marked
   `[STALE: its code changed after this was decided; check it still holds]`.
@@ -158,9 +164,13 @@ prompt hooks never read it.
   `decisions invalidate <id> --reason R` retracts it, a later commit that
   changes its files marks it STALE, `decisions restore <id>` brings it back,
   and the `PreToolUse` stale-decision guard names it before an edit. Find the
-  id with `neuralmind decisions query <words> --status ALL` (without
-  `--status`, query lists only ACTIVE decisions). Importing again never revives
-  an invalidated trailer.
+  id with `neuralmind decisions query <words> --status ALL`, which now prints
+  each decision's `ID:` (without `--status`, query lists only ACTIVE
+  decisions). Importing again never revives an invalidated trailer.
+- **The status is local to your clone.** It lives in `.neuralmind/memory.db`,
+  which isn't committed: a teammate, a fresh clone or CI still gets a trailer
+  you invalidated, and STALE follows the commits made in this working tree,
+  whatever the branch.
 - **Tests:** `tests/memory/test_trailer_lifecycle.py` drives a real git
   repository through import, invalidate, a later commit, restore and `why`;
   `tests/test_provenance.py` covers the status rules.

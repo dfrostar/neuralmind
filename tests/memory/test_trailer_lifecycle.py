@@ -166,3 +166,115 @@ def test_scan_exits_cleanly_when_the_store_is_refused(repo, capsys, monkeypatch)
     monkeypatch.setattr(cli, "_get_decisions_store", refuse)
     payload = json.loads(_scan(repo, capsys, "--json"))
     assert payload == {"commit": "", "stale": [], "imported": []}
+
+
+# --------------------------------------------------------------------------- #
+# Imported trailers are judged against their own commit, not the working tree
+# --------------------------------------------------------------------------- #
+
+
+def _status(repo, decision_id):
+    return DecisionStore(str(repo)).get(decision_id).status
+
+
+def test_an_old_trailer_whose_code_changed_since_comes_in_stale(repo, capsys):
+    # The trailer's commit is HEAD~1; this commit changes its file again. The
+    # first import (here, the one-time scan) must not take today's code as
+    # what the decision described.
+    _commit(repo, "src/uploader.py", "def upload_with_retry():\n    pass\n", "drop retry")
+    out = _scan(repo, capsys)
+    assert "1 STALE" in out
+    record = DecisionStore(str(repo)).get(_trailer_id())
+    assert record.status == "STALE"
+    assert any("src/uploader.py changed after commit" in e for e in record.evidence)
+
+
+def test_an_old_trailer_with_unchanged_code_comes_in_active(repo, capsys):
+    _commit(repo, "README.md", "readme\n", "docs")
+    _scan(repo, capsys)
+    assert _status(repo, _trailer_id()) == "ACTIVE"
+
+
+def test_a_dirty_working_tree_is_not_taken_as_the_decisions_code(repo, capsys):
+    # Uncommitted edits at import time, committed later: that commit changes
+    # the code the trailer's commit stored, so it marks the decision STALE.
+    (repo / "src" / "uploader.py").write_text("def upload_with_retry():\n    pass\n")
+    _scan(repo, capsys)
+    assert _status(repo, _trailer_id()) == "ACTIVE"
+    _git(repo, "commit", "-qam", "drop retry")
+    _scan(repo, capsys)
+    assert _status(repo, _trailer_id()) == "STALE"
+
+
+def test_amending_the_trailers_commit_does_not_make_it_stale(repo, capsys):
+    _scan(repo, capsys)
+    (repo / "src" / "uploader.py").write_text("def upload_with_retry():\n    retry(3)\n")
+    _git(repo, "commit", "-q", "-a", "--amend", "--no-edit")
+    _scan(repo, capsys)  # what the post-commit hook runs after the amend
+    record = DecisionStore(str(repo)).get(_trailer_id())
+    assert record.status == "ACTIVE"
+    assert record.commit_sha == _git(repo, "rev-parse", "HEAD")  # not the orphaned sha
+
+
+def test_the_same_rationale_committed_again_reanchors_it(repo, capsys):
+    _scan(repo, capsys)
+    _commit(
+        repo, "src/uploader.py", "def upload_with_retry():\n    retry(5)\n", f"tune\n\n{TRAILER}"
+    )
+    _scan(repo, capsys)
+    record = DecisionStore(str(repo)).get(_trailer_id())
+    assert record.status == "ACTIVE"
+    assert record.commit_sha == _git(repo, "rev-parse", "HEAD")
+
+
+def test_reasserting_an_invalidated_trailer_keeps_it_invalidated(repo, capsys):
+    _scan(repo, capsys)
+    DecisionStore(str(repo)).invalidate(_trailer_id(), reason="reversed")
+    _commit(repo, "src/uploader.py", "x = 1\n", f"again\n\n{TRAILER}")
+    _scan(repo, capsys)
+    assert _status(repo, _trailer_id()) == "INVALIDATED"
+
+
+def test_a_non_ascii_path_is_stored_as_git_names_it_and_goes_stale(repo, capsys):
+    trailer = "Decision: `café_rate` rounds half-even so totals match the ledger."
+    _commit(repo, "src/café.py", "def café_rate(): ...\n", f"feat: rates\n\n{trailer}")
+    _scan(repo, capsys)
+    decision_id = trailer_decision_id(parse_decision(f"x\n\n{trailer}"))
+    assert DecisionStore(str(repo)).get(decision_id).files_affected == ["src/café.py"]
+    _commit(repo, "src/café.py", "def café_rate(): return 1\n", "change")
+    _scan(repo, capsys)
+    assert _status(repo, decision_id) == "STALE"
+
+
+def test_a_trailer_on_a_merge_commit_names_what_the_merge_brought_in(repo, capsys):
+    main = _git(repo, "branch", "--show-current")
+    _git(repo, "checkout", "-q", "-b", "feature")
+    _commit(repo, "src/feature.py", "def feature(): ...\n", "feature work")
+    _git(repo, "checkout", "-q", main)
+    _commit(repo, "README.md", "readme\n", "docs")  # so the merge isn't a fast-forward
+    trailer = "Decision: `feature` ships behind a flag until the migration lands."
+    _git(repo, "merge", "-q", "--no-ff", "feature", "-m", f"merge feature\n\n{trailer}")
+    _scan(repo, capsys)
+    decision_id = trailer_decision_id(parse_decision(f"x\n\n{trailer}"))
+    assert DecisionStore(str(repo)).get(decision_id).files_affected == ["src/feature.py"]
+
+
+def test_scan_json_is_printed_when_the_scan_itself_fails(repo, capsys, monkeypatch):
+    from neuralmind.memory import invalidate
+
+    def boom(self):
+        raise RuntimeError("git exploded")
+
+    monkeypatch.setattr(invalidate.InvalidationEngine, "scan", boom)
+    payload = json.loads(_scan(repo, capsys, "--json"))
+    assert payload["imported"] == [_trailer_id()]
+    assert payload["stale"] == []
+
+
+def test_query_prints_the_id_to_invalidate_or_restore(repo, capsys):
+    _scan(repo, capsys)
+    args = build_parser().parse_args(
+        ["decisions", "query", "upload_with_retry uploader", "--status", "ALL", str(repo)]
+    )
+    args.func(args)
+    assert f"ID: {_trailer_id()}" in capsys.readouterr().out

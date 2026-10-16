@@ -820,20 +820,26 @@ class DecisionStore:
         try:
             from .invalidate import file_blob_ids
 
-            blobs = file_blob_ids(self.project_path, files)
-            with self._connect() as conn:
-                conn.execute(
-                    "DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,)
-                )
-                conn.executemany(
-                    "INSERT INTO decision_fingerprints(decision_id, path, blob) VALUES (?, ?, ?)",
-                    [(decision_id, path, blob) for path, blob in blobs.items()],
-                )
+            self.set_fingerprints(decision_id, file_blob_ids(self.project_path, files))
         except Exception:
             logger.warning(
                 "[memory] could not fingerprint files for decision %s — the commit that "
                 "carries it will mark it STALE",
                 decision_id,
+            )
+
+    def set_fingerprints(self, decision_id: str, blobs: dict[str, str]) -> None:
+        """Replace a decision's fingerprints with ``{project-relative path: blob id}``.
+
+        For a decision whose code is a commit rather than the working tree: an
+        imported ``Decision:`` trailer is fingerprinted with the blobs its own
+        commit stores. Raises on a database error.
+        """
+        with self._connect() as conn:
+            conn.execute("DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,))
+            conn.executemany(
+                "INSERT INTO decision_fingerprints(decision_id, path, blob) VALUES (?, ?, ?)",
+                [(decision_id, path, blob) for path, blob in blobs.items()],
             )
 
     def fingerprints(self, decision_id: str) -> dict[str, str]:

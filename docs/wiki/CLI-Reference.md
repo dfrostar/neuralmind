@@ -2907,12 +2907,19 @@ trailer in a built project without one.
 
 *(v4.16.0+)* First it imports the `Decision:` trailers in the last 300 commits
 (the window [`why`](#why-v0430) and the prompt hooks read) into the store:
-each once, ACTIVE, tagged `trailer`, anchored to its commit, naming the files
-its commit changed (relative to the project directory). Its id is derived
-from the rationale, so a rebase that rewrites the commit keeps it. A trailer
-already in the store, in any status, is left alone, so importing never revives
-an invalidated one. It prints `Imported N Decision: trailer(s) …` (nothing
-under `--quiet`), and `--json` lists the ids under `imported`.
+each once, tagged `trailer`, anchored to its commit, naming the files its
+commit changed (diffed against its first parent and relative to the project
+directory, as the scan diffs HEAD). It is fingerprinted with the blobs its own
+commit stores, not the working tree, and comes in STALE if any of those files
+changed between its commit and HEAD, ACTIVE otherwise. Its id is derived from
+the rationale, so a rebase that rewrites the commit keeps it. A trailer
+already in the store is left alone, so importing never revives an invalidated
+one, except that a trailer HEAD carries (an amended commit, or the same
+rationale committed again) is re-anchored to HEAD and made ACTIVE unless it is
+INVALIDATED. It prints `Imported N Decision: trailer(s) …` (under `--quiet`,
+only a line when some came in STALE), and `--json` lists the ids under
+`imported`. The status lives in this clone's `.neuralmind/memory.db`, which
+isn't committed.
 
 - The commit is diffed against its first parent (a merge commit counts
   everything it brought in; a rename counts both paths), relative to the

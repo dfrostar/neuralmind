@@ -137,27 +137,27 @@ def _git(
         return subprocess.CompletedProcess(args, returncode=1, stdout="", stderr=str(e))
 
 
-def get_parent_commit(project_path: str | Path) -> str:
-    """SHA of HEAD's first parent, or "" for a root commit / non-repo."""
-    result = _git(["rev-parse", "--verify", "--quiet", "HEAD^"], cwd=project_path)
+def get_parent_commit(project_path: str | Path, commit: str = "HEAD") -> str:
+    """SHA of ``commit``'s first parent, or "" for a root commit / non-repo."""
+    result = _git(["rev-parse", "--verify", "--quiet", f"{commit}^"], cwd=project_path)
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
 
 
-def get_changed_files(project_path: str | Path) -> list[str]:
-    """Files the HEAD commit changed, relative to ``project_path``.
+def get_changed_files(project_path: str | Path, commit: str = "HEAD") -> list[str]:
+    """Files ``commit`` (default HEAD) changed, relative to ``project_path``.
 
-    Diffs HEAD against its first parent, so a merge commit lists everything
+    Diffs the commit against its first parent, so a merge commit lists everything
     it brought into the branch; ``--no-renames`` lists both sides of a rename
     so a decision about the old path is found too. Paths are relative to
     ``project_path`` (``--relative``) and changes outside it are left out, so
     a project in a subdirectory of its repository matches its own decisions.
     A root commit lists every file it added. Returns [] outside a git repo.
     """
-    parent = get_parent_commit(project_path)
+    parent = get_parent_commit(project_path, commit)
     if parent:
-        args = ["diff", "--name-only", "--relative", "--no-renames", "-z", parent, "HEAD"]
+        args = ["diff", "--name-only", "--relative", "--no-renames", "-z", parent, commit]
     else:
         args = [
             "diff-tree",
@@ -168,7 +168,7 @@ def get_changed_files(project_path: str | Path) -> list[str]:
             "--relative",
             "--no-renames",
             "-z",
-            "HEAD",
+            commit,
         ]
     result = _git(args, cwd=project_path)
     if result.returncode != 0:
@@ -261,17 +261,19 @@ def file_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
     return blobs
 
 
-def committed_blob_ids(project_path: str | Path, files: list[str]) -> dict[str, str]:
-    """``{project-relative path: git blob id}`` of the files as HEAD stores them.
+def committed_blob_ids(
+    project_path: str | Path, files: list[str], commit: str = "HEAD"
+) -> dict[str, str]:
+    """``{project-relative path: git blob id}`` of the files as ``commit`` stores them.
 
-    Files HEAD doesn't contain (deleted, or the old side of a rename) are
-    left out, which makes them count as changed.
+    Files the commit doesn't contain (deleted, or the old side of a rename)
+    are left out, which makes them count as changed.
     """
     blobs: dict[str, str] = {}
     paths = list(dict.fromkeys(files or []))
     for start in range(0, len(paths), _GIT_PATH_CHUNK):
         chunk = paths[start : start + _GIT_PATH_CHUNK]
-        result = _git(["ls-tree", "-z", "HEAD", "--", *chunk], cwd=project_path)
+        result = _git(["ls-tree", "-z", commit, "--", *chunk], cwd=project_path)
         if result.returncode != 0:
             continue
         for record in result.stdout.split("\0"):
