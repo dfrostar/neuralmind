@@ -278,3 +278,26 @@ def test_query_prints_the_id_to_invalidate_or_restore(repo, capsys):
     )
     args.func(args)
     assert f"ID: {_trailer_id()}" in capsys.readouterr().out
+
+
+def test_git_output_is_read_as_utf8_whatever_the_locale(monkeypatch):
+    # Windows' locale encoding is cp1252: a non-ASCII rationale or path read
+    # with it came out garbled (found on the windows-latest CI runner).
+    import neuralmind.memory.invalidate as invalidate
+    import neuralmind.provenance as provenance
+
+    seen = {}
+
+    def fake_check_output(*args, **kwargs):
+        seen["log"] = kwargs.get("encoding")
+        return ""
+
+    def fake_run(*args, **kwargs):
+        seen["git"] = kwargs.get("encoding")
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+    monkeypatch.setattr(invalidate.subprocess, "run", fake_run)
+    provenance.read_git_log(".")
+    invalidate.get_changed_files(".")
+    assert seen == {"log": "utf-8", "git": "utf-8"}

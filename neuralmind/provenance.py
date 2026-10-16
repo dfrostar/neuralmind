@@ -274,9 +274,13 @@ def read_git_log(project_path: str = ".", limit: int = 300) -> list[tuple[str, s
     import subprocess
 
     try:
+        # git writes commit messages as UTF-8; the locale default (cp1252 on
+        # Windows) would garble a non-ASCII rationale, and with it the id
+        # trailer_decision_id derives from it.
         out = subprocess.check_output(
             ["git", "-C", project_path, "log", f"-{int(limit)}", f"--format={_GIT_FORMAT}"],
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         )
     except Exception:

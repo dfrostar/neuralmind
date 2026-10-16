@@ -119,10 +119,15 @@ def _git(
     never raises unless ``check=True`` is explicitly requested.
     """
     try:
+        # git writes paths (-z) and messages as UTF-8. The locale default
+        # (cp1252 on Windows) garbled non-ASCII paths, so they never matched
+        # a decision's files, and a garbled path passed back to git matched
+        # nothing.
         return subprocess.run(
             ["git", "-C", str(cwd)] + args,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             check=check,
             timeout=30,
         )

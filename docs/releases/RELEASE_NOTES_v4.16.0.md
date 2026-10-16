@@ -171,6 +171,12 @@ prompt hooks never read it.
   which isn't committed: a teammate, a fresh clone or CI still gets a trailer
   you invalidated, and STALE follows the commits made in this working tree,
   whatever the branch.
+- **Windows: non-ASCII rationales and paths are read correctly.** git's
+  output was decoded with the locale encoding (cp1252 on Windows), which
+  garbled a non-ASCII `Decision:` rationale, and with it the id derived from
+  it, and garbled non-ASCII paths, so a decision naming such a file never went
+  STALE, imported or recorded. Both are now read as UTF-8, which is what git
+  writes; Linux and macOS, whose locale is UTF-8, see no change.
 - **Tests:** `tests/memory/test_trailer_lifecycle.py` drives a real git
   repository through import, invalidate, a later commit, restore and `why`;
   `tests/test_provenance.py` covers the status rules.
