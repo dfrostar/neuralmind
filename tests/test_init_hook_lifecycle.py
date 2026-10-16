@@ -316,6 +316,36 @@ class TestHooksEndToEnd:
         assert calls.index(f"{root}|decisions scan . --quiet") < calls.index(f"{root}|build .")
         _settle(repo)
 
+    def test_a_decision_trailer_scans_a_built_project_without_a_store(self, repo):
+        """The scan imports Decision: trailers and creates the store, so a built
+        project without one must still be scanned when a commit carries one."""
+        (repo.root / ".neuralmind" / "memory.db").unlink()
+        root = os.path.realpath(repo.root)
+
+        def scans():
+            return [c for c in _calls(repo) if c == f"{root}|decisions scan . --quiet"]
+
+        repo.git("commit", "-q", "--allow-empty", "-m", "chore: nothing decided")
+        assert _wait_for(lambda: _builds(repo)), "hooks are dead, so no scan proves nothing"
+        assert scans() == []  # no store, no trailer: no Python started for the scan
+        _settle(repo)
+        repo.git(
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "feat: x\n\nDecision: `a` stays module-level so imports stay cheap.",
+        )
+        assert len(scans()) == 1  # the scan is synchronous: done when git returns
+        _settle(repo)
+
+    def test_a_decision_trailer_leaves_an_unbuilt_project_alone(self, repo):
+        (repo.root / ".neuralmind" / "memory.db").unlink()
+        (repo.root / ".neuralmind" / "build_status.json").unlink()
+        repo.git("commit", "-q", "--allow-empty", "-m", "feat: x\n\nDecision: `a` stays.")
+        time.sleep(1)
+        assert _calls(repo) == []
+
     def test_branch_switch_merge_and_rewrite_rebuild_but_file_checkout_does_not(self, repo):
         repo.git("checkout", "-q", "-b", "feature")  # same commit: nothing to rebuild
         time.sleep(1)

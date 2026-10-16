@@ -2765,7 +2765,10 @@ rather than overwriting it:
   changed after the decision was recorded and prints them (see
   [`decisions scan`](#decisions-scan-v460)), then rebuilds the neural index.
   The scan runs synchronously (it reads HEAD), and only where a decision
-  store exists.
+  store exists or, *(v4.16.0+)* in a built project without one, when the
+  commit carries a `Decision:` trailer for the scan to import (checked with
+  `git log -1` and `grep`, so other commits start no Python). Hooks installed
+  before v4.16.0 lack that second case: re-run `neuralmind init-hook .`.
 - **`post-merge`**, **`post-checkout`** and **`post-rewrite`** *(v4.13.0+)*
   rebuild the index after merges and pulls, branch switches (only a branch
   checkout that lands on a different commit) and rebases or amends: events
@@ -2898,7 +2901,9 @@ STALE or INVALIDATED.
 #### decisions scan *(v4.6.0+)*
 
 Marks decisions STALE when the `HEAD` commit changed their files. The
-post-commit hook from [`init-hook`](#init-hook) runs it after every commit.
+post-commit hook from [`init-hook`](#init-hook) runs it after every commit
+in a project with a decision store, and on a commit carrying a `Decision:`
+trailer in a built project without one.
 
 *(v4.16.0+)* First it imports the `Decision:` trailers in the last 300 commits
 (the window [`why`](#why-v0430) and the prompt hooks read) into the store:

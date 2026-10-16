@@ -73,12 +73,13 @@ a provenance miss never disrupts the prompt).
 
 A commit message can't be edited, so a reversed decision used to keep arriving
 with every prompt that named its symbols. Now the decision store holds each
-trailer's status. `neuralmind decisions scan .` (the post-commit hook from
-`neuralmind init-hook` runs it after every commit) imports the trailers in
-recent history into it. Then:
+trailer's status. `neuralmind decisions scan .` imports the trailers in
+recent history into it. Run it once; after that the post-commit hook from
+`neuralmind init-hook .` runs it for you (re-run `init-hook` if you installed
+the hooks before v4.16.0). Then:
 
 ```bash
-neuralmind decisions query "resolveOrgId"        # find the trailer's id
+neuralmind decisions query "resolveOrgId" --status ALL   # find the trailer's id (STALE ones too)
 neuralmind decisions invalidate <id> --reason "moved into middleware in #812"
 ```
 

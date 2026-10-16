@@ -6308,7 +6308,7 @@ def cmd_why(args):
     print()
     print(
         "Retract one: neuralmind decisions invalidate <id> --reason R "
-        "(ids: neuralmind decisions query <words>, after neuralmind decisions scan)"
+        "(ids: neuralmind decisions query <words> --status ALL, after neuralmind decisions scan)"
     )
 
 
@@ -6529,8 +6529,18 @@ def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
         "# Retire decisions this commit made stale, then rebuild the NeuralMind index.\n"
         + _HOOK_SCOPE_COMMENT
         + _hook_resolve_binary_lines(bin_path)
-        # The scan's own precondition: no decision store, nothing to scan.
-        + f'if [ -n "$_nm_bin" ] && [ -f {target}/.neuralmind/memory.db ]; then\n'
+        # The scan's own precondition: a decision store to scan, or, in a built
+        # project without one, a commit carrying a Decision: trailer for the
+        # scan to import (which creates the store). Checked with git and grep,
+        # so a commit with neither starts no Python.
+        + "_nm_scan=\n"
+        + f"if [ -f {target}/.neuralmind/memory.db ]; then\n"
+        + "    _nm_scan=1\n"
+        + f"elif [ -f {target}/{_BUILT_MARKER} ] && "
+        + "git log -1 --format=%B 2>/dev/null | grep -qi '^decision:'; then\n"
+        + "    _nm_scan=1\n"
+        + "fi\n"
+        + 'if [ -n "$_nm_bin" ] && [ -n "$_nm_scan" ]; then\n'
         + f'    "$_nm_bin" decisions scan {target} --quiet || true\n'
         + "fi\n"
         + f'if [ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'

@@ -142,8 +142,10 @@ store (`neuralmind decisions`) had ACTIVE, STALE and INVALIDATED, but the
 prompt hooks never read it.
 
 - **`neuralmind decisions scan` imports trailers into the decision store.**
-  The post-commit hook from `neuralmind init-hook` runs it after every commit.
-  Each trailer in the same 300 commits is recorded once, ACTIVE, tagged
+  The post-commit hook from `neuralmind init-hook` runs it after every commit
+  in a project with a decision store and, in a built project without one, on
+  the first commit that carries a trailer (a `git log` + `grep` check, so
+  other commits start no Python). Each trailer in the same 300 commits is recorded once, ACTIVE, tagged
   `trailer`, anchored to its commit, naming the files its commit changed. Its
   id is derived from the rationale, so a rebase that rewrites the commit
   keeps the same decision. `--json` gains an `imported` list.
@@ -156,7 +158,8 @@ prompt hooks never read it.
   `decisions invalidate <id> --reason R` retracts it, a later commit that
   changes its files marks it STALE, `decisions restore <id>` brings it back,
   and the `PreToolUse` stale-decision guard names it before an edit. Find the
-  id with `neuralmind decisions query <words>`. Importing again never revives
+  id with `neuralmind decisions query <words> --status ALL` (without
+  `--status`, query lists only ACTIVE decisions). Importing again never revives
   an invalidated trailer.
 - **Tests:** `tests/memory/test_trailer_lifecycle.py` drives a real git
   repository through import, invalidate, a later commit, restore and `why`;
@@ -223,6 +226,10 @@ NeuralMind's hooks, so nothing changes for them there.
   `NEURALMIND_DECISION_SCAN=0` still skips the scan, imports included. Run
   `neuralmind decisions scan .` once to import the trailers already in your
   history.
+- **Re-run `neuralmind init-hook .`** to get the new post-commit hook. A hook
+  installed before v4.16.0 runs the scan only where a decision store already
+  exists, so in a project without one, new trailers wait until you run
+  `neuralmind decisions scan .` yourself.
 
 ## Not in this release
 
