@@ -3632,25 +3632,9 @@ def cmd_decisions_scan(args):
     since = getattr(args, "since", None)
     since_sha = ""
     if since:
-        import subprocess
+        from neuralmind.memory.invalidate import resolve_commit
 
-        try:
-            since_sha = subprocess.run(
-                [
-                    "git",
-                    "-C",
-                    str(project),
-                    "rev-parse",
-                    "--verify",
-                    "--quiet",
-                    f"{since}^{{commit}}",
-                ],
-                capture_output=True,
-                encoding="utf-8",
-                timeout=30,
-            ).stdout.strip()
-        except Exception:
-            since_sha = ""
+        since_sha = resolve_commit(project, since)
         if not since_sha:
             if as_json:
                 print(json.dumps({"commit": head, "stale": [], "imported": imported}))

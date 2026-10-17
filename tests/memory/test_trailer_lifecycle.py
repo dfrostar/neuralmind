@@ -375,3 +375,10 @@ def test_a_pull_that_changes_a_decisions_code_marks_it_stale(repo, capsys):
 def test_scan_since_an_unknown_rev_is_skipped(repo, capsys):
     out = _scan(repo, capsys, "--since", "no-such-rev")
     assert "can't resolve" in out
+
+
+def test_a_since_rev_that_looks_like_an_option_never_reaches_git():
+    from neuralmind.memory import invalidate
+
+    assert invalidate.resolve_commit(".", "--output=/tmp/x") == ""
+    assert invalidate.resolve_commit(".", "") == ""

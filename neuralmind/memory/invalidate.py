@@ -187,6 +187,21 @@ def get_changed_files(
     return [p for p in result.stdout.split("\0") if p.strip()]
 
 
+def resolve_commit(project_path: str | Path, rev: str) -> str:
+    """The commit SHA ``rev`` names, or "" when git can't resolve it.
+
+    ``rev`` comes from the command line (``decisions scan --since``), so one
+    starting with ``-`` is refused rather than handed to git, which would read
+    it as an option.
+    """
+    if not rev or rev.startswith("-"):
+        return ""
+    result = _git(["rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"], cwd=project_path)
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
 def get_current_commit(project_path: str | Path) -> str:
     """Get current HEAD SHA.
 
