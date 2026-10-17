@@ -1,0 +1,8 @@
+Tasks paired: 2 (4 runs)
+Median cost change per task with NeuralMind: +11.2% (95% CI -6.4% to +28.9%)
+Cheaper on 1 task(s), dearer on 1; Wilcoxon one-sided p = 0.7500
+Tasks solved: baseline 1, NeuralMind 2 (McNemar p = 1.0000)
+Cost per solved task: baseline $0.302, neuralmind $0.172
+Median turns per task: baseline 9.0, neuralmind 9.0; median minutes per task: baseline 0.3, neuralmind 0.5
+Runs that hit the timeout (scored unsolved at the budget cap): baseline 0, neuralmind 0
+Claim supported: NO (p<0.05: False, CI below 0: False, solve rate not worse: True)

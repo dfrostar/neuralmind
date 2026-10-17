@@ -115,7 +115,10 @@ user's message and adds what comes back. It's the same block Claude Code's
   the code poorly, such as "yes" or a question about something else (v4.11.0+,
   `NEURALMIND_RECALL_MIN_SIMILARITY`).
 - **Decision provenance:** recorded decisions (`Decision:` git trailers) whose
-  subjects the message mentions.
+  subjects the message mentions, minus the ones you retracted with
+  `neuralmind decisions invalidate`; one whose code changed since is marked
+  `[STALE: …]` (v4.16.0+, once `neuralmind decisions scan` has imported them:
+  see [Decision provenance](./decision-provenance.md#step-4--retract-a-decision-you-reversed-v4160)).
 
 An illustrative example. The files, symbols and decision are made up for this
 page:

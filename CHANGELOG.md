@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.16.0](https://github.com/dfrostar/neuralmind/compare/v4.15.1...v4.16.0) (2026-10-17)
+
+
+### Features
+
+* **audit:** signed, anchored audit checkpoints — truncation and a recomputed chain are detected ([#662](https://github.com/dfrostar/neuralmind/issues/662)) ([d1fca27](https://github.com/dfrostar/neuralmind/commit/d1fca27b4ecdbed023276f7916e444ac8e6e8089))
+* **decisions:** retract a Decision: trailer, and mark it STALE with its code ([#667](https://github.com/dfrostar/neuralmind/issues/667)) ([e60b030](https://github.com/dfrostar/neuralmind/commit/e60b03010c2aff42e58558122cf5e650a38e888b))
+* **security:** security.profile: cui — the CUI-enclave posture as one setting, enforced and checked as a unit ([#660](https://github.com/dfrostar/neuralmind/issues/660)) ([9b68769](https://github.com/dfrostar/neuralmind/commit/9b6876920ac78b811aed0ff37de96c8ea2b38fe9))
+
+
+### Bug Fixes
+
+* **decisions:** a subject inside a longer identifier still goes into the title ([#669](https://github.com/dfrostar/neuralmind/issues/669)) ([9083284](https://github.com/dfrostar/neuralmind/commit/9083284298fe6f2dec4bf388dea31b7d8b273fff))
+* **decisions:** pulls and rebases mark decisions STALE; no race undoes a retraction ([#668](https://github.com/dfrostar/neuralmind/issues/668)) ([c0356aa](https://github.com/dfrostar/neuralmind/commit/c0356aa6b2df56311827a0dde7d9b3f77320b76b))
+* **docs:** give every docs page its own description and title, and noindex working notes ([#663](https://github.com/dfrostar/neuralmind/issues/663)) ([4afeaac](https://github.com/dfrostar/neuralmind/commit/4afeaac8cd2b99ebe9e73b5d5eef8917ae6a0e52))
+* **site:** SEO fixes: snippet lengths, dead source links, sitemap dates, 404 robots ([#664](https://github.com/dfrostar/neuralmind/issues/664)) ([6ec22fc](https://github.com/dfrostar/neuralmind/commit/6ec22fc83e7518956b4b666fa1d7ae6c4f989602))
+
 ## [4.15.1](https://github.com/dfrostar/neuralmind/compare/v4.15.0...v4.15.1) (2026-10-12)
 
 

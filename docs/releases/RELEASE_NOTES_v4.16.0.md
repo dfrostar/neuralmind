@@ -1,6 +1,6 @@
-# NeuralMind v4.16.0 — `security.profile: cui`: the CUI-enclave posture as one setting, enforced and checked as a unit
+# NeuralMind v4.16.0 — `security.profile: cui` and signed audit checkpoints: the CUI-enclave posture as one setting, and an audit log you can't silently shorten
 
-**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, part 1. One setting switches on every control a CUI enclave needs, refuses what would weaken them, and leaves a record of each refusal
+**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening. One setting switches on every control a CUI enclave needs, refuses what would weaken them, and leaves a record of each refusal; and the audit log's newest records can no longer be removed, or its chain recomputed, without `audit verify` failing
 
 Running NeuralMind on CUI source code took four separate decisions, made by
 hand and checked by hand:
@@ -13,6 +13,17 @@ Nothing stopped someone from starting the graph view on `0.0.0.0` for a demo,
 or switching seeding on in a shell profile. Nothing told an assessor all four
 were in force. [docs/compliance/NIST.md](../compliance/NIST.md) listed a single
 hardened profile as the next SP 800-171 item; this release ships it.
+
+The audit log, `.neuralmind/audit_events.jsonl`, is hash-chained. `neuralmind
+audit verify` catches a record changed or removed in the middle of the log, but
+the chain has no secret. Anyone who can write the file could:
+- delete the newest records, leaving a shorter chain that still verifies;
+- edit any record and recompute every hash after it.
+
+Until now the only answer was "forward the log to your SIEM". CMMC AU.L2-3.3.8
+asks that audit information be protected from unauthorized modification and
+deletion, and [docs/compliance/NIST.md](../compliance/NIST.md) listed checkpoints
+as the item after the profile. This release ships them too.
 
 ---
 
@@ -81,6 +92,97 @@ own:
 Without a profile the line reports `ok` with "none". `doctor` exits 1 on any
 failure, so the check can gate a provisioning script.
 
+### Signed, anchored audit checkpoints (CMMC AU.L2-3.3.8)
+
+#### `neuralmind audit keygen`
+
+```bash
+neuralmind audit keygen ~/.neuralmind-audit/checkpoint.pem
+```
+
+Creates an ECDSA P-256 private key (PEM, mode 0600) and prints the public key
+to pin in `neuralmind-backend.yaml`:
+
+```yaml
+security:
+  audit_checkpoint_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...
+  audit_anchor_dir: /var/lib/neuralmind-anchor
+```
+
+Run it in an administrator account, which developers can't read. ECDSA P-256
+(FIPS 186-5) is used rather than Ed25519 because every OpenSSL FIPS provider
+offers it.
+
+#### `neuralmind audit checkpoint`
+
+```bash
+neuralmind audit checkpoint /srv/app --key ~/.neuralmind-audit/checkpoint.pem
+```
+
+- **What a checkpoint records:** how many records the log holds, the hash of the
+  first and the last, and the hash of the checkpoint before it. It is signed
+  with the key.
+- **Where it is written:** first to the anchor directory (one file per
+  project), then to `.neuralmind/audit_checkpoints.jsonl`. If the anchored copy
+  can't be written, nothing is written.
+- **What it records in the log:** an `audit_checkpoint` event.
+- **What it refuses:**
+  - a log whose chain or existing checkpoints already fail, since a checkpoint
+    must never vouch for a log that was already tampered with;
+  - an unsigned checkpoint while a key is pinned;
+  - a key that doesn't match the pinned one.
+- **`--json`** prints the checkpoint as one line, ready for a SIEM.
+
+Schedule it as the key's owner, for example daily from the administrator's
+crontab.
+
+#### `neuralmind audit verify` checks the checkpoints
+
+After the hash chain, `verify` reads every checkpoint: the local file, the
+anchored copy, and any `--checkpoint FILE` you name (for example a copy
+exported from your SIEM). It exits 1 when:
+
+| What happened | What `verify` says |
+|---|---|
+| Records a checkpoint covers were removed from the end | `2 record(s) removed from the end of the log since checkpoint 4 (…), which covers 120` |
+| The chain was edited and recomputed | `record 120 no longer has the hash checkpoint 4 (…) recorded: the chain was rewritten` |
+| The whole log was replaced, even behind a hand-written rotation marker | `neither the log nor a rotated archive begins with the record checkpoint 1 (…) starts from: the log was replaced or rewritten` |
+| A checkpoint was forged, or edited and re-signed with another key | `checkpoint 4's signature doesn't verify with security.audit_checkpoint_key` |
+| A checkpoint was deleted from every copy | `checkpoint 3 is missing from every copy (the next is 4)` |
+| The local copy and the anchor disagree | `two different checkpoints claim seq 4` |
+| The anchored copy is gone (deleted, or its volume unmounted) while the local copy holds checkpoints | `the anchored checkpoint copy … is missing, so the local copy can't be trusted on its own …` |
+| A record in a rotated archive was edited, its hash left as it was | `the log checkpoint 1 (…) covers fails its hash chain: … sha256 doesn't match …` |
+| A checkpoint setting is malformed | `checkpoint settings: …`, never a quietly weaker check |
+
+On success, a last line says how many checkpoints hold, which records the
+newest covers, and whether their signatures were verified. With no checkpoints,
+it says what the chain alone can't see.
+
+A checkpoint taken before the log was rotated is checked against the rotated
+archive it covers, once that archive's own hash chain verifies. Only an older checkpoint whose archive has been pruned goes
+unchecked (`archive_pruned` in `--json`); the newest must always be found.
+
+#### `neuralmind doctor` gets an **Audit checkpoints** line
+
+| Finding | Result |
+|---|---|
+| A checkpoint shows truncation, a rewrite or a bad signature | fail |
+| Under `security.profile: cui`, no `audit_checkpoint_key` or no `audit_anchor_dir` | warn |
+| A key is pinned (or the profile is on) but no checkpoint has been taken, or the newest is over 7 days old | warn |
+| Otherwise | ok, naming the newest checkpoint, its age, and whether it is signed and anchored |
+
+#### What each part protects against
+
+| Part | Without it |
+|---|---|
+| The signature, with the private key in another account | Someone who can write the log could rewrite it, then write a checkpoint to match |
+| The anchored copy, in a directory only the administrator can write | Deleting the local checkpoint file along with the newest records would leave nothing to compare |
+| A short checkpoint interval | Records written since the newest checkpoint are covered by the chain alone |
+
+Unsigned checkpoints (no key pinned) still catch accidental truncation and a
+careless rewrite, but not someone who recomputes the chain and writes a
+matching checkpoint.
+
 ### Also: `neuralmind team` and `onboarding` exit 1 when they fail
 
 The `team` commands and `onboarding` work out their own exit code:
@@ -131,13 +233,81 @@ nowhere. Found on 2026-10-12 while activating an expired license.
   license; the [team-memory governance walkthrough](../use-cases/govern-team-memory.md)
   alerts on a broken audit chain.
 
+### Also: a `Decision:` trailer can be retracted, and goes STALE with its code
+
+Each prompt (Claude Code's `UserPromptSubmit` hook, the Hermes plugin's
+`pre_llm_call`) gets the `Decision:` git trailers whose subjects it mentions.
+A trailer is committed history, so it couldn't be changed: a decision that was
+later reversed kept arriving with every matching prompt, for as long as its
+commit stayed in the last 300, and nothing could retract it. The decision
+store (`neuralmind decisions`) had ACTIVE, STALE and INVALIDATED, but the
+prompt hooks never read it.
+
+- **`neuralmind decisions scan` imports trailers into the decision store.**
+  The post-commit hook from `neuralmind init-hook` runs it after every commit
+  in a project with a decision store and, in a built project without one, on
+  the first commit that carries a trailer (a `git log` + `grep` check, so
+  other commits start no Python). Each trailer in the same 300 commits is
+  recorded once, tagged `trailer`, anchored to its commit, naming the files
+  its commit changed (diffed against the first parent, as the scan diffs
+  HEAD). It is judged against the code its own commit stored, not your
+  working tree: one whose files changed after its commit comes in STALE,
+  with the files named; the rest come in ACTIVE. Its id is derived from the
+  rationale, so a rebase that rewrites the commit keeps the same decision,
+  and amending the trailer's commit, or committing the same rationale again,
+  re-anchors it to the new commit instead of marking it STALE. `--json` gains
+  an `imported` list. A `Subjects:` entry the rationale doesn't name as a
+  whole identifier goes into the stored title (`legacyAuthMiddleware`
+  doesn't name `authMiddleware`), so `decisions query <subject>` finds the
+  decision that subject recalls.
+- **Pulls, merges and rebases mark decisions STALE too.** They never run the
+  post-commit hook, so a decision whose files changed only in pulled commits
+  stayed ACTIVE (true of recorded decisions since v4.6.0). `post-merge`, and
+  `post-rewrite` after a rebase, now run
+  `neuralmind decisions scan . --since ORIG_HEAD`, which scans every file
+  that differs between where the branch was and HEAD, and imports any
+  trailers the pull brought in. A branch switch and an amend don't scan.
+- **The prompt hooks and `neuralmind why` read the store's status.** An
+  INVALIDATED trailer is left out. A STALE one is still shown, marked
+  `[STALE: its code changed after this was decided; check it still holds]`.
+  A trailer the store doesn't hold is shown as before. The hooks only read
+  the store; they never create one.
+- **So a trailer has the same lifecycle as a recorded decision:**
+  `decisions invalidate <id> --reason R` retracts it, a later commit that
+  changes its files marks it STALE, `decisions restore <id>` brings it back,
+  and the `PreToolUse` stale-decision guard names it before an edit. Find the
+  id with `neuralmind decisions query <words> --status ALL`, which now prints
+  each decision's `ID:` (without `--status`, query lists only ACTIVE
+  decisions). Importing again never revives an invalidated trailer.
+- **The status is local to your clone.** It lives in `.neuralmind/memory.db`,
+  which isn't committed: a teammate, a fresh clone or CI still gets a trailer
+  you invalidated, and STALE follows the commits made in this working tree,
+  whatever the branch.
+- **Windows: non-ASCII rationales and paths are read correctly.** git's
+  output was decoded with the locale encoding (cp1252 on Windows), which
+  garbled a non-ASCII `Decision:` rationale, and with it the id derived from
+  it, and garbled non-ASCII paths, so a decision naming such a file never went
+  STALE, imported or recorded. Both are now read as UTF-8, which is what git
+  writes; Linux and macOS, whose locale is UTF-8, see no change.
+- **Tests:** `tests/memory/test_trailer_lifecycle.py` drives a real git
+  repository through import, invalidate, a later commit, restore and `why`;
+  `tests/test_provenance.py` covers the status rules.
+
 ## What the agent actually sees
 
-Without the profile, one thing changes: a `neuralmind team …` or
-`neuralmind onboarding` command an agent runs as a shell command now exits 1
-(2 for a partial `seats sync`) when it fails, with the same message as
-before. Before, the tool call reported success while the output said
-nothing was installed.
+Without the profile, two things change:
+- A `neuralmind team …` or `neuralmind onboarding` command an agent runs as a
+  shell command now exits 1 (2 for a partial `seats sync`) when it fails, with
+  the same message as before. Before, the tool call reported success while the
+  output said nothing was installed.
+- The `## NeuralMind decision provenance` block a prompt gets leaves out the
+  trailers you invalidated and marks the STALE ones:
+
+```
+## NeuralMind decision provenance
+
+- `upload_with_retry`: keeps retries in the uploader, not the HTTP client. (see commit 3f9c2ab) [STALE: its code changed after this was decided; check it still holds]
+```
 
 Under `profile: cui`:
 - MCP tool calls behave as they already did with `identity: os` and
@@ -148,6 +318,11 @@ Under `profile: cui`:
   expose the project's index to the network, and the agent's documentation
   can't be sent for LLM seeding.
 
+Audit checkpoints change nothing at the agent either. They are taken and
+checked by an administrator, `doctor` and CI; the only new record in the log
+is the `audit_checkpoint` event, and what the checkpoints protect is the
+record of the agent's own MCP calls and hook events.
+
 ## Per-agent expectations
 
 | Agent | What changes under `profile: cui` |
@@ -157,8 +332,11 @@ Under `profile: cui`:
 | Hermes-Agent plugin | Same hook behaviour as Claude Code |
 | Generic MCP client | Same as Cursor |
 
-Outside the profile, every agent sees only the `team` / `onboarding` exit
-status above. No MCP tool or hook runs those commands.
+Outside the profile, every agent sees the `team` / `onboarding` exit status
+above (no MCP tool or hook runs those commands), and Claude Code and the
+Hermes plugin see the decision lifecycle in each prompt's decision block.
+Cursor, Cline, Continue and generic MCP clients get no decision block from
+NeuralMind's hooks, so nothing changes for them there.
 
 ## Upgrading
 
@@ -173,16 +351,31 @@ status above. No MCP tool or hook runs those commands.
   with it.
 - **Check the profile:** run `neuralmind doctor .` and look at the Security
   profile line.
+- **No change unless you take a checkpoint.** `audit verify` behaves as before
+  until a checkpoint exists, and then adds a line about it.
+- **Scripts that parse `audit verify --json`** get a new `checkpoints` object;
+  the existing keys are unchanged.
+- **A CUI project** (`security.profile: cui`) also gets a `doctor` Audit checkpoints
+  warning until the key and anchor directory are set. Follow step 5 of the
+  [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md#5-what-an-assessor-can-look-at).
 - **If a script runs `neuralmind serve --host 0.0.0.0` for a CUI project,**
   it now exits 1. Use an SSH tunnel to `127.0.0.1` instead.
+- **`neuralmind decisions scan` creates `.neuralmind/memory.db` in a project
+  whose recent commits carry `Decision:` trailers,** where it used to skip a
+  project without a store. A project with neither is still left alone, and
+  `NEURALMIND_DECISION_SCAN=0` still skips the scan, imports included. Run
+  `neuralmind decisions scan .` once to import the trailers already in your
+  history.
+- **Re-run `neuralmind init-hook .`** to get the new post-commit hook. A hook
+  installed before v4.16.0 runs the scan only where a decision store already
+  exists, so in a project without one, new trailers wait until you run
+  `neuralmind decisions scan .` yourself.
 
 ## Not in this release
 
-The rest of the SP 800-171 work, in order:
-- audit-log checkpoints that detect removal of the newest records or a
-  recomputed chain (AU.L2-3.3.8);
-- live syslog forwarding with an alert when audit logging fails (AU.L2-3.3.4,
-  3.3.5).
+The last SP 800-171 item is live syslog forwarding, with an alert when audit
+logging fails (AU.L2-3.3.4, 3.3.5). The project log's checkpoints don't cover
+the Tier-2 team audit log yet.
 
 See [NIST.md §3](../compliance/NIST.md#3-whats-next).
 
@@ -192,10 +385,19 @@ See [NIST.md §3](../compliance/NIST.md#3-whats-next).
 pytest tests/test_security_profile.py -v
 pytest tests/test_cli_exit_codes.py -k serve-refused -v
 pytest tests/test_cli_exit_codes.py -k team_exit -v   # the team / onboarding rows
+pytest tests/memory/test_trailer_lifecycle.py tests/test_provenance.py -v   # trailer lifecycle
 
 printf 'security:\n  profile: cui\n' > neuralmind-backend.yaml
 neuralmind serve . --host 0.0.0.0; echo "exit $?"   # serve refused … exit 1
 neuralmind doctor .                                  # Security profile line
+
+pytest tests/test_audit_checkpoint.py -v
+
+# In a project whose audit log has a few records (any build or query writes one):
+printf 'security:\n  audit_checkpoint_key: %s\n' "$(neuralmind audit keygen /tmp/ck.pem | tail -1 | awk '{print $2}')" > neuralmind-backend.yaml
+neuralmind audit checkpoint . --key /tmp/ck.pem
+head -n -3 .neuralmind/audit_events.jsonl > /tmp/short && cp /tmp/short .neuralmind/audit_events.jsonl
+neuralmind audit verify .; echo "exit $?"     # … removed from the end … exit 1
 ```
 
 ## Related
@@ -206,3 +408,7 @@ neuralmind doctor .                                  # Security profile line
 - [Security settings reference](../wiki/CLI-Reference.md#security-settings-security-in-neuralmind-backendyaml)
 - [Security Guide: In transit](../SECURITY-GUIDE.md#in-transit)
 - [CLI reference: `team` exit codes](../wiki/CLI-Reference.md#team-license-seats-audit-self-hosted)
+- [CLI reference: audit verify, keygen, checkpoint](../wiki/CLI-Reference.md#audit-verify)
+- [Security Guide: Checkpoints](../SECURITY-GUIDE.md#checkpoints-v4160)
+- [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence): AU.L2-3.3.8
+- [Risk assessment](../compliance/RISK_ASSESSMENT.md): R-07

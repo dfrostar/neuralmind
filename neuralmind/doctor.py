@@ -762,6 +762,79 @@ def _check_security_profile(project: Path) -> Check:
     return Check(name, OK, f"profile: cui ({enforced}); OS FIPS mode on")
 
 
+# A checkpoint only covers the records before it: past this age, records
+# written since could be removed unnoticed for that long.
+CHECKPOINT_MAX_AGE_DAYS = 7
+
+
+def _check_audit_checkpoints(project: Path) -> Check:
+    """Whether signed, anchored checkpoints cover the audit log.
+
+    Fails when a checkpoint shows records removed from the end of the log or
+    a rewritten chain. Under ``security.profile: cui`` it warns when no
+    checkpoint key or anchor directory is set; with a key set, when the newest
+    checkpoint is missing or older than a week.
+    """
+    from neuralmind.audit_checkpoint import (
+        latest_checkpoint_age_days,
+        load_checkpoint_settings,
+        verify_checkpoints,
+    )
+    from neuralmind.security_config import PROFILE_CUI, load_security_settings
+
+    name = "Audit checkpoints"
+    report = verify_checkpoints(project)
+    if not report.ok:
+        return Check(
+            name,
+            FAIL,
+            report.reason or "the checkpoints don't verify",
+            fix="Run `neuralmind audit verify` and investigate before taking another checkpoint.",
+        )
+    settings = load_checkpoint_settings(project)
+    cui = load_security_settings(project).profile == PROFILE_CUI
+    warns: list[str] = []
+    fixes: list[str] = []
+    if cui and not settings.public_key_b64:
+        warns.append("no security.audit_checkpoint_key is set")
+        fixes.append("Create one with `neuralmind audit keygen` in an administrator account.")
+    if cui and settings.anchor_dir is None:
+        warns.append("no security.audit_anchor_dir is set")
+        fixes.append("Anchor checkpoints in a directory only the administrator can write.")
+    age = latest_checkpoint_age_days(report)
+    if settings.public_key_b64 or cui:
+        if age is None:
+            warns.append("no checkpoint has been taken")
+        elif age > CHECKPOINT_MAX_AGE_DAYS:
+            warns.append(f"the newest checkpoint is {age:.0f} days old")
+        if age is None or age > CHECKPOINT_MAX_AGE_DAYS:
+            fixes.append("Schedule `neuralmind audit checkpoint` (daily, as the key's owner).")
+    if warns:
+        return Check(
+            name,
+            WARN,
+            f"{'; '.join(warns)}: records removed from the end of the audit log, or a "
+            "recomputed chain, could go undetected",
+            fix=" ".join(fixes),
+        )
+    if report.latest is None:
+        return Check(
+            name,
+            OK,
+            "none; the hash chain alone can't show records removed from the end",
+            fix="See `neuralmind audit checkpoint`.",
+        )
+    signed = f"signed with key {report.key_id}" if report.key_id else "unsigned"
+    anchored = "anchored" if settings.anchor_dir else "not anchored"
+    when = f"{age:.1f} days old" if age is not None else "age unknown"
+    return Check(
+        name,
+        OK,
+        f"#{report.latest['seq']} covers {report.latest['records']} record(s), "
+        f"{when}; {signed}, {anchored}",
+    )
+
+
 def _running_daemon_exposure() -> str | None:
     """Why the running daemon, if any, would refuse a CUI project, or None."""
     try:
@@ -799,6 +872,7 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_security_policy(project),
         _check_storage_encryption(project),
         _check_security_profile(project),
+        _check_audit_checkpoints(project),
     ]
 
 

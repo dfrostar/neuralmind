@@ -109,6 +109,47 @@ def test_read_git_log_returns_list_on_real_repo():
     assert isinstance(harvest("."), list)  # fails open even if 0 decisions
 
 
+# --------------------------------------------------------------------------- #
+# Lifecycle — the decision store's status applied before recall
+# --------------------------------------------------------------------------- #
+
+
+def test_trailer_id_survives_a_rewritten_commit():
+    from neuralmind.provenance import trailer_decision_id
+
+    a = parse_decision(RESOLVE_MSG, sha="aaa")
+    b = parse_decision(RESOLVE_MSG.replace("          /health", "  /health"), sha="bbb")
+    assert trailer_decision_id(a) == trailer_decision_id(b)
+    other = parse_decision("x\n\nDecision: `retry` lives in the uploader.", sha="aaa")
+    assert trailer_decision_id(other) != trailer_decision_id(a)
+
+
+def test_invalidated_decision_is_not_recalled():
+    from neuralmind.provenance import apply_lifecycle, trailer_decision_id
+
+    records = parse_log([("bbb", RESOLVE_MSG)])
+    statuses = {trailer_decision_id(records[0]): "INVALIDATED"}
+    assert recall(apply_lifecycle(records, statuses), "why is resolveOrgId per-handler?") == []
+
+
+def test_stale_decision_is_recalled_with_a_warning():
+    from neuralmind.provenance import apply_lifecycle, trailer_decision_id
+
+    records = parse_log([("bbb", RESOLVE_MSG)])
+    statuses = {trailer_decision_id(records[0]): "STALE"}
+    hits = recall(apply_lifecycle(records, statuses), "why is resolveOrgId per-handler?")
+    assert [h.status for h in hits] == ["STALE"]
+    assert "[STALE:" in format_decisions(hits)
+
+
+def test_unknown_to_the_store_stays_active():
+    from neuralmind.provenance import apply_lifecycle
+
+    records = parse_log([("bbb", RESOLVE_MSG)])
+    assert apply_lifecycle(records, {}) == records
+    assert "STALE" not in format_decisions(records)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

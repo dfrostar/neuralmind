@@ -69,10 +69,37 @@ was avoided* before it starts, and can push back instead of silently regressing.
 Toggle it with `NEURALMIND_PROVENANCE_INJECT=0` (on by default, fails open —
 a provenance miss never disrupts the prompt).
 
+## Step 4 — Retract a decision you reversed *(v4.16.0+)*
+
+A commit message can't be edited, so a reversed decision used to keep arriving
+with every prompt that named its symbols. Now the decision store holds each
+trailer's status. `neuralmind decisions scan .` imports the trailers in
+recent history into it. Run it once; after that the post-commit hook from
+`neuralmind init-hook .` runs it for you (re-run `init-hook` if you installed
+the hooks before v4.16.0). Then:
+
+```bash
+neuralmind decisions query "resolveOrgId" --status ALL   # find the trailer's id (STALE ones too)
+neuralmind decisions invalidate <id> --reason "moved into middleware in #812"
+```
+
+The prompt hooks and `neuralmind why` stop showing it. A later commit, pull,
+merge or rebase that changes the files the trailer's commit changed marks it
+STALE, and the hooks
+show it with `[STALE: its code changed after this was decided; check it still
+holds]` until you run `neuralmind decisions restore <id>` or invalidate it.
+Importing again never brings an invalidated trailer back, and a rebase keeps
+its id, since the id comes from the rationale. A trailer is judged against the
+code its own commit stored, so one whose files changed since comes in STALE.
+
+The status lives in `.neuralmind/memory.db`, which isn't committed: it applies
+to your clone. A teammate who wants the same retraction runs the same
+`invalidate`.
+
 ## Why git history is the store
 
-There is deliberately no decisions database. The commit trailer *is* the
-persistence:
+The commit trailer holds the decision; the decision store only holds its
+status:
 
 - **Nothing to drift.** The rationale can't fall out of sync with the code,
   because it's attached to the commit that changed the code.
