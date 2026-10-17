@@ -222,13 +222,19 @@ directory), then to `.neuralmind/audit_checkpoints.jsonl`, and an
 `audit_checkpoint` event is added to the log. It refuses to vouch for a log
 whose chain or existing checkpoints already fail.
 
+Runs on one machine take turns: each holds an OS lock on
+`.neuralmind/audit_checkpoints.lock` from verifying the log to writing both
+copies, so a cron job and a manual run can't both claim the same sequence
+number. A run waits up to 60 seconds for the lock, then fails. The OS releases
+the lock when its holder exits, so a crashed run never leaves it behind.
+
 Run it on a schedule as the key's owner, for example daily from the
 administrator's crontab: the interval is how long a record can go uncovered.
 
 | Code | Meaning |
 |------|---------|
 | `0` | Checkpoint written |
-| `1` | Not written: the chain or an existing checkpoint fails, the log has no hashed record yet, the key is missing, isn't P-256 or doesn't match the pinned one, the anchor directory can't be written, or the checkpoint settings are malformed |
+| `1` | Not written: the chain or an existing checkpoint fails, the log has no hashed record yet, the key is missing, isn't P-256 or doesn't match the pinned one, the anchor directory can't be written, the checkpoint settings are malformed, or another run held the lock for 60 seconds |
 
 ### build
 

@@ -570,3 +570,56 @@ def test_cli_checkpoint_json_prints_the_record(tmp_path, monkeypatch, capsys):
     assert _run(["audit", "checkpoint", str(project), "--json"], monkeypatch) == 0
     record = json.loads(capsys.readouterr().out)
     assert record["format"] == ac.FORMAT and record["signature"] is None
+
+
+# --- overlapping runs ----------------------------------------------------------
+
+
+def test_overlapping_checkpoint_runs_never_fork_the_sequence(tmp_path, monkeypatch):
+    """Two runs at once (a cron job and a manual run) must not both read the
+    same latest checkpoint and write two with the same seq: the whole
+    verify-allocate-sign-write step holds the project's lock."""
+    import threading
+    import time
+
+    project = _project(tmp_path)
+    key, public = _key(tmp_path)
+    _pin(project, public)
+    real_verify = ac.verify_checkpoints
+
+    def slow_verify(*args, **kwargs):
+        report = real_verify(*args, **kwargs)
+        time.sleep(0.3)  # both runs have read "the latest checkpoint" by now
+        return report
+
+    monkeypatch.setattr(ac, "verify_checkpoints", slow_verify)
+    errors: list[BaseException] = []
+
+    def run():
+        try:
+            ac.create_checkpoint(project, key_path=key)
+        except BaseException as exc:  # noqa: BLE001 - reported below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+    seqs = [c["seq"] for c in ac.read_checkpoint_file(ac.local_checkpoints_path(project))]
+    assert seqs == [1, 2]
+    monkeypatch.setattr(ac, "verify_checkpoints", real_verify)
+    assert ac.verify_checkpoints(project).ok
+
+
+def test_a_run_that_cannot_get_the_lock_fails_closed(tmp_path, monkeypatch):
+    project = _project(tmp_path)
+    key, public = _key(tmp_path)
+    _pin(project, public)
+    monkeypatch.setattr(ac, "LOCK_TIMEOUT_SECONDS", 0.3)
+    with ac._checkpoint_lock(project.resolve()):
+        with pytest.raises(ac.CheckpointError, match="another audit checkpoint is running"):
+            ac.create_checkpoint(project, key_path=key)
+    assert not ac.local_checkpoints_path(project).exists()
+    ac.create_checkpoint(project, key_path=key)  # the lock is released afterwards

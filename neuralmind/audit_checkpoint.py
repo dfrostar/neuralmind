@@ -45,6 +45,9 @@ import hashlib
 import json
 import os
 import re
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,11 +57,22 @@ from .audit import _ARCHIVE_NAME, AUDIT_FILE_NAME, AuditTrail
 from .backend_manager import backend_config_path, read_backend_config_file
 from .security_config import config_mentions
 
+try:  # POSIX
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+try:  # Windows
+    import msvcrt
+except ImportError:
+    msvcrt = None  # type: ignore[assignment]
+
 CHECKPOINTS_FILE_NAME = "audit_checkpoints.jsonl"
 FORMAT = "neuralmind-audit-checkpoint-v1"
 KEY_ENV = "NEURALMIND_AUDIT_KEY"
 _GENESIS = "0" * 64
 _SETTING_KEYS = ("audit_checkpoint_key", "audit_anchor_dir")
+LOCK_FILE_NAME = "audit_checkpoints.lock"
+LOCK_TIMEOUT_SECONDS = 60.0
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 
@@ -312,15 +326,39 @@ def create_checkpoint(
 
     Raises :class:`CheckpointError` when the chain or the existing checkpoints
     don't verify (a checkpoint must never vouch for a log already tampered
-    with), when the log has no hashed record, or when the key doesn't match
-    the pinned public key. Returns the checkpoint written.
+    with), when the log has no hashed record, when the key doesn't match
+    the pinned public key, or when another checkpoint run on this machine
+    holds the project's lock for longer than ``LOCK_TIMEOUT_SECONDS``.
+    Returns the checkpoint written.
     """
     root = Path(project_path).resolve()
     settings = load_checkpoint_settings(root)
     if settings.problem:
         raise CheckpointError(settings.problem)
     anchor_dir = anchor_dir or settings.anchor_dir
+    # Verify, allocate the sequence number, sign and write both copies as one
+    # step: two overlapping runs (a cron job and a manual run) would otherwise
+    # both read the same latest checkpoint and write two different ones with
+    # the same seq, which verification then rejects as a fork.
+    with _checkpoint_lock(root):
+        return _create_checkpoint_locked(
+            root,
+            settings=settings,
+            key_path=key_path,
+            anchor_dir=anchor_dir,
+            extra_sources=extra_sources,
+        )
 
+
+def _create_checkpoint_locked(
+    root: Path,
+    *,
+    settings: CheckpointSettings,
+    key_path: str | Path | None,
+    anchor_dir: Path | None,
+    extra_sources: list[Path] | None,
+) -> dict[str, Any]:
+    """:func:`create_checkpoint`'s work, run while holding the project's lock."""
     trail = AuditTrail(root)
     chain = trail.verify()
     if not chain["ok"]:
@@ -385,6 +423,62 @@ def create_checkpoint(
         },
     )
     return checkpoint
+
+
+@contextmanager
+def _checkpoint_lock(root: Path, timeout: float | None = None) -> Iterator[None]:
+    """Hold the project's checkpoint lock, waiting up to ``timeout`` seconds.
+
+    An OS lock on ``.neuralmind/audit_checkpoints.lock`` (``flock`` on POSIX,
+    ``msvcrt.locking`` on Windows): the OS releases it when the holder exits,
+    however it exits, so a crashed run never leaves a stale lock behind. It
+    serializes runs on this machine; an anchor directory shared by several
+    machines still relies on the fork check in :func:`verify_checkpoints`.
+    Raises :class:`CheckpointError` when another run holds it past the timeout.
+    """
+    timeout = LOCK_TIMEOUT_SECONDS if timeout is None else timeout
+    lock_path = local_checkpoints_path(root).with_name(LOCK_FILE_NAME)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    deadline = time.monotonic() + timeout
+    try:
+        while not _try_lock(fd):
+            if time.monotonic() >= deadline:
+                raise CheckpointError(
+                    f"another audit checkpoint is running (waited {timeout:.0f}s for "
+                    f"{lock_path})"
+                )
+            time.sleep(0.1)
+        try:
+            yield
+        finally:
+            _unlock(fd)
+    finally:
+        os.close(fd)
+
+
+def _try_lock(fd: int) -> bool:
+    """Take the lock without blocking; False while another process holds it."""
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        elif msvcrt is not None:  # pragma: no cover - Windows
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        return True
+    except OSError:
+        return False
+
+
+def _unlock(fd: int) -> None:
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        elif msvcrt is not None:  # pragma: no cover - Windows
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    except OSError:
+        pass
 
 
 def _append(path: Path, line: str) -> None:
