@@ -38,6 +38,25 @@ class TestIncrementalExtractor:
         added, modified, deleted = extractor.scan_files(tmp_path, suffixes=frozenset({".py"}))
         assert "a.py" in deleted
 
+    def test_scan_sees_package_init_edits(self, tmp_path):
+        # #632: the dunder-name skip also matched __init__.py itself, so an
+        # edit to it never counted as a change.
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("def register(): pass")
+        (tmp_path / "__pycache__").mkdir()
+        (tmp_path / "__pycache__" / "stale.py").write_text("x = 1")
+        extractor = IncrementalExtractor(str(tmp_path))
+        extractor.update_cache(["pkg/__init__.py"], tmp_path)
+        import time
+
+        time.sleep(0.1)
+        (pkg / "__init__.py").write_text("def register(): pass\ndef added(): pass")
+        added, modified, deleted = extractor.scan_files(tmp_path, suffixes=frozenset({".py"}))
+        assert "pkg/__init__.py" in modified
+        assert "pkg/__init__.py" not in deleted
+        assert not any(p.startswith("__pycache__") for p in added)
+
     def test_update_and_save_cache(self, tmp_path):
         extractor = IncrementalExtractor(str(tmp_path))
         test_file = tmp_path / "x.py"

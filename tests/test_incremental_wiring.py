@@ -146,6 +146,64 @@ def helper():
         assert "b.py" in source_files
 
 
+def _build_and_save(root: Path) -> dict:
+    """What `neuralmind build` does: build, then persist the graph the next
+    build reuses."""
+    from neuralmind.paths import graph_json_path
+
+    graph = graphgen.build_graph(root)
+    path = graph_json_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(graph), encoding="utf-8")
+    return graph
+
+
+def _labels(graph: dict, source_file: str) -> set[str]:
+    return {n["label"] for n in graph["nodes"] if n.get("source_file") == source_file}
+
+
+@pytest.fixture
+def package_project(tmp_path: Path) -> Path:
+    """A package whose API lives in its __init__.py, used by app.py."""
+    root = tmp_path / "project"
+    (root / "pkg").mkdir(parents=True)
+    (root / "pkg" / "__init__.py").write_text("def register(name):\n    return name\n")
+    (root / "app.py").write_text("from pkg import register\n\ndef main():\n    register('a')\n")
+    return root
+
+
+class TestPackageInit:
+    """#632: package code in __init__.py stays in the graph across builds."""
+
+    def test_an_edit_to_package_init_reaches_the_graph(self, package_project: Path) -> None:
+        _build_and_save(package_project)
+        time.sleep(0.1)
+        init = package_project / "pkg" / "__init__.py"
+        init.write_text(init.read_text() + "\ndef added_later():\n    pass\n")
+        graph = _build_and_save(package_project)
+        assert "added_later()" in _labels(graph, "pkg/__init__.py")
+
+    def test_a_file_missing_from_the_graph_is_restored(self, package_project: Path) -> None:
+        # A graph that lost a file's nodes while the cache still calls the
+        # file unchanged: before the fix, no later build ever restored them.
+        from neuralmind.paths import graph_json_path
+
+        _build_and_save(package_project)
+        path = graph_json_path(package_project)
+        graph = json.loads(path.read_text(encoding="utf-8"))
+        graph["nodes"] = [n for n in graph["nodes"] if n.get("source_file") != "pkg/__init__.py"]
+        path.write_text(json.dumps(graph), encoding="utf-8")
+
+        graph = _build_and_save(package_project)
+        assert "register()" in _labels(graph, "pkg/__init__.py")
+        calls = {
+            (e["source"], e["target"])
+            for e in graph["links"]
+            if e.get("source_file") == "app.py" and e.get("relation") == "calls"
+        }
+        assert any(t.endswith("register_fn") for _, t in calls), calls
+
+
 class TestDeleteFile:
     """Deleting a file removes its nodes + edges."""
 

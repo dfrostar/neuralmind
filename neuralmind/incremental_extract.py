@@ -168,8 +168,13 @@ class IncrementalExtractor:
                 try:
                     rel = str(f.relative_to(root))
                     parts = Path(rel).parts
-                    # Skip dot-prefixed / dunder dirs and canonical ignores
-                    if any(p.startswith((".", "__")) or p in _GG_IGNORES for p in parts):
+                    # The graph walker's rule: skip dot-directories and the
+                    # canonical ignores. Not every dunder name: that hid each
+                    # __init__.py from change detection, so its edits never
+                    # reached the graph.
+                    if any(p.startswith(".") for p in parts[:-1]) or any(
+                        p in _GG_IGNORES for p in parts
+                    ):
                         continue
                     stat = f.stat()
                     current_files[rel] = (stat.st_mtime, stat.st_size)

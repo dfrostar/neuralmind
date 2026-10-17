@@ -1639,14 +1639,6 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     if not importer_index and existing_graph:
         importer_index = build_importer_index_from_graph(existing_graph)
 
-    suffixes = frozenset(_SUFFIX_LANG.keys())
-    if extractor._cache:
-        changed_files = extractor.get_changed_with_dependents(root, suffixes, importer_index)
-        re_extract_set: set[str] = set(changed_files)
-    else:
-        # First build (no cache): all files need extraction
-        re_extract_set = set()
-
     files = _iter_source_files(root, _DEFAULT_IGNORES, fileset=fileset)
     # Apply include/exclude globs from config
     files = config.apply_globs(root, files)
@@ -1666,6 +1658,28 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     if project_kind == "code":
         noded += [f for f in files if _code_language(f) is not None]
     b.file_ids = _file_id_overrides(root, [f.relative_to(root).as_posix() for f in noded])
+
+    # A file the cache calls unchanged but the graph has no node for would be
+    # reused as "unchanged" on every build, so no build would ever restore it.
+    # Forget it in the cache: this build extracts it as an added file, along
+    # with the files that name it.
+    if existing_graph and extractor._cache:
+        in_graph = {
+            n.get("source_file") for n in existing_graph.get("nodes", []) if isinstance(n, dict)
+        }
+        for f in noded:
+            rel = f.relative_to(root).as_posix()
+            if rel in extractor._cache and rel not in in_graph:
+                del extractor._cache[rel]
+
+    suffixes = frozenset(_SUFFIX_LANG.keys())
+    if extractor._cache:
+        changed_files = extractor.get_changed_with_dependents(root, suffixes, importer_index)
+        re_extract_set: set[str] = set(changed_files)
+    else:
+        # First build (no cache): all files need extraction
+        re_extract_set = set()
+
     # A file whose id changed since the last build (a collider appeared or
     # went away) invalidates every edge into it: re-extract everything.
     reuse = bool(existing_graph and extractor._cache) and not _file_ids_moved(
