@@ -45,7 +45,7 @@ v4.12.0). Every figure here comes from the current `site/claims.json`.
 
 ## Body (posting version, ~1,900 characters)
 
-I built NeuralMind (MIT, runs locally) and just shipped a Hermes-Agent plugin for it. I'd like feedback from people using Hermes on real codebases.
+I built NeuralMind (MIT-licensed core, runs locally) and just shipped a Hermes-Agent plugin for it. I'd like feedback from people using Hermes on real codebases.
 
 **Why:** Hermes could already use NeuralMind over MCP, but only when the model decided to call the tool. When it didn't, the turn started cold.
 
@@ -71,7 +71,7 @@ Does the per-turn block help on your setup, or is it noise?
 
 ## Long version (reference: fuller detail for replies)
 
-I build NeuralMind, an MIT-licensed local code-memory tool for coding agents.
+I build NeuralMind, a local code-memory tool for coding agents (MIT-licensed core).
 I just shipped a Hermes-Agent plugin for it and would like feedback from
 people who use Hermes on real codebases.
 
