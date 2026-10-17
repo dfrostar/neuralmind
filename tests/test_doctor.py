@@ -289,6 +289,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Security policy",
         "Storage encryption",
         "Security profile",
+        "Audit checkpoints",
     }
 
 

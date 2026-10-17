@@ -23,7 +23,7 @@ toml==0.10.2
 # constructor callback API, so the pinned version can stay on the current 2.x
 # security line while remaining compatible with older installs too. Both lines
 # are exercised in CI by scripts/mcp_stdio_smoke.py; pyproject caps at <4.
-mcp==2.2.0
+mcp==2.3.0
 
 # Optional: Development & Testing
 # pytest bumped from 7.4.3 to 9.0.3 to fix tmpdir handling vuln (CVE-2025-71176).
@@ -31,7 +31,7 @@ mcp==2.2.0
 # arbitrary-file-write cache vuln (GHSA-3936-cmfr-pm3m).
 pytest==9.1.1
 pytest-asyncio==1.4.0
-black==26.5.1
+black==26.10.0
 ruff==0.16.10
 mypy==2.4.0
 

@@ -174,10 +174,11 @@ See above — the public launch of the MIT + paid tier architecture.
 
 ## Next (~1–2 quarters)
 
-- **NIST SP 800-171 / 800-53 readiness** — an audit log whose newest records
-  can't be removed unnoticed, live syslog forwarding with an alert when audit
-  logging fails, and an OSCAL component definition for agency authorizations.
-  The hardened CUI profile, with loopback-only servers, shipped in v4.16.0.
+- **NIST SP 800-171 / 800-53 readiness** — live syslog forwarding with an
+  alert when audit logging fails, and an OSCAL component definition for agency
+  authorizations. The hardened CUI profile, with loopback-only servers, and
+  signed, anchored audit checkpoints, so the newest records can't be removed
+  unnoticed, shipped in v4.16.0.
   Status and order: [docs/compliance/NIST.md](docs/compliance/NIST.md).
 - **Auto-regenerate the public benchmark on drift** — `bench/public/report.md`
   was generated once at the benchmark's original commit and never rerun since,

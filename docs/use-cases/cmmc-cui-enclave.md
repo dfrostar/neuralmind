@@ -137,9 +137,40 @@ Everything lands in `.neuralmind/audit_events.jsonl`, hash-chained:
   profile stops something: `target` names what it stopped (`serve`, `daemon`
   or `llm_seed`) and `details.reason` says why.
 
-`neuralmind audit verify` walks the hash chain. It detects a changed or removed
-record in the middle of the log, but not removal of the newest records or a
-rewritten chain, so forward the log to your SIEM.
+- *(v4.16.0+)* an `audit_checkpoint` event each time a checkpoint is taken.
+
+`neuralmind audit verify` walks the hash chain. On its own it detects a changed
+or removed record in the middle of the log, but not removal of the newest
+records or a rewritten chain. *(v4.16.0+)* Signed, anchored checkpoints close
+both gaps (AU.L2-3.3.8). As the administrator:
+
+```bash
+neuralmind audit keygen ~/.neuralmind-audit/checkpoint.pem   # admin account only
+```
+
+Add the printed key, and an anchor directory only the administrator can
+write, to the policy from step 3:
+
+```yaml
+security:
+  profile: cui
+  audit_checkpoint_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...
+  audit_anchor_dir: /var/lib/neuralmind-anchor
+```
+
+Then take a checkpoint daily from the administrator's crontab:
+
+```bash
+neuralmind audit checkpoint /srv/app --key ~/.neuralmind-audit/checkpoint.pem
+```
+
+`audit verify` now fails when records a checkpoint covers were removed from the
+end, when the chain was recomputed, or when a checkpoint is forged or missing.
+The anchored copy survives the developer deleting the local one. Records
+written since the newest checkpoint are covered by the chain alone, so keep the
+interval short, and keep forwarding the log to your SIEM. `doctor` warns under
+the profile when the key or anchor directory isn't set, or the newest
+checkpoint is more than a week old.
 
 For the practice-by-practice mapping, with what NeuralMind provides and what
 stays yours, see the [CMMC 2.0 table in the Compliance

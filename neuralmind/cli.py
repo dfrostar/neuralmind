@@ -3015,12 +3015,25 @@ def cmd_audit_export(args):
 
 
 def cmd_audit_verify(args):
-    """Verify audit log integrity — walk the hash chain."""
+    """Verify audit log integrity — walk the hash chain, then the checkpoints."""
+    from .audit_checkpoint import verify_checkpoints
+
     trail = AuditTrail(args.project_path)
     result = trail.verify()
+    if result["ok"]:
+        report = verify_checkpoints(
+            args.project_path, extra_sources=getattr(args, "checkpoint", None) or []
+        )
+        result["checkpoints"] = report.to_dict()
+        if not report.ok:
+            result.update(ok=False, reason=report.reason)
     if args.json:
         print(json.dumps(result, indent=2))
         sys.exit(0 if result["ok"] else 1)
+    checkpoints = result.get("checkpoints")
+    if checkpoints and not checkpoints["ok"]:
+        print(f"✗ Audit checkpoint check failed: {checkpoints['reason']}", file=sys.stderr)
+        sys.exit(1)
     if result["ok"]:
         print(f"✓ Audit trail integrity OK ({result['total']} events)")
         if result.get("unchained"):
@@ -3035,6 +3048,7 @@ def cmd_audit_verify(args):
                 else "archive not found, so the link wasn't checked"
             )
             print(f"  Chain continues from rotated archive {result['continues_from']} ({link})")
+        _print_checkpoint_summary(checkpoints)
     else:
         if result["first_bad_line"] is None:
             print(f"✗ Audit trail check failed: {result.get('reason')}", file=sys.stderr)
@@ -3045,6 +3059,66 @@ def cmd_audit_verify(args):
                 file=sys.stderr,
             )
         sys.exit(1)
+
+
+def _print_checkpoint_summary(checkpoints: dict | None) -> None:
+    if not checkpoints or not checkpoints.get("latest_seq"):
+        print(
+            "  No checkpoints: records removed from the end of the log, or a recomputed "
+            "chain, would go undetected (see `neuralmind audit checkpoint`)"
+        )
+        return
+    if checkpoints["key_id"]:
+        signature = f"signatures verified with key {checkpoints['key_id']}"
+    elif checkpoints["signed"]:
+        signature = "signed, but no security.audit_checkpoint_key is set to check them"
+    else:
+        signature = "unsigned, so they show truncation but not a recomputed chain"
+    print(
+        f"  {checkpoints['checked']} checkpoint(s) hold; the latest "
+        f"(#{checkpoints['latest_seq']}, {checkpoints['latest_created_at']}) covers the "
+        f"first {checkpoints['records_covered']} record(s); {signature}"
+    )
+    if checkpoints.get("archive_pruned"):
+        print(
+            f"  {checkpoints['archive_pruned']} older checkpoint(s) cover a rotated archive "
+            "that has been pruned, so they weren't compared"
+        )
+
+
+def cmd_audit_keygen(args):
+    """Create the ECDSA P-256 key that signs audit checkpoints."""
+    from .audit_checkpoint import CheckpointError, generate_key
+
+    try:
+        public = generate_key(args.key_path, force=args.force)
+    except CheckpointError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Wrote the private key to {args.key_path} (mode 0600).")
+    print("Keep it in an account the developers can't read. Pin its public key in")
+    print("neuralmind-backend.yaml, a file only the administrator can write:")
+    print()
+    print("security:")
+    print(f"  audit_checkpoint_key: {public}")
+
+
+def cmd_audit_checkpoint(args):
+    """Sign and anchor a checkpoint of the audit log as it stands."""
+    from .audit_checkpoint import KEY_ENV, CheckpointError, create_checkpoint
+
+    key_path = args.key or os.environ.get(KEY_ENV) or None
+    anchor_dir = Path(args.anchor_dir).expanduser() if args.anchor_dir else None
+    try:
+        checkpoint = create_checkpoint(args.project_path, key_path=key_path, anchor_dir=anchor_dir)
+    except CheckpointError as exc:
+        print(f"✗ Checkpoint not written: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(checkpoint, sort_keys=True))
+        return
+    signed = f"signed with key {checkpoint['key_id']}" if checkpoint["key_id"] else "unsigned"
+    print(f"✓ Checkpoint #{checkpoint['seq']} covers {checkpoint['records']} record(s) ({signed})")
 
 
 def cmd_audit_recent(args):
@@ -3429,6 +3503,7 @@ def cmd_decisions_query(args):
     print()
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
+        print(f"   ID: {d.id}")
         print(f"   Commit: {d.commit_sha}")
         if d.files_affected:
             print(f"   Files: {', '.join(d.files_affected)}")
@@ -3565,39 +3640,93 @@ def cmd_decisions_scan(args):
     Runs the InvalidationEngine over the HEAD commit. The post-commit hook
     installed by ``neuralmind init-hook`` calls ``decisions scan . --quiet``
     after every commit, so the PreToolUse stale-decision guard sees what went
-    stale without anyone running ``decisions invalidate`` by hand. A project
-    with no decision store is left alone (none is created). Opt-out:
+    stale without anyone running ``decisions invalidate`` by hand. First it
+    imports the ``Decision:`` trailers in recent history into the store, so
+    they get the same lifecycle. A project with no decision store and no
+    trailers is left alone (none is created). Opt-out:
     NEURALMIND_DECISION_SCAN=0. Always exits 0 — a git hook must never fail
     the commit it follows.
+
+    ``--since REV`` scans the files that differ between REV and HEAD instead
+    of the HEAD commit's: the post-merge and post-rewrite hooks pass
+    ``ORIG_HEAD``, so a pull, merge or rebase that changes a decision's files
+    marks it STALE too. A REV git can't resolve skips the STALE scan (the
+    import still runs).
     """
     project = Path(args.project_path).resolve()
     quiet = bool(getattr(args, "quiet", False))
     as_json = bool(getattr(args, "json", False))
     db = project / ".neuralmind" / "memory.db"
-    if os.environ.get("NEURALMIND_DECISION_SCAN") == "0" or not db.exists():
+    disabled = os.environ.get("NEURALMIND_DECISION_SCAN") == "0"
+    trailers = []
+    if not disabled:
+        from neuralmind.provenance import harvest
+
+        # The same window of history the prompt hooks recall from.
+        trailers = harvest(str(project))
+    if disabled or not (db.exists() or trailers):
         if as_json:
-            print(json.dumps({"commit": "", "stale": []}))
+            print(json.dumps({"commit": "", "stale": [], "imported": []}))
         elif not quiet:
-            why = (
-                "disabled (NEURALMIND_DECISION_SCAN=0)" if db.exists() else "no decisions recorded"
-            )
+            why = "disabled (NEURALMIND_DECISION_SCAN=0)" if disabled else "no decisions recorded"
             print(f"Decision scan skipped: {why}.")
         return
 
     from neuralmind.memory.invalidate import InvalidationEngine, get_current_commit
+    from neuralmind.provenance import import_trailers
 
-    store = _get_decisions_store(project)
-    engine = InvalidationEngine(str(project), store)
     try:
-        stale_ids = engine.scan()
-    except Exception as exc:  # never fail the commit this follows
-        if not quiet:
-            print(f"Decision scan failed: {exc}", file=sys.stderr)
+        store = _get_decisions_store(project)
+    except Exception as exc:  # e.g. a storage policy refusing this disk
+        if as_json:
+            print(json.dumps({"commit": "", "stale": [], "imported": []}))
+        elif not quiet:
+            print(f"Decision scan skipped: {exc}", file=sys.stderr)
         return
     head = get_current_commit(project)
+    # Decision: trailers join the store first, so they can be invalidated,
+    # restored, and marked STALE below like any recorded decision.
+    try:
+        imported = import_trailers(store, str(project), trailers, head=head)
+    except Exception as exc:  # never fail the commit this follows
+        imported = []
+        if not quiet:
+            print(f"Importing Decision: trailers failed: {exc}", file=sys.stderr)
+    if imported and not as_json:
+        # A trailer whose files changed after its commit comes in STALE.
+        late = [i for i in imported if (r := store.get(i)) is not None and r.status == "STALE"]
+        if not quiet:
+            note = f" ({len(late)} STALE: their files changed after their commit)" if late else ""
+            print(f"Imported {len(imported)} Decision: trailer(s) into the decision store{note}.")
+        elif late:
+            print(
+                f"[neuralmind] {len(late)} imported Decision: trailer(s) marked STALE: their "
+                "files changed after their commit. Review: neuralmind decisions audit --stale"
+            )
+    since = getattr(args, "since", None)
+    since_sha = ""
+    if since:
+        from neuralmind.memory.invalidate import resolve_commit
+
+        since_sha = resolve_commit(project, since)
+        if not since_sha:
+            if as_json:
+                print(json.dumps({"commit": head, "stale": [], "imported": imported}))
+            elif not quiet:
+                print(f"Decision scan skipped: git can't resolve {since!r}.")
+            return
+    engine = InvalidationEngine(str(project), store)
+    try:
+        stale_ids = engine.scan(since=since_sha or None)
+    except Exception as exc:  # never fail the commit this follows
+        if as_json:
+            print(json.dumps({"commit": head, "stale": [], "imported": imported}))
+        elif not quiet:
+            print(f"Decision scan failed: {exc}", file=sys.stderr)
+        return
     if not head:
         if as_json:
-            print(json.dumps({"commit": "", "stale": []}))
+            print(json.dumps({"commit": "", "stale": [], "imported": imported}))
         elif not quiet:
             print("Decision scan skipped: not a git repository with commits.")
         return
@@ -3613,13 +3742,14 @@ def cmd_decisions_scan(args):
             }
         )
     if as_json:
-        print(json.dumps({"commit": head, "stale": stale}, indent=2))
+        print(json.dumps({"commit": head, "stale": stale, "imported": imported}, indent=2))
         return
+    what = f"commits {since_sha[:7]}..{head[:7]}" if since_sha else f"commit {head[:7]}"
     if not stale:
         if not quiet:
-            print(f"No recorded decisions affected by commit {head[:7]}.")
+            print(f"No recorded decisions affected by {what}.")
         return
-    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by commit {head[:7]}:")
+    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by {what}:")
     for entry in stale:
         print(f"  - {entry['title']} ({entry['id']}) — {entry['reason']}")
     print(
@@ -6263,15 +6393,16 @@ def cmd_why(args):
 
     Harvests ``Decision:`` trailers from git history and surfaces the ones
     whose subjects the query mentions — the rationale that would otherwise
-    live only in a human's head.
+    live only in a human's head. Decisions the decision store holds as
+    INVALIDATED are left out, as in the prompt hooks.
     """
-    from .provenance import format_decisions, harvest, recall
+    from .provenance import format_decisions, harvest, recall, with_lifecycle
 
     project_path = getattr(args, "project_path", ".")
-    records = harvest(project_path)
-    hits = recall(records, args.query)
+    harvested = harvest(project_path)
+    hits = recall(with_lifecycle(project_path, harvested), args.query)
     if not hits:
-        if not records:
+        if not harvested:
             print("No decisions recorded yet.")
             print("Capture one by adding a 'Decision:' trailer to a commit message, e.g.:")
             print("  Decision: resolveOrgId is per-handler — avoids Prisma on /health.")
@@ -6279,6 +6410,11 @@ def cmd_why(args):
             print(f"No recorded decisions match {args.query!r}.")
         return
     print(format_decisions(hits))
+    print()
+    print(
+        "Retract one: neuralmind decisions invalidate <id> --reason R "
+        "(ids: neuralmind decisions query <words> --status ALL, after neuralmind decisions scan)"
+    )
 
 
 def _splice_hook_block(existing: str, block: str) -> tuple[str, str]:
@@ -6491,6 +6627,32 @@ _HOOK_SCOPE_COMMENT = (
 )
 
 
+def _decision_scan_lines(target: str, commits: str, since: str = "", when: str = "") -> str:
+    """Shell lines that run ``decisions scan`` when there is something to scan.
+
+    The scan's precondition: a decision store to scan, or, in a built project
+    without one, a ``Decision:`` trailer in ``commits`` (``git log`` range) for
+    the scan to import, which creates the store. Checked with git and grep, so
+    an event with neither starts no Python. ``since`` is passed as
+    ``--since``; ``when`` is an extra shell condition (``post-rewrite`` scans a
+    rebase, not an amend).
+    """
+    guard = f"{when} && " if when else ""
+    extra = f" --since {since}" if since else ""
+    return (
+        "_nm_scan=\n"
+        f"if {guard}[ -f {target}/.neuralmind/memory.db ]; then\n"
+        "    _nm_scan=1\n"
+        f"elif {guard}[ -f {target}/{_BUILT_MARKER} ] && "
+        f"git log {commits} --format=%B 2>/dev/null | grep -qi '^decision:'; then\n"
+        "    _nm_scan=1\n"
+        "fi\n"
+        'if [ -n "$_nm_bin" ] && [ -n "$_nm_scan" ]; then\n'
+        f'    "$_nm_bin" decisions scan {target}{extra} --quiet || true\n'
+        "fi\n"
+    )
+
+
 def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
     """The ``post-commit`` block: decision scan (synchronous — it reads HEAD), then rebuild."""
     return (
@@ -6498,10 +6660,7 @@ def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
         "# Retire decisions this commit made stale, then rebuild the NeuralMind index.\n"
         + _HOOK_SCOPE_COMMENT
         + _hook_resolve_binary_lines(bin_path)
-        # The scan's own precondition: no decision store, nothing to scan.
-        + f'if [ -n "$_nm_bin" ] && [ -f {target}/.neuralmind/memory.db ]; then\n'
-        + f'    "$_nm_bin" decisions scan {target} --quiet || true\n'
-        + "fi\n"
+        + _decision_scan_lines(target, "-1")
         + f'if [ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
         + _hook_rebuild_lines(target, sync, announce=True)
         + "fi\n"
@@ -6510,19 +6669,34 @@ def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
 
 
 def _lifecycle_block(hook: str, target: str, bin_path: str, sync: bool) -> str:
-    """A rebuild-only block for ``post-merge`` / ``post-checkout`` / ``post-rewrite``.
+    """The ``post-merge`` / ``post-checkout`` / ``post-rewrite`` block.
 
     ``post-checkout`` fires for file checkouts too; only a branch checkout
     (third argument ``1``) that lands on a different commit changes the tree.
+    ``post-merge`` and a rebase's ``post-rewrite`` (first argument
+    ``rebase``) also run the decision scan over what they brought in, from
+    the ``ORIG_HEAD`` git leaves behind (v4.16.0+): those commits never run
+    ``post-commit``. A branch switch doesn't scan: STALE would then follow
+    whichever branch is checked out. Neither does an amend, which sets no
+    ``ORIG_HEAD``; ``post-commit`` runs for it already.
     No ``exit``: other tools' contributions to the same hook (git-lfs installs
     ``post-checkout`` and ``post-merge``) must keep running after ours.
     """
     cond = '[ "$3" = "1" ] && [ "$1" != "$2" ] && ' if hook == "post-checkout" else ""
+    scan = ""
+    if hook == "post-merge":
+        scan = _decision_scan_lines(target, "ORIG_HEAD..HEAD", since="ORIG_HEAD")
+    elif hook == "post-rewrite":
+        scan = _decision_scan_lines(
+            target, "ORIG_HEAD..HEAD", since="ORIG_HEAD", when='[ "$1" = "rebase" ]'
+        )
+    what = "Retire decisions it made stale, then rebuild" if scan else "Rebuild"
     return (
         "# neuralmind-hook-start\n"
-        f"# Rebuild the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
+        f"# {what} the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
         + _HOOK_SCOPE_COMMENT
         + _hook_resolve_binary_lines(bin_path)
+        + scan
         + f'if {cond}[ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
         + _hook_rebuild_lines(target, sync, announce=False)
         + "fi\n"
@@ -6542,7 +6716,8 @@ def cmd_init_hook(args):
     - ``post-merge``, ``post-checkout`` (branch switches to another commit)
       and ``post-rewrite`` rebuild the index after pulls, merges, branch
       switches and rebases — events that change the tree without a local
-      commit;
+      commit; ``post-merge`` and a rebase's ``post-rewrite`` first run
+      ``decisions scan --since ORIG_HEAD`` over what they brought in;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
@@ -7547,8 +7722,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify audit log hash chain integrity",
     )
     audit_verify.add_argument("project_path", nargs="?", default=".")
+    audit_verify.add_argument(
+        "--checkpoint",
+        action="append",
+        metavar="FILE",
+        help="Also check the checkpoints in FILE (e.g. exported from your SIEM); repeatable",
+    )
     audit_verify.add_argument("--json", "-j", action="store_true")
     audit_verify.set_defaults(func=cmd_audit_verify)
+
+    audit_keygen = audit_sub.add_parser(
+        "keygen",
+        help="Create the key that signs audit checkpoints",
+    )
+    audit_keygen.add_argument("key_path", help="Where to write the private key (PEM, mode 0600)")
+    audit_keygen.add_argument("--force", action="store_true", help="Replace an existing file")
+    audit_keygen.set_defaults(func=cmd_audit_keygen)
+
+    audit_checkpoint = audit_sub.add_parser(
+        "checkpoint",
+        help="Sign and anchor a checkpoint so truncation or a rewritten chain is detected",
+    )
+    audit_checkpoint.add_argument("project_path", nargs="?", default=".")
+    audit_checkpoint.add_argument(
+        "--key", help="Private key from `neuralmind audit keygen` (or NEURALMIND_AUDIT_KEY)"
+    )
+    audit_checkpoint.add_argument(
+        "--anchor-dir",
+        help="Also write the checkpoint here (default: security.audit_anchor_dir)",
+    )
+    audit_checkpoint.add_argument(
+        "--json", "-j", action="store_true", help="Print the checkpoint record, for a SIEM"
+    )
+    audit_checkpoint.set_defaults(func=cmd_audit_checkpoint)
 
     audit_recent = audit_sub.add_parser(
         "recent",
@@ -7783,6 +7989,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print only when a decision went stale (for git hooks)",
     )
     d_scan.add_argument("--json", "-j", action="store_true")
+    d_scan.add_argument(
+        "--since",
+        metavar="REV",
+        help="Scan every file that differs between REV and HEAD, not just the HEAD "
+        "commit's (the post-merge and post-rewrite hooks pass ORIG_HEAD)",
+    )
     d_scan.add_argument("project_path", nargs="?", default=".")
     d_scan.set_defaults(func=cmd_decisions_scan)
 

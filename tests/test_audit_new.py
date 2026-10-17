@@ -260,7 +260,8 @@ def test_verify_counts_legacy_prefix_before_chain(tmp_path):
 
 
 def test_verify_cannot_detect_records_deleted_from_the_end(tmp_path):
-    """Known limit, kept as a test so the docs never claim otherwise."""
+    """Known limit of the hash chain alone, kept as a test so the docs never
+    claim otherwise. A checkpoint covers it: tests/test_audit_checkpoint.py."""
     trail, records = _chained_trail(tmp_path)
     _write_lines(trail, records[:3])
 

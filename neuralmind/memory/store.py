@@ -397,6 +397,36 @@ class DecisionSearch:
 
 # --------------------------------------------------------------------------- #
 # DecisionStore
+def read_statuses(project_path: str | Path, decision_ids: list[str]) -> dict[str, str]:
+    """``{id: status}`` for the given ids that the project's store holds.
+
+    For the prompt hooks, which must not create a store: a project without
+    ``.neuralmind/memory.db`` gets ``{}``, and so does any read error (logged),
+    so a caller falls back to what it would show without a store.
+    """
+    db_path = Path(project_path) / ".neuralmind" / "memory.db"
+    ids = list(dict.fromkeys(decision_ids))
+    if not ids or not db_path.is_file():
+        return {}
+    statuses: dict[str, str] = {}
+    try:
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        try:
+            for start in range(0, len(ids), 500):
+                chunk = ids[start : start + 500]
+                marks = ",".join("?" * len(chunk))
+                rows = conn.execute(
+                    f"SELECT id, status FROM decisions WHERE id IN ({marks})", chunk
+                ).fetchall()
+                statuses.update({row[0]: row[1] for row in rows})
+        finally:
+            conn.close()
+    except Exception:
+        logger.debug("[memory] read_statuses failed for %s", db_path, exc_info=True)
+        return {}
+    return statuses
+
+
 # --------------------------------------------------------------------------- #
 
 
@@ -512,6 +542,7 @@ class DecisionStore:
         id: str | None = None,
         created_at: datetime | None = None,
         updated_at: datetime | None = None,
+        fingerprints: dict[str, str] | None = None,
     ) -> DecisionRecord:
         """Insert a new decision. Returns the constructed DecisionRecord.
 
@@ -534,6 +565,10 @@ class DecisionStore:
             id: Optional explicit UUID (auto-generated if not provided).
             created_at: Optional explicit timestamp (defaults to now).
             updated_at: Optional explicit timestamp (defaults to now).
+            fingerprints: ``{path: git blob id}`` to store as the decision's
+                fingerprints, for a decision whose code is a commit rather
+                than the working tree (an imported ``Decision:`` trailer).
+                Default: the affected files as they are now.
         """
         if not math.isfinite(confidence):
             # The clamp below can't place these: NaN came out as 1.0.
@@ -592,7 +627,13 @@ class DecisionStore:
             # here. Log with traceback for diagnosis.
             logger.exception("[memory] record() failed for decision %s — not persisted", rec.id)
             return rec
-        self._capture_fingerprints(rec.id, rec.files_affected)
+        if fingerprints is None:
+            self._capture_fingerprints(rec.id, rec.files_affected)
+        else:
+            try:
+                self.set_fingerprints(rec.id, fingerprints)
+            except Exception:
+                logger.warning("[memory] could not store fingerprints for decision %s", rec.id)
         return rec
 
     # ------------------------------------------------------------------ #
@@ -697,9 +738,14 @@ class DecisionStore:
         decision was recorded") travels with the record, so ``audit`` and
         ``restore`` users can see what moved.
 
-        Returns True only when the row was updated. A missing id, or a locked
-        or corrupt store, returns False (logged), so the engine never reports
-        a decision as STALE that the store still holds as ACTIVE.
+        Only an ACTIVE decision goes STALE: checked in the same UPDATE, so an
+        invalidation that lands between a caller's read and this write is
+        never turned back into STALE.
+
+        Returns True only when the row was updated. A missing id, a decision
+        no longer ACTIVE, or a locked or corrupt store returns False (the last
+        logged), so the engine never reports a decision as STALE that the
+        store doesn't hold as STALE.
         """
         reason = reason.strip()
         note = f"Marked STALE: {reason}" if reason else "Marked STALE"
@@ -710,12 +756,63 @@ class DecisionStore:
                        SET status = 'STALE',
                            updated_at = ?,
                            evidence = json_insert(evidence, '$[#]', ?)
-                       WHERE id = ?""",
+                       WHERE id = ? AND status = 'ACTIVE'""",
                     (_now_iso(), note, decision_id),
                 )
                 return bool(cur.rowcount > 0)
         except Exception:
             logger.exception("[memory] mark_stale(%s) failed — status unchanged", decision_id)
+            return False
+
+    def reanchor(
+        self,
+        decision_id: str,
+        commit_sha: str,
+        files_affected: list[str],
+        fingerprints: dict[str, str],
+        note: str,
+    ) -> bool:
+        """Re-anchor a decision that isn't INVALIDATED to ``commit_sha``, ACTIVE.
+
+        For a ``Decision:`` trailer carried again by a new commit (an amended
+        commit, or the same rationale committed again). One transaction: the
+        status check, the update, the note appended to the current evidence,
+        and the fingerprints, which are replaced only when the row changed.
+        So an invalidation that lands while the caller was reading git is
+        never undone. Returns True when the decision was re-anchored.
+        """
+        files = [f.replace("\\", "/") for f in files_affected]
+        try:
+            with self._connect() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    cur = conn.execute(
+                        """UPDATE decisions
+                           SET commit_sha = ?,
+                               files_affected = ?,
+                               status = 'ACTIVE',
+                               updated_at = ?,
+                               evidence = json_insert(evidence, '$[#]', ?)
+                           WHERE id = ? AND status != 'INVALIDATED'""",
+                        (commit_sha, json.dumps(files), _now_iso(), note, decision_id),
+                    )
+                    if cur.rowcount > 0:
+                        conn.execute(
+                            "DELETE FROM decision_fingerprints WHERE decision_id = ?",
+                            (decision_id,),
+                        )
+                        conn.executemany(
+                            "INSERT INTO decision_fingerprints(decision_id, path, blob) "
+                            "VALUES (?, ?, ?)",
+                            [(decision_id, path, blob) for path, blob in fingerprints.items()],
+                        )
+                    conn.execute("COMMIT")
+                    return cur.rowcount > 0
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except Exception:
+            logger.exception("[memory] reanchor(%s) failed — decision unchanged", decision_id)
             return False
 
     def restore(self, decision_id: str, new_commit_sha: str) -> DecisionRecord:
@@ -790,20 +887,26 @@ class DecisionStore:
         try:
             from .invalidate import file_blob_ids
 
-            blobs = file_blob_ids(self.project_path, files)
-            with self._connect() as conn:
-                conn.execute(
-                    "DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,)
-                )
-                conn.executemany(
-                    "INSERT INTO decision_fingerprints(decision_id, path, blob) VALUES (?, ?, ?)",
-                    [(decision_id, path, blob) for path, blob in blobs.items()],
-                )
+            self.set_fingerprints(decision_id, file_blob_ids(self.project_path, files))
         except Exception:
             logger.warning(
                 "[memory] could not fingerprint files for decision %s — the commit that "
                 "carries it will mark it STALE",
                 decision_id,
+            )
+
+    def set_fingerprints(self, decision_id: str, blobs: dict[str, str]) -> None:
+        """Replace a decision's fingerprints with ``{project-relative path: blob id}``.
+
+        For a decision whose code is a commit rather than the working tree: an
+        imported ``Decision:`` trailer is fingerprinted with the blobs its own
+        commit stores. Raises on a database error.
+        """
+        with self._connect() as conn:
+            conn.execute("DELETE FROM decision_fingerprints WHERE decision_id = ?", (decision_id,))
+            conn.executemany(
+                "INSERT INTO decision_fingerprints(decision_id, path, blob) VALUES (?, ?, ?)",
+                [(decision_id, path, blob) for path, blob in blobs.items()],
             )
 
     def fingerprints(self, decision_id: str) -> dict[str, str]:

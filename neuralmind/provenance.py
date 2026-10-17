@@ -1,4 +1,4 @@
-"""Decision provenance — index the *why* behind code, not just the code (PROTOTYPE).
+"""Decision provenance — index the *why* behind code, not just the code.
 
 NeuralMind remembers what a codebase *is*. It does not remember why it is that
 way. When an agent asks "why is ``resolveOrgId`` per-handler instead of
@@ -18,20 +18,27 @@ it the moment those symbols light up.
               `resolveOrgId`, `authMiddleware`.
 
 This is the most memory-anchored of the roadmap's features: it is not analysis,
-it is remembering. It operates on plain ``(sha, message)`` pairs, so it is
-testable with a list of tuples and carries no git, SQLite, or embedder
-dependency — the real caller feeds it ``git log`` output and stores the records
-as decision nodes in the synapse graph.
+it is remembering. The parser and recall operate on plain ``(sha, message)``
+pairs, so they are testable with a list of tuples; git and the decision store
+are reached only through :func:`harvest`, :func:`with_lifecycle` and
+:func:`import_trailers` (the first and last take injectable git readers).
 
-Status: prototype. The parser and recall are complete and tested; wiring
-``DecisionRecord`` into the synapse graph as a node kind, and harvesting on the
-existing ``post-commit`` hook (``neuralmind init-hook``), is the promotion step.
+Lifecycle: a trailer can't be edited once committed, so its state lives in the
+decision store (``neuralmind decisions``) under a stable id derived from the
+rationale (:func:`trailer_decision_id`). ``neuralmind decisions scan`` (the
+post-commit hook) imports each trailer there, naming the files its commit
+changed; from then on ``decisions invalidate`` retracts it, ``decisions scan``
+marks it STALE when a later commit changes those files, and ``restore`` brings
+it back. :func:`with_lifecycle` applies that state before recall: INVALIDATED
+decisions are dropped, STALE ones are shown with a warning.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+import uuid
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 # The trailer token authors write. Git-trailer convention: "Token: value" at
 # the end of a commit message, values may continue on indented lines.
@@ -60,6 +67,9 @@ class DecisionRecord:
     rationale: str
     subjects: tuple[str, ...] = field(default_factory=tuple)
     sha: str = ""
+    # The decision store's status for this trailer (see with_lifecycle);
+    # ACTIVE until the store says otherwise.
+    status: str = "ACTIVE"
 
     @property
     def short_sha(self) -> str:
@@ -183,8 +193,66 @@ def format_decisions(records: list[DecisionRecord]) -> str:
     for rec in records:
         subj = ", ".join(f"`{s}`" for s in rec.subjects) or "(unattributed)"
         ref = f" (see commit {rec.short_sha})" if rec.short_sha else ""
-        lines.append(f"- {subj}: {rec.rationale}{ref}")
+        stale = (
+            " [STALE: its code changed after this was decided; check it still holds]"
+            if rec.status == "STALE"
+            else ""
+        )
+        lines.append(f"- {subj}: {rec.rationale}{ref}{stale}")
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# Lifecycle — the decision store holds each trailer's ACTIVE/STALE/INVALIDATED
+# state, since the commit message itself can't change.
+# --------------------------------------------------------------------------- #
+
+# Fixed namespace for trailer ids. Never change it: every imported trailer's
+# id in every project's decision store is derived from it.
+_TRAILER_NAMESPACE = uuid.UUID("5d0c2f43-8a8e-4f55-9a0b-6c1e2b7d9f10")
+
+
+def trailer_decision_id(record: DecisionRecord) -> str:
+    """The decision-store id for a trailer decision.
+
+    Derived from the rationale (whitespace and case folded), not the commit
+    sha, so a rebase or cherry-pick that rewrites the commit keeps the same
+    decision, and an invalidated one doesn't come back as new.
+    """
+    text = " ".join(record.rationale.split()).lower()
+    return str(uuid.uuid5(_TRAILER_NAMESPACE, text))
+
+
+def apply_lifecycle(
+    records: list[DecisionRecord], statuses: dict[str, str]
+) -> list[DecisionRecord]:
+    """Drop INVALIDATED decisions and carry each other one's store status.
+
+    ``statuses`` maps :func:`trailer_decision_id` to status; a trailer the
+    store doesn't hold stays ACTIVE.
+    """
+    out: list[DecisionRecord] = []
+    for rec in records:
+        status = statuses.get(trailer_decision_id(rec), "ACTIVE")
+        if status == "INVALIDATED":
+            continue
+        out.append(rec if status == rec.status else replace(rec, status=status))
+    return out
+
+
+def with_lifecycle(project_path: str, records: list[DecisionRecord]) -> list[DecisionRecord]:
+    """:func:`apply_lifecycle` with the statuses in the project's decision store.
+
+    Reads only: a project without a store gets ``records`` unchanged.
+    """
+    # Checked before importing the store module, which costs the prompt hook
+    # ~0.1 s; most projects with trailers have no store.
+    if not records or not (Path(project_path) / ".neuralmind" / "memory.db").is_file():
+        return records
+    from .memory.store import read_statuses
+
+    ids = [trailer_decision_id(rec) for rec in records]
+    return apply_lifecycle(records, read_statuses(project_path, ids))
 
 
 # --------------------------------------------------------------------------- #
@@ -206,9 +274,13 @@ def read_git_log(project_path: str = ".", limit: int = 300) -> list[tuple[str, s
     import subprocess
 
     try:
+        # git writes commit messages as UTF-8; the locale default (cp1252 on
+        # Windows) would garble a non-ASCII rationale, and with it the id
+        # trailer_decision_id derives from it.
         out = subprocess.check_output(
             ["git", "-C", project_path, "log", f"-{int(limit)}", f"--format={_GIT_FORMAT}"],
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         )
     except Exception:
@@ -236,3 +308,125 @@ def harvest(
     except Exception:
         return []
     return parse_log(entries)
+
+
+def read_commit_files(project_path: str, sha: str) -> list[str]:
+    """Files commit ``sha`` changed, relative to ``project_path`` (``[]`` on failure).
+
+    The same diff ``decisions scan`` takes of HEAD: against the first parent,
+    so a merge lists what it brought in; limited to the project directory; and
+    NUL-separated, so no path comes back quoted. A trailer's files are then in
+    exactly the form the scan matches.
+    """
+    from .memory.invalidate import get_changed_files
+
+    return get_changed_files(project_path, sha)
+
+
+def read_commit_blobs(project_path: str, files: list[str], sha: str) -> dict[str, str]:
+    """``{path: git blob id}`` for ``files`` as commit ``sha`` stores them."""
+    from .memory.invalidate import committed_blob_ids
+
+    return committed_blob_ids(project_path, files, sha)
+
+
+def _title(rec: DecisionRecord, width: int = 80) -> str:
+    """The rationale's first sentence, cut to ``width`` characters, then any
+    subjects the rationale doesn't name.
+
+    The store searches titles and rationales, and recall matches subjects: a
+    subject given only on a ``Subjects:`` line goes into the title, so
+    ``decisions query <subject>`` finds the decision that symbol recalls. A
+    subject counts as named only as a whole identifier: keyword search matches
+    word prefixes, so ``legacyAuthMiddleware`` doesn't find ``authMiddleware``.
+    """
+    first = re.split(r"(?<=[.!?])\s", rec.rationale, maxsplit=1)[0].strip()
+    title = first if len(first) <= width else first[: width - 1].rstrip() + "…"
+    text = rec.rationale.lower()
+    unnamed = [
+        s for s in rec.subjects if not re.search(rf"(?<!\w){re.escape(s.lower())}(?!\w)", text)
+    ]
+    return f"{title} (subjects: {', '.join(unnamed)})" if unnamed else title
+
+
+def _shown(paths: list[str]) -> str:
+    """Up to three paths, then a count, as ``decisions scan`` names them."""
+    shown = ", ".join(paths[:3])
+    return shown + (f" (+{len(paths) - 3} more)" if len(paths) > 3 else "")
+
+
+def import_trailers(
+    store,
+    project_path: str,
+    records: list[DecisionRecord],
+    *,
+    head: str = "",
+    files_reader=read_commit_files,
+    blobs_reader=read_commit_blobs,
+) -> list[str]:
+    """Bring trailer decisions into the decision store; return the ids newly recorded.
+
+    A trailer the store doesn't hold is recorded under
+    :func:`trailer_decision_id`, anchored to its commit, tagged ``trailer``,
+    naming the files its commit changed, and fingerprinted with the blobs that
+    commit stores, so it is judged against the code it described rather than
+    today's working tree. It is recorded STALE, with the files named, if any
+    of them changed between its commit and ``head``, and ACTIVE otherwise: one
+    write, with git read first, so no other writer can slip in between.
+
+    A trailer the store already holds is left alone, so importing again never
+    revives an invalidated one. The exception is a trailer on ``head`` itself
+    (an amended commit, or the same rationale committed again): unless it is
+    INVALIDATED, it is re-anchored to ``head`` and made ACTIVE, so the commit
+    that carries a decision never marks it STALE. The re-anchor checks the
+    status in the same transaction as the write
+    (:meth:`~neuralmind.memory.store.DecisionStore.reanchor`), so an
+    invalidation made meanwhile stands.
+
+    Records are expected newest first (git-log order), so a rationale repeated
+    in several commits is anchored to the newest.
+    """
+    imported: list[str] = []
+    seen: set[str] = set()
+    for rec in records:
+        decision_id = trailer_decision_id(rec)
+        if decision_id in seen or not rec.sha:
+            continue
+        seen.add(decision_id)
+        existing = store.get(decision_id)
+        if existing is None:
+            files = files_reader(project_path, rec.sha)
+            at_commit = blobs_reader(project_path, files, rec.sha)
+            evidence = [f"Decision: trailer on commit {rec.short_sha}"]
+            changed: list[str] = []
+            if head and rec.sha != head:
+                now = blobs_reader(project_path, files, head)
+                changed = [f for f in files if now.get(f) != at_commit.get(f)]
+            if changed:
+                evidence.append(
+                    f"Marked STALE: {_shown(changed)} changed after commit "
+                    f"{rec.short_sha} recorded this decision"
+                )
+            store.record(
+                title=_title(rec),
+                rationale=rec.rationale,
+                commit_sha=rec.sha,
+                files_affected=files,
+                status="STALE" if changed else "ACTIVE",
+                evidence=evidence,
+                tags=["trailer"],
+                id=decision_id,
+                fingerprints=at_commit,
+            )
+            if store.get(decision_id) is not None:
+                imported.append(decision_id)  # else the write failed (logged by the store)
+        elif rec.sha == head and existing.status != "INVALIDATED" and existing.commit_sha != head:
+            files = files_reader(project_path, head)
+            store.reanchor(
+                decision_id,
+                commit_sha=head,
+                files_affected=files,
+                fingerprints=blobs_reader(project_path, files, head),
+                note=f"Re-anchored to commit {rec.short_sha}, which carries this trailer",
+            )
+    return imported
