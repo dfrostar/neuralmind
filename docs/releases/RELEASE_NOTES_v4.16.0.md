@@ -256,9 +256,10 @@ prompt hooks never read it.
   rationale, so a rebase that rewrites the commit keeps the same decision,
   and amending the trailer's commit, or committing the same rationale again,
   re-anchors it to the new commit instead of marking it STALE. `--json` gains
-  an `imported` list. Subjects given only on a `Subjects:` line go into the
-  stored title, so `decisions query <subject>` finds the decision that
-  subject recalls.
+  an `imported` list. A `Subjects:` entry the rationale doesn't name as a
+  whole identifier goes into the stored title (`legacyAuthMiddleware`
+  doesn't name `authMiddleware`), so `decisions query <subject>` finds the
+  decision that subject recalls.
 - **Pulls, merges and rebases mark decisions STALE too.** They never run the
   post-commit hook, so a decision whose files changed only in pulled commits
   stayed ACTIVE (true of recorded decisions since v4.6.0). `post-merge`, and

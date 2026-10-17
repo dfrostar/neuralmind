@@ -358,6 +358,24 @@ def test_a_subject_named_only_on_a_subjects_line_is_searchable(repo, capsys):
     assert "ID: " in out
 
 
+def test_a_subject_inside_a_longer_identifier_is_still_searchable(repo, capsys):
+    # Keyword search matches word prefixes: `legacyAuthMiddleware` doesn't
+    # name `authMiddleware`, so the subject still goes into the title.
+    message = (
+        "feat: auth\n\nDecision: keep legacyAuthMiddleware in front of SSO.\n"
+        "Subjects: `authMiddleware`"
+    )
+    _commit(repo, "src/auth.py", "def auth(): ...\n", message)
+    _scan(repo, capsys)
+    args = build_parser().parse_args(
+        ["decisions", "query", "authMiddleware", "--status", "ALL", "--mode", "keyword", str(repo)]
+    )
+    args.func(args)
+    out = capsys.readouterr().out
+    assert "subjects: authMiddleware" in out
+    assert "ID: " in out
+
+
 def test_a_pull_that_changes_a_decisions_code_marks_it_stale(repo, capsys):
     _scan(repo, capsys)  # imports the trailer, ACTIVE
     main = _git(repo, "branch", "--show-current")

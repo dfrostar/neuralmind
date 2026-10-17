@@ -336,12 +336,16 @@ def _title(rec: DecisionRecord, width: int = 80) -> str:
 
     The store searches titles and rationales, and recall matches subjects: a
     subject given only on a ``Subjects:`` line goes into the title, so
-    ``decisions query <subject>`` finds the decision that symbol recalls.
+    ``decisions query <subject>`` finds the decision that symbol recalls. A
+    subject counts as named only as a whole identifier: keyword search matches
+    word prefixes, so ``legacyAuthMiddleware`` doesn't find ``authMiddleware``.
     """
     first = re.split(r"(?<=[.!?])\s", rec.rationale, maxsplit=1)[0].strip()
     title = first if len(first) <= width else first[: width - 1].rstrip() + "…"
     text = rec.rationale.lower()
-    unnamed = [s for s in rec.subjects if s.lower() not in text]
+    unnamed = [
+        s for s in rec.subjects if not re.search(rf"(?<!\w){re.escape(s.lower())}(?!\w)", text)
+    ]
     return f"{title} (subjects: {', '.join(unnamed)})" if unnamed else title
 
 
