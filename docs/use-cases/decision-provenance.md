@@ -83,8 +83,9 @@ neuralmind decisions query "resolveOrgId" --status ALL   # find the trailer's id
 neuralmind decisions invalidate <id> --reason "moved into middleware in #812"
 ```
 
-The prompt hooks and `neuralmind why` stop showing it. A later commit that
-changes the files the trailer's commit changed marks it STALE, and the hooks
+The prompt hooks and `neuralmind why` stop showing it. A later commit, pull,
+merge or rebase that changes the files the trailer's commit changed marks it
+STALE, and the hooks
 show it with `[STALE: its code changed after this was decided; check it still
 holds]` until you run `neuralmind decisions restore <id>` or invalidate it.
 Importing again never brings an invalidated trailer back, and a rebase keeps

@@ -67,8 +67,20 @@ class TestHookText:
             assert text.startswith("#!/bin/sh\n")
             assert text.count("# neuralmind-hook-start") == 1
             assert '"$_nm_bin" build .' in text
-            assert "decisions scan" not in text  # only post-commit scans: it reads HEAD
         assert "Pulls, merges, branch switches and rebases" in capsys.readouterr().out
+
+    def test_merges_and_rebases_scan_decisions_from_orig_head(self, project, monkeypatch):
+        """A pull, merge or rebase never runs post-commit, so post-merge and a
+        rebase's post-rewrite scan what they brought in (v4.16.0+). A branch
+        switch doesn't (STALE would follow the checked-out branch), nor does an
+        amend (no ORIG_HEAD; post-commit already ran)."""
+        _install(project, monkeypatch)
+        scan = '"$_nm_bin" decisions scan . --since ORIG_HEAD --quiet || true'
+        assert scan in _hook(project, "post-merge")
+        rewrite = _hook(project, "post-rewrite")
+        assert scan in rewrite
+        assert '[ "$1" = "rebase" ] && [ -f ./.neuralmind/memory.db ]' in rewrite
+        assert "decisions scan" not in _hook(project, "post-checkout")
 
     def test_post_checkout_rebuilds_only_on_a_branch_switch_to_another_commit(
         self, project, monkeypatch
@@ -345,6 +357,27 @@ class TestHooksEndToEnd:
         repo.git("commit", "-q", "--allow-empty", "-m", "feat: x\n\nDecision: `a` stays.")
         time.sleep(1)
         assert _calls(repo) == []
+
+    def test_a_pull_scans_decisions_and_an_amend_does_not(self, repo):
+        root = os.path.realpath(repo.root)
+
+        def scans():
+            return [c for c in _calls(repo) if c.startswith(f"{root}|decisions scan")]
+
+        repo.git("checkout", "-q", "-b", "upstream")
+        repo.git("commit", "-q", "--allow-empty", "-m", "upstream work")
+        _settle(repo)
+        before = len(scans())
+        repo.git("checkout", "-q", "main")
+        _settle(repo)
+        repo.git("merge", "-q", "--ff-only", "upstream")  # post-merge
+        assert scans()[before:] == [f"{root}|decisions scan . --since ORIG_HEAD --quiet"]
+        _settle(repo)
+        hook = repo.root / ".git" / "hooks" / "post-rewrite"
+        before = len(scans())
+        subprocess.run(["sh", str(hook), "amend"], cwd=repo.root, env=repo.env, check=True)
+        _settle(repo)
+        assert scans()[before:] == []
 
     def test_branch_switch_merge_and_rewrite_rebuild_but_file_checkout_does_not(self, repo):
         repo.git("checkout", "-q", "-b", "feature")  # same commit: nothing to rebuild

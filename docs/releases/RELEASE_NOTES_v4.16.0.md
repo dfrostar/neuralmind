@@ -154,7 +154,16 @@ prompt hooks never read it.
   rationale, so a rebase that rewrites the commit keeps the same decision,
   and amending the trailer's commit, or committing the same rationale again,
   re-anchors it to the new commit instead of marking it STALE. `--json` gains
-  an `imported` list.
+  an `imported` list. Subjects given only on a `Subjects:` line go into the
+  stored title, so `decisions query <subject>` finds the decision that
+  subject recalls.
+- **Pulls, merges and rebases mark decisions STALE too.** They never run the
+  post-commit hook, so a decision whose files changed only in pulled commits
+  stayed ACTIVE (true of recorded decisions since v4.6.0). `post-merge`, and
+  `post-rewrite` after a rebase, now run
+  `neuralmind decisions scan . --since ORIG_HEAD`, which scans every file
+  that differs between where the branch was and HEAD, and imports any
+  trailers the pull brought in. A branch switch and an amend don't scan.
 - **The prompt hooks and `neuralmind why` read the store's status.** An
   INVALIDATED trailer is left out. A STALE one is still shown, marked
   `[STALE: its code changed after this was decided; check it still holds]`.

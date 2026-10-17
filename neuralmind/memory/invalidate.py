@@ -150,8 +150,14 @@ def get_parent_commit(project_path: str | Path, commit: str = "HEAD") -> str:
     return result.stdout.strip()
 
 
-def get_changed_files(project_path: str | Path, commit: str = "HEAD") -> list[str]:
+def get_changed_files(
+    project_path: str | Path, commit: str = "HEAD", base: str | None = None
+) -> list[str]:
     """Files ``commit`` (default HEAD) changed, relative to ``project_path``.
+
+    With ``base``, the files that differ between ``base`` and ``commit``:
+    everything a pull, merge or rebase brought in when ``base`` is the
+    ``ORIG_HEAD`` it left behind. A ``base`` git can't resolve gives ``[]``.
 
     Diffs the commit against its first parent, so a merge commit lists everything
     it brought into the branch; ``--no-renames`` lists both sides of a rename
@@ -160,7 +166,7 @@ def get_changed_files(project_path: str | Path, commit: str = "HEAD") -> list[st
     a project in a subdirectory of its repository matches its own decisions.
     A root commit lists every file it added. Returns [] outside a git repo.
     """
-    parent = get_parent_commit(project_path, commit)
+    parent = base or get_parent_commit(project_path, commit)
     if parent:
         args = ["diff", "--name-only", "--relative", "--no-renames", "-z", parent, commit]
     else:
@@ -340,8 +346,13 @@ class InvalidationEngine:
     # Public API
     # ------------------------------------------------------------------- #
 
-    def scan(self) -> list[str]:
+    def scan(self, since: str | None = None) -> list[str]:
         """Mark STALE the decisions whose files the HEAD commit changed.
+
+        With ``since``, the files that differ between ``since`` and HEAD
+        instead: the post-merge and post-rewrite hooks pass ``ORIG_HEAD``, so
+        a pull, merge or rebase that changes a decision's files marks it
+        STALE as a local commit does.
 
         Returns the list of newly-invalidated decision IDs (cascaded
         dependents included). Idempotent — already-stale decisions are
@@ -353,7 +364,7 @@ class InvalidationEngine:
             logger.debug("[invalidate] not a git repo, skipping scan")
             return []
 
-        changed_files = get_changed_files(self.project_path)
+        changed_files = get_changed_files(self.project_path, base=since)
         if not changed_files:
             logger.debug("[invalidate] no files changed in HEAD")
             return []
@@ -384,7 +395,8 @@ class InvalidationEngine:
             shown = ", ".join(touched[:3])
             if len(touched) > 3:
                 shown += f" (+{len(touched) - 3} more)"
-            reason = f"commit {head[:7] or '?'} changed {shown} since this decision was recorded"
+            what = f"commits {since[:7]}..{head[:7]}" if since else f"commit {head[:7] or '?'}"
+            reason = f"{what} changed {shown} since this decision was recorded"
             if self.invalidate_decision(
                 decision.id,
                 reason=reason,

@@ -330,10 +330,19 @@ def read_commit_blobs(project_path: str, files: list[str], sha: str) -> dict[str
     return committed_blob_ids(project_path, files, sha)
 
 
-def _title(rationale: str, width: int = 80) -> str:
-    """The rationale's first sentence, cut to ``width`` characters."""
-    first = re.split(r"(?<=[.!?])\s", rationale, maxsplit=1)[0].strip()
-    return first if len(first) <= width else first[: width - 1].rstrip() + "…"
+def _title(rec: DecisionRecord, width: int = 80) -> str:
+    """The rationale's first sentence, cut to ``width`` characters, then any
+    subjects the rationale doesn't name.
+
+    The store searches titles and rationales, and recall matches subjects: a
+    subject given only on a ``Subjects:`` line goes into the title, so
+    ``decisions query <subject>`` finds the decision that symbol recalls.
+    """
+    first = re.split(r"(?<=[.!?])\s", rec.rationale, maxsplit=1)[0].strip()
+    title = first if len(first) <= width else first[: width - 1].rstrip() + "…"
+    text = rec.rationale.lower()
+    unnamed = [s for s in rec.subjects if s.lower() not in text]
+    return f"{title} (subjects: {', '.join(unnamed)})" if unnamed else title
 
 
 def _shown(paths: list[str]) -> str:
@@ -357,14 +366,18 @@ def import_trailers(
     :func:`trailer_decision_id`, anchored to its commit, tagged ``trailer``,
     naming the files its commit changed, and fingerprinted with the blobs that
     commit stores, so it is judged against the code it described rather than
-    today's working tree. If any of those files changed between its commit and
-    ``head``, it is marked STALE straight away, with the files named.
+    today's working tree. It is recorded STALE, with the files named, if any
+    of them changed between its commit and ``head``, and ACTIVE otherwise: one
+    write, with git read first, so no other writer can slip in between.
 
     A trailer the store already holds is left alone, so importing again never
     revives an invalidated one. The exception is a trailer on ``head`` itself
-    (an amended commit, or the same rationale committed again) that isn't
-    INVALIDATED: it is re-anchored to ``head`` and made ACTIVE, so the commit
-    that carries a decision never marks it STALE.
+    (an amended commit, or the same rationale committed again): unless it is
+    INVALIDATED, it is re-anchored to ``head`` and made ACTIVE, so the commit
+    that carries a decision never marks it STALE. The re-anchor checks the
+    status in the same transaction as the write
+    (:meth:`~neuralmind.memory.store.DecisionStore.reanchor`), so an
+    invalidation made meanwhile stands.
 
     Records are expected newest first (git-log order), so a rationale repeated
     in several commits is anchored to the newest.
@@ -379,38 +392,37 @@ def import_trailers(
         existing = store.get(decision_id)
         if existing is None:
             files = files_reader(project_path, rec.sha)
-            store.record(
-                title=_title(rec.rationale),
-                rationale=rec.rationale,
-                commit_sha=rec.sha,
-                files_affected=files,
-                evidence=[f"Decision: trailer on commit {rec.short_sha}"],
-                tags=["trailer"],
-                id=decision_id,
-            )
-            if store.get(decision_id) is None:
-                continue  # the write failed (logged by the store)
             at_commit = blobs_reader(project_path, files, rec.sha)
-            store.set_fingerprints(decision_id, at_commit)
-            imported.append(decision_id)
+            evidence = [f"Decision: trailer on commit {rec.short_sha}"]
+            changed: list[str] = []
             if head and rec.sha != head:
                 now = blobs_reader(project_path, files, head)
                 changed = [f for f in files if now.get(f) != at_commit.get(f)]
-                if changed:
-                    store.mark_stale(
-                        decision_id,
-                        f"{_shown(changed)} changed after commit {rec.short_sha} "
-                        "recorded this decision",
-                    )
+            if changed:
+                evidence.append(
+                    f"Marked STALE: {_shown(changed)} changed after commit "
+                    f"{rec.short_sha} recorded this decision"
+                )
+            store.record(
+                title=_title(rec),
+                rationale=rec.rationale,
+                commit_sha=rec.sha,
+                files_affected=files,
+                status="STALE" if changed else "ACTIVE",
+                evidence=evidence,
+                tags=["trailer"],
+                id=decision_id,
+                fingerprints=at_commit,
+            )
+            if store.get(decision_id) is not None:
+                imported.append(decision_id)  # else the write failed (logged by the store)
         elif rec.sha == head and existing.status != "INVALIDATED" and existing.commit_sha != head:
             files = files_reader(project_path, head)
-            existing.commit_sha = head
-            existing.files_affected = files
-            existing.status = "ACTIVE"
-            existing.evidence = [
-                *existing.evidence,
-                f"Re-anchored to commit {rec.short_sha}, which carries this trailer",
-            ]
-            store.update(existing)
-            store.set_fingerprints(decision_id, blobs_reader(project_path, files, head))
+            store.reanchor(
+                decision_id,
+                commit_sha=head,
+                files_affected=files,
+                fingerprints=blobs_reader(project_path, files, head),
+                note=f"Re-anchored to commit {rec.short_sha}, which carries this trailer",
+            )
     return imported

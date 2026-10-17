@@ -3572,6 +3572,12 @@ def cmd_decisions_scan(args):
     trailers is left alone (none is created). Opt-out:
     NEURALMIND_DECISION_SCAN=0. Always exits 0 — a git hook must never fail
     the commit it follows.
+
+    ``--since REV`` scans the files that differ between REV and HEAD instead
+    of the HEAD commit's: the post-merge and post-rewrite hooks pass
+    ``ORIG_HEAD``, so a pull, merge or rebase that changes a decision's files
+    marks it STALE too. A REV git can't resolve skips the STALE scan (the
+    import still runs).
     """
     project = Path(args.project_path).resolve()
     quiet = bool(getattr(args, "quiet", False))
@@ -3623,9 +3629,37 @@ def cmd_decisions_scan(args):
                 f"[neuralmind] {len(late)} imported Decision: trailer(s) marked STALE: their "
                 "files changed after their commit. Review: neuralmind decisions audit --stale"
             )
+    since = getattr(args, "since", None)
+    since_sha = ""
+    if since:
+        import subprocess
+
+        try:
+            since_sha = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(project),
+                    "rev-parse",
+                    "--verify",
+                    "--quiet",
+                    f"{since}^{{commit}}",
+                ],
+                capture_output=True,
+                encoding="utf-8",
+                timeout=30,
+            ).stdout.strip()
+        except Exception:
+            since_sha = ""
+        if not since_sha:
+            if as_json:
+                print(json.dumps({"commit": head, "stale": [], "imported": imported}))
+            elif not quiet:
+                print(f"Decision scan skipped: git can't resolve {since!r}.")
+            return
     engine = InvalidationEngine(str(project), store)
     try:
-        stale_ids = engine.scan()
+        stale_ids = engine.scan(since=since_sha or None)
     except Exception as exc:  # never fail the commit this follows
         if as_json:
             print(json.dumps({"commit": head, "stale": [], "imported": imported}))
@@ -3652,11 +3686,12 @@ def cmd_decisions_scan(args):
     if as_json:
         print(json.dumps({"commit": head, "stale": stale, "imported": imported}, indent=2))
         return
+    what = f"commits {since_sha[:7]}..{head[:7]}" if since_sha else f"commit {head[:7]}"
     if not stale:
         if not quiet:
-            print(f"No recorded decisions affected by commit {head[:7]}.")
+            print(f"No recorded decisions affected by {what}.")
         return
-    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by commit {head[:7]}:")
+    print(f"[neuralmind] {len(stale)} decision(s) marked STALE by {what}:")
     for entry in stale:
         print(f"  - {entry['title']} ({entry['id']}) — {entry['reason']}")
     print(
@@ -6534,6 +6569,32 @@ _HOOK_SCOPE_COMMENT = (
 )
 
 
+def _decision_scan_lines(target: str, commits: str, since: str = "", when: str = "") -> str:
+    """Shell lines that run ``decisions scan`` when there is something to scan.
+
+    The scan's precondition: a decision store to scan, or, in a built project
+    without one, a ``Decision:`` trailer in ``commits`` (``git log`` range) for
+    the scan to import, which creates the store. Checked with git and grep, so
+    an event with neither starts no Python. ``since`` is passed as
+    ``--since``; ``when`` is an extra shell condition (``post-rewrite`` scans a
+    rebase, not an amend).
+    """
+    guard = f"{when} && " if when else ""
+    extra = f" --since {since}" if since else ""
+    return (
+        "_nm_scan=\n"
+        f"if {guard}[ -f {target}/.neuralmind/memory.db ]; then\n"
+        "    _nm_scan=1\n"
+        f"elif {guard}[ -f {target}/{_BUILT_MARKER} ] && "
+        f"git log {commits} --format=%B 2>/dev/null | grep -qi '^decision:'; then\n"
+        "    _nm_scan=1\n"
+        "fi\n"
+        'if [ -n "$_nm_bin" ] && [ -n "$_nm_scan" ]; then\n'
+        f'    "$_nm_bin" decisions scan {target}{extra} --quiet || true\n'
+        "fi\n"
+    )
+
+
 def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
     """The ``post-commit`` block: decision scan (synchronous — it reads HEAD), then rebuild."""
     return (
@@ -6541,20 +6602,7 @@ def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
         "# Retire decisions this commit made stale, then rebuild the NeuralMind index.\n"
         + _HOOK_SCOPE_COMMENT
         + _hook_resolve_binary_lines(bin_path)
-        # The scan's own precondition: a decision store to scan, or, in a built
-        # project without one, a commit carrying a Decision: trailer for the
-        # scan to import (which creates the store). Checked with git and grep,
-        # so a commit with neither starts no Python.
-        + "_nm_scan=\n"
-        + f"if [ -f {target}/.neuralmind/memory.db ]; then\n"
-        + "    _nm_scan=1\n"
-        + f"elif [ -f {target}/{_BUILT_MARKER} ] && "
-        + "git log -1 --format=%B 2>/dev/null | grep -qi '^decision:'; then\n"
-        + "    _nm_scan=1\n"
-        + "fi\n"
-        + 'if [ -n "$_nm_bin" ] && [ -n "$_nm_scan" ]; then\n'
-        + f'    "$_nm_bin" decisions scan {target} --quiet || true\n'
-        + "fi\n"
+        + _decision_scan_lines(target, "-1")
         + f'if [ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
         + _hook_rebuild_lines(target, sync, announce=True)
         + "fi\n"
@@ -6563,19 +6611,34 @@ def _post_commit_block(target: str, bin_path: str, sync: bool) -> str:
 
 
 def _lifecycle_block(hook: str, target: str, bin_path: str, sync: bool) -> str:
-    """A rebuild-only block for ``post-merge`` / ``post-checkout`` / ``post-rewrite``.
+    """The ``post-merge`` / ``post-checkout`` / ``post-rewrite`` block.
 
     ``post-checkout`` fires for file checkouts too; only a branch checkout
     (third argument ``1``) that lands on a different commit changes the tree.
+    ``post-merge`` and a rebase's ``post-rewrite`` (first argument
+    ``rebase``) also run the decision scan over what they brought in, from
+    the ``ORIG_HEAD`` git leaves behind (v4.16.0+): those commits never run
+    ``post-commit``. A branch switch doesn't scan: STALE would then follow
+    whichever branch is checked out. Neither does an amend, which sets no
+    ``ORIG_HEAD``; ``post-commit`` runs for it already.
     No ``exit``: other tools' contributions to the same hook (git-lfs installs
     ``post-checkout`` and ``post-merge``) must keep running after ours.
     """
     cond = '[ "$3" = "1" ] && [ "$1" != "$2" ] && ' if hook == "post-checkout" else ""
+    scan = ""
+    if hook == "post-merge":
+        scan = _decision_scan_lines(target, "ORIG_HEAD..HEAD", since="ORIG_HEAD")
+    elif hook == "post-rewrite":
+        scan = _decision_scan_lines(
+            target, "ORIG_HEAD..HEAD", since="ORIG_HEAD", when='[ "$1" = "rebase" ]'
+        )
+    what = "Retire decisions it made stale, then rebuild" if scan else "Rebuild"
     return (
         "# neuralmind-hook-start\n"
-        f"# Rebuild the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
+        f"# {what} the NeuralMind index after {_LIFECYCLE_HOOKS[hook]}.\n"
         + _HOOK_SCOPE_COMMENT
         + _hook_resolve_binary_lines(bin_path)
+        + scan
         + f'if {cond}[ -n "$_nm_bin" ] && [ -f {target}/{_BUILT_MARKER} ]; then\n'
         + _hook_rebuild_lines(target, sync, announce=False)
         + "fi\n"
@@ -6595,7 +6658,8 @@ def cmd_init_hook(args):
     - ``post-merge``, ``post-checkout`` (branch switches to another commit)
       and ``post-rewrite`` rebuild the index after pulls, merges, branch
       switches and rebases — events that change the tree without a local
-      commit;
+      commit; ``post-merge`` and a rebase's ``post-rewrite`` first run
+      ``decisions scan --since ORIG_HEAD`` over what they brought in;
     - ``pre-commit`` runs the drift check over the staged diff, so a
       symbol that skips a pattern its peers share gets flagged while the
       change is still in your hands.
@@ -7836,6 +7900,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print only when a decision went stale (for git hooks)",
     )
     d_scan.add_argument("--json", "-j", action="store_true")
+    d_scan.add_argument(
+        "--since",
+        metavar="REV",
+        help="Scan every file that differs between REV and HEAD, not just the HEAD "
+        "commit's (the post-merge and post-rewrite hooks pass ORIG_HEAD)",
+    )
     d_scan.add_argument("project_path", nargs="?", default=".")
     d_scan.set_defaults(func=cmd_decisions_scan)
 

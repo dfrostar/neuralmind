@@ -301,3 +301,77 @@ def test_git_output_is_read_as_utf8_whatever_the_locale(monkeypatch):
     provenance.read_git_log(".")
     invalidate.get_changed_files(".")
     assert seen == {"log": "utf-8", "git": "utf-8"}
+
+
+# --------------------------------------------------------------------------- #
+# Review follow-ups (#667): races, Subjects:, pulls and merges
+# --------------------------------------------------------------------------- #
+
+
+def test_mark_stale_never_overrides_an_invalidation():
+    # The engine reads a decision, then marks it; an invalidation landing in
+    # between must stand (the write checks for ACTIVE in the same UPDATE).
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        store = DecisionStore(tmp)
+        rec = store.record(title="t", rationale="r", commit_sha="a" * 40)
+        store.invalidate(rec.id, reason="reversed")
+        assert store.mark_stale(rec.id, "a commit changed it") is False
+        assert store.get(rec.id).status == "INVALIDATED"
+
+
+def test_reanchoring_never_undoes_an_invalidation_made_meanwhile(repo, capsys):
+    _scan(repo, capsys)
+    _commit(repo, "src/uploader.py", "x = 2\n", f"again\n\n{TRAILER}")  # HEAD carries it
+    store = DecisionStore(str(repo))
+
+    def blobs_reader_that_races(project, files, sha):
+        # An explicit invalidation lands while the import is reading git.
+        store.invalidate(_trailer_id(), reason="reversed meanwhile")
+        from neuralmind.provenance import read_commit_blobs
+
+        return read_commit_blobs(project, files, sha)
+
+    head = _git(repo, "rev-parse", "HEAD")
+    import_trailers(
+        store, str(repo), harvest(str(repo)), head=head, blobs_reader=blobs_reader_that_races
+    )
+    record = store.get(_trailer_id())
+    assert record.status == "INVALIDATED"
+    assert record.commit_sha != head  # not re-anchored either
+
+
+def test_a_subject_named_only_on_a_subjects_line_is_searchable(repo, capsys):
+    message = (
+        "feat: auth\n\nDecision: resolve the org id per handler, not in middleware.\n"
+        "Subjects: `authMiddleware`"
+    )
+    _commit(repo, "src/auth.py", "def auth(): ...\n", message)
+    _scan(repo, capsys)
+    args = build_parser().parse_args(
+        ["decisions", "query", "authMiddleware", "--status", "ALL", "--mode", "keyword", str(repo)]
+    )
+    args.func(args)
+    out = capsys.readouterr().out
+    assert "subjects: authMiddleware" in out
+    assert "ID: " in out
+
+
+def test_a_pull_that_changes_a_decisions_code_marks_it_stale(repo, capsys):
+    _scan(repo, capsys)  # imports the trailer, ACTIVE
+    main = _git(repo, "branch", "--show-current")
+    _git(repo, "checkout", "-q", "-b", "upstream")
+    _commit(repo, "src/uploader.py", "def upload_with_retry():\n    pass\n", "drop retry")
+    _commit(repo, "README.md", "readme\n", "docs")  # the decision's file isn't in HEAD's diff
+    _git(repo, "checkout", "-q", main)
+    _git(repo, "merge", "-q", "--ff-only", "upstream")  # what a pull does; sets ORIG_HEAD
+    assert "No recorded decisions affected by commit" in _scan(repo, capsys)  # HEAD only: missed
+    out = _scan(repo, capsys, "--since", "ORIG_HEAD")
+    assert "1 decision(s) marked STALE by commits" in out
+    assert DecisionStore(str(repo)).get(_trailer_id()).status == "STALE"
+
+
+def test_scan_since_an_unknown_rev_is_skipped(repo, capsys):
+    out = _scan(repo, capsys, "--since", "no-such-rev")
+    assert "can't resolve" in out

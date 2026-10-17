@@ -2772,7 +2772,11 @@ rather than overwriting it:
 - **`post-merge`**, **`post-checkout`** and **`post-rewrite`** *(v4.13.0+)*
   rebuild the index after merges and pulls, branch switches (only a branch
   checkout that lands on a different commit) and rebases or amends: events
-  that change the tree without a local commit.
+  that change the tree without a local commit. *(v4.16.0+)* `post-merge`,
+  and `post-rewrite` after a rebase, first run
+  `neuralmind decisions scan . --since ORIG_HEAD --quiet`, so decisions whose
+  files a pull, merge or rebase changed go STALE too; a branch switch and an
+  amend don't scan.
 - **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
   staged diff — the commit-time drift guard described under
   [`drift`](#drift-v320) below.
@@ -2940,14 +2944,20 @@ isn't committed.
   alone (none is created). Always exits 0, so it can never fail the commit it
   follows. Off-switch `NEURALMIND_DECISION_SCAN=0`, which skips the import
   too.
-- Pulls and rebases don't run post-commit hooks: a decision whose files changed
-  only in pulled commits stays ACTIVE until one of your commits touches them.
+- Pulls, merges and rebases don't run post-commit hooks. *(v4.16.0+)* The
+  `post-merge` hook, and `post-rewrite` after a rebase, run
+  `decisions scan . --since ORIG_HEAD` instead, which scans every file that
+  differs between `ORIG_HEAD` (where the branch was before) and HEAD, so a
+  decision whose files changed only in pulled commits goes STALE too. A
+  branch switch doesn't scan: STALE would follow whichever branch is checked
+  out. Hooks installed before v4.16.0 need `neuralmind init-hook .` re-run.
   Files are matched by exact path (project-relative or absolute).
 
 | Option | Description |
 |--------|-------------|
 | `--quiet`, `-q` | Print only when a decision went stale (what the git hook uses) |
 | `--json`, `-j` | `{"commit": SHA, "stale": [{"id", "title", "reason"}], "imported": [id, …]}` (`imported` v4.16.0+) |
+| `--since REV` | *(v4.16.0+)* Scan every file that differs between REV and HEAD instead of the HEAD commit's changes (the post-merge and post-rewrite hooks pass `ORIG_HEAD`). A REV git can't resolve skips the STALE scan; the import still runs |
 
 ```
 $ neuralmind decisions scan .
