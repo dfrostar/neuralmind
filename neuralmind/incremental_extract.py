@@ -166,7 +166,10 @@ class IncrementalExtractor:
         for f in sorted(root.rglob("*")):
             if f.is_file() and f.suffix in suffixes:
                 try:
-                    rel = str(f.relative_to(root))
+                    # POSIX, like the cache keys and the graph's paths: on
+                    # Windows str() gave backslashes, so no file in a
+                    # subdirectory ever matched its cache entry.
+                    rel = f.relative_to(root).as_posix()
                     parts = Path(rel).parts
                     # The graph walker's rule: skip dot-directories and the
                     # canonical ignores. Not every dunder name: that hid each
