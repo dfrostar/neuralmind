@@ -89,6 +89,10 @@ path lost it, two ways:
   cache. Now a build re-extracts any file the graph has no node for, as a new
   file, along with the files that refer to it, so an `app.py` that calls into
   `pkg/__init__.py` gets its call edge back.
+- **On Windows, incremental builds missed every file in a subdirectory.** The
+  change scan named files with `\` separators while the cache and the graph use
+  `/`, so `src\app.py` never matched the cached `src/app.py`: an edit to it
+  never reached the graph until a full rebuild. The scan now uses `/` too.
 
 An index already in that state heals on its next build; `doctor`'s
 "files on disk not in graph" line goes away.
