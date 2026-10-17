@@ -163,7 +163,11 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
     # The agent's first call is where it learns the index can't be trusted:
     # one line, prefixed, only when the graph isn't in step with the code.
     context = result.context
-    stale_line = _freshness_line(project_path)
+    # The graph-vs-disk check first; when that finds nothing, the query-time
+    # one (a failed hook rebuild, commits since the build, a legacy index).
+    from neuralmind.freshness import query_notice
+
+    stale_line = _freshness_line(project_path) or query_notice(project_path)
     if stale_line:
         context = f"{stale_line}\n\n{context}"
     return {
@@ -171,6 +175,7 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
         "tokens": result.budget.total,
         "reduction_ratio": round(result.reduction_ratio, 1),
         "layers": result.layers_used,
+        "freshness": stale_line,
     }
 
 
@@ -203,6 +208,9 @@ def tool_query(
         "layers": result.layers_used,
         "communities_loaded": result.communities_loaded,
         "search_hits": result.search_hits,
+        # The line atop ``context`` when the index can't vouch for it; empty
+        # when it's current (#631).
+        "freshness": result.freshness,
     }
     if include_relevance:
         from .relevance import build_relevance_sidecar
@@ -220,7 +228,7 @@ def tool_search(
         raise ValueError(hint)
     mind = get_mind(project_path, auto_build=learn is not False)
     results = mind.search(query, n=n, learn=learn)
-    return [
+    out = [
         {
             "id": r.get("id"),
             "label": r.get("metadata", {}).get("label"),
@@ -230,6 +238,14 @@ def tool_search(
         }
         for r in results
     ]
+    # The list keeps its shape: when the index can't vouch for these results,
+    # the first one carries the notice (#631).
+    from neuralmind.freshness import query_notice
+
+    notice = query_notice(project_path)
+    if notice and out:
+        out[0]["freshness"] = notice
+    return out
 
 
 def tool_build(project_path: str, force: bool = False) -> dict[str, Any]:
@@ -826,7 +842,7 @@ TOOLS = [
     },
     {
         "name": "neuralmind_query",
-        "description": "Get optimized context for answering a question about a codebase. Achieves 12-50x typical token reduction by only loading relevant code clusters.",
+        "description": "Get optimized context for answering a question about a codebase. Achieves 12-50x typical token reduction by only loading relevant code clusters. When the index is stale (commits since the last build, a failed background rebuild, a legacy index), one line above the context says so and `freshness` repeats it.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -857,7 +873,7 @@ TOOLS = [
     },
     {
         "name": "neuralmind_search",
-        "description": "Semantic search for code entities (functions, classes, files). Returns top matches with relevance scores.",
+        "description": "Semantic search for code entities (functions, classes, files). Returns top matches with relevance scores. When the index is stale, the first result carries a `freshness` line saying why.",
         "inputSchema": {
             "type": "object",
             "properties": {

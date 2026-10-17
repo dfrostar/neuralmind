@@ -704,7 +704,8 @@ NeuralMind MCP tools follow these schemas:
     "output": {
       "context": "string",
       "tokens": "integer",
-      "layers": "array"
+      "layers": "array",
+      "freshness": "string (v4.17.0+): the staleness line atop context, empty when current"
     }
   },
   "neuralmind_query": {
@@ -717,7 +718,8 @@ NeuralMind MCP tools follow these schemas:
       "tokens": "integer",
       "reduction_ratio": "number",
       "layers": "array",
-      "communities": "array"
+      "communities": "array",
+      "freshness": "string (v4.17.0+): the staleness line atop context, empty when current"
     }
   },
   "neuralmind_search": {
@@ -727,7 +729,7 @@ NeuralMind MCP tools follow these schemas:
       "limit": "integer (optional, default 10)"
     },
     "output": {
-      "results": "array of search results"
+      "results": "array of search results; when the index is stale, the first carries freshness (v4.17.0+)"
     }
   },
   "neuralmind_build": {

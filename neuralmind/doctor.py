@@ -851,6 +851,18 @@ def _running_daemon_exposure() -> str | None:
         return None
 
 
+def _check_query_freshness(project: Path) -> Check:
+    """The notice a query would carry right now (``freshness.query_notice``):
+    a failed background rebuild, commits since the last build, or an index
+    only in the legacy layout. WARN, since queries still answer."""
+    from neuralmind.freshness import query_notice
+
+    notice = query_notice(project)
+    if not notice:
+        return Check("Query freshness", OK, "queries carry no staleness notice")
+    return Check("Query freshness", WARN, notice, fix=f"Rebuild: neuralmind build {project}")
+
+
 def run_diagnostics(project_path: str, stale_after: float | None = None) -> list[Check]:
     """Run every check against ``project_path`` and return the results.
 
@@ -863,6 +875,7 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_graph_source(project),
         _check_backend(project),
         _check_index(project),
+        _check_query_freshness(project),
         _check_synapses(project),
         _check_mcp(),
         _check_hooks(project),

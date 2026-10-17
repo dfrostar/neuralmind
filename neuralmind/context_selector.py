@@ -78,6 +78,9 @@ class ContextResult:
     # (layer, text) for each layer in ``context``, in order ("L0".."L3");
     # what context-budget trimming cuts, instead of re-parsing the text.
     layer_texts: list[tuple[str, str]] = field(default_factory=list, repr=False)
+    # The freshness notice placed above the context when the index can't
+    # vouch for it (``freshness.query_notice``); empty when it's current.
+    freshness: str = ""
 
     @property
     def tokens(self) -> int:

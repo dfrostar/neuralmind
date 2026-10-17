@@ -2168,6 +2168,12 @@ def _maybe_detect_repo_url(project_path: str) -> str | None:
 def cmd_search(args):
     mind = create_mind(args.project_path, auto_build=True)
     results = mind.search(args.query, n=args.n)
+    # On stderr, so --json output stays parseable (#631).
+    from .freshness import query_notice
+
+    notice = query_notice(args.project_path)
+    if notice:
+        print(notice, file=sys.stderr)
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -6560,17 +6566,28 @@ def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
     index that is gone by then). Every command tolerates failure, so a hook
     that runs under ``set -e`` isn't cut short.
 
+    A failed build leaves ``.neuralmind/.hook-build.failed`` and a successful
+    one removes it, so a query can say the index missed changes (#631).
+
     ``--sync``: the previous behavior — git waits for the build.
     """
+    failed = '"$_nm_dir/.hook-build.failed"'
     if sync:
+        ok, fail = ("", "")
         if announce:
-            return (
-                '    echo "[neuralmind] Rebuilding neural index..."\n'
-                f'    "$_nm_bin" build {target} >/dev/null 2>&1 && \\\n'
-                '        echo "[neuralmind] OK" || \\\n'
-                '        echo "[neuralmind] Rebuild failed (non-critical)"\n'
-            )
-        return f'    "$_nm_bin" build {target} >/dev/null 2>&1 || true\n'
+            ok = '        echo "[neuralmind] OK"\n'
+            fail = '        echo "[neuralmind] Rebuild failed (non-critical)"\n'
+        return (
+            ('    echo "[neuralmind] Rebuilding neural index..."\n' if announce else "")
+            + f"    _nm_dir={target}/.neuralmind\n"
+            + f'    if "$_nm_bin" build {target} >/dev/null 2>&1; then\n'
+            + f"        rm -f {failed}\n"
+            + ok
+            + "    else\n"
+            + f"        touch {failed} 2>/dev/null || :\n"
+            + fail
+            + "    fi\n"
+        )
     started = (
         '        echo "[neuralmind] Rebuilding the index in the background (log: $_nm_dir/hook-build.log)"\n'
         if announce
@@ -6601,7 +6618,11 @@ def _hook_rebuild_lines(target: str, sync: bool, announce: bool) -> str:
         # $PPID of a child is this subshell: POSIX sh has no $BASHPID.
         '                sh -c \'echo "$PPID"\' >"$_nm_lock/pid" 2>/dev/null || :\n'
         '                rm -f "$_nm_dir/.hook-build.pending"\n'
-        f'                "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1 || :\n'
+        f'                if "$_nm_bin" build {target} >"$_nm_dir/hook-build.log" 2>&1; then\n'
+        f"                    rm -f {failed}\n"
+        "                else\n"
+        f"                    touch {failed} 2>/dev/null || :\n"
+        "                fi\n"
         '                [ -e "$_nm_dir/.hook-build.pending" ] && continue\n'
         '                rm -f "$_nm_lock/pid"\n'
         '                rmdir "$_nm_lock" 2>/dev/null || :\n'

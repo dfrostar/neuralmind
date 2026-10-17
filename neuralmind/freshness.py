@@ -785,3 +785,126 @@ def classify(report: FreshnessReport) -> str:
     if drift or report.changed_since_graph:
         return WARN
     return OK
+
+
+# --------------------------------------------------------------------------- #
+# Query-time notice
+# --------------------------------------------------------------------------- #
+# The marker the init-hook's background rebuild leaves when its build fails
+# (and removes when one succeeds); see cli._hook_rebuild_lines.
+HOOK_BUILD_FAILED = ".hook-build.failed"
+HOOK_BUILD_LOG = "hook-build.log"
+HOOK_BUILD_LOCK = ".hook-build.lock"
+
+
+def git_dir(root: Path) -> Path | None:
+    """The git directory for ``root`` (a linked worktree's own), found by
+    reading ``.git`` rather than running git; None outside a repository."""
+    for directory in (root, *root.parents):
+        dot = directory / ".git"
+        if dot.is_dir():
+            return dot
+        if dot.is_file():
+            try:
+                line = dot.read_text(encoding="utf-8").strip()
+            except OSError:
+                return None
+            if not line.startswith("gitdir:"):
+                return None
+            found = Path(line[len("gitdir:") :].strip())
+            return found if found.is_absolute() else (directory / found).resolve()
+    return None
+
+
+def head_commit(root: Path) -> str | None:
+    """``HEAD``'s commit for ``root``, or None outside a repository."""
+    out = _git(root, "rev-parse", "--verify", "--quiet", "HEAD")
+    return out.strip() if out else None
+
+
+def query_notice(project: str | Path) -> str:
+    """One line for an answer the index can't vouch for, else ``""`` (#631).
+
+    ``query``, ``search`` and the MCP tools still answer from a stale index;
+    this line tells the agent so, instead of letting old context pass for
+    current. It names, in order of severity:
+
+    * an index only in the legacy ``graphify-out/`` layout, which nothing
+      reads any more, so semantic search returns nothing;
+    * a background rebuild from the init-hook that failed after the last
+      successful build;
+    * commits since the build started that changed files in the project.
+
+    It runs on every query, so it costs ``stat`` calls only, plus one
+    ``git diff`` when ``<git-dir>/logs/HEAD`` moved after the build started.
+    That compares the commit the build started from with ``HEAD``, so a
+    commit elsewhere in a larger repository, or a branch switch that changed
+    nothing here, adds no line. The reflog, not a commit date, says when
+    ``HEAD`` moved: a pull checks out commits dated before the build. Never
+    raises.
+    """
+    try:
+        return _query_notice(Path(project).resolve())
+    except Exception:  # a notice must never break the answer it rides on
+        return ""
+
+
+def _query_notice(root: Path) -> str:
+    state = root / CANONICAL_DIR
+    status_path = state / "build_status.json"
+    rebuild = f"run neuralmind build {root}"
+    if not status_path.is_file():
+        legacy = root / LEGACY_DIR
+        if (legacy / "neuralmind_turbovec").exists() or (legacy / "neuralmind_db").exists():
+            return (
+                "Index is in the legacy graphify-out/ layout, which NeuralMind no longer "
+                f"reads, so semantic search finds nothing: {rebuild}."
+            )
+        return ""
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        built_mtime = status_path.stat().st_mtime
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(status, dict):
+        return ""
+
+    failed = state / HOOK_BUILD_FAILED
+    try:
+        failed_after_build = failed.stat().st_mtime > built_mtime
+    except OSError:
+        failed_after_build = False
+    if failed_after_build:
+        return (
+            "Index may be stale: the last background rebuild failed "
+            f"(log: {CANONICAL_DIR}/{HOOK_BUILD_LOG}); {rebuild}."
+        )
+
+    started = status.get("build_started_at")
+    built_from = status.get("build_head")
+    gdir = git_dir(root)
+    if not isinstance(started, (int, float)) or not built_from or gdir is None:
+        return ""
+    try:
+        moved = (gdir / "logs" / "HEAD").stat().st_mtime > started
+    except OSError:
+        return ""
+    if not moved:
+        return ""
+    out = _git(root, "diff", "--name-only", "--relative", str(built_from), "HEAD", "--", ".")
+    if out is None:
+        # The commit the build started from is gone (a rebase, a gc'd
+        # branch), so nothing can say what changed: assume something did.
+        changed: list[str] = []
+        summary = "HEAD moved to commits the index was not built from"
+    else:
+        changed = sorted(line.strip() for line in out.splitlines() if line.strip())
+        if not changed:
+            return ""
+        summary = (
+            f"{len(changed):,} file{'s' if len(changed) != 1 else ''} changed in commits "
+            f"since the last build{_examples(changed)}"
+        )
+    if (state / HOOK_BUILD_LOCK).is_dir():
+        return f"Index is catching up: {summary}; a background rebuild is running."
+    return f"Index is stale: {summary}; {rebuild}."

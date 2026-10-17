@@ -681,6 +681,11 @@ class NeuralMind:
         """
         start_time = datetime.now()
         self._notices = []
+        # Where HEAD stood when this build began: a query compares it with
+        # HEAD to tell whether commits since then changed the project (#631).
+        from .freshness import head_commit
+
+        build_head = head_commit(self.project_path)
 
         # Load .neuralmind.yaml config
         from neuralmind.neuralmind_config import NeuralmindConfig
@@ -937,6 +942,9 @@ class NeuralMind:
             # Stamps caches derived from this index (the unified BM25 index),
             # one key per scope so a scoped build can't stale the default one.
             l3_slots.generation_key(self.scope): self._build_stats["built_at"],
+            # What a query's freshness notice compares against (#631).
+            "build_started_at": start_time.timestamp(),
+            "build_head": build_head,
         }
         if gitignore_notice:
             status_updates["gitignore_notice"] = True
@@ -2310,6 +2318,17 @@ class NeuralMind:
             elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
                 self.selector.count_prefix(result, highlights)
+        # A stale or legacy index still answers; one line above the answer
+        # says so, so old context can't pass for current (#631). Like L0, a
+        # context budget never trims it.
+        from .freshness import query_notice
+
+        notice = query_notice(self.project_path)
+        if notice:
+            result.freshness = notice
+            result.context = f"{notice}\n\n{result.context}"
+            if getattr(self, "selector", None) is not None:
+                self.selector.count_prefix(result, notice)
         if learn:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)

@@ -64,6 +64,8 @@ keywords = [
     "markdown-corpus-search",
     "index-freshness",
     "stale-index-detection",
+    "stale-context-warning",
+    "query-time-freshness",
     "graph-regeneration",
     "retrieval-eval",
     "gitignore-aware-indexing",

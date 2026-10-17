@@ -533,6 +533,31 @@ Query the codebase with natural language and get optimized context.
 neuralmind query <project_path> "<question>" [OPTIONS]
 ```
 
+#### Freshness notice *(v4.17.0+)*
+
+When the index can't vouch for its answer, the context starts with one line
+saying why, then a blank line. It names the first of these that applies:
+
+| Condition | Line starts with |
+|---|---|
+| The index is only in the legacy `graphify-out/` layout, which nothing reads | `Index is in the legacy graphify-out/ layout …` |
+| The `init-hook` background rebuild failed after the last successful build | `Index may be stale: the last background rebuild failed (log: .neuralmind/hook-build.log) …` |
+| Commits since the build started changed files in the project | `Index is stale: N files changed in commits since the last build (…) …` |
+| The same, while the hook's background rebuild is running | `Index is catching up: …` |
+
+"Commits since the build" compares the modification time of git's
+`logs/HEAD` with the build's recorded start, then, only if `HEAD` moved, runs
+`git diff --name-only <build commit> HEAD -- .`, so commits outside the
+project add nothing. The build records its start time and commit in
+`build_status.json` (`build_started_at`, `build_head`); an index built before
+v4.17.0 gets that line after its next build. Uncommitted edits aren't covered
+here: [`doctor`](#doctor-v0120) and `health` compare the graph with the working
+tree. The same line ends the related-files block the prompt hook injects
+(Claude Code, Hermes) and tops the MCP `neuralmind_query` and
+`neuralmind_wakeup` context, which also carry it in a `freshness` field; the
+first `neuralmind_search` result carries it there. A context budget never trims
+it.
+
 #### Type Filter *(v3.1.4+)*
 
 Steer the ranking toward a node type (results are ranked, not filtered, so
@@ -811,6 +836,10 @@ neuralmind search <project_path> "<query>" [OPTIONS]
 |--------|---------|-------------|
 | `--n` | 10 | Maximum number of results. *(v4.8.2+)* Must be at least 1; `0` or a negative value is a usage error (it used to return one result) |
 | `--json`, `-j` | False | Output results as JSON |
+
+*(v4.17.0+)* When the index is stale, `search` prints the
+[freshness notice](#freshness-notice-v4170) on stderr before the results;
+stdout, including `--json`, is unchanged.
 
 #### Output
 
@@ -1512,6 +1541,14 @@ a key is set, or under the profile, it warns when no checkpoint has been taken
 or the newest is more than 7 days old. Otherwise it reports the newest
 checkpoint, or `ok` with "none".
 
+**Query freshness** *(v4.17.0+)* shows the line queries, searches and the
+prompt hook carry right now (see [the freshness notice](#freshness-notice-v4170)):
+a failed `init-hook` background rebuild, commits since the last build that
+changed the project, or an index only in the legacy layout. It warns with that
+line and the rebuild command, and is `ok` ("queries carry no staleness notice")
+otherwise. A warning, never a failure, since queries still answer, so it
+doesn't change `doctor`'s exit code.
+
 **Graph source** *(v4.13.0+)* names the graph builds read and the
 `graph_source` setting. It warns when `graph_source: auto` has left a
 `graphify-out/graph.json` unused beside the built-in graph, with
@@ -1551,6 +1588,7 @@ NeuralMind doctor — /path/to/project
 ============================================================
   [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
   [ ok ] Semantic index: 1240 nodes embedded (turbovec backend)
+  [ ok ] Query freshness: queries carry no staleness notice
   [ ok ] Backend: turbovec (auto-selected; turbovec stack available)
   [warn] Synapse memory: no synapses.db yet (nothing learned)
          -> It populates automatically as you query and edit the codebase.
@@ -2861,7 +2899,11 @@ How the rebuild runs *(v4.13.0+)*:
 - **In the background**, so git doesn't wait. A lock in `.neuralmind/`
   serializes builds, and events that arrive while one runs coalesce into one
   more build. The log is `.neuralmind/hook-build.log`. `--sync` restores the
-  foreground rebuild.
+  foreground rebuild. *(v4.17.0+)* A failed rebuild, background or `--sync`,
+  leaves `.neuralmind/.hook-build.failed` and a successful one removes it, so
+  queries can say the index missed changes (see
+  [the freshness notice](#freshness-notice-v4170)). Re-run `init-hook` to get
+  this in hooks installed earlier.
 - **With the `neuralmind` found at install time**, falling back to PATH, so
   the hooks work from GUI clients, IDEs and service managers whose PATH lacks
   it. Re-run `init-hook` after moving or reinstalling NeuralMind.

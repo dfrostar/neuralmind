@@ -809,6 +809,13 @@ def _spread_for_prompt(project_path: str, prompt: str) -> str:
     if not block:
         return ""
     lines = [block]
+    # Recall from a stale index reads as current unless the block says so (#631).
+    from .freshness import query_notice
+
+    notice = query_notice(project_path)
+    if notice:
+        lines.append("")
+        lines.append(notice)
 
     # Flag the cluster member that skips a pattern its peers share — the
     # "handler #11" outlier a flat recall list can't distinguish. Opt-in.

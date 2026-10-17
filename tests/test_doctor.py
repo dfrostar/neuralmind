@@ -280,6 +280,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Graph source",
         "Backend",
         "Semantic index",
+        "Query freshness",
         "Synapse memory",
         "MCP server",
         "Claude Code hooks",

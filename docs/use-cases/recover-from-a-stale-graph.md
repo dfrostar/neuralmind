@@ -45,6 +45,26 @@ at the start of `neuralmind build`, and as one line at the top of your agent's
 first `neuralmind_wakeup` call — so the agent knows not to trust the index
 before it answers from it.
 
+### Every answer says so too (v4.17.0+)
+
+The check above walks the tree, so it runs where a second doesn't matter. Each
+answer gets a cheaper one: `neuralmind query`, the MCP `query`, `search` and
+`wakeup` tools, and the related-files block on each prompt (Claude Code and
+Hermes) carry one line when the index is behind:
+
+```
+Index is stale: 2 files changed in commits since the last build (src/auth.py, src/session.py); run neuralmind build /home/me/project.
+Index is catching up: … ; a background rebuild is running.
+Index may be stale: the last background rebuild failed (log: .neuralmind/hook-build.log); run neuralmind build /home/me/project.
+Index is in the legacy graphify-out/ layout, which NeuralMind no longer reads, so semantic search finds nothing: run neuralmind build /home/me/project.
+```
+
+It costs a few `stat` calls unless `HEAD` moved since the build started; then
+one `git diff` checks whether those commits touched the project, so commits
+elsewhere in a monorepo add nothing. MCP payloads carry the line in a
+`freshness` field, and `doctor` shows it as **Query freshness**. The
+failed-rebuild line needs the hooks from `neuralmind init-hook` v4.17.0 or later.
+
 ## 2. Fix: regenerate with the built-in backend
 
 ```bash
@@ -64,6 +84,9 @@ Build successful!
   return them. If they're more than half the store, the build keeps them and
   tells you to rerun with `--prune` — a safety valve against a wrong path.
 - Later plain `neuralmind build .` runs update the built-in graph incrementally.
+  Since v4.17.0 they also re-extract any file the graph has no node for, so a
+  "files on disk not in graph" line clears on the next build (before, an
+  `__init__.py` could stay missing through every rebuild).
 
 You often don't need the flag: with the default `graph_source: auto`, a
 graphify graph that **fails** the freshness check is replaced by a built-in
