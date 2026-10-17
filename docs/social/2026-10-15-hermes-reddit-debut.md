@@ -129,8 +129,10 @@ Or let Hermes manage it:
     hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
 
 Start a new session (or restart the gateway) to load it. If you skip the path,
-one install serves every repo you've built and does nothing in the rest.
-Hermes Desktop and ACP editor sessions don't expose each session's directory,
+one install serves every repo you've built and does nothing in the rest. If
+you installed with a path before, a re-run without one keeps that pin; run
+`neuralmind install-hermes-plugin --unpin` to go back to following the
+directory. Hermes Desktop and ACP editor sessions don't expose each session's directory,
 so there you pin a project (`install-hermes-plugin /path`) or set
 `NEURALMIND_PROJECT`.
 
@@ -173,8 +175,10 @@ your workload? I can tune the cutoff for when it shows up
 
 ## Pinned first comment (optional)
 
-> Author here. To try it without the plugin first: `neuralmind query /path/to/repo "how does X work"`
-> shows the context it would add, with its token count. To switch every hook
+> Author here. To see the retrieval on its own first: `neuralmind query /path/to/repo "how does X work"`
+> prints the context the CLI assembles, with its token count. That's a standalone
+> demo, not a preview: the plugin adds a different block (matching files, linked
+> files, recorded decisions, and the first-turn recap). To switch every hook
 > action off without uninstalling: `NEURALMIND_BYPASS=1`. Uninstall:
 > `neuralmind install-hermes-plugin --uninstall`.
 
@@ -185,7 +189,7 @@ your workload? I can tune the cutoff for when it shows up
 | "Isn't this just RAG?" | Partly: the retrieval core is a vector index, and the bare version of it is benchmarked as a baseline. The plugin adds what plain RAG doesn't have: per-turn injection with no tool call, a session recap, decisions from git trailers, and links learned from edits. |
 | "How fast is it?" | **Don't quote a figure.** No committed benchmark measures query latency end to end. Say it's a local index lookup, not another model call. |
 | "Does it work with local models?" | Yes. The plugin only adds text to the message, so it doesn't depend on the model behind Hermes. NeuralMind itself sends nothing at query time; with a local model behind Hermes, the block doesn't go to any API either. |
-| "Multiple repos?" | Install without a path. Each built repo keeps its own `.neuralmind/`. Pinning one project applies it to every Hermes session on that Hermes home (see `docs/wiki/Multi-Project-Scoping.md`). |
+| "Multiple repos?" | Install without a path; if an earlier install pinned a project, a re-run without a path keeps the pin, so run `neuralmind install-hermes-plugin --unpin`. Each built repo keeps its own `.neuralmind/`. Pinning one project applies it to every Hermes session on that Hermes home (see `docs/wiki/Multi-Project-Scoping.md`). |
 | "Pricing?" | Core is MIT and free. The paid Team tier is per `commercial-terms.json`. Don't post a price that isn't in that file. |
 
 ## Demo to record
@@ -193,7 +197,9 @@ your workload? I can tune the cutoff for when it shows up
 1. A Hermes terminal session on an OSS repo (not a client repo): the first
    turn showing the recap, then a question showing the recall block. To
    capture what was injected, run `hermes logs` or ask the model to quote it.
-2. `neuralmind query` with the token count visible, on the same repo.
+2. `neuralmind query` with the token count visible, on the same repo. Label
+   it as a retrieval demo: it shows the CLI's assembled context, not the block
+   the plugin adds or what that block costs.
 3. Optional: `neuralmind stats` before and after a session to show the
    synapse store growing.
 
@@ -212,4 +218,6 @@ Don't put a stopwatch on any of these. No latency figure is allowed.
 | Embedding baseline cheaper; higher MRR on flask (0.74 vs 0.72) and rich (0.94 vs 0.83) | `docs/benchmarks/public.md` per-repo tables |
 | Synapse gate checks direction only | `site/claims.json` `non_ratio_headline_claims` |
 | First-run ONNX download, SHA256-pinned, `NEURALMIND_ONNX_MODEL_DIR` | `neuralmind/onnx_embedder.py`; 2026-08-28 debut "Claim sources" |
+| A re-run without a path keeps an earlier pin; `--unpin` clears it | `neuralmind/hermes_install.py` (`project_path = _existing_project(target)` unless `unpin`); `CLAUDE.md` multi-project scoping |
+| The plugin's block comes from `session-start` and `prompt-submit`, not `query` | `neuralmind/hermes_plugin/__init__.py` (`pre_llm_call` handler) |
 | `NEURALMIND_BYPASS`, `NEURALMIND_RECALL_MIN_SIMILARITY` | `CLAUDE.md`; `docs/use-cases/hermes-agent.md` §3 |
