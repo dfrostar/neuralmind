@@ -107,6 +107,11 @@ Before anything is deleted, note the two locations the project's config file
 Then run from the project root:
 
 ```bash
+# Configuration first, so a later agent session can't recreate the data below
+neuralmind install-hooks --uninstall             # this project's Claude Code hooks
+# neuralmind install-hooks --uninstall --global  # if installed with --global and no other project uses them
+# neuralmind install-hermes-plugin --unpin       # if the Hermes plugin is pinned to this project
+
 # In the project
 rm -rf .neuralmind/ graphify-out/
 rm -f .neuralmind-team-memory.json neuralmind-backend.yaml neuralmind-backend.yml neuralmind-backend.json
@@ -129,14 +134,13 @@ if log.exists():
     kept = [l for l in log.read_text(encoding="utf-8").splitlines() if other_project(l)]
     log.write_text("".join(l + "\n" for l in kept), encoding="utf-8")
 PY
-
-# Configuration
-neuralmind install-hooks --uninstall
 ```
 
-Then remove the project's entry from `projects.json` (in `$NEURALMIND_CONFIG_DIR`,
-or `~/.config/neuralmind/`), the
-git hook blocks (2.3), and, if no other project uses NeuralMind, `~/.neuralmind/`.
+Then remove the rest of 2.3 that applies (the git hook blocks, the `CLAUDE.md`
+import line), the project's entry from `projects.json` (in
+`$NEURALMIND_CONFIG_DIR`, or `~/.config/neuralmind/`), the index files at
+`db_path` and, when erasure is required, the anchored checkpoint file (both
+noted above), and, if no other project uses NeuralMind, `~/.neuralmind/`.
 The Team governance audit log is not deleted here: it's hash-chained, so
 removing one project's records breaks its verification. Keep it for your
 retention period, or, when erasure is required, delete the whole file
@@ -166,9 +170,16 @@ rm -f .neuralmind-team-memory.json
 
 ### 3.3 Verification
 
-After a complete deletion each of these should print nothing:
+After a complete deletion each of these should print nothing. Set the first
+two lines to the locations noted before deleting, or leave them empty:
 
 ```bash
+db_path=""      # the db_path, if one was set
+anchor_file=""  # the anchored checkpoint file, if erasure was required
+[ -z "$db_path" ] || ls "$db_path"/store*.sqlite* "$db_path"/index*.tvim* "$db_path"/chroma.sqlite3 2>/dev/null
+[ -z "$anchor_file" ] || ls "$anchor_file" 2>/dev/null
+grep -sl "neuralmind _hook" .claude/settings.json ~/.claude/settings.json
+grep -sF "$(pwd -P)" ~/.hermes/plugins/neuralmind/config.json
 ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json neuralmind-backend.y*ml neuralmind-backend.json 2>/dev/null
 ls ~/.claude/projects/"$(pwd -P | sed 's#/#-#g')"/memory/synapse-activations.md 2>/dev/null
 grep -F "\"$(pwd -P)\"" ~/.neuralmind/memory/query_events.jsonl 2>/dev/null
