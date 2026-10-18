@@ -64,6 +64,10 @@ logging is on, the text of every query from every project.
 
 ### 3.1 Complete Deletion
 
+*(v4.18.0+)* Start with `neuralmind data-locations .`, which lists every
+location below that holds this project's data, resolved by the code that writes
+it, with how to remove each. Run it again at the end (§3.3).
+
 First stop everything that writes NeuralMind data under this OS account, in
 every project and not only this one: end the agent sessions that use NeuralMind
 (Claude Code, Hermes-Agent, any MCP client), stop `neuralmind watch` and
@@ -158,8 +162,9 @@ who pulls the change.
 # Remove only synapse store (keep index)
 rm -f .neuralmind/synapses.db
 
-# Remove only audit logs (the active log, its rotated archives and checkpoints)
-rm -f .neuralmind/audit_events*.jsonl .neuralmind/audit_checkpoints.jsonl
+# Remove only audit logs (the active log, its rotated archives, checkpoints,
+# and the notes of records that couldn't be written)
+rm -f .neuralmind/audit_events*.jsonl .neuralmind/audit_checkpoints.jsonl .neuralmind/audit_write_failures.jsonl
 
 # Remove only the session recap records (stored prompts and edited paths)
 neuralmind recap --clear
@@ -170,7 +175,9 @@ rm -f .neuralmind-team-memory.json
 
 ### 3.3 Verification
 
-After a complete deletion each of these should print nothing. Set the first
+*(v4.18.0+)* `neuralmind data-locations .` should list as present only what you
+chose to keep (§1). On earlier versions, or as a cross-check, each of these
+should print nothing. Set the first
 two lines to the locations noted before deleting, or leave them empty:
 
 ```bash

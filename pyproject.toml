@@ -113,6 +113,9 @@ keywords = [
     "signed-audit-checkpoints",
     "machine-security-policy",
     "fail-closed-security-policy",
+    "data-locations",
+    "data-deletion-procedure",
+    "audit-write-failures",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

@@ -69,7 +69,11 @@ run time, and a refusal is written to the audit log:
   reach admin-only tools.
 - **`require_encrypted_storage: true`.** NeuralMind refuses to build, query,
   serve MCP tools or run hooks until it has verified FileVault, BitLocker or
-  dm-crypt/LUKS on every volume holding the project's state.
+  dm-crypt/LUKS on every volume holding the project's state. *(v4.18.0+)* The
+  copies it writes under your home directory (Claude Code's synapse export,
+  the global query log) are written only where the same check passes.
+  `neuralmind data-locations .` lists every place the project's data lives, for
+  an assessor or a deletion.
 - **Local listeners only.** `neuralmind serve` refuses to start on an address
   other than loopback, or with `--no-auth`. A shared `neuralmind daemon`
   started that way refuses this project's requests, while still serving

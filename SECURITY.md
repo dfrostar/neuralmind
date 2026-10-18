@@ -308,7 +308,7 @@ air-gapped deployment, these are the knobs a security reviewer cares about
 | `NEURALMIND_MEMORY=0` | Disable query-event logging (to `.neuralmind/memory/` and `~/.neuralmind/memory/`) and skip its first-run consent prompt | off until accepted at that prompt |
 | `NEURALMIND_LEARNING=0` | Disable Hebbian synapse learning from interactions | on |
 | `NEURALMIND_SYNAPSE_INJECT=0` | Don't inject spreading-activation recall at prompt time | on |
-| `NEURALMIND_SYNAPSE_EXPORT=0` | Don't write `SYNAPSE_MEMORY.md` / Claude Code auto-memory | on |
+| `NEURALMIND_SYNAPSE_EXPORT=0` | Don't write `SYNAPSE_MEMORY.md` / Claude Code auto-memory, from the hooks or *(v4.18.0+)* the MCP export tool | on |
 | `NEURALMIND_TEAM_MEMORY=0` | Don't import the committed team-memory bundle | on |
 | `NEURALMIND_REUSE_FEEDBACK=0` | Disable the Edit/Write reuse-feedback signal | on |
 | `NEURALMIND_OUTPUT_CACHE=0` | Disable the Bash recovery cache (`last_output.json`) | on |

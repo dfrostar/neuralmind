@@ -1491,6 +1491,26 @@ VALID — 0 errors, 0 warning(s).
 
 ---
 
+### data-locations *(v4.18.0+)*
+
+List every place NeuralMind keeps data for a project: in the project (state
+directory, legacy `graphify-out/`, team memory bundle, config file, an index at
+a custom `db_path`), outside it (Claude Code's synapse export, this project's
+lines in the global query log, the project registry, anchored audit
+checkpoints, the Team governance audit log, `~/.neuralmind/`), and the
+integrations that write it (Claude Code hooks, global hooks, git hook blocks, a
+Hermes plugin pin, the `CLAUDE.md` import line). Each location is resolved by
+the code that writes it, and each present one shows what it holds and how to
+remove it. Read-only.
+
+```bash
+neuralmind data-locations .          # human-readable
+neuralmind data-locations . --json   # {"project": ..., "locations": [{name, kind, path, present, holds, remove, detail}]}
+```
+
+The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
+deleting and again after.
+
 ### doctor *(v0.12.0+)*
 
 Diagnose a project's NeuralMind setup and print an actionable fix for
@@ -1544,6 +1564,13 @@ doesn't verify. Under `security.profile: cui` it warns when
 a key is set, or under the profile, it warns when no checkpoint has been taken
 or the newest is more than 7 days old. Otherwise it reports the newest
 checkpoint, or `ok` with "none".
+
+**Audit log writes** *(v4.18.0+)* reports audit records that couldn't be
+written. Every caller swallows a failed append so auditing never blocks a query
+or a build; the audit trail notes each failure in
+`.neuralmind/audit_write_failures.jsonl` and logs a warning. The check warns
+with the count and the last failure, fails under `security.profile: cui`, and
+is `ok` with none recorded. Fix the cause, then delete the file.
 
 **Query freshness** *(v4.17.0+)* shows the line queries, searches and the
 prompt hook carry right now (see [the freshness notice](#freshness-notice-v4170)):
@@ -4273,7 +4300,7 @@ emits, and runs the documented cases.
 | `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.11.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce from a source checkout (the harness is in `tests/`, not in the pip package) with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history, and *(v4.16.0+)* each trailer's status in the decision store when there is one: INVALIDATED trailers are left out, STALE ones marked; fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.44.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
-| `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
+| `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export. *(v4.18.0+)* Also stops the MCP `neuralmind_export_synapse_memory` tool |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |

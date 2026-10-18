@@ -199,6 +199,18 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4180">
+            <h2>What&rsquo;s New in v4.18.0 &mdash; <code>neuralmind data-locations</code>, audit writes that can&rsquo;t fail unseen, and home-directory copies that follow the encryption policy</h2>
+            <ul>
+                <li><strong><code>neuralmind data-locations</code></strong> &mdash; lists every place a project&rsquo;s data lives, in the project, outside it and in the integrations that write it, resolved by the code that writes each one. The data deletion procedure runs it before and after</li>
+                <li><strong>Failed audit writes are reported</strong> &mdash; a record that can&rsquo;t be written is noted in <code>.neuralmind/audit_write_failures.jsonl</code>, and <code>neuralmind doctor</code>&rsquo;s new <em>Audit log writes</em> check warns (fails under the CUI profile)</li>
+                <li><strong>Home-directory copies follow the encryption policy</strong> &mdash; under <code>security.require_encrypted_storage</code>, Claude Code&rsquo;s synapse export and the global query log are written only to a verified volume, and <code>NEURALMIND_SYNAPSE_EXPORT=0</code> stops the MCP export tool too</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.18.0.md">v4.18.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4172">
             <h2>What&rsquo;s New in v4.17.2 &mdash; a misspelled encryption setting in the machine policy holds every project to the strictest settings</h2>
             <p>v4.17.1&rsquo;s machine policy holds every project to the strictest settings when it holds an invalid value. A <code>require_encrypted_storage</code> that was neither true nor false (<code>flase</code>, a blank value) slipped through: it switched the encryption check on, as a project file does, but left the CUI profile and OS identity off. It now counts as invalid, and <code>neuralmind doctor</code> fails its <em>Security policy</em> check with the reason. A project file still reads such a value as on.</p>
