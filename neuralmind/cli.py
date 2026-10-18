@@ -2639,9 +2639,14 @@ def cmd_data_locations(args):
                 detail = f" ({loc.detail})" if loc.detail else ""
                 print(f"            holds: {loc.holds}{detail}")
                 print(f"            remove: {loc.remove}")
+            if loc.problem:
+                print(f"            problem: {loc.problem}")
     present = sum(loc.present for loc in locations)
     print()
     print(f"{present} of {len(locations)} present. See docs/compliance/DATA_DELETION.md.")
+    problems = sum(bool(loc.problem) for loc in locations)
+    if problems:
+        print(f"{problems} problem(s) above: the list may be incomplete until they're fixed.")
 
 
 def cmd_doctor(args):

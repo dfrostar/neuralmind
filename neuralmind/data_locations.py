@@ -46,23 +46,23 @@ class Location:
     holds: str
     remove: str
     detail: str = ""
+    problem: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-def _raw_config(root: Path) -> tuple[Path | None, dict]:
-    """The project's config file and its contents, tolerating a broken file."""
+def _raw_config(root: Path) -> tuple[Path | None, dict, str]:
+    """The project's config file, its contents, and why it can't be read, if it can't."""
     from .backend_manager import backend_config_path, read_backend_config_file
 
     path = backend_config_path(root)
     if path is None:
-        return None, {}
+        return None, {}, ""
     try:
-        data = read_backend_config_file(path)
-    except Exception:
-        return path, {}
-    return path, data if isinstance(data, dict) else {}
+        return path, read_backend_config_file(path), ""
+    except Exception as exc:
+        return path, {}, f"{type(exc).__name__}: {exc}"
 
 
 def _file_mentions(path: Path, needle: str) -> bool:
@@ -126,7 +126,9 @@ def _records_mention(path: Path, root: Path) -> bool:
     return False
 
 
-def _project_locations(root: Path, config_path: Path | None, config: dict) -> list[Location]:
+def _project_locations(
+    root: Path, config_path: Path | None, config: dict, config_problem: str
+) -> list[Location]:
     locations = [
         _directory(
             root,
@@ -149,6 +151,12 @@ def _project_locations(root: Path, config_path: Path | None, config: dict) -> li
             config_path is not None,
             "configuration, including the security policy",
             f"rm {config_path.name if config_path else 'neuralmind-backend.yaml'}",
+            problem=(
+                f"can't be read ({config_problem}), so a db_path index or anchored "
+                "checkpoints it names aren't listed: fix the file and run this again"
+                if config_problem
+                else ""
+            ),
         ),
     ]
     from .backend_manager import resolve_db_path
@@ -252,7 +260,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
                 str(path),
                 path.exists(),
                 "checkpoint record counts and hashes, no code; kept by default",
-                f"rm {quote(str(path))} (only when erasure is required)",
+                f"rm {quote(str(path))}  # only when erasure is required",
             )
         )
 
@@ -270,7 +278,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
                 str(audit_db),
                 audit_db.exists() and _records_mention(audit_db, root),
                 "this project's path and node names; hash-chained, shared by every project",
-                f"rm {quote(str(audit_db))} (whole file only, when erasure is required)",
+                f"rm {quote(str(audit_db))}  # the whole file only, when erasure is required",
             )
         )
 
@@ -282,7 +290,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             str(shared),
             shared.exists(),
             "daemon files, server token, memory consent, license store; shared by every project",
-            f"rm -rf {quote(str(shared))} (only if no other project uses NeuralMind)",
+            f"rm -rf {quote(str(shared))}  # only if no other project uses NeuralMind",
         )
     )
     return locations
@@ -324,7 +332,7 @@ def _integrations(root: Path) -> list[Location]:
             str(global_settings),
             _file_mentions(global_settings, "neuralmind _hook"),
             "hooks that write data for every project; shared",
-            "neuralmind install-hooks --uninstall --global (if no other project uses them)",
+            "neuralmind install-hooks --uninstall --global  # only if no other project uses them",
         ),
     ]
     hooks_dir = _git_hooks_dir(root)
@@ -378,9 +386,9 @@ def _integrations(root: Path) -> list[Location]:
 def data_locations(project_path: str | Path) -> list[Location]:
     """Every location holding this project's data, present or not."""
     root = Path(project_path).resolve()
-    config_path, config = _raw_config(root)
+    config_path, config, config_problem = _raw_config(root)
     return (
-        _project_locations(root, config_path, config)
+        _project_locations(root, config_path, config, config_problem)
         + _outside_locations(root, config)
         + _integrations(root)
     )

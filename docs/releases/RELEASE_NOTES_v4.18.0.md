@@ -64,7 +64,9 @@ Integrations:
 5 of 15 present. See docs/compliance/DATA_DELETION.md.
 ```
 
-`--json` gives the same list for a script. The
+A config file that can't be parsed is reported as a `problem`, since the
+locations it names can't be listed until it's fixed, and the output says the
+list may be incomplete. `--json` gives the same list for a script. The
 [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after: once the deletion is done, only what you chose to keep
 should be listed as present. The `db_path` index and anchored checkpoints are

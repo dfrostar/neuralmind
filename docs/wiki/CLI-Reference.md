@@ -1537,8 +1537,14 @@ remove it. Read-only.
 
 ```bash
 neuralmind data-locations .          # human-readable
-neuralmind data-locations . --json   # {"project": ..., "locations": [{name, kind, path, present, holds, remove, detail}]}
+neuralmind data-locations . --json   # {"project": ..., "locations": [{name, kind, path, present, holds, remove, detail, problem}]}
 ```
+
+A location it couldn't read is shown with a `problem`. The one that matters is
+a config file that can't be parsed: the `db_path` index and anchored checkpoints
+it names can't be listed until it's fixed, so the output ends by saying the list
+may be incomplete. The remove commands run as printed; a condition on one, such
+as "only when erasure is required", follows it as a `#` comment.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.

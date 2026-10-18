@@ -138,6 +138,29 @@ def _tree(root: Path) -> dict[str, float]:
     return {str(p): p.stat().st_mtime_ns for p in sorted(root.rglob("*"))}
 
 
+def test_every_remove_command_runs_as_printed(env):
+    # Conditions are shell comments, not text a shell would choke on.
+    _populate(env)
+    for loc in dl.data_locations(env.project):
+        if loc.remove.startswith(("rm ", "neuralmind ")):
+            words = shlex.split(loc.remove, comments=True)
+            assert not [w for w in words if w.startswith("(")], loc.remove
+
+
+def test_an_unreadable_config_is_reported_not_ignored(env, capsys):
+    # A broken config hides the db_path index and anchor it names: say so.
+    (env.project / "neuralmind-backend.yaml").write_text("db_path: [unclosed\n", encoding="utf-8")
+    config = _by_name(env.project)["config file"]
+    assert config.present and "can't be read" in config.problem
+    assert "db_path" in config.problem
+    from neuralmind.cli import cmd_data_locations
+
+    cmd_data_locations(SimpleNamespace(project_path=str(env.project), json=False))
+    out = capsys.readouterr().out
+    assert "problem: can't be read" in out
+    assert "the list may be incomplete" in out
+
+
 def test_listing_changes_nothing_on_disk(env):
     _populate(env)
     before = _tree(env.tmp)

@@ -66,7 +66,9 @@ logging is on, the text of every query from every project.
 
 *(v4.18.0+)* Start with `neuralmind data-locations .`, which lists every
 location below that holds this project's data, resolved by the code that writes
-it, with how to remove each. Run it again at the end (§3.3).
+it, with how to remove each. Run it again at the end (§3.3). If it reports a
+`problem` with the config file, fix the file first: until it parses, the
+`db_path` index and anchored checkpoints it names aren't listed.
 
 First stop everything that writes NeuralMind data under this OS account, in
 every project and not only this one: end the agent sessions that use NeuralMind
