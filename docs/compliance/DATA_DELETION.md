@@ -35,7 +35,7 @@ logging is on, the text of every query from every project.
 | `.neuralmind/` | Vector index, code graph, synapse store, decision memory (`memory.db`), audit log and its rotated archives, audit checkpoints, session recaps, command-output cache, build status |
 | `graphify-out/` | A legacy index or a graphify graph, when present |
 | `.neuralmind-team-memory.json` | The team memory bundle. It is committed, so deleting the file leaves earlier versions in git history |
-| `neuralmind-backend.yaml` | Configuration, including the security policy |
+| `neuralmind-backend.yaml` (or `.yml`, or `.json`: NeuralMind reads the first that exists) | Configuration, including the security policy |
 | The directory its `db_path` names, if set (relative to the project, or absolute) | The vector index stored outside `.neuralmind/`, including the text of indexed code (turbovec's `store.sqlite`) |
 
 ### 2.2 Outside the project
@@ -43,8 +43,8 @@ logging is on, the text of every query from every project.
 | Path | What it holds | Written by |
 |---|---|---|
 | `~/.claude/projects/<slug>/memory/synapse-activations.md` | Code symbol and file names from the project's synapse store. `<slug>` is the project's absolute path, symlinks resolved, with each `/` replaced by `-` | Memory export and the Claude Code `SessionStart` hook, when that directory exists |
-| `~/.config/neuralmind/projects.json` | Paths of registered projects | `neuralmind build-all` and the project registry |
-| `~/.config/neuralmind/audit.db` (or the Team config's `audit_db`) | The Team governance audit log: the project's path and the names of code nodes whose shared edges were retracted, hash-chained | `neuralmind team` governance commands |
+| `projects.json` in `$NEURALMIND_CONFIG_DIR`, or `~/.config/neuralmind/` when that's unset | Paths of registered projects | `neuralmind build-all` and the project registry |
+| `audit.db` in the same directory (or the Team config's `audit_db`) | The Team governance audit log: the project's path and the names of code nodes whose shared edges were retracted, hash-chained | `neuralmind team` governance commands |
 | `~/.config/neuralmind/`, `~/.local/share/neuralmind/` (the rest) | User configuration, Team configuration and license; the self-hosted data directory. No project data | You, `neuralmind self-hosted init` |
 | `~/.neuralmind/memory/query_events.jsonl` | The text of every query, with its project's path, from every project on the machine | Query memory logging, when it was accepted at the first-run prompt and `NEURALMIND_MEMORY` isn't `0` |
 | `~/.neuralmind/` (the rest) | Daemon discovery file and log, the graph server's access token, the memory-consent record, the Team license store | The daemon, `neuralmind serve`, the first-run memory-consent prompt, `neuralmind team` / `license` |
@@ -71,8 +71,9 @@ every project and not only this one: end the agent sessions that use NeuralMind
 log below is shared by every project, and a query any of them logs while it's
 rewritten would be lost.
 
-Before anything is deleted, note the two locations `neuralmind-backend.yaml`
-may point outside `.neuralmind/`, since the commands below delete that file:
+Before anything is deleted, note the two locations the project's config file
+(`neuralmind-backend.yaml`, `.yml` or `.json`) may point outside
+`.neuralmind/`, since the commands below delete that file:
 
 - **`db_path`**, where the index is kept if it isn't in `.neuralmind/`. The
   index is `store*.sqlite*` and `index*.tvim*` (turbovec), or `chroma.sqlite3`
@@ -82,10 +83,25 @@ may point outside `.neuralmind/`, since the commands below delete that file:
   Delete those files, and the directory itself only if it holds nothing else.
 - **`security.audit_anchor_dir`**, where this project's checkpoint copies are
   kept. When erasure is required, delete this project's file there; the other
-  projects' files in the same directory are theirs. This prints its path:
+  projects' files in the same directory are theirs. This prints its path, and
+  reads the setting even when another checkpoint setting is invalid:
 
   ```bash
-  python3 -c 'from neuralmind.audit_checkpoint import anchor_checkpoints_path, load_checkpoint_settings; s = load_checkpoint_settings("."); print(anchor_checkpoints_path(".", s.anchor_dir) if s.anchor_dir else "")'
+  python3 - <<'PY'
+  import os
+  from pathlib import Path
+  from neuralmind.audit_checkpoint import anchor_checkpoints_path
+  from neuralmind.backend_manager import backend_config_path, read_backend_config_file
+  root = Path(".").resolve()
+  config = backend_config_path(root)
+  security = (read_backend_config_file(config) if config else {}).get("security") or {}
+  anchor = security.get("audit_anchor_dir")
+  if anchor:
+      anchor_dir = Path(os.path.expanduser(str(anchor).strip()))
+      print(anchor_checkpoints_path(root, anchor_dir if anchor_dir.is_absolute() else root / anchor_dir))
+  else:
+      print("no security.audit_anchor_dir is set")
+  PY
   ```
 
 Then run from the project root:
@@ -93,7 +109,7 @@ Then run from the project root:
 ```bash
 # In the project
 rm -rf .neuralmind/ graphify-out/
-rm -f .neuralmind-team-memory.json neuralmind-backend.yaml
+rm -f .neuralmind-team-memory.json neuralmind-backend.yaml neuralmind-backend.yml neuralmind-backend.json
 
 # Outside the project: Claude Code's copy of the synapse export
 slug="$(pwd -P | sed 's#/#-#g')"
@@ -118,15 +134,17 @@ PY
 neuralmind install-hooks --uninstall
 ```
 
-Then remove the project's entry from `~/.config/neuralmind/projects.json`, the
+Then remove the project's entry from `projects.json` (in `$NEURALMIND_CONFIG_DIR`,
+or `~/.config/neuralmind/`), the
 git hook blocks (2.3), and, if no other project uses NeuralMind, `~/.neuralmind/`.
 The Team governance audit log is not deleted here: it's hash-chained, so
 removing one project's records breaks its verification. Keep it for your
 retention period, or, when erasure is required, delete the whole file
-(`~/.config/neuralmind/audit.db`, or the Team config's `audit_db`). That erases
+(`audit.db` in `$NEURALMIND_CONFIG_DIR` or `~/.config/neuralmind/`, or the Team
+config's `audit_db`). That erases
 every project's governance records, not only this one's.
-The team memory bundle and `neuralmind-backend.yaml` stay in git history until
-that history is rewritten. `neuralmind-backend.yaml` holds the project's
+The team memory bundle and the config file stay in git history until that
+history is rewritten. The config file holds the project's
 security policy, so committing its deletion removes the policy for everyone
 who pulls the change.
 
@@ -151,10 +169,10 @@ rm -f .neuralmind-team-memory.json
 After a complete deletion each of these should print nothing:
 
 ```bash
-ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json neuralmind-backend.yaml 2>/dev/null
+ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json neuralmind-backend.y*ml neuralmind-backend.json 2>/dev/null
 ls ~/.claude/projects/"$(pwd -P | sed 's#/#-#g')"/memory/synapse-activations.md 2>/dev/null
 grep -F "\"$(pwd -P)\"" ~/.neuralmind/memory/query_events.jsonl 2>/dev/null
-grep -F "\"$(pwd -P)\"" ~/.config/neuralmind/projects.json 2>/dev/null
+grep -F "\"$(pwd -P)\"" "${NEURALMIND_CONFIG_DIR:-$HOME/.config/neuralmind}/projects.json" 2>/dev/null
 grep -l "neuralmind-hook-start" "$(git rev-parse --git-path hooks)"/* 2>/dev/null
 ```
 
