@@ -212,13 +212,30 @@ class MCPSecurityManager:
                 "security.identity: os needs the stdio transport; over HTTP the "
                 "server's OS account is not the caller's"
             )
+        name, resolved = self.os_account_role()
+        details: dict[str, Any] = {"identity": "os"}
+        if actor and actor != name:
+            details["claimed_actor"] = actor
+        if role and role != resolved:
+            details["claimed_role"] = role
+        return name, resolved, details
+
+    def os_account_role(self) -> tuple[str, str]:
+        """The OS account this process runs as, and its role in ``security.users``.
+
+        For ``security.identity: os``. Raises ``IdentityDeniedError`` when the
+        policy is broken, its role mapping is writable by every user, the
+        account can't be determined, or it has no role.
+        """
+        if self.settings.identity == IDENTITY_INVALID:
+            raise IdentityDeniedError(f"Refusing: {self.settings.problem}")
         problem = _policy_file_problem(self.settings.config_path)
         if problem:
             raise IdentityDeniedError(problem)
         name = os_identity()
         if not name:
             raise IdentityDeniedError(
-                "security.identity: os, but the OS account this server runs as "
+                "security.identity: os, but the OS account this process runs as "
                 "could not be determined"
             )
         resolved = self.settings.users.get(name, self.settings.default_role)
@@ -227,12 +244,7 @@ class MCPSecurityManager:
                 f"OS account '{name}' has no role in security.users and "
                 "security.default_role is not set"
             )
-        details: dict[str, Any] = {"identity": "os"}
-        if actor and actor != name:
-            details["claimed_actor"] = actor
-        if role and role != resolved:
-            details["claimed_role"] = role
-        return name, resolved, details
+        return name, resolved
 
     def refuse_if_misconfigured(self, actor: str | None, tool_name: str) -> None:
         """Raise ``PolicyConfigError`` when the ``security`` section is malformed.
@@ -355,6 +367,64 @@ def build_security_manager(project_path: str) -> MCPSecurityManager:
         settings=load_security_settings(key),
         config_problem=read_problem or problem,
     )
+
+
+def authorize_local(project_path: str | Path, tool_name: str, surface: str) -> None:
+    """Apply the project's role policy to a surface other than the MCP server.
+
+    The daemon's routes and the CLI's ``build`` and ``validate --write`` act on
+    a project as the OS account running them. Under ``security.identity: os``
+    that account's role must allow ``tool_name``, the MCP tool that does the
+    same thing, so a ``reader`` can't build through the daemon or the CLI when
+    it can't through MCP. A custom ``security.roles`` applies as it does to MCP
+    calls. With ``identity: declared`` nothing off the MCP path names a role,
+    so nothing is checked, as before.
+
+    Raises ``PolicyConfigError``, ``IdentityDeniedError`` or
+    ``AccessDeniedError``, after writing a ``security``/``call_denied`` record
+    naming the surface. Allowed calls are logged by the action itself.
+    """
+    manager = build_security_manager(str(project_path))
+    if manager.settings.identity == IDENTITY_DECLARED:
+        return
+
+    def deny(error: AccessDeniedError, reason: str, **who: str) -> AccessDeniedError:
+        manager.audit.append_event(
+            category="security",
+            action="call_denied",
+            actor=who.get("actor"),
+            actor_role=who.get("role", ""),
+            status="denied",
+            target=tool_name,
+            details={"surface": surface, "reason": reason, "error": str(error)},
+        )
+        return error
+
+    if manager.config_problem:
+        raise deny(PolicyConfigError(f"Refusing: {manager.config_problem}"), "config")
+    try:
+        actor, role = manager.os_account_role()
+    except IdentityDeniedError as exc:
+        raise deny(exc, "identity") from None
+    if not manager.policy.is_allowed(role, tool_name):
+        raise deny(
+            AccessDeniedError(
+                f"OS account '{actor}' has role '{role}', which may not use "
+                f"{tool_name} ({surface})"
+            ),
+            "rbac",
+            actor=actor,
+            role=role,
+        )
+
+
+def denial_reason(error: AccessDeniedError) -> str:
+    """``config``, ``identity`` or ``rbac``: which check refused, for a client."""
+    if isinstance(error, PolicyConfigError):
+        return "config"
+    if isinstance(error, IdentityDeniedError):
+        return "identity"
+    return "rbac"
 
 
 def role_policy_problem(project_path: str | Path) -> str | None:

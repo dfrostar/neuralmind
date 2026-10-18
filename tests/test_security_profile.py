@@ -266,8 +266,11 @@ def test_an_exposed_daemon_still_serves_projects_without_the_profile(tmp_path):
     assert status == 200
 
 
-def test_a_loopback_daemon_with_its_token_serves_a_cui_project(tmp_path):
+def test_a_loopback_daemon_with_its_token_serves_a_cui_project(tmp_path, monkeypatch):
     _config(tmp_path, CUI)
+    # The profile forces identity: os, so the daemon's account needs a role
+    # (CUI maps alice to reader, which may read stats).
+    monkeypatch.setattr("neuralmind.mcp_security.os_identity", lambda: "alice")
     status, _ = daemon_mod.dispatch(_ctx(None), "GET", "/stats", {"project": str(tmp_path)})
     assert status == 200
 

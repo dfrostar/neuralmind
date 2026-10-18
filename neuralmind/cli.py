@@ -20,6 +20,7 @@ from neuralmind.cohesion import DEFAULT_COHESION, DEFAULT_MIN_PEERS
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.drift import DEFAULT_MAX_FINDINGS
+from neuralmind.mcp_security import AccessDeniedError, authorize_local
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.paths import (
@@ -714,6 +715,9 @@ def cmd_build(args):
     if not path.is_dir():
         print(f"Build failed: project path is not a directory: {project_path}")
         sys.exit(1)
+    # Under security.identity: os, this account's role must allow what the
+    # neuralmind_build MCP tool does; main() reports a refusal.
+    authorize_local(project_path, "neuralmind_build", "cli")
 
     # Migration check: surface mismatched version before slow reindex
     _migrate_warning = _check_version_mismatch(project_path)
@@ -2430,6 +2434,9 @@ def cmd_validate(args):
     """
     from neuralmind.core import validate_project
 
+    if args.write:
+        # Writing the IR changes project state, as a build does.
+        authorize_local(args.project_path, "neuralmind_build", "cli")
     result = validate_project(args.project_path, write=args.write)
 
     if args.json:
@@ -8926,6 +8933,12 @@ def main():
         # A refusal, not a crash: say why and where the check's detail lives.
         print(f"\n{e}\n", file=sys.stderr)
         print("Run `neuralmind doctor` to see the Storage encryption check.", file=sys.stderr)
+        sys.exit(1)
+    except AccessDeniedError as e:
+        # Under security.identity: os, this account's role doesn't allow the
+        # command (or the policy is broken, which refuses everything).
+        print(f"\nneuralmind: refused: {e}\n", file=sys.stderr)
+        print("Run `neuralmind doctor` to see the Security policy check.", file=sys.stderr)
         sys.exit(1)
     except ProjectNotFoundError as e:
         # A mistyped project path on a command whose parser doesn't check it

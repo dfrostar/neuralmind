@@ -128,6 +128,13 @@ def _cui_profile(project: Path) -> None:
     (project / "neuralmind-backend.yaml").write_text("security:\n  profile: cui\n")
 
 
+def _every_account_a_reader(project: Path) -> None:
+    path = project / "neuralmind-backend.yaml"
+    path.write_text("security:\n  identity: os\n  default_role: reader\n")
+    if sys.platform != "win32":
+        path.chmod(0o644)
+
+
 # (id, argv with {p} for the project dir, setup, env, expected code)
 CONTRACT = [
     # The regression this file exists for: no graph -> the code-graph check
@@ -165,6 +172,9 @@ CONTRACT = [
         {},
         1,
     ),
+    # Under security.identity: os, a role without neuralmind_build can't build
+    # from the CLI either.
+    ("build-refused-by-role", ["build", "{p}"], _every_account_a_reader, {}, 1),
     ("unknown-option", ["health", "{p}", "--no-such-flag"], None, {}, 2),
     (
         "license-expiring-none-due",
