@@ -388,6 +388,21 @@ def _no_real_tier2_config(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_machine_policy(tmp_path, monkeypatch):
+    """Keep a machine's /etc/neuralmind/policy.yaml out of every test.
+
+    A machine policy tightens every project's security settings, so on a host
+    that has one the whole suite would run under it. Tests of the machine
+    policy point the path at a file of their own.
+    """
+    from neuralmind import security_config
+
+    monkeypatch.setattr(
+        security_config, "MACHINE_POLICY_PATH", tmp_path / ".no-machine-policy" / "policy.yaml"
+    )
+
+
+@pytest.fixture(autouse=True)
 def _keyword_decision_search(monkeypatch):
     """Pin decision search to keyword mode unless a test asks for another.
 

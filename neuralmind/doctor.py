@@ -638,7 +638,7 @@ def _check_security_policy(project: Path) -> Check:
             f"identity: os; account '{account}' has no role, so its MCP calls are refused",
             fix=f"Add '{account}' to security.users or set security.default_role.",
         )
-    detail = f"identity: os; account '{account}' gets role '{role}'"
+    detail = f"identity: os; account '{account}' gets role '{role}'{_machine_note(settings)}"
     if path is not None and sys.platform != "win32":
         mode = path.stat().st_mode
         if mode & stat.S_IWOTH:
@@ -697,6 +697,7 @@ def _check_security_profile(project: Path) -> Check:
     """
     import os
 
+    from neuralmind import security_config
     from neuralmind.security_config import PROFILE_CUI, load_security_settings
 
     name = "Security profile"
@@ -705,8 +706,12 @@ def _check_security_profile(project: Path) -> Check:
         return Check(
             name,
             OK,
-            "none; each security setting applies on its own",
-            fix="For a CUI enclave, set security.profile: cui to enforce them as one unit.",
+            f"none; each security setting applies on its own{_machine_note(settings)}",
+            fix=(
+                "For a CUI enclave, set security.profile: cui in the machine policy "
+                f"({security_config.MACHINE_POLICY_PATH}) to enforce them as one unit "
+                "on every project."
+            ),
         )
     if settings.problem:
         return Check(
@@ -755,11 +760,22 @@ def _check_security_profile(project: Path) -> Check:
         "identity: os, encrypted storage required, servers on loopback with their "
         "token only, LLM seeding refused"
     )
+    note = _machine_note(settings)
     if fails:
-        return Check(name, FAIL, f"profile: cui; {'; '.join(fails + warns)}", fix=" ".join(fixes))
+        return Check(
+            name, FAIL, f"profile: cui; {'; '.join(fails + warns)}{note}", fix=" ".join(fixes)
+        )
     if warns:
-        return Check(name, WARN, f"profile: cui; {'; '.join(warns)}", fix=" ".join(fixes))
-    return Check(name, OK, f"profile: cui ({enforced}); OS FIPS mode on")
+        return Check(name, WARN, f"profile: cui; {'; '.join(warns)}{note}", fix=" ".join(fixes))
+    return Check(name, OK, f"profile: cui ({enforced}); OS FIPS mode on{note}")
+
+
+def _machine_note(settings) -> str:
+    """Name the machine policy when one applies, so doctor shows where a
+    setting comes from when the project file doesn't carry it."""
+    if settings.machine_policy is None:
+        return ""
+    return f"; machine policy {settings.machine_policy} applies"
 
 
 # A checkpoint only covers the records before it: past this age, records

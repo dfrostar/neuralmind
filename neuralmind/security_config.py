@@ -29,11 +29,28 @@ The general config loader treats a file that doesn't parse as empty, which is
 right for backend tuning and wrong for a security policy: a YAML typo would
 silently switch enforcement off. So when the file fails to parse and its text
 names one of these settings, this module fails closed instead.
+
+The machine policy
+------------------
+``neuralmind-backend.yaml`` lives in the project root, and whoever owns that
+directory can delete it, even when an administrator owns the file. Deleting it
+used to switch every setting above off. An administrator can also write
+``/etc/neuralmind/policy.yaml`` (``C:\\ProgramData\\NeuralMind\\policy.yaml``
+on Windows) with a ``security:`` section holding ``profile``, ``identity`` or
+``require_encrypted_storage``. It applies to every project on the machine and
+only tightens: each setting takes the stricter of the machine's and the
+project's value, so neither file can loosen the other. It can't grant roles
+(``users``, ``default_role`` and ``roles`` stay in the project file), so a
+user who manages to create it gains nothing. A machine policy that doesn't
+parse, names anything else, or on POSIX isn't owned by root and writable only
+by root holds every project to the strictest settings.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import stat
+import sys
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +68,39 @@ _PROFILES = (PROFILE_CUI,)
 _ENFORCEMENT_KEYS = ("identity", "require_encrypted_storage", "profile")
 _FALSE_WORDS = {"false", "no", "off", "0"}
 
+MACHINE_POLICY_NAME = "policy.yaml"
+
+
+def _program_data() -> Path:
+    """The all-users application data folder on Windows.
+
+    Asked of the shell rather than read from ``%ProgramData%``: any user can
+    set that variable, and pointing it at an empty folder would hide the
+    machine policy.
+    """
+    try:
+        import ctypes
+
+        buffer = ctypes.create_unicode_buffer(260)
+        # CSIDL_COMMON_APPDATA
+        if ctypes.windll.shell32.SHGetFolderPathW(None, 0x23, None, 0, buffer) == 0:
+            if buffer.value:
+                return Path(buffer.value)
+    except Exception:
+        pass
+    return Path("C:\\ProgramData")
+
+
+def _default_machine_policy_path() -> Path:
+    if sys.platform == "win32":
+        return _program_data() / "NeuralMind" / MACHINE_POLICY_NAME
+    return Path("/etc/neuralmind") / MACHINE_POLICY_NAME
+
+
+# Deliberately not configurable from the environment: a variable the user
+# controls could point it at an empty file. Tests replace the attribute.
+MACHINE_POLICY_PATH = _default_machine_policy_path()
+
 
 @dataclass(frozen=True)
 class SecuritySettings:
@@ -62,9 +112,104 @@ class SecuritySettings:
     config_path: Path | None = None
     # Why the settings were forced to their strictest values, if they were.
     problem: str | None = None
+    # The machine policy that applied, if one exists.
+    machine_policy: Path | None = None
 
 
 def load_security_settings(project_path: str | Path) -> SecuritySettings:
+    project = _load_project_settings(project_path)
+    machine = load_machine_policy()
+    if machine is None:
+        return project
+    return _tightened(project, machine)
+
+
+def load_machine_policy() -> SecuritySettings | None:
+    """The machine policy's settings, or None when there is no machine policy."""
+    path = MACHINE_POLICY_PATH
+    try:
+        if not path.exists():
+            return None
+    except OSError:
+        pass  # can't even tell: treat it as present, and unreadable below
+
+    def strictest(problem: str) -> SecuritySettings:
+        return SecuritySettings(
+            identity=IDENTITY_INVALID,
+            require_encrypted_storage=True,
+            profile=PROFILE_CUI,
+            config_path=path,
+            problem=f"machine policy {path} {problem}",
+            machine_policy=path,
+        )
+
+    untrusted = _untrusted_machine_policy(path)
+    if untrusted:
+        return strictest(untrusted)
+    try:
+        config = read_backend_config_file(path)
+    except Exception as exc:
+        return strictest(f"does not parse ({exc})")
+    security = config.get("security")
+    if not isinstance(security, dict):
+        return strictest("needs a `security` mapping")
+    extra = sorted(str(key) for key in security if key not in _ENFORCEMENT_KEYS)
+    if extra:
+        return strictest(
+            f"can only set {', '.join(_ENFORCEMENT_KEYS)}, not {', '.join(extra)}; "
+            "users and roles stay in each project's neuralmind-backend.yaml"
+        )
+    settings = _parse(security, path)
+    if settings.problem:
+        return replace(
+            settings, problem=f"machine policy {path}: {settings.problem}", machine_policy=path
+        )
+    return replace(settings, machine_policy=path)
+
+
+def _untrusted_machine_policy(path: Path) -> str | None:
+    """Why ``path`` could be changed by someone other than an administrator.
+
+    POSIX: the file and its directory must be owned by root and writable by
+    no one else, since a writable directory lets its file be replaced. Windows
+    ACLs aren't mode bits, so nothing is checked there; the walkthrough
+    says how to restrict the folder.
+    """
+    if sys.platform == "win32":
+        return None
+    for target in (path, path.parent):
+        try:
+            info = target.stat()
+        except OSError as exc:
+            return f"can't be checked ({exc})"
+        if info.st_uid != 0:
+            return f"is not owned by root ({target} belongs to uid {info.st_uid})"
+        if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+            return f"is writable by users other than root ({target}); chmod go-w it"
+    return None
+
+
+def _tightened(project: SecuritySettings, machine: SecuritySettings) -> SecuritySettings:
+    """Each setting at the stricter of the project's and the machine's value."""
+    if IDENTITY_INVALID in (project.identity, machine.identity):
+        identity = IDENTITY_INVALID
+    elif IDENTITY_OS in (project.identity, machine.identity):
+        identity = IDENTITY_OS
+    else:
+        identity = IDENTITY_DECLARED
+    return replace(
+        project,
+        identity=identity,
+        require_encrypted_storage=(
+            project.require_encrypted_storage or machine.require_encrypted_storage
+        ),
+        profile=machine.profile or project.profile,
+        problem=machine.problem or project.problem,
+        machine_policy=machine.machine_policy,
+    )
+
+
+def _load_project_settings(project_path: str | Path) -> SecuritySettings:
     path = backend_config_path(project_path)
     if path is None:
         return SecuritySettings()
