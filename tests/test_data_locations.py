@@ -247,6 +247,28 @@ def test_a_shared_hook_block_counts_only_for_the_project_it_names(env):
     assert not _by_name(repo.resolve())["git hook blocks"].present
 
 
+def test_a_file_that_cant_be_read_is_a_problem_not_absent(env):
+    # A directory where a file should be can't be read on any platform (a
+    # chmod wouldn't stop root). Each would otherwise be listed as absent,
+    # and the inventory would look complete.
+    from neuralmind import memory
+    from neuralmind.hermes_install import plugin_dir
+
+    unreadable = {
+        "Team governance audit log": env.audit_db,
+        "global query log": memory.global_query_events_file(),
+        "project registry": env.home / "config" / "projects.json",
+        "Claude Code hooks": env.project / ".claude" / "settings.json",
+        "Hermes plugin pin": plugin_dir() / "config.json",
+        "CLAUDE.md import line": env.project / "CLAUDE.md",
+    }
+    for path in unreadable.values():
+        path.mkdir(parents=True)
+    found = _by_name(env.project)
+    for name in unreadable:
+        assert found[name].present and "can't be read" in found[name].problem, name
+
+
 def test_an_unreadable_team_config_is_reported(env, monkeypatch):
     import neuralmind.tier2.config as tier2_config
 

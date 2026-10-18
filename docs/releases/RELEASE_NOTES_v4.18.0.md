@@ -80,7 +80,8 @@ A git hook block counts only for the project it rebuilds: a monorepo's projects
 and a repository's worktrees share one hooks directory, and `init-hook`'s block
 names one of them. A `db_path` that isn't a path, or a Team `audit_db` given as a
 relative path (each process writes its own copy under its working directory),
-is reported as a `problem`.
+is reported as a `problem`, as is any file it can't read: that's listed as
+present with the reason, never as absent.
 
 ### Failed audit writes are noted and reported
 

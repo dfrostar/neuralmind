@@ -275,7 +275,8 @@ class AuditTrail:
                 # note too, leaving nothing durable to show the gap.
                 raise AuditUnrecordedError(
                     f"audit record {category}/{action} couldn't be written ({exc}) or noted, "
-                    "and security.profile: cui doesn't go on without a record. Fix the cause "
+                    "so under security.profile: cui the call is reported as failed and its "
+                    "result withheld; anything it already changed stays changed. Fix the cause "
                     "(disk space, permissions on .neuralmind/)."
                 ) from exc
             raise

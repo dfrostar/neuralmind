@@ -17,6 +17,7 @@ import os
 import re
 import shlex
 import subprocess
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -69,11 +70,53 @@ def _raw_config(root: Path) -> tuple[Path | None, dict, str]:
         return path, {}, f"{type(exc).__name__}: {exc}"
 
 
-def _file_mentions(path: Path, needle: str) -> bool:
+class _UnreadableError(Exception):
+    """A file exists but can't be read, so whether it holds this project's data isn't known."""
+
+
+def _read(path: Path) -> str:
+    """The file's text, or "" when it doesn't exist; raises ``_UnreadableError`` when it can't be read."""
     try:
-        return needle in path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return False
+        return path.read_text(encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        return ""
+    except OSError as exc:
+        raise _UnreadableError(
+            f"can't be read ({exc}), so whether it holds this project's data isn't known: "
+            "make it readable and run this again"
+        ) from exc
+
+
+def _parse_json(path: Path):
+    """The file's JSON, or None when it doesn't exist; ``_UnreadableError`` when it can't be used."""
+    text = _read(path)
+    if not text.strip():
+        return None
+    try:
+        return json.loads(text)
+    except ValueError as exc:
+        raise _UnreadableError(
+            f"can't be parsed ({exc}), so whether it holds this project's data isn't known: "
+            "fix it and run this again"
+        ) from exc
+
+
+def _present(location: Location, test: Callable[[], object]) -> Location:
+    """Set whether ``location`` holds this project's data.
+
+    A file that can't be read or parsed counts as present, with the reason as
+    its problem: an inventory that drops it would look complete when it isn't.
+    """
+    try:
+        location.present = bool(test())
+    except _UnreadableError as exc:
+        location.present = True
+        location.problem = location.problem or str(exc)
+    return location
+
+
+def _file_mentions(path: Path, needle: str) -> bool:
+    return needle in _read(path)
 
 
 def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
@@ -135,17 +178,13 @@ def _records_mention(path: Path, root: Path) -> bool:
         elif isinstance(value, str):
             yield value
 
-    try:
-        with path.open(encoding="utf-8", errors="replace") as file:
-            for line in file:
-                try:
-                    record = json.loads(line)
-                except ValueError:
-                    continue
-                if any(s == str(root) or s.startswith(inside) for s in strings(record)):
-                    return True
-    except OSError:
-        pass
+    for line in _read(path).splitlines():
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        if any(s == str(root) or s.startswith(inside) for s in strings(record)):
+            return True
     return False
 
 
@@ -244,42 +283,46 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     )
 
     log = memory.global_query_events_file()
-    queries = 0
-    try:
-        for line in log.read_text(encoding="utf-8").splitlines():
-            try:
-                queries += json.loads(line).get("project_path") == str(root)
-            except (ValueError, AttributeError):
-                continue
-    except OSError:
-        pass
-    locations.append(
-        Location(
-            "global query log",
-            OUTSIDE,
-            str(log),
-            queries > 0,
-            "the text of this project's queries, among every project's",
-            "remove this project's lines (DATA_DELETION.md 3.1)",
-            f"{queries} line(s) from this project" if queries else "",
-        )
+    query_log = Location(
+        "global query log",
+        OUTSIDE,
+        str(log),
+        False,
+        "the text of this project's queries, among every project's",
+        "remove this project's lines (DATA_DELETION.md 3.1)",
     )
 
+    def project_queries() -> int:
+        count = 0
+        for line in _read(log).splitlines():
+            try:
+                count += json.loads(line).get("project_path") == str(root)
+            except (ValueError, AttributeError):
+                continue
+        query_log.detail = f"{count} line(s) from this project" if count else ""
+        return count
+
+    locations.append(_present(query_log, project_queries))
+
     registry = _resolve_registry_path()
-    registered = False
-    try:
-        entries = json.loads(registry.read_text(encoding="utf-8"))
-        registered = any(isinstance(e, dict) and e.get("path") == str(root) for e in entries)
-    except (OSError, ValueError, TypeError):
-        pass
+
+    def registered() -> bool:
+        entries = _parse_json(registry)
+        return isinstance(entries, list) and any(
+            isinstance(e, dict) and e.get("path") == str(root) for e in entries
+        )
+
     locations.append(
-        Location(
-            "project registry",
-            OUTSIDE,
-            str(registry),
+        _present(
+            Location(
+                "project registry",
+                OUTSIDE,
+                str(registry),
+                False,
+                "this project's path",
+                f"neuralmind project remove {shlex.quote(str(root))}",
+            ),
             registered,
-            "this project's path",
-            f"neuralmind project remove {shlex.quote(str(root))}",
         )
     )
 
@@ -328,8 +371,9 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             root,
             note="the whole file only, when erasure is required",
         )
-        team_log.present = team_log.present and _records_mention(Path(team_log.path), root)
         team_log.problem = team_problem
+        if team_log.present:
+            _present(team_log, lambda: _records_mention(Path(team_log.path), root))
         if relative and not team_log.problem:
             # The writers open it as given, so each process writes its own copy
             # under its working directory, and only this one can be listed.
@@ -382,11 +426,7 @@ def _git_hooks(root: Path) -> tuple[Path, str] | None:
 
 def _hook_block_names(hook: Path, target: str) -> bool:
     """Whether ``hook``'s NeuralMind block rebuilds the project ``target`` names."""
-    try:
-        text = hook.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return False
-    block = text.partition(_HOOK_MARKER)[2].partition(_HOOK_END)[0]
+    block = _read(hook).partition(_HOOK_MARKER)[2].partition(_HOOK_END)[0]
     for match in _HOOK_TARGET.finditer(block):
         try:
             if shlex.split(match.group(1)) == [target]:
@@ -402,67 +442,82 @@ def _integrations(root: Path) -> list[Location]:
     project_settings = root / ".claude" / "settings.json"
     global_settings = Path.home() / ".claude" / "settings.json"
     locations = [
-        Location(
-            "Claude Code hooks",
-            INTEGRATION,
-            str(project_settings),
-            _file_mentions(project_settings, "neuralmind _hook"),
-            "hooks that write this project's data",
-            f"neuralmind install-hooks {shlex.quote(str(root))} --uninstall",
+        _present(
+            Location(
+                "Claude Code hooks",
+                INTEGRATION,
+                str(project_settings),
+                False,
+                "hooks that write this project's data",
+                f"neuralmind install-hooks {shlex.quote(str(root))} --uninstall",
+            ),
+            lambda: _file_mentions(project_settings, "neuralmind _hook"),
         ),
-        Location(
-            "global Claude Code hooks",
-            INTEGRATION,
-            str(global_settings),
-            _file_mentions(global_settings, "neuralmind _hook"),
-            "hooks that write data for every project; shared",
-            "neuralmind install-hooks --uninstall --global  # only if no other project uses them",
+        _present(
+            Location(
+                "global Claude Code hooks",
+                INTEGRATION,
+                str(global_settings),
+                False,
+                "hooks that write data for every project; shared",
+                "neuralmind install-hooks --uninstall --global  # only if no other project uses them",
+            ),
+            lambda: _file_mentions(global_settings, "neuralmind _hook"),
         ),
     ]
     git = _git_hooks(root)
     if git is not None:
         hooks_dir, target = git
-        blocks = sorted(
-            p.name
-            for p in (hooks_dir.iterdir() if hooks_dir.is_dir() else ())
-            if p.is_file() and _hook_block_names(p, target)
-        )
-        locations.append(
-            Location(
-                "git hook blocks",
-                INTEGRATION,
-                str(hooks_dir),
-                bool(blocks),
-                "rebuilds that write this project's index",
-                "delete each block between # neuralmind-hook-start and # neuralmind-hook-end",
-                ", ".join(blocks),
-            )
-        )
-    pin = plugin_dir() / "config.json"
-    pinned = False
-    try:
-        pinned = json.loads(pin.read_text(encoding="utf-8")).get("project") == str(root)
-    except (OSError, ValueError, AttributeError):
-        pass
-    locations.append(
-        Location(
-            "Hermes plugin pin",
+        hook_blocks = Location(
+            "git hook blocks",
             INTEGRATION,
-            str(pin),
+            str(hooks_dir),
+            False,
+            "rebuilds that write this project's index",
+            "delete each block between # neuralmind-hook-start and # neuralmind-hook-end",
+        )
+
+        def blocks() -> list[str]:
+            names = sorted(
+                p.name
+                for p in (hooks_dir.iterdir() if hooks_dir.is_dir() else ())
+                if p.is_file() and _hook_block_names(p, target)
+            )
+            hook_blocks.detail = ", ".join(names)
+            return names
+
+        locations.append(_present(hook_blocks, blocks))
+    pin = plugin_dir() / "config.json"
+
+    def pinned() -> bool:
+        data = _parse_json(pin)
+        return isinstance(data, dict) and data.get("project") == str(root)
+
+    locations.append(
+        _present(
+            Location(
+                "Hermes plugin pin",
+                INTEGRATION,
+                str(pin),
+                False,
+                "the Hermes plugin pinned to this project",
+                "neuralmind install-hermes-plugin --unpin",
+            ),
             pinned,
-            "the Hermes plugin pinned to this project",
-            "neuralmind install-hermes-plugin --unpin",
         )
     )
     claude_md = root / "CLAUDE.md"
     locations.append(
-        Location(
-            "CLAUDE.md import line",
-            INTEGRATION,
-            str(claude_md),
-            _file_mentions(claude_md, _CLAUDE_IMPORT),
-            "imports the synapse memory into every Claude Code session",
-            f"delete the {_CLAUDE_IMPORT} line",
+        _present(
+            Location(
+                "CLAUDE.md import line",
+                INTEGRATION,
+                str(claude_md),
+                False,
+                "imports the synapse memory into every Claude Code session",
+                f"delete the {_CLAUDE_IMPORT} line",
+            ),
+            lambda: _file_mentions(claude_md, _CLAUDE_IMPORT),
         )
     )
     return locations
