@@ -2,7 +2,7 @@
 
 **One-page reference for procurement, security review, and compliance teams.** Consolidates the NIST AI RMF, SOC 2, CMMC 2.0, and GDPR claims already documented across [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) and [`ENTERPRISE.md`](ENTERPRISE.md) into a single reviewable surface.
 
-> **Honest scope:** NeuralMind itself is not certified to any compliance framework. The *architecture* supports certification of *your deployment* — every required control is either built in or available to switch on. The evidence below is auditable; the certifications are yours to obtain.
+> **Honest scope:** NeuralMind itself is not certified to any compliance framework. The *architecture* is built to support certification of *your deployment*. The evidence below shows which controls NeuralMind provides, and the CMMC table shows which stay yours. The evidence is auditable; the certifications are yours to obtain.
 
 ---
 
@@ -12,25 +12,25 @@
 |---|---|
 | Data leaves your machine | **Never by default** — fully local, no telemetry, no remote logging, no update checks. One opt-in exception: see below |
 | Code uploaded to a cloud provider | **No** — all embeddings generated and stored locally via ChromaDB or the local ONNX backend |
-| Outbound network at runtime | **None by default** — install-time only unless `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` are explicitly set, which sends only README/architecture-doc prose (never code, never client files) to Anthropic for synapse seeding. See [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) and the [air-gapped walkthrough](use-cases/air-gapped.md) |
+| Outbound network at runtime | **One download by default** — the embedding model on the first build, from a pinned URL checked against a pinned SHA256, and none when it's pre-staged with `NEURALMIND_ONNX_MODEL_DIR`. `tiktoken`, if you install it, downloads its vocabulary on first use. Nothing else unless `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` are explicitly set, which sends only README/architecture-doc prose (never code, never client files) to Anthropic for synapse seeding. See [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) and the [air-gapped walkthrough](use-cases/air-gapped.md) |
 | Video/media file ingestion | **Not supported** — no code path accepts video, image, or audio files at any layer; see [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) §2 |
 | Certifications held | **None.** NeuralMind has no SOC 2 report and no CMMC assessment. Both frameworks assess an organization's environment; the sections below show what NeuralMind gives your assessor |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
-| Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
+| Software Bill of Materials | **Auto-generated** — CycloneDX JSON for every release since v4.0.0, served at [neuralmind.uk/security](https://neuralmind.uk/security) |
 | Secure development (NIST SP 800-218 SSDF) | **Practice-by-practice evidence** in [`compliance/SSDF.md`](compliance/SSDF.md). *(v4.14.0+)* Container images are signed (cosign, keyless), releases carry build-provenance attestations, and a VEX document lists the dependency advisories that don't apply. NIST doesn't certify against the SSDF: a federal buyer asks for CISA's attestation form, signed by Cheval-Volant LLC |
-| License | **MIT** — full source review, no vendor lock-in |
+| License | **MIT core** — the Team modules in `neuralmind/tier2/` are source-available ([LICENSING.md](../LICENSING.md)); full source review, no vendor lock-in |
 | Source available | **Yes** — entire codebase on GitHub, every claim verifiable |
 
 ---
 
-## NIST AI RMF (AI Risk Management Framework) — full coverage
+## NIST AI RMF (AI Risk Management Framework) — evidence by function
 
 The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### GOVERN — oversight, accountability, policies
 
 - **Per-tool permission policy** for MCP calls (`admin`, `builder`, `reader`, configurable in `neuralmind-backend.yaml`). By default callers declare their own role, unauthenticated; with `security.identity: os` *(v4.7.0+)* the role is bound to the OS account — see `SECURITY-GUIDE.md` §Access Control
-- **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login)
+- **Access audit trail** at `.neuralmind/audit_events.jsonl` — queries, searches, builds, and MCP calls logged with timestamp, action, status, and details (the actor is the value the MCP caller declares, or locally `NEURALMIND_ACTOR` or the OS login). A record that can't be written (a full disk, a permission error) is dropped without notice, so the call still runs: don't count on the log being complete
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
 - **Audit export for your assessor:** `neuralmind audit export . --format jsonl` (or `--format cef`). NeuralMind has no report generator, so build the report from the export
 
@@ -49,7 +49,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 ### MANAGE — risk controls
 
 - **Secret scanning** before indexing: `neuralmind scan-for-secrets` is a separate step, and `build --redact-secrets` scrubs indexed text as a backstop. Neither runs at query time
-- **Rate limiting** enforceable at the MCP server boundary
+- **Rate limiting** at the MCP server boundary (`security.rate_limit`)
 - **No anomaly detection or alerting.** Denied calls are in the audit log; feed `neuralmind audit export` to your SIEM to alert on them
 
 ---
@@ -63,11 +63,11 @@ A SOC 2 report is a CPA firm's attestation about a *service organization's* cont
 | **CC6.1** | Logical access security | The MCP server uses the stdio transport by default, so only the agent process that launched it can call it. With `security.identity: os` *(v4.7.0+)* it identifies that caller by the OS account the OS authenticated, and refuses the HTTP transport. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires an access token, persisted across restarts, unless started with `--no-auth` |
 | **CC6.3** | Role-based access, least privilege | Per-tool permission sets for `admin`, `builder`, and `reader` (`neuralmind/mcp_security.py`), with denials written to the audit log. By default each MCP call declares its own role; with `security.identity: os` the role comes from `security.users` for the caller's OS account, and what a call claims is logged, not used |
 | **CC6.7** | Restricting transmission of information | By default, no telemetry and no repository content sent off the machine; the one outbound request is the embedding-model download, pre-seedable with `NEURALMIND_ONNX_MODEL_DIR`. The opt-in `NEURALMIND_LLM_SEED=1` sends the project's `README.md` and `docs/architecture.md` to Anthropic |
-| **CC7.1** | Detecting vulnerabilities | CycloneDX SBOM on every tagged release, for your SCA scanner |
+| **CC7.1** | Detecting vulnerabilities | A CycloneDX SBOM per release (see *At a glance* for the gaps) and a VEX document, for your SCA scanner |
 | **CC7.2** | Monitoring for anomalies | Hash-chained `.neuralmind/audit_events.jsonl` (`neuralmind audit verify` walks the chain), `/healthz` endpoint, live activity feed |
 | **CC9.2** | Vendor and business-partner risk | MIT source, SBOM, and the [third-party LLM disclosure](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) for the opt-in `NEURALMIND_LLM_SEED` path |
 | **A1.2** | Backup and recovery | All state is local files: `.neuralmind/` (SQLite and JSONL), the committed `.neuralmind-team-memory.json`, and `graphify-out/` where it exists (older builds, or the graphify backend). Back them up with your normal tooling, or rebuild the index from source with `neuralmind build` |
-| **C1.1 / C1.2** | Keeping and disposing of confidential information | The index and audit log stay in the project directory under your access controls; the [deletion procedure](compliance/DATA_DELETION.md) lists every location to remove, including the committed `.neuralmind-team-memory.json` |
+| **C1.1 / C1.2** | Keeping and disposing of confidential information | The index and audit log stay in the project directory under your access controls; the [deletion procedure](compliance/DATA_DELETION.md) lists each location to remove, including the committed `.neuralmind-team-memory.json` and the copies NeuralMind writes outside the project (Claude Code's synapse export and, with query memory on, a query log in the home directory) |
 | **P3.1 / P4.1** | Collecting and using personal information only for stated purposes | No telemetry, so nothing is collected by us. Locally, the audit log stores each query's full text and an actor name (`NEURALMIND_ACTOR` or the OS login), which can be personal data and falls under your privacy controls |
 
 The policies the project itself runs under (access control, change management, incident response, and others) are in [`compliance/`](compliance/), each tagged with the criteria it addresses.
@@ -88,11 +88,11 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 | **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
 | **AU.L2-3.3.2** | Trace actions to individual users | Every event records an actor. With `security.identity: os`, it is the OS account, read from the OS, for MCP calls and CLI events alike; a declared actor or `NEURALMIND_ACTOR` is kept as `claimed_actor` | Without `identity: os`, the actor is whatever the caller or environment says; tie events to OS login records |
 | **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log, a record without a hash once the chain has started, and a line that isn't a JSON object (v4.8.0 and earlier missed those at the end of the log). The chain alone cannot detect removal of the newest records, or a rewrite that recomputes the chain, which has no secret key. *(v4.16.0+)* Signed checkpoints close both gaps: `neuralmind audit checkpoint` signs the record count and the last record's hash with an ECDSA P-256 key pinned in `security.audit_checkpoint_key`, anchors a copy in `security.audit_anchor_dir`, and `audit verify` fails on truncation, a recomputed chain or a forged checkpoint. `doctor` warns under `security.profile: cui` when either setting is missing or the newest checkpoint is over a week old. *(v4.17.1+)* Appends from several processes hold an OS lock, so concurrent writers no longer produce a chain `verify` rejects | Keeping the signing key in an administrator account, an anchor directory only the administrator can write, a checkpoint schedule (records since the newest checkpoint are covered by the chain alone), and forwarding to your SIEM |
-| **CM.L2-3.4.1** | Baseline configurations and inventories | CycloneDX SBOM on every tagged release | Recording the pinned version in your baseline |
+| **CM.L2-3.4.1** | Baseline configurations and inventories | A CycloneDX SBOM per release (see *At a glance* for the gaps) | Recording the pinned version in your baseline |
 | **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to `127.0.0.1` by default (`neuralmind serve --host` can change it); [air-gapped install](use-cases/air-gapped.md). *(v4.16.0+)* Under `security.profile: cui`, `serve` won't listen beyond loopback, and a daemon that does refuses the project | Not exposing the HTTP transport beyond the enclave |
 | **SC.L2-3.13.8** | Protect CUI in transmission | NeuralMind's HTTP servers carry no TLS. *(v4.16.0+)* Under `security.profile: cui` they are refused beyond loopback and without their token, so CUI doesn't cross a network through them; the MCP server stays on stdio | An SSH tunnel or your enclave's encrypted network for remote access |
 | **SC.L2-3.13.11** | FIPS-validated cryptography for CUI | NeuralMind doesn't encrypt data itself. Its own hash calls work with the OS FIPS mode on *(v4.13.0+; earlier, document ingestion crashed there)*, and CI runs the test suite with the OpenSSL FIPS provider enforced. `doctor` reports the OS FIPS mode on Linux and Windows, and *(v4.16.0+)* fails a project under `security.profile: cui` when it is off | FIPS-validated full-disk encryption on the host, with the OS FIPS mode on |
-| **SC.L2-3.13.16** | Protect CUI at rest | With `security.require_encrypted_storage: true` *(v4.7.0+)*, NeuralMind verifies FileVault, BitLocker, or dm-crypt/LUKS on every volume holding its state (project, `.neuralmind/`, a custom index path), refuses to build, query, serve MCP tools, or run hooks without it, and logs each check | The encryption itself, covering `.neuralmind/`, `.neuralmind-team-memory.json`, and any `graphify-out/` |
+| **SC.L2-3.13.16** | Protect CUI at rest | With `security.require_encrypted_storage: true` *(v4.7.0+)*, NeuralMind verifies FileVault, BitLocker, or dm-crypt/LUKS on the volumes holding the project, `.neuralmind/` and a custom index path, refuses to build, query, serve MCP tools, or run hooks without it, and logs each check. It doesn't check the home directory, where Claude Code's synapse export (code symbol names) and, with query memory on, the query log are written | The encryption itself, covering `.neuralmind/`, `.neuralmind-team-memory.json`, any `graphify-out/`, and the home directory, or turn those two off (`NEURALMIND_SYNAPSE_EXPORT=0`, `NEURALMIND_MEMORY=0`) |
 | **SI.L2-3.14.1** | Identify and correct system flaws | [Vulnerability disclosure policy](../SECURITY.md), SBOM for your scanner | Staying on the latest release |
 
 **The AI agent is the boundary that matters.** NeuralMind hands code slices to your coding agent, and the agent sends them to its model provider. If that code is CUI, the provider is a cloud service handling covered defense information and must meet DFARS 252.204-7012 (FedRAMP Moderate or equivalent). NeuralMind reduces how much code the agent sends; it does not make a provider eligible.
@@ -107,9 +107,9 @@ NeuralMind processes code. Code can contain comments referencing names, emails, 
 
 - **Lawful basis** — operator-controlled (NeuralMind doesn't make the decision; you do)
 - **Data minimisation** — NeuralMind retrieves only the ~800 tokens of context needed per query, not the full codebase
-- **Purpose limitation** — retrieval is per-query; no profile-building, no cross-query aggregation by default
+- **Purpose limitation** — retrieval is per-query; no profile of any person. The synapse layer learns across queries which code is used together, not who used it
 - **Storage limitation** — the synapse store decays unused edges automatically (configurable via `NEURALMIND_SYNAPSE_DECAY_HALF_LIFE`)
-- **Right to erasure** — synapse store and audit log are local files; `rm -rf .neuralmind/` is a complete erasure path
+- **Right to erasure** — every store is a local file; the [deletion procedure](compliance/DATA_DELETION.md) removes them all. `rm -rf .neuralmind/` alone leaves the copies outside the project and the committed team-memory bundle's git history
 - **Data residency** — entirely under operator control; no cross-border transfers initiated by NeuralMind
 - **Pseudonymisation** — the audit log actor is `NEURALMIND_ACTOR` or the OS login on local queries, and caller-declared at the MCP boundary; set `NEURALMIND_ACTOR` to a hashed token rather than a username
 - **Breach notification** — local files, no external surface area by default

@@ -1,7 +1,7 @@
 # Incident Response Plan
 
-**Date:** 2026-10-03
-**Version:** 1.1
+**Date:** 2026-10-18
+**Version:** 1.2
 **SOC 2 Controls:** CC7.3, CC7.4, CC7.5
 
 ---
@@ -9,6 +9,12 @@
 ## 1. Purpose
 
 Define how to detect, respond to, recover from, and learn from security incidents affecting NeuralMind.
+
+NeuralMind has one maintainer. Version 1.1 promised a response within an hour
+for a critical incident, which one person can't keep, and kept its records in
+"private GitHub Issues", which GitHub doesn't have. The targets below are the
+ones [`SECURITY.md`](../../SECURITY.md) publishes, and the records go in a draft
+GitHub security advisory, which is private until published.
 
 ## 2. Scope
 
@@ -19,12 +25,16 @@ Covers incidents in:
 
 ## 3. Severity Levels
 
-| Level | Description | Examples | Response Time |
-|-------|-------------|----------|---------------|
-| **CRITICAL** | Active exploitation, data breach | RCE in MCP server, exfiltration of user code | 1 hour |
-| **HIGH** | Significant security impact | Bypass of RBAC, unauthorized access to index | 4 hours |
-| **MEDIUM** | Limited security impact | DoS of `neuralmind serve`, information disclosure in logs | 24 hours |
+| Level | Description | Examples | Target fix |
+|-------|-------------|----------|------------|
+| **CRITICAL** | Active exploitation, data breach | RCE in MCP server, exfiltration of user code | 24–72 hours |
+| **HIGH** | Significant security impact | Bypass of RBAC, unauthorized access to index | 1 week |
+| **MEDIUM** | Limited security impact | DoS of `neuralmind serve`, information disclosure in logs | 2–4 weeks |
 | **LOW** | Minimal security impact | Outdated dependency with no known exploit | Next release |
+
+Every report is acknowledged within 2 business days and triaged within 5
+([`SECURITY.md`](../../SECURITY.md#response-timeline)). An incident the
+maintainer finds, rather than one reported, starts at triage.
 
 ## 4. Incident Response Phases
 
@@ -32,15 +42,16 @@ Covers incidents in:
 
 Incidents may be detected via:
 - GitHub Security Advisories (automated dependency scanning)
-- User reports (GitHub Issues, email)
-- Manual code review
+- User reports (GitHub private vulnerability reporting, email; a report in a
+  public issue is moved to a draft advisory)
+- Code review, CodeQL, bandit and `pip-audit` in CI
 
 ### 4.2 Triage
 
-Within the response time for the severity level:
+Within 5 business days of the report:
 1. Confirm the incident is real (not a false positive)
 2. Assign severity level
-3. Document initial findings in a private GitHub Issue
+3. Document initial findings in a draft GitHub security advisory
 
 ### 4.3 Containment
 
@@ -52,9 +63,9 @@ For CRITICAL and HIGH:
 ### 4.4 Eradication
 
 1. Identify root cause
-2. Implement fix on a private branch
-3. Test fix locally
-4. Request security review if needed
+2. Implement the fix in the advisory's temporary private fork
+3. Test the fix locally and in CI
+4. Ask the reporter to confirm the fix, where there is one
 
 ### 4.5 Recovery
 
@@ -76,7 +87,7 @@ Within 1 week of resolution:
 
 ### 5.1 Internal
 
-- Solo maintainer: document in private GitHub Issue
+- Solo maintainer: document in the draft GitHub security advisory
 - Future team: Slack/email notification to security team
 
 ### 5.2 External
@@ -118,11 +129,13 @@ For incidents affecting users:
 
 ## 7. Testing
 
-This plan is tested annually via tabletop exercise:
+This plan is to be tested annually by tabletop exercise:
 - Scenario: critical vulnerability in dependency
 - Validate: detection, triage, containment, communication
 - Update plan based on findings
 
+No exercise has been run or recorded yet.
+
 ---
 
-*This plan is reviewed annually. Last reviewed: 2026-07-27.*
+*This plan is reviewed annually. Last reviewed: 2026-10-18.*

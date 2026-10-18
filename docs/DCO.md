@@ -1,7 +1,8 @@
 # Developer Certificate of Origin (DCO)
 
-**Version:** 1.0
+**Version:** 1.1
 **Effective Date:** 2026-07-30
+**Last revised:** 2026-10-18
 
 ---
 
@@ -27,7 +28,8 @@ By making a contribution to this project, I certify that:
 
 ## 3. Sign-off Mechanism
 
-All commits must include a `Signed-off-by` line in the commit message:
+Each commit in a contribution from anyone other than the maintainer carries a
+`Signed-off-by` line in its message (`git commit -s` adds it):
 
 ```
 Signed-off-by: Your Name <your.email@example.com>
@@ -35,8 +37,17 @@ Signed-off-by: Your Name <your.email@example.com>
 
 This certifies that the contribution meets the requirements of this DCO.
 
+Commits by the maintainer, who acts for Cheval-Volant LLC (the copyright
+holder), and by the AI coding agents working for the maintainer don't carry a
+sign-off. No CI check enforces sign-off: the maintainer checks it when
+reviewing an outside contribution.
+
+Version 1.0 said every commit must carry a sign-off. Almost none did (14 of the
+839 commits to `main` from 2026-07-30 to 2026-10-18), and every author of
+those commits was the maintainer, an agent working for the maintainer, or a bot.
+
 ---
 
 ## 4. Acceptance
 
-By signing off on a contribution, you agree to be bound by the terms of this DCO. Contributions without a valid sign-off will not be accepted.
+By signing off on a contribution, you agree to be bound by the terms of this DCO. An outside contribution without a valid sign-off is not merged.

@@ -200,7 +200,7 @@ export default function ServicesPage() {
                                 'Local-first with zero telemetry — NeuralMind stores your code graph and learned memory on your own infrastructure and transmits no repository content',
                                 'Append-only, hash-chained audit log of team-memory governance actions',
                                 'Publish scoping and admin roles controlling what leaves each developer’s machine',
-                                'A CycloneDX SBOM published for every release',
+                                'A CycloneDX SBOM published for every release since v4.0.0',
                             ].map((item) => (
                                 <li
                                     key={item}

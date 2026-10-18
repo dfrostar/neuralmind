@@ -685,7 +685,7 @@ CC6.7 - Restricting transmission of information
    docs/architecture.md to Anthropic
 
 CC7.1 - Detecting vulnerabilities
-   Evidence: CycloneDX SBOM on every release, for your SCA scanner
+   Evidence: CycloneDX SBOM for every release since v4.0.0, for your SCA scanner
 
 CC7.2 - Monitoring for anomalies
    Evidence: hash-chained audit log, "neuralmind audit verify", /healthz
@@ -738,7 +738,7 @@ The full Level 2 table, including what stays your responsibility, is in
 | **Query interception** | Low | Medium | Stdio MCP has no network hop. The graph view and daemon are plain HTTP on `127.0.0.1` with a token. NeuralMind serves no TLS, so reach them over an SSH tunnel or a TLS proxy you run |
 | **Resource exhaustion (DoS)** | Medium | Medium | Per-actor rate limit on MCP calls (`security.rate_limit`, default 60 calls per 60 s; v4.6.0 and earlier ignored the setting). It is held in memory per server process and keyed on the declared actor, so a caller that changes its actor name gets a fresh limit. Denials go to the audit log. NeuralMind has no monitoring or alerting |
 | **Insider threat** | Low | Critical | Hash-chained audit log of calls through NeuralMind. It detects an edited record, not records deleted from the end of the log or a chain recomputed by someone with write access, so ship `neuralmind audit export` off the host. Roles are caller-declared unless `security.identity: os` takes them from the OS account; either way, least privilege comes from OS accounts |
-| **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks install health (graph, index, hooks, MCP, synapses), not security settings |
+| **Configuration error** | Medium | High | The security checklist below. `neuralmind doctor` checks the security policy, storage encryption, the security profile and audit checkpoints alongside install health, but not the items on the checklist that live outside NeuralMind (OS accounts, disk encryption setup, the agent's model provider) |
 
 ### Attack Scenarios
 
@@ -794,6 +794,7 @@ Before deploying NeuralMind to production:
 ### Data Protection
 - [ ] `.neuralmind/` restricted to its owner (`chmod -R go-rwx`)
 - [ ] Full-disk encryption on every host that holds `.neuralmind/`
+- [ ] The home directory encrypted too, or `NEURALMIND_SYNAPSE_EXPORT=0` and `NEURALMIND_MEMORY=0` set: Claude Code's synapse export (code symbol names) and the query log are written there, and `security.require_encrypted_storage` doesn't check it ([Data Deletion §2.2](compliance/DATA_DELETION.md#22-outside-the-project))
 - [ ] Graph view and daemon reached only over loopback, an SSH tunnel, or a TLS proxy you run
 - [ ] Secrets scanned (`neuralmind scan-for-secrets`) before indexing
 - [ ] No hardcoded credentials

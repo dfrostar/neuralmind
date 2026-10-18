@@ -1,7 +1,8 @@
-"""mcp_http.py — Streamable HTTP MCP transport (F1).
+"""mcp_http.py — Streamable HTTP MCP transport (F1), a skeleton.
 
-Implements the 2026 MCP spec (Streamable HTTP sessions, OAuth 2.1).
-Stdio transport is retained as fallback for local CLI.
+Session lifecycle and a Starlette app factory toward the 2026 MCP spec
+(Streamable HTTP sessions, OAuth 2.1). The wire format and OAuth 2.1 are
+not implemented (see ``StreamableHTTPMCP``). Stdio is the transport.
 
 Gated behind NEURALMIND_MCP_TRANSPORT=streamable_http. Default: stdio
 (byte-compatible). Multi-client sessions (>=3 concurrent).

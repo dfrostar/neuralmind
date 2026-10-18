@@ -1,7 +1,7 @@
 # Risk Assessment
 
-**Date:** 2026-10-04
-**Version:** 1.2
+**Date:** 2026-10-18
+**Version:** 1.3
 **SOC 2 Controls:** CC3.1, CC3.2
 
 ---
@@ -30,7 +30,7 @@ Risks are scored on two dimensions:
 | ID | Risk | Likelihood | Impact | Score | Level | Mitigation | Owner |
 |----|------|------------|--------|-------|-------|------------|-------|
 | R-01 | Vulnerable dependency (Critical CVE) | 3 | 5 | 15 | HIGH | Automated Dependabot alerts, 72h patch SLA for critical | Maintainer |
-| R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Code review required, branch protection, CI gates | Maintainer |
+| R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Every PR is reviewed by two automated reviewers and merged by the maintainer; CI runs tests, bandit, CodeQL and pip-audit on it. Neither a review nor green CI is required by rule: `main`'s ruleset blocks force pushes and deletion only ([SSDF PS.1](SSDF.md)), so the rating stands until it requires both | Maintainer |
 | R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default (stdio transport), per-tool permission policy (roles are caller-declared unless `security.identity: os` binds them to OS accounts, v4.7.0+; cap them with `security.roles`, which v4.6.0 and earlier ignore), audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
 | R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode; `neuralmind health` and `neuralmind doctor` report a missing or stale index; the graph and index rebuild from source (`neuralmind build --force`). Synapses, decisions, and the audit log can't be rebuilt, so they need operator backups ([Backup & Recovery](../DEPLOYMENT-GUIDE.md#backup--recovery)) | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |

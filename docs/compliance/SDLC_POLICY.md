@@ -1,7 +1,7 @@
 # SDLC Policy
 
-**Date:** 2026-10-03
-**Version:** 1.1
+**Date:** 2026-10-18
+**Version:** 1.2
 **SOC 2 Controls:** CC7.1, CC8.1
 
 ---
@@ -10,16 +10,22 @@
 
 Define the software development lifecycle for NeuralMind, ensuring changes are built, tested, and deployed with integrity.
 
+Version 1.1 described a process stricter than the one followed: a BRD, TRD and
+test plan for every feature, mypy as a check, and merges blocked by failing CI.
+This version describes what happens, and says which steps a rule enforces and
+which are practice. NeuralMind has one maintainer and is written with AI coding
+agents ([SSDF §5](SSDF.md#5-how-neuralmind-is-developed)).
+
 ## 2. SDLC Phases
 
 ### 2.1 Planning
 
-Every feature starts with:
-- **BRD** (Business Requirements Document) — problem, success criteria
-- **TRD** (Technical Requirements Document) — architecture, data model
-- **Test Plan** — what to test, how, acceptance criteria
-
-Documents are committed to `docs/specs/<feature>/` before implementation.
+- A larger feature (a new subsystem, a new storage format, a benchmark) gets
+  a spec in `docs/specs/` before implementation: problem, design, how it's
+  tested.
+- Smaller changes start from a GitHub issue or a plan in the pull request.
+- Business requirements and strategy documents live in a private repository
+  (see `CLAUDE.md`).
 
 ### 2.2 Implementation
 
@@ -30,24 +36,29 @@ Documents are committed to `docs/specs/<feature>/` before implementation.
 
 ### 2.3 Testing
 
-All changes must pass:
-- **Unit tests:** `pytest tests/` (targeted suites, not full 1582)
-- **Type checks:** `mypy neuralmind/` (where configured)
-- **Lint:** `ruff check neuralmind/`
-- **Benchmarks:** `neuralmind benchmark .` (for retrieval changes)
+CI runs these on every pull request and every push to `main`. Each fails its
+check on a problem, except mypy:
+- **Unit tests:** `pytest tests/` on Linux, macOS and Windows, Python 3.10–3.12
+- **Type checks:** `mypy neuralmind/`, advisory only: 277 errors on 2026-10-18
+- **Lint:** ruff, black, `scripts/check_unreachable.py` and the docs and terms guards
+- **Benchmarks:** the hermetic self-benchmark (`ci-benchmark.yml`), failing below a 4× reduction floor
 - **Security scans (CI):** CodeQL; bandit, where high severity fails the change; and `pip-audit` over the installed dependencies, failing on any advisory not marked `not_affected` in `security/neuralmind.openvex.json`
 - **FIPS mode (CI):** the test suite with the OpenSSL FIPS provider enforced
 
 ### 2.4 Review
 
-- Author reviews own diff
-- CI validates linting, tests, benchmarks
-- No merge if any CI check fails
+- Two automated reviewers, GitHub Copilot code review and OpenAI Codex, review
+  each pull request
+- The maintainer reads the diff and the reviews, and merges
+- No rule makes a merge wait for green CI or a finished review; the maintainer
+  waits for both by practice. `main`'s ruleset requires neither (SSDF PS.1)
 
 ### 2.5 Deployment
 
 - Push to `main` triggers CI
-- Tag push (`vX.Y.Z`) triggers PyPI + GHCR publish
+- Merging release-please's release PR tags `vX.Y.Z`, which triggers the PyPI
+  and GHCR publish. A smoke test runs before the PyPI upload, and the image's
+  signature, provenance and a smoke test must pass before `:latest` moves
 - Cloudflare Pages deploys on `site/**` changes
 
 ### 2.6 Monitoring
@@ -58,23 +69,23 @@ All changes must pass:
 
 ## 3. Quality Gates
 
-| Gate | Criteria | Blocking |
-|------|----------|----------|
-| Pre-commit | No `print()` in production, no `TODO` in shipped code | No |
-| Pre-merge | All CI checks pass | Yes |
-| Pre-release | Benchmark ratio ≥ 4× floor | Yes |
-| Post-deploy | `/healthz` returns 200 | No |
+| Gate | Criteria | Enforced by |
+|------|----------|-------------|
+| Pre-merge | All CI checks pass, reviews read | Practice. No rule blocks a merge |
+| Pre-merge | Benchmark ratio ≥ 4× floor | A failing check, which no rule makes a merge wait for |
+| Release | The release PR's CI is green | Practice |
+| Publish | Smoke test before the PyPI upload; the image's signature, provenance and smoke test before `:latest` moves | The release workflows (`release.yml`, `docker-publish.yml`) stop on a failure |
 
 ## 4. Documentation Standards
 
-Every feature ships with:
-- BRD (`docs/specs/<feature>/<date>-BRD.md`)
-- TRD (`docs/specs/<feature>/<date>-TRD.md`)
-- Test Plan (`docs/specs/<feature>/<date>-TEST-PLAN.md`)
-- Test Results (in same directory, after execution)
-- Release Notes (`RELEASE_NOTES_vX.Y.Z.md`)
+Every user-facing change ships, in the same pull request, with:
+- Release notes (`docs/releases/RELEASE_NOTES_vX.Y.Z.md`), including how to
+  reproduce what they claim
+- Updates to the README, CLI reference and use-case walkthroughs it touches
+  (the checklist in `CLAUDE.md`)
 
-All documents are dated and versioned.
+Larger features also have a spec in `docs/specs/` (2.1). Policy documents are
+dated and versioned.
 
 ## 5. Versioning
 
@@ -87,4 +98,4 @@ Version bump is automated via release-please on `feat:` / `fix:` commits.
 
 ---
 
-*This policy is reviewed annually. Last reviewed: 2026-07-27.*
+*This policy is reviewed annually. Last reviewed: 2026-10-18.*

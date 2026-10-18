@@ -6,10 +6,10 @@ NeuralMind is designed with **enterprise security as a first-class concern**:
 
 - **All processing happens locally** – all embeddings are generated and stored locally via a bundled ONNX model. There are **no cloud embedding API calls**.
 - **No telemetry** – no usage tracking, no analytics, no hidden data collection, no update checks.
-- **One network event, pinned** – the only outbound network activity is a **one-time, SHA256-pinned** download of the ONNX model archive during install (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that).
-- **Fully auditable** – open-source code, MIT license, complete transparency. Every claim below is verifiable.
+- **One network event by default, pinned** – the only outbound network activity by default is a **one-time, SHA256-pinned** download of the ONNX model archive on the first build (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that). Two opt-ins add more: LLM-assisted synapse seeding (`NEURALMIND_LLM_SEED=1`) sends documentation text to the Anthropic API, and `tiktoken`, if you install it, downloads its vocabulary on first use.
+- **Fully auditable** – the source is public: the core is MIT-licensed, and the Team modules in `neuralmind/tier2/` are source-available ([LICENSING.md](LICENSING.md)). Every claim below is verifiable.
 - **Architecture supports major compliance frameworks** (GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
-- **Supply-chain discipline** – minimal runtime dependencies, CycloneDX SBOM attached to every release, no cloud lock-in.
+- **Supply-chain discipline** – minimal runtime dependencies, a CycloneDX SBOM for every release since v4.0.0 (served at [neuralmind.uk/security](https://neuralmind.uk/security), since published releases can't take a new asset), no cloud lock-in.
 
 ---
 
@@ -297,13 +297,15 @@ exceptions that policy has accepted.
 
 ### Privacy & behaviour controls (environment variables)
 
-Every persistence/learning surface has an off-switch. For a locked-down or
+Every persistence and learning surface except the audit log has an off-switch.
+The audit log is the security record, so it has none: delete it as in
+[Data Deletion §3.2](docs/compliance/DATA_DELETION.md#32-selective-deletion). For a locked-down or
 air-gapped deployment, these are the knobs a security reviewer cares about
 (defaults reflect a normal install; all are read from the process environment):
 
 | Variable | Effect | Default |
 |---|---|---|
-| `NEURALMIND_MEMORY=0` | Disable local query-event logging | on |
+| `NEURALMIND_MEMORY=0` | Disable query-event logging (to `.neuralmind/memory/` and `~/.neuralmind/memory/`) and skip its first-run consent prompt | off until accepted at that prompt |
 | `NEURALMIND_LEARNING=0` | Disable Hebbian synapse learning from interactions | on |
 | `NEURALMIND_SYNAPSE_INJECT=0` | Don't inject spreading-activation recall at prompt time | on |
 | `NEURALMIND_SYNAPSE_EXPORT=0` | Don't write `SYNAPSE_MEMORY.md` / Claude Code auto-memory | on |
@@ -401,7 +403,7 @@ For paying customers (assessments, pilots, future paid tiers):
 
 When we receive a security report:
 
-1. We will confirm receipt within 48 hours
+1. We will confirm receipt within 2 business days
 2. We will investigate and validate the issue
 3. We will work on a fix
 4. We will release a patch

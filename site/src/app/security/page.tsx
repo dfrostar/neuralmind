@@ -147,7 +147,7 @@ export default async function SecurityPage() {
                     <h2 className="font-display text-2xl font-bold text-white mb-4">Software Bill of Materials</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
                         <p className="text-slate-300 mb-4">
-                            A CycloneDX SBOM is generated for every release.
+                            A CycloneDX SBOM is generated for every release since v4.0.0.
                         </p>
                         {sbomUrl ? (
                             <a href={sbomUrl} target="_blank" rel="noopener noreferrer"

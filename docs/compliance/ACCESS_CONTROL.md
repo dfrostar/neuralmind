@@ -1,7 +1,7 @@
 # Access Control Policy
 
-**Date:** 2026-10-03
-**Version:** 1.1
+**Date:** 2026-10-18
+**Version:** 1.2
 **SOC 2 Controls:** CC6.1, CC6.2, CC6.3
 
 ---
@@ -126,8 +126,10 @@ For security incidents:
 |--------|---------|----------|
 | `CLOUDFLARE_API_TOKEN` | GitHub Secrets | Annual |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Secrets | Never (account ID) |
-| PyPI API token | GitHub Secrets (trusted publishing) | Use OIDC instead |
-| GitHub PAT | Personal access | Annual |
+| `MAIN_PUSH_DEPLOY_KEY` | GitHub Secrets. An SSH deploy key with write access, which pushes to `main` past any ruleset; held by `sbom.yml`, `neuralmind-autoindex.yml` and `update-chart.yml`, which install only pinned packages because of it | Annual |
+| `RELEASE_PLEASE_TOKEN` | GitHub Secrets, optional. A PAT or GitHub App token, so CI runs on release PRs | Annual |
+| `GH_PAT` | GitHub Secrets. Opens `auto-fix.yml`'s formatting PR (manual dispatch only) | Annual |
+| PyPI | No secret: trusted publishing (OIDC) | n/a |
 
 ### 7.2 Forbidden Practices
 

@@ -11,14 +11,20 @@ scoping, audit, seats — is a product feature; see
   acting for Cheval-Volant LLC (d/b/a NeuralMind, Texas, USA) — the
   legal steward of the project.
 - **Contributors:** anyone submitting PRs under the DCO
-  ([docs/DCO.md](docs/DCO.md)). Review is gated by
-  [.github/CODEOWNERS](.github/CODEOWNERS).
+  ([docs/DCO.md](docs/DCO.md)). The maintainer owns every path
+  ([.github/CODEOWNERS](.github/CODEOWNERS)) and merges every PR after
+  automated review. No rule requires a review or green CI before a merge
+  ([SSDF PS.1](docs/compliance/SSDF.md)).
+- **AI coding agents** write much of the code for the maintainer. Since
+  October 2026 their commits name them
+  ([how NeuralMind is developed](docs/compliance/SSDF.md#5-how-neuralmind-is-developed)).
 
 ## Decision-making
 
 - Day-to-day decisions (merges, releases, roadmap ordering) are made by
   the maintainer. Releases are automated via release-please from
-  conventional commits; every release publishes a CycloneDX SBOM.
+  conventional commits, and each publishes a CycloneDX SBOM to
+  [neuralmind.uk/security](https://neuralmind.uk/security).
 - Significant product or licensing changes are proposed as PRDs under
   `docs/prd/` and discussed in GitHub issues/discussions before landing.
 - Licensing boundaries are fixed in [LICENSING.md](LICENSING.md) and
