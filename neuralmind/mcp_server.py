@@ -24,6 +24,7 @@ Usage:
 import asyncio
 import inspect
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -669,9 +670,13 @@ def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     Writes <project>/.neuralmind/SYNAPSE_MEMORY.md plus, when present,
     ~/.claude/projects/<slug>/memory/synapse-activations.md so the
     associations surface in agents that don't call the MCP tools.
+    ``NEURALMIND_SYNAPSE_EXPORT=0`` switches it off, as it does the hooks'
+    export: an operator's off switch must hold for every path.
     """
     from neuralmind.synapse_memory import export_synapse_memory
 
+    if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") == "0":
+        return {"enabled": False, "written": [], "reason": "NEURALMIND_SYNAPSE_EXPORT=0"}
     mind = get_mind(project_path, auto_build=False)
     if mind.synapses is None:
         return {"enabled": False, "written": []}
