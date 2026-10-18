@@ -376,11 +376,51 @@ class AuditTrail:
         with _exclusive_file_lock(self.failures_recorded_file.with_suffix(".lock")):
             return self._record_gap_locked()
 
+    def _covered_in_log(self, notes: list[str]) -> tuple[int, str]:
+        """How many of ``notes`` a gap record in the log covers, and its sha256.
+
+        The mark is written after the gap record, so a run that fails between
+        the two leaves a gap record the mark doesn't show; without this, the
+        next run would record the same failures again.
+        """
+        covered, gap = 0, ""
+        try:
+            with self.events_file.open(encoding="utf-8", errors="replace") as file:
+                for raw_line in file:
+                    if '"gap_recorded"' not in raw_line:
+                        continue
+                    if len(raw_line) > self.MAX_AUDIT_LINE_BYTES:
+                        continue  # Skip crafted oversized lines (DoS guard)
+                    try:
+                        record = json.loads(raw_line)
+                        covers = record["details"]["covers"]
+                        lines, sha256 = int(covers["lines"]), str(covers["sha256"])
+                    except (ValueError, KeyError, TypeError):
+                        continue
+                    if covered < lines <= len(notes) and _lines_sha256(notes[:lines]) == sha256:
+                        covered, gap = lines, str(record.get("sha256", ""))
+        except OSError:
+            pass
+        return covered, gap
+
+    def _write_mark(self, notes: list[str], gap: str) -> None:
+        mark = {"lines": len(notes), "sha256": _lines_sha256(notes), "gap": gap}
+        self.failures_recorded_file.write_text(
+            json.dumps(mark, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
     def _record_gap_locked(self) -> dict[str, Any] | None:
         notes = self.failure_notes()
         new = self.unrecorded_failures(notes)
         if not new:
             return None
+        covered, gap = self._covered_in_log(notes)
+        if covered > len(notes) - len(new):
+            # An earlier run wrote the gap record but not its mark.
+            self._write_mark(notes[:covered], gap)
+            new = notes[covered:]
+            if not new:
+                return None
         parsed = []
         for line in new:
             try:
@@ -404,14 +444,19 @@ class AuditTrail:
                 "last": stamps[-1] if stamps else "",
                 "events": events,
                 "last_error": str(parsed[-1].get("error", "")),
+                # Which notes it covers, so a lost mark can be restored from it.
+                "covers": {"lines": len(notes), "sha256": _lines_sha256(notes)},
             },
         )
         # A note written since `notes` was read lies past this mark, so it
         # stays unrecorded until the next run.
-        mark = {"lines": len(notes), "sha256": _lines_sha256(notes), "gap": record["sha256"]}
-        self.failures_recorded_file.write_text(
-            json.dumps(mark, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        try:
+            self._write_mark(notes, record["sha256"])
+        except OSError as exc:
+            raise OSError(
+                f"the gap record was written, but {self.failures_recorded_file} couldn't be "
+                f"({exc}); run this again to restore it without a second gap record"
+            ) from exc
         return record
 
     def read_events(self) -> list[dict[str, Any]]:

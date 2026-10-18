@@ -263,7 +263,10 @@ ever appended to. How far it has been recorded is kept in
 those lines, so failures after the gap record, or in a file that was deleted
 and started again, still count as unrecorded. Runs take turns, each holding a
 lock on `.neuralmind/audit_write_failures.recorded.lock`, so two can't record
-the same failures twice.
+the same failures twice. The gap record names the lines it covers as well, so if
+the progress file can't be saved after it (the command then exits `1` and says
+the gap was written), running it again restores the progress file from the log
+instead of writing a second gap record.
 
 A full disk can also cut the log's last record short. The next record, the gap
 record included, starts on a line of its own and chains to the last intact

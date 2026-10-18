@@ -306,6 +306,31 @@ def test_a_gap_that_cant_be_written_stays_unrecorded(project, monkeypatch):
     assert len(AuditTrail(project).unrecorded_failures()) == 2
 
 
+def test_a_mark_that_cant_be_written_doesnt_lead_to_a_second_gap(project, monkeypatch):
+    # The gap record is in the log; a retry restores the mark from it.
+    _failing_append(project, monkeypatch)
+    trail = AuditTrail(project)
+    real_write_text = Path.write_text
+
+    def mark_fails(self, *args, **kwargs):
+        if self == trail.failures_recorded_file:
+            raise OSError(28, "No space left on device")
+        return real_write_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", mark_fails)
+    with pytest.raises(OSError, match="run this again"):
+        trail.record_gap()
+    monkeypatch.setattr(Path, "write_text", real_write_text)
+    assert doctor._check_audit_writes(project).status == doctor.WARN
+    assert trail.record_gap() is None
+    gaps = [e for e in trail.read_events() if e["action"] == "gap_recorded"]
+    assert len(gaps) == 1
+    assert doctor._check_audit_writes(project).status == doctor.OK
+    # A failure after that is still recorded once, in a gap of its own.
+    _failing_append(project, monkeypatch)
+    assert trail.record_gap()["details"]["missing_records"] == 1
+
+
 def test_a_cut_off_note_is_still_counted(project):
     trail = AuditTrail(project)
     trail.failures_file.parent.mkdir(parents=True)
