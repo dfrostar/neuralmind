@@ -109,7 +109,7 @@ NeuralMind processes code. Code can contain comments referencing names, emails, 
 - **Data minimisation** — NeuralMind retrieves only the ~800 tokens of context needed per query, not the full codebase
 - **Purpose limitation** — retrieval is per-query; no profile of any person. The synapse layer learns across queries which code is used together, not who used it
 - **Storage limitation** — the synapse store decays unused edges automatically (configurable via `NEURALMIND_SYNAPSE_DECAY_HALF_LIFE`)
-- **Right to erasure** — every store is a local file; the [deletion procedure](compliance/DATA_DELETION.md) removes them all. `rm -rf .neuralmind/` alone leaves the copies outside the project and the committed team-memory bundle's git history
+- **Right to erasure** — every store is a local file; the [deletion procedure](compliance/DATA_DELETION.md) removes them all, except that the Team governance audit log is hash-chained and can only be deleted whole. `rm -rf .neuralmind/` alone leaves the copies outside the project and the committed team-memory bundle's git history
 - **Data residency** — entirely under operator control; no cross-border transfers initiated by NeuralMind
 - **Pseudonymisation** — the audit log actor is `NEURALMIND_ACTOR` or the OS login on local queries, and caller-declared at the MCP boundary; set `NEURALMIND_ACTOR` to a hashed token rather than a username
 - **Breach notification** — local files, no external surface area by default

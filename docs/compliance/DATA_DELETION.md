@@ -11,6 +11,10 @@
 Define how to delete all NeuralMind data for a project, including the copies
 NeuralMind writes outside the project directory.
 
+One exception: the Team governance audit log (§2.2) is hash-chained, so one
+project's records can't be removed from it without breaking its verification.
+It is kept, or deleted whole with every project's records in it (§3.1).
+
 Version 1.1 listed only the project directory, and named a `.neuralmind/hooks/`
 directory that NeuralMind never creates. It missed the files below under
 "Outside the project": one holds code symbol names, and one, when query memory
@@ -61,9 +65,12 @@ every project and not only this one: end the agent sessions that use NeuralMind
 log below is shared by every project, and a query any of them logs while it's
 rewritten would be lost.
 
-If `neuralmind-backend.yaml` sets `db_path`, note that directory before the
-commands below delete the file, check that no other project uses it, and delete
-it too.
+If `neuralmind-backend.yaml` sets `db_path`, note that location before the
+commands below delete the file. NeuralMind doesn't require it to be a directory
+of its own, so look before deleting anything there: the index is
+`store*.sqlite*` and `index*.tvim*` (turbovec), or `chroma.sqlite3` and its
+UUID-named collection folders (ChromaDB). Delete the directory only if it holds
+nothing else and no other project uses it; otherwise delete just those files.
 
 Then run from the project root:
 
@@ -99,7 +106,9 @@ Then remove the project's entry from `~/.config/neuralmind/projects.json`, the
 git hook blocks (2.3), and, if no other project uses NeuralMind, `~/.neuralmind/`.
 The Team governance audit log is not deleted here: it's hash-chained, so
 removing one project's records breaks its verification. Keep it for your
-retention period, or delete the whole file once nothing in it must be kept.
+retention period, or, when erasure is required, delete the whole file
+(`~/.config/neuralmind/audit.db`, or the Team config's `audit_db`). That erases
+every project's governance records, not only this one's.
 The team memory bundle and `neuralmind-backend.yaml` stay in git history until
 that history is rewritten. `neuralmind-backend.yaml` holds the project's
 security policy, so committing its deletion removes the policy for everyone
