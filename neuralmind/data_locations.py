@@ -134,15 +134,16 @@ def _absolute(path: Path) -> Path:
     return path.parent.resolve() / path.name
 
 
-def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
+def _remove_command(path: Path, *, directory: bool, force: bool = False) -> tuple[str, Path]:
     """The command that removes ``path`` from any directory, and where its data is.
 
     Absolute, quoted paths. A symlink gets both removed, what it points to and
     the link: ``rm link`` leaves the data, and ``rm -rf link/`` empties a
     directory but leaves it and the link. What it points to is removed with
     ``-f``: another link removed first may have pointed to the same file.
+    ``force`` uses ``rm -f`` on a file too, for one of several removed in turn.
     """
-    rm = "rm -rf" if directory else "rm"
+    rm = "rm -rf" if directory else "rm -f" if force else "rm"
     path = _absolute(path)
     if path.is_symlink():
         target = path.resolve()
@@ -341,19 +342,15 @@ def _project_locations(
             if found:
                 # The directory stays out of the comment: a newline in it would
                 # end the comment and run the rest.
-                # A file another listed name links to goes with that link: a
-                # second rm of it would fail and stop the rest.
-                linked = {
-                    (directory / name).resolve()
-                    for name in found
-                    if (directory / name).is_symlink()
-                }
+                # rm -f: a link listed before a file may have taken it already
+                # (its target, or the target's journals), and a failed rm
+                # would stop the rest.
                 index.remove = (
                     " && ".join(
-                        _remove_command(directory / name, directory=(directory / name).is_dir())[0]
+                        _remove_command(
+                            directory / name, directory=(directory / name).is_dir(), force=True
+                        )[0]
                         for name in found
-                        if (directory / name).is_symlink()
-                        or _absolute(directory / name) not in linked
                     )
                     + "  # then the directory itself, if nothing else is in it"
                 )
@@ -591,11 +588,14 @@ def _integrations(root: Path) -> list[Location]:
         )
 
         def blocks() -> list[str]:
-            names = sorted(
-                p.name
-                for p in (hooks_dir.iterdir() if hooks_dir.is_dir() else ())
-                if p.is_file() and _hook_block_names(p, target)
-            )
+            try:
+                hooks = sorted(hooks_dir.iterdir()) if hooks_dir.is_dir() else []
+            except OSError as exc:
+                raise _UnreadableError(
+                    f"can't be listed ({exc}), so which hooks hold a block isn't known: "
+                    "make it readable and run this again"
+                ) from exc
+            names = sorted(p.name for p in hooks if p.is_file() and _hook_block_names(p, target))
             hook_blocks.detail = ", ".join(names)
             return names
 

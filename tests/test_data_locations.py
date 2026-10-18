@@ -259,6 +259,21 @@ def test_a_shared_hook_block_counts_only_for_the_project_it_names(env):
     assert not _by_name(repo.resolve())["git hook blocks"].present
 
 
+def test_a_hooks_directory_that_cant_be_listed_is_a_problem(env, monkeypatch):
+    subprocess.run(["git", "init", "-q", str(env.project)], check=True)
+    hooks = (env.project / ".git" / "hooks").resolve()
+    real_iterdir = Path.iterdir
+
+    def denied(self):
+        if self.resolve() == hooks:
+            raise PermissionError(13, "Permission denied")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", denied)
+    found = _by_name(env.project)["git hook blocks"]
+    assert found.present and "can't be listed" in found.problem
+
+
 def test_a_file_that_cant_be_read_is_a_problem_not_absent(env):
     # A directory where a file should be can't be read on any platform (a
     # chmod wouldn't stop root). Each would otherwise be listed as absent,
@@ -316,6 +331,7 @@ def test_a_path_through_a_symlink_and_dot_dot_is_removed_where_the_os_finds_it(e
     found = _by_name(env.project)["index at db_path"]
     assert shlex.split(found.remove, comments=True) == [
         "rm",
+        "-f",
         str((index / "store.sqlite").resolve()),
     ]
 
@@ -396,11 +412,19 @@ def test_index_files_linked_to_each_other_are_all_removed(env):
     # A second rm of a file a link already took would fail and stop the rest.
     index = env.tmp / "index"
     index.mkdir()
-    for name in ("index.b.tvim", "index.current.tvim", "store.sqlite"):
+    for name in (
+        "index.b.tvim",
+        "index.current.tvim",
+        "store.v1.sqlite",
+        "store.v1.sqlite-wal",
+        "store.z.sqlite",
+    ):
         (index / name).write_text("x", encoding="utf-8")
     try:
         (index / "index.a.tvim").symlink_to(index / "index.b.tvim")  # the link sorts first
         (index / "index.tvim").symlink_to(index / "index.current.tvim")  # its target does
+        # The link's command takes store.v1.sqlite-wal too, before its own turn.
+        (index / "store.sqlite").symlink_to(index / "store.v1.sqlite")
     except OSError:
         pytest.skip("can't create a symlink here")
     (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")

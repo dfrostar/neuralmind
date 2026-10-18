@@ -49,7 +49,7 @@ Project:
             remove: rm -rf /work/app/.neuralmind
   [present] index at db_path: /mnt/fast/app-index
             holds: the vector index, including indexed text (bm25_index.json, index.tvim, store.sqlite)
-            remove: rm /mnt/fast/app-index/bm25_index.json && rm /mnt/fast/app-index/index.tvim && rm /mnt/fast/app-index/store.sqlite  # then the directory itself, if nothing else is in it
+            remove: rm -f /mnt/fast/app-index/bm25_index.json && rm -f /mnt/fast/app-index/index.tvim && rm -f /mnt/fast/app-index/store.sqlite  # then the directory itself, if nothing else is in it
   ...
 
 Outside the project:
