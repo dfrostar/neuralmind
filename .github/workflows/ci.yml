@@ -232,6 +232,8 @@ jobs:
           pip install -e ".[dev]"
           pip install mypy
 
+      # Advisory, not a gate: 277 errors on 2026-10-18, and SSDF.md (PW.5)
+      # says so. Drop continue-on-error once they're fixed.
       - name: Run mypy
         run: mypy neuralmind --ignore-missing-imports --disable-error-code=no-untyped-def --implicit-optional
         continue-on-error: true
