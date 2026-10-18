@@ -2614,6 +2614,36 @@ def cmd_project(args):
         sys.exit(1)
 
 
+def cmd_data_locations(args):
+    """List every place NeuralMind keeps data for a project (read-only).
+
+    The data deletion procedure runs it before deleting and again after:
+    each location is resolved by the code that writes it.
+    """
+    from neuralmind.data_locations import INTEGRATION, OUTSIDE, PROJECT, data_locations
+
+    root = Path(args.project_path).resolve()
+    locations = data_locations(root)
+    if args.json:
+        payload = {"project": str(root), "locations": [loc.to_dict() for loc in locations]}
+        print(json.dumps(payload, indent=2))
+        return
+    print(f"NeuralMind data for {root}")
+    for kind in (PROJECT, OUTSIDE, INTEGRATION):
+        print()
+        print(f"{kind[0].upper()}{kind[1:]}:")
+        for loc in (loc for loc in locations if loc.kind == kind):
+            mark = "present" if loc.present else "absent "
+            print(f"  [{mark}] {loc.name}: {loc.path}")
+            if loc.present:
+                detail = f" ({loc.detail})" if loc.detail else ""
+                print(f"            holds: {loc.holds}{detail}")
+                print(f"            remove: {loc.remove}")
+    present = sum(loc.present for loc in locations)
+    print()
+    print(f"{present} of {len(locations)} present. See docs/compliance/DATA_DELETION.md.")
+
+
 def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
@@ -7375,6 +7405,17 @@ def build_parser() -> argparse.ArgumentParser:
         ".neuralmind.yaml.",
     )
     doctor_p.set_defaults(func=cmd_doctor)
+
+    data_locations_help = (
+        "List every place NeuralMind keeps data for a project, inside and outside it "
+        "(read-only; run before and after deleting)"
+    )
+    data_locations_p = subparsers.add_parser(
+        "data-locations", help=data_locations_help, description=data_locations_help
+    )
+    data_locations_p.add_argument("project_path", nargs="?", default=".")
+    data_locations_p.add_argument("--json", "-j", action="store_true")
+    data_locations_p.set_defaults(func=cmd_data_locations)
 
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
     stats_p.add_argument("project_path", type=_existing_project_dir)
