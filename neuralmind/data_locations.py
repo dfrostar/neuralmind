@@ -192,7 +192,8 @@ def _records_mention(path: Path, root: Path) -> bool:
     record for ``/work/app-old``, and parsing undoes the JSON escaping of
     backslashes and non-ASCII characters.
     """
-    inside = str(root).rstrip(os.sep) + os.sep
+    # Either separator: a Windows path written with / is still inside.
+    inside = tuple({str(root).rstrip("/\\") + sep for sep in (os.sep, "/")})
 
     def strings(value):
         if isinstance(value, dict):

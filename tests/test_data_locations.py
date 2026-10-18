@@ -31,6 +31,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("USERPROFILE", str(home))
     monkeypatch.setenv("NEURALMIND_CONFIG_DIR", str(home / "config"))
     monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.delenv("HERMES_DATA_DIR_SUFFIX", raising=False)
+    # Hermes's default home on Windows is under LOCALAPPDATA, not HOME.
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     audit_db = home / "config" / "audit.db"
     import neuralmind.tier2.config as tier2_config
 
@@ -288,6 +291,9 @@ def test_shared_log_lines_that_cant_be_parsed_are_a_problem(env):
         assert found[name].present and "can't be parsed" in found[name].problem, name
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows collapses .. before following a symlink"
+)
 def test_a_path_through_a_symlink_and_dot_dot_is_removed_where_the_os_finds_it(env):
     # link/../index is the index beside link's target, not <project>/index.
     real = env.tmp / "disk" / "sub"
