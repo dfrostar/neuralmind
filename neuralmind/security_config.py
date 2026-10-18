@@ -67,6 +67,7 @@ _PROFILES = (PROFILE_CUI,)
 
 _ENFORCEMENT_KEYS = ("identity", "require_encrypted_storage", "profile")
 _FALSE_WORDS = {"false", "no", "off", "0"}
+_TRUE_WORDS = {"true", "yes", "on", "1"}
 
 MACHINE_POLICY_NAME = "policy.yaml"
 
@@ -166,6 +167,13 @@ def load_machine_policy() -> SecuritySettings | None:
         # such as `identity: sometimes` must not leave the profile and the
         # encryption check off.
         return strictest(f"is invalid: {settings.problem}")
+    if _malformed_required(security):
+        # A project file reads a misspelling as on (_required); here it holds
+        # every project to the strictest settings, like any other invalid value.
+        value = security["require_encrypted_storage"]
+        return strictest(
+            f"is invalid: security.require_encrypted_storage must be true or false, not {value!r}"
+        )
     return replace(settings, machine_policy=path)
 
 
@@ -319,6 +327,20 @@ def _required(security: dict[str, Any]) -> bool:
         return False
     if isinstance(value, str) and value.strip().lower() in _FALSE_WORDS:
         return False
+    return True
+
+
+def _malformed_required(security: dict[str, Any]) -> bool:
+    """Whether ``require_encrypted_storage`` is present but neither on nor off."""
+    if "require_encrypted_storage" not in security:
+        return False
+    value = security["require_encrypted_storage"]
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value not in (0, 1)
+    if isinstance(value, str):
+        return value.strip().lower() not in _FALSE_WORDS | _TRUE_WORDS
     return True
 
 

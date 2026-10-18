@@ -133,6 +133,13 @@ def test_a_project_can_be_stricter_than_the_machine(project, machine):
     assert (s.profile, s.identity, s.require_encrypted_storage) == (PROFILE_CUI, IDENTITY_OS, True)
 
 
+@pytest.mark.parametrize("value", ["true", "false", "yes", "off", "'on'", "1", "0"])
+def test_a_machine_policy_spelling_out_encryption_is_valid(project, machine, value):
+    machine(f"security:\n  require_encrypted_storage: {value}\n")
+    s = load_security_settings(project)
+    assert s.problem is None and s.identity == IDENTITY_DECLARED
+
+
 def test_an_empty_machine_policy_changes_nothing(project, machine):
     machine("security: {}\n")
     s = load_security_settings(project)
@@ -161,6 +168,11 @@ def test_a_broken_project_file_stays_refused_under_the_machine_policy(project, m
         # left the profile and the encryption check off.
         ("security:\n  identity: sometimes\n", "security.identity must be"),
         ("security:\n  profile: cui\n  identity: declared\n", "requires identity: os"),
+        # A project file reads a misspelling as on; a machine policy is held to
+        # the strictest settings, as for any other invalid value.
+        ("security:\n  require_encrypted_storage: flase\n", "must be true or false"),
+        ("security:\n  require_encrypted_storage:\n", "must be true or false"),
+        ("security:\n  require_encrypted_storage: 2\n", "must be true or false"),
     ],
 )
 def test_a_malformed_machine_policy_holds_every_project_to_the_strictest(
