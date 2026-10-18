@@ -178,13 +178,22 @@ def _records_mention(path: Path, root: Path) -> bool:
         elif isinstance(value, str):
             yield value
 
+    malformed = 0
     for line in _read(path).splitlines():
+        if not line.strip():
+            continue
         try:
             record = json.loads(line)
         except ValueError:
+            malformed += 1  # cut short by a crash, say: it may still be this project's
             continue
         if any(s == str(root) or s.startswith(inside) for s in strings(record)):
             return True
+    if malformed:
+        raise _UnreadableError(
+            f"{malformed} record(s) can't be parsed, so whether they name this project "
+            "isn't known: inspect them before relying on this list"
+        )
     return False
 
 
@@ -293,14 +302,23 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     )
 
     def project_queries() -> int:
-        count = 0
+        count = malformed = 0
         for line in _read(log).splitlines():
-            try:
-                count += json.loads(line).get("project_path") == str(root)
-            except (ValueError, AttributeError):
+            if not line.strip():
                 continue
+            try:
+                record = json.loads(line)
+            except ValueError:
+                malformed += 1  # cut short by a crash, say: it may still be this project's
+                continue
+            count += isinstance(record, dict) and record.get("project_path") == str(root)
         query_log.detail = f"{count} line(s) from this project" if count else ""
-        return count
+        if malformed:
+            query_log.problem = (
+                f"{malformed} line(s) can't be parsed, so whether they hold this project's "
+                "queries isn't known: inspect them before relying on this list"
+            )
+        return count or malformed
 
     locations.append(_present(query_log, project_queries))
 

@@ -126,7 +126,8 @@ rm -f .neuralmind-team-memory.json neuralmind-backend.yaml neuralmind-backend.ym
 slug="$(pwd -P | sed 's#/#-#g')"
 rm -f ~/.claude/projects/"$slug"/memory/synapse-activations.md
 
-# Outside the project: this project's queries in the global query log
+# Outside the project: this project's queries in the global query log. A line
+# that can't be parsed is kept; data-locations reports it, so inspect it.
 python3 - "$(pwd -P)" <<'PY'
 import json, sys
 from pathlib import Path

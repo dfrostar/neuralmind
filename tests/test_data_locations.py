@@ -269,6 +269,21 @@ def test_a_file_that_cant_be_read_is_a_problem_not_absent(env):
         assert found[name].present and "can't be read" in found[name].problem, name
 
 
+def test_shared_log_lines_that_cant_be_parsed_are_a_problem(env):
+    # A line cut short may still hold this project's query text, and the
+    # deletion script keeps lines it can't parse, so they can't count as absent.
+    from neuralmind import memory
+
+    log = memory.global_query_events_file()
+    log.parent.mkdir(parents=True)
+    log.write_text(f'{{"project_path": "{env.project}", "query": "where is au\n', encoding="utf-8")
+    env.audit_db.parent.mkdir(parents=True)
+    env.audit_db.write_text('{"target": "/elsewhere"}\n{"target": "/wor\n', encoding="utf-8")
+    found = _by_name(env.project)
+    for name in ("global query log", "Team governance audit log"):
+        assert found[name].present and "can't be parsed" in found[name].problem, name
+
+
 def test_an_unreadable_team_config_is_reported(env, monkeypatch):
     import neuralmind.tier2.config as tier2_config
 
