@@ -67,7 +67,9 @@ Integrations:
 `--json` gives the same list for a script. The
 [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after: once the deletion is done, only what you chose to keep
-should be listed as present.
+should be listed as present. The `db_path` index and anchored checkpoints are
+found through the config file, which the procedure deletes, so it notes those
+two first and checks them by hand at the end.
 
 ### Failed audit writes are noted and reported
 

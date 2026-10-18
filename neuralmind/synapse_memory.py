@@ -353,9 +353,10 @@ def export_synapse_memory(
         from .storage_guard import location_allowed
 
         auto_dir = claude_auto_memory_dir(project_path)
-        # Under security.require_encrypted_storage, only to a verified volume.
-        if auto_dir.exists() and location_allowed(project_path, auto_dir):
-            auto_target = auto_dir / CLAUDE_AUTO_FILENAME
+        auto_target = auto_dir / CLAUDE_AUTO_FILENAME
+        # Under security.require_encrypted_storage, only to a verified volume;
+        # the file is checked, so a symlinked one is checked where it points.
+        if auto_dir.exists() and location_allowed(project_path, auto_target):
             try:
                 auto_target.write_text(text, encoding="utf-8")
                 written.append(auto_target)

@@ -197,13 +197,13 @@ def log_query_event(
 def _global_copy_allowed(project_path: str | Path) -> bool:
     """Whether the query may also go to the home directory's global log.
 
-    Under ``security.require_encrypted_storage``, only when that directory's
-    volume is verified as encrypted: the global log holds every project's
-    query text.
+    Under ``security.require_encrypted_storage``, only when the log's volume
+    is verified as encrypted: it holds every project's query text. The file
+    itself is checked, so a symlinked log is checked where it points.
     """
     from ..storage_guard import location_allowed
 
-    return location_allowed(project_path, global_memory_dir())
+    return location_allowed(project_path, global_query_events_file())
 
 
 def log_wakeup_event(

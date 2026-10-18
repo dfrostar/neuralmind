@@ -101,6 +101,32 @@ def test_without_the_requirement_the_export_is_unchanged(project, home, monkeypa
     assert _export(project) == [PROJECT_MEMORY_FILENAME, CLAUDE_AUTO_FILENAME]
 
 
+def _symlink_to_plain_volume(monkeypatch, link: Path, plain: Path) -> None:
+    """``link`` points into ``plain``, the one unencrypted volume."""
+    plain.mkdir(parents=True, exist_ok=True)
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        link.symlink_to(plain / link.name)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    monkeypatch.setattr(
+        storage_guard,
+        "check_storage",
+        lambda path: PLAIN if str(path).startswith(str(plain.resolve())) else ENCRYPTED,
+    )
+
+
+def test_a_symlinked_export_on_an_unencrypted_volume_isnt_written(
+    project, home, monkeypatch, tmp_path
+):
+    _require_encryption(project)
+    target = claude_auto_memory_dir(project) / CLAUDE_AUTO_FILENAME
+    _symlink_to_plain_volume(monkeypatch, target, tmp_path / "plain")
+    SynapseStore(default_db_path(project)).reinforce(["a", "b"])
+    assert [p.name for p in export_synapse_memory(project)] == [PROJECT_MEMORY_FILENAME]
+    assert not (tmp_path / "plain" / CLAUDE_AUTO_FILENAME).exists()
+
+
 # --- the global query log -----------------------------------------------------
 
 
@@ -137,6 +163,17 @@ def test_without_the_requirement_the_query_log_is_unchanged(project, home, monke
     _volumes(monkeypatch, project, PLAIN)
     _, global_ = _log_query(project, monkeypatch)
     assert global_.exists()
+
+
+def test_a_symlinked_query_log_on_an_unencrypted_volume_isnt_written(
+    project, home, monkeypatch, tmp_path
+):
+    _require_encryption(project)
+    link = memory.global_query_events_file()
+    _symlink_to_plain_volume(monkeypatch, link, tmp_path / "plain")
+    local, _ = _log_query(project, monkeypatch)
+    assert "where is auth handled?" in local.read_text(encoding="utf-8")
+    assert not (tmp_path / "plain" / link.name).exists()
 
 
 # --- the MCP export tool ------------------------------------------------------

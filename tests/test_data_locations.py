@@ -144,6 +144,17 @@ def test_listing_changes_nothing_on_disk(env):
     assert _tree(env.tmp) == before
 
 
+def test_the_team_audit_log_is_found_by_its_escaped_path(env):
+    # The Team audit log is written with json.dumps, which escapes non-ASCII
+    # characters (and, on Windows, backslashes) in the project's path.
+    project = env.tmp / "projé"
+    project.mkdir()
+    env.audit_db.parent.mkdir(parents=True)
+    env.audit_db.write_text(json.dumps({"target": str(project.resolve())}) + "\n")
+    assert "\\u00e9" in env.audit_db.read_text()
+    assert _by_name(project)["Team governance audit log"].present
+
+
 def test_a_symlinked_state_directory_is_listed_by_its_target(env):
     target = env.tmp / "elsewhere" / "state"
     target.mkdir(parents=True)

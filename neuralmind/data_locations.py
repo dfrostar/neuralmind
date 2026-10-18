@@ -229,12 +229,15 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     except Exception:
         audit_db = None
     if audit_db is not None:
+        # Written with json.dumps, which escapes backslashes and non-ASCII
+        # characters in the path.
+        needles = (str(root), json.dumps(str(root))[1:-1])
         locations.append(
             Location(
                 "Team governance audit log",
                 OUTSIDE,
                 str(audit_db),
-                audit_db.exists() and _file_mentions(audit_db, str(root)),
+                audit_db.exists() and any(_file_mentions(audit_db, n) for n in needles),
                 "this project's path and node names; hash-chained, shared by every project",
                 f"rm {audit_db} (whole file only, when erasure is required)",
             )

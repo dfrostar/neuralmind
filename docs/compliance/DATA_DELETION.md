@@ -180,15 +180,23 @@ rm -f .neuralmind-team-memory.json
 ### 3.3 Verification
 
 *(v4.18.0+)* `neuralmind data-locations .` should list as present only what you
-chose to keep (§1). On earlier versions, or as a cross-check, each of these
-should print nothing. Set the first
-two lines to the locations noted before deleting, or leave them empty:
+chose to keep (§1). It finds the `db_path` index and the anchored checkpoint
+file through the config file, which §3.1 deleted, so it can't see those two any
+more. Check them yourself on every version: set these lines to the locations
+noted before deleting (leave a line empty if that location wasn't set), and
+each check should print nothing:
 
 ```bash
 db_path=""      # the db_path, if one was set
 anchor_file=""  # the anchored checkpoint file, if erasure was required
 [ -z "$db_path" ] || ls "$db_path"/store*.sqlite* "$db_path"/index*.tvim* "$db_path"/bm25_index*.json "$db_path"/chroma.sqlite3 2>/dev/null
 [ -z "$anchor_file" ] || ls "$anchor_file" 2>/dev/null
+```
+
+Before v4.18.0, which has no `data-locations`, each of these should print
+nothing too:
+
+```bash
 grep -sl "neuralmind _hook" .claude/settings.json ~/.claude/settings.json
 grep -sF "$(pwd -P)" ~/.hermes/plugins/neuralmind/config.json
 ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json neuralmind-backend.y*ml neuralmind-backend.json 2>/dev/null
