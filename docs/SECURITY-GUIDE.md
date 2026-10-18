@@ -794,7 +794,7 @@ Before deploying NeuralMind to production:
 ### Data Protection
 - [ ] `.neuralmind/` restricted to its owner (`chmod -R go-rwx`)
 - [ ] Full-disk encryption on every host that holds `.neuralmind/`
-- [ ] The home directory encrypted too, or `NEURALMIND_SYNAPSE_EXPORT=0` and `NEURALMIND_MEMORY=0` set: Claude Code's synapse export (code symbol names) and the query log are written there, and `security.require_encrypted_storage` doesn't check it ([Data Deletion §2.2](compliance/DATA_DELETION.md#22-outside-the-project))
+- [ ] The home directory encrypted too: Claude Code's synapse export (code symbol names) and the query log are written there, and `security.require_encrypted_storage` doesn't check it ([Data Deletion §2.2](compliance/DATA_DELETION.md#22-outside-the-project)). `NEURALMIND_SYNAPSE_EXPORT=0` and `NEURALMIND_MEMORY=0` aren't a substitute: the first stops the hooks' export but not the MCP `neuralmind_export_synapse_memory` tool
 - [ ] Graph view and daemon reached only over loopback, an SSH tunnel, or a TLS proxy you run
 - [ ] Secrets scanned (`neuralmind scan-for-secrets`) before indexing
 - [ ] No hardcoded credentials

@@ -26,6 +26,7 @@ logging is on, the text of every query from every project.
 | `graphify-out/` | A legacy index or a graphify graph, when present |
 | `.neuralmind-team-memory.json` | The team memory bundle. It is committed, so deleting the file leaves earlier versions in git history |
 | `neuralmind-backend.yaml` | Configuration, including the security policy |
+| The directory its `db_path` names, if set (relative to the project, or absolute) | The vector index stored outside `.neuralmind/`, including the text of indexed code (turbovec's `store.sqlite`) |
 
 ### 2.2 Outside the project
 
@@ -33,6 +34,7 @@ logging is on, the text of every query from every project.
 |---|---|---|
 | `~/.claude/projects/<slug>/memory/synapse-activations.md` | Code symbol and file names from the project's synapse store. `<slug>` is the project's absolute path, symlinks resolved, with each `/` replaced by `-` | Memory export and the Claude Code `SessionStart` hook, when that directory exists |
 | `~/.config/neuralmind/projects.json` | Paths of registered projects | `neuralmind build-all` and the project registry |
+| `~/.config/neuralmind/audit.db` (or the Team config's `audit_db`) | The Team governance audit log: the project's path and the names of code nodes whose shared edges were retracted, hash-chained | `neuralmind team` governance commands |
 | `~/.config/neuralmind/`, `~/.local/share/neuralmind/` (the rest) | User configuration, Team configuration and license; the self-hosted data directory. No project data | You, `neuralmind self-hosted init` |
 | `~/.neuralmind/memory/query_events.jsonl` | The text of every query, with its project's path, from every project on the machine | Query memory logging, when it was accepted at the first-run prompt and `NEURALMIND_MEMORY` isn't `0` |
 | `~/.neuralmind/` (the rest) | Daemon discovery file and log, the graph server's access token, the memory-consent record, the Team license store | The daemon, `neuralmind serve`, the first-run memory-consent prompt, `neuralmind team` / `license` |
@@ -52,11 +54,16 @@ logging is on, the text of every query from every project.
 
 ### 3.1 Complete Deletion
 
-First stop everything that writes NeuralMind data, so nothing is written while
-it's being deleted: end the agent sessions that use NeuralMind (Claude Code,
-Hermes-Agent, any MCP client), stop `neuralmind watch` and `neuralmind serve`,
-and stop the daemon (`neuralmind daemon stop`). The query log below is shared by
-every project, and a query logged while it's rewritten would be lost.
+First stop everything that writes NeuralMind data under this OS account, in
+every project and not only this one: end the agent sessions that use NeuralMind
+(Claude Code, Hermes-Agent, any MCP client), stop `neuralmind watch` and
+`neuralmind serve`, and stop the daemon (`neuralmind daemon stop`). The query
+log below is shared by every project, and a query any of them logs while it's
+rewritten would be lost.
+
+If `neuralmind-backend.yaml` sets `db_path`, note that directory before the
+commands below delete the file, check that no other project uses it, and delete
+it too.
 
 Then run from the project root:
 
@@ -90,6 +97,9 @@ neuralmind install-hooks --uninstall
 
 Then remove the project's entry from `~/.config/neuralmind/projects.json`, the
 git hook blocks (2.3), and, if no other project uses NeuralMind, `~/.neuralmind/`.
+The Team governance audit log is not deleted here: it's hash-chained, so
+removing one project's records breaks its verification. Keep it for your
+retention period, or delete the whole file once nothing in it must be kept.
 The team memory bundle and `neuralmind-backend.yaml` stay in git history until
 that history is rewritten. `neuralmind-backend.yaml` holds the project's
 security policy, so committing its deletion removes the policy for everyone
