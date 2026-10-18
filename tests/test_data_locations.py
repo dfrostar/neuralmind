@@ -9,6 +9,7 @@ that listing changes nothing on disk.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -152,7 +153,9 @@ def test_every_remove_command_runs_as_printed(env, tmp_path, monkeypatch):
             assert not [w for w in words if w.startswith("(")], loc.remove
         if loc.remove.startswith("rm "):
             paths = [
-                w for w in shlex.split(loc.remove, comments=True) if w not in ("rm", "-rf", "&&")
+                w
+                for w in shlex.split(loc.remove, comments=True)
+                if w not in ("rm", "-rf", "-f", "&&")
             ]
             assert paths and all(Path(p).is_absolute() for p in paths), loc.remove
     hooks = {loc.name: loc for loc in locations}["Claude Code hooks"]
@@ -173,7 +176,9 @@ def test_a_symlinked_export_is_removed_with_its_target(env):
         pytest.skip("can't create a symlink here")
     export = _by_name(env.project)["Claude Code synapse export"]
     assert export.present and export.path == str(target.resolve())
-    assert shlex.split(export.remove) == ["rm", str(target.resolve()), "&&", "rm", str(link)]
+    assert shlex.split(export.remove) == [
+        "rm", "-f", str(target.resolve()), "&&", "rm", str(link)
+    ]  # fmt: skip
 
 
 def test_chroma_journals_at_db_path_are_listed(env):
@@ -204,7 +209,7 @@ def test_a_symlinked_index_file_is_removed_with_its_target(env):
     words = shlex.split(found.remove, comments=True)
     target = str(real.resolve())
     assert words == [
-        "rm", target, "&&",
+        "rm", "-f", target, "&&",
         "rm", "-f", f"{target}-wal", f"{target}-shm", f"{target}-journal", "&&",
         "rm", str(index / "store.sqlite"),
     ]  # fmt: skip
@@ -357,12 +362,14 @@ def test_a_relative_config_dir_is_pinned_in_the_registry_command(env, monkeypatc
     assert words[0] == f"NEURALMIND_CONFIG_DIR={(workdir / 'cfg').resolve()}"
 
 
-def test_a_symlinked_sqlite_database_is_removed_with_its_journals(env):
-    # SQLite writes -wal/-shm beside the database itself, not beside the link.
-    real = env.tmp / "disk" / "synapses.db"
+@pytest.mark.parametrize("target_name", ["synapses.db", "synapses"])
+def test_a_symlinked_sqlite_database_is_removed_with_its_journals(env, target_name):
+    # SQLite writes -wal/-shm beside the database itself, not beside the link,
+    # and the link's name is enough to know it's a database.
+    real = env.tmp / "disk" / target_name
     real.parent.mkdir()
     real.write_text("x", encoding="utf-8")
-    (env.tmp / "disk" / "synapses.db-wal").write_text("x", encoding="utf-8")
+    (env.tmp / "disk" / f"{target_name}-wal").write_text("x", encoding="utf-8")
     (env.project / ".neuralmind").mkdir()
     try:
         (env.project / ".neuralmind" / "synapses.db").symlink_to(real)
@@ -382,6 +389,41 @@ def test_the_db_path_command_keeps_the_directory_out_of_its_comment(env):
     (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
     remove = _by_name(env.project)["index at db_path"].remove
     assert remove.split("#", 1)[1] == " then the directory itself, if nothing else is in it"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="runs the printed command with sh")
+def test_index_files_linked_to_each_other_are_all_removed(env):
+    # A second rm of a file a link already took would fail and stop the rest.
+    index = env.tmp / "index"
+    index.mkdir()
+    for name in ("index.b.tvim", "index.current.tvim", "store.sqlite"):
+        (index / name).write_text("x", encoding="utf-8")
+    try:
+        (index / "index.a.tvim").symlink_to(index / "index.b.tvim")  # the link sorts first
+        (index / "index.tvim").symlink_to(index / "index.current.tvim")  # its target does
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
+    found = _by_name(env.project)["index at db_path"]
+    subprocess.run(["sh", "-c", found.remove], check=True)
+    assert list(index.iterdir()) == []
+
+
+def test_a_state_subdirectory_that_cant_be_listed_is_a_problem(env, monkeypatch):
+    # os.walk skips it without a word, and a symlink in it would go unlisted.
+    locked = env.project / ".neuralmind" / "cache"
+    locked.mkdir(parents=True)
+    real_scandir = os.scandir
+
+    def denied(path=".", *args, **kwargs):
+        if isinstance(path, (str, os.PathLike)) and Path(path) == locked:
+            raise PermissionError(13, "Permission denied", str(path))
+        return real_scandir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", denied)
+    state = _by_name(env.project)[".neuralmind/"]
+    assert state.present and "can't be listed" in state.problem
+    assert str(locked) in state.problem
 
 
 def test_an_index_directory_that_cant_be_listed_is_a_problem(env, monkeypatch):

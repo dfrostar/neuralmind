@@ -139,20 +139,24 @@ def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
 
     Absolute, quoted paths. A symlink gets both removed, what it points to and
     the link: ``rm link`` leaves the data, and ``rm -rf link/`` empties a
-    directory but leaves it and the link.
+    directory but leaves it and the link. What it points to is removed with
+    ``-f``: another link removed first may have pointed to the same file.
     """
     rm = "rm -rf" if directory else "rm"
     path = _absolute(path)
     if path.is_symlink():
         target = path.resolve()
         journals = ""
-        if not directory and target.suffix in _SQLITE_SUFFIXES:
+        if not directory and {target.suffix, path.suffix} & _SQLITE_SUFFIXES:
             # SQLite keeps a database's journals beside the file itself, not
             # beside the link, and the WAL can hold data not yet checkpointed.
+            # The link's name counts too: synapses.db can point to a file
+            # without a suffix.
             journals = "rm -f " + " ".join(
                 shlex.quote(f"{target}{suffix}") for suffix in ("-wal", "-shm", "-journal")
             )
             journals += " && "
+        rm = "rm -rf" if directory else "rm -f"
         return (
             f"{rm} {shlex.quote(str(target))} && {journals}rm {shlex.quote(str(path))}",
             target,
@@ -239,15 +243,16 @@ def _project_locations(
             f"can't be read ({config_problem}), so a db_path index or anchored "
             "checkpoints it names aren't listed: fix the file and run this again"
         )
+    state_dir = _place(
+        f"{STATE_DIR_NAME}/",
+        PROJECT,
+        root / STATE_DIR_NAME,
+        "index, code graph, synapses, decisions, audit log, recaps, caches",
+        root,
+        directory=True,
+    )
     locations = [
-        _place(
-            f"{STATE_DIR_NAME}/",
-            PROJECT,
-            root / STATE_DIR_NAME,
-            "index, code graph, synapses, decisions, audit log, recaps, caches",
-            root,
-            directory=True,
-        ),
+        state_dir,
         _place(
             "graphify-out/",
             PROJECT,
@@ -268,8 +273,16 @@ def _project_locations(
     # rm -rf .neuralmind/ removes a symlink inside it but not what it points to
     # (the turbovec index directory, say, moved to another disk).
     state = root / STATE_DIR_NAME
+
+    def unlisted(exc: OSError) -> None:
+        # os.walk skips a directory it can't read: say so, or the list looks complete.
+        state_dir.problem = state_dir.problem or (
+            f"{exc.filename} can't be listed ({exc.strerror}), so symlinks in it, and "
+            "what they point to, aren't listed: make it readable and run this again"
+        )
+
     if state.is_dir():  # a symlinked .neuralmind is walked too; links below it aren't followed
-        for dirpath, dirnames, filenames in os.walk(state):
+        for dirpath, dirnames, filenames in os.walk(state, onerror=unlisted):
             for name in sorted(dirnames + filenames):
                 link = Path(dirpath) / name
                 if link.is_symlink():
@@ -328,10 +341,19 @@ def _project_locations(
             if found:
                 # The directory stays out of the comment: a newline in it would
                 # end the comment and run the rest.
+                # A file another listed name links to goes with that link: a
+                # second rm of it would fail and stop the rest.
+                linked = {
+                    (directory / name).resolve()
+                    for name in found
+                    if (directory / name).is_symlink()
+                }
                 index.remove = (
                     " && ".join(
                         _remove_command(directory / name, directory=(directory / name).is_dir())[0]
                         for name in found
+                        if (directory / name).is_symlink()
+                        or _absolute(directory / name) not in linked
                     )
                     + "  # then the directory itself, if nothing else is in it"
                 )

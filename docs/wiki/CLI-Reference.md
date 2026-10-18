@@ -1562,7 +1562,8 @@ repository's worktrees share one hooks directory. A `db_path` that isn't a path,
 and a Team `audit_db` given as a relative path (each process writes its own copy
 under its working directory, so only one can be listed), are reported as
 problems too, as is any file it needs to read and can't: it's listed as present
-with the reason, never as absent.
+with the reason, never as absent. So is a directory inside `.neuralmind/` it
+can't list, since a symlink in it would go unlisted.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.
