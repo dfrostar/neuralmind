@@ -71,24 +71,35 @@ def _file_mentions(path: Path, needle: str) -> bool:
         return False
 
 
+def _directory(root: Path, name: str, holds: str) -> Location:
+    """A directory in the project, or wherever it points when it's a symlink.
+
+    ``rm -rf link/`` empties the target but leaves it and the link, and
+    ``rm -rf link`` removes only the link, so a symlink gets both named.
+    """
+    path = root / name
+    if not path.is_symlink():
+        return Location(f"{name}/", PROJECT, str(path), path.exists(), holds, f"rm -rf {name}/")
+    target = path.resolve()
+    return Location(
+        f"{name}/",
+        PROJECT if target.is_relative_to(root) else OUTSIDE,
+        str(target),
+        target.exists(),
+        holds,
+        f"rm -rf {target} && rm {path}",
+        f"{name} is a symlink to it",
+    )
+
+
 def _project_locations(root: Path, config_path: Path | None, config: dict) -> list[Location]:
     locations = [
-        Location(
-            ".neuralmind/",
-            PROJECT,
-            str(root / STATE_DIR_NAME),
-            (root / STATE_DIR_NAME).exists(),
+        _directory(
+            root,
+            STATE_DIR_NAME,
             "index, code graph, synapses, decisions, audit log, recaps, caches",
-            "rm -rf .neuralmind/",
         ),
-        Location(
-            "graphify-out/",
-            PROJECT,
-            str(root / "graphify-out"),
-            (root / "graphify-out").exists(),
-            "a legacy index or a graphify graph",
-            "rm -rf graphify-out/",
-        ),
+        _directory(root, "graphify-out", "a legacy index or a graphify graph"),
         Location(
             "team memory bundle",
             PROJECT,
@@ -122,7 +133,7 @@ def _project_locations(root: Path, config_path: Path | None, config: dict) -> li
         locations.append(
             Location(
                 "index at db_path",
-                PROJECT if directory.is_relative_to(root) else OUTSIDE,
+                PROJECT if directory.resolve().is_relative_to(root) else OUTSIDE,
                 str(directory),
                 bool(found),
                 "the vector index, including indexed text",
@@ -191,8 +202,8 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
         )
     )
 
-    security = config.get("security") if isinstance(config.get("security"), dict) else {}
-    anchor = security.get("audit_anchor_dir")
+    security = config.get("security")
+    anchor = security.get("audit_anchor_dir") if isinstance(security, dict) else None
     if isinstance(anchor, str) and anchor.strip():
         from .audit_checkpoint import anchor_checkpoints_path
 

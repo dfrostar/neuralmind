@@ -144,6 +144,20 @@ def test_listing_changes_nothing_on_disk(env):
     assert _tree(env.tmp) == before
 
 
+def test_a_symlinked_state_directory_is_listed_by_its_target(env):
+    target = env.tmp / "elsewhere" / "state"
+    target.mkdir(parents=True)
+    try:
+        (env.project / ".neuralmind").symlink_to(target, target_is_directory=True)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    state = _by_name(env.project)[".neuralmind/"]
+    assert state.present and state.kind == dl.OUTSIDE
+    assert state.path == str(target.resolve())
+    # rm -rf on the link alone leaves the data, so both are named.
+    assert state.remove == f"rm -rf {target.resolve()} && rm {env.project / '.neuralmind'}"
+
+
 def test_the_cli_prints_json(env, capsys):
     _populate(env)
     from neuralmind.cli import cmd_data_locations
