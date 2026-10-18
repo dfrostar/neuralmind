@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.18.0](https://github.com/dfrostar/neuralmind/compare/v4.17.2...v4.18.0) (2026-10-18)
+
+
+### Features
+
+* **audit:** neuralmind audit record-gap records failed audit writes in the hash-chained log as a gap ([05907fe](https://github.com/dfrostar/neuralmind/commit/05907fe298a6a87ff0107a287bcd49a188780aa3))
+* **cli:** neuralmind data-locations lists every place a project's data lives, with commands that remove each ([05907fe](https://github.com/dfrostar/neuralmind/commit/05907fe298a6a87ff0107a287bcd49a188780aa3))
+
+
+### Bug Fixes
+
+* **mcp:** the export tool honours NEURALMIND_SYNAPSE_EXPORT=0, as the hooks do ([05907fe](https://github.com/dfrostar/neuralmind/commit/05907fe298a6a87ff0107a287bcd49a188780aa3))
+* **security:** failed audit writes are noted and reported by doctor, and under the CUI profile a record that can't be written or noted refuses the call ([05907fe](https://github.com/dfrostar/neuralmind/commit/05907fe298a6a87ff0107a287bcd49a188780aa3))
+* **security:** home-directory copies follow security.require_encrypted_storage, checked where a symlink points ([05907fe](https://github.com/dfrostar/neuralmind/commit/05907fe298a6a87ff0107a287bcd49a188780aa3))
+
 ## [4.17.2](https://github.com/dfrostar/neuralmind/compare/v4.17.1...v4.17.2) (2026-10-18)
 
 
