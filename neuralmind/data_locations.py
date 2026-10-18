@@ -187,7 +187,10 @@ def _place(
         detail = f"{_absolute(path)} is a symlink to it"
     if note:
         remove += f"  # {note}"
-    return Location(name, kind, str(target), target.exists(), holds, remove, detail)
+    # A link whose target is gone still counts: the link is ours to remove, and
+    # a database's journals can outlive it, found only through the link.
+    present = target.exists() or _absolute(path).is_symlink()
+    return Location(name, kind, str(target), present, holds, remove, detail)
 
 
 def _records_mention(path: Path, root: Path) -> bool:

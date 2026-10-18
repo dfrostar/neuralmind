@@ -397,6 +397,21 @@ def test_a_symlinked_sqlite_database_is_removed_with_its_journals(env, target_na
     assert words[-1] == str(env.project / ".neuralmind" / "synapses.db")
 
 
+def test_a_database_link_whose_target_is_gone_is_present_for_its_journals(env):
+    # The WAL can outlive the database, and removing .neuralmind/ would lose
+    # the only link to it.
+    real = env.tmp / "disk" / "synapses.db"
+    real.parent.mkdir()
+    (env.tmp / "disk" / "synapses.db-wal").write_text("x", encoding="utf-8")
+    (env.project / ".neuralmind").mkdir()
+    try:
+        (env.project / ".neuralmind" / "synapses.db").symlink_to(real)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    (linked,) = [loc for loc in dl.data_locations(env.project) if "a symlink in" in loc.name]
+    assert linked.present and f"{real.resolve()}-wal" in shlex.split(linked.remove)
+
+
 def test_the_db_path_command_keeps_the_directory_out_of_its_comment(env):
     # A newline in the path would end the comment and run what follows.
     index = env.tmp / "idx"

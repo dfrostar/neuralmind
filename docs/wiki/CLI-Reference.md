@@ -1555,7 +1555,9 @@ from any directory; a condition on one, such as "only when erasure is
 required", follows it as a `#` comment. A symlinked file or directory is listed
 by what it points to, with both it and the link to remove, and so is any
 symlink inside `.neuralmind/` (such as an index directory moved to another
-disk), since `rm -rf .neuralmind/` removes the link but not its target. A git
+disk), since `rm -rf .neuralmind/` removes the link but not its target. A
+symlink whose target is gone is still listed, so the link and any database
+journals left beside the target can be removed. A git
 hook block
 counts only for the project it rebuilds, since a monorepo's projects and a
 repository's worktrees share one hooks directory. A `db_path` that isn't a path,
