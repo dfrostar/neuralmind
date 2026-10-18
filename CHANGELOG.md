@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.17.0](https://github.com/dfrostar/neuralmind/compare/v4.16.0...v4.17.0) (2026-10-18)
+
+
+### Features
+
+* **freshness:** an answer from a stale index says so ([72f49ea](https://github.com/dfrostar/neuralmind/commit/72f49eadce2d62db22f9a8226920bdfb96f7f725))
+
+
+### Bug Fixes
+
+* **graph:** edits to __init__.py reach the graph, and a file missing from it is restored ([0649df6](https://github.com/dfrostar/neuralmind/commit/0649df6b1ee72ae001518f639ab2999b9b6712c7))
+* **graph:** the incremental scan compares POSIX paths, so Windows edits in subdirectories reach the graph ([2d2b92c](https://github.com/dfrostar/neuralmind/commit/2d2b92c01424f476532c022287f5eeae3e6ab788))
+
+
+### Documentation
+
+* **release:** v4.17.0 notes name the Windows incremental-scan fix ([eb3ff91](https://github.com/dfrostar/neuralmind/commit/eb3ff9121d38eac98fcd2945e00602d649df8879))
+* **social:** draft the Hermes plugin's Reddit debut post ([#666](https://github.com/dfrostar/neuralmind/issues/666)) ([b234a9d](https://github.com/dfrostar/neuralmind/commit/b234a9db1615858d05614227d0cc23f9385612c9))
+
 ## [4.16.0](https://github.com/dfrostar/neuralmind/compare/v4.15.1...v4.16.0) (2026-10-17)
 
 
