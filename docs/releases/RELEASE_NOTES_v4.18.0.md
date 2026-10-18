@@ -34,7 +34,10 @@ it, and in the integrations that write it, and whether each holds anything.
 Each location comes from the code that writes it, so the list can't drift from
 the code. A `.neuralmind/` that's a symlink is listed by the directory it points
 to, with both to remove: `rm -rf .neuralmind/` would empty it and leave the
-directory and the link. It's read-only.
+directory and the link, and the same goes for any symlinked file or directory
+it lists. The remove commands name absolute, quoted paths, so they run as
+printed from any directory, with a condition such as "only when erasure is
+required" as a `#` comment. It's read-only.
 
 ```
 $ neuralmind data-locations .
@@ -43,10 +46,10 @@ NeuralMind data for /work/app
 Project:
   [present] .neuralmind/: /work/app/.neuralmind
             holds: index, code graph, synapses, decisions, audit log, recaps, caches
-            remove: rm -rf .neuralmind/
+            remove: rm -rf /work/app/.neuralmind
   [present] index at db_path: /mnt/fast/app-index
             holds: the vector index, including indexed text (bm25_index.json, index.tvim, store.sqlite)
-            remove: delete the files listed; the directory only if nothing else is in it
+            remove: rm -rf /mnt/fast/app-index/bm25_index.json /mnt/fast/app-index/index.tvim /mnt/fast/app-index/store.sqlite  # then /mnt/fast/app-index itself, if nothing else is in it
   ...
 
 Outside the project:
@@ -64,9 +67,9 @@ Integrations:
 5 of 15 present. See docs/compliance/DATA_DELETION.md.
 ```
 
-A config file that can't be parsed is reported as a `problem`, since the
-locations it names can't be listed until it's fixed, and the output says the
-list may be incomplete. `--json` gives the same list for a script. The
+A config file that can't be parsed, the project's or the Team config, is
+reported as a `problem`, since the locations it names can't be listed until
+it's fixed, and the output says the list may be incomplete. `--json` gives the same list for a script. The
 [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after: once the deletion is done, only what you chose to keep
 should be listed as present. The `db_path` index and anchored checkpoints are

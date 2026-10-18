@@ -1540,11 +1540,14 @@ neuralmind data-locations .          # human-readable
 neuralmind data-locations . --json   # {"project": ..., "locations": [{name, kind, path, present, holds, remove, detail, problem}]}
 ```
 
-A location it couldn't read is shown with a `problem`. The one that matters is
-a config file that can't be parsed: the `db_path` index and anchored checkpoints
-it names can't be listed until it's fixed, so the output ends by saying the list
-may be incomplete. The remove commands run as printed; a condition on one, such
-as "only when erasure is required", follows it as a `#` comment.
+A location it couldn't read is shown with a `problem`. The ones that matter are
+config files that can't be parsed: the project's, whose `db_path` index and
+anchored checkpoints can't be listed until it's fixed, and the Team config,
+whose `audit_db` can't be. The output then ends by saying the list may be
+incomplete. The remove commands name absolute, quoted paths and run as printed
+from any directory; a condition on one, such as "only when erasure is
+required", follows it as a `#` comment. A symlinked file or directory is listed
+by what it points to, with both it and the link to remove.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.

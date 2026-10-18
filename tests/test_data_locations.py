@@ -138,13 +138,52 @@ def _tree(root: Path) -> dict[str, float]:
     return {str(p): p.stat().st_mtime_ns for p in sorted(root.rglob("*"))}
 
 
-def test_every_remove_command_runs_as_printed(env):
-    # Conditions are shell comments, not text a shell would choke on.
+def test_every_remove_command_runs_as_printed(env, tmp_path, monkeypatch):
+    # From any directory: absolute paths, and conditions as shell comments.
     _populate(env)
-    for loc in dl.data_locations(env.project):
+    monkeypatch.chdir(tmp_path)
+    locations = dl.data_locations(env.project)
+    for loc in locations:
         if loc.remove.startswith(("rm ", "neuralmind ")):
             words = shlex.split(loc.remove, comments=True)
             assert not [w for w in words if w.startswith("(")], loc.remove
+        if loc.remove.startswith("rm "):
+            paths = [
+                w for w in shlex.split(loc.remove, comments=True) if w not in ("rm", "-rf", "&&")
+            ]
+            assert paths and all(Path(p).is_absolute() for p in paths), loc.remove
+    hooks = {loc.name: loc for loc in locations}["Claude Code hooks"]
+    assert shlex.split(hooks.remove)[2] == str(env.project)
+
+
+def test_a_symlinked_export_is_removed_with_its_target(env):
+    from neuralmind.synapse_memory import CLAUDE_AUTO_FILENAME, claude_auto_memory_dir
+
+    target = env.tmp / "elsewhere" / CLAUDE_AUTO_FILENAME
+    target.parent.mkdir()
+    target.write_text("# NeuralMind", encoding="utf-8")
+    link = claude_auto_memory_dir(env.project) / CLAUDE_AUTO_FILENAME
+    link.parent.mkdir(parents=True)
+    try:
+        link.symlink_to(target)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    export = _by_name(env.project)["Claude Code synapse export"]
+    assert export.present and export.path == str(target.resolve())
+    assert shlex.split(export.remove) == ["rm", str(target.resolve()), "&&", "rm", str(link)]
+
+
+def test_an_unreadable_team_config_is_reported(env, monkeypatch):
+    import neuralmind.tier2.config as tier2_config
+
+    def load_config(*_a, strict=False, **_k):
+        if strict:
+            raise ValueError("tier2.yaml: expected a mapping")
+        return SimpleNamespace(audit_db=str(env.audit_db))
+
+    monkeypatch.setattr(tier2_config, "load_config", load_config)
+    log = _by_name(env.project)["Team governance audit log"]
+    assert "Team config can't be read" in log.problem and "audit_db" in log.problem
 
 
 def test_an_unreadable_config_is_reported_not_ignored(env, capsys):

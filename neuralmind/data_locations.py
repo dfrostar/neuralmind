@@ -72,25 +72,37 @@ def _file_mentions(path: Path, needle: str) -> bool:
         return False
 
 
-def _directory(root: Path, name: str, holds: str) -> Location:
-    """A directory in the project, or wherever it points when it's a symlink.
+def _place(
+    name: str,
+    kind: str,
+    path: Path,
+    holds: str,
+    root: Path,
+    *,
+    directory: bool = False,
+    note: str = "",
+) -> Location:
+    """A file or directory holding this project's data, and the command that removes it.
 
-    ``rm -rf link/`` empties the target but leaves it and the link, and
-    ``rm -rf link`` removes only the link, so a symlink gets both named.
+    The command names absolute, quoted paths, so it removes the same thing from
+    any working directory. A symlink is listed by what it points to, with both
+    to remove: ``rm link`` leaves the data, and ``rm -rf link/`` empties a
+    directory but leaves it and the link. ``note``, a condition on removing it,
+    follows as a shell comment.
     """
-    path = root / name
-    if not path.is_symlink():
-        return Location(f"{name}/", PROJECT, str(path), path.exists(), holds, f"rm -rf {name}/")
-    target = path.resolve()
-    return Location(
-        f"{name}/",
-        PROJECT if target.is_relative_to(root) else OUTSIDE,
-        str(target),
-        target.exists(),
-        holds,
-        f"rm -rf {quote(str(target))} && rm {quote(str(path))}",
-        f"{name} is a symlink to it",
-    )
+    rm = "rm -rf" if directory else "rm"
+    detail = ""
+    if path.is_symlink():
+        target = path.resolve()
+        kind = PROJECT if target.is_relative_to(root) else OUTSIDE
+        remove = f"{rm} {quote(str(target))} && rm {quote(str(path))}"
+        detail = f"{path} is a symlink to it"
+    else:
+        target = path
+        remove = f"{rm} {quote(str(path))}"
+    if note:
+        remove += f"  # {note}"
+    return Location(name, kind, str(target), target.exists(), holds, remove, detail)
 
 
 def _records_mention(path: Path, root: Path) -> bool:
@@ -129,35 +141,43 @@ def _records_mention(path: Path, root: Path) -> bool:
 def _project_locations(
     root: Path, config_path: Path | None, config: dict, config_problem: str
 ) -> list[Location]:
+    config_file = _place(
+        "config file",
+        PROJECT,
+        config_path or root / "neuralmind-backend.yaml",
+        "configuration, including the security policy",
+        root,
+    )
+    if config_problem:
+        config_file.problem = (
+            f"can't be read ({config_problem}), so a db_path index or anchored "
+            "checkpoints it names aren't listed: fix the file and run this again"
+        )
     locations = [
-        _directory(
-            root,
-            STATE_DIR_NAME,
+        _place(
+            f"{STATE_DIR_NAME}/",
+            PROJECT,
+            root / STATE_DIR_NAME,
             "index, code graph, synapses, decisions, audit log, recaps, caches",
+            root,
+            directory=True,
         ),
-        _directory(root, "graphify-out", "a legacy index or a graphify graph"),
-        Location(
+        _place(
+            "graphify-out/",
+            PROJECT,
+            root / "graphify-out",
+            "a legacy index or a graphify graph",
+            root,
+            directory=True,
+        ),
+        _place(
             "team memory bundle",
             PROJECT,
-            str(root / ".neuralmind-team-memory.json"),
-            (root / ".neuralmind-team-memory.json").exists(),
+            root / ".neuralmind-team-memory.json",
             "learned associations; committed, so earlier versions stay in git history",
-            "rm .neuralmind-team-memory.json",
+            root,
         ),
-        Location(
-            "config file",
-            PROJECT,
-            str(config_path or root / "neuralmind-backend.yaml"),
-            config_path is not None,
-            "configuration, including the security policy",
-            f"rm {config_path.name if config_path else 'neuralmind-backend.yaml'}",
-            problem=(
-                f"can't be read ({config_problem}), so a db_path index or anchored "
-                "checkpoints it names aren't listed: fix the file and run this again"
-                if config_problem
-                else ""
-            ),
-        ),
+        config_file,
     ]
     from .backend_manager import resolve_db_path
 
@@ -179,7 +199,13 @@ def _project_locations(
                 str(directory),
                 bool(found),
                 "the vector index, including indexed text",
-                "delete the files listed; the directory only if nothing else is in it",
+                (
+                    "rm -rf "
+                    + " ".join(quote(str(directory / name)) for name in found)
+                    + f"  # then {directory} itself, if nothing else is in it"
+                    if found
+                    else "nothing to remove"
+                ),
                 ", ".join(found),
             )
         )
@@ -194,14 +220,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     locations = []
     export = claude_auto_memory_dir(root) / CLAUDE_AUTO_FILENAME
     locations.append(
-        Location(
-            "Claude Code synapse export",
-            OUTSIDE,
-            str(export),
-            export.exists(),
-            "code symbol and file names",
-            f"rm {quote(str(export))}",
-        )
+        _place("Claude Code synapse export", OUTSIDE, export, "code symbol and file names", root)
     )
 
     log = memory.global_query_events_file()
@@ -254,43 +273,53 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             root, anchor_dir if anchor_dir.is_absolute() else root / anchor_dir
         )
         locations.append(
-            Location(
+            _place(
                 "anchored audit checkpoints",
                 OUTSIDE,
-                str(path),
-                path.exists(),
+                path,
                 "checkpoint record counts and hashes, no code; kept by default",
-                f"rm {quote(str(path))}  # only when erasure is required",
+                root,
+                note="only when erasure is required",
             )
         )
 
+    team_problem = ""
     try:
         from .tier2.config import load_config
 
-        audit_db = Path(load_config().audit_db).expanduser()
+        try:
+            team_config = load_config(strict=True)
+        except Exception as exc:
+            team_problem = (
+                f"the Team config can't be read ({type(exc).__name__}: {exc}), so an "
+                "audit_db it sets isn't known: fix it and run this again"
+            )
+            team_config = load_config()
+        audit_db = Path(team_config.audit_db).expanduser()
     except Exception:
         audit_db = None
     if audit_db is not None:
-        locations.append(
-            Location(
-                "Team governance audit log",
-                OUTSIDE,
-                str(audit_db),
-                audit_db.exists() and _records_mention(audit_db, root),
-                "this project's path and node names; hash-chained, shared by every project",
-                f"rm {quote(str(audit_db))}  # the whole file only, when erasure is required",
-            )
+        team_log = _place(
+            "Team governance audit log",
+            OUTSIDE,
+            audit_db,
+            "this project's path and node names; hash-chained, shared by every project",
+            root,
+            note="the whole file only, when erasure is required",
         )
+        team_log.present = team_log.present and _records_mention(Path(team_log.path), root)
+        team_log.problem = team_problem
+        locations.append(team_log)
 
-    shared = memory.global_root()
     locations.append(
-        Location(
+        _place(
             "~/.neuralmind/",
             OUTSIDE,
-            str(shared),
-            shared.exists(),
+            memory.global_root(),
             "daemon files, server token, memory consent, license store; shared by every project",
-            f"rm -rf {quote(str(shared))}  # only if no other project uses NeuralMind",
+            root,
+            directory=True,
+            note="only if no other project uses NeuralMind",
         )
     )
     return locations
@@ -324,7 +353,7 @@ def _integrations(root: Path) -> list[Location]:
             str(project_settings),
             _file_mentions(project_settings, "neuralmind _hook"),
             "hooks that write this project's data",
-            "neuralmind install-hooks --uninstall",
+            f"neuralmind install-hooks {quote(str(root))} --uninstall",
         ),
         Location(
             "global Claude Code hooks",
