@@ -249,6 +249,23 @@ def enforce_storage_policy(
     return first
 
 
+def location_allowed(project_path: str | Path, location: str | Path) -> bool:
+    """Whether a copy of the project's data may be written to ``location``.
+
+    For the copies NeuralMind writes outside the project, under the home
+    directory: Claude Code's synapse export and the global query log. They
+    used to skip the storage check, so on a host whose project volume was
+    encrypted and whose home wasn't, code symbol names and query text landed
+    unencrypted. True unless the project requires encrypted storage and
+    ``location`` (or the project's own state) isn't verified as encrypted.
+    """
+    try:
+        enforce_storage_policy(project_path, location)
+    except StorageNotVerifiedError:
+        return False
+    return True
+
+
 def _nearest_existing(path: Path) -> Path:
     """The path itself, or its closest ancestor that exists, so a not-yet-
     created directory is checked on the volume it will be created on."""

@@ -851,6 +851,43 @@ def _check_audit_checkpoints(project: Path) -> Check:
     )
 
 
+def _check_audit_writes(project: Path) -> Check:
+    """Whether any audit record failed to be written.
+
+    Every caller swallows a failed append so auditing never blocks a query or
+    a build, and the audit trail notes each one in
+    ``.neuralmind/audit_write_failures.jsonl``. Fails under
+    ``security.profile: cui``, where a complete audit log is a control; warns
+    otherwise.
+    """
+    from neuralmind.audit import AUDIT_FAILURES_NAME
+    from neuralmind.security_config import PROFILE_CUI, load_security_settings
+
+    name = "Audit log writes"
+    path = project / ".neuralmind" / AUDIT_FAILURES_NAME
+    try:
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except FileNotFoundError:
+        lines = []
+    except OSError as exc:
+        return Check(name, WARN, f"can't read {path}: {exc}")
+    if not lines:
+        return Check(name, OK, "no failed audit writes recorded")
+    try:
+        last = json.loads(lines[-1])
+    except ValueError:
+        last = {}
+    status = FAIL if load_security_settings(project).profile == PROFILE_CUI else WARN
+    return Check(
+        name,
+        status,
+        f"{len(lines)} audit record(s) couldn't be written, so the log is missing them; "
+        f"the last, {last.get('event', '?')} at {last.get('timestamp', '?')}: "
+        f"{last.get('error', '?')}",
+        fix=f"Fix the cause (disk space, permissions on .neuralmind/), then delete {path}.",
+    )
+
+
 def _running_daemon_exposure() -> str | None:
     """Why the running daemon, if any, would refuse a CUI project, or None."""
     try:
@@ -902,6 +939,7 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_storage_encryption(project),
         _check_security_profile(project),
         _check_audit_checkpoints(project),
+        _check_audit_writes(project),
     ]
 
 

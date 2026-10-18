@@ -350,8 +350,11 @@ def export_synapse_memory(
         pass
 
     if write_claude_auto_memory:
+        from .storage_guard import location_allowed
+
         auto_dir = claude_auto_memory_dir(project_path)
-        if auto_dir.exists():
+        # Under security.require_encrypted_storage, only to a verified volume.
+        if auto_dir.exists() and location_allowed(project_path, auto_dir):
             auto_target = auto_dir / CLAUDE_AUTO_FILENAME
             try:
                 auto_target.write_text(text, encoding="utf-8")

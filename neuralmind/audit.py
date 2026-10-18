@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import threading
@@ -27,6 +28,11 @@ AUDIT_FILE_NAME = "audit_events.jsonl"
 # Held while a record is chained and appended, and while the log rotates. A
 # separate file, because rotation renames the log itself.
 AUDIT_LOCK_NAME = "audit_events.lock"
+# One line per record that couldn't be written. Every caller swallows a failed
+# append so auditing never blocks a query or a build; this file is how the gap
+# shows up (`neuralmind doctor`, *Audit log writes*) instead of going unseen.
+AUDIT_FAILURES_NAME = "audit_write_failures.jsonl"
+logger = logging.getLogger(__name__)
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
 # What rotate() names an archive, and what a hash looks like. A rotation
 # marker naming anything else is rejected rather than followed as a path.
@@ -133,6 +139,7 @@ class AuditTrail:
         self.project_path = Path(project_path).resolve()
         self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
         self.lock_file = self.events_file.with_name(AUDIT_LOCK_NAME)
+        self.failures_file = self.events_file.with_name(AUDIT_FAILURES_NAME)
         self._lock = threading.Lock()
         self._identity_os: bool | None = None
 
@@ -190,46 +197,75 @@ class AuditTrail:
         actor_role: str = "",
         ip_address: str = "",
     ) -> dict[str, Any]:
-        if actor is None and self._os_identity_mode():
-            # Under security.identity: os the actor is the OS account, as on
-            # the MCP path. NEURALMIND_ACTOR is inherited from whoever started
-            # the process, so it is recorded as a claim, not believed.
-            from .identity import os_identity
+        try:
+            if actor is None and self._os_identity_mode():
+                # Under security.identity: os the actor is the OS account, as on
+                # the MCP path. NEURALMIND_ACTOR is inherited from whoever started
+                # the process, so it is recorded as a claim, not believed.
+                from .identity import os_identity
 
-            claimed = os.environ.get("NEURALMIND_ACTOR")
-            actor = os_identity() or "unknown"
-            if claimed and claimed != actor:
-                details = {**(details or {}), "claimed_actor": claimed}
-        actor = _resolve_actor(actor)
-        # The MCP server, the hooks, the CLI and the daemon all append to this
-        # log. Each record chains to the last one in the file, so reading that
-        # hash and appending must happen under one cross-process lock: with a
-        # thread lock alone, two processes chained to the same record and
-        # verify() reported a log nobody had touched as tampered.
-        with self._lock, _exclusive_file_lock(self.lock_file):
-            prev_sha256 = self._last_sha256_from_file()
-            event = AuditEvent(
-                category=category,
-                action=action,
-                actor=actor,
-                status=status,
-                target=target,
-                details=details or {},
-                timestamp=datetime.now(timezone.utc).isoformat(),
-                actor_role=actor_role,
-                ip_address=ip_address,
-                prev_sha256=prev_sha256,
-                sha256="",
-            )
-            # SHA-256 of prev_hash + stable event serialization
-            payload_str = prev_sha256 + event.to_hashable_str()
-            event.sha256 = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+                claimed = os.environ.get("NEURALMIND_ACTOR")
+                actor = os_identity() or "unknown"
+                if claimed and claimed != actor:
+                    details = {**(details or {}), "claimed_actor": claimed}
+            actor = _resolve_actor(actor)
+            # The MCP server, the hooks, the CLI and the daemon all append to this
+            # log. Each record chains to the last one in the file, so reading that
+            # hash and appending must happen under one cross-process lock: with a
+            # thread lock alone, two processes chained to the same record and
+            # verify() reported a log nobody had touched as tampered.
+            with self._lock, _exclusive_file_lock(self.lock_file):
+                prev_sha256 = self._last_sha256_from_file()
+                event = AuditEvent(
+                    category=category,
+                    action=action,
+                    actor=actor,
+                    status=status,
+                    target=target,
+                    details=details or {},
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    actor_role=actor_role,
+                    ip_address=ip_address,
+                    prev_sha256=prev_sha256,
+                    sha256="",
+                )
+                # SHA-256 of prev_hash + stable event serialization
+                payload_str = prev_sha256 + event.to_hashable_str()
+                event.sha256 = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
-            payload = event.to_dict()
-            self.events_file.parent.mkdir(parents=True, exist_ok=True)
-            with self.events_file.open("a", encoding="utf-8") as file:
-                file.write(json.dumps(payload, sort_keys=True) + "\n")
-            return payload
+                payload = event.to_dict()
+                self.events_file.parent.mkdir(parents=True, exist_ok=True)
+                with self.events_file.open("a", encoding="utf-8") as file:
+                    file.write(json.dumps(payload, sort_keys=True) + "\n")
+                return payload
+        except Exception as exc:
+            self._record_failure(category, action, exc)
+            raise
+
+    def _record_failure(self, category: str, action: str, exc: BaseException) -> None:
+        """Note a record that couldn't be written, where `doctor` will find it.
+
+        Written outside the log's lock and to a file of its own: the lock or the
+        log may be what failed. If this write fails too, the warning says so.
+        """
+        line = json.dumps(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event": f"{category}/{action}",
+                "error": f"{type(exc).__name__}: {exc}"[:500],
+            },
+            sort_keys=True,
+        )
+        unrecorded = ""
+        try:
+            self.failures_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.failures_file.open("a", encoding="utf-8") as file:
+                file.write(line + "\n")
+        except OSError as write_exc:
+            unrecorded = f" (and couldn't be noted in {self.failures_file}: {write_exc})"
+        logger.warning(
+            "audit record %s/%s was not written: %s%s", category, action, exc, unrecorded
+        )
 
     def read_events(self) -> list[dict[str, Any]]:
         if not self.events_file.exists():
