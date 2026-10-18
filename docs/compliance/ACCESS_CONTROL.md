@@ -126,7 +126,7 @@ For security incidents:
 |--------|---------|----------|
 | `CLOUDFLARE_API_TOKEN` | GitHub Secrets | Annual |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Secrets | Never (account ID) |
-| `MAIN_PUSH_DEPLOY_KEY` | GitHub Secrets. An SSH deploy key with write access, which pushes to `main` past any ruleset; held by `sbom.yml`, `neuralmind-autoindex.yml` and `update-chart.yml`, which install only pinned packages because of it | Annual |
+| `MAIN_PUSH_DEPLOY_KEY` | GitHub Secrets. An SSH deploy key with write access, which pushes to `main` past any ruleset; held only by the publishing job of `sbom.yml`, `neuralmind-autoindex.yml` and `update-chart.yml`, which installs and runs no package: each file it pushes is built in a separate job without the key | Annual |
 | `RELEASE_PLEASE_TOKEN` | GitHub Secrets, optional. A PAT or GitHub App token, so CI runs on release PRs | Annual |
 | `GH_PAT` | GitHub Secrets. Opens `auto-fix.yml`'s formatting PR (manual dispatch only) | Annual |
 | PyPI | No secret: trusted publishing (OIDC) | n/a |

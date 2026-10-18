@@ -52,12 +52,18 @@ logging is on, the text of every query from every project.
 
 ### 3.1 Complete Deletion
 
-Run from the project root:
+First stop everything that writes NeuralMind data, so nothing is written while
+it's being deleted: end the agent sessions that use NeuralMind (Claude Code,
+Hermes-Agent, any MCP client), stop `neuralmind watch` and `neuralmind serve`,
+and stop the daemon (`neuralmind daemon stop`). The query log below is shared by
+every project, and a query logged while it's rewritten would be lost.
+
+Then run from the project root:
 
 ```bash
 # In the project
 rm -rf .neuralmind/ graphify-out/
-rm -f .neuralmind-team-memory.json
+rm -f .neuralmind-team-memory.json neuralmind-backend.yaml
 
 # Outside the project: Claude Code's copy of the synapse export
 slug="$(pwd -P | sed 's#/#-#g')"
@@ -84,7 +90,10 @@ neuralmind install-hooks --uninstall
 
 Then remove the project's entry from `~/.config/neuralmind/projects.json`, the
 git hook blocks (2.3), and, if no other project uses NeuralMind, `~/.neuralmind/`.
-The team memory bundle stays in git history until that history is rewritten.
+The team memory bundle and `neuralmind-backend.yaml` stay in git history until
+that history is rewritten. `neuralmind-backend.yaml` holds the project's
+security policy, so committing its deletion removes the policy for everyone
+who pulls the change.
 
 ### 3.2 Selective Deletion
 
@@ -107,7 +116,7 @@ rm -f .neuralmind-team-memory.json
 After a complete deletion each of these should print nothing:
 
 ```bash
-ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json 2>/dev/null
+ls -a .neuralmind/ graphify-out/ .neuralmind-team-memory.json neuralmind-backend.yaml 2>/dev/null
 ls ~/.claude/projects/"$(pwd -P | sed 's#/#-#g')"/memory/synapse-activations.md 2>/dev/null
 grep -F "\"$(pwd -P)\"" ~/.neuralmind/memory/query_events.jsonl 2>/dev/null
 grep -F "\"$(pwd -P)\"" ~/.config/neuralmind/projects.json 2>/dev/null

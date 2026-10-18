@@ -105,9 +105,10 @@ Hotfixes for critical security vulnerabilities may be fast-tracked:
 
 Generated files are pushed to `main` directly, with `[skip ci]`, so CI doesn't
 run on them: SBOMs (`sbom.yml`), the benchmark chart (`update-chart.yml`) and
-the team-memory snapshot (`neuralmind-autoindex.yml`). These workflows hold a
-deploy key that can push past any ruleset, so they install only pinned
-packages.
+the team-memory snapshot (`neuralmind-autoindex.yml`). They push with a deploy
+key that can push past any ruleset, so each builds its file in a job without
+the key, and only a job that runs nothing but git, `gh` and SHA-pinned actions
+holds it.
 
 ---
 
