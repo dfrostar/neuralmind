@@ -93,10 +93,10 @@ def _populate(env) -> None:
         '{"command": "neuralmind _hook stale-guard"}', encoding="utf-8"
     )
     subprocess.run(["git", "init", "-q", str(p)], check=True)
+    from neuralmind.cli import _post_commit_block
+
     hook = p / ".git" / "hooks" / "post-commit"
-    hook.write_text(
-        "#!/bin/sh\n# neuralmind-hook-start\nneuralmind build .\n# neuralmind-hook-end\n"
-    )
+    hook.write_text("#!/bin/sh\n" + _post_commit_block(".", "neuralmind", False))
     pin = plugin_dir() / "config.json"
     pin.parent.mkdir(parents=True)
     pin.write_text(json.dumps({"project": str(p)}), encoding="utf-8")
@@ -221,7 +221,30 @@ def test_a_relative_team_audit_db_is_removed_by_absolute_path(env, monkeypatch, 
     absolute = str((workdir / "logs" / "audit.jsonl").resolve())
     assert log.present and log.path == absolute
     assert shlex.split(log.remove, comments=True) == ["rm", absolute]
-    assert "relative path" in log.detail
+    # Other processes' copies can't be found, so the list says it's incomplete.
+    assert "relative path" in log.problem
+
+
+def test_a_db_path_that_isnt_a_path_is_reported(env):
+    (env.project / "neuralmind-backend.yaml").write_text("db_path: [shared]\n", encoding="utf-8")
+    config = _by_name(env.project)["config file"]
+    assert "db_path is ['shared'], not a path" in config.problem
+
+
+def test_a_shared_hook_block_counts_only_for_the_project_it_names(env):
+    # A monorepo's projects share one hooks directory, whose block names one.
+    from neuralmind.cli import _post_commit_block
+
+    repo = env.tmp / "mono"
+    (repo / "app a").mkdir(parents=True)
+    (repo / "app-b").mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / ".git" / "hooks" / "post-commit").write_text(
+        "#!/bin/sh\n" + _post_commit_block(shlex.quote("app a"), "neuralmind", False)
+    )
+    assert _by_name((repo / "app a").resolve())["git hook blocks"].detail == "post-commit"
+    assert not _by_name((repo / "app-b").resolve())["git hook blocks"].present
+    assert not _by_name(repo.resolve())["git hook blocks"].present
 
 
 def test_an_unreadable_team_config_is_reported(env, monkeypatch):

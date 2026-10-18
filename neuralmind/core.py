@@ -40,7 +40,7 @@ from . import namespaces as ns_mod
 from . import paths as paths_mod
 from . import querying, synapse_feedback
 from . import recent_queries as recent_queries_log
-from .audit import get_audit_trail
+from .audit import AuditUnrecordedError, get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
@@ -618,6 +618,10 @@ class NeuralMind:
                 actor_role=actor_role,
                 ip_address=ip_address,
             )
+        except AuditUnrecordedError:
+            # Under security.profile: cui, a record that can't be written or
+            # noted refuses the call: nothing would show what it did.
+            raise
         except Exception:
             # Audit logging must never block primary query/build/search flows.
             pass

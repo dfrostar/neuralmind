@@ -1547,7 +1547,12 @@ whose `audit_db` can't be. The output then ends by saying the list may be
 incomplete. The remove commands name absolute, quoted paths and run as printed
 from any directory; a condition on one, such as "only when erasure is
 required", follows it as a `#` comment. A symlinked file or directory is listed
-by what it points to, with both it and the link to remove.
+by what it points to, with both it and the link to remove. A git hook block
+counts only for the project it rebuilds, since a monorepo's projects and a
+repository's worktrees share one hooks directory. A `db_path` that isn't a path,
+and a Team `audit_db` given as a relative path (each process writes its own copy
+under its working directory, so only one can be listed), are reported as
+problems too.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.
@@ -1614,7 +1619,10 @@ with the count and the last failure, fails under `security.profile: cui`, and
 is `ok` with none recorded. Fix the cause, then run
 [`neuralmind audit record-gap`](#audit-record-gap), which records the missing
 records in the log itself; the check then counts only failures after that gap
-record. Don't delete the file: it holds each failure's detail.
+record. Don't delete the file: it holds each failure's detail. Under
+`security.profile: cui`, a record that can be neither written nor noted (a full
+disk or an unwritable `.neuralmind/` usually fails both) refuses the call, since
+nothing durable would show the gap.
 
 **Query freshness** *(v4.17.0+)* shows the line queries, searches and the
 prompt hook carry right now (see [the freshness notice](#freshness-notice-v4170)):

@@ -76,6 +76,12 @@ should be listed as present. The `db_path` index and anchored checkpoints are
 found through the config file, which the procedure deletes, so it notes those
 two first and checks them by hand at the end.
 
+A git hook block counts only for the project it rebuilds: a monorepo's projects
+and a repository's worktrees share one hooks directory, and `init-hook`'s block
+names one of them. A `db_path` that isn't a path, or a Team `audit_db` given as a
+relative path (each process writes its own copy under its working directory),
+is reported as a `problem`.
+
 ### Failed audit writes are noted and reported
 
 A record that can't be written is noted in
@@ -88,7 +94,12 @@ lock may be what failed) and logged as a warning. `neuralmind doctor` has a new
 ```
 
 It warns, and fails under `security.profile: cui`, where a complete audit log
-is a control. The call itself still runs, as before.
+is a control. The call itself still runs, as before, with one exception. Under
+`security.profile: cui`, a record that can be neither written nor noted refuses
+the call: a full disk or an unwritable `.neuralmind/` usually fails both, and
+then nothing durable would show what the call did (NIST SP 800-53 AU-5, which
+lists stopping as a response to an audit logging failure). Outside the profile,
+the warning in the log is all there is.
 
 Fix the cause, then record the gap in the log itself:
 
@@ -123,6 +134,10 @@ instead of exporting.
 - **Nothing new, normally.** The MCP tools, hooks and queries behave as before.
 - **With `NEURALMIND_SYNAPSE_EXPORT=0`**, a call to
   `neuralmind_export_synapse_memory` returns the reason instead of a file list.
+- **Under `security.profile: cui`, when the audit log and its failure note
+  both refuse writes** (a full disk, an unwritable `.neuralmind/`), queries,
+  searches and builds fail with "couldn't be written ... or noted" until the
+  cause is fixed.
 - **Under `security.require_encrypted_storage` with an unencrypted home**,
   Claude Code's auto-memory no longer gets `synapse-activations.md`. The
   project's `.neuralmind/SYNAPSE_MEMORY.md`, which the `CLAUDE.md` import line

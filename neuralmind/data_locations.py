@@ -15,10 +15,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from shlex import quote
 
 from .state_dir import STATE_DIR_NAME
 
@@ -32,6 +32,10 @@ INTEGRATION = "integrations"
 _INDEX_PATTERNS = ("store*.sqlite*", "index*.tvim*", "bm25_index*.json", "chroma.sqlite3*")
 _UUID_DIR = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _HOOK_MARKER = "# neuralmind-hook-start"
+_HOOK_END = "# neuralmind-hook-end"
+# How `neuralmind init-hook` names the project in its block: "." at the
+# worktree root, else its path from there (shell-quoted, forward slashes).
+_HOOK_TARGET = re.compile(r"\[ -f (.+?)/\.neuralmind/build_status\.json \]")
 _CLAUDE_IMPORT = "@.neuralmind/SYNAPSE_MEMORY.md"
 
 
@@ -83,8 +87,8 @@ def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
     path = Path(os.path.abspath(path))  # absolute, without following a symlink
     if path.is_symlink():
         target = path.resolve()
-        return f"{rm} {quote(str(target))} && rm {quote(str(path))}", target
-    return f"{rm} {quote(str(path))}", path
+        return f"{rm} {shlex.quote(str(target))} && rm {shlex.quote(str(path))}", target
+    return f"{rm} {shlex.quote(str(path))}", path
 
 
 def _place(
@@ -188,7 +192,14 @@ def _project_locations(
     ]
     from .backend_manager import resolve_db_path
 
-    db_path = resolve_db_path(root, config.get("db_path"))
+    try:
+        db_path = resolve_db_path(root, config.get("db_path"))
+    except (TypeError, ValueError) as exc:
+        db_path = None
+        config_file.problem = (
+            f"db_path is {config.get('db_path')!r}, not a path ({exc}), so the index it "
+            "names isn't listed: fix it and run this again"
+        )
     if db_path and db_path != ":memory:":
         directory = Path(db_path)
         found = sorted(
@@ -268,7 +279,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             str(registry),
             registered,
             "this project's path",
-            f"neuralmind project remove {quote(str(root))}",
+            f"neuralmind project remove {shlex.quote(str(root))}",
         )
     )
 
@@ -319,12 +330,13 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
         )
         team_log.present = team_log.present and _records_mention(Path(team_log.path), root)
         team_log.problem = team_problem
-        if relative:
-            # The writers open it as given, so each lands under its own working
-            # directory; this is the one under the current directory.
-            team_log.detail = (
-                f"audit_db is the relative path {audit_db} in the Team config, so each "
-                "process writes it under its own working directory; this is the current one's"
+        if relative and not team_log.problem:
+            # The writers open it as given, so each process writes its own copy
+            # under its working directory, and only this one can be listed.
+            team_log.problem = (
+                f"audit_db is the relative path {audit_db} in the Team config, so each process "
+                "writes its own copy under its working directory and only the current "
+                "directory's is listed: set an absolute path, then find and remove the others"
             )
         locations.append(team_log)
 
@@ -342,20 +354,46 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     return locations
 
 
-def _git_hooks_dir(root: Path) -> Path | None:
+def _git_hooks(root: Path) -> tuple[Path, str] | None:
+    """The hooks directory, and how ``init-hook``'s block names this project.
+
+    A monorepo's projects and a repository's worktrees share one hooks
+    directory, and its block names one project, so a block counts only when
+    it names this one.
+    """
     try:
         out = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--git-path", "hooks"],
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel", "--git-path", "hooks"],
             capture_output=True,
             text=True,
             timeout=10,
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    if out.returncode != 0 or not out.stdout.strip():
+    lines = out.stdout.strip().splitlines()
+    if out.returncode != 0 or len(lines) != 2:
         return None
-    path = Path(out.stdout.strip())
-    return path if path.is_absolute() else root / path
+    toplevel, hooks = Path(lines[0]), Path(lines[1])
+    rel = os.path.relpath(os.path.realpath(root), os.path.realpath(toplevel))
+    return (hooks if hooks.is_absolute() else root / hooks), (
+        "." if rel == "." else rel.replace(os.sep, "/")
+    )
+
+
+def _hook_block_names(hook: Path, target: str) -> bool:
+    """Whether ``hook``'s NeuralMind block rebuilds the project ``target`` names."""
+    try:
+        text = hook.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    block = text.partition(_HOOK_MARKER)[2].partition(_HOOK_END)[0]
+    for match in _HOOK_TARGET.finditer(block):
+        try:
+            if shlex.split(match.group(1)) == [target]:
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 def _integrations(root: Path) -> list[Location]:
@@ -370,7 +408,7 @@ def _integrations(root: Path) -> list[Location]:
             str(project_settings),
             _file_mentions(project_settings, "neuralmind _hook"),
             "hooks that write this project's data",
-            f"neuralmind install-hooks {quote(str(root))} --uninstall",
+            f"neuralmind install-hooks {shlex.quote(str(root))} --uninstall",
         ),
         Location(
             "global Claude Code hooks",
@@ -381,12 +419,13 @@ def _integrations(root: Path) -> list[Location]:
             "neuralmind install-hooks --uninstall --global  # only if no other project uses them",
         ),
     ]
-    hooks_dir = _git_hooks_dir(root)
-    if hooks_dir is not None:
+    git = _git_hooks(root)
+    if git is not None:
+        hooks_dir, target = git
         blocks = sorted(
             p.name
             for p in (hooks_dir.iterdir() if hooks_dir.is_dir() else ())
-            if p.is_file() and _file_mentions(p, _HOOK_MARKER)
+            if p.is_file() and _hook_block_names(p, target)
         )
         locations.append(
             Location(

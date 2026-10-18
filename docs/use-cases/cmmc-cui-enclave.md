@@ -209,9 +209,10 @@ the profile when the key or anchor directory isn't set, or the newest
 checkpoint is more than a week old.
 
 *(v4.18.0+)* A record that can't be written (a full disk, a permissions error)
-fails `doctor`'s *Audit log writes* check under the profile. Fix the cause,
-then record the gap in the log itself, so the log and your SIEM show what's
-missing:
+fails `doctor`'s *Audit log writes* check under the profile. If the failure
+can't be noted either, the call itself is refused, since nothing would show the
+gap. Fix the cause, then record the gap in the log itself, so the log and your
+SIEM show what's missing:
 
 ```bash
 neuralmind audit record-gap /srv/app

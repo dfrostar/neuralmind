@@ -44,6 +44,16 @@ _ARCHIVE_NAME = re.compile(r"audit_events\.\d{8}_\d{6}\.jsonl")
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 
+class AuditUnrecordedError(RuntimeError):
+    """A record couldn't be written, and the failure couldn't be noted either.
+
+    Raised only under ``security.profile: cui``, where a complete audit log is
+    a control: with nothing durable left to show the gap, the call is refused
+    rather than allowed to go unrecorded. Callers that swallow a failed append
+    let this one through.
+    """
+
+
 def _lines_sha256(lines: list[str]) -> str:
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
@@ -151,6 +161,7 @@ class AuditTrail:
         self.failures_recorded_file = self.events_file.with_name(AUDIT_FAILURES_RECORDED_NAME)
         self._lock = threading.Lock()
         self._identity_os: bool | None = None
+        self._profile_cui: bool | None = None
 
     def _os_identity_mode(self) -> bool:
         """True when the project sets ``security.identity: os``. Read once."""
@@ -164,6 +175,17 @@ class AuditTrail:
             except Exception:
                 self._identity_os = False
         return self._identity_os
+
+    def _cui_profile(self) -> bool:
+        """True under ``security.profile: cui``. Read once."""
+        if self._profile_cui is None:
+            try:
+                from .security_config import PROFILE_CUI, load_security_settings
+
+                self._profile_cui = load_security_settings(self.project_path).profile == PROFILE_CUI
+            except Exception:
+                self._profile_cui = False
+        return self._profile_cui
 
     def _last_sha256_from_file(self) -> str:
         """Read the last non-empty line's sha256, or '0'*64 if file is empty/legacy."""
@@ -248,14 +270,22 @@ class AuditTrail:
                     file.write(json.dumps(payload, sort_keys=True) + "\n")
                 return payload
         except Exception as exc:
-            self._record_failure(category, action, exc)
+            if not self._record_failure(category, action, exc) and self._cui_profile():
+                # A full disk or an unwritable .neuralmind/ usually fails the
+                # note too, leaving nothing durable to show the gap.
+                raise AuditUnrecordedError(
+                    f"audit record {category}/{action} couldn't be written ({exc}) or noted, "
+                    "and security.profile: cui doesn't go on without a record. Fix the cause "
+                    "(disk space, permissions on .neuralmind/)."
+                ) from exc
             raise
 
-    def _record_failure(self, category: str, action: str, exc: BaseException) -> None:
+    def _record_failure(self, category: str, action: str, exc: BaseException) -> bool:
         """Note a record that couldn't be written, where `doctor` will find it.
 
         Written outside the log's lock and to a file of its own: the lock or the
-        log may be what failed. If this write fails too, the warning says so.
+        log may be what failed. Returns whether the note was written; if it
+        wasn't, the warning says so.
         """
         line = json.dumps(
             {
@@ -275,6 +305,7 @@ class AuditTrail:
         logger.warning(
             "audit record %s/%s was not written: %s%s", category, action, exc, unrecorded
         )
+        return not unrecorded
 
     def failure_notes(self) -> list[str]:
         """Every note of a record that couldn't be written, recorded or not."""

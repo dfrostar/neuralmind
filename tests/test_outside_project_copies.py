@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -314,3 +315,54 @@ def test_a_cut_off_note_is_still_counted(project):
     assert check.detail.startswith("1 audit record(s)")
     assert trail.record_gap()["details"]["missing_records"] == 1
     assert doctor._check_audit_writes(project).status == doctor.OK
+
+
+# --- a failure that can't be noted either -------------------------------------
+
+
+def _nothing_writable(project: Path, monkeypatch) -> AuditTrail:
+    """The log and the failure note both refuse writes, as on a full disk."""
+    trail = AuditTrail(project)
+    trail.failures_file.mkdir(parents=True)  # a directory: the note can't be appended
+    monkeypatch.setattr(
+        trail, "_last_sha256_from_file", lambda: (_ for _ in ()).throw(OSError(28, "disk full"))
+    )
+    return trail
+
+
+def test_under_the_cui_profile_an_unrecorded_failure_refuses_the_call(project, monkeypatch):
+    from neuralmind.audit import AuditUnrecordedError
+    from neuralmind.core import NeuralMind
+
+    (project / "neuralmind-backend.yaml").write_text(
+        "security:\n  profile: cui\n  users:\n    alice: reader\n", encoding="utf-8"
+    )
+    trail = _nothing_writable(project, monkeypatch)
+    with pytest.raises(AuditUnrecordedError, match="couldn't be written"):
+        trail.append_event(category="query", action="query")
+    # The query path, which swallows other audit failures, lets this one through.
+    with pytest.raises(AuditUnrecordedError):
+        NeuralMind._emit_audit(SimpleNamespace(audit=trail), "audit", "query")
+
+
+def test_otherwise_an_unrecorded_failure_doesnt_block_the_call(project, monkeypatch):
+    from neuralmind.core import NeuralMind
+
+    trail = _nothing_writable(project, monkeypatch)
+    with pytest.raises(OSError):
+        trail.append_event(category="query", action="query")
+    NeuralMind._emit_audit(SimpleNamespace(audit=trail), "audit", "query")  # swallowed, as before
+
+
+def test_under_the_cui_profile_a_noted_failure_still_lets_the_call_through(project, monkeypatch):
+    from neuralmind.core import NeuralMind
+
+    (project / "neuralmind-backend.yaml").write_text(
+        "security:\n  profile: cui\n  users:\n    alice: reader\n", encoding="utf-8"
+    )
+    trail = AuditTrail(project)
+    monkeypatch.setattr(
+        trail, "_last_sha256_from_file", lambda: (_ for _ in ()).throw(OSError("log locked"))
+    )
+    NeuralMind._emit_audit(SimpleNamespace(audit=trail), "audit", "query")
+    assert len(trail.failure_notes()) == 1  # noted, so doctor will fail until it's recorded
