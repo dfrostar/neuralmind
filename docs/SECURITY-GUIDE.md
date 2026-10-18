@@ -172,12 +172,59 @@ security:
   that names `identity` but doesn't parse is refused rather than ignored.
 - Audit events written outside MCP (CLI builds and queries) take the OS account
   as their actor too, with `NEURALMIND_ACTOR` recorded as a claim.
+- *(v4.17.1+)* The role applies off the MCP path too. Each daemon route needs
+  the role the MCP tool doing the same thing needs (`/query`
+  `neuralmind_query`, `/search` `neuralmind_search`, `/stats`
+  `neuralmind_stats`, `/savings` `neuralmind_savings`, `/build`
+  `neuralmind_build`, `/validate` `neuralmind_health`, or `neuralmind_build`
+  with `write`), and so do `neuralmind build` and `neuralmind validate --write`
+  (`neuralmind_build`). A refusal is logged as `security`/`call_denied` with
+  the surface; the daemon answers `403` with `code: security_denied` and
+  `reason` `rbac`, `identity` or `config`, and the CLI exits `1`. Before
+  v4.17.1 a `reader` could build through the daemon or the CLI although MCP
+  refused it. Other CLI commands and the hooks run with the account's own file
+  permissions.
 
 This makes roles and audit attribution trustworthy on a host where users have
 separate OS accounts and an administrator owns the policy file. It doesn't stop
 someone from doing as that account what the account can already do: read
 `.neuralmind/` directly, or edit a policy file they own. Keep the file
 writable only by its owner; `neuralmind doctor` warns when it's group-writable.
+
+### The machine policy
+
+*(v4.17.1+)* `neuralmind-backend.yaml` lives in the project root, and whoever
+owns that directory can delete it, even when an administrator owns the file.
+Before v4.17.1, deleting it switched `profile: cui`, `identity: os` and
+`require_encrypted_storage` off with no warning. An administrator can put those
+three settings where a project's owner can't reach them:
+
+```yaml
+# /etc/neuralmind/policy.yaml          (POSIX: root:root, mode 0644, directory 0755)
+# C:\ProgramData\NeuralMind\policy.yaml (Windows: Administrators full control, Users read)
+security:
+  profile: cui
+```
+
+- It applies to every project on the machine, and only tightens: each setting
+  takes the stricter of the machine's value and the project's, so neither file
+  can loosen the other. With the project file deleted, the profile stays on and,
+  with no `users` left, every MCP call is refused.
+- It can hold only `profile`, `identity` and `require_encrypted_storage`. Roles
+  (`users`, `default_role`, `roles`) and the audit checkpoint settings stay in
+  each project's `neuralmind-backend.yaml`, so a user who manages to create the
+  machine policy gains nothing.
+- A machine policy that doesn't parse, names any other key, or on POSIX isn't
+  owned by root and writable only by root (the file and its directory) holds
+  every project to the strictest settings, and `neuralmind doctor` fails the
+  *Security policy* check with the reason.
+- Its location is fixed. On Windows it's found through the shell, not the
+  `%ProgramData%` variable, which any user can change.
+- On Windows NeuralMind doesn't read ACLs, so restrict the folder yourself:
+  `icacls "C:\ProgramData\NeuralMind" /inheritance:r /grant:r "Administrators:(OI)(CI)F" "SYSTEM:(OI)(CI)F" "Users:(OI)(CI)RX"`.
+
+`neuralmind doctor` names the machine policy on its *Security policy* and
+*Security profile* lines when one applies.
 
 ### Per-user roles
 
@@ -525,6 +572,15 @@ passed.
 Records from before the hash chain existed (written by versions before
 v0.46.2) carry no hash. `verify` accepts them only ahead of the first hashed
 record and reports how many there are; the chain doesn't cover them.
+
+*(v4.17.1+)* The MCP server, the hooks, the CLI and the daemon all append to
+the log, and each append now holds an OS lock on `.neuralmind/audit_events.lock`
+while it reads the last hash and writes, as does `rotate`. Before v4.17.1 only
+a per-process lock did, so two processes writing at once could chain to the
+same record and `verify` reported an untouched log as tampered. If a log
+written by an earlier version fails `verify` at a point where two records share
+a `prev_sha256` and their timestamps are within a second, that was this race,
+not an edit; a checkpoint taken since tells the two apart.
 
 The chain alone can't detect records deleted from the end, or a chain
 recomputed by anyone who can write the file: the hash has no secret key. A

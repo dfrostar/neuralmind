@@ -111,6 +111,8 @@ keywords = [
     "cui-security-profile",
     "tamper-evident-audit-log",
     "signed-audit-checkpoints",
+    "machine-security-policy",
+    "fail-closed-security-policy",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

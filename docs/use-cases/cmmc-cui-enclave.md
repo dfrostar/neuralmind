@@ -89,6 +89,38 @@ listener or seeding refusal.
 Keep the MCP server on stdio. `identity: os` refuses the HTTP transport,
 because over HTTP the server's account isn't the caller's.
 
+*(v4.17.1+)* The roles apply off the MCP path too. Each route of the shared
+`neuralmind daemon` needs the role its matching MCP tool needs, and
+`neuralmind build` and `validate --write` need `neuralmind_build`, so the
+account the git hooks run as must hold a role that allows it (`builder` above
+does). Other CLI commands run with the account's own file permissions.
+
+### Make the profile machine-wide
+
+*(v4.17.1+)* Whoever owns the project directory can delete
+`neuralmind-backend.yaml`, even though the administrator owns the file. Before
+v4.17.1 that switched every setting above off. Put the profile where a
+developer can't reach it:
+
+```bash
+sudo mkdir -p /etc/neuralmind
+printf 'security:\n  profile: cui\n' | sudo tee /etc/neuralmind/policy.yaml
+sudo chmod 755 /etc/neuralmind && sudo chmod 644 /etc/neuralmind/policy.yaml
+```
+
+On Windows, write `C:\ProgramData\NeuralMind\policy.yaml` from an
+administrator prompt and remove users' write access:
+`icacls "C:\ProgramData\NeuralMind" /inheritance:r /grant:r "Administrators:(OI)(CI)F" "SYSTEM:(OI)(CI)F" "Users:(OI)(CI)RX"`.
+
+The machine policy applies to every project on the machine and only tightens:
+each setting takes the stricter of its value and the project's. With the
+project file deleted, the profile stays on, and with no `users` left every MCP
+call is refused. It can hold only `profile`, `identity` and
+`require_encrypted_storage`; roles stay in the project file, so it grants
+nothing. One that doesn't parse, names another key, or on POSIX isn't owned and
+writable only by root holds every project to the strictest settings. See
+[the security guide](../SECURITY-GUIDE.md#the-machine-policy).
+
 ## 4. Check it on each machine
 
 ```bash
@@ -96,9 +128,9 @@ neuralmind doctor .
 ```
 
 ```
-  [ ok ] Security policy: identity: os; account 'alice' gets role 'builder'
+  [ ok ] Security policy: identity: os; account 'alice' gets role 'builder'; machine policy /etc/neuralmind/policy.yaml applies
   [ ok ] Storage encryption: /dev/mapper/luks-root: dm-crypt layer present; OS FIPS mode on
-  [ ok ] Security profile: profile: cui (identity: os, encrypted storage required, servers on loopback with their token only, LLM seeding refused); OS FIPS mode on
+  [ ok ] Security profile: profile: cui (identity: os, encrypted storage required, servers on loopback with their token only, LLM seeding refused); OS FIPS mode on; machine policy /etc/neuralmind/policy.yaml applies
 ```
 
 The **Security profile** line *(v4.16.0+)* checks what the project file can't

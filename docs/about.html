@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4171">
+            <h2>What&rsquo;s New in v4.17.1 &mdash; three security fixes: a CUI profile a developer can&rsquo;t delete, roles off the MCP path, and an audit chain that survives concurrent writers</h2>
+            <p>An audit of the compliance documents against the code found three controls that didn&rsquo;t hold when tried:</p>
+            <ul>
+                <li><strong>A machine policy</strong> &mdash; <code>security.profile: cui</code> lived only in the project&rsquo;s <code>neuralmind-backend.yaml</code>, and deleting that file switched every CUI control off. An administrator can now write it to <code>/etc/neuralmind/policy.yaml</code> (<code>C:\ProgramData\NeuralMind\policy.yaml</code> on Windows). It applies to every project on the machine, only tightens, and can&rsquo;t grant roles; one that can&rsquo;t be trusted holds every project to the strictest settings</li>
+                <li><strong>Roles off the MCP path</strong> &mdash; under <code>identity: os</code>, a <code>reader</code> could build through the daemon or <code>neuralmind build</code> although MCP refused it. Each daemon route and the CLI&rsquo;s writes now need the role the matching MCP tool needs, and a refusal is audited</li>
+                <li><strong>A valid audit chain under concurrent writers</strong> &mdash; the MCP server, hooks, CLI and daemon all append to the audit log, and two processes writing at once could chain to the same record, so <code>audit verify</code> reported an untouched log as tampered. Appends and rotation now hold an OS lock</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.1.md">v4.17.1 release notes</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cmmc-cui-enclave.md">CUI enclave walkthrough</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4170">
             <h2>What&rsquo;s New in v4.17.0 &mdash; an answer from a stale index says so, and package code in <code>__init__.py</code> stays in the graph</h2>
             <p>A 12-repository audit found four projects whose semantic search was dead &mdash; their index was in the legacy <code>graphify-out/</code> layout &mdash; while <code>query</code>, <code>search</code> and the MCP tools answered as if nothing were wrong. An index behind the checkout after a pull was just as silent, and the agent took the old context for current. Now every place the agent reads the index carries one line when it&rsquo;s behind:</p>

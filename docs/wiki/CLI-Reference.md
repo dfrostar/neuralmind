@@ -260,6 +260,10 @@ neuralmind build <project_path> [OPTIONS]
 | `--naive-50k` | False | *(v4.5.0+)* With `--dry-run`, divide by the fixed 50,000-token estimate instead |
 | `--redact-secrets` | False | Replace detected credentials with a `[REDACTED:kind]` marker in text entering the index, on all three backends. Equivalent to `NEURALMIND_REDACT_SECRETS=1`. Off by default because redacting costs recall on legitimately secret-shaped identifiers — run `neuralmind scan-for-secrets` first; removing and rotating the credential is the actual fix. |
 | `--regenerate-graph` | False | Always rebuild `.neuralmind/graph.json` with the built-in tree-sitter backend, whatever graph exists — the way out of a stale graphify graph. `graphify-out/` is never written (v4.4.0+) |
+
+*(v4.17.1+)* Under `security.identity: os`, `build` exits `1` before it writes
+anything when this OS account's role doesn't allow `neuralmind_build`, or the
+role policy is broken; see [Security settings](#security-settings-security-in-neuralmind-backendyaml).
 | `--strict` | False | Exit `3` before embedding when the code graph FAILs the freshness check (v4.4.0+) |
 | `--prune` | False | Remove orphaned vectors even when they are more than half the store; otherwise they're kept with a warning as a safety valve against a graph that shrank by mistake (v4.4.0+) |
 | `--archive-graphify` | False | *(v4.13.0+)* First rename an unused `graphify-out/graph.json` to `graph.json.archived-<UTC timestamp>` (the rest of `graphify-out/` is left alone; renaming it back restores it), then build. Refused under `graph_source: graphify`, where that file is the graph |
@@ -4419,6 +4423,27 @@ same log as a `profile_refused` event with status `denied`. Its `target` is
 `serve`, `daemon` or `llm_seed`, and `details.reason` says why. A daemon that
 refuses a project answers `403` with `code: security_denied` and
 `reason: profile`. See the [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md).
+
+*(v4.17.1+)* **Roles off the MCP path.** Under `identity: os`, each daemon
+route needs the role its matching MCP tool needs (`/query` `neuralmind_query`,
+`/search` `neuralmind_search`, `/stats` `neuralmind_stats`, `/savings`
+`neuralmind_savings`, `/build` `neuralmind_build`, `/validate`
+`neuralmind_health`, or `neuralmind_build` with `write`), and `neuralmind
+build` and `validate --write` need `neuralmind_build`. A refusal is written as
+a `call_denied` event with `details.surface` (`daemon` or `cli`); the daemon
+answers `403` with `code: security_denied` and `reason` `rbac`, `identity` or
+`config`, and the CLI exits `1`. With `identity: declared` nothing is checked
+off the MCP path.
+
+*(v4.17.1+)* **The machine policy.** `/etc/neuralmind/policy.yaml`
+(`C:\ProgramData\NeuralMind\policy.yaml` on Windows) takes a `security:`
+section with `profile`, `identity` and `require_encrypted_storage` only. It
+applies to every project on the machine and only tightens: each setting takes
+the stricter of the machine's and the project's value, so deleting a project's
+`neuralmind-backend.yaml` no longer switches the profile off. One that doesn't
+parse, names another key, or on POSIX isn't owned and writable only by root
+holds every project to the strictest settings. Its path is fixed, not read from
+the environment. See the [security guide](../SECURITY-GUIDE.md#the-machine-policy).
 
 *(v4.13.0+)* Every `mcp_call` and `mcp_call_denied` event also records the
 calling client as `details.client`: the `clientInfo` name and version it sent

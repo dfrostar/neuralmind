@@ -21,15 +21,34 @@ Covers access to:
 
 ## 3. Roles and Permissions
 
-### 3.1 MCP Server Roles
+### 3.1 Product Roles
+
+The default policy, when a project's `security.roles` doesn't replace it:
 
 | Role | Permissions | Who |
 |------|-------------|-----|
-| **admin** | All 14 MCP tools | System operator, CI |
-| **builder** | wakeup, query, search, build, stats, benchmark, skeleton | Developers using agents |
-| **reader** | query, search, stats, benchmark, skeleton | Read-only access |
+| **admin** | Every tool (`"*"`) | System operator, CI |
+| **builder** | All 28 MCP tools the server lists | Developers using agents |
+| **reader** | 24 of them: everything except `neuralmind_build`, `neuralmind_ingest_document`, `neuralmind_record_decision` and `neuralmind_invalidate_decision` | Read-only access |
 
-Implementation: `neuralmind/mcp_security.py`
+Where roles are enforced:
+
+- **MCP tools**: every call. Under `security.identity: declared` (the default)
+  the role is what the caller declares, so it constrains a cooperating agent,
+  not a hostile one. Under `identity: os` it comes from the OS account
+  (`security.users`).
+- **The daemon's routes** and **`neuralmind build` / `validate --write`**
+  *(v4.17.1+)*: under `identity: os` only, each needs the role the MCP tool
+  doing the same thing needs (`/build` and the CLI writes need
+  `neuralmind_build`). With `identity: declared` nothing off the MCP path names
+  a role, so nothing is checked.
+- **Other CLI commands and the hooks** run with the OS account's own file
+  permissions. Against a local account that owns the project's files, those
+  permissions are the boundary, not the role.
+
+Implementation: `neuralmind/mcp_security.py` (`DEFAULT_ROLE_POLICY`,
+`authorize_local`). Tests: `tests/test_mcp_security.py`,
+`tests/test_security_identity.py`, `tests/test_local_role_checks.py`.
 
 ### 3.2 GitHub Repository Roles
 
