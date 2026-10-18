@@ -236,6 +236,38 @@ administrator's crontab: the interval is how long a record can go uncovered.
 | `0` | Checkpoint written |
 | `1` | Not written: the chain or an existing checkpoint fails, the log has no hashed record yet, the key is missing, isn't P-256 or doesn't match the pinned one, the anchor directory can't be written, the checkpoint settings are malformed, or another run held the lock for 60 seconds |
 
+### audit record-gap
+
+*(v4.18.0+)* Record audit writes that failed in the log itself, as one gap
+record.
+
+```bash
+neuralmind audit record-gap [project_path] [--json]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print the gap record, or `null` when there's nothing to record |
+
+A record that couldn't be written can't be put back, but the log can say it's
+missing. This appends one `audit/gap_recorded` record, with status `failure`
+(severity 5 in a CEF export), giving how many records are missing, of which
+events, the first and last failure time, and the last error. Run it after
+fixing what stopped the writes: *Audit log writes* in `neuralmind doctor` then
+passes, and reports the failures as recorded.
+
+The failures stay in `.neuralmind/audit_write_failures.jsonl`, which is only
+ever appended to. How far it has been recorded is kept in
+`.neuralmind/audit_write_failures.recorded.json`, a line count and the hash of
+those lines, so failures after the gap record, or in a file that was deleted
+and started again, still count as unrecorded.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Gap recorded, or nothing to record |
+| `1` | The gap record couldn't be written; the failures stay unrecorded |
+
 ### build
 
 Build or rebuild the neural index from a knowledge graph.
@@ -1570,7 +1602,10 @@ written. Every caller swallows a failed append so auditing never blocks a query
 or a build; the audit trail notes each failure in
 `.neuralmind/audit_write_failures.jsonl` and logs a warning. The check warns
 with the count and the last failure, fails under `security.profile: cui`, and
-is `ok` with none recorded. Fix the cause, then delete the file.
+is `ok` with none recorded. Fix the cause, then run
+[`neuralmind audit record-gap`](#audit-record-gap), which records the missing
+records in the log itself; the check then counts only failures after that gap
+record. Don't delete the file: it holds each failure's detail.
 
 **Query freshness** *(v4.17.0+)* shows the line queries, searches and the
 prompt hook carry right now (see [the freshness notice](#freshness-notice-v4170)):

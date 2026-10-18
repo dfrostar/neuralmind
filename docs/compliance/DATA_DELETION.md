@@ -140,6 +140,10 @@ if log.exists():
 PY
 ```
 
+If `.neuralmind` is a symlink, `rm -rf .neuralmind/` empties the directory it
+points to but leaves that directory and the link: remove both
+(`data-locations` lists the target and the command).
+
 Then remove the rest of 2.3 that applies (the git hook blocks, the `CLAUDE.md`
 import line), the project's entry from `projects.json` (in
 `$NEURALMIND_CONFIG_DIR`, or `~/.config/neuralmind/`), the index files at
@@ -164,7 +168,7 @@ rm -f .neuralmind/synapses.db
 
 # Remove only audit logs (the active log, its rotated archives, checkpoints,
 # and the notes of records that couldn't be written)
-rm -f .neuralmind/audit_events*.jsonl .neuralmind/audit_checkpoints.jsonl .neuralmind/audit_write_failures.jsonl
+rm -f .neuralmind/audit_events*.jsonl .neuralmind/audit_checkpoints.jsonl .neuralmind/audit_write_failures*
 
 # Remove only the session recap records (stored prompts and edited paths)
 neuralmind recap --clear

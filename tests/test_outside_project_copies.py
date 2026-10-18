@@ -9,7 +9,9 @@ Three gaps the compliance documents named in v4.17.2:
 - The MCP ``neuralmind_export_synapse_memory`` tool wrote the export even with
   ``NEURALMIND_SYNAPSE_EXPORT=0``, which switches off the hooks' export.
 - Every caller swallows a failed audit append, so a record that couldn't be
-  written left a gap nobody saw.
+  written left a gap nobody saw. Now it's noted, ``doctor`` reports it, and
+  ``neuralmind audit record-gap`` records the gap in the hash-chained log
+  itself; the note is kept, so clearing the warning doesn't erase the evidence.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from neuralmind import doctor, memory, storage_guard
-from neuralmind.audit import AUDIT_FAILURES_NAME, AuditTrail
+from neuralmind.audit import AuditTrail
 from neuralmind.storage_guard import StorageStatus
 from neuralmind.synapse_memory import (
     CLAUDE_AUTO_FILENAME,
@@ -200,7 +202,7 @@ def test_doctor_warns_on_a_failed_write(project, monkeypatch):
     assert check.status == doctor.WARN
     assert "1 audit record(s) couldn't be written" in check.detail
     assert "query/query" in check.detail
-    assert AUDIT_FAILURES_NAME in check.fix
+    assert "neuralmind audit record-gap" in check.fix
 
 
 def test_doctor_fails_on_a_failed_write_under_the_cui_profile(project, monkeypatch):
@@ -209,3 +211,69 @@ def test_doctor_fails_on_a_failed_write_under_the_cui_profile(project, monkeypat
     )
     _failing_append(project, monkeypatch)
     assert doctor._check_audit_writes(project).status == doctor.FAIL
+
+
+# --- recording the gap in the log ---------------------------------------------
+
+
+def test_record_gap_writes_the_gap_into_the_log(project, monkeypatch):
+    _failing_append(project, monkeypatch)
+    trail = AuditTrail(project)
+    record = trail.record_gap()
+    assert record["category"] == "audit" and record["action"] == "gap_recorded"
+    assert record["status"] == "failure"
+    assert record["details"]["missing_records"] == 1
+    assert record["details"]["events"] == {"query/query": 1}
+    assert "No space left on device" in record["details"]["last_error"]
+    assert trail.read_events()[-1]["sha256"] == record["sha256"]
+    assert trail.verify()["ok"]
+    # The note is kept; doctor passes because the log now says what's missing.
+    assert len(trail.failure_notes()) == 1
+    check = doctor._check_audit_writes(project)
+    assert check.status == doctor.OK
+    assert "all recorded in the log as gaps" in check.detail
+    assert trail.record_gap() is None
+
+
+def test_a_failure_after_the_gap_record_is_unrecorded(project, monkeypatch):
+    _failing_append(project, monkeypatch)
+    AuditTrail(project).record_gap()
+    _failing_append(project, monkeypatch)
+    check = doctor._check_audit_writes(project)
+    assert check.status == doctor.WARN
+    assert check.detail.startswith("1 audit record(s)")
+    assert AuditTrail(project).record_gap()["details"]["missing_records"] == 1
+
+
+def test_deleting_the_notes_doesnt_make_new_failures_look_recorded(project, monkeypatch):
+    _failing_append(project, monkeypatch)
+    trail = AuditTrail(project)
+    trail.record_gap()
+    trail.failures_file.unlink()
+    _failing_append(project, monkeypatch)
+    assert len(trail.unrecorded_failures()) == 1
+    assert doctor._check_audit_writes(project).status == doctor.WARN
+
+
+def test_a_gap_that_cant_be_written_stays_unrecorded(project, monkeypatch):
+    _failing_append(project, monkeypatch)
+    trail = AuditTrail(project)
+    monkeypatch.setattr(
+        trail, "_last_sha256_from_file", lambda: (_ for _ in ()).throw(OSError("disk full"))
+    )
+    with pytest.raises(OSError):
+        trail.record_gap()
+    assert not trail.failures_recorded_file.exists()
+    # The original failure, and the failed gap record, both still unrecorded.
+    assert len(AuditTrail(project).unrecorded_failures()) == 2
+
+
+def test_a_cut_off_note_is_still_counted(project):
+    trail = AuditTrail(project)
+    trail.failures_file.parent.mkdir(parents=True)
+    trail.failures_file.write_bytes(b'{"event": "query/query", "error": "No space \xe2\x80')
+    check = doctor._check_audit_writes(project)
+    assert check.status == doctor.WARN
+    assert check.detail.startswith("1 audit record(s)")
+    assert trail.record_gap()["details"]["missing_records"] == 1
+    assert doctor._check_audit_writes(project).status == doctor.OK

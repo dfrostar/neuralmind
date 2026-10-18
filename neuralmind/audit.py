@@ -32,12 +32,20 @@ AUDIT_LOCK_NAME = "audit_events.lock"
 # append so auditing never blocks a query or a build; this file is how the gap
 # shows up (`neuralmind doctor`, *Audit log writes*) instead of going unseen.
 AUDIT_FAILURES_NAME = "audit_write_failures.jsonl"
+# How far `neuralmind audit record-gap` has recorded the failures file in the
+# log: its line count and their hash, so a deleted or replaced file isn't taken
+# as recorded. The failures file itself is only ever appended to.
+AUDIT_FAILURES_RECORDED_NAME = "audit_write_failures.recorded.json"
 logger = logging.getLogger(__name__)
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
 # What rotate() names an archive, and what a hash looks like. A rotation
 # marker naming anything else is rejected rather than followed as a path.
 _ARCHIVE_NAME = re.compile(r"audit_events\.\d{8}_\d{6}\.jsonl")
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def _lines_sha256(lines: list[str]) -> str:
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
 
 # Actor resolution order: explicit > env var > OS user > "system"
@@ -140,6 +148,7 @@ class AuditTrail:
         self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
         self.lock_file = self.events_file.with_name(AUDIT_LOCK_NAME)
         self.failures_file = self.events_file.with_name(AUDIT_FAILURES_NAME)
+        self.failures_recorded_file = self.events_file.with_name(AUDIT_FAILURES_RECORDED_NAME)
         self._lock = threading.Lock()
         self._identity_os: bool | None = None
 
@@ -266,6 +275,78 @@ class AuditTrail:
         logger.warning(
             "audit record %s/%s was not written: %s%s", category, action, exc, unrecorded
         )
+
+    def failure_notes(self) -> list[str]:
+        """Every note of a record that couldn't be written, recorded or not."""
+        try:
+            # A note cut off by a full disk can end mid-character.
+            text = self.failures_file.read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            return []
+        return [line for line in text.splitlines() if line.strip()]
+
+    def unrecorded_failures(self, notes: list[str] | None = None) -> list[str]:
+        """The notes no gap record in the log covers yet.
+
+        If the failures file no longer starts with the lines ``record_gap``
+        recorded (it was deleted or replaced), every note counts as unrecorded.
+        """
+        notes = self.failure_notes() if notes is None else notes
+        try:
+            mark = json.loads(self.failures_recorded_file.read_text(encoding="utf-8"))
+            through = int(mark["lines"])
+            recorded_sha256 = str(mark["sha256"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return notes
+        if 0 < through <= len(notes) and _lines_sha256(notes[:through]) == recorded_sha256:
+            return notes[through:]
+        return notes
+
+    def record_gap(self) -> dict[str, Any] | None:
+        """Record the failed writes in the log itself, as one gap record.
+
+        A record that couldn't be written can't be put back, but the log can
+        say it's missing: how many records, of which events, from when to
+        when, and the last error. The notes stay in the failures file. Returns
+        the gap record, or None when every failure is already recorded; raises,
+        leaving them unrecorded, if the gap record can't be written.
+        """
+        notes = self.failure_notes()
+        new = self.unrecorded_failures(notes)
+        if not new:
+            return None
+        parsed = []
+        for line in new:
+            try:
+                note = json.loads(line)
+            except ValueError:
+                note = None
+            parsed.append(note if isinstance(note, dict) else {})
+        events: dict[str, int] = {}
+        for note in parsed:
+            key = str(note.get("event", "unknown"))
+            events[key] = events.get(key, 0) + 1
+        stamps = sorted(str(note["timestamp"]) for note in parsed if note.get("timestamp"))
+        record = self.append_event(
+            category="audit",
+            action="gap_recorded",
+            status="failure",
+            target=str(self.failures_file),
+            details={
+                "missing_records": len(new),
+                "first": stamps[0] if stamps else "",
+                "last": stamps[-1] if stamps else "",
+                "events": events,
+                "last_error": str(parsed[-1].get("error", "")),
+            },
+        )
+        # A note written since `notes` was read lies past this mark, so it
+        # stays unrecorded until the next run.
+        mark = {"lines": len(notes), "sha256": _lines_sha256(notes), "gap": record["sha256"]}
+        self.failures_recorded_file.write_text(
+            json.dumps(mark, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return record
 
     def read_events(self) -> list[dict[str, Any]]:
         if not self.events_file.exists():

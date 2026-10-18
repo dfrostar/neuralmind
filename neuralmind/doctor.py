@@ -852,30 +852,36 @@ def _check_audit_checkpoints(project: Path) -> Check:
 
 
 def _check_audit_writes(project: Path) -> Check:
-    """Whether any audit record failed to be written.
+    """Whether any audit record failed to be written, and the log doesn't say so.
 
     Every caller swallows a failed append so auditing never blocks a query or
     a build, and the audit trail notes each one in
-    ``.neuralmind/audit_write_failures.jsonl``. Fails under
-    ``security.profile: cui``, where a complete audit log is a control; warns
-    otherwise.
+    ``.neuralmind/audit_write_failures.jsonl``. ``neuralmind audit record-gap``
+    records them in the log itself; until then this fails under
+    ``security.profile: cui``, where a complete audit log is a control, and
+    warns otherwise.
     """
-    from neuralmind.audit import AUDIT_FAILURES_NAME
+    from neuralmind.audit import AuditTrail
     from neuralmind.security_config import PROFILE_CUI, load_security_settings
 
     name = "Audit log writes"
-    path = project / ".neuralmind" / AUDIT_FAILURES_NAME
+    trail = AuditTrail(project)
     try:
-        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    except FileNotFoundError:
-        lines = []
+        notes = trail.failure_notes()
+        lines = trail.unrecorded_failures(notes)
     except OSError as exc:
-        return Check(name, WARN, f"can't read {path}: {exc}")
+        return Check(name, WARN, f"can't read {trail.failures_file}: {exc}")
     if not lines:
+        if notes:
+            return Check(
+                name, OK, f"{len(notes)} failed audit write(s), all recorded in the log as gaps"
+            )
         return Check(name, OK, "no failed audit writes recorded")
     try:
         last = json.loads(lines[-1])
     except ValueError:
+        last = None
+    if not isinstance(last, dict):
         last = {}
     status = FAIL if load_security_settings(project).profile == PROFILE_CUI else WARN
     return Check(
@@ -884,7 +890,10 @@ def _check_audit_writes(project: Path) -> Check:
         f"{len(lines)} audit record(s) couldn't be written, so the log is missing them; "
         f"the last, {last.get('event', '?')} at {last.get('timestamp', '?')}: "
         f"{last.get('error', '?')}",
-        fix=f"Fix the cause (disk space, permissions on .neuralmind/), then delete {path}.",
+        fix=(
+            "Fix the cause (disk space, permissions on .neuralmind/), then record the gap "
+            f"in the log: neuralmind audit record-gap {project}"
+        ),
     )
 
 

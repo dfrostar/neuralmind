@@ -3164,6 +3164,31 @@ def cmd_audit_checkpoint(args):
     print(f"✓ Checkpoint #{checkpoint['seq']} covers {checkpoint['records']} record(s) ({signed})")
 
 
+def cmd_audit_record_gap(args):
+    """Record audit writes that failed in the log itself, as one gap record."""
+    try:
+        record = AuditTrail(args.project_path).record_gap()
+    except Exception as exc:
+        print(f"✗ Gap not recorded: {exc}", file=sys.stderr)
+        print(
+            "  Fix what stops the log being written (disk space, permissions on "
+            ".neuralmind/), then run this again.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(record, sort_keys=True))
+        return
+    if record is None:
+        print("✓ No unrecorded audit write failures.")
+        return
+    details = record["details"]
+    print(
+        f"✓ Recorded a gap of {details['missing_records']} missing record(s), "
+        f"{details['first'] or '?'} to {details['last'] or '?'}, in the audit log."
+    )
+
+
 def cmd_audit_recent(args):
     """Show recent audit events — quick operational visibility."""
     trail = AuditTrail(args.project_path)
@@ -7824,6 +7849,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", "-j", action="store_true", help="Print the checkpoint record, for a SIEM"
     )
     audit_checkpoint.set_defaults(func=cmd_audit_checkpoint)
+
+    audit_record_gap = audit_sub.add_parser(
+        "record-gap",
+        help="Record audit writes that failed in the log itself, as one gap record",
+    )
+    audit_record_gap.add_argument("project_path", nargs="?", default=".")
+    audit_record_gap.add_argument(
+        "--json", "-j", action="store_true", help="Print the gap record (null if none)"
+    )
+    audit_record_gap.set_defaults(func=cmd_audit_record_gap)
 
     audit_recent = audit_sub.add_parser(
         "recent",

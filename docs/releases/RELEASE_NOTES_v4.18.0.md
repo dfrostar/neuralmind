@@ -32,7 +32,9 @@ the data deletion procedure needed all along.
 Lists every place NeuralMind keeps data for a project, in the project, outside
 it, and in the integrations that write it, and whether each holds anything.
 Each location comes from the code that writes it, so the list can't drift from
-the code. It's read-only.
+the code. A `.neuralmind/` that's a symlink is listed by the directory it points
+to, with both to remove: `rm -rf .neuralmind/` would empty it and leave the
+directory and the link. It's read-only.
 
 ```
 $ neuralmind data-locations .
@@ -79,8 +81,20 @@ lock may be what failed) and logged as a warning. `neuralmind doctor` has a new
 ```
 
 It warns, and fails under `security.profile: cui`, where a complete audit log
-is a control. Fix the cause, then delete the file to clear it. The call itself
-still runs, as before.
+is a control. The call itself still runs, as before.
+
+Fix the cause, then record the gap in the log itself:
+
+```
+$ neuralmind audit record-gap .
+✓ Recorded a gap of 3 missing record(s), 2026-10-18T12:58:40+00:00 to 2026-10-18T13:02:11+00:00, in the audit log.
+```
+
+That appends one hash-chained `audit/gap_recorded` record, with status `failure`,
+naming how many records are missing, of which events, when, and the last error.
+The check then passes, counting only failures after that record. The failures
+file is kept and only appended to, so clearing the warning doesn't erase the
+evidence, and deleting the file doesn't make later failures look recorded.
 
 ### Home-directory copies follow `security.require_encrypted_storage`
 
@@ -119,7 +133,8 @@ instead of exporting.
 ## Upgrading
 
 - Run `neuralmind doctor .`. An *Audit log writes* warning means records went
-  missing; the detail names the last and why.
+  missing; the detail names the last and why. Fix the cause, then run
+  `neuralmind audit record-gap .`.
 - Under `security.require_encrypted_storage`, if `doctor` passes but Claude
   Code stops seeing `synapse-activations.md`, the home directory isn't on a
   verified encrypted volume. Encrypt it, or rely on the project's
@@ -130,7 +145,7 @@ instead of exporting.
 
 ```bash
 pytest tests/test_data_locations.py -v           # every location found from the code, and nothing written
-pytest tests/test_outside_project_copies.py -v   # failed audit writes noted; home copies follow the policy; MCP off switch
+pytest tests/test_outside_project_copies.py -v   # failed audit writes noted and recorded as gaps; home copies follow the policy; MCP off switch
 ```
 
 ## Related

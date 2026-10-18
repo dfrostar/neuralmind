@@ -208,6 +208,15 @@ interval short, and keep forwarding the log to your SIEM. `doctor` warns under
 the profile when the key or anchor directory isn't set, or the newest
 checkpoint is more than a week old.
 
+*(v4.18.0+)* A record that can't be written (a full disk, a permissions error)
+fails `doctor`'s *Audit log writes* check under the profile. Fix the cause,
+then record the gap in the log itself, so the log and your SIEM show what's
+missing:
+
+```bash
+neuralmind audit record-gap /srv/app
+```
+
 For the practice-by-practice mapping, with what NeuralMind provides and what
 stays yours, see the [CMMC 2.0 table in the Compliance
 Summary](../COMPLIANCE-SUMMARY.md).

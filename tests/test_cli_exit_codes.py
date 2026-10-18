@@ -128,6 +128,15 @@ def _cui_profile(project: Path) -> None:
     (project / "neuralmind-backend.yaml").write_text("security:\n  profile: cui\n")
 
 
+def _audit_write_failed_and_log_unwritable(project: Path) -> None:
+    state = project / ".neuralmind"
+    state.mkdir()
+    (state / "audit_write_failures.jsonl").write_text(
+        '{"event": "query/query", "timestamp": "2026-10-18T00:00:00+00:00", "error": "x"}\n'
+    )
+    (state / "audit_events.jsonl").mkdir()  # a directory: the gap record can't be appended
+
+
 def _every_account_a_reader(project: Path) -> None:
     path = project / "neuralmind-backend.yaml"
     path.write_text("security:\n  identity: os\n  default_role: reader\n")
@@ -176,6 +185,15 @@ CONTRACT = [
     # from the CLI either.
     ("build-refused-by-role", ["build", "{p}"], _every_account_a_reader, {}, 1),
     ("unknown-option", ["health", "{p}", "--no-such-flag"], None, {}, 2),
+    # v4.18.0: audit record-gap exits 1 when the gap record can't be written.
+    ("audit-record-gap-nothing-to-record", ["audit", "record-gap", "{p}"], None, {}, 0),
+    (
+        "audit-record-gap-log-unwritable",
+        ["audit", "record-gap", "{p}"],
+        _audit_write_failed_and_log_unwritable,
+        {},
+        1,
+    ),
     (
         "license-expiring-none-due",
         ["license", "expiring"],
