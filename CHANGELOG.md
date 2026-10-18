@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.17.1](https://github.com/dfrostar/neuralmind/compare/v4.17.0...v4.17.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **audit:** processes writing the audit log at once keep its hash chain valid ([#672](https://github.com/dfrostar/neuralmind/issues/672)) ([4b0dae8](https://github.com/dfrostar/neuralmind/commit/4b0dae8e9aadfe1154d0eab30c56f6ea1086f0f4))
+* **security:** a machine policy keeps the CUI profile on when a project's file is deleted ([4b0dae8](https://github.com/dfrostar/neuralmind/commit/4b0dae8e9aadfe1154d0eab30c56f6ea1086f0f4))
+* **security:** a machine policy with an invalid value holds every project to the strictest settings ([#674](https://github.com/dfrostar/neuralmind/issues/674)) ([2bf7109](https://github.com/dfrostar/neuralmind/commit/2bf7109e83395c8d146d0a104db330e0bc1fc263))
+* **security:** under identity: os, the daemon and the CLI's writes apply the role policy ([4b0dae8](https://github.com/dfrostar/neuralmind/commit/4b0dae8e9aadfe1154d0eab30c56f6ea1086f0f4))
+
 ## [4.17.0](https://github.com/dfrostar/neuralmind/compare/v4.16.0...v4.17.0) (2026-10-18)
 
 
