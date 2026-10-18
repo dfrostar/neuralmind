@@ -18,6 +18,7 @@ import re
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from shlex import quote
 
 from .state_dir import STATE_DIR_NAME
 
@@ -87,9 +88,42 @@ def _directory(root: Path, name: str, holds: str) -> Location:
         str(target),
         target.exists(),
         holds,
-        f"rm -rf {target} && rm {path}",
+        f"rm -rf {quote(str(target))} && rm {quote(str(path))}",
         f"{name} is a symlink to it",
     )
+
+
+def _records_mention(path: Path, root: Path) -> bool:
+    """Whether a JSONL file has a record naming ``root`` or a path inside it.
+
+    Each string value is compared as a path, so ``/work/app`` doesn't match a
+    record for ``/work/app-old``, and parsing undoes the JSON escaping of
+    backslashes and non-ASCII characters.
+    """
+    inside = str(root).rstrip(os.sep) + os.sep
+
+    def strings(value):
+        if isinstance(value, dict):
+            for item in value.values():
+                yield from strings(item)
+        elif isinstance(value, list):
+            for item in value:
+                yield from strings(item)
+        elif isinstance(value, str):
+            yield value
+
+    try:
+        with path.open(encoding="utf-8", errors="replace") as file:
+            for line in file:
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    continue
+                if any(s == str(root) or s.startswith(inside) for s in strings(record)):
+                    return True
+    except OSError:
+        pass
+    return False
 
 
 def _project_locations(root: Path, config_path: Path | None, config: dict) -> list[Location]:
@@ -158,7 +192,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             str(export),
             export.exists(),
             "code symbol and file names",
-            f"rm {export}",
+            f"rm {quote(str(export))}",
         )
     )
 
@@ -198,7 +232,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             str(registry),
             registered,
             "this project's path",
-            f"neuralmind project remove {root}",
+            f"neuralmind project remove {quote(str(root))}",
         )
     )
 
@@ -218,7 +252,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
                 str(path),
                 path.exists(),
                 "checkpoint record counts and hashes, no code; kept by default",
-                f"rm {path} (only when erasure is required)",
+                f"rm {quote(str(path))} (only when erasure is required)",
             )
         )
 
@@ -229,17 +263,14 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     except Exception:
         audit_db = None
     if audit_db is not None:
-        # Written with json.dumps, which escapes backslashes and non-ASCII
-        # characters in the path.
-        needles = (str(root), json.dumps(str(root))[1:-1])
         locations.append(
             Location(
                 "Team governance audit log",
                 OUTSIDE,
                 str(audit_db),
-                audit_db.exists() and any(_file_mentions(audit_db, n) for n in needles),
+                audit_db.exists() and _records_mention(audit_db, root),
                 "this project's path and node names; hash-chained, shared by every project",
-                f"rm {audit_db} (whole file only, when erasure is required)",
+                f"rm {quote(str(audit_db))} (whole file only, when erasure is required)",
             )
         )
 
@@ -251,7 +282,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             str(shared),
             shared.exists(),
             "daemon files, server token, memory consent, license store; shared by every project",
-            f"rm -rf {shared} (only if no other project uses NeuralMind)",
+            f"rm -rf {quote(str(shared))} (only if no other project uses NeuralMind)",
         )
     )
     return locations

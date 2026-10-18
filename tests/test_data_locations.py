@@ -9,6 +9,7 @@ that listing changes nothing on disk.
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -155,8 +156,22 @@ def test_the_team_audit_log_is_found_by_its_escaped_path(env):
     assert _by_name(project)["Team governance audit log"].present
 
 
+def test_the_team_audit_log_isnt_claimed_for_a_path_that_only_starts_the_same(env):
+    # Deleting the shared audit log erases every project's records, so a
+    # record for project-old must not make it look like project's.
+    env.audit_db.parent.mkdir(parents=True)
+    other = f"{env.project}-old"
+    env.audit_db.write_text(
+        json.dumps({"target": other, "details": {"bundle": f"{other}/b.json"}}) + "\n"
+    )
+    assert not _by_name(env.project)["Team governance audit log"].present
+    with env.audit_db.open("a") as log:
+        log.write(json.dumps({"details": {"bundle": f"{env.project}/b.json"}}) + "\n")
+    assert _by_name(env.project)["Team governance audit log"].present
+
+
 def test_a_symlinked_state_directory_is_listed_by_its_target(env):
-    target = env.tmp / "elsewhere" / "state"
+    target = env.tmp / "else where" / "state"  # a space: the command must quote it
     target.mkdir(parents=True)
     try:
         (env.project / ".neuralmind").symlink_to(target, target_is_directory=True)
@@ -166,7 +181,12 @@ def test_a_symlinked_state_directory_is_listed_by_its_target(env):
     assert state.present and state.kind == dl.OUTSIDE
     assert state.path == str(target.resolve())
     # rm -rf on the link alone leaves the data, so both are named.
-    assert state.remove == f"rm -rf {target.resolve()} && rm {env.project / '.neuralmind'}"
+    link = env.project / ".neuralmind"
+    assert (
+        state.remove
+        == f"rm -rf {shlex.quote(str(target.resolve()))} && rm {shlex.quote(str(link))}"
+    )
+    assert shlex.split(state.remove)[2] == str(target.resolve())
 
 
 def test_the_cli_prints_json(env, capsys):
