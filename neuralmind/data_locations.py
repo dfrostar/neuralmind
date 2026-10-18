@@ -32,6 +32,7 @@ INTEGRATION = "integrations"
 # -shm journals, plus one folder per collection, named by UUID).
 _INDEX_PATTERNS = ("store*.sqlite*", "index*.tvim*", "bm25_index*.json", "chroma.sqlite3*")
 _UUID_DIR = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_SQLITE_SUFFIXES = {".db", ".sqlite", ".sqlite3"}
 _HOOK_MARKER = "# neuralmind-hook-start"
 _HOOK_END = "# neuralmind-hook-end"
 # How `neuralmind init-hook` names the project in its block: "." at the
@@ -144,7 +145,18 @@ def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
     path = _absolute(path)
     if path.is_symlink():
         target = path.resolve()
-        return f"{rm} {shlex.quote(str(target))} && rm {shlex.quote(str(path))}", target
+        journals = ""
+        if not directory and target.suffix in _SQLITE_SUFFIXES:
+            # SQLite keeps a database's journals beside the file itself, not
+            # beside the link, and the WAL can hold data not yet checkpointed.
+            journals = "rm -f " + " ".join(
+                shlex.quote(f"{target}{suffix}") for suffix in ("-wal", "-shm", "-journal")
+            )
+            journals += " && "
+        return (
+            f"{rm} {shlex.quote(str(target))} && {journals}rm {shlex.quote(str(path))}",
+            target,
+        )
     return f"{rm} {shlex.quote(str(path))}", path
 
 
@@ -282,33 +294,47 @@ def _project_locations(
         )
     if db_path and db_path != ":memory:":
         directory = Path(db_path)
-        found = sorted(
-            {str(p.relative_to(directory)) for pat in _INDEX_PATTERNS for p in directory.glob(pat)}
-            | {
-                p.name
-                for p in (directory.iterdir() if directory.is_dir() else ())
-                if p.is_dir() and _UUID_DIR.fullmatch(p.name)
-            }
+        index = Location(
+            "index at db_path",
+            PROJECT if directory.resolve().is_relative_to(root) else OUTSIDE,
+            str(directory),
+            False,
+            "the vector index, including indexed text",
+            "nothing to remove",
         )
-        locations.append(
-            Location(
-                "index at db_path",
-                PROJECT if directory.resolve().is_relative_to(root) else OUTSIDE,
-                str(directory),
-                bool(found),
-                "the vector index, including indexed text",
-                (
+        try:
+            found = sorted(
+                {
+                    str(p.relative_to(directory))
+                    for pat in _INDEX_PATTERNS
+                    for p in directory.glob(pat)
+                }
+                | {
+                    p.name
+                    for p in (directory.iterdir() if directory.is_dir() else ())
+                    if p.is_dir() and _UUID_DIR.fullmatch(p.name)
+                }
+            )
+        except OSError as exc:
+            index.present = True
+            index.problem = (
+                f"can't be listed ({exc}), so which index files it holds isn't known: "
+                "make it readable and run this again"
+            )
+        else:
+            index.present = bool(found)
+            index.detail = ", ".join(found)
+            if found:
+                # The directory stays out of the comment: a newline in it would
+                # end the comment and run the rest.
+                index.remove = (
                     " && ".join(
                         _remove_command(directory / name, directory=(directory / name).is_dir())[0]
                         for name in found
                     )
-                    + f"  # then {directory} itself, if nothing else is in it"
-                    if found
-                    else "nothing to remove"
-                ),
-                ", ".join(found),
-            )
-        )
+                    + "  # then the directory itself, if nothing else is in it"
+                )
+        locations.append(index)
     return locations
 
 
@@ -551,7 +577,15 @@ def _integrations(root: Path) -> list[Location]:
             return names
 
         locations.append(_present(hook_blocks, blocks))
-    pin = plugin_dir() / "config.json"
+    pin = _absolute(plugin_dir() / "config.json")
+    # A relative HERMES_HOME names another Hermes home from another directory,
+    # so the command pins the one listed here.
+    env_home = os.environ.get("HERMES_HOME", "").strip()
+    pin_home = (
+        f"HERMES_HOME={shlex.quote(str(_absolute(Path(env_home).expanduser())))} "
+        if env_home
+        else ""
+    )
 
     def pinned() -> bool:
         data = _parse_json(pin)
@@ -565,7 +599,7 @@ def _integrations(root: Path) -> list[Location]:
                 str(pin),
                 False,
                 "the Hermes plugin pinned to this project",
-                "neuralmind install-hermes-plugin --unpin",
+                f"{pin_home}neuralmind install-hermes-plugin --unpin",
             ),
             pinned,
         )

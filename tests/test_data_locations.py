@@ -199,7 +199,12 @@ def test_a_symlinked_index_file_is_removed_with_its_target(env):
     (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
     found = _by_name(env.project)["index at db_path"]
     words = shlex.split(found.remove, comments=True)
-    assert words == ["rm", str(real.resolve()), "&&", "rm", str(index / "store.sqlite")]
+    target = str(real.resolve())
+    assert words == [
+        "rm", target, "&&",
+        "rm", "-f", f"{target}-wal", f"{target}-shm", f"{target}-journal", "&&",
+        "rm", str(index / "store.sqlite"),
+    ]  # fmt: skip
 
 
 def test_a_relative_team_audit_db_is_removed_by_absolute_path(env, monkeypatch, tmp_path):
@@ -344,6 +349,64 @@ def test_a_relative_config_dir_is_pinned_in_the_registry_command(env, monkeypatc
     assert registry.present and registry.path == str((workdir / "cfg" / "projects.json").resolve())
     words = shlex.split(registry.remove)
     assert words[0] == f"NEURALMIND_CONFIG_DIR={(workdir / 'cfg').resolve()}"
+
+
+def test_a_symlinked_sqlite_database_is_removed_with_its_journals(env):
+    # SQLite writes -wal/-shm beside the database itself, not beside the link.
+    real = env.tmp / "disk" / "synapses.db"
+    real.parent.mkdir()
+    real.write_text("x", encoding="utf-8")
+    (env.tmp / "disk" / "synapses.db-wal").write_text("x", encoding="utf-8")
+    (env.project / ".neuralmind").mkdir()
+    try:
+        (env.project / ".neuralmind" / "synapses.db").symlink_to(real)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    (linked,) = [loc for loc in dl.data_locations(env.project) if "a symlink in" in loc.name]
+    words = shlex.split(linked.remove)
+    assert f"{real.resolve()}-wal" in words and f"{real.resolve()}-shm" in words
+    assert words[-1] == str(env.project / ".neuralmind" / "synapses.db")
+
+
+def test_the_db_path_command_keeps_the_directory_out_of_its_comment(env):
+    # A newline in the path would end the comment and run what follows.
+    index = env.tmp / "idx"
+    index.mkdir()
+    (index / "store.sqlite").write_text("x", encoding="utf-8")
+    (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
+    remove = _by_name(env.project)["index at db_path"].remove
+    assert remove.split("#", 1)[1] == " then the directory itself, if nothing else is in it"
+
+
+def test_an_index_directory_that_cant_be_listed_is_a_problem(env, monkeypatch):
+    index = env.tmp / "locked-index"
+    index.mkdir()
+    (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
+    real_glob = Path.glob
+
+    def denied(self, pattern):
+        if self == index:
+            raise PermissionError(13, "Permission denied")
+        return real_glob(self, pattern)
+
+    monkeypatch.setattr(Path, "glob", denied)
+    found = _by_name(env.project)["index at db_path"]
+    assert found.present and "can't be listed" in found.problem
+
+
+def test_a_relative_hermes_home_is_pinned_in_the_unpin_command(env, monkeypatch, tmp_path):
+    from neuralmind.hermes_install import plugin_dir
+
+    workdir = tmp_path / "w"
+    workdir.mkdir()
+    monkeypatch.chdir(workdir)
+    monkeypatch.setenv("HERMES_HOME", "hermes")
+    pin = plugin_dir() / "config.json"
+    pin.parent.mkdir(parents=True)
+    pin.write_text(json.dumps({"project": str(env.project)}), encoding="utf-8")
+    found = _by_name(env.project)["Hermes plugin pin"]
+    assert found.present and Path(found.path).is_absolute()
+    assert shlex.split(found.remove)[0] == f"HERMES_HOME={(workdir / 'hermes').resolve()}"
 
 
 def test_a_team_config_no_loader_can_read_still_lists_the_log(env, monkeypatch):

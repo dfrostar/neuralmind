@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import threading
+from collections import deque
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -214,18 +215,23 @@ class AuditTrail:
         if not path.exists():
             return "0" * 64
         try:
-            last = None
+            # Only the last few lines are parsed: this runs under the append
+            # lock on every record, and a damaged tail is one or two lines.
+            tail: deque[str] = deque(maxlen=8)
             with path.open(encoding="utf-8", errors="replace") as f:
                 for raw_line in f:
                     if len(raw_line) > cls.MAX_AUDIT_LINE_BYTES:
                         continue  # Skip crafted oversized lines (DoS guard)
                     line = raw_line.strip()
-                    if not line:
-                        continue
-                    try:
-                        last = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
+                    if line:
+                        tail.append(line)
+            last = None
+            for line in reversed(tail):
+                try:
+                    last = json.loads(line)
+                    break
+                except json.JSONDecodeError:
+                    continue
             sha = last.get("sha256") if isinstance(last, dict) else None
             return sha if isinstance(sha, str) and sha else "0" * 64
         except OSError:
