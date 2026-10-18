@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.17.2](https://github.com/dfrostar/neuralmind/compare/v4.17.1...v4.17.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **security:** a machine policy's misspelled require_encrypted_storage holds every project to the strictest settings ([#675](https://github.com/dfrostar/neuralmind/issues/675)) ([57b1d0a](https://github.com/dfrostar/neuralmind/commit/57b1d0af9eedd1615799aeec42a72939b62da815))
+
 ## [4.17.1](https://github.com/dfrostar/neuralmind/compare/v4.17.0...v4.17.1) (2026-10-18)
 
 
