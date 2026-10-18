@@ -11,9 +11,15 @@
 Define how to delete all NeuralMind data for a project, including the copies
 NeuralMind writes outside the project directory.
 
-One exception: the Team governance audit log (§2.2) is hash-chained, so one
-project's records can't be removed from it without breaking its verification.
-It is kept, or deleted whole with every project's records in it (§3.1).
+Two things are kept unless erasure is required, and §3.1 says how to delete
+each when it is:
+
+- The Team governance audit log (§2.2) is hash-chained, so one project's
+  records can't be removed from it without breaking its verification. It is
+  kept, or deleted whole with every project's records in it.
+- The project's file in `security.audit_anchor_dir`, if set, holds checkpoint
+  record counts and hashes, no code. It is kept by default because it is how
+  truncation of the audit log is detected (§5).
 
 Version 1.1 listed only the project directory, and named a `.neuralmind/hooks/`
 directory that NeuralMind never creates. It missed the files below under
@@ -65,12 +71,22 @@ every project and not only this one: end the agent sessions that use NeuralMind
 log below is shared by every project, and a query any of them logs while it's
 rewritten would be lost.
 
-If `neuralmind-backend.yaml` sets `db_path`, note that location before the
-commands below delete the file. NeuralMind doesn't require it to be a directory
-of its own, so look before deleting anything there: the index is
-`store*.sqlite*` and `index*.tvim*` (turbovec), or `chroma.sqlite3` and its
-UUID-named collection folders (ChromaDB). Delete the directory only if it holds
-nothing else and no other project uses it; otherwise delete just those files.
+Before anything is deleted, note the two locations `neuralmind-backend.yaml`
+may point outside `.neuralmind/`, since the commands below delete that file:
+
+- **`db_path`**, where the index is kept if it isn't in `.neuralmind/`. The
+  index is `store*.sqlite*` and `index*.tvim*` (turbovec), or `chroma.sqlite3`
+  and its UUID-named collection folders (ChromaDB). The names are fixed, so a
+  location two projects share holds one index for both: it can't be split, and
+  deleting it means the other project must run `neuralmind build` again.
+  Delete those files, and the directory itself only if it holds nothing else.
+- **`security.audit_anchor_dir`**, where this project's checkpoint copies are
+  kept. When erasure is required, delete this project's file there; the other
+  projects' files in the same directory are theirs. This prints its path:
+
+  ```bash
+  python3 -c 'from neuralmind.audit_checkpoint import anchor_checkpoints_path, load_checkpoint_settings; s = load_checkpoint_settings("."); print(anchor_checkpoints_path(".", s.anchor_dir) if s.anchor_dir else "")'
+  ```
 
 Then run from the project root:
 
@@ -158,7 +174,8 @@ Deletion events are NOT logged (the act of deletion removes the log). This is ac
 
 A copy of the audit checkpoints in `security.audit_anchor_dir` survives a
 deletion of `.neuralmind/`, by design: it is how truncation of the log is
-detected.
+detected. When erasure is required, delete this project's file there as in
+§3.1.
 
 ---
 
