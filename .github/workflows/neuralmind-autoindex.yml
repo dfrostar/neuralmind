@@ -32,7 +32,12 @@ on:
         type: boolean
 
 permissions:
-  contents: write   # needed to commit .neuralmind-team-memory.json
+  contents: read
+
+# Two jobs, so that no installed package ever runs beside the deploy key that
+# can push to main. `build` installs NeuralMind and its dependencies and runs
+# them with a read-only token; `commit` holds the key and runs only git and
+# the pinned actions below, committing the one file `build` produced.
 
 jobs:
   autoindex:
@@ -45,13 +50,7 @@ jobs:
         with:
           # Fetch all history so the watcher can detect changed files
           fetch-depth: 0
-          # Push to main with the write-enabled deploy key. A deploy key is the
-          # only bypass a ruleset requiring PRs and passing CI can grant here
-          # (GitHub won't accept the Actions app as a bypass actor on a
-          # personal-account repo), so this push keeps working once main
-          # requires them; today it doesn't (docs/compliance/SSDF.md, PS.1).
-          # Unset (forks), checkout falls back to GITHUB_TOKEN as before.
-          ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -71,13 +70,10 @@ jobs:
             neuralmind-${{ runner.os }}-
 
       - name: Install NeuralMind
-        # This job holds the deploy key that can push to main, so it runs only
-        # code this repository already contains: NeuralMind from the checkout,
-        # its dependencies at the versions in requirements-pinned.txt. It used
-        # to install the newest `neuralmind>=0.38.0` from PyPI, so whoever
-        # could publish a release there could run code holding that key. A
-        # copy of this workflow in another repository should pin an exact
-        # version instead (`pip install "neuralmind==X.Y.Z"`).
+        # NeuralMind from the checkout rather than the newest release on PyPI,
+        # with the dependency versions requirements-pinned.txt names. A copy of
+        # this workflow in another repository should pin an exact version
+        # instead (`pip install "neuralmind==X.Y.Z"`).
         run: |
           python -m pip install --upgrade pip
           pip install . -c requirements-pinned.txt
@@ -96,8 +92,44 @@ jobs:
         run: neuralmind memory export --output .neuralmind-team-memory.json
         continue-on-error: true   # non-fatal if memory store is cold
 
+      - name: Hand the snapshot to the commit job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: team-memory
+          path: .neuralmind-team-memory.json
+          include-hidden-files: true   # the file name starts with a dot
+          if-no-files-found: ignore
+          retention-days: 1
+
+  commit:
+    name: Commit team memory snapshot
+    needs: autoindex
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit .neuralmind-team-memory.json
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Push to main with the write-enabled deploy key. A deploy key is the
+          # only bypass a ruleset requiring PRs and passing CI can grant here
+          # (GitHub won't accept the Actions app as a bypass actor on a
+          # personal-account repo), so this push keeps working once main
+          # requires them; today it doesn't (docs/compliance/SSDF.md, PS.1).
+          # Unset (forks), checkout falls back to GITHUB_TOKEN as before.
+          ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
+
+      - name: Fetch the snapshot
+        id: snapshot
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: team-memory
+          path: .
+        continue-on-error: true   # no artifact when the export above failed
+
       - name: Commit team memory snapshot
         # Only commits when .neuralmind-team-memory.json actually changed.
+        if: steps.snapshot.outcome == 'success'
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "chore: update NeuralMind team memory snapshot [skip ci]"
