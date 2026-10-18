@@ -187,6 +187,22 @@ def test_chroma_journals_at_db_path_are_listed(env):
     assert str(index / "chroma.sqlite3-wal") in shlex.split(found.remove, comments=True)
 
 
+def test_a_symlinked_index_file_is_removed_with_its_target(env):
+    index = env.tmp / "linked-index"
+    index.mkdir()
+    real = env.tmp / "other-disk" / "store.sqlite"
+    real.parent.mkdir()
+    real.write_text("x", encoding="utf-8")
+    try:
+        (index / "store.sqlite").symlink_to(real)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
+    found = _by_name(env.project)["index at db_path"]
+    words = shlex.split(found.remove, comments=True)
+    assert words == ["rm", str(real.resolve()), "&&", "rm", str(index / "store.sqlite")]
+
+
 def test_a_relative_team_audit_db_is_removed_by_absolute_path(env, monkeypatch, tmp_path):
     import neuralmind.tier2.config as tier2_config
 

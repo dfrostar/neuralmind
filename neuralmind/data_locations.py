@@ -72,6 +72,21 @@ def _file_mentions(path: Path, needle: str) -> bool:
         return False
 
 
+def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
+    """The command that removes ``path`` from any directory, and where its data is.
+
+    Absolute, quoted paths. A symlink gets both removed, what it points to and
+    the link: ``rm link`` leaves the data, and ``rm -rf link/`` empties a
+    directory but leaves it and the link.
+    """
+    rm = "rm -rf" if directory else "rm"
+    path = Path(os.path.abspath(path))  # absolute, without following a symlink
+    if path.is_symlink():
+        target = path.resolve()
+        return f"{rm} {quote(str(target))} && rm {quote(str(path))}", target
+    return f"{rm} {quote(str(path))}", path
+
+
 def _place(
     name: str,
     kind: str,
@@ -84,23 +99,14 @@ def _place(
 ) -> Location:
     """A file or directory holding this project's data, and the command that removes it.
 
-    The command names absolute, quoted paths, so it removes the same thing from
-    any working directory. A symlink is listed by what it points to, with both
-    to remove: ``rm link`` leaves the data, and ``rm -rf link/`` empties a
-    directory but leaves it and the link. ``note``, a condition on removing it,
-    follows as a shell comment.
+    A symlink is listed by what it points to (see ``_remove_command``).
+    ``note``, a condition on removing it, follows as a shell comment.
     """
-    rm = "rm -rf" if directory else "rm"
+    remove, target = _remove_command(path, directory=directory)
     detail = ""
-    path = Path(os.path.abspath(path))  # absolute, without following a symlink
-    if path.is_symlink():
-        target = path.resolve()
+    if target != Path(os.path.abspath(path)):
         kind = PROJECT if target.is_relative_to(root) else OUTSIDE
-        remove = f"{rm} {quote(str(target))} && rm {quote(str(path))}"
-        detail = f"{path} is a symlink to it"
-    else:
-        target = path
-        remove = f"{rm} {quote(str(path))}"
+        detail = f"{os.path.abspath(path)} is a symlink to it"
     if note:
         remove += f"  # {note}"
     return Location(name, kind, str(target), target.exists(), holds, remove, detail)
@@ -201,8 +207,10 @@ def _project_locations(
                 bool(found),
                 "the vector index, including indexed text",
                 (
-                    "rm -rf "
-                    + " ".join(quote(str(directory / name)) for name in found)
+                    " && ".join(
+                        _remove_command(directory / name, directory=(directory / name).is_dir())[0]
+                        for name in found
+                    )
                     + f"  # then {directory} itself, if nothing else is in it"
                     if found
                     else "nothing to remove"
