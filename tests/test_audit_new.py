@@ -402,3 +402,82 @@ def test_verify_checks_the_stored_prev_sha256(tmp_path, change):
     assert result["ok"] is False
     assert result["first_bad_line"] == 2
     assert "prev_sha256" in result["reason"]
+
+
+# --------------------------------------------------------------------------- #
+# Several processes writing at once
+# --------------------------------------------------------------------------- #
+_APPENDER = """
+import sys
+from neuralmind.audit import AuditTrail
+trail = AuditTrail(sys.argv[1])
+for i in range(int(sys.argv[2])):
+    trail.append_event("audit", "query", actor=sys.argv[3], details={"i": i})
+"""
+
+_ROTATOR = """
+import sys, time
+from neuralmind.audit import AuditTrail
+trail = AuditTrail(sys.argv[1])
+deadline = time.time() + 60
+while time.time() < deadline:
+    if trail.events_file.exists() and len(trail.events_file.read_bytes().splitlines()) >= 40:
+        break
+    time.sleep(0.01)
+print(trail.rotate(max_bytes=1)["archived_to"])
+"""
+
+
+def _spawn(script: str, *args: str):
+    import subprocess
+    import sys
+
+    repo = str(Path(__file__).resolve().parents[1])
+    return subprocess.Popen(
+        [sys.executable, "-c", script, *args],
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _wait(procs) -> list[str]:
+    outputs = []
+    for proc in procs:
+        out, err = proc.communicate(timeout=120)
+        assert proc.returncode == 0, err
+        outputs.append(out.strip())
+    return outputs
+
+
+def test_processes_appending_at_once_keep_a_valid_chain(tmp_path):
+    # The MCP server, hooks, CLI and daemon all append to one log. A thread
+    # lock alone let two processes chain to the same record, so verify()
+    # reported an untouched log as tampered.
+    workers, per_worker = 4, 100
+    _wait([_spawn(_APPENDER, str(tmp_path), str(per_worker), f"w{n}") for n in range(workers)])
+
+    trail = AuditTrail(tmp_path)
+    result = trail.verify()
+    assert result["ok"] is True, result
+    assert result["total"] == workers * per_worker
+
+
+def test_a_rotation_during_appends_keeps_both_files_chained(tmp_path):
+    procs = [_spawn(_APPENDER, str(tmp_path), "60", f"w{n}") for n in range(3)]
+    procs.append(_spawn(_ROTATOR, str(tmp_path)))
+    archived = _wait(procs)[-1]
+    assert archived and archived != "None"
+
+    trail = AuditTrail(tmp_path)
+    current = trail.verify()
+    assert current["ok"] is True, current
+    assert current["archive_checked"] is True
+
+    archive = AuditTrail(tmp_path)
+    archive.events_file = Path(archived)
+    archived_result = archive.verify()
+    assert archived_result["ok"] is True, archived_result
+    # Every record landed in one file or the other; none was truncated away.
+    assert archived_result["total"] + current["total"] - 1 == 3 * 60

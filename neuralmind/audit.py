@@ -7,13 +7,26 @@ import json
 import os
 import re
 import threading
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:  # POSIX
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+try:  # Windows
+    import msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    msvcrt = None  # type: ignore[assignment]
+
 AUDIT_FILE_NAME = "audit_events.jsonl"
+# Held while a record is chained and appended, and while the log rotates. A
+# separate file, because rotation renames the log itself.
+AUDIT_LOCK_NAME = "audit_events.lock"
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
 # What rotate() names an archive, and what a hash looks like. A rotation
 # marker naming anything else is rejected rather than followed as a path.
@@ -41,6 +54,35 @@ def _resolve_actor(explicit: str | None = None) -> str:
         if val:
             return val
     return "system"
+
+
+@contextmanager
+def _exclusive_file_lock(lock_path: Path) -> Iterator[None]:
+    """Hold an exclusive cross-process lock on ``lock_path`` for the block.
+
+    ``flock`` on POSIX, a byte-range lock on Windows (``msvcrt.locking``
+    retries for about ten seconds, then raises ``OSError``). The OS releases
+    it when the holder exits, however it exits, so a crash never leaves a
+    stale lock behind.
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+        elif msvcrt is not None:  # pragma: no cover - Windows
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            elif msvcrt is not None:  # pragma: no cover - Windows
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    finally:
+        os.close(fd)
 
 
 @dataclass
@@ -90,6 +132,7 @@ class AuditTrail:
     def __init__(self, project_path: str | Path):
         self.project_path = Path(project_path).resolve()
         self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
+        self.lock_file = self.events_file.with_name(AUDIT_LOCK_NAME)
         self._lock = threading.Lock()
         self._identity_os: bool | None = None
 
@@ -158,7 +201,12 @@ class AuditTrail:
             if claimed and claimed != actor:
                 details = {**(details or {}), "claimed_actor": claimed}
         actor = _resolve_actor(actor)
-        with self._lock:
+        # The MCP server, the hooks, the CLI and the daemon all append to this
+        # log. Each record chains to the last one in the file, so reading that
+        # hash and appending must happen under one cross-process lock: with a
+        # thread lock alone, two processes chained to the same record and
+        # verify() reported a log nobody had touched as tampered.
+        with self._lock, _exclusive_file_lock(self.lock_file):
             prev_sha256 = self._last_sha256_from_file()
             event = AuditEvent(
                 category=category,
@@ -390,7 +438,15 @@ class AuditTrail:
         """Archive oversized file. Preserves hash-chain continuity.
 
         Returns {"rotated": bool, "archived_to": str|None, "deleted_archives": list}.
+
+        Holds the append lock throughout: a record appended between the rename
+        and the continuation marker went to the archive after its last hash
+        was read, or was truncated away when the marker opened the new file.
         """
+        with self._lock, _exclusive_file_lock(self.lock_file):
+            return self._rotate_locked(max_bytes, keep_days)
+
+    def _rotate_locked(self, max_bytes: int, keep_days: int) -> dict[str, Any]:
         result = {"rotated": False, "archived_to": None, "deleted_archives": []}
         if not self.events_file.exists():
             return result
