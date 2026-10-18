@@ -70,7 +70,16 @@ jobs:
             neuralmind-${{ runner.os }}-
 
       - name: Install NeuralMind
-        run: pip install "neuralmind>=0.38.0"
+        # This job holds the deploy key that can push to main, so it runs only
+        # code this repository already contains: NeuralMind from the checkout,
+        # its dependencies at the versions in requirements-pinned.txt. It used
+        # to install the newest `neuralmind>=0.38.0` from PyPI, so whoever
+        # could publish a release there could run code holding that key. A
+        # copy of this workflow in another repository should pin an exact
+        # version instead (`pip install "neuralmind==X.Y.Z"`).
+        run: |
+          python -m pip install --upgrade pip
+          pip install . -c requirements-pinned.txt
 
       - name: Build index
         run: |

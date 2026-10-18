@@ -35,9 +35,12 @@ jobs:
           cache: pip
 
       - name: Install package + benchmark deps
+        # Pinned through requirements-pinned.txt: this job holds the deploy key
+        # that can push to main, so it doesn't take whatever release PyPI
+        # serves today.
         run: |
           python -m pip install --upgrade pip
-          pip install . tiktoken matplotlib "graphifyy==0.9.5"
+          pip install . tiktoken matplotlib "graphifyy==0.9.5" -c requirements-pinned.txt
 
       - name: Pre-fetch tiktoken vocab
         continue-on-error: true

@@ -1,9 +1,11 @@
 name: SBOM
 
-# Generate a Software Bill of Materials for every tagged release and
-# attach it to the GitHub Release as `neuralmind-vX.Y.Z.sbom.json`
-# (CycloneDX JSON). Covers the project + every transitive runtime dep
-# (chromadb, mcp, pyyaml, toml, plus their transitives).
+# Generate a Software Bill of Materials for every tagged release as
+# `neuralmind-vX.Y.Z.sbom.json` (CycloneDX JSON), covering the project + every
+# transitive runtime dep (chromadb, mcp, pyyaml, toml, plus their transitives).
+# Releases on this repo are immutable, so attaching it to the GitHub Release
+# fails once release-please has published it; the SBOM is served from
+# neuralmind.uk/sbom/ (site/public/sbom/) and kept as a workflow artifact.
 #
 # Tracks issue #120. Uses Anchore's syft via the official action so the
 # SBOM format is consistent with what most enterprise scanners ingest
