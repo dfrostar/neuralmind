@@ -117,7 +117,7 @@ each setting takes the stricter of its value and the project's. With the
 project file deleted, the profile stays on, and with no `users` left every MCP
 call is refused. It can hold only `profile`, `identity` and
 `require_encrypted_storage`; roles stay in the project file, so it grants
-nothing. One that doesn't parse, names another key, or on POSIX isn't owned and
+nothing. One that doesn't parse, names another key, holds an invalid value, or on POSIX isn't owned and
 writable only by root holds every project to the strictest settings. See
 [the security guide](../SECURITY-GUIDE.md#the-machine-policy).
 

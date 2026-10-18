@@ -157,6 +157,10 @@ def test_a_broken_project_file_stays_refused_under_the_machine_policy(project, m
         ("security:\n  profile: [cui\n", "does not parse"),
         ("security: cui\n", "needs a `security` mapping"),
         ("security:\n  profile: cuii\n", "security.profile must be 'cui'"),
+        # A valid key with an invalid value: _parse alone refused MCP calls but
+        # left the profile and the encryption check off.
+        ("security:\n  identity: sometimes\n", "security.identity must be"),
+        ("security:\n  profile: cui\n  identity: declared\n", "requires identity: os"),
     ],
 )
 def test_a_malformed_machine_policy_holds_every_project_to_the_strictest(

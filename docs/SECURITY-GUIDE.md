@@ -214,7 +214,7 @@ security:
   (`users`, `default_role`, `roles`) and the audit checkpoint settings stay in
   each project's `neuralmind-backend.yaml`, so a user who manages to create the
   machine policy gains nothing.
-- A machine policy that doesn't parse, names any other key, or on POSIX isn't
+- A machine policy that doesn't parse, names any other key, holds an invalid value, or on POSIX isn't
   owned by root and writable only by root (the file and its directory) holds
   every project to the strictest settings, and `neuralmind doctor` fails the
   *Security policy* check with the reason.

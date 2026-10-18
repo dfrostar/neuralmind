@@ -46,7 +46,7 @@ security:
   each project's file, so a user who manages to create the machine policy gains
   nothing.
 - **A machine policy that can't be trusted holds everything to the strictest
-  settings:** one that doesn't parse, names any other key, or on POSIX isn't
+  settings:** one that doesn't parse, names any other key, holds an invalid value (`identity: sometimes`), or on POSIX isn't
   owned by root and writable only by root (the file and its directory).
   `neuralmind doctor` fails its *Security policy* check with the reason.
 - **Its location is fixed.** It isn't read from an environment variable, and on

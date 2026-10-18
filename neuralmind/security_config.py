@@ -42,7 +42,7 @@ only tightens: each setting takes the stricter of the machine's and the
 project's value, so neither file can loosen the other. It can't grant roles
 (``users``, ``default_role`` and ``roles`` stay in the project file), so a
 user who manages to create it gains nothing. A machine policy that doesn't
-parse, names anything else, or on POSIX isn't owned by root and writable only
+parse, names anything else, holds an invalid value, or on POSIX isn't owned by root and writable only
 by root holds every project to the strictest settings.
 """
 
@@ -162,9 +162,10 @@ def load_machine_policy() -> SecuritySettings | None:
         )
     settings = _parse(security, path)
     if settings.problem:
-        return replace(
-            settings, problem=f"machine policy {path}: {settings.problem}", machine_policy=path
-        )
+        # Strictest, not just _parse's refusal of MCP calls: an invalid value
+        # such as `identity: sometimes` must not leave the profile and the
+        # encryption check off.
+        return strictest(f"is invalid: {settings.problem}")
     return replace(settings, machine_policy=path)
 
 

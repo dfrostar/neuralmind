@@ -4441,7 +4441,7 @@ section with `profile`, `identity` and `require_encrypted_storage` only. It
 applies to every project on the machine and only tightens: each setting takes
 the stricter of the machine's and the project's value, so deleting a project's
 `neuralmind-backend.yaml` no longer switches the profile off. One that doesn't
-parse, names another key, or on POSIX isn't owned and writable only by root
+parse, names another key, holds an invalid value, or on POSIX isn't owned and writable only by root
 holds every project to the strictest settings. Its path is fixed, not read from
 the environment. See the [security guide](../SECURITY-GUIDE.md#the-machine-policy).
 
