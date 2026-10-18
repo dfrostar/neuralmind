@@ -255,7 +255,7 @@ def _project_locations(
     # rm -rf .neuralmind/ removes a symlink inside it but not what it points to
     # (the turbovec index directory, say, moved to another disk).
     state = root / STATE_DIR_NAME
-    if state.is_dir() and not state.is_symlink():
+    if state.is_dir():  # a symlinked .neuralmind is walked too; links below it aren't followed
         for dirpath, dirnames, filenames in os.walk(state):
             for name in sorted(dirnames + filenames):
                 link = Path(dirpath) / name
@@ -354,7 +354,14 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
 
     locations.append(_present(query_log, project_queries))
 
-    registry = _resolve_registry_path()
+    registry = _absolute(_resolve_registry_path())
+    # A relative NEURALMIND_CONFIG_DIR names another registry from another
+    # directory, so the command pins the one listed here.
+    pin_config = (
+        f"NEURALMIND_CONFIG_DIR={shlex.quote(str(registry.parent))} "
+        if os.environ.get("NEURALMIND_CONFIG_DIR")
+        else ""
+    )
 
     def registered() -> bool:
         entries = _parse_json(registry)
@@ -370,7 +377,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
                 str(registry),
                 False,
                 "this project's path",
-                f"neuralmind project remove {shlex.quote(str(root))}",
+                f"{pin_config}neuralmind project remove {shlex.quote(str(root))}",
             ),
             registered,
         )

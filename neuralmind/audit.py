@@ -54,6 +54,18 @@ class AuditUnrecordedError(RuntimeError):
     """
 
 
+def _ends_mid_line(path: Path) -> bool:
+    """Whether ``path`` is non-empty and doesn't end with a newline."""
+    try:
+        with path.open("rb") as file:
+            if file.seek(0, os.SEEK_END) == 0:
+                return False
+            file.seek(-1, os.SEEK_END)
+            return file.read(1) != b"\n"
+    except FileNotFoundError:
+        return False
+
+
 def _lines_sha256(lines: list[str]) -> str:
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
@@ -193,28 +205,30 @@ class AuditTrail:
 
     @classmethod
     def _last_sha256_of(cls, path: Path) -> str:
-        """The sha256 of ``path``'s last non-empty line, or '0'*64 if it has none."""
+        """The sha256 of ``path``'s last readable record, or '0'*64 if it has none.
+
+        A line that doesn't parse, such as a record cut short by a full disk,
+        is passed over, so the next record chains to the last intact one;
+        ``verify`` still reports the damaged line.
+        """
         if not path.exists():
             return "0" * 64
         try:
-            # Read all lines; find last non-empty; extract sha256
-            with path.open(encoding="utf-8") as f:
-                last = ""
+            last = None
+            with path.open(encoding="utf-8", errors="replace") as f:
                 for raw_line in f:
                     if len(raw_line) > cls.MAX_AUDIT_LINE_BYTES:
                         continue  # Skip crafted oversized lines (DoS guard)
                     line = raw_line.strip()
-                    if line:
-                        last = line
-            if not last:
-                return "0" * 64
-            try:
-                obj = json.loads(last)
-            except json.JSONDecodeError:
-                return "0" * 64
-            sha = obj.get("sha256") if isinstance(obj, dict) else None
+                    if not line:
+                        continue
+                    try:
+                        last = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+            sha = last.get("sha256") if isinstance(last, dict) else None
             return sha if isinstance(sha, str) and sha else "0" * 64
-        except (UnicodeDecodeError, OSError):
+        except OSError:
             return "0" * 64
 
     def append_event(
@@ -266,8 +280,11 @@ class AuditTrail:
 
                 payload = event.to_dict()
                 self.events_file.parent.mkdir(parents=True, exist_ok=True)
+                # A record cut short by a full disk ends without a newline, and
+                # this one would join it into one line nothing can read.
+                start = "\n" if _ends_mid_line(self.events_file) else ""
                 with self.events_file.open("a", encoding="utf-8") as file:
-                    file.write(json.dumps(payload, sort_keys=True) + "\n")
+                    file.write(start + json.dumps(payload, sort_keys=True) + "\n")
                 return payload
         except Exception as exc:
             if not self._record_failure(category, action, exc) and self._cui_profile():

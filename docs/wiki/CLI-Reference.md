@@ -265,6 +265,10 @@ and started again, still count as unrecorded. Runs take turns, each holding a
 lock on `.neuralmind/audit_write_failures.recorded.lock`, so two can't record
 the same failures twice.
 
+A full disk can also cut the log's last record short. The next record, the gap
+record included, starts on a line of its own and chains to the last intact
+record, and `neuralmind audit verify` still reports the damaged line.
+
 | Code | Meaning |
 |------|---------|
 | `0` | Gap recorded, or nothing to record |

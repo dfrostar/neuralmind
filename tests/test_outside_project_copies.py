@@ -412,3 +412,18 @@ def test_doctor_fails_on_unreadable_notes_under_the_cui_profile(project):
     AuditTrail(project).failures_file.mkdir(parents=True)  # can't be read
     check = doctor._check_audit_writes(project)
     assert check.status == doctor.FAIL and "can't read" in check.detail
+
+
+def test_a_record_after_a_cut_short_tail_stays_readable_and_chained(project):
+    # A full disk cut the last record short; once there's space again, the
+    # next record must be its own line, chained to the last intact record.
+    trail = AuditTrail(project)
+    first = trail.append_event(category="query", action="query")
+    with trail.events_file.open("a", encoding="utf-8") as log:
+        log.write('{"category": "query", "action": "qu')
+    gap = trail.append_event(category="audit", action="gap_recorded")
+    events = trail.read_events()
+    assert [e["sha256"] for e in events] == [first["sha256"], gap["sha256"]]
+    assert gap["prev_sha256"] == first["sha256"]
+    result = trail.verify()
+    assert not result["ok"] and result["first_bad_line"] == 2  # the damage stays visible

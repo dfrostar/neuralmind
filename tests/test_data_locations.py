@@ -320,6 +320,32 @@ def test_a_symlink_inside_the_state_directory_is_listed_by_its_target(env):
     assert linked[0].path == str(external.resolve()) and linked[0].kind == dl.OUTSIDE
 
 
+def test_symlinks_inside_a_symlinked_state_directory_are_listed(env):
+    state = env.tmp / "disk" / "state"
+    state.mkdir(parents=True)
+    index = env.tmp / "other" / "index"
+    index.mkdir(parents=True)
+    try:
+        (env.project / ".neuralmind").symlink_to(state, target_is_directory=True)
+        (state / "neuralmind_turbovec").symlink_to(index, target_is_directory=True)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    linked = [loc for loc in dl.data_locations(env.project) if "a symlink in" in loc.name]
+    assert [loc.path for loc in linked] == [str(index.resolve())]
+
+
+def test_a_relative_config_dir_is_pinned_in_the_registry_command(env, monkeypatch, tmp_path):
+    workdir = tmp_path / "work"
+    (workdir / "cfg").mkdir(parents=True)
+    (workdir / "cfg" / "projects.json").write_text(json.dumps([{"path": str(env.project)}]))
+    monkeypatch.chdir(workdir)
+    monkeypatch.setenv("NEURALMIND_CONFIG_DIR", "cfg")
+    registry = _by_name(env.project)["project registry"]
+    assert registry.present and registry.path == str((workdir / "cfg" / "projects.json").resolve())
+    words = shlex.split(registry.remove)
+    assert words[0] == f"NEURALMIND_CONFIG_DIR={(workdir / 'cfg').resolve()}"
+
+
 def test_a_team_config_no_loader_can_read_still_lists_the_log(env, monkeypatch):
     import neuralmind.tier2.config as tier2_config
 
