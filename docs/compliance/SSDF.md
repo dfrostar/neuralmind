@@ -141,8 +141,10 @@ are what stands between an agent's mistake and a release:
   documented exit code and lint commits that never delete code.
 - **Automated review** (PW.7): a second model reviews each pull request, and
   catches what the first missed. In v4.17.1, Codex found that a machine policy
-  holding an invalid value didn't hold projects to the strictest settings, a
-  gap in a fix that had just merged (#672, fixed in #674).
+  holding an invalid value didn't hold projects to the strictest settings
+  (#672, fixed in #674), then that a misspelled `require_encrypted_storage`
+  still slipped through that fix (#674, fixed in v4.17.2).
 - **What isn't there:** a second human reading each change, and a rule that
-  makes a merge wait for the checks and reviews (PS.1). #672 was merged before
-  Codex had finished reviewing it, which is how that gap reached `main`.
+  makes a merge wait for the checks and reviews (PS.1). #672 and #674 were
+  each merged before Codex had finished reviewing them, which is how both gaps
+  reached `main`.

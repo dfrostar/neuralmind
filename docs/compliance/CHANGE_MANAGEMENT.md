@@ -60,9 +60,9 @@ checks ([SSDF PS.1](SSDF.md)).
 
 For solo maintainer (current state):
 - The maintainer merges after CI passes and the automated reviews finish
-- No merge while a CI check fails or a review is still running. #672 (v4.17.1)
-  merged while Codex was still reviewing it, and Codex's finding needed a
-  follow-up fix (#674)
+- No merge while a CI check fails or a review is still running. #672 and its
+  follow-up #674 (v4.17.1) each merged while Codex was still reviewing, and
+  each of Codex's findings needed another fix (#674, then v4.17.2)
 - Breaking changes require a new major version
 
 For future team state:
