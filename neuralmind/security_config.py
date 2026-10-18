@@ -78,17 +78,17 @@ def _program_data() -> Path:
     set that variable, and pointing it at an empty folder would hide the
     machine policy.
     """
+    fallback = Path("C:\\ProgramData")
     try:
         import ctypes
 
         buffer = ctypes.create_unicode_buffer(260)
         # CSIDL_COMMON_APPDATA
-        if ctypes.windll.shell32.SHGetFolderPathW(None, 0x23, None, 0, buffer) == 0:
-            if buffer.value:
-                return Path(buffer.value)
-    except Exception:
-        pass
-    return Path("C:\\ProgramData")
+        status = ctypes.windll.shell32.SHGetFolderPathW(None, 0x23, None, 0, buffer)
+    except (AttributeError, OSError):
+        # No shell32 to ask (not Windows), or the call failed: the default.
+        return fallback
+    return Path(buffer.value) if status == 0 and buffer.value else fallback
 
 
 def _default_machine_policy_path() -> Path:
@@ -128,10 +128,11 @@ def load_machine_policy() -> SecuritySettings | None:
     """The machine policy's settings, or None when there is no machine policy."""
     path = MACHINE_POLICY_PATH
     try:
-        if not path.exists():
-            return None
+        present = path.exists()
     except OSError:
-        pass  # can't even tell: treat it as present, and unreadable below
+        present = True  # can't even tell: treat it as present, and unreadable below
+    if not present:
+        return None
 
     def strictest(problem: str) -> SecuritySettings:
         return SecuritySettings(
