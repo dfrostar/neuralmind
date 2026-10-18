@@ -27,9 +27,9 @@ OUTSIDE = "outside the project"
 INTEGRATION = "integrations"
 
 # What the index backends write under a custom db_path (turbovec: store, index
-# with its .stale quarantine, BM25; ChromaDB: chroma.sqlite3 plus one folder
-# per collection, named by UUID).
-_INDEX_PATTERNS = ("store*.sqlite*", "index*.tvim*", "bm25_index*.json", "chroma.sqlite3")
+# with its .stale quarantine, BM25; ChromaDB: chroma.sqlite3 and its -wal and
+# -shm journals, plus one folder per collection, named by UUID).
+_INDEX_PATTERNS = ("store*.sqlite*", "index*.tvim*", "bm25_index*.json", "chroma.sqlite3*")
 _UUID_DIR = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _HOOK_MARKER = "# neuralmind-hook-start"
 _CLAUDE_IMPORT = "@.neuralmind/SYNAPSE_MEMORY.md"
@@ -92,6 +92,7 @@ def _place(
     """
     rm = "rm -rf" if directory else "rm"
     detail = ""
+    path = Path(os.path.abspath(path))  # absolute, without following a symlink
     if path.is_symlink():
         target = path.resolve()
         kind = PROJECT if target.is_relative_to(root) else OUTSIDE
@@ -299,6 +300,7 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
     except Exception:
         audit_db = None
     if audit_db is not None:
+        relative = not audit_db.is_absolute()
         team_log = _place(
             "Team governance audit log",
             OUTSIDE,
@@ -309,6 +311,13 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
         )
         team_log.present = team_log.present and _records_mention(Path(team_log.path), root)
         team_log.problem = team_problem
+        if relative:
+            # The writers open it as given, so each lands under its own working
+            # directory; this is the one under the current directory.
+            team_log.detail = (
+                f"audit_db is the relative path {audit_db} in the Team config, so each "
+                "process writes it under its own working directory; this is the current one's"
+            )
         locations.append(team_log)
 
     locations.append(

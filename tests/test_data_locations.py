@@ -9,6 +9,7 @@ that listing changes nothing on disk.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -129,7 +130,7 @@ def test_every_location_with_data_is_found(env):
     assert "unrelated.txt" not in index.detail
     assert found["global query log"].detail == "1 line(s) from this project"
     assert found["git hook blocks"].detail == "post-commit"
-    assert found["anchored audit checkpoints"].path == str(
+    assert found["anchored audit checkpoints"].path == os.path.abspath(
         anchor_checkpoints_path(env.project, env.project / "../anchor")
     )
 
@@ -171,6 +172,40 @@ def test_a_symlinked_export_is_removed_with_its_target(env):
     export = _by_name(env.project)["Claude Code synapse export"]
     assert export.present and export.path == str(target.resolve())
     assert shlex.split(export.remove) == ["rm", str(target.resolve()), "&&", "rm", str(link)]
+
+
+def test_chroma_journals_at_db_path_are_listed(env):
+    # An interrupted ChromaDB process leaves -wal and -shm journals, and the
+    # WAL can hold indexed text.
+    index = env.tmp / "chroma-index"
+    index.mkdir()
+    for name in ("chroma.sqlite3", "chroma.sqlite3-wal", "chroma.sqlite3-shm"):
+        (index / name).write_text("x", encoding="utf-8")
+    (env.project / "neuralmind-backend.yaml").write_text(f"db_path: {index}\n", encoding="utf-8")
+    found = _by_name(env.project)["index at db_path"]
+    assert found.detail == "chroma.sqlite3, chroma.sqlite3-shm, chroma.sqlite3-wal"
+    assert str(index / "chroma.sqlite3-wal") in shlex.split(found.remove, comments=True)
+
+
+def test_a_relative_team_audit_db_is_removed_by_absolute_path(env, monkeypatch, tmp_path):
+    import neuralmind.tier2.config as tier2_config
+
+    workdir = tmp_path / "work dir"
+    (workdir / "logs").mkdir(parents=True)
+    (workdir / "logs" / "audit.jsonl").write_text(
+        json.dumps({"target": str(env.project)}) + "\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(workdir)
+    monkeypatch.setattr(
+        tier2_config,
+        "load_config",
+        lambda *_a, **_k: SimpleNamespace(audit_db="logs/audit.jsonl"),
+    )
+    log = _by_name(env.project)["Team governance audit log"]
+    absolute = str((workdir / "logs" / "audit.jsonl").resolve())
+    assert log.present and log.path == absolute
+    assert shlex.split(log.remove, comments=True) == ["rm", absolute]
+    assert "relative path" in log.detail
 
 
 def test_an_unreadable_team_config_is_reported(env, monkeypatch):

@@ -82,8 +82,8 @@ Before anything is deleted, note the two locations the project's config file
 `.neuralmind/`, since the commands below delete that file:
 
 - **`db_path`**, where the index is kept if it isn't in `.neuralmind/`. The
-  index is `store*.sqlite*`, `index*.tvim*` and `bm25_index*.json` (turbovec), or `chroma.sqlite3`
-  and its UUID-named collection folders (ChromaDB). The names are fixed, so a
+  index is `store*.sqlite*`, `index*.tvim*` and `bm25_index*.json` (turbovec), or `chroma.sqlite3*`
+  (the database and its journals) and its UUID-named collection folders (ChromaDB). The names are fixed, so a
   location two projects share holds one index for both: it can't be split, and
   deleting it means the other project must run `neuralmind build` again.
   Delete those files, and the directory itself only if it holds nothing else.
@@ -191,7 +191,7 @@ each check should print nothing:
 ```bash
 db_path=""      # the db_path, if one was set
 anchor_file=""  # the anchored checkpoint file, if erasure was required
-[ -z "$db_path" ] || ls "$db_path"/store*.sqlite* "$db_path"/index*.tvim* "$db_path"/bm25_index*.json "$db_path"/chroma.sqlite3 2>/dev/null
+[ -z "$db_path" ] || ls "$db_path"/store*.sqlite* "$db_path"/index*.tvim* "$db_path"/bm25_index*.json "$db_path"/chroma.sqlite3* 2>/dev/null
 [ -z "$anchor_file" ] || ls "$anchor_file" 2>/dev/null
 ```
 
