@@ -261,7 +261,9 @@ The failures stay in `.neuralmind/audit_write_failures.jsonl`, which is only
 ever appended to. How far it has been recorded is kept in
 `.neuralmind/audit_write_failures.recorded.json`, a line count and the hash of
 those lines, so failures after the gap record, or in a file that was deleted
-and started again, still count as unrecorded.
+and started again, still count as unrecorded. Runs take turns, each holding a
+lock on `.neuralmind/audit_write_failures.recorded.lock`, so two can't record
+the same failures twice.
 
 | Code | Meaning |
 |------|---------|
@@ -1547,7 +1549,10 @@ whose `audit_db` can't be. The output then ends by saying the list may be
 incomplete. The remove commands name absolute, quoted paths and run as printed
 from any directory; a condition on one, such as "only when erasure is
 required", follows it as a `#` comment. A symlinked file or directory is listed
-by what it points to, with both it and the link to remove. A git hook block
+by what it points to, with both it and the link to remove, and so is any
+symlink inside `.neuralmind/` (such as an index directory moved to another
+disk), since `rm -rf .neuralmind/` removes the link but not its target. A git
+hook block
 counts only for the project it rebuilds, since a monorepo's projects and a
 repository's worktrees share one hooks directory. A `db_path` that isn't a path,
 and a Team `audit_db` given as a relative path (each process writes its own copy

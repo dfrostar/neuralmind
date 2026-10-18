@@ -866,11 +866,13 @@ def _check_audit_writes(project: Path) -> Check:
 
     name = "Audit log writes"
     trail = AuditTrail(project)
+    status = FAIL if load_security_settings(project).profile == PROFILE_CUI else WARN
     try:
         notes = trail.failure_notes()
         lines = trail.unrecorded_failures(notes)
     except OSError as exc:
-        return Check(name, WARN, f"can't read {trail.failures_file}: {exc}")
+        # Unreadable notes may hide unrecorded failures: no better than seeing them.
+        return Check(name, status, f"can't read {trail.failures_file}: {exc}")
     if not lines:
         if notes:
             return Check(
@@ -883,7 +885,6 @@ def _check_audit_writes(project: Path) -> Check:
         last = None
     if not isinstance(last, dict):
         last = {}
-    status = FAIL if load_security_settings(project).profile == PROFILE_CUI else WARN
     return Check(
         name,
         status,

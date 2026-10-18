@@ -300,7 +300,9 @@ class AuditTrail:
         try:
             self.failures_file.parent.mkdir(parents=True, exist_ok=True)
             with self.failures_file.open("a", encoding="utf-8") as file:
-                file.write(line + "\n")
+                # A leading newline: a note cut short by a full disk ends without
+                # one, and the next would otherwise join it into one bad line.
+                file.write("\n" + line)
         except OSError as write_exc:
             unrecorded = f" (and couldn't be noted in {self.failures_file}: {write_exc})"
         logger.warning(
@@ -343,6 +345,15 @@ class AuditTrail:
         the gap record, or None when every failure is already recorded; raises,
         leaving them unrecorded, if the gap record can't be written.
         """
+        if not self.failures_file.exists():
+            return None  # nothing failed; and don't create .neuralmind/ for a lock
+        # One run at a time, so two can't record the same failures twice or
+        # leave the older run's mark last. A lock of its own: append_event
+        # takes the log's lock for each record.
+        with _exclusive_file_lock(self.failures_recorded_file.with_suffix(".lock")):
+            return self._record_gap_locked()
+
+    def _record_gap_locked(self) -> dict[str, Any] | None:
         notes = self.failure_notes()
         new = self.unrecorded_failures(notes)
         if not new:

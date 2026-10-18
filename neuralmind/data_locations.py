@@ -119,6 +119,20 @@ def _file_mentions(path: Path, needle: str) -> bool:
     return needle in _read(path)
 
 
+def _absolute(path: Path) -> Path:
+    """``path`` made absolute as the OS reads it, without following its last part.
+
+    The parent is resolved, so ``link/../index`` is the ``index`` beside what
+    ``link`` points to, as ``open`` and ``rm`` see it (``os.path.abspath``
+    would drop ``link/..`` first and name a different file). The last part is
+    kept, so a symlink there can still be seen.
+    """
+    path = Path(path) if Path(path).is_absolute() else Path.cwd() / path
+    if path.name in ("", ".", ".."):
+        return path.resolve()
+    return path.parent.resolve() / path.name
+
+
 def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
     """The command that removes ``path`` from any directory, and where its data is.
 
@@ -127,7 +141,7 @@ def _remove_command(path: Path, *, directory: bool) -> tuple[str, Path]:
     directory but leaves it and the link.
     """
     rm = "rm -rf" if directory else "rm"
-    path = Path(os.path.abspath(path))  # absolute, without following a symlink
+    path = _absolute(path)
     if path.is_symlink():
         target = path.resolve()
         return f"{rm} {shlex.quote(str(target))} && rm {shlex.quote(str(path))}", target
@@ -151,9 +165,9 @@ def _place(
     """
     remove, target = _remove_command(path, directory=directory)
     detail = ""
-    if target != Path(os.path.abspath(path)):
+    if target != _absolute(path):
         kind = PROJECT if target.is_relative_to(root) else OUTSIDE
-        detail = f"{os.path.abspath(path)} is a symlink to it"
+        detail = f"{_absolute(path)} is a symlink to it"
     if note:
         remove += f"  # {note}"
     return Location(name, kind, str(target), target.exists(), holds, remove, detail)
@@ -238,6 +252,24 @@ def _project_locations(
         ),
         config_file,
     ]
+    # rm -rf .neuralmind/ removes a symlink inside it but not what it points to
+    # (the turbovec index directory, say, moved to another disk).
+    state = root / STATE_DIR_NAME
+    if state.is_dir() and not state.is_symlink():
+        for dirpath, dirnames, filenames in os.walk(state):
+            for name in sorted(dirnames + filenames):
+                link = Path(dirpath) / name
+                if link.is_symlink():
+                    locations.append(
+                        _place(
+                            f"{link.relative_to(root)} (a symlink in {STATE_DIR_NAME}/)",
+                            PROJECT,
+                            link,
+                            "whatever it points to, written there as part of the state directory",
+                            root,
+                            directory=link.is_dir(),
+                        )
+                    )
     from .backend_manager import resolve_db_path
 
     try:
@@ -375,8 +407,15 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
                 f"the Team config can't be read ({type(exc).__name__}: {exc}), so an "
                 "audit_db it sets isn't known: fix it and run this again"
             )
-            team_config = load_config()
-        audit_db = Path(team_config.audit_db).expanduser()
+            try:
+                team_config = load_config()
+            except Exception:
+                from .tier2.config import Tier2Config
+
+                team_config = Tier2Config()
+        # As the writers open it: they don't expand ~, so neither does this, and
+        # a ~/ path is reported as relative.
+        audit_db = Path(team_config.audit_db)
     except Exception:
         audit_db = None
     if audit_db is not None:

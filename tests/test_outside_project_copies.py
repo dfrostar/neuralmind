@@ -211,7 +211,7 @@ def _failing_append(project: Path, monkeypatch) -> AuditTrail:
 def test_a_failed_audit_write_is_noted(project, monkeypatch, caplog):
     with caplog.at_level(logging.WARNING, logger="neuralmind.audit"):
         trail = _failing_append(project, monkeypatch)
-    (note,) = trail.failures_file.read_text(encoding="utf-8").splitlines()
+    (note,) = trail.failure_notes()
     record = json.loads(note)
     assert record["event"] == "query/query"
     assert "No space left on device" in record["error"]
@@ -366,3 +366,49 @@ def test_under_the_cui_profile_a_noted_failure_still_lets_the_call_through(proje
     )
     NeuralMind._emit_audit(SimpleNamespace(audit=trail), "audit", "query")
     assert len(trail.failure_notes()) == 1  # noted, so doctor will fail until it's recorded
+
+
+def test_record_gap_runs_one_at_a_time(project, monkeypatch):
+    import threading
+
+    from neuralmind.audit import _exclusive_file_lock
+
+    _failing_append(project, monkeypatch)
+    trail = AuditTrail(project)
+    held, release = threading.Event(), threading.Event()
+
+    def hold_lock():
+        with _exclusive_file_lock(trail.failures_recorded_file.with_suffix(".lock")):
+            held.set()
+            release.wait(10)
+
+    holder = threading.Thread(target=hold_lock)
+    holder.start()
+    held.wait(10)
+    results: list = []
+    runner = threading.Thread(target=lambda: results.append(trail.record_gap()))
+    runner.start()
+    runner.join(0.5)
+    assert runner.is_alive() and not results  # waiting for the other run
+    release.set()
+    holder.join(10)
+    runner.join(10)
+    assert results[0]["details"]["missing_records"] == 1
+
+
+def test_a_note_cut_short_doesnt_swallow_the_next(project, monkeypatch):
+    trail = AuditTrail(project)
+    trail.failures_file.parent.mkdir(parents=True)
+    trail.failures_file.write_text('{"event": "query/query", "error": "No spa', encoding="utf-8")
+    _failing_append(project, monkeypatch)
+    notes = AuditTrail(project).failure_notes()
+    assert len(notes) == 2 and json.loads(notes[1])["event"] == "query/query"
+
+
+def test_doctor_fails_on_unreadable_notes_under_the_cui_profile(project):
+    (project / "neuralmind-backend.yaml").write_text(
+        "security:\n  profile: cui\n  users:\n    alice: reader\n", encoding="utf-8"
+    )
+    AuditTrail(project).failures_file.mkdir(parents=True)  # can't be read
+    check = doctor._check_audit_writes(project)
+    assert check.status == doctor.FAIL and "can't read" in check.detail

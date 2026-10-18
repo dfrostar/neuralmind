@@ -9,7 +9,6 @@ that listing changes nothing on disk.
 from __future__ import annotations
 
 import json
-import os
 import shlex
 import subprocess
 import sys
@@ -130,8 +129,8 @@ def test_every_location_with_data_is_found(env):
     assert "unrelated.txt" not in index.detail
     assert found["global query log"].detail == "1 line(s) from this project"
     assert found["git hook blocks"].detail == "post-commit"
-    assert found["anchored audit checkpoints"].path == os.path.abspath(
-        anchor_checkpoints_path(env.project, env.project / "../anchor")
+    assert found["anchored audit checkpoints"].path == str(
+        anchor_checkpoints_path(env.project, env.project / "../anchor").resolve()
     )
 
 
@@ -282,6 +281,66 @@ def test_shared_log_lines_that_cant_be_parsed_are_a_problem(env):
     found = _by_name(env.project)
     for name in ("global query log", "Team governance audit log"):
         assert found[name].present and "can't be parsed" in found[name].problem, name
+
+
+def test_a_path_through_a_symlink_and_dot_dot_is_removed_where_the_os_finds_it(env):
+    # link/../index is the index beside link's target, not <project>/index.
+    real = env.tmp / "disk" / "sub"
+    real.mkdir(parents=True)
+    index = env.tmp / "disk" / "index"
+    index.mkdir()
+    (index / "store.sqlite").write_text("x", encoding="utf-8")
+    try:
+        (env.project / "link").symlink_to(real, target_is_directory=True)
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    (env.project / "neuralmind-backend.yaml").write_text(
+        "db_path: link/../index\n", encoding="utf-8"
+    )
+    found = _by_name(env.project)["index at db_path"]
+    assert shlex.split(found.remove, comments=True) == [
+        "rm",
+        str((index / "store.sqlite").resolve()),
+    ]
+
+
+def test_a_symlink_inside_the_state_directory_is_listed_by_its_target(env):
+    # rm -rf .neuralmind/ would remove the link and leave the index it points to.
+    external = env.tmp / "fast-disk" / "turbovec"
+    external.mkdir(parents=True)
+    (env.project / ".neuralmind").mkdir()
+    try:
+        (env.project / ".neuralmind" / "neuralmind_turbovec").symlink_to(
+            external, target_is_directory=True
+        )
+    except OSError:
+        pytest.skip("can't create a symlink here")
+    linked = [loc for loc in dl.data_locations(env.project) if "a symlink in" in loc.name]
+    assert len(linked) == 1 and linked[0].present
+    assert linked[0].path == str(external.resolve()) and linked[0].kind == dl.OUTSIDE
+
+
+def test_a_team_config_no_loader_can_read_still_lists_the_log(env, monkeypatch):
+    import neuralmind.tier2.config as tier2_config
+
+    def load_config(*_a, **_k):
+        raise ValueError("seats must be an integer")
+
+    monkeypatch.setattr(tier2_config, "load_config", load_config)
+    log = _by_name(env.project)["Team governance audit log"]
+    assert "Team config can't be read" in log.problem
+
+
+def test_a_team_audit_db_under_tilde_is_read_as_the_writers_read_it(env, monkeypatch):
+    # The Team writers don't expand ~, so ~/logs/audit.jsonl is relative.
+    import neuralmind.tier2.config as tier2_config
+
+    monkeypatch.setattr(
+        tier2_config,
+        "load_config",
+        lambda *_a, **_k: SimpleNamespace(audit_db="~/logs/audit.jsonl"),
+    )
+    assert "relative path" in _by_name(env.project)["Team governance audit log"].problem
 
 
 def test_an_unreadable_team_config_is_reported(env, monkeypatch):
