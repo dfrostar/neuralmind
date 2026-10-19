@@ -6,7 +6,7 @@ import { pageMetadata } from '@/lib/seo';
 export const metadata: Metadata = pageMetadata({
     path: '/privacy',
     title: 'Privacy Policy — NeuralMind',
-    description: 'Privacy policy for NeuralMind. By default the software runs locally, sends no telemetry and transmits no repository content off your machine; this policy covers the little data we do handle.',
+    description: 'NeuralMind’s privacy policy. By default the software sends no telemetry and no repository content off your machine; this covers the little data we handle.',
 });
 
 type Section = {

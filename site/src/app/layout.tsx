@@ -3,7 +3,7 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for Claude Code and any MCP agent. On a public benchmark: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval. Free MIT core.';
+    'Codebase memory for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
 
 export const metadata = {
     title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
