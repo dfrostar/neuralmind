@@ -409,7 +409,7 @@ Guide: [Memory Layer](Memory-Layer).
 
 Extends NeuralMind from code-only to long-form content retrieval. Indexes 150K-word books via `neuralmind ingest-content` CLI. 30-query Underground manifest with graded relevance (0-3) per ~150-word chunk. N-15 IR metrics (recall@k, MRR, nDCG@5) + RAGAS faithfulness on compressed context. 7 CI regression gates with per-shape breakdowns (precise/thematic/entity/temporal/causal). Spec: [CONTENT-BENCHMARK-SPEC.md](../specs/CONTENT-BENCHMARK-SPEC.md).
 
-### N-15 — SOTA Retrieval Quality Benchmarks (August 2026)
+### N-15 — Retrieval Quality Benchmarks (August 2026)
 
 Graded relevance (0-3) + standard IR metrics (nDCG@5, MRR, recall@k, precision@k) + RAGAS faithfulness scoring on compressed retrieval output. 8 CI regression gates with per-shape breakdowns (focused/cross-file/identity). Zero-tolerance gate catches complete retrieval failures that averaged metrics hide. Consumes existing `ragas.py` stdlib-only judge — no embedding stack required. Spec: [RETRIEVAL-BENCHMARK-SPEC.md](../specs/RETRIEVAL-BENCHMARK-SPEC.md).
 

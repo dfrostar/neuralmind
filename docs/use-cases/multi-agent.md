@@ -10,8 +10,8 @@ None of them learn from the others.
 
 You want a **shared memory layer** underneath all of them — a
 single place where co-activations, file edits, and tool calls
-reinforce the same brain, so the smarter your Claude Code session
-gets, the smarter your Hermes session gets, automatically.
+reinforce the same synapse store, so the associations your Claude
+Code session's usage teaches are recalled in your Hermes session too.
 
 That's what NeuralMind v0.6.0 unlocks. It was *technically* true
 in v0.5.x — every agent talking to the project hit the same

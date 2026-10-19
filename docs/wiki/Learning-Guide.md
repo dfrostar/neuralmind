@@ -45,7 +45,7 @@ instead of a stale snapshot.
 └──────────────────────────────────────────────────────────┘
 ```
 
-## v3.9.0: Six SOTA Synapse Dynamics
+## v3.9.0: Six Synapse Dynamics
 
 ### 1. Lateral Inhibition (SYNAPSE paper, arXiv 2025)
 When one concept activates, it suppresses competing activations rather

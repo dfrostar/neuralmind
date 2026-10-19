@@ -671,7 +671,10 @@ OVERCLAIMS: list[tuple[re.Pattern[str], str, bool]] = [
             r"(you|it|the\s+system)\b|with\s+(use|every\s+(session|query)))"
             r"|\bthe\s+(more|longer)\s+you\s+(use|run|work\s+with)\s+(it|neuralmind)\b[^.\n]{0,40}?"
             r"\b(smarter|sharper|better)\b"
-            r"|\bmakes?\s+every\s+agent\s+smarter\b"
+            # Bare "smarter" too: "the smarter your Claude Code session gets, the
+            # smarter your Hermes session gets" never said "over time" and slipped
+            # past the first version of this pattern.
+            r"|\bsmarter\b"
             r"|\b(memory|learning|knowledge|layer|retrieval)\s+compounds\b"
             r"|\bimproves?\s+(retrieval\s+)?continuously\b",
             re.IGNORECASE,
@@ -683,6 +686,14 @@ OVERCLAIMS: list[tuple[re.Pattern[str], str, bool]] = [
             "`neuralmind eval . --synapse-ab` to measure it (site/claims.json disclosure)."
         ),
         True,
+    ),
+    (
+        re.compile(r"\bSOTA\b|\bstate[-\s]of[-\s]the[-\s]art\b", re.IGNORECASE),
+        (
+            "An unmeasured superiority claim: no benchmark here compares NeuralMind "
+            "with the state of the art. Name the technique and cite its source."
+        ),
+        False,
     ),
     (
         re.compile(
@@ -926,6 +937,9 @@ def test_overclaim_guards_trip_on_the_copy_that_shipped() -> None:
         "your agent's context gets *better* the more you work.",
         "Retrieval that gets sharper the longer the system runs on a codebase.",
         "It's the memory layer that makes every agent smarter.",
+        "reinforce the same brain, so the smarter your Claude Code session",
+        "> - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques",
+        "### N-15 — SOTA Retrieval Quality Benchmarks (August 2026)",
         "- **The memory compounds per codebase.**",
         "NeuralMind runs entirely local. Zero cloud calls, zero telemetry, no calls home.",
         "'NeuralMind is local-first with zero telemetry — engagements follow the same rule.'",
