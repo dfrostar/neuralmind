@@ -52,6 +52,12 @@ PUBLISHED_FILES = (
     # The Hermes plugin catalog renders this as the plugin's page, and it
     # carries the plugin's privacy disclosures.
     "neuralmind/hermes_plugin/README.md",
+    # The 2026-10-19 audit found both quoting the 12-50x range against the
+    # wrong baseline while no guard read them.
+    "docs/HONEST-ASSESSMENT.md",
+    # Its `description` is the PyPI summary line, the first claim most
+    # installers read.
+    "pyproject.toml",
 )
 PUBLISHED_GLOBS = (
     "docs/comparisons/*.md",
@@ -141,7 +147,11 @@ FORBIDDEN = [
     ),
     (
         re.compile(r"\b(zero|no)\s+(data\s+)?exfiltration\b", re.IGNORECASE),
-        "Absolute exfiltration claim. Use 'no telemetry / no calls home'.",
+        (
+            "Absolute exfiltration claim. Say what NeuralMind itself does: 'by "
+            "default, sends no telemetry and transmits no repository content off "
+            "your machine'."
+        ),
     ),
     (
         # This one was the guard's OWN prescribed replacement until 2026-08-28,
@@ -253,6 +263,17 @@ SUPERSEDED_FIGURES = [
         ),
     ),
     (
+        # +0.25 / +0.251 / +0.26 were roundings of v4.12.0's +0.265 that drifted
+        # onto the site and llms.txt. "+0.265" itself must keep passing.
+        re.compile(
+            r"(faithfulness|grounding|delta)[^\n]{0,80}?\+0\.(25|251|26)(?![\d])", re.IGNORECASE
+        ),
+        (
+            "The faithfulness delta measured +0.265 at v4.12.0 (0.839 vs 0.574, one "
+            "machine), and CI gates it at a mean delta >= -0.10, not at a magnitude."
+        ),
+    ),
+    (
         re.compile(r"\+?11\.6\s*(pts|points)\b|\+?6\.5\s*points\b", re.IGNORECASE),
         (
             "The onboarding lift is run-dependent (+0.9 to +11.6 pts observed) and "
@@ -280,41 +301,46 @@ def _ratios(*values: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![\d.])(?:{'|'.join(values)}){_TIMES}")
 
 
+# The current run (v4.12.0) measures 51–242×: requests 51.2×, click 117.1×,
+# flask 68.5×, rich 242.0×. Until 2026-10-19 these messages quoted a pre-merge
+# draft of that run instead (54–260×), which is how /measure-your-own came to
+# carry its 54.9×; the draft is now on the list itself.
+_CURRENT_RUN = "requests 51.2×, click 117.1×, flask 68.5×, rich 242.0×"
+
 SUPERSEDED_BENCHMARK_FIGURES = [
     (
+        _ratio_range(r"54(?:\.9)?", r"2(?:60|59\.3)"),
+        f"A draft of the v4.12.0 run that never became canon. The committed run: 51–242× ({_CURRENT_RUN}).",
+    ),
+    (
+        _ratios(r"54\.9", r"124\.2", r"73\.1", r"259\.3"),
+        f"A per-repo ratio from a draft of the v4.12.0 run. The committed run: {_CURRENT_RUN}.",
+    ),
+    (
         _ratio_range(r"45(?:\.3)?", r"24[56](?:\.2)?"),
-        "The v4.10.0 run's range, replaced 2026-10-08 at v4.12.0: 54–260×.",
+        "The v4.10.0 run's range, replaced 2026-10-08 at v4.12.0: 51–242×.",
     ),
     (
         _ratios(r"45\.3", r"115\.2", r"76\.3", r"245\.2"),
-        (
-            "A v4.10.0 per-repo ratio, replaced 2026-10-08 at v4.12.0: requests "
-            "54.9×, click 124.2×, flask 73.1×, rich 259.3×."
-        ),
+        f"A v4.10.0 per-repo ratio, replaced 2026-10-08 at v4.12.0: {_CURRENT_RUN}.",
     ),
     (
         _ratio_range(r"46(?:\.6)?", r"26[23](?:\.1)?"),
-        "The v4.6.0 run's range, replaced 2026-10-07 at v4.10.0 (since: 54–260×).",
+        "The v4.6.0 run's range, replaced 2026-10-07 at v4.10.0 (since: 51–242×).",
     ),
     (
         # click's 121.7× is left out: the embedding-rag baseline measures
         # exactly that on click in the current run, in the tables that list it.
         _ratios(r"46\.6", r"78(?:\.0)?", r"262\.1", r"263"),
-        (
-            "A v4.6.0 per-repo ratio, replaced 2026-10-07 at v4.10.0 (since: requests "
-            "54.9×, click 124.2×, flask 73.1×, rich 259.3×)."
-        ),
+        f"A v4.6.0 per-repo ratio, replaced 2026-10-07 at v4.10.0 (since: {_CURRENT_RUN}).",
     ),
     (
         _ratio_range(r"45(?:\.0)?", r"26(?:0\.7|1)"),
-        "The v4.3.4 run's range, replaced at v4.6.0, v4.10.0 and v4.12.0 (54–260×).",
+        "The v4.3.4 run's range, replaced at v4.6.0, v4.10.0 and v4.12.0 (51–242×).",
     ),
     (
         _ratios(r"45\.0", r"110\.4", r"81\.6", r"260\.7", r"261"),
-        (
-            "A v4.3.4 per-repo ratio. The current run measures requests 54.9×, "
-            "click 124.2×, flask 73.1×, rich 259.3×."
-        ),
+        f"A v4.3.4 per-repo ratio. The current run measures {_CURRENT_RUN}.",
     ),
     (
         _ratio_range(r"46", r"259"),
@@ -512,15 +538,18 @@ def test_superseded_benchmark_guard_trips_on_the_copy_that_shipped() -> None:
         '<div class="num">45&#8211;246&#215;</div>',
         "That is 45.3–245.2× fewer input tokens per query",
         "requests 45.3×, click 115.2×, flask 76.3×, rich 245.2×",
+        # The draft that reached /measure-your-own.
+        "(The public benchmark’s 54.9× on the same repo is a different measurement",
+        "**54–260× fewer tokens than pasting every source file, at 97.5% mean",
     ]
     for line in shipped:
         assert any(p.search(line) for p, _ in SUPERSEDED_BENCHMARK_FIGURES), line
 
     current = [
-        "**54–260× fewer tokens than pasting every source file, at 97.5% mean",
-        '<div class="num">54&#8211;260&#215;</div>',
-        "That is 54.9–259.3× fewer input tokens per query",
-        "requests 54.9×, click 124.2×, flask 73.1×, rich 259.3×",
+        "**51–242× fewer tokens than pasting every source file, with the gold file",
+        '<div class="num">51&#8211;242&#215;</div>',
+        "That is 51.2–242.0× fewer input tokens per query",
+        _CURRENT_RUN,
         "| `embedding-rag` | 1.00 | 100% | 645 | 0.69 | 121.7× |",
         "78.6× on psf/requests v2.32.3 at v4.5.0",
         "the community submissions so far (46× to 65.6×)",
@@ -584,3 +613,398 @@ def test_superseded_figure_guards_trip_on_the_copy_that_shipped() -> None:
     scoped = ["100% gold-file recall, MRR 0.96", "beats codebase-memory-mcp 0.96 vs 0.23"]
     assert _scoped_to_competitor_eval(scoped, 0)
     assert not _scoped_to_competitor_eval(["100% gold-file recall on the public benchmark"], 0)
+
+
+# ---------------------------------------------------------------------------
+# Overclaims the 2026-10-19 audit of every public surface found.
+#
+# site/claims.json was honest; the copy around it was not. Hand-copied numbers
+# and phrases drifted on every surface the guards above didn't read for them:
+# "smarter the more you use it" beside a synapse gate that only asserts
+# direction (and measured +0 at v4.12.0), "zero telemetry, no calls home" on a
+# tool whose first build downloads a model, "HIPAA friendly" and "NIST AI RMF
+# compliant" for a tool that holds no certification, "fewer wrong turns, faster
+# teams" when no benchmark measures task outcomes, and the 12–50× field-report
+# range quoted against whatever baseline the sentence happened to need. These
+# rules read every published surface and, through tests/test_site_claims.py,
+# every page under site/src.
+# ---------------------------------------------------------------------------
+
+# A negation earlier in the same sentence turns a banned phrase into the
+# disclosure it should be: "nothing here measures whether an agent makes fewer
+# mistakes", "using NeuralMind does not make you compliant".
+_NEGATION_RE = re.compile(
+    r"\b(not|never|nothing|no|none|isn't|aren't|doesn't|don't|can't|cannot|won't|without)\b",
+    re.IGNORECASE,
+)
+_SENTENCE_END_RE = re.compile(r"[.!?;](?:\s|$)|<p>|</p>|<li>|</li>|\|")
+
+
+def _sentence_before(line: str, start: int) -> str:
+    """The part of *line*'s current sentence that precedes *start*."""
+    head = line[:start]
+    ends = list(_SENTENCE_END_RE.finditer(head))
+    return head[ends[-1].end() :] if ends else head
+
+
+def _negated(text: str, start: int) -> bool:
+    """True if the sentence that reaches *start* in *text* carries a negation."""
+    return bool(_NEGATION_RE.search(_sentence_before(text, start)))
+
+
+def _paragraph_before(lines: list[str], index: int, limit: int = 2) -> str:
+    """Up to *limit* lines before ``lines[index]``, stopping at a blank line."""
+    out: list[str] = []
+    for line in reversed(lines[max(0, index - limit) : index]):
+        if not line.strip():
+            break
+        out.insert(0, line.strip())
+    return " ".join(out)
+
+
+# (pattern, reason, negatable). A negatable phrase is fine in a sentence that
+# denies it; the rest are wrong however they're framed.
+OVERCLAIMS: list[tuple[re.Pattern[str], str, bool]] = [
+    (
+        re.compile(
+            r"\b(smarter|sharper|better)\b[^.\n]{0,30}?\b(over\s+time|the\s+(more|longer)\s+"
+            r"(you|it|the\s+system)\b|with\s+(use|every\s+(session|query)))"
+            r"|\bthe\s+(more|longer)\s+you\s+(use|run|work\s+with)\s+(it|neuralmind)\b[^.\n]{0,40}?"
+            r"\b(smarter|sharper|better)\b"
+            r"|\bmakes?\s+every\s+agent\s+smarter\b"
+            r"|\b(memory|learning|knowledge|layer|retrieval)\s+compounds\b"
+            r"|\bimproves?\s+(retrieval\s+)?continuously\b",
+            re.IGNORECASE,
+        ),
+        (
+            "Nothing published shows the synapse layer improving a real repo over "
+            "time: its CI gate asserts only that recall never lowers hit rate, on a "
+            "~500-line fixture (+0 at v4.12.0). Say what it does, and point at "
+            "`neuralmind eval . --synapse-ab` to measure it (site/claims.json disclosure)."
+        ),
+        True,
+    ),
+    (
+        re.compile(
+            r"\bzero\s+(cloud\s+|network\s+|external\s+|outbound\s+)?(calls|telemetry|requests)\b"
+            r"|\b(no|never|zero|doesn't|does\s+not)\s+(make\s+)?(calls?|phones?|phoning|calling)\s+home\b",
+            re.IGNORECASE,
+        ),
+        (
+            "Absolute: the first build downloads the embedding model, and "
+            "NEURALMIND_LLM_SEED=1 sends doc prose to Anthropic. Say 'by default, "
+            "no telemetry' and name both (docs/wiki/FAQ.md, 'Does NeuralMind send "
+            "data to external servers?')."
+        ),
+        False,
+    ),
+    (
+        re.compile(
+            r"(?<!ACID-)(?<!ACID )\bcompliant\b"
+            r"|\b(GDPR|HIPAA|NIST(\s+AI\s+RMF)?|FedRAMP|PCI(\s+DSS)?|ISO\s*\d{4,5}|CCPA)"
+            r"[-\s]+(friendly|ready)\b"
+            r"|\b(SOC\s*2|CMMC(\s+2\.0)?)[-\s]+friendly\b"
+            r"|\bcompliance[-\s]ready\b|\bbuilt\s+for\s+compliance\b"
+            r"|\bsupports?\s+(major\s+|all\s+)?compliance\s+frameworks\b",
+            re.IGNORECASE,
+        ),
+        (
+            "NeuralMind holds no certification, and a tool can't be compliant on a "
+            "deployment's behalf. Say what evidence it provides for your review "
+            "(audit trail, framework mappings) and that assessment is of the deployment."
+        ),
+        True,
+    ),
+    (
+        re.compile(
+            r"\bfaster\s+teams\b|\bfewer\s+(wrong\s+turns|hallucinations?|mistakes|errors|bugs)\b"
+            r"|\breduc\w*\s+hallucinations?\b|\bbetter\s+answers\b|\bship(s|ping)?\s+faster\b",
+            re.IGNORECASE,
+        ),
+        (
+            "Task outcomes are not measured (site/claims.json disclosure): every "
+            "published figure is retrieval — what reaches the window and whether the "
+            "right file is in it. Say that, not an outcome."
+        ),
+        True,
+    ),
+    (
+        re.compile(
+            r"\b(local[-\s]only|local[-\s]first|privacy|on[-\s]device)\b[^.\n]{0,40}?\bguarantee"
+            r"|\bguarantee[sd]?\b[^.\n]{0,30}?\b(privacy|your\s+code)\b",
+            re.IGNORECASE,
+        ),
+        (
+            "A privacy guarantee is an absolute: the model download, the opt-in "
+            "seeding and the agent's own egress all exist. Describe the default."
+        ),
+        False,
+    ),
+]
+
+
+def overclaims_in(line: str, before: str = "") -> list[tuple[str, str]]:
+    """(matched text, reason) for every overclaim on *line*.
+
+    *before* is the wrapped text preceding the line in the same paragraph, so a
+    negation a line break away still counts.
+    """
+    hits: list[tuple[str, str]] = []
+    prefix = f"{before} " if before else ""
+    for pattern, reason, negatable in OVERCLAIMS:
+        for m in pattern.finditer(line):
+            if negatable and _negated(prefix + line, len(prefix) + m.start()):
+                continue
+            hits.append((m.group(0), reason))
+            break
+    return hits
+
+
+# The 12–50× range is real, but only against its baseline: `neuralmind
+# benchmark` before v4.5.0 divided a fixed 50K-token estimate, and v4.5.0+
+# divides the measured code, so a new run is not on this scale. Quoted bare it
+# read as "vs pasting raw source files" (the public benchmark's baseline, where
+# the figure is 51–242×) on one page and "vs a ~30K dump-all baseline" on
+# another. The baseline must be named on the line or the one beside it.
+RANGE_12_50_RE = re.compile(
+    r"(?<![\d.])12\s*(?:×|x|&times;)?\s*(?:–|—|-|&ndash;|&mdash;|&#8211;|to)\s*50\s*"
+    r"(?:×|x(?![a-z%])|&times;|&#215;)",
+    re.IGNORECASE,
+)
+FIXED_BASELINE_RE = re.compile(
+    r"50\s*K\b|50,000|fixed[-\s]+(?:50|estimate|baseline)|naive-50k|(?:before|pre-?)\s*v?4\.5",
+    re.IGNORECASE,
+)
+_BASELINE_WINDOW = 2
+
+
+def unscoped_12_50(lines: list[str], index: int) -> bool:
+    """True when ``lines[index]`` quotes 12–50× with no fixed-50K baseline nearby."""
+    if not RANGE_12_50_RE.search(lines[index]):
+        return False
+    window = lines[max(0, index - _BASELINE_WINDOW) : index + _BASELINE_WINDOW + 1]
+    return not any(FIXED_BASELINE_RE.search(line) for line in window)
+
+
+# Figures no run in the repo produces (site/claims.json, `unsourced_do_not_use`).
+UNSOURCED_FIGURES = [
+    (
+        # The pairing is the defect: ~800 on its own is close to the measured
+        # 670–961 (and ~830 on the 150-question eval); set against "~50,000" it
+        # becomes a ratio nobody measured.
+        re.compile(
+            r"\b800\s+tokens?[^.\n]{0,60}?50,?000|50,?000\+?\s+tokens?[^.\n]{0,80}?\b800\b"
+            r"|\b800\b[^.\n]{0,30}?(?:instead\s+of|not|vs\.?)\s*~?\s*50\s*K",
+            re.IGNORECASE,
+        ),
+        (
+            "'~800 tokens instead of ~50,000' pairs a rough figure with the CLI's old "
+            "fixed estimate. Measured: 670–961 mean tokens per question vs 41,729–232,483 "
+            "for every source file (public benchmark, v4.12.0)."
+        ),
+    ),
+    (
+        re.compile(r"\$0\.15\s*(?:–|-|to)\s*\$?3\.75|\$0\.002\s*(?:–|-|to)\s*\$?0\.06"),
+        "No pricing run produces these. `neuralmind savings --cost` prices your own usage.",
+    ),
+    (
+        re.compile(
+            r"\b12\s*(?:–|-|&ndash;|to)\s*50\s*%\s*(?:bill|cost|spend|lower)", re.IGNORECASE
+        ),
+        "No measurement produces a 12–50% bill drop.",
+    ),
+    (
+        re.compile(r"~\s*60\s*(?:×|x(?![a-z])|&times;)|~\s*88\s*%\s*cheaper", re.IGNORECASE),
+        "No measurement in the repo produces this figure.",
+    ),
+]
+
+# The codebase-memory-mcp head-to-head ran once, in June 2026, on two repos. It
+# may be quoted in body text with that date beside it — not as a current
+# headline. tests above already require the competitor's name in the window;
+# this requires the date or version too.
+COMPETITOR_DATE_RE = re.compile(
+    r"June\s+2026|2026-06|v0\.3[0-3]\b|not\s+(?:been\s+)?re-?(?:run|verified)", re.IGNORECASE
+)
+
+
+def _dated_competitor_scope(lines: list[str], index: int) -> bool:
+    window = lines[max(0, index - _SCOPE_WINDOW) : index + _SCOPE_WINDOW + 1]
+    return any(COMPETITOR_SCOPE_RE.search(line) for line in window) and any(
+        COMPETITOR_DATE_RE.search(line) for line in window
+    )
+
+
+# The about page's "Current Release: v0.19.0" stood for months while the
+# package shipped v4.x. A hand-written "current release" goes stale on the next
+# tag; link the release notes instead.
+HARDCODED_CURRENT_RELEASE_RE = re.compile(
+    r"(current|latest)\s+release\s*[:—–-]+\s*(<[^>]+>\s*)*v?\d+\.\d+", re.IGNORECASE
+)
+
+
+def _claim_lines() -> list[tuple[Path, list[str], int]]:
+    """(path, lines, index) for every line of every published surface, minus
+    lines the allow marker exempts."""
+    out: list[tuple[Path, list[str], int]] = []
+    for path in _published_paths():
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        out.extend((path, lines, i) for i in range(len(lines)) if not _allowed(lines, i))
+    return out
+
+
+def test_published_surfaces_have_no_overclaims() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {text!r} — {reason}"
+        for path, lines, i in _claim_lines()
+        for text, reason in overclaims_in(lines[i], _paragraph_before(lines, i))
+    ]
+    assert not violations, (
+        "Overclaim(s) on a published surface. Say what is measured, scoped to "
+        "what NeuralMind itself does:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_published_12_50_range_names_its_baseline() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {lines[i].strip()[:110]}"
+        for path, lines, i in _claim_lines()
+        if unscoped_12_50(lines, i)
+    ]
+    assert not violations, (
+        "12–50× quoted without its baseline. It was measured before v4.5.0 against "
+        "`neuralmind benchmark`'s fixed 50K-token estimate — name that on the line, "
+        "or quote the public benchmark's 51–242× (vs every source file):\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_published_surfaces_quote_no_unsourced_figures() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r} — {reason}"
+        for path, lines, i in _claim_lines()
+        for pattern, reason in UNSOURCED_FIGURES
+        if (m := pattern.search(lines[i]))
+    ]
+    assert not violations, (
+        "A figure no measurement in the repo produces (site/claims.json, "
+        "unsourced_do_not_use):\n  " + "\n  ".join(violations)
+    )
+
+
+def test_competitor_recall_is_dated_where_quoted() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {lines[i].strip()[:110]}"
+        for path, lines, i in _claim_lines()
+        if PERFECT_RECALL_RE.search(_without_ranges(lines[i]))
+        and _scoped_to_competitor_eval(lines, i)
+        and not _dated_competitor_scope(lines, i)
+    ]
+    assert not violations, (
+        "The codebase-memory-mcp head-to-head (100% recall, MRR 0.96 vs 0.23) is "
+        "quoted without its date. It ran in June 2026 (v0.33.0) on requests and "
+        "click only, and has not been re-run — say so beside it:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_published_surfaces_do_not_hardcode_the_current_release() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
+        for path, lines, i in _claim_lines()
+        if path.suffix in {".html", ".md", ".txt"}
+        and (m := HARDCODED_CURRENT_RELEASE_RE.search(lines[i]))
+    ]
+    assert not violations, (
+        "A page names a 'current release' by hand; it goes stale on the next tag. "
+        "Link the release notes or the latest-release page instead:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_overclaim_guards_trip_on_the_copy_that_shipped() -> None:
+    shipped = [
+        "The more you use it, the smarter the retrieval gets",
+        "your agent's context gets *better* the more you work.",
+        "Retrieval that gets sharper the longer the system runs on a codebase.",
+        "It's the memory layer that makes every agent smarter.",
+        "- **The memory compounds per codebase.**",
+        "NeuralMind runs entirely local. Zero cloud calls, zero telemetry, no calls home.",
+        "'NeuralMind is local-first with zero telemetry — engagements follow the same rule.'",
+        "- ✅ GDPR-compliant (local processing)",
+        "- ✅ HIPAA-friendly (local processing, no calls home)",
+        "<li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>",
+        "<p>Built for regulated industries. NIST AI RMF, SOC 2, GDPR, HIPAA friendly.</p>",
+        "<strong>Compliance Ready</strong>",
+        "- **Architecture supports major compliance frameworks** (GDPR, SOC 2, CMMC 2.0, HIPAA)",
+        "title: 'Fewer wrong turns, faster teams',",
+        "| **Faster, more grounded** agent responses | wakeup | Fewer hallucinations; less re-exploration |",
+        "its local-only design is a guarantee to you, not a license to bypass security controls",
+    ]
+    for line in shipped:
+        assert overclaims_in(line), line
+    honest = [
+        "Nothing here measures whether an agent fixes a bug faster or makes fewer mistakes",
+        "- **Task outcomes aren't measured.** not whether agents finish with fewer errors.",
+        "Using NeuralMind does not by itself make you compliant with any regulation.",
+        'rationale="Single-file, no server, ACID-compliant",',
+        "**SOC 2-ready posture, certification on the roadmap.**",
+        "By default, NeuralMind sends no telemetry and transmits no repository content.",
+        "Do not write that the layer gets smarter over time until a history is published.",
+    ]
+    for line in honest:
+        assert not overclaims_in(line), line
+    # A negation on the wrapped line above still counts.
+    wrapped = [
+        "- **Task outcomes.** Nothing here, or anywhere in this repository, measures",
+        "  whether an agent fixes a bug faster or makes fewer mistakes with NeuralMind.",
+    ]
+    assert not overclaims_in(wrapped[1], _paragraph_before(wrapped, 1))
+    assert overclaims_in(wrapped[1])
+
+
+def test_scope_guards_trip_on_the_copy_that_shipped() -> None:
+    bare = [
+        "The result: 12-50× fewer tokens per code question compared to pasting raw source files.",
+        "<p>Ready to reduce your per-query token costs by 12-50&times;?</p>",
+        "| Token reduction on code questions | **5.1×** (v4.3.4) | **12-50×** (more files to prune) |",
+    ]
+    for line in bare:
+        assert unscoped_12_50([line], 0), line
+    scoped = [
+        "**12–50×** in field reports measured before v4.5.0 against the fixed 50K-token estimate",
+        "12-50x on real repos against a fixed 50K-token estimate",
+    ]
+    for line in scoped:
+        assert not unscoped_12_50([line], 0), line
+    # The baseline may sit on the wrapped line beside it.
+    assert not unscoped_12_50(
+        ["reported **12–50×** on", "real repos against a fixed 50K-token estimate"], 0
+    )
+    # 12–50% is a different (and also unsourced) claim, caught below.
+    assert not RANGE_12_50_RE.search("12–50% bill drops")
+
+    unsourced = [
+        "> - Queries your codebase in ~800 tokens instead of ~50,000",
+        "❌ Naive:  Load entire codebase → 50,000 tokens → $0.15-$3.75/query",
+        "(50K+ tokens of raw source compressed into ~800 tokens of structured context) and 12–50% bill drops",
+        "| NeuralMind | ~60× fewer tokens |",
+    ]
+    for line in unsourced:
+        assert any(p.search(line) for p, _ in UNSOURCED_FIGURES), line
+    assert not any(
+        p.search("670–961 mean tokens per question vs 41,729–232,483") for p, _ in UNSOURCED_FIGURES
+    )
+
+    undated = ["**100% gold-file recall, MRR 0.96** — beats `codebase-memory-mcp` (0.96 vs 0.23)"]
+    assert _scoped_to_competitor_eval(undated, 0) and not _dated_competitor_scope(undated, 0)
+    dated = [
+        "In a June 2026 head-to-head (v0.33.0, requests and click only, not re-run since),",
+        "NeuralMind reached 100% gold-file recall, MRR 0.96 vs codebase-memory-mcp's 0.23.",
+    ]
+    assert _dated_competitor_scope(dated, 1)
+
+    assert HARDCODED_CURRENT_RELEASE_RE.search(
+        "<h3>Current Release: v0.19.0 — One-command MCP setup</h3>"
+    )
+    assert not HARDCODED_CURRENT_RELEASE_RE.search(
+        "Read the latest release notes in docs/releases/"
+    )
