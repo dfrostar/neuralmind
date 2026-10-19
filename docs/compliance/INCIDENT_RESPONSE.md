@@ -1,7 +1,7 @@
 # Incident Response Plan
 
-**Date:** 2026-10-18
-**Version:** 1.2
+**Date:** 2026-10-19
+**Version:** 1.3
 **SOC 2 Controls:** CC7.3, CC7.4, CC7.5
 
 ---
@@ -134,7 +134,9 @@ This plan is to be tested annually by tabletop exercise:
 - Validate: detection, triage, containment, communication
 - Update plan based on findings
 
-No exercise has been run or recorded yet.
+[`INCIDENT_TABLETOP.md`](INCIDENT_TABLETOP.md) is the kit for running one in
+an hour: a timed scenario, the questions for each part, and a record to fill
+in. No exercise has been run or recorded yet.
 
 ---
 
