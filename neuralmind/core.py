@@ -31,7 +31,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 from neuralmind.state_dir import ensure_parent_dir
 from neuralmind.storage_guard import enforce_storage_policy
@@ -113,7 +113,8 @@ def _rationale_owners(mind: Any) -> dict[str, str]:
     nodes = getattr(embedder, "nodes", None)
     cached = getattr(mind, "_rationale_owners_cache", None)
     if cached is not None and cached[0] is edges and cached[1] is nodes:
-        return cached[2]
+        cached_owners: dict[str, str] = cached[2]
+        return cached_owners
     rationales = {
         str(n.get("id"))
         for n in nodes or ()
@@ -140,7 +141,7 @@ def _rationale_owners(mind: Any) -> dict[str, str]:
 
 
 def _spread_with_aliases(
-    store: Any,
+    store: SynapseStore,
     seeds: dict[str, float],
     aliases: dict[str, dict[str, float]],
     depth: int,
@@ -316,8 +317,10 @@ class NeuralMind:
         # Build notices (graph source, freshness, purge warnings). They go to
         # notice_stream — stderr unless a caller sets it — never stdout by
         # default, which the MCP server uses for JSON-RPC.
-        self.notice_stream = None
+        self.notice_stream: TextIO | None = None
         self._notices: list[str] = []
+        # `neuralmind build --bootstrap`: a synapse bundle to seed a cold store.
+        self._bootstrap_bundle_path: str | None = None
         self._graph_info: dict | None = None
 
         # Associative synapse layer (lazy: only created when first used)
@@ -433,7 +436,7 @@ class NeuralMind:
                 )
             except (FileNotFoundError, OSError, ValueError):
                 return None
-            store._embedder = self.embedder  # type: ignore[attr-defined]
+            store._embedder = self.embedder
             self._read_only_synapses = store
         return store
 
@@ -1351,7 +1354,8 @@ class NeuralMind:
         current: dict[str, bool] = {}
         kept: list[dict] = []
         for cn in content_nodes:
-            meta = cn.get("metadata") if isinstance(cn.get("metadata"), dict) else {}
+            raw_meta = cn.get("metadata")
+            meta = raw_meta if isinstance(raw_meta, dict) else {}
             source = cn.get("source_file") or meta.get("source") or ""
             rel = project_relative_path(Path(source), self.project_path) if source else None
             if rel is not None:
@@ -1667,7 +1671,7 @@ class NeuralMind:
                 return
             catalog = l3_slots.NodeCatalog.from_embedder(self.embedder)
             l3_slots.unified_bm25_index(self.project_path, catalog, rebuild=True, scope=self.scope)
-            if getattr(self, "selector", None) is not None:
+            if self.selector is not None:
                 self.selector._unified_bm25 = None  # reload on the next query
         except Exception:  # pragma: no cover - a keyword index never blocks a build
             logger.debug("unified BM25 index not written", exc_info=True)
@@ -2094,8 +2098,8 @@ class NeuralMind:
             self.selector._unified_bm25 = None
             self.selector._hub_stats_cache = None
 
-    def _ensure_built(self):
-        """Make the index ready for a query without rebuilding it.
+    def _ensure_built(self) -> ContextSelector:
+        """Make the index ready for a query without rebuilding it, and return its selector.
 
         Read paths (query, search, wakeup, the MCP tools) load an existing
         index as it stands: no graph regeneration, no embedding pass, no
@@ -2109,9 +2113,9 @@ class NeuralMind:
         graph on a fresh project.
         """
         if self._built and self.selector is not None:
-            return
-        if self._load_existing_index():
-            return
+            return self.selector
+        if self._load_existing_index() and self.selector is not None:
+            return self.selector
         result = self.build()
         if self.selector is None:
             ir_path = self.project_path / ".neuralmind" / "index_ir.json"
@@ -2130,6 +2134,7 @@ class NeuralMind:
                 if isinstance(result, dict)
                 else "Failed to build the NeuralMind index."
             )
+        return self.selector
 
     def ensure_ready(self) -> dict:
         """Load the existing index for reading, or build one if there is none.
@@ -2224,8 +2229,8 @@ class NeuralMind:
         Returns:
             ContextResult with essential project context
         """
-        self._ensure_built()
-        result = self.selector.get_wakeup_context()
+        selector = self._ensure_built()
+        result = selector.get_wakeup_context()
         # Mirror the query-event log: a wakeup with no follow-up query in the
         # same session is the "L0/L1 was sufficient" signal the tuner reads.
         log_wakeup_event(self.project_path, result)
@@ -2296,17 +2301,14 @@ class NeuralMind:
         learn: bool,
     ) -> ContextResult:
         started = time.perf_counter()
-        if learn:
-            self._ensure_built()
-        else:
-            self._ensure_loaded_read_only()
+        selector = self._ensure_built() if learn else self._ensure_loaded_read_only()
 
         # Route prose/mixed projects through MedicalRetriever.
         # ContextSelector remains the code path (unchanged).
         if self.project_kind in ("prose", "mixed"):
             result = self._query_prose(question)
         else:
-            result = self.selector.get_query_context(
+            result = selector.get_query_context(
                 question,
                 trace=trace,
                 trace_verbose=trace_verbose,
@@ -2319,10 +2321,10 @@ class NeuralMind:
                 # The highlights count against the budget too: the layers
                 # make room for them (L3, then L2, then L1), then the
                 # highlights themselves are cut; L0 is never trimmed.
-                self.selector.fit_to_budget(result, context_budget, prefix=highlights)
+                selector.fit_to_budget(result, context_budget, prefix=highlights)
             elif highlights:
                 result.context = f"{highlights}\n\n{result.context}"
-                self.selector.count_prefix(result, highlights)
+                selector.count_prefix(result, highlights)
         # A stale or legacy index still answers; one line above the answer
         # says so, so old context can't pass for current (#631). Like L0, a
         # context budget never trims it.
@@ -2332,8 +2334,7 @@ class NeuralMind:
         if notice:
             result.freshness = notice
             result.context = f"{notice}\n\n{result.context}"
-            if getattr(self, "selector", None) is not None:
-                self.selector.count_prefix(result, notice)
+            selector.count_prefix(result, notice)
         if learn:
             log_query_event(self.project_path, question, result)
             self._record_recent_query(question, result)
@@ -2356,20 +2357,21 @@ class NeuralMind:
         )
         return result
 
-    def _ensure_loaded_read_only(self) -> None:
-        """Load the existing index for a read-only query; never build.
+    def _ensure_loaded_read_only(self) -> ContextSelector:
+        """Load the existing index for a read-only query, never building, and return its selector.
 
         A read-only query must not write anything a build would (graph,
         vectors, structural synapses), so a project with no index is an error
         here rather than a first-run build.
         """
         if self._built and self.selector is not None:
-            return
-        if not self._load_existing_index():
+            return self.selector
+        if not self._load_existing_index() or self.selector is None:
             raise GraphNotBuiltError(
                 f"No index for {self.project_path}. Read-only queries never build — "
                 f"run `neuralmind build {self.project_path}` first."
             )
+        return self.selector
 
     RECENT_QUERIES_FILENAME = "recent_queries.jsonl"
     RECENT_QUERIES_MAX = 100
@@ -2931,7 +2933,7 @@ class NeuralMind:
                     "How are errors handled?",
                 ]
 
-        results = []
+        results: list[dict[str, Any]] = []
 
         # Wakeup benchmark
         wakeup = self.wakeup()

@@ -676,7 +676,12 @@ class AuditTrail:
             return self._rotate_locked(max_bytes, keep_days)
 
     def _rotate_locked(self, max_bytes: int, keep_days: int) -> dict[str, Any]:
-        result = {"rotated": False, "archived_to": None, "deleted_archives": []}
+        deleted_archives: list[str] = []
+        result: dict[str, Any] = {
+            "rotated": False,
+            "archived_to": None,
+            "deleted_archives": deleted_archives,
+        }
         if not self.events_file.exists():
             return result
         size = self.events_file.stat().st_size
@@ -706,7 +711,7 @@ class AuditTrail:
                     file_ts = _dt.strptime(m.group(1), "%Y%m%d_%H%M%S").replace(tzinfo=timezone.utc)
                     if file_ts < cutoff:
                         f.unlink()
-                        result["deleted_archives"].append(str(f))
+                        deleted_archives.append(str(f))
                 except ValueError:
                     continue
 

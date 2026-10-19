@@ -22,6 +22,7 @@ Token Budget Management:
 import logging
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -596,13 +597,19 @@ class ContextSelector:
         # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, energy]].
         # Left None here so a selector built without a synapse store (or on a
         # cold graph) behaves exactly as it did before this layer existed.
-        self.synapse_recall = None
+        self.synapse_recall: Callable[[list[str]], list[tuple[str, float]]] | None = None
         # Optional traced variant (PRD 4): same seeds, returns
         # (ranked, {node_id: {namespace: energy}}) so the retrieval trace can
         # attribute each boost to the memory namespace that drove it. Only
         # consulted when a trace is active.
-        self.synapse_recall_detailed = None
+        self.synapse_recall_detailed: (
+            Callable[[list[str]], tuple[list[tuple[str, float]], dict[str, dict[str, float]]]]
+            | None
+        ) = None
         self._synapse_store: Any = None  # For synapse-seeded expansion
+        # Optional, injected by NeuralMind: returns the synapse store to expand
+        # from on each query (the read-only store for a read-only query).
+        self.synapse_store_provider: Callable[[], Any] | None = None
         self._structural_index: Any = None  # For dependency graph expansion
         # The reduction ratio's numerator: the measured token count of the
         # code the index covers, set by NeuralMind from neuralmind.baseline.
@@ -614,7 +621,7 @@ class ContextSelector:
         # Returns the static code graph's callers/callees/base classes of the
         # seeds. Left None so a selector built without a structural index (or on
         # a graph with no structural edges) behaves exactly as before.
-        self.structural_recall = None
+        self.structural_recall: Callable[[list[str]], list[tuple[str, float]]] | None = None
 
         # Cache for layer content
         self._l0_cache: str | None = None
@@ -1156,10 +1163,11 @@ class ContextSelector:
 
     def _recall_energy(self, seeds: list[str]) -> dict[str, float]:
         """Spread from ``seeds`` and return {node_id: activation}, or {}."""
-        if not seeds:
+        recall = self.synapse_recall
+        if not seeds or recall is None:
             return {}
         try:
-            return dict(self.synapse_recall(seeds))
+            return dict(recall(seeds))
         except Exception:
             return {}
 
@@ -1363,14 +1371,15 @@ class ContextSelector:
         a searched hit does (:meth:`_file_factor`) before candidates are
         ordered, and so does its boost.
         """
-        if self._structural_disabled():
+        recall = self.structural_recall
+        if recall is None or self._structural_disabled():
             return results
 
         seeds = [r["id"] for r in results[: self._structural_seed_k] if r.get("id")]
         if not seeds:
             return results
         try:
-            recalled = dict(self.structural_recall(seeds))
+            recalled = dict(recall(seeds))
         except Exception:
             return results
         if not recalled:

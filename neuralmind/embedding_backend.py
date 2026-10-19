@@ -24,6 +24,12 @@ class EmbeddingBackend(ABC):
     - Statistics tracking
     """
 
+    # The loaded graph and its node and edge lists, set by ``load_graph``.
+    # Core and the query surfaces read them directly.
+    graph: dict[str, Any]
+    nodes: list[dict]
+    edges: list[dict]
+
     @property
     @abstractmethod
     def project_path(self) -> Path:

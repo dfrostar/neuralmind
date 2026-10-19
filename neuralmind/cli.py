@@ -10,6 +10,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -43,7 +44,8 @@ def _get_wakeup_count() -> int:
     if _UPGRADE_CTA_STATE_PATH.exists():
         try:
             data = json.loads(_UPGRADE_CTA_STATE_PATH.read_text(encoding="utf-8"))
-            return data.get("count", 0)
+            count = data.get("count", 0)
+            return count if isinstance(count, int) else 0
         except (OSError, ValueError):
             return 0
     return 0
@@ -1064,9 +1066,9 @@ def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
 
     if errors:
         print(f"⚠ {len(errors)} project(s) failed:", file=sys.stderr)
-        for e in errors:
-            print(f"   {e}", file=sys.stderr)
-    seen = {}
+        for err in errors:
+            print(f"   {err}", file=sys.stderr)
+    seen: dict[str, dict] = {}
     for hit in all_hits:
         hid = hit.get("id", hit.get("label", ""))
         if hid not in seen or hit.get("score", 0) > seen[hid].get("score", 0):
@@ -2587,8 +2589,8 @@ def cmd_project(args):
             return
         print(f"Registered projects ({len(projects)}):")
         for p in projects:
-            scopes = ", ".join(p.get("scopes", ["all"]))
-            print(f"  {p['path']}  [{scopes}]")
+            scope_names = ", ".join(p.get("scopes", ["all"]))
+            print(f"  {p['path']}  [{scope_names}]")
 
     elif action == "detect":
         import glob
@@ -2607,8 +2609,8 @@ def cmd_project(args):
             print("No NeuralMind projects found.")
             return
         print(f"Found {len(found)} project(s):")
-        for p in sorted(found):
-            print(f"  {p}")
+        for found_path in sorted(found):
+            print(f"  {found_path}")
 
     else:
         print(f"Unknown project action: {action}")
@@ -3838,6 +3840,7 @@ def cmd_decisions_eval(args):
     from neuralmind.memory.semantic import SEARCH_MODES
 
     output_format = "markdown" if args.format == "md" else args.format
+    eval_harness: QuerySetEval | MaintenanceEval
     if args.queries:
         modes = SEARCH_MODES if args.mode == "all" else (args.mode,)
         eval_harness = QuerySetEval(load_query_set(args.queries), limit=args.limit, modes=modes)
@@ -4701,9 +4704,8 @@ def cmd_ingest(args):
 
     if dry_run:
         print(f"Would ingest {len(files_to_ingest)} file(s):")
-        for f in files_to_ingest:
-            rel = f.relative_to(file_path) if file_path.is_dir() else f.name
-            print(f"  {rel}")
+        for candidate in files_to_ingest:
+            print(f"  {candidate.relative_to(file_path) if file_path.is_dir() else candidate.name}")
         return
 
     if not quiet:
@@ -5233,7 +5235,7 @@ def cmd_daemon(args):
                 health = client.health()
                 print(
                     f"daemon: started (pid {health.get('pid')}) on port "
-                    f"{daemon_mod.read_discovery().get('port')}"
+                    f"{(daemon_mod.read_discovery() or {}).get('port')}"
                 )
                 return
             time.sleep(0.1)
@@ -5864,7 +5866,7 @@ def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
 
-    scope = "global" if args.global_ else "project"
+    scope: Literal["project", "global"] = "global" if args.global_ else "project"
     project_path = args.project_path if scope == "project" else None
     try:
         result = install_hooks(

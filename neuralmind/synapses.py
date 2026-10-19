@@ -58,11 +58,15 @@ import math
 import os
 import sqlite3
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .state_dir import STATE_DIR_NAME, ensure_parent_dir
+
+if TYPE_CHECKING:
+    from .embedding_backend import EmbeddingBackend
 
 LEARNING_RATE = 0.30
 WEIGHT_CAP = 1.0
@@ -383,7 +387,7 @@ class SynapseStore:
 
     def __init__(
         self,
-        db_path: str | Path | None = None,
+        db_path: str | Path,
         namespace: str | None = None,
         *,
         read_only: bool = False,
@@ -391,7 +395,8 @@ class SynapseStore:
         """Create a SynapseStore.
 
         Args:
-            db_path: Path to the SQLite DB file (or None for default).
+            db_path: Path to the SQLite DB file (``default_db_path(project)``
+                for a project's store).
             namespace: Optional namespace for the synapse store.
             read_only: Open every connection with SQLite's ``mode=ro`` and skip
                 schema setup, so nothing — not even a bug in a read path — can
@@ -401,6 +406,9 @@ class SynapseStore:
         """
         self.namespace = normalize_namespace(namespace) if namespace else DEFAULT_NAMESPACE
         self.read_only = read_only
+        # The project's embedding backend, set by NeuralMind so
+        # synapse-seeded expansion can fetch node data; None when unset.
+        self._embedder: EmbeddingBackend | None = None
         if read_only:
             self.db_path = _state_database(db_path)
             if not self.db_path.exists():
@@ -411,7 +419,7 @@ class SynapseStore:
         self._init_schema()
 
     @contextmanager
-    def _connect(self):
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         if self.read_only:
             conn = sqlite3.connect(
                 self.db_path.as_uri() + "?mode=ro",
@@ -1987,7 +1995,7 @@ class SynapseStore:
                 conn.execute("ROLLBACK")
                 raise
 
-        return after - before
+        return int(after - before)
 
     # ----------------------------------------------------------------- #
     # Reads
