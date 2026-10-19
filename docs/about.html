@@ -199,6 +199,14 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4181">
+            <h2>What&rsquo;s New in v4.18.1 &mdash; every file in the package names its license</h2>
+            <p>Every Python file in the package now starts with an SPDX tag: <code>MIT</code> for the core, <code>LicenseRef-NeuralMind-Commercial</code> under <code>neuralmind/tier2/</code>, so a dependency scanner or legal reviewer reading the installed files can tell which license each is under. <code>neuralmind data-locations</code> runs git by its full path. Nothing NeuralMind does changes.</p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.18.1.md">v4.18.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4180">
             <h2>What&rsquo;s New in v4.18.0 &mdash; <code>neuralmind data-locations</code>, audit writes that can&rsquo;t fail unseen, and home-directory copies that follow the encryption policy</h2>
             <ul>
@@ -313,7 +321,7 @@
                 <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does (reinstall the plugin after upgrading)</li>
                 <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
             </ul>
-            <p><strong>Also: releases you can verify.</strong> You can check that the NeuralMind you install is the one this repository built. NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency asks the producer to attest to it, on CISA&rsquo;s form, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
+            <p><strong>Also: releases you can verify.</strong> You can check that the NeuralMind you install is the one this repository built. NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency may ask the producer to attest to it, on CISA&rsquo;s form or its own, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
             <ul>
                 <li><strong>Signed images</strong> &mdash; each <code>ghcr.io/dfrostar/neuralmind</code> image is signed keylessly with cosign by the release workflow, bound to its GitHub identity and recorded in Sigstore&rsquo;s transparency log</li>
                 <li><strong>Build provenance</strong> &mdash; the image, wheel and sdist carry GitHub build-provenance attestations, and the release verifies the image before <code>:latest</code> moves</li>
