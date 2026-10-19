@@ -21,10 +21,10 @@
 
 **NeuralMind is token-efficient retrieval plus persistent memory for AI coding agents.**
 
-- **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
+- **Retrieval.** A 4-layer progressive-disclosure index surfaces a few hundred tokens of structured context per code question — 670–961 mean tokens per question on the public benchmark (v4.12.0), against 41,729–232,483 to paste every source file. Works with Claude, GPT-4, Gemini, and local models.
 - **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt.
 
-Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) retrieval uses **51–242× fewer tokens than pasting every source file**, finding the gold file on 40 of 40 queries — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
+Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) retrieval uses **51–242× fewer tokens than pasting every source file**, finding the gold file on 40 of 40 queries (a small sample: the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10) — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
 
 NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 
@@ -33,8 +33,8 @@ NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Clau
 ```
 You: "How does authentication work in my codebase?"
 
-❌ Traditional approach: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind approach:  Smart context         → ~800 tokens   → $0.002-$0.06/query
+❌ Paste every source file → 41,729–232,483 tokens (public-benchmark repos)
+✅ NeuralMind:  selected context → 670–961 mean tokens per question (v4.12.0)
 ```
 
 ### The Solution
@@ -77,7 +77,7 @@ NeuralMind turns a code repository into a queryable knowledge graph + vector ind
 │ • Vector similarity search results                          │
 └─────────────────────────────────────────────────────────────┘
 
-Total: ~800-1,100 tokens vs 50,000+ for full codebase
+Total: a few hundred to ~1,000 tokens per question (670–961 mean on the public benchmark)
 ```
 
 ### How It Works
@@ -187,7 +187,7 @@ neuralmind search . "validation middleware"
 neuralmind query . "What tests exist for user registration?"
 ```
 
-**Benefit**: Better code reviews with full context awareness
+**Benefit**: Code reviews with the surrounding code in view
 
 ---
 
@@ -354,7 +354,7 @@ view is now alive:
    within ~1s.
 5. The synapse store has now reinforced the edges between auth
    handlers and whatever else the agent looked at. Next session,
-   asking about auth will surface this file faster.
+   a question about auth can recall this file through those edges.
 
 **Benefit**: trust-gap closure. "Is the agent looking at the right
 code?" becomes a 2-second visual answer. When retrieval feels
@@ -546,7 +546,11 @@ neuralmind stats .
 
 ### Git Hook Setup (Recommended for Active Development)
 
-Automatically update the index after every commit:
+`neuralmind init-hook .` installs the hooks for you: `post-commit` and, since
+v4.13.0, `post-merge`, `post-checkout` and `post-rewrite`, so merges and pulls,
+branch switches and rebases rebuild the index too
+([CLI Reference](CLI-Reference.md#init-hook)). To write a commit-only hook by
+hand instead:
 
 ```bash
 # Create post-commit hook
@@ -630,33 +634,25 @@ echo "✅ Maintenance complete!"
 
 ## ROI Calculator
 
-### Cost Comparison by Model
+Price your own usage rather than a table of assumed numbers:
 
-| Model | Input Price | Without NeuralMind | With NeuralMind | Per-Query Savings |
-|-------|-------------|-------------------|-----------------|------------------|
-| Claude 3.5 Sonnet | $3/1M tokens | $0.15/query | $0.0023/query | $0.1477 (98.5%) |
-| GPT-4o | $5/1M tokens | $0.25/query | $0.0038/query | $0.2462 (98.5%) |
-| GPT-4.5 | $75/1M tokens | $3.75/query | $0.0574/query | $3.6926 (98.5%) |
-| Claude Opus | $15/1M tokens | $0.75/query | $0.0115/query | $0.7385 (98.5%) |
-| Gemini 2.5 Pro | $2.50/1M tokens | $0.125/query | $0.0019/query | $0.1231 (98.5%) |
+```bash
+neuralmind benchmark .        # tokens per question and the reduction ratio on your repo
+neuralmind savings . --cost   # dollar estimate from your logged queries (input tokens only)
+```
 
-### Monthly Savings Calculator
+`savings --cost` measures the *with-NeuralMind* cost from logged tokens and
+estimates *without* from the per-query baseline (since v4.5.0 the measured code
+size the index covers), so its "saved" figures are marked `(est)`. Keep two
+things in mind when you present the result:
 
-| Daily Queries | Claude 3.5 Sonnet | GPT-4o | GPT-4.5 | Claude Opus |
-|---------------|-------------------|--------|---------|-------------|
-| 10 queries/day | $44/month | $74/month | $1,107/month | $221/month |
-| 50 queries/day | $221/month | $369/month | $5,539/month | $1,108/month |
-| 100 queries/day | **$443/month** | **$738/month** | **$11,078/month** | **$2,216/month** |
-| 500 queries/day | $2,216/month | $3,693/month | $55,389/month | $11,078/month |
-
-### Annual Savings
-
-| Usage Level | Annual Savings (Claude 3.5) | Annual Savings (GPT-4.5) |
-|-------------|----------------------------|-------------------------|
-| Light (10/day) | $531 | $13,284 |
-| Medium (50/day) | $2,658 | $66,468 |
-| Heavy (100/day) | **$5,316** | **$132,936** |
-| Enterprise (500/day) | $26,580 | $664,668 |
+- The token ratio is not the bill ratio. Output tokens, conversation history and
+  other tool calls are unchanged, and prompt caching or flat-rate plans change
+  the arithmetic. The [business case](https://github.com/dfrostar/neuralmind/blob/main/docs/BUSINESS-CASE.md)
+  puts end-to-end savings at a *derived estimate* of ~1.6–3×, not a measurement.
+- The public benchmark's 51–242× is against pasting every source file; an agent
+  that already reads only a few files per question saves less. See the
+  [honest assessment](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md).
 
 ---
 

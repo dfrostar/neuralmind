@@ -148,7 +148,7 @@ neuralmind doctor
 
 **Causes**:
 1. No code files found at the path
-2. Project uses unsupported languages (built-in backend covers Python, TypeScript, Go — install the optional graphify backend for others)
+2. Project uses unsupported languages (the built-in backend covers Python, TypeScript, JavaScript, Go, Rust, Java, C, C++, C#, Ruby and PHP — install the optional graphify backend for others)
 3. All files excluded by .gitignore
 
 **Solutions**:

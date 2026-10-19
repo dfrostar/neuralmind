@@ -42,7 +42,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### MEASURE — performance, quality
 
-- **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark`); CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
+- **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark` before v4.5.0, against its fixed 50K-token estimate); the public benchmark measures 51–242× against every source file; CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
 - **Context tokens** recorded for every query in the audit log
 

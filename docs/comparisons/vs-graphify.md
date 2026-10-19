@@ -91,8 +91,8 @@ just the ones graphify's own CLI targets.
 **Pick NeuralMind if:**
 
 - Your problem is specifically "an AI coding agent needs less context,
-  cheaper, and should get smarter about this codebase the more it's
-  used" — not general corpus-to-graph.
+  cheaper, and should learn which files of this codebase are used
+  together" — not general corpus-to-graph.
 - You run multiple agents (Claude Code, Cursor, Cline, Codex) against
   the same repo and want one memory they all reinforce, portable via
   git rather than tied to one tool's cloud or local state.

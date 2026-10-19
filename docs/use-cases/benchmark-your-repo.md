@@ -9,7 +9,7 @@ This walkthrough gets you from zero to a real before/after number on your reposi
 - A measured **reduction ratio** on your actual code, divided by the measured size of your code (v4.5.0+)
 - A **retrieval-quality score** (recall@k / MRR / answerability) on your own code, plus a list of any symbols the index can't find — via `neuralmind probe`
 - An **estimated monthly savings** in dollars, at your query volume and your model's pricing
-- A **JSON blob** you can share with your team (or contribute back to the public community benchmarks — your choice, zero telemetry)
+- A **JSON blob** you can share with your team (or contribute back to the public community benchmarks — your choice; nothing is sent unless you submit it)
 
 If the numbers don't justify the install — you uninstall and move on. Nothing else happens. NeuralMind never uploads anything.
 

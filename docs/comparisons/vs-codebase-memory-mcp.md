@@ -6,15 +6,17 @@ description: "Honest comparison of NeuralMind and DeusData's codebase-memory-mcp
 # NeuralMind vs. codebase-memory-mcp
 
 > **TL;DR** — This is the one competitor we have **scored live, on
-> pinned repos, with committed traces**. At matched retrieval depth
-> (top-8), on the two repos that eval covers, NeuralMind ranked the
+> pinned repos, with committed traces**. In a June 2026 run (NeuralMind
+> v0.33.0) at matched retrieval depth (top-8), on the two repos that eval
+> covers, NeuralMind ranked the
 > objectively-correct file far higher (MRR 0.96 vs. 0.23 on `requests`)
 > at roughly an order of magnitude fewer tokens. That result is real,
 > reproducible, and **narrower than it sounds** — two repos, pure
 > retrieval ranking with no agent loop on either side, and not
-> re-verified against our current four-repo corpus. Meanwhile
+> re-run since or re-verified against our current four-repo corpus. Meanwhile
 > codebase-memory-mcp beats us decisively on **breadth and scale**: 162
-> vendored languages to our 10, a single static C binary with no
+> vendored languages to our ten (plus JavaScript through the TypeScript
+> grammars), a single static C binary with no
 > language runtime, and the Linux kernel fully indexed in about three
 > minutes. Pick on which of those axes your repo actually lives.
 > Assessed September 2026 against version 0.8.1 — re-check before
@@ -58,7 +60,8 @@ nothing reweights from how the codebase is actually used.
 ## The scored head-to-head
 
 Unlike every other page in this directory, this one has numbers from a
-run rather than a capability table. We drove both tools headless over
+run rather than a capability table. In June 2026 (NeuralMind v0.33.0;
+not re-run since) we drove both tools headless over
 the **same** pinned repos, same questions, same objective def-site gold
 files, scored by the **same** `quality.py`, at retrieval depth matched
 to our `embedding-rag` baseline (top-8).
@@ -117,7 +120,7 @@ dependent on the agent picking well.
 | Dimension | codebase-memory-mcp | NeuralMind |
 |---|---|---|
 | Distribution | Single static C binary, no runtime | Python package (PyPI), Docker, VS Code extension |
-| Languages | 162 vendored grammars (~31 benchmarked, quality-tiered) | 10 tree-sitter, Python-first eval coverage |
+| Languages | 162 vendored grammars (~31 benchmarked, quality-tiered) | 10 tree-sitter, plus JavaScript via the TypeScript grammars; Python-first eval coverage |
 | Type resolution | Hybrid LSP for ~10 major languages | Heuristic by default; SCIP precision opt-in (Python/TS/Go) |
 | Embeddings | Bundled `nomic-embed-code`, compiled in | MiniLM ONNX, downloaded on first build |
 | Scale ceiling | Linux kernel (28M LOC) in ~3 min | Tuned for single-project repos, not kernel-scale monorepos |
@@ -126,7 +129,7 @@ dependent on the agent picking well.
 | Learns from usage | No | Yes — Hebbian reinforcement with half-life decay |
 | Tool-output compression | No | No (its `PostToolUse` hooks on `Read`/`Bash`/`Grep` used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Team memory | Per-machine cache | Git-portable `.neuralmind-team-memory.json` |
-| Retrieval ranking (our eval) | MRR 0.23 / 0.50 | MRR 0.96 / 0.60 |
+| Retrieval ranking (our eval, June 2026, v0.33.0, not re-run) | MRR 0.23 / 0.50 | MRR 0.96 / 0.60 |
 | License | MIT | MIT (core); source-available commercial modules for the Team tier |
 
 ## When to pick which
@@ -134,7 +137,7 @@ dependent on the agent picking well.
 **Pick codebase-memory-mcp if:**
 
 - **Your repo is polyglot or in a language we don't parse well.** This
-  is the decisive case. We index ten languages; it vendors 162. If your
+  is the decisive case. We index ten languages, plus JavaScript through the TypeScript grammars; it vendors 162. If your
   codebase is Kotlin, Swift, Elixir, Perl or Objective-C, our ranking
   advantage on `requests` is irrelevant to you.
 - **Your repo is very large.** Kernel-scale indexing in minutes is a
@@ -152,8 +155,10 @@ dependent on the agent picking well.
   repos we scored, the competitor surfaced the gold file in its top-8
   about half the time; the files it did surface cost an order of
   magnitude more tokens to read.
-- You want the layer to **improve on this repo with use**, and to carry
-  that memory between machines and agents via git.
+- You want the layer to **learn which files of this repo are used
+  together**, and to carry that memory between machines and agents via
+  git. Whether it improves retrieval on your repo is something to measure
+  (`neuralmind eval . --synapse-ab`), not assume.
 - You're on Python/TypeScript/Go and want compiler-accurate edges via
   the SCIP precision mode.
 

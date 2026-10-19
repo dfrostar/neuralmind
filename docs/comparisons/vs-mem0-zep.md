@@ -129,7 +129,7 @@ same questions.
 | Dimension | Mem0 | Zep / Graphiti | NeuralMind |
 |---|---|---|---|
 | Primary memory object | User/session/agent facts from conversation | Entities, relationships, facts with validity windows | Codebase structure, usage co-activation, engineering decisions |
-| Parses source code | No | No | Yes — tree-sitter AST, 10 languages |
+| Parses source code | No | No | Yes — tree-sitter AST, ten languages plus JavaScript |
 | Extraction mechanism | LLM-driven (single-pass ADD extraction) | LLM-driven entity/edge extraction + dedup | Explicit — caller records decisions directly; no LLM required |
 | Invalidation | LLM re-evaluates on new input | Bi-temporal validity windows (LLM-assessed) | Deterministic rules: file-touch, commit mismatch, age, cascade |
 | Storage | Vector store + BM25 index (pluggable) | Graph DB (Neo4j/FalkorDB/Neptune) | SQLite (local file, `.neuralmind/`), decision vectors included |
@@ -137,7 +137,7 @@ same questions.
 | Requires LLM to operate | Yes (extraction + default embeddings) | Yes (extraction/dedup) | No — indexing/embedding is local ONNX; decision memory needs no LLM at all |
 | Self-hostable, fully offline | Yes (Docker server) | Yes (Graphiti + self-hosted graph DB); Zep Cloud itself is not | Yes — everything under `.neuralmind/`, air-gap installable |
 | Team/cross-agent portability | Per-deployment store | Per-deployment graph | Git-portable: `.neuralmind-team-memory.json`, markdown export |
-| Code-retrieval / progressive disclosure | No | No | Yes — L0→L3, ~800 tokens/query |
+| Code-retrieval / progressive disclosure | No | No | Yes — L0→L3, 670–961 mean tokens per question (public benchmark) |
 | Distribution | pip/npm, Docker, hosted platform, OpenMemory (local MCP server) | Graphiti: pip, self-hosted. Zep: hosted only | PyPI, Docker, VS Code extension, MCP |
 | License | Apache 2.0 | Apache 2.0 (Graphiti); Zep Cloud proprietary | MIT (core); source-available commercial modules for the Team tier |
 | GitHub stars (point-in-time) | 65k+ | Graphiti ~31k; Zep (examples repo) ~4.9k | — |

@@ -79,8 +79,9 @@ savings number, not a guess.
 4. Commit the plan to `integrations/<repo>/plan.md` (or
    `docs/onboarding/<repo>-integration-plan.md` — pick once, fleet-wide).
 
-**Token-savings mechanics:** NeuralMind's headline claim is 12–50× reduction
-per query on real repos. The *project's* own number comes from
+**Token-savings mechanics:** NeuralMind's headline claim is 51–242× fewer
+tokens than pasting every source file on the public benchmark (v4.12.0); older
+field reports measured 12–50× against the CLI's fixed 50K-token estimate. The *project's* own number comes from
 `neuralmind build --dry-run` (pre-build estimate) and then from real usage via
 `neuralmind savings .` / `neuralmind savings --cost` (post-build, cumulative).
 The plan records the dry-run estimate now and re-measures actuals in Verify.

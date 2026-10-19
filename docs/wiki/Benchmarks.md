@@ -26,15 +26,17 @@ on `click` (an Apple M3, also without AVX-512, matched the committed run exactly
 ## What the data shows, losses included (the short version)
 
 NeuralMind is more than token reduction; the numbers below cover **four**
-benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
-`rich`) and are fully reproducible — `python -m evals.public.run`
-([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
+benefits. Two run on **real, pinned OSS repos** and are fully reproducible —
+`python -m evals.public.run` for the four-repo public benchmark (`requests`,
+`click`, `flask`, `rich`;
+[methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md))
+and the 150-question [retrieval eval](#retrieval-eval-v4120) over those four and
+this repository — and two are committed A/Bs on the bundled **reference
 fixture** (real but smaller-scope): **(1) Cheaper context** — **the gold
 file on 40 of 40 queries at 51–242× fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
-on recall on three of four (tying on the fourth); **(2) Finds the right code** — 100% gold-file recall, **MRR
-0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
-vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
-re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
+on recall on three of four (tying on the fourth); **(2) Finds the right code** —
+a gold file in the top five for **93.3%** of the retrieval eval's 150 questions
+(MRR 0.750) at v4.12.0, with the 10 misses published; **(3) Learns
 how you work** — the Hebbian synapse layer never lowers top-k hit-rate, **budget-neutral**
 (reference fixture; +3.5 to +14 points in earlier releases, +0 at v4.12.0 where
 the fixture is at 97% without it; CI gates the direction);
@@ -47,22 +49,39 @@ names and docstrings, not code) is cheaper on raw tokens on every repo and still
 ranks the gold file higher on `flask` and `rich` (MRR 0.74 vs 0.72, 0.94 vs
 0.83), though its recall is at or below NeuralMind's; 40 queries is a small
 sample, and the 150-question retrieval eval misses 10 (see the public
-benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
-retrieval ranking*, not their LLM-agent loop. Full tables and reproduction
-commands below.
+benchmark's "Where NeuralMind loses" section). A separate, off-by-default
+head-to-head against `codebase-memory-mcp` (MRR 0.96 vs 0.23 on `requests`,
+0.60 vs 0.50 on `click`) was run in June 2026 (v0.33.0), on `requests` and
+`click` only, and has not been re-run since; it is *pure retrieval ranking*,
+not their LLM-agent loop
+([comparison](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codebase-memory-mcp.md)).
+Full tables and reproduction commands below.
 
 ## The honest headline
 
 **On code questions, NeuralMind sends the agent the few entities that matter
-instead of whole files — so the same answer costs 12-50× fewer tokens on real
-repositories.** That real-repo range is the product's positioning; the number we
-**measure in CI** is deliberately conservative, on a tiny 500-line fixture where
-there's little to prune, and it still clears a wide margin.
+instead of whole files.** On the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)
+(four pinned OSS repos, v4.12.0, reproducible, not a CI gate) that is **51–242×
+fewer tokens than pasting every source file** — 670–961 mean tokens per question
+against 41,729–232,483 — with the gold file found on **40 of 40** queries. Forty
+queries is a small sample: the 150-question [retrieval eval](#retrieval-eval-v4120)
+puts a gold file in the top five for 93.3% of questions and misses 10. Against
+ripgrep opening its top five files the saving is 31–67×, and ripgrep found the
+gold file on 32 of 40.
 
-| What | Measured (CI, 500-line fixture) | On real repos |
+The number we **measure in CI** is deliberately conservative, on a tiny
+~500-line fixture where there's little to prune, and it still clears a wide
+margin. The older 12–50× range is a field-report figure, measured by
+`neuralmind benchmark` before v4.5.0 against its fixed 50K-token estimate
+rather than the repo's measured size; v4.5.0+ divides by the measured code
+instead, so a new run is not on that scale.
+
+| What | Measured | Evidence |
 |------|---:|---|
-| Token reduction on code questions | **5.1×** (v4.3.4) | **12-50×** (more files to prune ⇒ larger ratio) |
-| Regression floor (CI fails below) | 4.0× | — |
+| Tokens vs pasting every source file (public benchmark, v4.12.0) | **51–242×** (requests 51.2×, click 117.1×, flask 68.5×, rich 242.0×) | reproducible, raw data committed |
+| Token reduction on code questions (CI, ~500-line fixture) | **5.1×** (v4.3.4) | measured in CI |
+| Regression floor (CI fails below) | 4.0× | CI-gated |
+| `neuralmind benchmark` on private repos, before v4.5.0, vs its fixed 50K-token estimate | 12–50× | field reports |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The
 mechanism is what scales — the bigger the codebase, the more whole-file context
@@ -70,7 +89,8 @@ you avoid.
 
 ## Does the memory make answers *better*, not just shorter?
 
-Not on this measure, right now — and we publish that. The **faithfulness eval**
+On this measure, at v4.12.0, yes — after a published loss at v4.3.4, and on one
+small fixture. The **faithfulness eval**
 compares NeuralMind's selected context against naive truncation **at the same
 token budget** — the honest comparison, not "small context vs the whole repo."
 
@@ -80,7 +100,8 @@ token budget** — the honest comparison, not "small context vs the whole repo."
 | Grounding (right modules cited) | not gated | 0.843 at v4.3.4 |
 
 A positive delta would mean smart selection beats plain truncation **at equal
-cost**. At v4.3.4 it doesn't: the reference fixture mixes code with prose chapter
+cost**. At v4.12.0 it does (+0.265, measured with CI's command on one machine);
+at v4.3.4 it didn't: the reference fixture mixes code with prose chapter
 summaries, and on prose a matched-budget truncation can keep more of the expected
 facts — which is why `ci-benchmark.yml` gates at −0.10 rather than 0. The gate
 catches a real regression; it does not guarantee a win. The size of the delta
@@ -95,13 +116,17 @@ measured by isolated A/Bs:
 
 | Effect | What CI enforces | Observed across runs |
 |---|---|---|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on **≥** recall-off, at a neutral token budget | **+3.5 to +14 pts** |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on **≥** recall-off, at a neutral token budget (direction only, ~500-line fixture) | +3.5 to +14 pts in earlier releases; **+0 at v4.12.0**, where the fixture reaches 97% with recall off |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift **≥ 0**, averaged over 3 runs | **+0.9 to +11.6 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits
 rather than adding tokens. The onboarding lift is the answer to "does an agent
 that inherits a committed team memory retrieve better on its *first* queries than
 a cold agent?" — gated in CI at lift ≥ 0.
+
+Both A/Bs run on the small reference fixture. Neither shows what the synapse
+layer does on a real repository over weeks of use; `neuralmind eval . --synapse-ab`
+(v4.14.0+) measures recall on against recall off on your own repo.
 
 ## Retrieval eval (v4.12.0)
 
@@ -248,7 +273,8 @@ The opt-in `turbovec` backend (Google **TurboQuant**) can embed *and* search wit
 | PHP | 54 | **54 (100%)** | 0 |
 
 The built-in tree-sitter backend matches graphify symbol-for-symbol on the
-reference fixtures for **all ten bundled languages** (Python plus the nine above);
+reference fixtures for **all ten bundled languages** (Python plus the nine above;
+JavaScript, parsed with the TypeScript grammars since v4.12.0, has no parity row of its own);
 an optional SCIP pass replaces heuristic call edges with compiler-accurate ones.
 All gated by `evals/parity/run.py` (coverage floor 90%, zero dangling edges) — the
 numbers above are emitted live by the parity gate on every PR. Per-language *answer
@@ -317,11 +343,14 @@ replaced, or if any call costs more tokens than with no hook
   repo with [`benchmark-your-repo`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md).
 - TurboQuant is an **approximate** (quantized) index; parity is gated on the
   reference fixture, and the compression win only matters at scale.
-- The 12-50× figure is a real-repo range, not a fixed guarantee — your ratio
-  depends on repo size and question shape.
+- The 12–50× field-report range was measured by `neuralmind benchmark` before
+  v4.5.0, against its fixed 50K-token estimate, not a measured repo size — and
+  it is a range, not a promise: your ratio depends on repo size and question
+  shape.
 - The field report above is a single private-repo measurement by the
-  maintainer — treat it as an existence proof consistent with the 12-50×
-  range, not an independent benchmark.
+  maintainer, against the same fixed 50K-token estimate — treat it as an
+  existence proof consistent with the 12–50× field-report range, not an
+  independent benchmark.
 
 ## Reproduce every number
 

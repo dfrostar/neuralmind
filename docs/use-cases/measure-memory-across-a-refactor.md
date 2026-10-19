@@ -40,8 +40,8 @@ anonymized; every one of them came from the shipped CLI.
   ~1,033 tokens of context, against the fixed 50,000-token estimate of a naive
   "load the relevant files" approach that `neuralmind benchmark .` used before
   v4.5.0. That is one repo's ratio, consistent with the
-  [12-50× real-repo range](../wiki/Benchmarks.md) measured the same way — not a
-  universal guarantee. Since v4.5.0 the CLI divides the measured size of the
+  [12-50× real-repo range](../wiki/Benchmarks.md), measured against the same
+  fixed 50K-token estimate — not a universal guarantee. Since v4.5.0 the CLI divides the measured size of the
   code the index covers instead; this repo hasn't been re-run with it, so 48.8×
   stays the pre-v4.5.0 figure.
 - **Personal synapse edges tripled (36 → 135)** — the

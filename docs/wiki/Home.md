@@ -1,7 +1,7 @@
 <!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # 🧠 NeuralMind Wiki
 
-**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: the gold file on 40 of 40 queries at 51–242× fewer tokens than pasting every source file.
+**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: the gold file on 40 of 40 queries, against 32 of 40 for keyword `ripgrep` opening its top five files whole, at 31–67× fewer tokens than that ripgrep baseline — and 51–242× fewer than pasting every source file. Forty queries is a small sample: the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10, published.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -10,16 +10,16 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 NeuralMind is more than token reduction. Every claim below ships with a
 committed eval. The first two run on **real, pinned OSS repos** and are fully
 reproducible — `python -m evals.public.run` for the four-repo benchmark,
-`python -m evals.public.competitor` for the `requests`/`click` competitor
-head-to-head. The last two are measured A/Bs on the bundled **reference
-fixture**, so they're real but smaller-scope — and the last one is currently
-a loss, published as such.
+`NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark` for
+the 150-question retrieval eval. The last two are measured A/Bs on the bundled
+**reference fixture**, so they're real but smaller-scope — and the last one was
+a published loss at v4.3.4.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
 | 💸 | **Cheaper context** | **The gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
-| 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Competitor head-to-head, **real repos** (`requests`, `click` only — off by default, not yet re-run on the four-repo corpus) |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🎯 | **Finds the *right* code, not just less of it** | **A gold file in the top five for 93.3% of 150 questions** (MRR 0.750, ~830 tokens per question) at v4.12.0 — and 10 questions still missed, published | Retrieval eval, **real repos** (`requests`, `click`, `flask`, `rich`, this repository) — reproducible, not a CI gate |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer learns which files you use together and re-ranks recall with those links — **budget-neutral** (no extra tokens). CI gates the direction only: recall never lowers top-k hit rate. Earlier releases measured +3.5 to +14 points; **+0 at v4.12.0**, where the fixture reaches 97% with recall off. Its benefit on a real repo is not shown — measure it on yours with `neuralmind eval . --synapse-ab` (v4.14.0+) | Synapse A/B eval (**reference fixture**, ~500 lines — smaller scope) |
 | 🔬 | **Answer grounding vs. naive truncation** | At a *matched* token budget on this prose-heavy fixture: **delta +0.265 at v4.12.0** (measured with CI's command on one machine; v4.11.1 +0.027), after a published loss of −0.054 at v4.3.4. CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
@@ -31,8 +31,10 @@ the **learning** and **grounding** rows are
 committed A/Bs on the bundled reference fixture, so they're real but
 smaller-scope. We report where NeuralMind *doesn't* win too — a plain vector
 index ranks the gold file higher on two of the four repos and is cheaper on raw
-tokens; that's in the benchmark table. The competitor comparison is *pure retrieval ranking*, not
-their LLM-agent loop. Full numbers and reproduction commands on the
+tokens; that's in the benchmark table. The separate `codebase-memory-mcp` head-to-head
+(MRR 0.96 vs 0.23 on `requests`, 0.60 vs 0.50 on `click`) was run in June 2026 (v0.33.0),
+on `requests` and `click` only, and has not been re-run since; it is *pure retrieval
+ranking*, not their LLM-agent loop. Full numbers and reproduction commands on the
 **[Benchmarks](Benchmarks)** page.
 
 ## What's New
@@ -443,6 +445,13 @@ The self-improving loop (signal→insight→experiment→promote) was extracted 
 
 ### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
 
+*Dated v2.0.0 history, kept as published. Correction (October 2026): the baselines this
+entry names are wrong — before v4.5.0, `neuralmind benchmark` divided by its fixed
+50K-token estimate, not a measured ~30K "dump all files" or 10K "human" baseline, so
+read the 12–50× and 44× below against that fixed 50K-token estimate. Current figures:
+[Benchmarks](Benchmarks).*
+
+<!-- claims-guard:allow — dated v2.0.0 history -->
 > **12–50× typical savings** — updated from the 12-50× estimate with founder-benchmarked results on local production repos. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
 
 New compliance capabilities for regulated teams, plus a one-command project init.
@@ -455,11 +464,11 @@ New compliance capabilities for regulated teams, plus a one-command project init
 | Audit export | `neuralmind export --controls` produces control-to-code mappings as CSV for evidence submission; `--format pdf` renders an SSP report |
 | CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health |
 | MCP tool | `neuralmind_compliance_report` — live compliance stance via any MCP-compatible agent |
-| Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) |
+| Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) <!-- claims-guard:allow — dated v2.0.0 history --> |
 
 **Claim tiering:**
-- 44× avg vs 30K naive baseline — **Tier C** (self-measured, reproducible via `neuralmind benchmark .`)
-- 12–25× vs realistic 10K human baseline — **Tier C** (self-measured, same pipeline)
+- 44× avg vs 30K naive baseline — **Tier C** (self-measured, reproducible via `neuralmind benchmark .`) <!-- claims-guard:allow — dated v2.0.0 history -->
+- 12–25× vs realistic 10K human baseline — **Tier C** (self-measured, same pipeline) <!-- claims-guard:allow — dated v2.0.0 history -->
 - "Up to 50×+" for targeted queries — **Tier D** (hypothesized, depends on query shape)
 
 ### v1.7.1 — Schema hotfix + autopilot integration (July 2026)
@@ -678,10 +687,10 @@ sections.
 
 Token-efficient retrieval plus persistent memory for AI coding agents.
 
-- **Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
+- **Retrieval.** A 4-layer progressive-disclosure index surfaces a few hundred tokens of structured context for a code question — 670–961 mean tokens per question on the public benchmark (v4.12.0), against 41,729–232,483 to paste every source file.
 - **Memory.** A synapse layer learns which code goes together from how you work, and Claude Code gets it at session start and with each prompt; since v4.9.0, Hermes-Agent gets it with each turn too, through `neuralmind install-hermes-plugin`.
 
-Measured effect: **51–242× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), finding the gold file on 40 of 40 queries; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+Measured effect: **51–242× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), finding the gold file on 40 of 40 queries (a small sample: the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10); on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Claude compressed copies of `Bash` and `Grep` output, but Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens instead of saving them ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The hooks now inject nothing.
 
@@ -690,8 +699,8 @@ NeuralMind doesn't compress tool output. Its PostToolUse hooks used to hand Clau
 ```
 You: "How does authentication work in my codebase?"
 
-❌ Traditional: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind: Smart context → ~800 tokens → $0.002-$0.06/query
+❌ Paste every source file → 41,729–232,483 tokens (public-benchmark repos)
+✅ NeuralMind: selected context → 670–961 mean tokens per question (v4.12.0)
 ```
 
 ### When do I reach for it?
@@ -729,7 +738,7 @@ and a Bash output cache for `neuralmind last`):
 
 ```bash
 neuralmind install-hooks .
-neuralmind init-hook .        # auto-rebuild on every git commit (optional)
+neuralmind init-hook .        # auto-rebuild after commits, merges/pulls, checkouts, rebases (optional)
 neuralmind watch &            # always-on synapse learning from file edits (optional)
 ```
 
@@ -755,11 +764,11 @@ workspaces, pin a project or set `NEURALMIND_PROJECT`.
 
 | Compared against | Short verdict |
 |---|---|
-| [Cursor `@codebase`](Comparisons#cursor-codebase) | Works only in Cursor; NeuralMind works anywhere |
-| [GitHub Copilot](Comparisons#github-copilot) | Copilot is hosted completions; NeuralMind is local context |
-| [Claude Projects](Comparisons#claude-projects) | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
-| [Long context windows](Comparisons#long-context) | Possible ≠ cheap — NeuralMind drops per-query cost ~60× |
-| [Prompt caching](Comparisons#prompt-caching) | Caching amortizes big prompts; NeuralMind makes them small |
+| [Cursor `@codebase`](Comparisons#one-line-verdicts) | Works only in Cursor; NeuralMind works anywhere |
+| [GitHub Copilot](Comparisons#one-line-verdicts) | Copilot is hosted completions; NeuralMind is local context |
+| [Claude Projects](Comparisons#one-line-verdicts) | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
+| [Long context windows](Comparisons#one-line-verdicts) | Possible ≠ cheap — a long window bills every token in it each turn; NeuralMind sends only the slice the question needs |
+| [Prompt caching](Comparisons#one-line-verdicts) | Caching amortizes big prompts; NeuralMind makes them small |
 
 Full list: [Comparisons](Comparisons).
 

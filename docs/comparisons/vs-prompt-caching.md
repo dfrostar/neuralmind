@@ -11,23 +11,27 @@ Prompt caching makes resending a large context cheaper. NeuralMind makes the con
 | Dimension | Prompt caching | NeuralMind |
 |---|---|---|
 | What it optimizes | Repeat cost of the same prefix | Size of the prefix itself |
-| Discount mechanism | Provider-side cache hit | Client-side retrieval + compression |
+| Discount mechanism | Provider-side cache hit | Client-side retrieval |
 | Requires identical prefix | Yes | No |
-| First-turn savings | 0% | 12-50× |
-| Nth-turn savings (cached) | ~90% of cached portion | 12-50× (plus cache on top) |
+| First-turn savings | 0% | 51–242× fewer tokens than pasting every source file (public benchmark) |
+| Nth-turn savings (cached) | ~90% of cached portion | The same (plus cache on top) |
 | Works offline | No | Yes |
-| Tool-output savings | No | Yes |
+| Tool-output savings | No | No (its PostToolUse hooks used to compress; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | Vendor lock-in | Yes (per-provider) | No |
 
 ## Worked example
 
-50,000-token codebase, 100 queries/day, Claude Sonnet input at $3/MTok:
+`psf/requests` from NeuralMind's
+[public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)
+(v4.12.0: 41,729 tokens to paste every source file, 816 mean tokens per
+NeuralMind query), 100 queries/day, Claude Sonnet input at $3/MTok. Token counts
+are measured; the dollar figures are arithmetic, not a measured bill:
 
 | Strategy | First query | Subsequent queries | Monthly |
 |---|---|---|---|
-| Raw repo, no cache | 50K × $3/MTok = $0.15 | $0.15 | ~$450 |
-| Raw repo + prompt caching | $0.15 + cache write | ~$0.015 (cache hit) | ~$50 |
-| NeuralMind | ~$0.0024 (800 tokens) | ~$0.0024 | ~$7 |
+| Raw repo, no cache | 41,729 × $3/MTok ≈ $0.125 | $0.125 | ~$376 |
+| Raw repo + prompt caching | $0.125 + cache write | ~$0.0125 (cache hit) | ~$40 |
+| NeuralMind | ~$0.0024 (816 tokens) | ~$0.0024 | ~$7 |
 | NeuralMind + prompt caching | ~$0.0024 + cache write | ~$0.00024 | ~$1 |
 
 Caching on top of NeuralMind is not zero cost, but it is essentially free at this scale.
@@ -36,7 +40,7 @@ Caching on top of NeuralMind is not zero cost, but it is essentially free at thi
 
 - **Pick prompt caching alone** when your prompt is already small and mostly static (system prompts, short tool definitions).
 - **Pick NeuralMind alone** when you don't want vendor-specific plumbing.
-- **Combine them** for the cheapest possible sustained coding workload: NeuralMind compresses the code context, and prompt caching amortizes the repeated project instructions.
+- **Combine them** for the cheapest possible sustained coding workload: NeuralMind shrinks the code context, and prompt caching amortizes the repeated project instructions.
 
 ---
 

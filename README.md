@@ -11,19 +11,20 @@
 
 **Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue, and any MCP client.**
 
-Your agent learns your codebase the way a senior engineer would — what goes
-together, what you usually touch next — and remembers it across sessions.
-Local-first, no telemetry. Side effect: much cheaper code questions —
-**51–242× fewer tokens than pasting every source file, with the gold file
-found on 40 of 40 queries** of a [public benchmark](https://neuralmind.uk/benchmark/)
-that publishes every miss — and in the top five for 93.3% of a larger
-150-question eval, whose 10 misses are published too.
+Your agent gets a memory of your codebase — what goes together, what you
+usually touch next — that carries across sessions. Local-first, no telemetry
+by default. On a [public benchmark](https://neuralmind.uk/benchmark/) that
+publishes every miss, **NeuralMind finds the gold file on 40 of 40 queries,
+where keyword ripgrep (top five files opened whole) finds 32 of 40 — at 31–67×
+fewer tokens than ripgrep**, and 51–242× fewer than pasting every source file.
+On a larger 150-question eval it puts the gold file in the top five for 93.3%
+of questions; its 10 misses are published too.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
 > - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook; on Hermes-Agent, the plugin's `pre_llm_call` hook, v4.9.0+): from the first prompt on a fresh index, the files and symbols the prompt matches, with line numbers, and code the synapse graph links to them; and adds nothing when the prompt's best match in the code scores below a cutoff, which most replies like "yes" and off-topic questions do (v4.11.0+)
 > - Gets its own first prompt, latest prompts and edited files back after Claude Code compacts the session, prompts as written up to 200 characters (v4.11.0+)
-> - Queries your codebase in ~800 tokens instead of ~50,000
+> - Gets a few hundred tokens of ranked context per code question instead of whole files: 670–961 tokens a question on the [public benchmark](docs/benchmarks/public.md), where pasting every source file costs 41,729–232,483 (v4.12.0)
 > - Is told when the index is behind: one line on its query, search and prompt context when commits since the last build changed the project, the background rebuild failed, or the index is in the legacy layout (v4.17.0+)
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
@@ -85,8 +86,10 @@ Every large engineering organization has the same AI spend problem: token costs 
 ```
 You: "How does authentication work in my codebase?"
 
-❌ Naive:  Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind: Smart context → ~800 tokens → $0.002-$0.06/query
+❌ Paste every source file → 41,729–232,483 tokens a question
+✅ NeuralMind → 670–961 tokens a question, gold file found on 40 of 40 queries
+
+   (public benchmark, 4 pinned OSS repos, v4.12.0 — docs/benchmarks/public.md)
 ```
 
 Engineering leads are stuck between two bad options: let agents burn tokens loading whole files, or hand-curate context windows. Neither scales.
@@ -104,9 +107,9 @@ Two cooperating brains:
 | **Claude / GPT / Gemini** (your agent) | Cortex — stateless reasoning over a working-memory window |
 | **NeuralMind** | Hippocampus + associative cortex — persistent weighted graph of code nodes |
 
-The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
+The agent asks a question. NeuralMind retrieves only the relevant slice (670–961 tokens a question on the public benchmark). As you work, Hebbian co-activation strengthens edges between code that's used together and unused edges decay; recall re-ranks with those edges. Whether that improves retrieval on your repo is something to measure (`neuralmind eval . --synapse-ab`), not assume: CI checks only that it never lowers hit rate, on a ~500-line fixture.
 
-**NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
+**By default, NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
@@ -116,7 +119,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 
 | Agent | What You Get | Status |
 |-------|-------------|--------|
-| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. Prompt-time recall and a stale-decision guard run automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
+| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. Prompt-time recall and a stale-decision guard run automatically. Queries cost 670–961 tokens on the public benchmark, not whole files. | ✅ Tested |
 | **Claude Teams** | `neuralmind memory publish` writes a learned-weights bundle (no source code); commit it and teammates' agents inherit it on their next session. | ✅ Tested |
 | **Cursor** | `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory. | 🔬 Theoretical |
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
@@ -154,12 +157,12 @@ NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what 
 
 | Effect | What CI enforces | Observed magnitude |
 |--------|------------------|--------------------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** in earlier releases; **+0** at v4.12.0, where the fixture reaches 97% with recall off |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift ≥ 0, averaged over 3 runs | **+0.9 to +11.6 pts** across runs |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
 
-**Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI guarantees is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
+**Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI gates is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
 
 **What this does not show yet.** That the layer pays off on a real codebase over weeks of use. Nothing published measures that, and the layer only learns what the hooks or `neuralmind watch` show it: a project queried often but edited outside a hooked agent stays at 0 transitions (`neuralmind stats` says so). To find out on your repo *(v4.14.0+)*, write questions with the file that answers each in `.neuralmind.eval.yaml` (past incidents work well, phrased as the symptom) and run `neuralmind eval . --synapse-ab`: the same questions with synapse recall on and off, read-only, with the questions it moved up or down, an exact McNemar p-value, and the size of the layer it read. Recall covers the call and import edges every build seeds as well as what usage taught the layer, so each run is recorded with the usage-learned counts (LTP edges, transitions), and `neuralmind eval . --report` shows whether the gap grows as they do. Walkthrough: [Does NeuralMind earn its place on your repo?](docs/use-cases/does-it-earn-its-place.md)
 
@@ -315,13 +318,13 @@ logs, not build output in general.
 
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
-- **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
+- **NOT a replacement for Copilot/Cursor.** It composes with them: one memory layer that every agent you use can query.
 - **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, per-tool MCP permissions). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
 
-- **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all 10 bundled languages. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
+- **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all ten bundled tree-sitter languages, plus JavaScript, parsed with the TypeScript grammars since v4.12.0. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
 - **Synapse learning needs sessions.** The Hebbian layer learns from co-activation over time. A fresh install has no learned associations — they accumulate over days/weeks of real use. Whether they then improve retrieval on your repo is something to measure (`neuralmind eval . --synapse-ab`), not assume.
 - **Task outcomes aren't measured.** The benchmarks measure retrieval (tokens, and whether the right file is in the window), not whether agents finish tasks faster or with fewer errors.
 - **A stale index answers confidently.** Results from an index built before the latest changes look as authoritative as fresh ones. `neuralmind init-hook .` rebuilds after commits (and, v4.13.0+, after pulls, merges and branch switches); `neuralmind health .` exits 1 when the index is behind the files, so scripts and CI can check before trusting it.
@@ -348,7 +351,7 @@ cd your-project
 neuralmind build .          # index the codebase (tree-sitter, ~seconds to minutes)
 
 neuralmind wakeup .         # what the agent sees at session start
-neuralmind query . "How does authentication work?"  # ~800 tokens, not 50,000
+neuralmind query . "How does authentication work?"  # a few hundred tokens, not whole files
 
 neuralmind install-hooks .  # Claude Code: session memory, prompt recall, stale-decision guard
 neuralmind serve .          # Obsidian-style graph view in your browser
@@ -481,7 +484,7 @@ Output looks like:
 The fixture is intentionally tiny (~500 lines) — it runs in CI as a
 regression gate. Before v4.5.0, `neuralmind benchmark` reported **12–50×** on
 real repos against a fixed 50K-token estimate; it now divides your measured
-code, so the ratio grows with the repo. The public benchmark measures
+code, so the ratio depends on how much code there is. The public benchmark measures
 **51–242×** against every source file
 ([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
@@ -498,12 +501,13 @@ neuralmind benchmark .
 
 ## 🧠 What You Get
 
-- **Progressive context disclosure (L0–L3).** A question costs ~800 tokens,
-  not your whole repo. The agent asks for more depth only where it needs it.
+- **Progressive context disclosure (L0–L3).** A question costs a few hundred
+  tokens (670–961 on the public benchmark), not your whole repo. The agent asks for more depth only where it needs it.
 - **A synapse layer that learns.** Hebbian co-activation strengthens edges
   between code that's used together; unused edges decay. Recall is spreading
-  activation over that graph — your agent's context gets *better* the more
-  you work.
+  activation over that graph. CI checks that it never lowers hit rate on a
+  ~500-line fixture; whether it raises it on your repo is for
+  `neuralmind eval . --synapse-ab` to tell you.
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
   A fresh or cleared session also gets a short recap of the previous one
@@ -662,10 +666,12 @@ maintains a weighted graph of your code and *learns from use* — retrieval is
 spreading activation over structural edges plus Hebbian synapses, disclosed
 progressively so the agent pays only for the depth it needs.
 
-**Does my code leave my machine?** NeuralMind itself sends no telemetry and
-transmits no repository content off your machine; its only default outbound
-request is a one-time public embedding-model download on first build
-(pre-seedable). Your agent still sends its selected slice to its own model —
+**Does my code leave my machine?** By default, NeuralMind itself sends no
+telemetry and transmits no repository content off your machine; its only
+default outbound request is a one-time public embedding-model download on
+first build (pre-seedable). One opt-in, off by default: `NEURALMIND_LLM_SEED=1`
+with your own `ANTHROPIC_API_KEY` sends README and architecture-doc prose to
+Anthropic to seed doc synapses. Your agent still sends its selected slice to its own model —
 NeuralMind just makes that slice smaller.
 
 **What if it doesn't help on my repo?** Run `neuralmind benchmark .` and

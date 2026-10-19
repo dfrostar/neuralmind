@@ -20,7 +20,7 @@
 
 ### Core Principles
 
-1. **No Calls Home by Default** — NeuralMind makes no external network calls in its default configuration; it adds nothing to what your agent sends its model. One narrow, opt-in exception exists — see below.
+1. **No Telemetry by Default** — NeuralMind sends no telemetry and transmits no repository content in its default configuration; its one default outbound request is a one-time public embedding-model download on first build (pre-seedable via `NEURALMIND_ONNX_MODEL_DIR`), and it adds nothing to what your agent sends its model. One narrow, opt-in exception exists — see below.
 2. **Local-First Processing** — All embeddings computed locally
 3. **Explainability** — Every decision is auditable
 4. **Least Privilege** — Users get minimum permissions needed

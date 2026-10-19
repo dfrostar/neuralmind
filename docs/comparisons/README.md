@@ -36,7 +36,7 @@ Each page follows the same structure:
 
 NeuralMind is specifically a **retrieval and memory layer for AI coding agents**:
 
-- **Retrieval:** a 4-layer progressive disclosure index that surfaces ~800 tokens of structured context for a code question.
+- **Retrieval:** a 4-layer progressive disclosure index that surfaces a few hundred tokens of structured context for a code question (670–961 mean tokens per question on the public benchmark, v4.12.0).
 - **Memory:** a Hebbian synapse layer that learns which files go together from how you actually use the repo, and carries that into the next session.
 
 It does not compress tool output. Its PostToolUse hooks on `Read`, `Bash`, and `Grep` used to; [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens instead of saving them, so they now inject nothing. For compressing what flows to the model, see [Headroom](./vs-headroom.md), which composes with NeuralMind. The comparison pages walk through where each tool fits.
