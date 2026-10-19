@@ -181,12 +181,16 @@ jobs:
             if git push origin sbom-publish:main; then
               exit 0
             fi
-            echo "Push rejected (main moved) — rebasing and retrying (${attempt}/3)"
+            echo "Push rejected — rebasing and retrying (${attempt}/3)"
             git fetch origin main
             git rebase origin/main
             sleep $((attempt * 5))
           done
-          echo "::warning title=SBOM site publish failed::Could not push ${ASSET} to main after retries. Re-run this workflow to retry."
+          # Fail the job: a ruleset rejecting the push (no MAIN_PUSH_DEPLOY_KEY,
+          # so checkout fell back to GITHUB_TOKEN) used to leave a green run
+          # and an SBOM that never went live.
+          echo "::error title=SBOM site publish failed::Could not push ${ASSET} to main. If the log shows a repository rule violation, the MAIN_PUSH_DEPLOY_KEY secret is missing or its deploy key lacks write access; otherwise main moved. Fix that, then re-run this workflow."
+          exit 1
 
       # The push above carries [skip ci], so it doesn't fire deploy-site.yml's
       # push trigger. Dispatch the deploy explicitly so the site picks up the

@@ -136,4 +136,5 @@ jobs:
           file_pattern: ".neuralmind-team-memory.json"
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"
-        continue-on-error: true
+        # No continue-on-error: a rejected push fails the job. It used to pass
+        # silently, so a ruleset rejection (no MAIN_PUSH_DEPLOY_KEY) went unseen.
