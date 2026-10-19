@@ -17,7 +17,8 @@ import json
 import os
 import re
 import shlex
-import subprocess
+import shutil
+import subprocess  # nosec B404 - runs git, by absolute path, with a fixed argument list
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -519,9 +520,14 @@ def _git_hooks(root: Path) -> tuple[Path, str] | None:
     directory, and its block names one project, so a block counts only when
     it names this one.
     """
+    # git by its absolute path (not one a changed PATH could swap at run
+    # time), with a fixed argument list and no shell.
+    git = shutil.which("git")
+    if git is None:
+        return None
     try:
-        out = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--show-toplevel", "--git-path", "hooks"],
+        out = subprocess.run(  # nosec B603 - fixed argument list, no shell
+            [git, "-C", str(root), "rev-parse", "--show-toplevel", "--git-path", "hooks"],
             capture_output=True,
             text=True,
             timeout=10,

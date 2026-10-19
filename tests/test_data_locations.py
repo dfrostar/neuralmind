@@ -259,6 +259,13 @@ def test_a_shared_hook_block_counts_only_for_the_project_it_names(env):
     assert not _by_name(repo.resolve())["git hook blocks"].present
 
 
+def test_no_git_on_the_path_means_no_hook_blocks_to_list(env, monkeypatch):
+    # git is found by absolute path before it runs; without one there's nothing to ask.
+    subprocess.run(["git", "init", "-q", str(env.project)], check=True)
+    monkeypatch.setattr(dl.shutil, "which", lambda name: None)
+    assert "git hook blocks" not in _by_name(env.project)
+
+
 def test_a_hooks_directory_that_cant_be_listed_is_a_problem(env, monkeypatch):
     subprocess.run(["git", "init", "-q", str(env.project)], check=True)
     hooks = (env.project / ".git" / "hooks").resolve()
