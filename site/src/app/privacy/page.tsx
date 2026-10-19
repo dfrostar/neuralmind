@@ -6,7 +6,7 @@ import { pageMetadata } from '@/lib/seo';
 export const metadata: Metadata = pageMetadata({
     path: '/privacy',
     title: 'Privacy Policy — NeuralMind',
-    description: 'Privacy policy for NeuralMind. The software runs locally with no telemetry and we never receive your code; this policy covers the little data we do handle.',
+    description: 'Privacy policy for NeuralMind. By default the software runs locally, sends no telemetry and transmits no repository content off your machine; this policy covers the little data we do handle.',
 });
 
 type Section = {
@@ -18,11 +18,11 @@ type Section = {
 const sections: Section[] = [
     {
         title: 'Overview',
-        body: 'NeuralMind is built on a simple principle: we never receive your code. The software indexes and searches your code on your machine, and none of it is sent to us or to any other service for processing. This policy explains what data we do collect (very little), why, and your rights. The full, canonical GDPR policy is maintained in the open at github.com/dfrostar/neuralmind/blob/main/docs/PRIVACY-POLICY.md.',
+        body: 'NeuralMind is built on a simple principle: your code stays under your control. The software has no mechanism that sends your code to us. It indexes and searches your code on your machine and, by default, transmits no repository content off it: its one default outbound request is a one-time public embedding-model download on first build. One opt-in feature, off by default (NEURALMIND_LLM_SEED=1 with your own Anthropic API key), sends README and architecture-doc prose to Anthropic; and your AI agent still sends the context slice it selects to its own model provider. Both are described below. This policy explains what data we do collect (very little), why, and your rights. The full, canonical GDPR policy is maintained in the open at github.com/dfrostar/neuralmind/blob/main/docs/PRIVACY-POLICY.md.',
     },
     {
         title: 'Data We Do Not Collect',
-        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. By default it makes one kind of outbound request of its own: the first time it needs to embed on a machine with no cached model, it downloads a public embedding model (all-MiniLM-L6-v2) over HTTPS, verified against a pinned checksum. That fetch retries on transient network errors and runs again if the cached model is later removed, so it is not a once-in-a-lifetime event — but it is always the same public file, it is a plain download that carries none of your data, and pre-seeding the model via NEURALMIND_ONNX_MODEL_DIR removes it entirely. The only other outbound path is opt-in and off by default: if you set NEURALMIND_LLM_SEED=1 and provide your own Anthropic API key, README and architecture-document prose (never source code) is sent to Anthropic under your key to seed associations. Beyond that, the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control.',
+        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. ONNX Runtime, which runs the embedding model, has telemetry of its own; since v4.10.0 NeuralMind sets ORT_DISABLE_TELEMETRY=1 before the runtime starts, which turns it off on Linux and macOS (on Windows, ONNX Runtime writes trace events to ETW, collected only while a Windows trace session is recording them). By default it makes one kind of outbound request of its own: the first time it needs to embed on a machine with no cached model, it downloads a public embedding model (all-MiniLM-L6-v2) over HTTPS, verified against a pinned checksum. That fetch retries on transient network errors and runs again if the cached model is later removed, so it is not a once-in-a-lifetime event — but it is always the same public file, it is a plain download that carries none of your data, and pre-seeding the model via NEURALMIND_ONNX_MODEL_DIR removes it entirely. The only other outbound path is opt-in and off by default: if you set NEURALMIND_LLM_SEED=1 and provide your own Anthropic API key, README and architecture-document prose (never source code) is sent to Anthropic under your key to seed associations. Beyond that, the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control.',
     },
     {
         title: 'Data We Collect',
@@ -50,7 +50,7 @@ const sections: Section[] = [
         body: 'Because we have minimal data collection, exercising your rights is simple:',
         list: [
             'Right to access: for the open-source tool we hold no personal data about you at all; Team-tier customers can request a copy of their license and audit data at hello@neuralmind.uk',
-            'Right to deletion: your index is local files you control — delete your project\'s `.neuralmind/` directory (or run `neuralmind reset`) and it is gone completely. Team-tier customers: email hello@neuralmind.uk and personal data is deleted (financial records are anonymized per the retention policy above)',
+            'Right to deletion: your index is local files you control — delete your project\'s `.neuralmind/` and `graphify-out/` directories and it is gone completely. Team-tier customers: email hello@neuralmind.uk and personal data is deleted (financial records are anonymized per the retention policy above)',
             'Right to portability: your local data is already in open formats (SQLite and JSON) inside your project directory',
             'EU Representative: Darren Frost, Cheval-Volant LLC, Texas, USA',
         ],
@@ -73,7 +73,7 @@ const sections: Section[] = [
     },
     {
         title: 'Changes to This Policy',
-        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: October 9, 2026.',
+        body: 'We may update this policy as the product evolves. Material changes will be announced on the GitHub repository and linked from this page. Last updated: October 19, 2026.',
     },
     {
         title: 'Contact',
@@ -88,8 +88,8 @@ export default function Privacy() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
-                    <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. We never receive your code, the software has no telemetry, and this website uses only cookie-free, aggregate analytics.</p>
-                    <p className="text-slate-400 text-lg mb-12">Last updated: October 9, 2026</p>
+                    <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. By default the software sends no telemetry and transmits no repository content off your machine, it has no mechanism that sends your code to us, and this website uses only cookie-free, aggregate analytics.</p>
+                    <p className="text-slate-400 text-lg mb-12">Last updated: October 19, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">
                             <h2 className="font-display text-2xl font-bold text-white mb-3 border-l-4 border-electric pl-4">{s.title}</h2>

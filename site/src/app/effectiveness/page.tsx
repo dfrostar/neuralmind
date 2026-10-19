@@ -12,7 +12,7 @@ export const metadata: Metadata = pageMetadata({
 
 const headlineStats = [
     { label: 'Token Reduction', value: '48.8×', detail: '1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0', gradient: true },
-    { label: 'Wake-up Tokens', value: '455', detail: 'Per query, measured', gradient: false },
+    { label: 'Wake-up Tokens', value: '455', detail: 'Per session, measured', gradient: false },
     { label: 'Personal Edges', value: '+275%', detail: '36 → 135 co-activations', gradient: false },
     { label: 'Communities', value: '810', detail: 'Architectural boundaries', gradient: false },
 ];

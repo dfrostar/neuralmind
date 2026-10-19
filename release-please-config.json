@@ -11,6 +11,10 @@
         {
           "type": "generic",
           "path": "neuralmind/hermes_plugin/plugin.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "site/src/lib/release.ts"
         }
       ]
     }

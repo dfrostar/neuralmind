@@ -126,7 +126,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Abstract</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
                         <p className="text-slate-300 leading-relaxed">
-                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that reduces token spend on code questions by 12-50x at the retrieval stage. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
+                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that cuts the tokens a code question costs at the retrieval stage: 51–242× fewer than pasting every source file on the public benchmark (v4.12.0), and 12–50× in field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
                         </p>
                     </div>
                 </section>
@@ -170,14 +170,14 @@ export default function PublicationPage() {
                             Once the MCP server is registered, Codex gains NeuralMind&apos;s tools. Start every session with a wakeup, then query as needed:
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3">
-                            <p>codex&gt; neuralmind_wakeup(project_path=&quot;.&quot;)                # ~400-600 tokens instead of 50K</p>
-                            <p>codex&gt; neuralmind_query(project_path=&quot;.&quot;, question=&quot;...&quot;)  # ~800-1100 tokens</p>
+                            <p>codex&gt; neuralmind_wakeup(project_path=&quot;.&quot;)                # compact project overview, once per session</p>
+                            <p>codex&gt; neuralmind_query(project_path=&quot;.&quot;, question=&quot;...&quot;)  # 670–961 mean tokens per question (public benchmark, v4.12.0)</p>
                             <p>codex&gt; neuralmind_skeleton(project_path=&quot;.&quot;, file_path=&quot;...&quot;) # file → skeleton (functions + rationales)</p>
                             <p>codex&gt; neuralmind_review(project_path=&quot;.&quot;, changed_files=[...]) # catch co-breaks</p>
                             <p>codex&gt; neuralmind_next_likely(project_path=&quot;.&quot;, from_node=&quot;...&quot;) # predict next file</p>
                         </div>
                         <p className="text-slate-300 text-sm">
-                            <strong className="text-white">What Codex sees:</strong> Structured project context (identity, architecture, relevant modules, search hits) instead of raw file dumps. The wakeup loads ~400-600 tokens; a follow-up queries ~800-1100 tokens.
+                            <strong className="text-white">What Codex sees:</strong> Structured project context (identity, architecture, relevant modules, search hits) instead of raw file dumps. The wakeup loads a compact overview once per session (455 tokens in one field report; neuralmind benchmark prints yours); a query averaged 670–961 tokens per repo on the public benchmark at v4.12.0.
                         </p>
                     </div>
 
@@ -234,7 +234,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p className="text-slate-300 text-sm">
-                            <strong className="text-white">Total wakeup:</strong> ~400-600 tok. <strong className="text-white">Per-query:</strong> ~800-1100 tok. <strong className="text-white">Vs full codebase:</strong> 50K+ tok loaded naively.
+                            <strong className="text-white">Wakeup:</strong> L0 + L1, capped by the budgets above, once per session. <strong className="text-white">Per-query:</strong> 670–961 mean tokens per repo on the public benchmark (v4.12.0). <strong className="text-white">Vs pasting every source file:</strong> 41,729–232,483 tokens on the same four repos.
                         </p>
                     </div>
 
@@ -295,19 +295,24 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-slate-300">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2">12-50× token reduction</td>
-                                        <td className="py-2">Retrieval-stage only (50K baseline → ~800 tok)</td>
-                                        <td className="py-2 text-yellow-400">Modeled</td>
-                                    </tr>
-                                    <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2">~400-600 tok wakeup</td>
-                                        <td className="py-2">L0+L1 in context_selector.py</td>
+                                        <td className="py-2">51–242× fewer tokens than pasting every source file</td>
+                                        <td className="py-2">Public benchmark, 40 pre-registered queries on 4 repos, v4.12.0 (python -m evals.public.run); retrieval stage only</td>
                                         <td className="py-2 text-green-400">Measured</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2">~800-1100 tok query</td>
-                                        <td className="py-2">L2+L3 per typical query; varies by graph size</td>
+                                        <td className="py-2">12–50× token reduction</td>
+                                        <td className="py-2">Field reports measured by neuralmind benchmark before v4.5.0, against its fixed 50K-token estimate rather than a measured baseline; retrieval stage only</td>
                                         <td className="py-2 text-yellow-400">Modeled</td>
+                                    </tr>
+                                    <tr className="border-b border-carbon-border/50">
+                                        <td className="py-2">Wake-up tokens, once per session</td>
+                                        <td className="py-2">L0+L1 in context_selector.py; 455 in one field report, printed by neuralmind benchmark for your repo</td>
+                                        <td className="py-2 text-green-400">Measured</td>
+                                    </tr>
+                                    <tr className="border-b border-carbon-border/50">
+                                        <td className="py-2">670–961 mean tokens per question</td>
+                                        <td className="py-2">Public benchmark, per repo, v4.12.0; ~830 on the 150-question retrieval eval; varies by graph size</td>
+                                        <td className="py-2 text-green-400">Measured</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
                                         <td className="py-2">Read/Bash tool-output compression</td>
@@ -333,7 +338,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage savings: the Claude Code hooks add no compression on top (see the correction above).
+                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage savings: the Claude Code hooks add no compression on top (see the correction above).
                         </p>
                     </div>
                 </section>
@@ -402,7 +407,7 @@ export default function PublicationPage() {
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-2">&quot;12-50× total workflow reduction&quot;</td>
-                                    <td className="py-2">12-50× is retrieval-stage only. Total reduction varies by workflow.</td>
+                                    <td className="py-2">12–50× is retrieval-stage only, from field reports measured before v4.5.0 against a fixed 50K-token estimate. Total reduction varies by workflow.</td>
                                     <td className="py-2 text-yellow-400">Overclaim</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">

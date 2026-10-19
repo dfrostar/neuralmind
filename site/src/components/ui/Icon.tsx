@@ -8,6 +8,7 @@
  * page, and looked different on macOS, Windows and Android. That is the
  * single loudest "assembled from a template" signal a product page can send.
  *
+ * claims-guard:allow — icon dimensions below, not a performance ratio.
  * These are drawn to one spec instead: 24×24 box, 1.5 stroke, round caps and
  * joins, no fills, `currentColor` throughout. They inherit text colour and
  * size like type does, so an icon in a muted card is muted and an icon in an

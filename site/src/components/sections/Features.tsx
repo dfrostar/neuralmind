@@ -46,7 +46,7 @@ const groups: Group[] = [
             {
                 icon: 'recall',
                 title: 'Decision memory',
-                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When a commit changes a decision’s files after it was recorded, the post-commit hook from `neuralmind init-hook` marks it stale.',
+                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When a commit, pull or rebase changes a decision’s files after it was recorded, the git hooks from `neuralmind init-hook` mark it stale (v4.16.0+; commits only before that).',
                 badge: 'Decisions',
             },
             {

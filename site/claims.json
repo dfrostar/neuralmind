@@ -179,6 +179,13 @@
       "note": "Pair it with the 31-67x token figure wherever the site compares against grep. tests/test_site_claims.py recomputes both from bench/public/results.json."
     },
     {
+      "claim": "NeuralMind's assembled context costs 670-961 mean tokens per question (per repo) on the public benchmark; pasting every source file costs 41,729-232,483",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "NEURALMIND_ORT_THREADS=1 python -m evals.public.run",
+      "evidence": "reproducible",
+      "note": "The measured replacement for '~800 tokens instead of ~50,000', which paired a rough per-question figure with the CLI's old fixed 50K-token estimate — not a measurement of anything. Quote these ranges (or the 150-question retrieval eval's ~830 tokens per question at v4.12.0, bench/retrieval/vs-v4.11) with their source. tests/test_site_claims.py recomputes both ranges from bench/public/results.json."
+    },
+    {
       "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
@@ -253,6 +260,27 @@
       "claim": "95% mean gold-file recall / 85.71-100% per repo / 92.5% found-rate / 3 of 40 misses / 45-246x fewer tokens (or the per-repo 45.3x requests, 115.2x click, 76.3x flask, 245.2x rich)",
       "why": "Superseded at v4.12.0, when bench/public/results.json was regenerated after the ranking changes (L3 keeps 8 hits from a pool of 20, boosts that no longer outvote the ranking, a node embedded as its qualified name, module and docstring) and with the neuralmind backend run read-only and counted with the benchmark's tokenizer. The v4.12.0 run finds all 40 gold files (100% found-rate, no misses) at 51-242x (51.2x requests, 117.1x click, 68.5x flask, 242.0x rich). The old figures were correct for the v4.10.0 run and stay in the dated release notes and CHANGELOG.md as history; the site must not quote them.",
       "ratios": [45, 246, 45.3, 115.2, 76.3, 245.2]
+    },
+    {
+      "claim": "54-260x fewer tokens on the public benchmark (or the per-repo 54.9x requests, 124.2x click, 73.1x flask, 259.3x rich)",
+      "why": "A draft of the v4.12.0 run that never became canon: #622 merged with bench/public/results.json measuring 51-242x (51.2x requests, 117.1x click, 68.5x flask, 242.0x rich), but /measure-your-own kept the draft's 54.9x and the docs guard's messages quoted the draft range as current until 2026-10-19.",
+      "ratios": [54, 260, 54.9, 124.2, 73.1, 259.3]
+    },
+    {
+      "claim": "~800 tokens instead of ~50,000 per query",
+      "why": "~50,000 is the fixed estimate `neuralmind benchmark` divided by before v4.5.0, not a measured repo, and ~800 was never tied to a run. The measured figures are 670-961 mean tokens per question against 41,729-232,483 for pasting every file (public benchmark, v4.12.0; see non_ratio_headline_claims)."
+    },
+    {
+      "claim": "$0.15-$3.75 per query naive vs $0.002-$0.06 with NeuralMind; 12-50% bill drops",
+      "why": "No pricing run, field report or benchmark in the repo produces either figure. `neuralmind savings --cost` prices a user's own logged usage; quote that mechanism, not invented dollar ranges."
+    },
+    {
+      "claim": "~60x / ~10x reduction in comparison tables",
+      "why": "No measurement in the repo produces them. Quote the public benchmark (51-242x vs every source file, 31-67x vs ripgrep's top five files) or the dated field-report range with its fixed-50K baseline."
+    },
+    {
+      "claim": "100% gold-file recall, MRR 0.96 vs 0.23 as a headline",
+      "why": "From the June 2026 codebase-memory-mcp head-to-head (v0.33.0, requests and click only), never re-run on the current corpus. It may stay in body text with that date and scope beside it (tests/test_docs_claims.py checks), never in a headline or summary row."
     }
   ],
   "private_names_never_publish": [

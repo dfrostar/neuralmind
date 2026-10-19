@@ -10,7 +10,7 @@ const steps: { icon: IconName; title: string; desc: string; time: string }[] = [
     {
         icon: 'index',
         title: 'Index',
-        desc: '`neuralmind build .` parses your codebase into a graph with tree-sitter — functions, classes, imports, call edges. Ten languages, zero config, embedded on your machine.',
+        desc: '`neuralmind build .` parses your codebase into a graph with tree-sitter — functions, classes, imports, call edges. Ten tree-sitter languages plus JavaScript (parsed with the TypeScript grammars, v4.12.0+), zero config, embedded on your machine.',
         time: '~15 min',
     },
     {
@@ -38,7 +38,7 @@ export default function HowItWorks() {
                     </h2>
                     <p className="text-slate-400 text-base md:text-lg leading-relaxed">
                         {withCode(
-                            'Three steps. After that, `neuralmind init-hook .` keeps the index current on every commit.',
+                            'Three steps. After that, `neuralmind init-hook .` keeps the index current: since v4.13.0 it installs post-commit, post-merge, post-checkout and post-rewrite hooks, so commits, merges, checkouts and rebases all refresh it.',
                         )}
                     </p>
                 </header>

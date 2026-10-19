@@ -6,9 +6,15 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 
 // Fallback used only if the GitHub API is unreachable at build time, so pages
-// still render with a sane version instead of breaking the build. Keep this
-// pointed at the newest known release; the live value is fetched below.
-const FALLBACK = { tag: 'v4.3.4', date: '2026-09-27' };
+// still render with a sane version instead of breaking the build; the live
+// value is fetched below. release-please keeps the tag current: this file is
+// in release-please-config.json's extra-files, and the generic updater bumps
+// the version on the line marked x-release-please-version on every release.
+// The date is not bumped automatically and is only updated by hand. It is
+// used only in a fallback build (or if the API omits published_at), where it
+// shows as the security page's "Released" date and the JSON-LD dateModified,
+// so a stale date there is cosmetic next to the correct tag.
+const FALLBACK = { tag: 'v4.18.1', date: '2026-10-19' }; // x-release-please-version
 
 export interface LatestRelease {
     tag: string; // e.g. "v1.9.1"

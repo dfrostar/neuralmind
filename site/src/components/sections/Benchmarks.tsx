@@ -11,10 +11,10 @@ const dataPoints = [
     { metric: 'Tokens vs. grep-and-read', value: '31–67×', detail: 'same 40 queries, against ripgrep opening its top five files whole, which found the gold file on 32 of 40. An agent that reads only the matching lines pays less than this baseline; that is not measured' },
     { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget — on a ~500-line fixture, so it shows direction, not size' },
     { metric: 'Learning on your repo', value: 'Not yet shown', detail: 'nothing published shows the synapse layer improving retrieval on a real codebase over time. neuralmind eval . --synapse-ab measures it on yours: your own questions, synapse recall on and off' },
-    { metric: 'Facts vs. naive truncation', value: '+0.26', detail: 'at an equal token budget on the prose-heavy CI fixture, measured at v4.12.0 with CI’s command (v4.11.1: +0.03; v4.3.4 was a published loss, −0.054). CI fails the build below −0.10' },
+    { metric: 'Facts vs. naive truncation', value: '+0.265', detail: 'at an equal token budget on the prose-heavy CI fixture, measured at v4.12.0 with CI’s command on one machine — 0.839 vs 0.574 (v4.11.1: +0.027; v4.3.4 was a published loss, −0.054). CI fails the build below −0.10' },
     { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the fixed 50K-token estimate the CLI used before v4.5.0 — method reproducible, not CI-gated' },
-    { metric: 'Task outcomes', value: 'Not measured', detail: 'every figure here is retrieval — what reaches the agent’s window and whether the right file is in it. Whether agents finish tasks faster or with fewer mistakes is not measured yet' },
-    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
+    { metric: 'Task outcomes', value: 'Not measured', detail: 'every figure here is retrieval — what reaches the agent’s window and whether the right file is in it. Nothing here measures yet whether agents finish tasks faster or with fewer mistakes' },
+    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; since v4.13.0, init-hook installs post-commit, post-merge, post-checkout and post-rewrite hooks that keep it current' },
 ];
 
 export default function Benchmarks() {

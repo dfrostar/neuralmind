@@ -69,7 +69,7 @@ const steps = [
     {
         n: '3',
         title: 'The work runs on your infrastructure',
-        text: 'NeuralMind is local-first with zero telemetry — engagements follow the same rule. We never take your code.',
+        text: 'NeuralMind is local-first: by default it sends no telemetry and transmits no repository content off your machine. Engagements follow the same rule: the work runs where your code already is, and we do not take a copy of it.',
     },
     {
         n: '4',
@@ -197,7 +197,7 @@ export default function ServicesPage() {
                         </p>
                         <ul className="space-y-2 mb-4">
                             {[
-                                'Local-first with zero telemetry — NeuralMind stores your code graph and learned memory on your own infrastructure and transmits no repository content',
+                                'Local-first — NeuralMind stores your code graph and learned memory on your own infrastructure and, by default, sends no telemetry and transmits no repository content off it (the opt-in NEURALMIND_LLM_SEED is the one exception, and stays off unless you enable it)',
                                 'Append-only, hash-chained audit log of team-memory governance actions',
                                 'Publish scoping and admin roles controlling what leaves each developer’s machine',
                                 'A CycloneDX SBOM published for every release since v4.0.0',
