@@ -1,7 +1,7 @@
 # SDLC Policy
 
-**Date:** 2026-10-18
-**Version:** 1.2
+**Date:** 2026-10-19
+**Version:** 1.3
 **SOC 2 Controls:** CC7.1, CC8.1
 
 ---
@@ -37,9 +37,9 @@ agents ([SSDF §5](SSDF.md#5-how-neuralmind-is-developed)).
 ### 2.3 Testing
 
 CI runs these on every pull request and every push to `main`. Each fails its
-check on a problem, except mypy:
+check on a problem:
 - **Unit tests:** `pytest tests/` on Linux, macOS and Windows, Python 3.10–3.12
-- **Type checks:** `mypy neuralmind/`, advisory only: 277 errors on 2026-10-18
+- **Type checks:** mypy against a baseline (`scripts/check_mypy_baseline.py`). The 305 errors it reported when it became a check on 2026-10-19 are listed in `scripts/mypy-baseline.txt`; a new one fails, and so does a fixed one until the list is lowered in the same change
 - **Lint:** ruff, black, `scripts/check_unreachable.py` and the docs and terms guards
 - **Benchmarks:** the hermetic self-benchmark (`ci-benchmark.yml`), failing below a 4× reduction floor
 - **Security scans (CI):** CodeQL; bandit, where high severity fails the change; and `pip-audit` over the installed dependencies, failing on any advisory not marked `not_affected` in `security/neuralmind.openvex.json`

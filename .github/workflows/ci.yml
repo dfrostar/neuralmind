@@ -230,13 +230,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install mypy
+          # Pinned: the baseline lists what this version reports, and a new
+          # mypy release can add or drop errors. Bump it and the baseline
+          # (check_mypy_baseline.py --update) in the same change.
+          pip install "mypy==2.4.0"
 
-      # Advisory, not a gate: 277 errors on 2026-10-18, and SSDF.md (PW.5)
-      # says so. Drop continue-on-error once they're fixed.
-      - name: Run mypy
-        run: mypy neuralmind --ignore-missing-imports --disable-error-code=no-untyped-def --implicit-optional
-        continue-on-error: true
+      # A ratchet, not a clean pass yet: the errors mypy reported when it
+      # became a gate are listed in scripts/mypy-baseline.txt. Any error not
+      # listed fails, and so does a listed one that's been fixed, until the
+      # baseline is lowered with it. SSDF.md (PW.5) describes this.
+      - name: Run mypy against the baseline
+        run: python scripts/check_mypy_baseline.py
 
   fresh-install:
     name: Fresh Install (${{ matrix.os }}, Python ${{ matrix.python-version }}${{ matrix.mcp-spec && format(', mcp{0}', matrix.mcp-spec) || '' }})

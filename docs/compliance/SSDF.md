@@ -1,7 +1,7 @@
 # Secure Software Development (NIST SP 800-218 SSDF)
 
-**Date:** 2026-10-18
-**Version:** 1.2
+**Date:** 2026-10-19
+**Version:** 1.3
 **Framework:** NIST SP 800-218 v1.1, Secure Software Development Framework (SSDF)
 
 ---
@@ -89,7 +89,7 @@ directly.
 | **PW.1** Design to meet security requirements | Local-first architecture with no telemetry. The only outbound call by default is the first build's download of the embedding model from a pinned URL, checked against a pinned SHA256, and none when the model is pre-staged ([Compliance Summary](../COMPLIANCE-SUMMARY.md)). The threat model is in [`SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) | |
 | **PW.2** Review the design | Design changes land as pull requests reviewed by the automated reviewers in PW.7. Larger features have a spec in `docs/specs/`, and every user-facing change has release notes ([SDLC policy](SDLC_POLICY.md) §2.1) | No second human reviews a design |
 | **PW.4** Reuse well-secured components | Dependency floors raised for advisories, a pinned set in `requirements-pinned.txt`, Dependabot alerts, and `pip-audit` on every change. Chosen dispositions follow the [vulnerability management policy](../VULNERABILITY-MANAGEMENT-POLICY.md) | |
-| **PW.5** Secure coding practices | ruff (including flake8-bugbear), black and `scripts/check_unreachable.py` fail CI. mypy runs on every change but is advisory: it reported 277 errors on 2026-10-18 and doesn't fail CI. Secrets are scanned before indexing (`neuralmind scan-for-secrets`) | |
+| **PW.5** Secure coding practices | ruff (including flake8-bugbear), black and `scripts/check_unreachable.py` fail CI. mypy fails CI as a ratchet (`scripts/check_mypy_baseline.py`): the 305 errors it reported when it became a check on 2026-10-19 are listed in `scripts/mypy-baseline.txt`, and any error not listed fails, as does a listed one that's been fixed until the list is lowered, so the count can only go down. Secrets are scanned before indexing (`neuralmind scan-for-secrets`) | mypy doesn't pass clean: 305 known errors |
 | **PW.6** Secure build configuration | A pure-Python wheel built with `python -m build` in a clean CI job. The container image runs as a non-root user and installs offline from pre-downloaded wheels (`Dockerfile`) | |
 | **PW.7** Review and analyze code for vulnerabilities | Pull requests are reviewed by two automated reviewers, GitHub Copilot code review and OpenAI Codex, and merged by the maintainer, who reads the diff; no rule makes a merge wait for either. CodeQL (Python, JavaScript/TypeScript, Actions) and bandit run on every change. Bandit's full report goes to code scanning, and high severity fails CI | A second human reviewer |
 | **PW.8** Test executable code | The pytest suite on Linux, macOS and Windows across Python 3.10–3.12, a run with the OpenSSL FIPS provider enforced, fresh-install and MCP stdio smoke tests, and the published-package and image smoke tests on release | Dynamic testing or fuzzing |
