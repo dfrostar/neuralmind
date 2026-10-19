@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Retrieval trace: per-layer explainability for a query (PRD 3).
 
 NeuralMind's retrieval blends layered summaries, community/cluster selection,

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 C4 — CI-gated tuner promotion.
 

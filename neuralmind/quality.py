@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Retrieval-quality metrics for the quality harness (PRD 2).
 
 Token reduction proves NeuralMind is *cheap*; it does not prove the context it

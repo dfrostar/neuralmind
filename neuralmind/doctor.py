@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """doctor.py — install/health diagnostics for ``neuralmind doctor``.
 
 Inspects a project's NeuralMind setup *without building anything*, so it

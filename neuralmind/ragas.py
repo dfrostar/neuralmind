@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """RAGAS-axis faithfulness & relevance scoring for the offline judge (PRD 2).
 
 ``fact_recall`` / ``contradiction_score`` / ``faithfulness`` are stdlib-only

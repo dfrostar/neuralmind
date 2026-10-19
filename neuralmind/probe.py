@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Label-free retrieval self-probe: does the index retrieve the right code?
 
 Token reduction proves NeuralMind is *cheap*. The golden-suite quality eval

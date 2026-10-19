@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """NeuralMind for Hermes-Agent — code memory injected into each turn, no tool call.
 
 A Hermes plugin (``~/.hermes/plugins/neuralmind/``), installed and enabled by

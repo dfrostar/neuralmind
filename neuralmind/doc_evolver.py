@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """doc_evolver.py — evolutionary JSDoc optimizer for undocumented methods.
 
 Finds blind spots (undocumented public methods) via AST audit, generates

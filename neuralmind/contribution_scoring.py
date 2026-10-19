@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 E1 — Contribution-quality scoring for team memory bundles.
 

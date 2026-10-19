@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """storage_guard.py — is this project's state on an encrypted volume?
 
 NeuralMind does not encrypt ``.neuralmind/`` itself. CMMC (SC.L2-3.13.11 and

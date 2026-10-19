@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Savings report computation, shared by the CLI, MCP server, and daemon.
 
 Reads the same event logs `neuralmind savings` always has — the project's

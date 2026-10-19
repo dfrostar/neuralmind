@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """config.py — project-level configuration loader for NeuralMind.
 
 Reads user overrides from ``~/.config/neuralmind/config.toml`` (or

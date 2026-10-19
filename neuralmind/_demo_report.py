@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Shared demo report logic.
 
 Single source of truth for the 30-second demo numbers, used by both the

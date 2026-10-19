@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 scip_backend.py — SCIP precision pass backend (PRD 2 G2).
 

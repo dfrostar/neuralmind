@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """quality_harness.py — CI-gated tuner promotion (C4).
 
 The tuner (C3) evaluates its own candidates and would promote autonomously

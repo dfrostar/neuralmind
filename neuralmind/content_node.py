@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 content_node.py — Non-code content nodes for NeuralMind.
 

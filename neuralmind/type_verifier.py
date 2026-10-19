@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """type_verifier.py — Static type verification pass for NeuralMind.
 
 Post-processing pass over the structural graph that augments ``calls`` edges

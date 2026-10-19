@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """ignore.py — which files are in the index: what git covers, minus our ignores.
 
 By default the index covers what git covers. Inside a git repository the file

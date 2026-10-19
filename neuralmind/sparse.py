@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 sparse.py — SPLADE-style learned sparse retrieval (PRD 2 B2).
 

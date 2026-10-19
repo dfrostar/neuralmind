@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """HTTP route wiring for the sample web app."""
 
 from __future__ import annotations

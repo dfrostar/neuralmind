@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """fixtures.py — Fixture query loader for tuner live eval (T1).
 
 Provides deterministic fixture queries the tuner uses to measure

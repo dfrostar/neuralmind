@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Feedback + status commands for the NeuralMind CLI.
 
 Adds explicit good/bad feedback on the last query's reinforced edges,

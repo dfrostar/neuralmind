@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """child_python.py — start this interpreter as a child, clear of the caller's cwd.
 
 ``python -c`` and ``python -m`` put the working directory first on

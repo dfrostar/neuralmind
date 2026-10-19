@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 output_cache.py — Single-slot cache of the most recent bash output
 ==================================================================

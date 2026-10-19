@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """data_locations.py — every place NeuralMind keeps data for one project.
 
 The data deletion procedure (``docs/compliance/DATA_DELETION.md``) used to

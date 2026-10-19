@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """MCP security manager with RBAC, rate limiting, and audit integration."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """MCP tools for the decision memory layer.
 
 Exposes the DecisionStore via MCP so agents can query, audit, record,

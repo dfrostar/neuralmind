@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """session_summaries.py — Periodic, semantically-recallable session digests.
 
 NeuralMind has no session memory: each query is stateless, and the agent

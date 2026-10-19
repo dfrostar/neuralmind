@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Optional SCIP precision pass — compiler-accurate calls/inherits edges.
 
 The built-in tree-sitter backend (``graphgen.py``) resolves ``calls`` and

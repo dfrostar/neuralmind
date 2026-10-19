@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 E4 — Staleness detection for team baseline edges.
 

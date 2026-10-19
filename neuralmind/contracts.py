@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """contracts.py — shared definitions for the self-improvement engine.
 
 Frozen after Wave 3a spike. Consumed by every Wave 3 workstream:

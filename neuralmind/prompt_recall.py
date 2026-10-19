@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """prompt_recall.py — the code a prompt is about, for the per-turn hook.
 
 The ``prompt-submit`` hook action (Claude Code's ``UserPromptSubmit``, the

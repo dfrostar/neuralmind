@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """
 mcp_server.py — Model Context Protocol Server for NeuralMind
 =============================================================

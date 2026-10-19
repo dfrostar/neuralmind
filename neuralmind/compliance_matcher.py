@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 compliance_matcher.py — Detect compliance annotations in code comments.
 

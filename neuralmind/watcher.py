@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 watcher.py — File change watcher that feeds activation signals.
 

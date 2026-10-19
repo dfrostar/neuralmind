@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """node_text.py — the text a graph node is embedded as
 =====================================================
 

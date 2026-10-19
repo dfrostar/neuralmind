@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """turbovec_backend.py — EmbeddingBackend on Google TurboQuant (POC / spike)
 ============================================================================
 

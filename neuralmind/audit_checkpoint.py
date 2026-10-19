@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """audit_checkpoint.py — signed, anchored checkpoints of the audit log.
 
 The audit log's hash chain (``audit.py``) shows a record changed or removed in

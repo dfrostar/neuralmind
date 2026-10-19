@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 synapses.py — Brain-like associative memory layer for NeuralMind.
 

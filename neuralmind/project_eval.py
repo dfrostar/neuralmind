@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """project_eval.py — measure retrieval on *this* project, against gold answers.
 
 ``neuralmind eval .`` reads ``.neuralmind.eval.yaml`` at the project root — a

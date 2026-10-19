@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """freshness.py — is the code graph in step with the files on disk?
 
 A graph that lags the code is the most dangerous kind of stale index: every

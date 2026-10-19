@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Authentication handlers — login, logout, token refresh."""
 
 from __future__ import annotations

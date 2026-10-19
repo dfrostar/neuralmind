@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 rerank.py — Distilled cross-encoder reranking (PRD 2 B3).
 

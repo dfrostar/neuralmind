@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """baseline.py — one measured baseline for every reduction NeuralMind reports.
 
 Every reduction ratio is "tokens without NeuralMind ÷ tokens with it". Before

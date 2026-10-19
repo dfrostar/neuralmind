@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """context_budget.py — Fixed-context budget management for NeuralMind.
 
 Extends the L0-L3 progressive disclosure with lean-ctx-style budget

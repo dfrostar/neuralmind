@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """cognition_loop.py — On-demand maintenance pass over a project's learned memory.
 
 ``neuralmind cognition-loop`` runs one pass, using the same machinery the

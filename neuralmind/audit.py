@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Audit trail utilities for backend/security observability."""
 
 from __future__ import annotations

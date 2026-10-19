@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """store.py — Decision Store (SQLite-backed rationale persistence).
 
 A persistent, queryable store for architectural decisions made in a project.

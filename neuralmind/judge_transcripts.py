@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """judge_transcripts.py — judge transcript loader + generator (PRD 2 D3).
 
 D3 closes the "empty bench/public/judge/" directory" gap. This module:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """retrieval_enhancement.py — three adversarial fixes for shallow retrieval.
 
 Fixes three failure modes identified by QA:

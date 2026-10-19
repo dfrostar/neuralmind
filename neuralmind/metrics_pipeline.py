@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 F3 — Tool-use metrics pipeline.
 

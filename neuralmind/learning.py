@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """learning.py — the switch that keeps a query from training the synapse layer.
 
 Every query normally teaches NeuralMind: co-activated nodes are reinforced

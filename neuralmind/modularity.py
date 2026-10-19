@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 G3 — Modularity clustering (Louvain/Leiden).
 

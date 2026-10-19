@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 event_bus.py — Process-local pub/sub for live activity events.
 

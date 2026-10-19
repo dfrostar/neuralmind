@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """learned_decay.py — per-edge half-life rates adapted from reinforcement history (A3).
 
 Replaces fixed HALF_LIFE_DAYS scalars with per-edge rates. Bounded to

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """synapse_client.py — Hebbian synapse operations.
 
 Wraps SynapseStore with file-level convenience, compliance detection,

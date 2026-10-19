@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """MCP auto-detection + one-command registration for AI coding agents.
 
 NeuralMind ships an MCP server (the ``neuralmind-mcp`` console script). The

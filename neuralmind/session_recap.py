@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """session_recap.py — "where we left off" at the start of a new session.
 
 A fresh agent session starts cold: the user has to re-explain what they were

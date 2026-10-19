@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Cluster-cohesion outlier detection over the synapse graph (PROTOTYPE).
 
 The spreading-activation recall in :mod:`neuralmind.synapses` answers

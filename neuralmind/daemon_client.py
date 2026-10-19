@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Thin client for the NeuralMind daemon (PRD 5).
 
 Stdlib-only (``urllib``) so importing it never pulls a transport dependency.

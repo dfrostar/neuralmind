@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 bge_embedder.py — ChromaDB-free BGE-large text embeddings
 =========================================================

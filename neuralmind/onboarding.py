@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """onboarding — interactive setup wizard for team tier.
 
 Walks a new operator through:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """User model + CRUD operations."""
 
 from __future__ import annotations

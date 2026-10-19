@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Team memory — a committed, auto-inherited bundle of learned associations.
 
 The synapse layer learns *what code goes with what* from how a developer works.

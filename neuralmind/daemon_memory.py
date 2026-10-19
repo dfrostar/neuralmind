@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """daemon_memory.py — shared warm daemon memory across MCP clients (F2).
 
 MCP clients connect to the daemon and share the warm NeuralMind instance

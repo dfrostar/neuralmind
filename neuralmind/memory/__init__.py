@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Local-first memory scaffolding for opt-in continual learning."""
 
 from __future__ import annotations

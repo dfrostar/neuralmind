@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Health check command for NeuralMind CLI + MCP.
 
 Provides a lightweight health signal for CI/CD, Docker healthchecks,

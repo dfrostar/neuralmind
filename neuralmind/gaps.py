@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Test-coverage gap detection — "find what you think you tested" (PROTOTYPE).
 
 NeuralMind indexes endpoints and test files, but never crosses them. So a route

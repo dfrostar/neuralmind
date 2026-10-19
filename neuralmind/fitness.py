@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 fitness.py — Multi-objective fitness function for the self-improvement engine (PRD 2 C1).
 

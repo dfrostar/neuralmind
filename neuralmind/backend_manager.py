@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Backend factory and configuration loading for NeuralMind."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """onnx_embedder.py — ChromaDB-free MiniLM text embeddings
 =========================================================
 

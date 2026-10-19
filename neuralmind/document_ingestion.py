@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Document ingestion: parse PDF/Markdown/text into ContentNodes.
 
 Generalizes the CMMC ingestion path to arbitrary documents. Parses files,

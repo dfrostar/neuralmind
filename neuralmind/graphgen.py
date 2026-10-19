@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Built-in tree-sitter graph backend — emit graphify-compatible ``graph.json``.
 
 The entire NeuralMind retrieval stack (``embedder`` → ``context_selector`` →

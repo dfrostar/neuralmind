@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Decision provenance — index the *why* behind code, not just the code.
 
 NeuralMind remembers what a codebase *is*. It does not remember why it is that

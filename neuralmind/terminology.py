@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Medical terminology table for peptide book retrieval.
 
 Provides comprehensive drug/term → class/mechanism/condition mappings for

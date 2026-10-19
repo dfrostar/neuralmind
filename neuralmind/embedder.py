@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 embedder.py — Graph Node Embedding System
 ==========================================

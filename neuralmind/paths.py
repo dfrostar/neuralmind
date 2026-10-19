@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """paths.py — Centralized artifact path resolution for NeuralMind.
 
 Provides a single source of truth for all artifact paths, with backward

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """medical_retriever.py — Purpose-built medical book retriever for NeuralMind.
 
 A greenfield retrieval engine for medical/prose content. NOT a retrofit of the

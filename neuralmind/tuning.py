@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """tuning.py — expanded parameter space for the self-improvement engine (C2).
 
 Maps every knob the tuner can optimize into a ``TuneableParam`` and

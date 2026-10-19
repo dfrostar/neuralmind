@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 drift.py — Commit-time pattern-drift detection over the code graph.
 

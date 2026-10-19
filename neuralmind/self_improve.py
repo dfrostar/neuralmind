@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 self_improve.py — selector auto-tuning (self-improvement engine, subsystem A)
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 event_log.py — JSONL bridge so live events cross process boundaries.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """G5 — Structural gap detection (InfraNodus-style betweenness).
 
 Ports InfraNodus's betweenness-centrality gap detection into NeuralMind's

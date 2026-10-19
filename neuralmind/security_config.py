@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """security_config.py — the enforcement settings under ``security:``.
 
 ``neuralmind-backend.yaml`` already carries ``security.roles`` and

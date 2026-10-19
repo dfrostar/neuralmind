@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 relevance.py — structured relevance sidecar for downstream tools
 ================================================================

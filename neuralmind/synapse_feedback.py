@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 synapse_feedback.py — the synapse write-path
 =============================================

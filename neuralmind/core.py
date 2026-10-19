@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 core.py — NeuralMind Core System
 =================================

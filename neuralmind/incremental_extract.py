@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 G4 — Incremental re-extraction.
 

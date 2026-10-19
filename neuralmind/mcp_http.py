@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """mcp_http.py — Streamable HTTP MCP transport (F1), a skeleton.
 
 Session lifecycle and a Starlette app factory toward the 2026 MCP spec

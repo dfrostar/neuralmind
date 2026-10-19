@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """__main__.py — Enable `python -m neuralmind` CLI entry point."""
 
 from neuralmind.cli import main

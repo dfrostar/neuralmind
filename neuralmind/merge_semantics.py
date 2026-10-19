@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 E2 — Quality-weighted merge semantics for team memory.
 

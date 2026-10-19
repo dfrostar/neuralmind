@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Chapter-level indexer for prose/book retrieval.
 
 Treats each markdown chapter as a single searchable document

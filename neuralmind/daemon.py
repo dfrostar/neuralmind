@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """NeuralMind local daemon (PRD 5, Phase 1 — experimental).
 
 The durable long-term boundary for NeuralMind is a *local service* that owns

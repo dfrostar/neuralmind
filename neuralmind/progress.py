@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Progress reporting for long-running CLI work (ingest, embed, scan).
 
 Two rendering modes, picked from the destination stream:

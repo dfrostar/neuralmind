@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 ci_check.py — CI-specific analysis for NeuralMind.
 

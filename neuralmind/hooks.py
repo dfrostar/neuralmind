@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 hooks.py — Claude Code PostToolUse hook integration
 ====================================================

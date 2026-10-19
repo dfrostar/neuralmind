@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """sleep.py — offline daemon sleep pass for memory consolidation (A4).
 
 Scheduled (weekly, configurable via NEURALMIND_SLEEP_INTERVAL_DAYS):

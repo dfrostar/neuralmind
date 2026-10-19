@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """tuner.py — population-based evolutionary search (C3).
 
 Critical path. The tuner is the moat: it makes the product

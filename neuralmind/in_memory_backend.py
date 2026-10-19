@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """In-memory EmbeddingBackend implementation for deterministic offline usage."""
 
 from __future__ import annotations

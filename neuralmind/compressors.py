@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 compressors.py — Token-reducing transforms for Claude Code tool outputs
 ========================================================================

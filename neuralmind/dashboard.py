@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 dashboard.py — Read-only NeuralMind dashboard data layer.
 

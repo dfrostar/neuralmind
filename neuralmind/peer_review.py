@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 E3 — Peer review gate for team-memory contributions.
 

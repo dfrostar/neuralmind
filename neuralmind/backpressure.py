@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 F4 — Backpressure + circuit breakers.
 

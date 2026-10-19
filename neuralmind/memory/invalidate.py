@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Invalidation Engine — Git-aware staleness detection for DecisionRecords.
 
 Conservative invalidation: when a commit changes a file named in a decision's

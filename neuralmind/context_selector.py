@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 context_selector.py — Intelligent Context Selection for Token Reduction
 ========================================================================

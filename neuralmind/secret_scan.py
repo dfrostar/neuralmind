@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """secret_scan.py — secret detection and redaction
 
 NeuralMind persists text that a developer's tools produced: the most

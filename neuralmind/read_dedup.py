@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """read_dedup.py — Replace a repeat read of an unchanged file with a short stub.
 
 In a long session an agent often reads a file it already has in context. The

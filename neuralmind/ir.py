@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """NeuralMind canonical Intermediate Representation (IR).
 
 The IR is the *one* versioned contract every downstream layer — retrieval,

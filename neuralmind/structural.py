@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 structural.py — Typed structural edge index over the code graph.
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 traces.py — Immutable reasoning trace store (PRD 2 A1).
 

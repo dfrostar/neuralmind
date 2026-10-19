@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """neuralmind_config.py — project-level ``.neuralmind.yaml`` config loader.
 
 Reads the optional ``.neuralmind.yaml`` (or ``.neuralmind.yml``) file at a

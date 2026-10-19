@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 synapse_memory.py — Export learned synapses into agent-readable memory files.
 

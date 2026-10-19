@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """security_profile.py — what ``security.profile: cui`` refuses at run time.
 
 The profile is parsed in ``security_config``, which also makes it force

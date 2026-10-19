@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """domains.py — Read-only domain taxonomy classifier for synapse nodes.
 
 Labels every distinct synapse node as one of four coarse domains:

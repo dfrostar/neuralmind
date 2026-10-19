@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Incremental bookkeeping for content ingestion.
 
 `neuralmind ingest-content` used to re-parse and re-embed every file on

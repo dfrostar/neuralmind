@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """semantic.py — meaning-based ranking for decision search.
 
 Keyword search (``store.py``) finds a decision only when the question shares a

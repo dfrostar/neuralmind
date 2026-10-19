@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 bm25.py — BM25 keyword index for code-aware hybrid search
 ==========================================================

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """cost_attribution.py — CFO-facing ROI artifact from query event logs.
 
 Reads the JSONL query events written by ``neuralmind.memory`` and the

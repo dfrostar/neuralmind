@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 export.py — Audit export generation for NeuralMind.
 

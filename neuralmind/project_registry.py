@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Project registry for multi-project operator mode.
 
 Stores known project paths and per-scope preferences in

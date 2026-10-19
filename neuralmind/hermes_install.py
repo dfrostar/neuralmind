@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """hermes_install.py — install NeuralMind's Hermes-Agent plugin.
 
 ``neuralmind install-hermes-plugin`` writes a directory plugin into the Hermes

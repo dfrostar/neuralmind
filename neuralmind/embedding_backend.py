@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 embedding_backend.py — Abstract Embedding Backend Interface
 ===========================================================

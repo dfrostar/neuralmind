@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 recent_queries.py — the recent-queries JSONL replay log
 ========================================================

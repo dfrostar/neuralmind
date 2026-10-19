@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """synapse_dynamics.py — SOTA brain-inspired dynamics for NeuralMind's synapse layer.
 
 Six modern techniques integrated into a unified associative memory engine:

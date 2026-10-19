@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Maintenance Eval Harness — 10-task maintenance replay benchmark.
 
 Implements the benchmark protocol from the NeuraKeep Reddit discussion:

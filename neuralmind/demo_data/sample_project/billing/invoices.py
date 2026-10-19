@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Invoice generation and delivery."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """l3_slots.py — how the four L3 slots are spent (v4.6.0, spec 7).
 
 L3 renders the top four search hits. On real repositories those four slots

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """identity.py — the OS account this process runs as, asked of the OS.
 
 ``security.identity: os`` in ``neuralmind-backend.yaml`` makes the MCP server

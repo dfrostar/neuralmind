@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 server.py — Local graph-view UI for NeuralMind.
 

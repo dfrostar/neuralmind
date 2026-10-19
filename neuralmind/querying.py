@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 querying.py — read-side query/search formatting
 ================================================

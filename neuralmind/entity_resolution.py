@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 entity_resolution.py — Entity resolution layer (PRD 2 A2).
 

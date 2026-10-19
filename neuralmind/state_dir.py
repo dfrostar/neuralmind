@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """state_dir.py — the project-local ``.neuralmind/`` state directory
 
 ``<project>/.neuralmind/`` holds per-machine state: the synapse store,

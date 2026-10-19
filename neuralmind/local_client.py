@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """local_client.py — Ollama local-model client for NeuralMind.
 
 Thin httpx wrapper around a local Ollama server for the optional

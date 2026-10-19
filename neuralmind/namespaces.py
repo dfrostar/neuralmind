@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """
 namespaces.py — Resolve the active memory namespace (PRD 4).
 

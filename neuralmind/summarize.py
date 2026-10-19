@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """summarize.py — RAPTOR-style hierarchical summarization for L0-L3 (B4).
 
 Replaces hand-tuned ``L0_MAX_TOKENS`` / ``L1_MAX_TOKENS`` constants with

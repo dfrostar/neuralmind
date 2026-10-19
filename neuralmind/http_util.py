@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """http_util.py — request-hygiene helpers shared by NeuralMind's local HTTP servers.
 
 The daemon (``daemon.py``) and the graph view (``server.py``) are both stdlib
