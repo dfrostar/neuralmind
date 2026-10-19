@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """JWT encode/decode helpers."""
 
 from __future__ import annotations

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Stripe integration — charges, refunds, webhook signature verification."""
 
 from __future__ import annotations

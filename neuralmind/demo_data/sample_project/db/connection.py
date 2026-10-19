@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: MIT
 """Database connection pool.
 
 Uses SQLite for the fixture (zero external dependencies). Production

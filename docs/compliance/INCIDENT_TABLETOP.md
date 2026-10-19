@@ -56,8 +56,9 @@ Questions:
 4. What severity is this, by the plan's §3 table, and what fix target does that
    set?
 5. How do you decide whether NeuralMind's use of the library is exploitable?
-   Name the tools (`pip-audit`, the call path from `neuralmind serve`, the VEX
-   file `security/neuralmind.openvex.json`) and what you'd record in each.
+   Name the tools (`pip-audit`, the call path from the MCP server's entry
+   point, `neuralmind-mcp`, which runs `neuralmind.mcp_server:main`, and the
+   VEX file `security/neuralmind.openvex.json`) and what you'd record in each.
 
 ### Part 2: it's reachable (15–30 minutes)
 
@@ -69,8 +70,9 @@ Questions:
 1. What do users run in the meantime? Is there a setting or flag that turns the
    vulnerable path off, and where is it documented?
 2. Should the current release be yanked on PyPI? Show where you would do it and
-   say what a yank does and doesn't do (it hides the version from new
-   installs; installed copies keep running).
+   say what a yank does and doesn't do: pip stops choosing that version for an
+   unpinned install, but an install pinned to it exactly (`neuralmind==X.Y.Z`)
+   still gets it, and copies already installed keep running.
 3. What happens to the GHCR `latest` tag and the published image?
 4. Who has to be told before the fix ships: paid customers, the reporter,
    the library's maintainers? Where is the list of paid customers' security

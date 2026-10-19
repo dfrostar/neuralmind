@@ -12,6 +12,9 @@ from pathlib import Path
 
 PACKAGE = Path(__file__).resolve().parent.parent / "neuralmind"
 TIER2 = PACKAGE / "tier2"
+# The demo's sample project stands in for a user's code, and its bundled
+# graph.json pins each symbol's line number; a tag line would shift them all.
+DEMO_PROJECT = PACKAGE / "demo_data" / "sample_project"
 
 
 def _tag(path: Path) -> str | None:
@@ -26,7 +29,7 @@ def _tag(path: Path) -> str | None:
 def test_every_package_file_names_its_license():
     wrong = []
     for path in sorted(PACKAGE.rglob("*.py")):
-        if "__pycache__" in path.parts:
+        if "__pycache__" in path.parts or DEMO_PROJECT in path.parents:
             continue
         expected = "LicenseRef-NeuralMind-Commercial" if TIER2 in path.parents else "MIT"
         if _tag(path) != expected:

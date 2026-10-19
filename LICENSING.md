@@ -42,7 +42,9 @@ NeuralMind is **open-core**. One repository, two licenses, one clear line:
 
 **Machine-readable**
 
-- Every Python file under `neuralmind/` starts with an SPDX tag:
+- Every Python file under `neuralmind/`, apart from the demo's sample
+  project (`neuralmind/demo_data/sample_project/`, which stands in for a
+  user's code), starts with an SPDX tag:
   `SPDX-License-Identifier: MIT`, or
   `SPDX-License-Identifier: LicenseRef-NeuralMind-Commercial` under
   `neuralmind/tier2/`. A test (`tests/test_spdx_headers.py`) fails if a file
