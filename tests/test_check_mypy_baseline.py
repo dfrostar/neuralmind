@@ -57,7 +57,7 @@ def test_a_line_number_inside_a_message_doesnt_change_the_match():
 def test_the_same_error_twice_in_a_file_counts_twice(baseline, monkeypatch):
     # A baseline holding it once doesn't cover a second copy.
     _mypy_says(monkeypatch, OUTPUT)
-    assert check.main(["--update"]) == 0
+    assert check.main(["--rebaseline"]) == 0
     lines = [line for line in baseline.read_text().splitlines() if not line.startswith("#")]
     assert len(lines) == 3
     one_less = "\n".join(lines[:1] + lines[2:])
@@ -67,14 +67,14 @@ def test_the_same_error_twice_in_a_file_counts_twice(baseline, monkeypatch):
 
 def test_matching_the_baseline_passes(baseline, monkeypatch, capsys):
     _mypy_says(monkeypatch, OUTPUT)
-    check.main(["--update"])
+    check.main(["--rebaseline"])
     assert check.main([]) == 0
     assert "3 errors, all in the baseline" in capsys.readouterr().out
 
 
 def test_a_new_error_fails_and_is_named_with_its_line(baseline, monkeypatch, capsys):
     _mypy_says(monkeypatch, OUTPUT)
-    check.main(["--update"])
+    check.main(["--rebaseline"])
     extra = "neuralmind/c.py:5: error: Missing return statement  [return]\n"
     _mypy_says(monkeypatch, extra + OUTPUT)
     assert check.main([]) == 1
@@ -85,14 +85,14 @@ def test_a_new_error_fails_and_is_named_with_its_line(baseline, monkeypatch, cap
 
 def test_moving_a_known_error_to_another_line_still_passes(baseline, monkeypatch):
     _mypy_says(monkeypatch, OUTPUT)
-    check.main(["--update"])
+    check.main(["--rebaseline"])
     _mypy_says(monkeypatch, OUTPUT.replace("a.py:10:", "a.py:11:").replace("line 3", "line 4"))
     assert check.main([]) == 0
 
 
 def test_a_fixed_error_fails_until_the_baseline_is_lowered(baseline, monkeypatch, capsys):
     _mypy_says(monkeypatch, OUTPUT)
-    check.main(["--update"])
+    check.main(["--rebaseline"])
     fixed = "\n".join(line for line in OUTPUT.splitlines() if "b.py" not in line)
     _mypy_says(monkeypatch, fixed)
     assert check.main([]) == 1
@@ -100,6 +100,29 @@ def test_a_fixed_error_fails_until_the_baseline_is_lowered(baseline, monkeypatch
     assert check.main(["--update"]) == 0
     assert check.main([]) == 0
     assert "# 2 errors" in baseline.read_text()
+
+
+def test_update_wont_trade_a_fixed_error_for_new_ones(baseline, monkeypatch, capsys):
+    # Fixing b.py's error while adding two in c.py: --update refuses and keeps the file.
+    _mypy_says(monkeypatch, OUTPUT)
+    check.main(["--rebaseline"])
+    before = baseline.read_text()
+    traded = "\n".join(line for line in OUTPUT.splitlines() if "b.py" not in line)
+    traded = (
+        "neuralmind/c.py:5: error: Missing return statement  [return]\n"
+        "neuralmind/c.py:9: error: Missing return statement  [return]\n" + traded
+    )
+    _mypy_says(monkeypatch, traded)
+    assert check.main(["--update"]) == 1
+    assert "baseline is unchanged" in capsys.readouterr().out
+    assert baseline.read_text() == before
+    assert check.main(["--rebaseline"]) == 0  # an upgrade's new errors, on purpose
+    assert check.main([]) == 0
+
+
+def test_update_and_rebaseline_dont_combine():
+    with pytest.raises(SystemExit):
+        check.main(["--update", "--rebaseline"])
 
 
 def test_mypy_that_doesnt_run_is_exit_2(baseline, monkeypatch):

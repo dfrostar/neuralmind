@@ -13,16 +13,23 @@ editing a file doesn't move its known errors out of the baseline. A ``line N``
 inside a message (``already defined on line 40``) is ignored for the same
 reason.
 
+``--update`` only lowers the baseline: it refuses, and leaves the file as it
+was, while mypy reports an error the baseline doesn't list, so fixing one
+error can't carry two new ones in with it.
+
 The baseline is only as stable as what mypy checks against: mypy is pinned in
-CI, but a dependency release that adds or removes type hints can change the
-list. When that happens, the new or vanished errors name the dependency's
-types; refresh the baseline in its own commit, saying which upgrade changed it.
+CI, but a mypy bump or a dependency release that adds or removes type hints
+can change the list. When that happens, the new errors name mypy's or the
+dependency's types; ``--rebaseline`` rewrites the list from scratch, in a
+commit of its own that says which upgrade changed it.
 
 Usage:
-    python scripts/check_mypy_baseline.py            # check (CI)
-    python scripts/check_mypy_baseline.py --update   # rewrite the baseline after fixing errors
+    python scripts/check_mypy_baseline.py               # check (CI)
+    python scripts/check_mypy_baseline.py --update      # lower the baseline after fixing errors
+    python scripts/check_mypy_baseline.py --rebaseline  # rewrite it after a mypy or dependency upgrade
 
-Exit codes: 0 matches the baseline, 1 new or fixed errors, 2 mypy didn't run.
+Exit codes: 0 matches the baseline (or it was written), 1 new or fixed errors
+(for --update, new ones), 2 mypy didn't run.
 """
 
 from __future__ import annotations
@@ -113,7 +120,15 @@ def run_mypy() -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--update", action="store_true", help="rewrite the baseline")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--update", action="store_true", help="lower the baseline; refuses to add errors"
+    )
+    mode.add_argument(
+        "--rebaseline",
+        action="store_true",
+        help="rewrite the baseline, new errors included (a mypy or dependency upgrade)",
+    )
     args = parser.parse_args(argv)
 
     output = run_mypy()
@@ -123,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     errors = parse(output)
     current = Counter(fingerprint(path, message) for path, _, message in errors)
 
-    if args.update:
+    if args.rebaseline:
         write_baseline(current)
         print(f"Wrote {BASELINE.relative_to(ROOT)}: {len(errors)} errors.")
         return 0
@@ -139,6 +154,16 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {path}:{line}: {message}")
                 unshown[key] -= 1
         print("Fix them; the baseline lists errors that predate this check, not new ones.")
+        if args.update:
+            print(
+                "The baseline is unchanged: --update only removes errors. If a mypy or "
+                "dependency upgrade caused these, use --rebaseline in a commit that says so."
+            )
+            return 1
+    if args.update:
+        write_baseline(current)
+        print(f"Wrote {BASELINE.relative_to(ROOT)}: {len(errors)} errors.")
+        return 0
     if fixed:
         print(f"{sum(fixed.values())} baseline error(s) mypy no longer reports:")
         for entry in sorted(fixed.elements()):
