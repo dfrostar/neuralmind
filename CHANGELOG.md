@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.18.1](https://github.com/dfrostar/neuralmind/compare/v4.18.0...v4.18.1) (2026-10-19)
+
+
+### Documentation
+
+* **compliance:** a one-hour incident response tabletop kit ([836e2bd](https://github.com/dfrostar/neuralmind/commit/836e2bdbe17aa31f7747aad831869fa4721e5bc6))
+* **compliance:** OMB M-26-05 rescinded the government-wide SSDF attestation requirement ([836e2bd](https://github.com/dfrostar/neuralmind/commit/836e2bdbe17aa31f7747aad831869fa4721e5bc6))
+
 ## [4.18.0](https://github.com/dfrostar/neuralmind/compare/v4.17.2...v4.18.0) (2026-10-18)
 
 
