@@ -1,7 +1,7 @@
 # NIST and NeuralMind: what applies, where it stands, what's next
 
-**Date:** 2026-10-11
-**Version:** 1.0
+**Date:** 2026-10-19
+**Version:** 1.1
 
 ---
 
@@ -15,7 +15,7 @@ buying it and what they will run it on:
 
 | If you are… | You will be asked about… |
 |---|---|
-| A US federal agency buying software | NIST SP 800-218 (SSDF), through CISA's Secure Software Development Attestation Form, which the producer signs |
+| A US federal agency buying software | NIST SP 800-218 (SSDF). Since OMB M-26-05 (January 2026) each agency sets its own requirements: it may ask the producer to sign CISA's Secure Software Development Attestation Form or its own attestation, or for an SBOM |
 | A defense contractor handling CUI | NIST SP 800-171 (CMMC Level 2), assessed against *your* environment, with NeuralMind inside its scope |
 | An agency installing NeuralMind inside an authorized system | NIST SP 800-53 controls in *your* authorization (ATO). FedRAMP doesn't apply, because NeuralMind is local software with no hosted service |
 | Anyone running FIPS-mode hosts | FIPS 140-3, for the host's own cryptographic modules |

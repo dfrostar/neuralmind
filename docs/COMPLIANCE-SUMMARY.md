@@ -17,7 +17,7 @@
 | Certifications held | **None.** NeuralMind has no SOC 2 report and no CMMC assessment. Both frameworks assess an organization's environment; the sections below show what NeuralMind gives your assessor |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON for every release since v4.0.0, served at [neuralmind.uk/security](https://neuralmind.uk/security) |
-| Secure development (NIST SP 800-218 SSDF) | **Practice-by-practice evidence** in [`compliance/SSDF.md`](compliance/SSDF.md). *(v4.14.0+)* Container images are signed (cosign, keyless), releases carry build-provenance attestations, and a VEX document lists the dependency advisories that don't apply. NIST doesn't certify against the SSDF: a federal buyer asks for CISA's attestation form, signed by Cheval-Volant LLC |
+| Secure development (NIST SP 800-218 SSDF) | **Practice-by-practice evidence** in [`compliance/SSDF.md`](compliance/SSDF.md). *(v4.14.0+)* Container images are signed (cosign, keyless), releases carry build-provenance attestations, and a VEX document lists the dependency advisories that don't apply. NIST doesn't certify against the SSDF. Since OMB M-26-05 (January 2026) a federal buyer may ask for CISA's attestation form, its own attestation or an SBOM, signed or supplied by Cheval-Volant LLC; none is required government-wide |
 | License | **MIT core** — the Team modules in `neuralmind/tier2/` are source-available ([LICENSING.md](../LICENSING.md)); full source review, no vendor lock-in |
 | Source available | **Yes** — entire codebase on GitHub, every claim verifiable |
 

@@ -9,15 +9,18 @@
 ## 1. Purpose
 
 Map each SSDF practice to the evidence in this repository, so a federal buyer,
-an assessor, or the officer who signs CISA's Secure Software Development
-Attestation Form can check it rather than take it on trust.
+an assessor, or the officer who signs an attestation to the SSDF can check it
+rather than take it on trust.
 
-NIST doesn't certify software against the SSDF. A US federal agency buying
-software asks its producer to **attest** to the SSDF practices (OMB M-22-18 and
-M-23-16), on CISA's Secure Software Development Attestation Form, signed by
-the producer's CEO or a designee. For NeuralMind that is Cheval-Volant LLC.
-This document is the evidence behind that signature. It isn't the attestation
-itself.
+NIST doesn't certify software against the SSDF. OMB M-22-18 and M-23-16 had
+required US federal agencies to collect an attestation to the SSDF practices
+from their software producers, on CISA's Secure Software Development
+Attestation Form. OMB M-26-05 (January 23, 2026) rescinded both and left each
+agency to set its own risk-based requirements: an agency may still ask for that
+form, its own attestation, or an SBOM, but none is required government-wide.
+When one is asked for, it's signed by the producer's CEO or a designee; for
+NeuralMind that is Cheval-Volant LLC. This document is the evidence behind
+that signature. It isn't the attestation itself.
 
 Version 1.1 said `main` required a pull request and passing CI, that every
 change was reviewed in a pull request, and that mypy ran as a check. None of
