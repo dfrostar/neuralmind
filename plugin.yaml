@@ -6,9 +6,10 @@
 name: neuralmind
 title: NeuralMind
 description: >-
-  Semantic code intelligence for AI agents — 12-50× per-query token
-  reduction. Local synapse layer that learns code associations from
-  co-activation. MCP server with live Obsidian-style graph view.
+  Codebase memory for AI agents — the gold file on 40 of 40 public-benchmark
+  queries, against 32 of 40 for keyword ripgrep, at 31-67× fewer tokens.
+  Local synapse layer that learns code associations from co-activation. MCP
+  server with live Obsidian-style graph view.
 author: dfrostar
 license: MIT
 tags:

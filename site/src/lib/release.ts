@@ -10,16 +10,34 @@ export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 // value is fetched below. release-please keeps the tag current: this file is
 // in release-please-config.json's extra-files, and the generic updater bumps
 // the version on the line marked x-release-please-version on every release.
-// The date is not bumped automatically and is only updated by hand. It is
-// used only in a fallback build (or if the API omits published_at), where it
-// shows as the security page's "Released" date and the JSON-LD dateModified,
-// so a stale date there is cosmetic next to the correct tag.
-const FALLBACK = { tag: 'v4.18.1', date: '2026-10-19' }; // x-release-please-version
+// There is no fallback date to go stale beside it: the date comes from the
+// tag's CHANGELOG.md heading, which release-please writes in the same release
+// PR (see releaseDateFromChangelog).
+const FALLBACK = { tag: 'v4.18.1' }; // x-release-please-version
+
+// "## [4.18.1](…compare/v4.18.0...v4.18.1) (2026-10-19)" → "2026-10-19".
+// Returns '' when the heading isn't there (a build outside the repo, or a tag
+// the changelog doesn't have yet), and callers then omit the date rather than
+// show one that belongs to another release.
+export function releaseDateFromChangelog(tag: string, changelog?: string): string {
+    let text = changelog;
+    if (text === undefined) {
+        try {
+            // next build runs from site/, so the repo-root changelog is one up.
+            text = fs.readFileSync(path.join(process.cwd(), '..', 'CHANGELOG.md'), 'utf8');
+        } catch {
+            return '';
+        }
+    }
+    const version = tag.replace(/^v/, '').replace(/\./g, '\\.');
+    const m = text.match(new RegExp(`^## \\[${version}\\]\\([^)]*\\) \\((\\d{4}-\\d{2}-\\d{2})\\)`, 'm'));
+    return m ? m[1] : '';
+}
 
 export interface LatestRelease {
     tag: string; // e.g. "v1.9.1"
     version: string; // e.g. "1.9.1"
-    date: string; // e.g. "2026-07-28"
+    date: string; // e.g. "2026-07-28"; '' when nothing dates this tag
     htmlUrl: string; // GitHub release page (always exists)
     pypiUrl: string; // verified at build time — never a dead link
     sbomUrl: string | null; // direct SBOM download, or null if none exists yet
@@ -73,7 +91,7 @@ function sbomUrlFor(
 // fetch, so layout.tsx and security/page.tsx share one request per build.
 export async function getLatestRelease(): Promise<LatestRelease> {
     let tag = FALLBACK.tag;
-    let date = FALLBACK.date;
+    let date = '';
     let htmlUrl = `${GITHUB_URL}/releases/tag/${FALLBACK.tag}`;
     let assets: { name?: string; browser_download_url?: string }[] = [];
     try {
@@ -84,12 +102,15 @@ export async function getLatestRelease(): Promise<LatestRelease> {
         if (!res.ok) throw new Error(`GitHub API ${res.status}`);
         const data = await res.json();
         tag = data.tag_name as string;
-        date = ((data.published_at as string) ?? '').slice(0, 10) || FALLBACK.date;
+        date = ((data.published_at as string) ?? '').slice(0, 10);
         htmlUrl = (data.html_url as string) ?? `${GITHUB_URL}/releases/tag/${tag}`;
         if (Array.isArray(data.assets)) assets = data.assets;
     } catch {
         // keep the fallback values
     }
+    // The API's published_at, else the changelog heading for the same tag, so
+    // the date always belongs to the tag it is shown with.
+    if (!date) date = releaseDateFromChangelog(tag);
     const version = tag.replace(/^v/, '');
     return {
         tag,

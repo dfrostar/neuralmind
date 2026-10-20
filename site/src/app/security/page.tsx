@@ -126,7 +126,7 @@ export default async function SecurityPage() {
                         <div className="flex items-center justify-between flex-wrap gap-4">
                             <div>
                                 <span className="text-electric-bright font-mono font-bold text-xl">{version}</span>
-                                <span className="text-slate-400 ml-3">Released {releaseDate}</span>
+                                {releaseDate && <span className="text-slate-400 ml-3">Released {releaseDate}</span>}
                             </div>
                             <div className="flex gap-3">
                                 <a href={releaseUrl} target="_blank" rel="noopener noreferrer"

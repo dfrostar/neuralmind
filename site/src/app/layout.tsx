@@ -100,7 +100,9 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             installUrl: 'https://pypi.org/project/neuralmind/',
             softwareVersion,
             datePublished: '2025-05-01',
-            dateModified,
+            // Empty when neither the API nor CHANGELOG.md dates the tag: omit it
+            // rather than publish another release's date.
+            ...(dateModified ? { dateModified } : {}),
             license: 'https://opensource.org/licenses/MIT',
             isAccessibleForFree: true,
             programmingLanguage: 'Python',

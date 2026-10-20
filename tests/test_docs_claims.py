@@ -58,6 +58,15 @@ PUBLISHED_FILES = (
     # Its `description` is the PyPI summary line, the first claim most
     # installers read.
     "pyproject.toml",
+    # The user guide linked from the README. It carried the "~800 vs ~50,000
+    # tokens" pairing UNSOURCED_FIGURES rejects, unread by any guard.
+    "USAGE.md",
+    # Registry manifests: their `description` is the listing other people's
+    # agent runtimes show (Agent Zero's a0-plugins index). Both quoted a bare
+    # 12-50× while no prose guard read them; test_site_claims only checked
+    # their ratios.
+    "plugin.yaml",
+    "integrations/a0-plugins/neuralmind/index.yaml",
 )
 PUBLISHED_GLOBS = (
     "docs/comparisons/*.md",

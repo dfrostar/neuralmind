@@ -759,6 +759,25 @@ def test_release_fallback_tracks_the_package_version() -> None:
     assert any(isinstance(e, dict) and e.get("path") == "site/src/lib/release.ts" for e in extra)
 
 
+def test_release_fallback_date_comes_from_the_changelog() -> None:
+    # release-please bumps the fallback tag but not a date beside it, so a
+    # hand-typed date would pair every future tag with an old release day on
+    # /security and in the JSON-LD dateModified. The date is read from the
+    # tag's CHANGELOG.md heading instead, which release-please writes in the
+    # same release PR.
+    text = RELEASE_TS.read_text(encoding="utf-8")
+    m = re.search(r"const FALLBACK = \{([^}]*)\}", text)
+    assert m and "date" not in m.group(1), "release.ts FALLBACK must not carry a hardcoded date"
+    tag = re.search(r"tag: 'v([\d.]+)'", m.group(1))
+    assert tag
+    changelog = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    heading = rf"^## \[{re.escape(tag.group(1))}\]\([^)]*\) \(\d{{4}}-\d{{2}}-\d{{2}}\)"
+    assert re.search(heading, changelog, re.M), (
+        f"CHANGELOG.md has no dated heading for v{tag.group(1)}, so a fallback build "
+        "would show no release date"
+    )
+
+
 # The hero leads with the grep comparison (the user's call, 2026-10-19): the
 # gold file on 40 of 40 queries where keyword ripgrep, opening its top five
 # files whole, finds 32 of 40. Pasting every file is the easiest baseline to
