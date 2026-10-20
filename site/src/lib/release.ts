@@ -29,7 +29,8 @@ export function releaseDateFromChangelog(tag: string, changelog?: string): strin
             return '';
         }
     }
-    const version = tag.replace(/^v/, '').replace(/\./g, '\\.');
+    // Escape every regex metacharacter, backslash included, not just the dots.
+    const version = tag.replace(/^v/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const m = text.match(new RegExp(`^## \\[${version}\\]\\([^)]*\\) \\((\\d{4}-\\d{2}-\\d{2})\\)`, 'm'));
     return m ? m[1] : '';
 }
