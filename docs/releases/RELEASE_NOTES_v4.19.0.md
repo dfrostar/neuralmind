@@ -1,6 +1,6 @@
-# NeuralMind v4.19.0 — live audit forwarding to syslog, and an alert when an audit record can't be written
+# NeuralMind v4.19.0 — live audit forwarding to syslog, an alert when an audit record can't be written, and an OSCAL component definition for SP 800-53
 
-**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, the last audit item: AU.L2-3.3.4 (alert when audit logging fails) and AU.L2-3.3.5 (correlate audit records)
+**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, the last audit item: AU.L2-3.3.4 (alert when audit logging fails) and AU.L2-3.3.5 (correlate audit records); and the first SP 800-53 item, a machine-readable statement of NeuralMind's controls for an agency's System Security Plan
 
 The audit log stayed on the host until someone ran `neuralmind audit export`.
 A SIEM saw the records hours or days later, if at all, and a failed audit write
@@ -114,6 +114,30 @@ project, once any have been sent, and the
 [data deletion procedure](../compliance/DATA_DELETION.md) says to delete them
 in the syslog daemon's files and the SIEM.
 
+### An OSCAL component definition for SP 800-53
+
+An agency that installs NeuralMind inside an authorized system has to say, in
+its System Security Plan, how each SP 800-53 control is met, including by the
+software it runs. Until now that meant reading the compliance docs and
+retyping them.
+
+[`security/neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)
+is an [OSCAL](https://pages.nist.gov/OSCAL/) 1.1.3 component definition: one
+`software` component and the 20 SP 800-53 Rev. 5 controls it touches.
+
+- **The controls:** AC-3, AC-6, IA-2, AU-2, AU-3, AU-4(1), AU-5, AU-6(3), AU-8,
+  AU-9, AU-9(2), AU-9(3), AU-12, CM-7, SC-8, SC-13, SC-28, SI-2, SI-7, SR-4.
+- **Each requirement** says what NeuralMind provides in its `description`, and
+  what stays yours in `remarks` ("Customer responsibility: …"). It names both
+  roles: no control is met by NeuralMind alone.
+- **GRC tools read it** straight into an SSP. Compliance Trestle loads it as
+  is; the [readable version](../compliance/SP800-53.md) is the same content as
+  a customer responsibility matrix.
+- **It can't drift.** CI validates it against the OSCAL schema, checks every
+  control ID against the Rev. 5 catalog, and checks that every setting and
+  command it names exists and that its provider matches the commercial terms.
+  release-please bumps its version with the package's.
+
 ## What the agent actually sees
 
 Nothing changes for an agent. Forwarding runs after each audit record is
@@ -146,8 +170,9 @@ now reaches your SIEM as it happens instead of at the next export.
 
 ## Not in this release
 
-The SP 800-171 audit items are done. Next is SP 800-53: an OSCAL component
-definition and a hardening guide. See [NIST.md §3](../compliance/NIST.md#3-whats-next).
+The SP 800-171 audit items are done, and the SP 800-53 component definition
+ships here. Next is an SP 800-53 hardening guide with settings that can be
+checked automatically. See [NIST.md §3](../compliance/NIST.md#3-whats-next).
 The Tier-2 team audit log isn't forwarded.
 
 ## Reproduce
@@ -171,3 +196,4 @@ neuralmind doctor .               # Audit forwarding: … nothing waiting
 - [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence): AU.L2-3.3.4, AU.L2-3.3.5
 - [NIST: what applies, where it stands, what's next](../compliance/NIST.md)
 - [Use NeuralMind in a CMMC CUI enclave](../use-cases/cmmc-cui-enclave.md)
+- [SP 800-53 controls and what stays yours](../compliance/SP800-53.md), and the [OSCAL component definition](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)

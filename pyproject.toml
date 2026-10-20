@@ -119,6 +119,9 @@ keywords = [
     "syslog-audit-forwarding",
     "siem-integration",
     "audit-failure-alerting",
+    "oscal",
+    "nist-800-53",
+    "customer-responsibility-matrix",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -238,7 +241,8 @@ dev = [
     "black>=26.3.1",
     "ruff>=0.1.0",
     "mypy>=1.0",
-    "pre-commit>=4.6.0"
+    "pre-commit>=4.6.0",
+    "jsonschema>=4.0"
 ]
 all = [
     "neuralmind[mcp,chromadb,dev]"

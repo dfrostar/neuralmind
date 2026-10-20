@@ -1,0 +1,346 @@
+{
+  "component-definition": {
+    "uuid": "79e1a33c-d28b-4056-8d1c-0b0706793e76",
+    "metadata": {
+      "title": "NeuralMind: NIST SP 800-53 Rev. 5 component definition",
+      "last-modified": "2026-10-20T00:00:00Z",
+      "version": "4.18.1",
+      "oscal-version": "1.1.3",
+      "roles": [
+        {
+          "id": "provider",
+          "title": "Provider: the maker of NeuralMind"
+        },
+        {
+          "id": "customer",
+          "title": "Customer: the organization running NeuralMind"
+        }
+      ],
+      "parties": [
+        {
+          "uuid": "0bcb33a0-551f-4417-ab2a-458164532df4",
+          "type": "organization",
+          "name": "Cheval-Volant LLC",
+          "short-name": "NeuralMind",
+          "email-addresses": [
+            "hello@neuralmind.uk"
+          ]
+        }
+      ],
+      "responsible-parties": [
+        {
+          "role-id": "provider",
+          "party-uuids": [
+            "0bcb33a0-551f-4417-ab2a-458164532df4"
+          ]
+        }
+      ]
+    },
+    "components": [
+      {
+        "uuid": "7c17ce06-57ad-4dd2-b413-ee0c3410483e",
+        "type": "software",
+        "title": "NeuralMind",
+        "description": "Local code-intelligence software for AI coding agents: it indexes a repository and serves code context over MCP, Claude Code hooks and a CLI, on the machine it is installed on. No hosted service; no telemetry.",
+        "purpose": "Retrieval of source-code context for AI coding agents.",
+        "responsible-roles": [
+          {
+            "role-id": "provider",
+            "party-uuids": [
+              "0bcb33a0-551f-4417-ab2a-458164532df4"
+            ]
+          }
+        ],
+        "control-implementations": [
+          {
+            "uuid": "be946a37-8a3b-4f32-a788-ed9d30a2409b",
+            "source": "https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json",
+            "description": "How NeuralMind implements the SP 800-53 Rev. 5 controls it touches, with what stays the customer's in each requirement's remarks. Settings are under `security:` in neuralmind-backend.yaml; security.profile: cui turns on the CUI-enclave posture as one setting.",
+            "implemented-requirements": [
+              {
+                "uuid": "fcd6bc66-0780-4aa2-b7ea-d6a2e28ba1b6",
+                "control-id": "ac-3",
+                "description": "Each MCP tool call is checked against a per-tool permission set for the roles admin, builder and reader (security.roles, or the built-in sets). With security.identity: os the caller is the OS account the MCP server runs as and its role comes from security.users (or security.default_role); the role a call declares is recorded, not used. The daemon's routes and `neuralmind build` need the same role as the matching MCP tool. Every refusal is written to the audit log. security.profile: cui forces identity: os.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Map each OS account to a role in security.users. Without security.identity: os, any caller can declare admin, so the permission sets limit a well-behaved agent, not a hostile caller. Other CLI commands run with the account's file permissions."
+              },
+              {
+                "uuid": "640d1067-5f19-4ff3-8154-bef80e4f6166",
+                "control-id": "ac-6",
+                "description": "Three roles with fixed tool sets: reader (query and search), builder (adds index builds), admin (adds administration tools). Under security.identity: os an OS account missing from security.users gets security.default_role, or is refused when none is set.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Give each account the least role it needs, and leave security.default_role unset or set to reader."
+              },
+              {
+                "uuid": "a1ccb973-0683-45bd-82a7-35a398256692",
+                "control-id": "ia-2",
+                "description": "NeuralMind doesn't authenticate users. With security.identity: os it takes each MCP caller's identity from the OS account the OS has already authenticated, and records it as the actor of every audit event; a declared actor or NEURALMIND_ACTOR is kept only as claimed_actor.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: OS accounts and their authentication (passwords, MFA, PIV/CAC). Without security.identity: os the actor is whatever the caller or environment declares."
+              },
+              {
+                "uuid": "4113f892-54be-44d7-b839-f961e650e269",
+                "control-id": "au-2",
+                "description": "Events logged to .neuralmind/audit_events.jsonl: queries, searches, index builds, MCP tool calls and their refusals (role, rate limit, encrypted-storage and profile refusals), audit checkpoints, and gap records for audit writes that failed.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Decide which of these events your audit policy requires, and review the event list against it at each upgrade."
+              },
+              {
+                "uuid": "3efb463c-a72d-473c-8d89-1441217b4ef7",
+                "control-id": "au-3",
+                "description": "Each record holds a UTC timestamp, category, action, actor (and actor_role), status, target and details, plus sha256 and prev_sha256 chaining it to the record before. ip_address is in the schema but empty: MCP runs over stdio.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Correlating the actor with OS login records where the record alone isn't enough."
+              },
+              {
+                "uuid": "a8e15e4d-ea2c-4daa-8acc-00c3010ad4c0",
+                "control-id": "au-4.1",
+                "description": "With security.audit_syslog set, every record is sent to syslog right after it is written, from every process that writes the log, and records a target that was down missed are sent when it is back (`neuralmind audit forward` sends them on demand).",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: A syslog daemon that keeps the records, and forwards them to your SIEM."
+              },
+              {
+                "uuid": "f4e11810-4e9b-4ebb-959f-e3982c1114f1",
+                "control-id": "au-5",
+                "description": "A record that can't be written is noted in .neuralmind/audit_write_failures.jsonl, `neuralmind doctor` warns (fails under security.profile: cui), and `neuralmind audit record-gap` records the gap in the hash-chained log. With security.audit_syslog set, the failure also raises an alert-severity syslog message at once. Under security.profile: cui a failure that can't even be noted refuses the call.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Route the alert severity from your syslog daemon to a person, and alert when forwarding itself stops (doctor reports records waiting)."
+              },
+              {
+                "uuid": "543d05fb-d2df-4035-a306-895621a099d4",
+                "control-id": "au-6.3",
+                "description": "Forwarded records are JSON with timestamp, actor, sha256 and prev_sha256, so a SIEM can correlate them with other systems' records and check the chain.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: The SIEM, the correlation, and the review itself."
+              },
+              {
+                "uuid": "416db671-750a-4711-ae33-77e2b36581fe",
+                "control-id": "au-8",
+                "description": "Timestamps are ISO 8601 in UTC, from the host clock.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Synchronize the host clock to an authoritative time source."
+              },
+              {
+                "uuid": "5b5bc32e-78cb-4c03-aeab-8f3a5e2582c0",
+                "control-id": "au-9",
+                "description": "The audit log is SHA-256 hash-chained; `neuralmind audit verify` fails on a changed or removed record, a record without a hash once the chain has started, and a line that isn't a record. Signed, anchored checkpoints (`neuralmind audit checkpoint`) extend it to removal of the newest records and a recomputed chain. Appends from several processes hold an OS lock, so concurrent writers can't break the chain.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: File permissions on .neuralmind/, a checkpoint schedule, and keeping the checkpoint key in an administrator account."
+              },
+              {
+                "uuid": "ff31775a-b5d4-4780-9568-f5bb3c37691c",
+                "control-id": "au-9.2",
+                "description": "Checkpoint copies in security.audit_anchor_dir, a directory the administrator alone can write, and with security.audit_syslog every record forwarded off the log as it is written. `audit verify` fails when a configured anchor copy is missing.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Put the anchor directory and the syslog destination on storage the developers can't write, ideally another system."
+              },
+              {
+                "uuid": "22e28e2b-db14-4ba2-93cc-36073ca81159",
+                "control-id": "au-9.3",
+                "description": "Checkpoints are signed with an ECDSA P-256 key (FIPS 186-5) whose public half is pinned in security.audit_checkpoint_key; `audit verify` fails on a forged, re-signed or missing checkpoint. Signing runs through the cryptography package's OpenSSL.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Keep the private key in an administrator account. On a FIPS host, rebuild cryptography against the system OpenSSL and confirm it uses the validated FIPS provider."
+              },
+              {
+                "uuid": "74157b2c-f960-47bc-8cbe-6f0003798e0f",
+                "control-id": "au-12",
+                "description": "Records are generated by every process that acts on the project: the CLI, the MCP server, the Claude Code and Hermes hooks, and the daemon.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Keep these processes running under accounts whose actions you need to audit."
+              },
+              {
+                "uuid": "2b442267-0f2c-45b6-b49a-640c748d1920",
+                "control-id": "cm-7",
+                "description": "The MCP server uses stdio by default; the HTTP servers bind to 127.0.0.1 and require a token. No telemetry. Opt-in LLM documentation seeding is off by default. Under security.profile: cui, `neuralmind serve` refuses a listener beyond loopback or without its token, a daemon listening that way refuses the project, and LLM seeding is refused even when switched on.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Don't expose the HTTP transport beyond the enclave; keep NEURALMIND_LLM_SEED unset."
+              },
+              {
+                "uuid": "fdc80f26-e2e7-4373-b0fa-fc0b1464d815",
+                "control-id": "sc-8",
+                "description": "NeuralMind's own listeners and syslog forwarding carry no TLS. Under security.profile: cui the HTTP servers are refused beyond loopback and without their token, and security.audit_syslog is refused unless the target is on this machine, so CUI doesn't cross a network through NeuralMind.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: An SSH tunnel or the enclave's encrypted network for remote access, and TLS from the host's syslog daemon to the SIEM."
+              },
+              {
+                "uuid": "46302944-f2ff-4d0e-98a1-7a2c6b766d80",
+                "control-id": "sc-13",
+                "description": "NeuralMind contains no cryptographic module of its own to validate. Its hash calls work with the OS FIPS mode on, and CI runs the test suite with the OpenSSL FIPS provider enforced. `neuralmind doctor` reports the OS FIPS mode and fails a project under security.profile: cui when it is off.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: The OS FIPS mode and FIPS-validated modules on the host."
+              },
+              {
+                "uuid": "9f4994fa-fc7b-4148-b656-57ee1f26465a",
+                "control-id": "sc-28",
+                "description": "NeuralMind doesn't encrypt data itself. With security.require_encrypted_storage (forced by security.profile: cui) it verifies FileVault, BitLocker or dm-crypt/LUKS on every volume holding the project's state, refuses to build, query, serve MCP tools or run hooks without it, and logs each check. Copies under the home directory are written only where the same check passes.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: The encryption itself, with FIPS-validated full-disk encryption, covering every location `neuralmind data-locations` lists."
+              },
+              {
+                "uuid": "7da51416-f1bd-439c-8be1-c03451885d41",
+                "control-id": "si-2",
+                "description": "A vulnerability disclosure policy (SECURITY.md) with response targets; bandit, pip-audit and CodeQL on every change; a published OpenVEX document for advisories that don't apply; a CycloneDX SBOM per release.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Stay on a supported release and feed the SBOM and VEX to your scanner."
+              },
+              {
+                "uuid": "cfb3ff36-c531-4740-80c0-b60f4b5f3f09",
+                "control-id": "si-7",
+                "description": "Release container images are signed keylessly with cosign, and the image, wheel and sdist carry GitHub build-provenance attestations, which the release workflow verifies before publishing.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Verify the signature and attestations before installing (docs/compliance/SSDF.md \u00a72)."
+              },
+              {
+                "uuid": "710d8638-bb12-4bd4-bbc1-eb4cba4d81a6",
+                "control-id": "sr-4",
+                "description": "Build-provenance attestations for every release artifact, a CycloneDX SBOM, and third-party GitHub Actions pinned to full commit SHAs.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Record the verified version and its SBOM in your inventory."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

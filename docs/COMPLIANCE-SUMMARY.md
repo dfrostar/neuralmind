@@ -103,6 +103,15 @@ To point an assessor at where a practice is implemented in your own code, `neura
 
 ---
 
+## NIST SP 800-53 — component definition
+
+*(v4.19.0+)* For an agency installing NeuralMind inside an authorized system,
+[`security/neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)
+is an OSCAL 1.1.3 component definition of the 20 SP 800-53 Rev. 5 controls
+NeuralMind touches. Each states what NeuralMind provides and what stays yours.
+GRC tools load it into a System Security Plan. The same content as a table is
+in [compliance/SP800-53.md](compliance/SP800-53.md).
+
 ## GDPR considerations
 
 NeuralMind processes code. Code can contain comments referencing names, emails, or other PII. The relevant GDPR posture:

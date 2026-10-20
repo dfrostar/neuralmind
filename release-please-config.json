@@ -11,6 +11,11 @@
         {
           "type": "generic",
           "path": "neuralmind/hermes_plugin/plugin.yaml"
+        },
+        {
+          "type": "json",
+          "path": "security/neuralmind.oscal-component-definition.json",
+          "jsonpath": "$['component-definition'].metadata.version"
         }
       ]
     }
