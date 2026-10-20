@@ -28,7 +28,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-PASS = "pass"
+PASS = "pass"  # nosec B105 - a rule status, not a password
 FAIL = "fail"
 NA = "n/a"
 
