@@ -347,8 +347,9 @@ class AuditTrail:
             send_write_failure_alert(
                 self.project_path, f"{category}/{action}", f"{type(exc).__name__}: {exc}"
             )
-        except Exception:
-            pass
+        except Exception as alert_exc:
+            # Never let the alert hide the failure it is about.
+            logger.warning("couldn't send the audit write-failure alert: %s", alert_exc)
 
     def _record_failure(self, category: str, action: str, exc: BaseException) -> bool:
         """Note a record that couldn't be written, where `doctor` will find it.
