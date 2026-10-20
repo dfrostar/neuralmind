@@ -277,6 +277,45 @@ record, and `neuralmind audit verify` still reports the damaged line.
 | `0` | Gap recorded, or nothing to record |
 | `1` | The gap record couldn't be written; the failures stay unrecorded |
 
+### audit forward
+
+*(v4.19.0+)* Send the audit records not yet forwarded to syslog.
+
+```bash
+neuralmind audit forward [project_path] [--json]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print `target`, `sent`, `backlog`, `restarted` and `error` |
+
+With [`security.audit_syslog`](#security-settings-security-in-neuralmind-backendyaml)
+set, every audit record is already sent to syslog right after it is written,
+by whichever process wrote it (after a failed send, appends skip forwarding
+for 30 seconds so a dead target doesn't slow every call; this command always
+tries). This command sends what that missed: records
+written while the syslog target was down, more than the 200 an append sends at
+once, or the history of a log that predates the setting. Run it once after
+turning forwarding on, and from cron if your target is sometimes down.
+
+`.neuralmind/audit_forwarded.json` holds the position: the first hash of the
+log it points into (which a rotation's rename doesn't change) and the last
+record sent, plus the last error. The archive's unsent tail goes out before
+the new log after a rotation. If the position can't be found (the log was
+replaced, or its archive pruned), forwarding starts again from the oldest log
+present and sends a `warning`-severity `audit_forward_restarted` message.
+Records are sent at least once; deduplicate on `sha256`.
+
+When an audit record can't be written, an `alert`-severity
+`audit_write_failed` message goes to syslog at once (CMMC AU.L2-3.3.4), outside
+the log that failed.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every record has been forwarded |
+| `1` | `security.audit_syslog` isn't set, is malformed or refused, or the target can't be reached; the records stay waiting |
+
 ### build
 
 Build or rebuild the neural index from a knowledge graph.
@@ -1639,6 +1678,13 @@ record. Don't delete the file: it holds each failure's detail. Under
 `security.profile: cui`, a record that can be neither written nor noted (a full
 disk or an unwritable `.neuralmind/` usually fails both) refuses the call, since
 nothing durable would show the gap.
+
+**Audit forwarding** *(v4.19.0+)* fails when `security.audit_syslog` is
+malformed, or points off this machine under `security.profile: cui`, since
+nothing is forwarded then. It warns when records are waiting to be sent, with
+the last error if the last attempt failed, and under the profile when
+`security.audit_syslog` isn't set. Otherwise it names the target and the last
+send, or reports `ok` with "not configured"
 
 **Query freshness** *(v4.17.0+)* shows the line queries, searches and the
 prompt hook carry right now (see [the freshness notice](#freshness-notice-v4170)):
@@ -4488,6 +4534,8 @@ process, so restart the MCP server after changing it.
 | `profile` *(v4.16.0+)* | unset | `cui` turns on the CUI-enclave posture as one unit: it forces `identity: os` and `require_encrypted_storage: true`, refuses `serve` beyond loopback or with `--no-auth`, makes a daemon started that way refuse the project, and refuses LLM documentation seeding even with `NEURALMIND_LLM_SEED=1`. It can't be loosened: `identity: declared`, `require_encrypted_storage: false`, or a blank or misspelled profile fails closed |
 | `audit_checkpoint_key` *(v4.16.0+)* | unset | The base64 DER ECDSA P-256 public key printed by `neuralmind audit keygen`. Every audit checkpoint must carry a valid signature from it, so a rewritten log can't be re-vouched for without the private key. A malformed value fails `audit verify` |
 | `audit_anchor_dir` *(v4.16.0+)* | unset | Directory where `neuralmind audit checkpoint` also writes each checkpoint, one file per project. Relative paths are relative to the project. Make it writable only by the administrator, so deleting the local copy can't hide truncation |
+| `audit_syslog` *(v4.19.0+)* | unset | Where each audit record is sent as it is written: `/dev/log` (or `unix:/path`), `udp://host[:port]` or `tcp://host[:port]`, port 514 by default. RFC 3164 on a unix socket, RFC 5424 over the network (octet-counted on TCP); the body is the record as JSON. Sent unencrypted, so under `security.profile: cui` only a unix socket or a loopback address is accepted, and the host's syslog daemon forwards to the SIEM over TLS. Malformed or refused, nothing is forwarded and `doctor` fails. See [`audit forward`](#audit-forward) |
+| `audit_syslog_facility` *(v4.19.0+)* | `local0` | Syslog facility for forwarded records: `kern`, `user`, `mail`, `daemon`, `auth`, `syslog`, `lpr`, `news`, `uucp`, `cron`, `authpriv`, `ftp`, `local0`–`local7` |
 
 ```yaml
 security:

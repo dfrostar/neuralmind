@@ -586,6 +586,44 @@ The chain alone can't detect records deleted from the end, or a chain
 recomputed by anyone who can write the file: the hash has no secret key. A
 passing chain is therefore weak evidence on its own.
 
+#### Forwarding to syslog (v4.19.0+)
+
+Set `security.audit_syslog` in `neuralmind-backend.yaml`, and every audit
+record goes to syslog right after it is written, from the CLI, the MCP server,
+the hooks and the daemon:
+
+```yaml
+security:
+  audit_syslog: /dev/log          # or udp://host[:port], tcp://host[:port]
+  audit_syslog_facility: local0   # the default
+```
+
+- **The body is the record as JSON**, `sha256` and `prev_sha256` included, in
+  RFC 3164 form on a unix socket and RFC 5424 over the network. Severity is
+  `info`, `warning` for a denied or failed record, and `err` for a gap record.
+- **A record that can't be written raises an `alert`** (`audit_write_failed`)
+  at once, sent straight to syslog rather than through the log that failed.
+  Route `alert` to a person (CMMC AU.L2-3.3.4).
+- **Nothing is silently dropped.** `.neuralmind/audit_forwarded.json` tracks
+  the last record sent; records a dead target missed go out with the next
+  append, or with `neuralmind audit forward`, across a rotation too. Records
+  arrive at least once; deduplicate on `sha256`. `doctor`'s *Audit forwarding*
+  line warns while any are waiting.
+- **NeuralMind doesn't encrypt the connection.** Audit records hold query text,
+  which can be CUI, so under `security.profile: cui` only a unix socket or a
+  loopback address is accepted. Let the host's syslog daemon forward to the
+  SIEM over TLS, in the host's validated module. For rsyslog:
+
+```
+# /etc/rsyslog.d/60-neuralmind.conf
+global(DefaultNetstreamDriverCAFile="/etc/pki/tls/certs/siem-ca.pem")
+local0.*  action(type="omfwd" target="siem.example" port="6514" protocol="tcp"
+                 StreamDriver="gtls" StreamDriverMode="1" StreamDriverAuthMode="x509/name")
+```
+
+Forwarding is how the SIEM sees records live. Keep an `audit export` copy as
+well: it is what you would restore the log from.
+
 #### Checkpoints (v4.16.0+)
 
 Signed, anchored checkpoints close both gaps (CMMC AU.L2-3.3.8, protection of
@@ -663,8 +701,9 @@ MANAGE (Risk)
 └─ Refused calls (role policy, rate limit) in the audit log
 ```
 
-NeuralMind has no anomaly detection or alerting. For that, feed
-`neuralmind audit export` to your SIEM.
+NeuralMind has no anomaly detection. With `security.audit_syslog` set
+*(v4.19.0+)*, your SIEM gets each record as it is written and can alert on it;
+otherwise feed it `neuralmind audit export`.
 
 ### SOC 2 Trust Services Criteria
 

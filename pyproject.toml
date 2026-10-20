@@ -116,6 +116,9 @@ keywords = [
     "data-locations",
     "data-deletion-procedure",
     "audit-write-failures",
+    "syslog-audit-forwarding",
+    "siem-integration",
+    "audit-failure-alerting",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

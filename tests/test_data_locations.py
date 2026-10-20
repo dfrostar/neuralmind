@@ -621,3 +621,20 @@ def test_the_cli_is_registered():
         text=True,
     )
     assert out.returncode == 0 and "read-only" in out.stdout
+
+
+def test_records_forwarded_to_syslog_are_listed(env):
+    # v4.19.0: copies NeuralMind can't delete itself are named, with who can.
+    from neuralmind.audit_forward import cursor_path
+
+    (env.project / "neuralmind-backend.yaml").write_text(
+        "security:\n  audit_syslog: tcp://127.0.0.1:514\n", encoding="utf-8"
+    )
+    found = _by_name(env.project)["audit records forwarded to syslog"]
+    assert found.kind == dl.OUTSIDE and found.path == "tcp://127.0.0.1:514"
+    assert not found.present  # nothing sent yet
+    assert found.remove.startswith("# NeuralMind can't reach")
+    state = cursor_path(env.project)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text('{"last_forwarded_at": "2026-10-20T00:00:00+00:00"}', encoding="utf-8")
+    assert _by_name(env.project)["audit records forwarded to syslog"].present

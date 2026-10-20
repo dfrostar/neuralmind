@@ -218,6 +218,26 @@ SIEM show what's missing:
 neuralmind audit record-gap /srv/app
 ```
 
+*(v4.19.0+)* Forward the log to your SIEM as it is written, and get an alert
+when a record can't be written (AU.L2-3.3.4, 3.3.5). Under the profile the
+target must be on this machine, since NeuralMind doesn't encrypt the
+connection, so point it at the local syslog daemon and let that forward over
+TLS (the [Security Guide](../SECURITY-GUIDE.md#forwarding-to-syslog-v4190)
+has an rsyslog example):
+
+```yaml
+security:
+  profile: cui
+  audit_syslog: /dev/log
+```
+
+Then send the existing history once; from then on each record goes out as it
+is written, and `doctor` warns if any are left waiting:
+
+```bash
+neuralmind audit forward /srv/app
+```
+
 For the practice-by-practice mapping, with what NeuralMind provides and what
 stays yours, see the [CMMC 2.0 table in the Compliance
 Summary](../COMPLIANCE-SUMMARY.md).

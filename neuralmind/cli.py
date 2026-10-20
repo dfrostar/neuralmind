@@ -3197,6 +3197,46 @@ def cmd_audit_record_gap(args):
     )
 
 
+def cmd_audit_forward(args):
+    """Send the audit records not yet forwarded to syslog (security.audit_syslog)."""
+    from .audit_forward import forward_pending, load_forward_settings
+
+    settings = load_forward_settings(args.project_path)
+    if settings.problem:
+        print(f"✗ Not forwarded: {settings.problem}", file=sys.stderr)
+        sys.exit(1)
+    if settings.target is None:
+        print(
+            "✗ Not forwarded: security.audit_syslog isn't set in neuralmind-backend.yaml",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    result = forward_pending(args.project_path, settings)
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "target": str(settings.target),
+                    "sent": result.sent,
+                    "backlog": result.backlog,
+                    "restarted": result.restarted,
+                    "error": result.error,
+                },
+                sort_keys=True,
+            )
+        )
+        sys.exit(1 if result.error else 0)
+    if result.error:
+        print(
+            f"✗ {result.backlog} record(s) not forwarded to {settings.target}: {result.error}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if result.restarted:
+        print("  The forwarding position was lost; forwarding again from the oldest log present.")
+    print(f"✓ Forwarded {result.sent} record(s) to {settings.target}; none waiting.")
+
+
 def cmd_audit_recent(args):
     """Show recent audit events — quick operational visibility."""
     trail = AuditTrail(args.project_path)
@@ -7867,6 +7907,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", "-j", action="store_true", help="Print the gap record (null if none)"
     )
     audit_record_gap.set_defaults(func=cmd_audit_record_gap)
+
+    audit_forward = audit_sub.add_parser(
+        "forward",
+        help="Send the audit records not yet forwarded to syslog (security.audit_syslog)",
+    )
+    audit_forward.add_argument("project_path", nargs="?", default=".")
+    audit_forward.add_argument(
+        "--json", "-j", action="store_true", help="Print target, sent, backlog and error as JSON"
+    )
+    audit_forward.set_defaults(func=cmd_audit_forward)
 
     audit_recent = audit_sub.add_parser(
         "recent",

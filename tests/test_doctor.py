@@ -292,6 +292,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "Security profile",
         "Audit checkpoints",
         "Audit log writes",
+        "Audit forwarding",
     }
 
 

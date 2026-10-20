@@ -27,7 +27,7 @@ buying it and what they will run it on:
 |---|---|---|
 | **FIPS 140-3** | NeuralMind contains no cryptographic module of its own to validate. Data at rest is protected by the host's validated modules (full-disk encryption, the OS FIPS mode). *(v4.13.0+)* Its own hash calls work with the OS FIPS mode on, and CI runs the test suite with the OpenSSL FIPS provider enforced. *(v4.16.0+)* Audit checkpoints are signed with ECDSA P-256 through the `cryptography` package, which calls OpenSSL. The prebuilt `cryptography` wheel bundles its own OpenSSL, which is not FIPS-validated; on a FIPS host, rebuild it against the system OpenSSL (`pip install --force-reinstall --no-cache-dir --no-binary cryptography cryptography`; without `--force-reinstall`, pip keeps the wheel NeuralMind already installed) and confirm the host's OpenSSL uses its validated FIPS provider, so the signing runs in the host's validated module | [SECURITY-GUIDE: Requiring encrypted storage](../SECURITY-GUIDE.md#requiring-encrypted-storage) |
 | **SP 800-218 (SSDF)** | *(v4.14.0+)* Container images are signed (cosign, keyless), and the image, wheel and sdist carry build-provenance attestations. CI scans with CodeQL, bandit and pip-audit on every change, and a VEX document publishes the dependency advisories that don't apply. Every practice is mapped to its evidence | [SSDF.md](SSDF.md) |
-| **SP 800-171 / CMMC Level 2** | Practice-by-practice mapping, with what NeuralMind provides and what stays yours. In place today: OS-bound identity and roles (`security.identity: os`), a refusal to run without full-disk encryption (`security.require_encrypted_storage`), and a hash-chained audit log. *(v4.16.0+)* `security.profile: cui` turns these on as one unit, refuses to serve the project beyond loopback or without its token (SC.L2-3.13.8), refuses LLM documentation seeding, audits each refusal, and is checked as a unit by `neuralmind doctor`, which fails when the OS FIPS mode is off. It also adds signed, anchored audit checkpoints, which detect removal of the newest records and a recomputed chain (AU.L2-3.3.8) | [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence) · [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md) |
+| **SP 800-171 / CMMC Level 2** | Practice-by-practice mapping, with what NeuralMind provides and what stays yours. In place today: OS-bound identity and roles (`security.identity: os`), a refusal to run without full-disk encryption (`security.require_encrypted_storage`), and a hash-chained audit log. *(v4.16.0+)* `security.profile: cui` turns these on as one unit, refuses to serve the project beyond loopback or without its token (SC.L2-3.13.8), refuses LLM documentation seeding, audits each refusal, and is checked as a unit by `neuralmind doctor`, which fails when the OS FIPS mode is off. It also adds signed, anchored audit checkpoints, which detect removal of the newest records and a recomputed chain (AU.L2-3.3.8). *(v4.19.0+)* `security.audit_syslog` forwards each audit record to syslog as it is written, and raises an `alert` when a record can't be written (AU.L2-3.3.4, 3.3.5); under the profile the target must be on this machine | [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence) · [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md) |
 | **SP 800-53** | No control mapping published yet. Section 3 says what's planned | — |
 | **AI RMF** | Evidence for each function (Govern, Map, Measure, Manage) | [Compliance Summary: NIST AI RMF](../COMPLIANCE-SUMMARY.md#nist-ai-rmf-ai-risk-management-framework--full-coverage) |
 
@@ -35,12 +35,6 @@ buying it and what they will run it on:
 
 The work is done in this order, one release at a time. Items move to section 2
 when they ship.
-
-**SP 800-171 / CMMC hardening**
-
-- **Live audit forwarding.** Today the log is exported to a SIEM after the
-  fact. The plan is to forward it live over syslog, and to alert when audit
-  logging fails (AU.L2-3.3.4, 3.3.5).
 
 **SP 800-53**
 
@@ -57,7 +51,7 @@ environment, not by the tool:
 
 - the OS FIPS mode and FIPS-validated full-disk encryption on the host;
 - OS accounts and their authentication;
-- audit retention and forwarding to your SIEM;
+- audit retention, and the syslog daemon's forwarding to your SIEM over TLS;
 - **your coding agent's model provider.** NeuralMind hands code slices to the
   agent, and the agent sends them to its model. If that code is CUI, the
   provider must meet DFARS 252.204-7012 (FedRAMP Moderate or equivalent).

@@ -49,6 +49,7 @@ logging is on, the text of every query from every project.
 | `~/.neuralmind/memory/query_events.jsonl` | The text of every query, with its project's path, from every project on the machine | Query memory logging, when it was accepted at the first-run prompt and `NEURALMIND_MEMORY` isn't `0` |
 | `~/.neuralmind/` (the rest) | Daemon discovery file and log, the graph server's access token, the memory-consent record, the Team license store | The daemon, `neuralmind serve`, the first-run memory-consent prompt, `neuralmind team` / `license` |
 | The `security.audit_anchor_dir` directory, if set | Copies of audit checkpoints (record counts and hashes, no code) | `neuralmind audit checkpoint` |
+| The `security.audit_syslog` target, if set *(v4.19.0+)*, and wherever its syslog daemon forwards (your SIEM) | Every audit record forwarded, query text included | Each audit write, and `neuralmind audit forward` |
 | `~/.cache/neuralmind/` | The embedding model. No project data | First build |
 
 ### 2.3 Configuration NeuralMind added
@@ -109,6 +110,12 @@ Before anything is deleted, note the two locations the project's config file
       print("no security.audit_anchor_dir is set")
   PY
   ```
+
+- **`security.audit_syslog`** *(v4.19.0+)*, where audit records were sent as
+  they were written. NeuralMind can't reach those copies: delete this
+  project's records in the syslog daemon's files and in the SIEM it forwards
+  to. Each record's `target` and `details` name the project's files, and
+  `neuralmind audit export` lists every record's `sha256` to match on.
 
 Then run from the project root:
 
