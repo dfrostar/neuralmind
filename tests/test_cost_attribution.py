@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from neuralmind.cost_attribution import (
@@ -13,6 +14,13 @@ from neuralmind.cost_attribution import (
     compute_cost_attribution,
     format_cost_report,
 )
+
+
+def _days_ago(days: int) -> str:
+    # compute_cost_attribution keeps events inside a window measured back from
+    # now (30 days by default), so fixed dates age out: 2026-09-20 did on
+    # 2026-10-20 and failed every PR's CI. Timestamps here are relative.
+    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
 
 class TestBaselineTokens:
@@ -87,11 +95,11 @@ class TestComputeCostAttribution:
         tokens: int = 500,
         ratio: float = 10.0,
         session: str = "sess-1",
-        ts: str = "2026-09-21T07:00:00+00:00",
+        ts: str | None = None,
     ) -> dict:
         return {
             "event_type": "query",
-            "timestamp": ts,
+            "timestamp": ts or _days_ago(1),
             "project_path": "/tmp/test",
             "session_id": session,
             "query": "test query",
@@ -157,14 +165,15 @@ class TestComputeCostAttribution:
         assert result["per_session"]["sess-2"]["queries"] == 1
 
     def test_daily_breakdown(self, tmp_path: Path) -> None:
+        recent, earlier = _days_ago(1), _days_ago(2)
         events = [
-            self._make_event(tokens=500, ratio=10.0, ts="2026-09-21T07:00:00+00:00"),
-            self._make_event(tokens=300, ratio=5.0, ts="2026-09-20T07:00:00+00:00"),
+            self._make_event(tokens=500, ratio=10.0, ts=recent),
+            self._make_event(tokens=300, ratio=5.0, ts=earlier),
         ]
         self._write_events(tmp_path, events)
         result = compute_cost_attribution(tmp_path)
-        assert "2026-09-21" in result["daily"]
-        assert "2026-09-20" in result["daily"]
+        assert recent[:10] in result["daily"]
+        assert earlier[:10] in result["daily"]
 
     def test_custom_cost_model(self, tmp_path: Path) -> None:
         self._write_events(tmp_path, [self._make_event(tokens=500, ratio=10.0)])
@@ -175,8 +184,8 @@ class TestComputeCostAttribution:
 
     def test_days_window(self, tmp_path: Path) -> None:
         # Old event (40 days ago) should be excluded with days=30
-        old_event = self._make_event(tokens=500, ratio=10.0, ts="2026-08-12T07:00:00+00:00")
-        recent_event = self._make_event(tokens=300, ratio=5.0, ts="2026-09-21T07:00:00+00:00")
+        old_event = self._make_event(tokens=500, ratio=10.0, ts=_days_ago(40))
+        recent_event = self._make_event(tokens=300, ratio=5.0, ts=_days_ago(1))
         self._write_events(tmp_path, [old_event, recent_event])
         result = compute_cost_attribution(tmp_path, days=30)
         assert result["total_queries"] == 1
