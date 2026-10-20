@@ -176,6 +176,7 @@ class AuditTrail:
         self._lock = threading.Lock()
         self._identity_os: bool | None = None
         self._profile_cui: bool | None = None
+        self._forward_settings: Any = None
 
     def _os_identity_mode(self) -> bool:
         """True when the project sets ``security.identity: os``. Read once."""
@@ -292,8 +293,8 @@ class AuditTrail:
                 start = "\n" if _ends_mid_line(self.events_file) else ""
                 with self.events_file.open("a", encoding="utf-8") as file:
                     file.write(start + json.dumps(payload, sort_keys=True) + "\n")
-                return payload
         except Exception as exc:
+            self._alert_write_failure(category, action, exc)
             if not self._record_failure(category, action, exc) and self._cui_profile():
                 # A full disk or an unwritable .neuralmind/ usually fails the
                 # note too, leaving nothing durable to show the gap.
@@ -304,6 +305,51 @@ class AuditTrail:
                     "(disk space, permissions on .neuralmind/)."
                 ) from exc
             raise
+        # Outside the log's lock: a slow syslog target mustn't hold up the
+        # other processes appending to this log.
+        self._forward()
+        return payload
+
+    def _forward_config(self) -> Any:
+        """``security.audit_syslog`` for this project (``audit_forward``). Read once."""
+        if self._forward_settings is None:
+            from .audit_forward import ForwardSettings, load_forward_settings
+
+            try:
+                self._forward_settings = load_forward_settings(self.project_path)
+            except Exception as exc:
+                self._forward_settings = ForwardSettings(problem=str(exc))
+        return self._forward_settings
+
+    def _forward(self) -> None:
+        """Send this record, and any earlier ones not yet sent, to syslog.
+
+        Best effort: a target that's down leaves the records for the next
+        append or ``neuralmind audit forward``, and ``doctor`` reports it.
+        """
+        settings = self._forward_config()
+        if settings.target is None and not settings.problem:
+            return
+        try:
+            from .audit_forward import LIVE_BATCH, forward_pending
+
+            forward_pending(self.project_path, settings, limit=LIVE_BATCH)
+        except Exception as exc:
+            logger.warning("audit forwarding failed: %s", exc)
+
+    def _alert_write_failure(self, category: str, action: str, exc: BaseException) -> None:
+        """Tell syslog at once that a record couldn't be written (AU.L2-3.3.4)."""
+        try:
+            if self._forward_config().target is None:
+                return
+            from .audit_forward import send_write_failure_alert
+
+            send_write_failure_alert(
+                self.project_path, f"{category}/{action}", f"{type(exc).__name__}: {exc}"
+            )
+        except Exception as alert_exc:
+            # Never let the alert hide the failure it is about.
+            logger.warning("couldn't send the audit write-failure alert: %s", alert_exc)
 
     def _record_failure(self, category: str, action: str, exc: BaseException) -> bool:
         """Note a record that couldn't be written, where `doctor` will find it.

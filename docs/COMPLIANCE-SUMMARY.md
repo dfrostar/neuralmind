@@ -50,7 +50,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 - **Secret scanning** before indexing: `neuralmind scan-for-secrets` is a separate step, and `build --redact-secrets` scrubs indexed text as a backstop. Neither runs at query time
 - **Rate limiting** at the MCP server boundary (`security.rate_limit`)
-- **No anomaly detection or alerting.** Denied calls are in the audit log; feed `neuralmind audit export` to your SIEM to alert on them
+- **No anomaly detection.** Denied calls are in the audit log, sent at `warning` severity with `security.audit_syslog` *(v4.19.0+)*; detecting patterns in them is your SIEM's job
 
 ---
 
@@ -85,8 +85,10 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 | **AC.L2-3.1.1** | Limit system access to authorized users | Stdio MCP transport by default, reachable only by the agent process that launched it. With `security.identity: os` *(v4.7.0+)*, calls are identified by the OS account the OS authenticated; accounts without a role, and the HTTP transport, are refused. The graph server binds to `127.0.0.1` by default (`--host` changes it) and requires an access token unless started with `--no-auth`. *(v4.16.0+)* `security.profile: cui` forces `identity: os` and refuses `--host` beyond loopback and `--no-auth` for the project. *(v4.17.1+)* An administrator's machine policy (`/etc/neuralmind/policy.yaml`) keeps the profile on when a project's `neuralmind-backend.yaml` is deleted; it only tightens and grants no roles | OS accounts and their authentication; file permissions on `.neuralmind/`; an administrator-owned policy file and machine policy |
 | **AC.L2-3.1.2** | Limit access to permitted functions | Per-tool permission sets for `admin`, `builder`, and `reader`. With `security.identity: os`, the role comes from `security.users` and the role a call declares is ignored, and *(v4.17.1+)* the daemon's routes and `neuralmind build` / `validate --write` need the same role the matching MCP tool needs. Other CLI commands run with the account's file permissions | Mapping each OS account to a role. Without `identity: os`, any caller can declare `admin`, so the sets limit a well-behaved agent, not a hostile caller |
 | **AC.L2-3.1.20** | Control connections to external systems | By default, no telemetry and no repository content sent off the machine. The opt-in `NEURALMIND_LLM_SEED=1` sends `README.md` and `docs/architecture.md` to Anthropic; it is off by default, and *(v4.16.0+)* refused outright under `security.profile: cui`, with each refusal audited | Keeping `NEURALMIND_LLM_SEED` off in a CUI enclave; pre-seeding the model with `NEURALMIND_ONNX_MODEL_DIR` |
-| **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls | Retention period and forwarding to your SIEM |
+| **AU.L2-3.3.1** | Create and retain audit records | Append-only `.neuralmind/audit_events.jsonl` covering queries, searches, builds, and MCP calls. *(v4.19.0+)* `security.audit_syslog` sends each record to syslog as it is written, so a copy is off the host within seconds | Retention period, and the syslog daemon's forwarding to your SIEM |
 | **AU.L2-3.3.2** | Trace actions to individual users | Every event records an actor. With `security.identity: os`, it is the OS account, read from the OS, for MCP calls and CLI events alike; a declared actor or `NEURALMIND_ACTOR` is kept as `claimed_actor` | Without `identity: os`, the actor is whatever the caller or environment says; tie events to OS login records |
+| **AU.L2-3.3.4** | Alert in the event of an audit logging process failure | *(v4.18.0+)* A record that can't be written is noted in `.neuralmind/audit_write_failures.jsonl`; `doctor` warns, and fails under `security.profile: cui`, where a failure that can't even be noted refuses the call. *(v4.19.0+)* With `security.audit_syslog` set, the failure also raises an `alert`-severity syslog message at once, outside the log that failed. `doctor` reports records waiting to be forwarded and the forwarding error | Routing `alert` from the syslog daemon to a person, and alerting when forwarding itself stops |
+| **AU.L2-3.3.5** | Correlate audit review, analysis and reporting | *(v4.19.0+)* Each record reaches syslog as it is written, as JSON with its timestamp, actor, `sha256` and `prev_sha256`, so the SIEM can correlate it with other systems' records and check the chain. Records a dead target missed are sent when it is back | The SIEM and the correlation itself |
 | **AU.L2-3.3.8** | Protect audit information | SHA-256 hash chain: `neuralmind audit verify` detects a changed or removed record in the middle of the log, a record without a hash once the chain has started, and a line that isn't a JSON object (v4.8.0 and earlier missed those at the end of the log). The chain alone cannot detect removal of the newest records, or a rewrite that recomputes the chain, which has no secret key. *(v4.16.0+)* Signed checkpoints close both gaps: `neuralmind audit checkpoint` signs the record count and the last record's hash with an ECDSA P-256 key pinned in `security.audit_checkpoint_key`, anchors a copy in `security.audit_anchor_dir`, and `audit verify` fails on truncation, a recomputed chain or a forged checkpoint. `doctor` warns under `security.profile: cui` when either setting is missing or the newest checkpoint is over a week old. *(v4.17.1+)* Appends from several processes hold an OS lock, so concurrent writers no longer produce a chain `verify` rejects | Keeping the signing key in an administrator account, an anchor directory only the administrator can write, a checkpoint schedule (records since the newest checkpoint are covered by the chain alone), and forwarding to your SIEM |
 | **CM.L2-3.4.1** | Baseline configurations and inventories | A CycloneDX SBOM per release (see *At a glance* for the gaps) | Recording the pinned version in your baseline |
 | **CM.L2-3.4.7** | Restrict nonessential ports and services | Stdio MCP transport by default; HTTP servers bind to `127.0.0.1` by default (`neuralmind serve --host` can change it); [air-gapped install](use-cases/air-gapped.md). *(v4.16.0+)* Under `security.profile: cui`, `serve` won't listen beyond loopback, and a daemon that does refuses the project | Not exposing the HTTP transport beyond the enclave |
@@ -100,6 +102,15 @@ If NeuralMind indexes source code that is CUI, the index, synapse store, and aud
 To point an assessor at where a practice is implemented in your own code, `neuralmind compliance .` lists annotations such as `// AC.L2-3.1.1: Authorized access control`. Finding an annotation shows where a practice is claimed, not that it works.
 
 ---
+
+## NIST SP 800-53 — component definition
+
+*(v4.19.0+)* For an agency installing NeuralMind inside an authorized system,
+[`security/neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)
+is an OSCAL 1.1.3 component definition of the 20 SP 800-53 Rev. 5 controls
+NeuralMind touches. Each states what NeuralMind provides and what stays yours.
+GRC tools load it into a System Security Plan. The same content as a table is
+in [compliance/SP800-53.md](compliance/SP800-53.md).
 
 ## GDPR considerations
 

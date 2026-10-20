@@ -20,7 +20,8 @@ feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
 `health` -> 1, and `doctor --stale-after` past its limit,
 `tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
 for `audit verify`, `tests/test_audit_checkpoint.py` for `audit keygen`,
-`audit checkpoint` and `audit verify` against checkpoints).
+`audit checkpoint` and `audit verify` against checkpoints,
+`tests/test_audit_forward.py` for `audit forward` reaching its target).
 """
 
 from __future__ import annotations
@@ -137,6 +138,18 @@ def _audit_write_failed_and_log_unwritable(project: Path) -> None:
     (state / "audit_events.jsonl").mkdir()  # a directory: the gap record can't be appended
 
 
+def _forward_to_a_closed_port(project: Path) -> None:
+    # Nothing listens on port 1 of the loopback address: the connection is refused.
+    (project / "neuralmind-backend.yaml").write_text(
+        "security:\n  audit_syslog: tcp://127.0.0.1:1\n"
+    )
+    state = project / ".neuralmind"
+    state.mkdir()
+    from neuralmind.audit import AuditTrail
+
+    AuditTrail(project).append_event("query", "run")
+
+
 def _every_account_a_reader(project: Path) -> None:
     path = project / "neuralmind-backend.yaml"
     path.write_text("security:\n  identity: os\n  default_role: reader\n")
@@ -194,6 +207,9 @@ CONTRACT = [
         {},
         1,
     ),
+    # v4.19.0: audit forward exits 1 when forwarding isn't set up or records are left.
+    ("audit-forward-not-configured", ["audit", "forward", "{p}"], None, {}, 1),
+    ("audit-forward-target-down", ["audit", "forward", "{p}"], _forward_to_a_closed_port, {}, 1),
     (
         "license-expiring-none-due",
         ["license", "expiring"],

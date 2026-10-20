@@ -454,6 +454,23 @@ def _outside_locations(root: Path, config: dict) -> list[Location]:
             )
         )
 
+    syslog = security.get("audit_syslog") if isinstance(security, dict) else None
+    if isinstance(syslog, str) and syslog.strip():
+        from .audit_forward import read_cursor
+
+        locations.append(
+            Location(
+                "audit records forwarded to syslog",
+                OUTSIDE,
+                syslog.strip(),
+                bool(read_cursor(root).get("last_forwarded_at")),
+                "every audit record sent, query text included, in the syslog daemon's "
+                "files and wherever it forwards them (your SIEM)",
+                "# NeuralMind can't reach these copies: delete them in the syslog "
+                "daemon's files and the SIEM",
+            )
+        )
+
     team_problem = ""
     try:
         from .tier2.config import load_config

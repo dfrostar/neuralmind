@@ -899,6 +899,52 @@ def _check_audit_writes(project: Path) -> Check:
     )
 
 
+def _check_audit_forwarding(project: Path) -> Check:
+    """Whether the audit log is forwarded to syslog, and is up to date.
+
+    Fails when ``security.audit_syslog`` is malformed, or under
+    ``security.profile: cui`` points off this machine, since nothing is
+    forwarded then. Warns when records are waiting to be sent, and under the
+    profile when forwarding isn't set up.
+    """
+    from neuralmind.audit_forward import load_forward_settings, pending, read_cursor
+    from neuralmind.security_config import PROFILE_CUI, load_security_settings
+
+    name = "Audit forwarding"
+    settings = load_forward_settings(project)
+    if settings.problem:
+        return Check(name, FAIL, settings.problem, fix="Fix security.audit_syslog.")
+    if settings.target is None:
+        if load_security_settings(project).profile == PROFILE_CUI:
+            return Check(
+                name,
+                WARN,
+                "security.audit_syslog isn't set, so audit records stay on this host until "
+                "someone exports them, and a failed audit write raises no alert",
+                fix="Set security.audit_syslog: /dev/log and let the host's syslog daemon "
+                "forward to your SIEM.",
+            )
+        return Check(name, OK, "not configured (security.audit_syslog)")
+    try:
+        waiting, _ = pending(project)
+    except OSError as exc:
+        return Check(name, WARN, f"can't read the audit log to compare: {exc}")
+    cursor = read_cursor(project)
+    if not waiting:
+        when = cursor.get("last_forwarded_at", "never")
+        return Check(name, OK, f"to {settings.target}; nothing waiting (last sent {when})")
+    error = cursor.get("last_error")
+    detail = f"{len(waiting)} record(s) not yet forwarded to {settings.target}"
+    if error:
+        detail += f"; the last attempt, at {cursor.get('last_error_at', '?')}, failed: {error}"
+    return Check(
+        name,
+        WARN,
+        detail,
+        fix=f"Check the syslog daemon, then send them: neuralmind audit forward {project}",
+    )
+
+
 def _running_daemon_exposure() -> str | None:
     """Why the running daemon, if any, would refuse a CUI project, or None."""
     try:
@@ -951,6 +997,7 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_security_profile(project),
         _check_audit_checkpoints(project),
         _check_audit_writes(project),
+        _check_audit_forwarding(project),
     ]
 
 

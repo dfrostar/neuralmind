@@ -17,10 +17,14 @@ from neuralmind.cost_attribution import (
 
 
 def _days_ago(days: int) -> str:
-    # compute_cost_attribution keeps events inside a window measured back from
-    # now (30 days by default), so fixed dates age out: 2026-09-20 did on
-    # 2026-10-20 and failed every PR's CI. Timestamps here are relative.
-    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    """An ISO timestamp ``days`` before now, at 07:00 UTC.
+
+    compute_cost_attribution counts only events inside a window measured from
+    the current time, so a fixed date falls out of it as the calendar moves
+    (2026-09-20 did on 2026-10-20). Dates relative to now don't.
+    """
+    day = datetime.now(timezone.utc) - timedelta(days=days)
+    return day.replace(hour=7, minute=0, second=0, microsecond=0).isoformat()
 
 
 class TestBaselineTokens:
@@ -165,15 +169,15 @@ class TestComputeCostAttribution:
         assert result["per_session"]["sess-2"]["queries"] == 1
 
     def test_daily_breakdown(self, tmp_path: Path) -> None:
-        recent, earlier = _days_ago(1), _days_ago(2)
+        yesterday, day_before = _days_ago(1), _days_ago(2)
         events = [
-            self._make_event(tokens=500, ratio=10.0, ts=recent),
-            self._make_event(tokens=300, ratio=5.0, ts=earlier),
+            self._make_event(tokens=500, ratio=10.0, ts=yesterday),
+            self._make_event(tokens=300, ratio=5.0, ts=day_before),
         ]
         self._write_events(tmp_path, events)
         result = compute_cost_attribution(tmp_path)
-        assert recent[:10] in result["daily"]
-        assert earlier[:10] in result["daily"]
+        assert yesterday[:10] in result["daily"]
+        assert day_before[:10] in result["daily"]
 
     def test_custom_cost_model(self, tmp_path: Path) -> None:
         self._write_events(tmp_path, [self._make_event(tokens=500, ratio=10.0)])

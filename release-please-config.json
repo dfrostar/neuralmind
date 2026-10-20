@@ -15,6 +15,11 @@
         {
           "type": "generic",
           "path": "site/src/lib/release.ts"
+        },
+        {
+          "type": "json",
+          "path": "security/neuralmind.oscal-component-definition.json",
+          "jsonpath": "$['component-definition'].metadata.version"
         }
       ]
     }
