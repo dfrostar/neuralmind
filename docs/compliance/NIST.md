@@ -1,7 +1,7 @@
 # NIST and NeuralMind: what applies, where it stands, what's next
 
-**Date:** 2026-10-19
-**Version:** 1.1
+**Date:** 2026-10-20
+**Version:** 1.2
 
 ---
 
@@ -28,17 +28,14 @@ buying it and what they will run it on:
 | **FIPS 140-3** | NeuralMind contains no cryptographic module of its own to validate. Data at rest is protected by the host's validated modules (full-disk encryption, the OS FIPS mode). *(v4.13.0+)* Its own hash calls work with the OS FIPS mode on, and CI runs the test suite with the OpenSSL FIPS provider enforced. *(v4.16.0+)* Audit checkpoints are signed with ECDSA P-256 through the `cryptography` package, which calls OpenSSL. The prebuilt `cryptography` wheel bundles its own OpenSSL, which is not FIPS-validated; on a FIPS host, rebuild it against the system OpenSSL (`pip install --force-reinstall --no-cache-dir --no-binary cryptography cryptography`; without `--force-reinstall`, pip keeps the wheel NeuralMind already installed) and confirm the host's OpenSSL uses its validated FIPS provider, so the signing runs in the host's validated module | [SECURITY-GUIDE: Requiring encrypted storage](../SECURITY-GUIDE.md#requiring-encrypted-storage) |
 | **SP 800-218 (SSDF)** | *(v4.14.0+)* Container images are signed (cosign, keyless), and the image, wheel and sdist carry build-provenance attestations. CI scans with CodeQL, bandit and pip-audit on every change, and a VEX document publishes the dependency advisories that don't apply. Every practice is mapped to its evidence | [SSDF.md](SSDF.md) |
 | **SP 800-171 / CMMC Level 2** | Practice-by-practice mapping, with what NeuralMind provides and what stays yours. In place today: OS-bound identity and roles (`security.identity: os`), a refusal to run without full-disk encryption (`security.require_encrypted_storage`), and a hash-chained audit log. *(v4.16.0+)* `security.profile: cui` turns these on as one unit, refuses to serve the project beyond loopback or without its token (SC.L2-3.13.8), refuses LLM documentation seeding, audits each refusal, and is checked as a unit by `neuralmind doctor`, which fails when the OS FIPS mode is off. It also adds signed, anchored audit checkpoints, which detect removal of the newest records and a recomputed chain (AU.L2-3.3.8). *(v4.19.0+)* `security.audit_syslog` forwards each audit record to syslog as it is written, and raises an `alert` when a record can't be written (AU.L2-3.3.4, 3.3.5); under the profile the target must be on this machine | [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence) · [CUI enclave walkthrough](../use-cases/cmmc-cui-enclave.md) |
-| **SP 800-53** | *(v4.19.0+)* An OSCAL 1.1.3 component definition: the SP 800-53 Rev. 5 controls NeuralMind touches, what it does for each, and what stays yours, for an agency to load into its System Security Plan. Checked on every change against the OSCAL schema, the Rev. 5 catalog and the code | [SP800-53.md](SP800-53.md) · [`neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json) |
+| **SP 800-53** | *(v4.19.0+)* An OSCAL 1.1.3 component definition: the SP 800-53 Rev. 5 controls NeuralMind touches, what it does for each, and what stays yours, for an agency to load into its System Security Plan. Checked on every change against the OSCAL schema, the Rev. 5 catalog and the code. A hardening guide: 17 rules, each mapped to its controls, that `neuralmind hardening` checks on a project and its host, exiting 1 when any fails | [SP800-53.md](SP800-53.md) · [SP800-53-HARDENING.md](SP800-53-HARDENING.md) · [`neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json) |
 | **AI RMF** | Evidence for each function (Govern, Map, Measure, Manage) | [Compliance Summary: NIST AI RMF](../COMPLIANCE-SUMMARY.md#nist-ai-rmf-ai-risk-management-framework--full-coverage) |
 
 ## 3. What's next
 
-The work is done in this order, one release at a time. Items move to section 2
-when they ship.
-
-**SP 800-53**
-
-- **A hardening guide** with settings that can be checked automatically.
+Nothing is scheduled. The SP 800-171 and SP 800-53 items on this list have
+shipped (section 2). To ask for the next one, open an issue or write to
+hello@neuralmind.uk.
 
 ## 4. What stays yours
 

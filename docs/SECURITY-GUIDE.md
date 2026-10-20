@@ -842,6 +842,8 @@ Before deploying NeuralMind to production:
 ### Audit & Compliance
 - [ ] `neuralmind audit verify` run on a schedule
 - [ ] `neuralmind audit export` shipped off the host on a schedule
+- [ ] *(v4.19.0+)* `security.audit_syslog` forwarding each record to the host's syslog, and `alert` routed to a person
+- [ ] *(v4.19.0+)* In an authorized system, `neuralmind hardening` passing on each host, run on a schedule ([SP 800-53 hardening guide](compliance/SP800-53-HARDENING.md))
 - [ ] Audit log treated as sensitive: it records query text
 - [ ] Compliance mappings documented
 - [ ] Regular audit log review

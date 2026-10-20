@@ -21,7 +21,8 @@ feature (`tests/test_index_freshness.py` for `build --strict` -> 3 and
 `tests/test_doctor.py` for doctor's OK/WARN results, `tests/test_audit_cli.py`
 for `audit verify`, `tests/test_audit_checkpoint.py` for `audit keygen`,
 `audit checkpoint` and `audit verify` against checkpoints,
-`tests/test_audit_forward.py` for `audit forward` reaching its target).
+`tests/test_audit_forward.py` for `audit forward` reaching its target,
+`tests/test_hardening.py` for `hardening` passing every rule).
 """
 
 from __future__ import annotations
@@ -210,6 +211,8 @@ CONTRACT = [
     # v4.19.0: audit forward exits 1 when forwarding isn't set up or records are left.
     ("audit-forward-not-configured", ["audit", "forward", "{p}"], None, {}, 1),
     ("audit-forward-target-down", ["audit", "forward", "{p}"], _forward_to_a_closed_port, {}, 1),
+    # v4.19.0: hardening exits 1 when a baseline rule fails; a default project fails several.
+    ("hardening-baseline-not-met", ["hardening", "{p}"], None, {}, 1),
     (
         "license-expiring-none-due",
         ["license", "expiring"],

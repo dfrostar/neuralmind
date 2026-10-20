@@ -240,6 +240,20 @@
                 "remarks": "Customer responsibility: Keep these processes running under accounts whose actions you need to audit."
               },
               {
+                "uuid": "28f70567-bace-4520-86b5-865051c376ac",
+                "control-id": "cm-6",
+                "description": "A published hardening baseline (docs/compliance/SP800-53-HARDENING.md): 17 rules, each mapped to the controls it supports, covering the security profile and machine policy, identity and roles, file permissions, encrypted storage and FIPS mode, audit log integrity, checkpoints and forwarding. `neuralmind hardening` checks a project and its host against every rule, fails a rule it can't check, exits 1 when any rule fails, and prints the result as JSON with --json.",
+                "responsible-roles": [
+                  {
+                    "role-id": "provider"
+                  },
+                  {
+                    "role-id": "customer"
+                  }
+                ],
+                "remarks": "Customer responsibility: Adopt the baseline or record each deviation in the SSP, run `neuralmind hardening` on each host on a schedule and after each upgrade, keep its JSON output as evidence, and check the items the guide lists as checked by you (clock sync, syslog TLS, Windows ACLs)."
+              },
+              {
                 "uuid": "2b442267-0f2c-45b6-b49a-640c748d1920",
                 "control-id": "cm-7",
                 "description": "The MCP server uses stdio by default; the HTTP servers bind to 127.0.0.1 and require a token. No telemetry. Opt-in LLM documentation seeding is off by default. Under security.profile: cui, `neuralmind serve` refuses a listener beyond loopback or without its token, a daemon listening that way refuses the project, and LLM seeding is refused even when switched on.",
@@ -321,7 +335,7 @@
                     "role-id": "customer"
                   }
                 ],
-                "remarks": "Customer responsibility: Verify the signature and attestations before installing (docs/compliance/SSDF.md \u00a72)."
+                "remarks": "Customer responsibility: Verify the signature and attestations before installing (docs/compliance/SSDF.md §2)."
               },
               {
                 "uuid": "710d8638-bb12-4bd4-bbc1-eb4cba4d81a6",
