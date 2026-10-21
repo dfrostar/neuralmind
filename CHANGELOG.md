@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.20.0](https://github.com/dfrostar/neuralmind/compare/v4.19.0...v4.20.0) (2026-10-21)
+
+
+### Features
+
+* **site:** six-section homepage, one proof page rendered from claims.json, /security as the enterprise landing ([#695](https://github.com/dfrostar/neuralmind/issues/695)) ([61916d3](https://github.com/dfrostar/neuralmind/commit/61916d3409fc8bce451577f2e5b400b21494cbc4))
+
 ## [4.19.0](https://github.com/dfrostar/neuralmind/compare/v4.18.1...v4.19.0) (2026-10-21)
 
 
