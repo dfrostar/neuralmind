@@ -42,15 +42,15 @@ export default function BusinessCase() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10">
                     {cards.map((card) => (
-                        <div key={card.audience} className="card rounded-2xl p-6 md:p-8">
+                        <div key={card.audience} className="card rounded-card p-6 md:p-8">
                             <span className={`text-xs font-semibold uppercase tracking-wider ${card.accent} mb-2 block`}>
                                 {card.audience}
                             </span>
                             <h3 className="font-display text-xl md:text-2xl font-bold text-white mb-4">{card.title}</h3>
                             <ul className="space-y-3">
                                 {card.points.map((point) => (
-                                    <li key={point} className="flex items-start gap-3 text-sm text-slate-300 leading-relaxed">
-                                        <svg className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <li key={point} className="flex items-start gap-3 text-sm text-body leading-relaxed">
+                                        <svg className="w-5 h-5 text-success shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                         </svg>
                                         {point}

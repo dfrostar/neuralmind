@@ -25,26 +25,26 @@ export default function Benchmarks() {
                     Two of these are recomputed by CI on every commit; the rest reproduce from a
                     fresh clone with one command. Where a number comes from a single repo, it says so,
                     and two cells say what isn&rsquo;t measured yet.
-                    Run <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">neuralmind benchmark .</code> for your own.
+                    Run <code className="font-mono text-code-inline text-electric-bright bg-electric/[0.07] rounded-control px-1 py-0.5">neuralmind benchmark .</code> for your own.
                 </SectionHeader>
 
                 {/* Same ruled matrix as the hero stats and the feature grid, so a
                     figure looks the same wherever it appears on the page. */}
-                <dl className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                <dl className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border overflow-hidden">
                     {dataPoints.map((dp) => (
                         <div key={dp.metric} className="border-b border-r border-carbon-border p-6">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">
+                            <dt className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint mb-3">
                                 {dp.metric}
                             </dt>
                             <dd>
                                 <p className={`text-white mb-2 leading-none ${
                                     /^[~\d]/.test(dp.value)
-                                        ? 'metric text-[1.75rem]'
+                                        ? 'metric text-stat'
                                         : 'font-display text-2xl font-semibold tracking-tight'
                                 }`}>
                                     {dp.value}
                                 </p>
-                                <p className="text-slate-400 text-sm leading-relaxed">{dp.detail}</p>
+                                <p className="text-muted text-sm leading-relaxed">{dp.detail}</p>
                             </dd>
                         </div>
                     ))}
@@ -52,7 +52,7 @@ export default function Benchmarks() {
 
                 {/* The full evidence page: per-repo tables, all four backends, and the
                     misses on the larger eval. The tiles above are the summary. */}
-                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
+                <p className="mt-6 text-muted text-sm max-w-3xl">
                     Every number above comes from{' '}
                     <a href="/benchmark/" className="text-electric hover:text-electric-bright transition-colors">
                         the public benchmark
@@ -64,8 +64,8 @@ export default function Benchmarks() {
                 </p>
 
                 {/* Field report — hand-measured, deliberately outside the CI-gated tiles above */}
-                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
-                    Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
+                <p className="mt-6 text-muted text-sm max-w-3xl">
+                    Plus one labeled <span className="text-body">field report</span> (measured with the CLI, not CI-gated):{' '}
                     <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
                     platform, through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0.{' '}
                     <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
@@ -74,12 +74,12 @@ export default function Benchmarks() {
                 </p>
 
                 {/* Demo callout */}
-                <div className="mt-12 p-6 md:p-7 rounded-xl panel-accent flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="mt-12 p-6 md:p-7 rounded-card panel-accent flex flex-col md:flex-row md:items-center justify-between gap-5">
                     <div className="max-w-2xl">
                         <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-1.5">See it in 30 seconds</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">
+                        <p className="text-muted text-sm leading-relaxed">
                             Clone the repo and run the demo on the bundled fixture, then run{' '}
-                            <code className="font-mono text-[0.9em] text-electric-bright">neuralmind benchmark .</code> on
+                            <code className="font-mono text-code-inline text-electric-bright">neuralmind benchmark .</code> on
                             your own codebase. Email the output to hello@neuralmind.uk with your team size
                             for a free spend model.
                         </p>

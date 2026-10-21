@@ -140,20 +140,20 @@ export default function MeasureYourOwnPage() {
 
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-lg bg-proton/10 text-proton text-xs font-mono">
+                        <span className="px-3 py-1 rounded-control bg-proton/10 text-proton text-xs font-mono">
                             ~15 minutes
                         </span>
                         <span className="text-faint text-sm">No account · runs on your machine · no telemetry</span>
                     </div>
-                    <h1 className="font-display text-3xl md:text-[2.75rem] font-bold text-white mb-5 leading-[1.08] tracking-tighter">
+                    <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         Measure it on your own repo
                     </h1>
-                    <p className="text-lg text-slate-300 leading-relaxed mb-6">
+                    <p className="text-lg text-body leading-relaxed mb-6">
                         The number that decides anything for you is the one from your codebase. Three
                         commands get it, a fourth checks the learning later — and we want you to share
                         it, good or bad.
                     </p>
-                    <p className="text-slate-400 leading-relaxed">
+                    <p className="text-muted leading-relaxed">
                         We do not have testimonials yet. What we have is a benchmark that runs locally,
                         against your code, in about fifteen minutes. Run it and read your own number. If
                         it is good,{' '}
@@ -168,16 +168,16 @@ export default function MeasureYourOwnPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-6">Step by step</h2>
                     <div className="grid md:grid-cols-2 gap-4">
                         {steps.map((s) => (
-                            <div key={s.step} className="card rounded-2xl p-6 flex flex-col min-w-0">
+                            <div key={s.step} className="card rounded-card p-6 flex flex-col min-w-0">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <span className="w-7 h-7 rounded-md border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums">
+                                    <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums">
                                         {s.step}
                                     </span>
                                     <h3 className="font-display text-lg font-bold text-white">{s.title}</h3>
                                 </div>
-                                <p className="text-slate-400 text-sm mb-4">{s.body}</p>
+                                <p className="text-muted text-sm mb-4">{s.body}</p>
                                 <div className="mt-auto space-y-2">
-                                    <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto">
+                                    <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto">
                                         {s.code.map((line) => (
                                             <p key={line} className={`whitespace-nowrap ${line.startsWith('#') ? 'text-faint' : ''}`}>
                                                 <span className="text-faint select-none">{line.startsWith('#') ? '' : '$ '}</span>
@@ -186,7 +186,7 @@ export default function MeasureYourOwnPage() {
                                         ))}
                                     </div>
                                     {s.output && (
-                                        <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 overflow-x-auto">
+                                        <div className="bg-carbon rounded-control p-4 font-mono text-xs text-muted overflow-x-auto">
                                             {s.output.map((line) => (
                                                 <p key={line} className="whitespace-pre">{line}</p>
                                             ))}
@@ -201,17 +201,17 @@ export default function MeasureYourOwnPage() {
 
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-6">What you get</h2>
-                    <dl className="grid sm:grid-cols-2 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                    <dl className="grid sm:grid-cols-2 border-t border-l border-carbon-border overflow-hidden">
                         {whatYouGet.map((item) => (
                             <div key={item.metric} className="border-b border-r border-carbon-border p-6">
                                 <dt className="font-display text-lg font-semibold tracking-tight text-white mb-2">
                                     {item.metric}
                                 </dt>
-                                <dd className="text-slate-400 text-sm leading-relaxed">{item.desc}</dd>
+                                <dd className="text-muted text-sm leading-relaxed">{item.desc}</dd>
                             </div>
                         ))}
                     </dl>
-                    <p className="text-slate-400 text-sm mt-4 leading-relaxed">
+                    <p className="text-muted text-sm mt-4 leading-relaxed">
                         Want correctness scored as well as cost? The{' '}
                         <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
                         measures against every source file and scores gold-file recall on pre-registered
@@ -223,7 +223,7 @@ export default function MeasureYourOwnPage() {
                     <h2 className="font-display text-lg font-semibold tracking-tight text-white mb-2">
                         Already run it?
                     </h2>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                    <p className="text-muted text-sm leading-relaxed mb-4">
                         Send your output to hello@neuralmind.uk and we will publish it — attributed or
                         anonymized, your choice. The only requirement: it comes from your own codebase,
                         under your own run. We are building social proof the honest way, one real number

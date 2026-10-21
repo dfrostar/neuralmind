@@ -83,11 +83,11 @@ export default function FAQ() {
                         // invisible to crawlers and to anything quoting the
                         // page. It is also keyboard-accessible and needs no JS,
                         // which is why this component is no longer a client one.
-                        <details key={i} className="card rounded-xl overflow-hidden group">
+                        <details key={i} className="card rounded-card overflow-hidden group">
                             <summary className="w-full px-6 py-5 flex items-center justify-between text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                 <h3 className="font-semibold text-white pr-4 text-base">{faq.q}</h3>
                                 <svg
-                                    className="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
+                                    className="w-5 h-5 text-muted shrink-0 transition-transform duration-200 group-open:rotate-180"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -97,7 +97,7 @@ export default function FAQ() {
                                 </svg>
                             </summary>
                             <div className="px-6 pb-5 pt-0">
-                                <p className="text-slate-400 leading-relaxed text-sm">{faq.a}</p>
+                                <p className="text-muted leading-relaxed text-sm">{faq.a}</p>
                             </div>
                         </details>
                     ))}

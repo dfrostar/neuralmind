@@ -45,11 +45,11 @@ export default function Proof() {
                 <div className="grid md:grid-cols-3 gap-4">
                     {evidence.map((item) => (
                         <div key={item.title} className="rounded-card border border-carbon-border bg-carbon-card p-6 md:p-7 flex flex-col">
-                            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-proton mb-3">
+                            <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-proton mb-3">
                                 {item.kind}
                             </span>
                             <h3 className="font-display text-lg font-bold text-white mb-3">{item.title}</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed mb-4">{item.desc}</p>
+                            <p className="text-muted text-sm leading-relaxed mb-4">{item.desc}</p>
                             <a
                                 href={item.link}
                                 className="mt-auto text-electric hover:text-electric-bright text-sm font-medium transition-colors"
@@ -67,21 +67,21 @@ export default function Proof() {
                         </h3>
                         <ul className="space-y-2">
                             {gaps.map((gap) => (
-                                <li key={gap} className="flex items-start gap-2.5 text-sm text-slate-400">
-                                    <span className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" aria-hidden="true" />
+                                <li key={gap} className="flex items-start gap-2.5 text-sm text-muted">
+                                    <span className="mt-2 w-1.5 h-1.5 rounded-pill bg-faint shrink-0" aria-hidden="true" />
                                     {gap}
                                 </li>
                             ))}
                         </ul>
                     </div>
-                    <div className="space-y-3 text-slate-400 text-sm leading-relaxed">
+                    <div className="space-y-3 text-muted text-sm leading-relaxed">
                         <p>
                             The biggest missing piece is{' '}
                             <span className="text-white font-medium">social proof from real users</span>,
                             not another benchmark. So the honest way to evaluate NeuralMind is to{' '}
-                            <code className="font-mono text-[0.9em] text-slate-300">pip install neuralmind</code>,{' '}
-                            <code className="font-mono text-[0.9em] text-slate-300">neuralmind build .</code>,{' '}
-                            <code className="font-mono text-[0.9em] text-slate-300">neuralmind benchmark .</code> — and
+                            <code className="font-mono text-code-inline text-body">pip install neuralmind</code>,{' '}
+                            <code className="font-mono text-code-inline text-body">neuralmind build .</code>,{' '}
+                            <code className="font-mono text-code-inline text-body">neuralmind benchmark .</code> — and
                             read your own number.
                         </p>
                         <p>

@@ -33,17 +33,17 @@ export default function HowItWorks() {
             <div className="max-w-6xl mx-auto">
                 <header className="max-w-2xl mb-10 md:mb-14">
                     <span className="eyebrow block mb-4">Pipeline</span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-semibold text-white tracking-tighter mb-4">
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-4">
                         How it works
                     </h2>
-                    <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+                    <p className="text-muted text-base md:text-lg leading-relaxed">
                         {withCode(
                             'Three steps. After that, `neuralmind init-hook .` keeps the index current: since v4.13.0 it installs post-commit, post-merge, post-checkout and post-rewrite hooks, so commits, merges, checkouts and rebases all refresh it.',
                         )}
                     </p>
                 </header>
 
-                <ol className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                <ol className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-carbon-border overflow-hidden">
                     {steps.map((step, i) => (
                         <li
                             key={step.title}
@@ -65,12 +65,12 @@ export default function HowItWorks() {
                             <h3 className="font-display text-xl font-semibold text-white tracking-tight mb-3">
                                 {step.title}
                             </h3>
-                            <p className="text-slate-400 leading-relaxed text-[0.9375rem] mb-6">
+                            <p className="text-muted leading-relaxed text-body-sm mb-6">
                                 {withCode(step.desc)}
                             </p>
 
-                            <span className="inline-flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint">
-                                <span className="w-1 h-1 rounded-full bg-proton" />
+                            <span className="inline-flex items-center gap-2 font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
+                                <span className="w-1 h-1 rounded-pill bg-proton" />
                                 {step.time}
                             </span>
                         </li>

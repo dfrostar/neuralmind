@@ -28,29 +28,29 @@ export default function Problem() {
             <div className="max-w-6xl mx-auto">
                 <header className="max-w-2xl mb-10 md:mb-14">
                     <span className="eyebrow block mb-4">The problem</span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-semibold text-white tracking-tighter mb-4">
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-4">
                         AI coding agents have no long-term memory
                     </h2>
-                    <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+                    <p className="text-muted text-base md:text-lg leading-relaxed">
                         Claude Code, Codex, Cursor and every other agent reason well over what is in
                         the window — and forget it when the session ends. So they pay, every time,
                         to find their way around a codebase they have seen before.
                     </p>
                 </header>
 
-                <ul className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                <ul className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-carbon-border overflow-hidden">
                     {problems.map((p) => (
                         <li key={p.title} className="border-b border-r border-carbon-border p-7 md:p-8">
                             <Icon name={p.icon} className="w-6 h-6 text-faint mb-6" />
                             <h3 className="font-display text-xl font-semibold text-white tracking-tight mb-3">
                                 {p.title}
                             </h3>
-                            <p className="text-slate-400 leading-relaxed text-[0.9375rem]">{p.body}</p>
+                            <p className="text-muted leading-relaxed text-body-sm">{p.body}</p>
                         </li>
                     ))}
                 </ul>
 
-                <p className="mt-8 text-slate-300 text-base md:text-lg leading-relaxed max-w-3xl">
+                <p className="mt-8 text-body text-base md:text-lg leading-relaxed max-w-3xl">
                     NeuralMind is the missing layer: a persistent code graph plus associations
                     learned from how you work, queried on your machine — a local index lookup, not
                     another model call — so your agent starts every session already knowing where

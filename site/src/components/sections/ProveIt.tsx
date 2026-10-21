@@ -34,16 +34,16 @@ export default function ProveIt() {
 
                 <div className="grid md:grid-cols-3 gap-4 mb-8">
                     {steps.map((s) => (
-                        <div key={s.step} className="card rounded-2xl p-6 flex flex-col min-w-0">
+                        <div key={s.step} className="card rounded-card p-6 flex flex-col min-w-0">
                             <div className="flex items-center gap-3 mb-3">
-                                <span className="w-7 h-7 rounded-md border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums">
+                                <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums">
                                     {s.step}
                                 </span>
                                 <h3 className="font-display text-lg font-bold text-white">{s.title}</h3>
                             </div>
-                            <p className="text-slate-400 text-sm mb-4">{withCode(s.body)}</p>
+                            <p className="text-muted text-sm mb-4">{withCode(s.body)}</p>
                             {s.code ? (
-                                <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto mt-auto">
+                                <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto mt-auto">
                                     {s.code.map((line) => (
                                         <p key={line} className="whitespace-nowrap">
                                             <span className="text-faint select-none">$ </span>
@@ -65,11 +65,11 @@ export default function ProveIt() {
                     ))}
                 </div>
 
-                <div className="card rounded-2xl p-6 md:p-8">
+                <div className="card rounded-card p-6 md:p-8">
                     <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-3">
                         What the demo prints (bundled fixture)
                     </p>
-                    <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 overflow-x-auto">
+                    <div className="bg-carbon rounded-control p-4 font-mono text-xs text-muted overflow-x-auto">
                         <p className="whitespace-pre">{'Q: How does authentication work in this codebase?'}</p>
                         <p className="whitespace-pre text-faint">{'   naive = 4,736 tok   neuralmind =  829 tok   reduction =   5.7×'}</p>
                         <p className="whitespace-pre mt-2">{'Average reduction:   5.5×  across 3 queries'}</p>

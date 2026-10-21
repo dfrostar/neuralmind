@@ -23,7 +23,7 @@ export default function NotFound() {
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
                         Page not found
                     </h1>
-                    <p className="text-slate-400 text-lg mb-10">
+                    <p className="text-muted text-lg mb-10">
                         That page doesn&apos;t exist, or it moved. The docs now live at{' '}
                         <a
                             href="https://docs.neuralmind.uk/"
