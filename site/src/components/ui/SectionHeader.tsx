@@ -25,11 +25,11 @@ export default function SectionHeader({
     return (
         <header className={`max-w-2xl mb-10 md:mb-14 ${className}`}>
             <span className="eyebrow block mb-4">{eyebrow}</span>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-semibold text-white tracking-tighter mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-4">
                 {title}
             </h2>
             {children && (
-                <div className="text-slate-400 text-base md:text-lg leading-relaxed">{children}</div>
+                <div className="text-muted text-base md:text-lg leading-relaxed">{children}</div>
             )}
         </header>
     );

@@ -66,8 +66,8 @@ lines or 25KB of `MEMORY.md`, verbatim, every time. There is no ranking,
 no query-relevance filtering, and a project-level `MEMORY.md` that grows
 past that ceiling is silently truncated from what the subagent actually
 sees unless it curates the file down itself. NeuralMind serves
-L0→L3 progressive disclosure sized to the question (~800 tokens for a
-typical query) and ranks results by relevance — the two systems solve
+L0→L3 progressive disclosure sized to the question (670–961 mean tokens per
+question on the public benchmark) and ranks results by relevance — the two systems solve
 "what fits in the prompt" oppositely: one caps the source file's size,
 the other caps and ranks what's retrieved from an unbounded index.
 
@@ -108,7 +108,7 @@ retrieval system at all.
 | Scope | Per-subagent `name`, siloed | Per-project, shared across every agent/tool/host |
 | Host reach | Claude Code only (`.claude/`) | MCP-portable: Claude Code, Hermes-Agent, OpenClaw, Agent Zero, Cursor |
 | Staleness handling | None automatic — subagent must curate | Exponential half-life decay (synapses); rule-based invalidation (decisions) |
-| Size limit | Hard-truncated at 200 lines / 25KB | Token-budgeted per query (~800 tokens typical), not a hard file cap |
+| Size limit | Hard-truncated at 200 lines / 25KB | Token-budgeted per query (670–961 mean tokens per question on the public benchmark), not a hard file cap |
 | Requires an LLM to populate | Yes — the subagent itself writes it | No — local ONNX embeddings; decision records are explicit, rule-based |
 | Setup | Built into Claude Code, one frontmatter field | Separate install (`pip install neuralmind`), `neuralmind build` |
 | Cost to run | Free, native | MIT core; source-available commercial modules for the Team tier |

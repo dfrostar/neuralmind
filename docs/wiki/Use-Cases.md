@@ -23,12 +23,12 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 | If your goal is… | Do this | Expected outcome |
 |---|---|---|
 | **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | Fewer tokens per code question — measure yours with `neuralmind benchmark .` |
-| **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
-| **Keep all code local** | Default install — no extra config | No telemetry; no repository content transmitted by default; works offline after the first build |
+| **Ground the agent** in your code | `wakeup` at session start → `query` / `skeleton` during | A project map at session start and a ranked slice per question, so less re-exploration. What's measured is whether the right file is in that slice (40 of 40 public-benchmark queries; a gold file in the top five on 93.3% of the 150-question eval) — task outcomes such as answer accuracy are not |
+| **Keep all code local** | Default install — no extra config | No telemetry; no repository content transmitted by default; works offline after the first build. Your agent still sends the slice it selects to its own model — use a local model to keep that on the machine too |
 | **Work across Claude + GPT + Gemini** | Build once, pipe output into any model | Model-agnostic |
-| **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) + `neuralmind_feedback` MCP tool | The synapse layer learns from usage automatically; positive/negative feedback sharpens associations |
+| **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) + `neuralmind_feedback` MCP tool | The synapse layer learns which files you use together and re-ranks recall with those links; positive/negative feedback strengthens or weakens them. Whether it helps on your repo: `neuralmind eval . --synapse-ab` |
 | **Measure savings** for a stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios |
-| **Auto-refresh** the index | `neuralmind init-hook .` | Every commit rebuilds incrementally |
+| **Auto-refresh** the index | `neuralmind init-hook .` | Commits rebuild incrementally — and since v4.13.0 merges and pulls, branch switches and rebases too |
 
 ### "This is happening to me" (symptoms → fix)
 
@@ -45,8 +45,8 @@ Full symptom/fix table lives in the [main README](https://github.com/dfrostar/ne
 **You almost certainly want NeuralMind if:**
 
 - You pay per-token for code questions and your bill keeps growing.
-- Your agent keeps running out of context or confidently hallucinating structure.
-- You need AI help on code that cannot leave your machine.
+- Your agent keeps running out of context or re-exploring structure it has already seen.
+- You need AI help on code that cannot leave your machine — NeuralMind transmits no repository content by default; pair it with a local model.
 
 ---
 

@@ -113,9 +113,10 @@ git-ignored and per-checkout.
 
 **Pick NeuralMind if:**
 
-- You want the layer to **get better on this repo over time**, not just
-  stay accurate to the current commit — and you're on the repo enough
-  for that to accumulate.
+- You want the layer to **learn from how this repo is used** — which
+  files are worked on together — not just stay accurate to the current
+  commit. Whether that helps retrieval on your repo is something to
+  measure (`neuralmind eval . --synapse-ab`), not assume.
 - Several people or several agents (Claude Code, Cursor, Cline, Codex)
   hit the same repo and you want one memory they all reinforce, moved
   between machines by git.

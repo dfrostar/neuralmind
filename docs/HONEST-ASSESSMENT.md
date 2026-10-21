@@ -28,12 +28,17 @@ codebase fits in a single context window, you don't pay for inference,
 or you've already invested in prompt caching plus a long-context
 model.
 
-The headline "12-50×" reduction is real, but it's a reduction in
+The headline token figures are real — 51–242× fewer tokens than
+pasting every source file on the
+[public benchmark](benchmarks/public.md) (v4.12.0), and the older
+12–50× field-report range measured by `neuralmind benchmark` before
+v4.5.0 against its fixed 50K-token estimate — but they're a reduction in
 **retrieval input tokens**, not a reduction in your total LLM bill.
 What you actually save depends on how much of your spend is retrieval
 vs. generation, which varies wildly by workload. For a typical
-Claude Code session the realistic end-to-end savings is **~1.6–3×**
-total cost, not 12-50×.
+Claude Code session the [business case](BUSINESS-CASE.md)'s
+**derived estimate** of end-to-end savings is **~1.6–3×** total cost —
+an estimate, not a measurement, and nowhere near the token ratio.
 
 The community-benchmark table is currently **three entries from the
 maintainer's own projects**. Numbers from outside contributors are
@@ -51,11 +56,12 @@ You'll likely see real benefit if **all** of these are true:
 - Your codebase is **>10K lines** and growing. Below that, modern
   long-context models can hold the whole thing.
 - You hit context-limit errors mid-task at least weekly, OR your
-  monthly LLM bill is large enough that a ~1.6–3× reduction is worth
+  monthly LLM bill is large enough that a ~1.6–3× reduction (the
+  business case's derived estimate, not a measurement) is worth
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.
-- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/Graphify-Labs/graphify) is optional and takes priority where present.
+- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP, plus JavaScript through the TypeScript grammars since v4.12.0) — coverage drops outside that set. [graphify](https://github.com/Graphify-Labs/graphify) is optional and takes priority where present.
 
 If you check 3 of 5, marginal. If you check 4–5, run
 `bash scripts/demo.sh` and then `neuralmind benchmark .` on your repo.
@@ -79,29 +85,39 @@ If you check 3 of 5, marginal. If you check 4–5, run
   setup; for many teams it won't.
 - **Your repo is non-standard** — heavily generated code, polyglot with weak tree-sitter coverage, or unusual layouts. Retrieval quality depends on graph quality, which depends on the extractor (built-in tree-sitter backend by default, or graphify if installed).
 
-## What "12-50× reduction" actually means
+## What the token-reduction figures actually mean
 
-The number is honest **for what it measures**:
+Each number is honest **for what it measures**, and each measures
+against a different baseline:
 
-> Retrieval-stage input tokens vs. a "load every code file"
-> baseline, on the same query, measured with `tiktoken`.
+> **51–242×** (public benchmark, v4.12.0): retrieval-stage input
+> tokens vs. pasting every source file of four pinned OSS repos, on the
+> same query, counted with `tiktoken`.
+>
+> **12–50×** (field reports): `neuralmind benchmark` before v4.5.0,
+> which divided a fixed 50K-token estimate by the tokens each question
+> cost — not a measured size of the repo. Since v4.5.0 it divides by
+> the measured code the index covers, so a new run is not on that scale.
 
-What it **does not** mean:
+What they **do not** mean:
 
-- It is **not** a 12-50× reduction in your monthly LLM bill. Output
-  tokens are unchanged. Conversation history accumulates. The
+- They are **not** a reduction of that size in your monthly LLM bill.
+  Output tokens are unchanged. Conversation history accumulates. The
   retrieval call is one of many a chatty agent makes.
-- It is **not** measured against a smart-baseline like Cursor
+- They are **not** measured against a smart baseline like Cursor
   `@codebase` or Claude Code's built-in retrieval — those already do
-  *some* retrieval. NeuralMind's marginal benefit over them is
-  smaller than 12-50× and we have not yet measured it rigorously.
-- It is **not** uniform across languages or repo shapes. Python
-  repos with clean module structure see the high end; polyglot
-  monorepos with generated code see the low end.
+  *some* retrieval. The closest the public benchmark comes is ripgrep
+  opening its top five files (NeuralMind uses 31–67× fewer tokens) and
+  a plain vector search, which is cheaper than NeuralMind on every repo.
+  NeuralMind's marginal benefit over an agent's own retrieval is
+  smaller than these ratios and we have not measured it.
+- They are **not** uniform across repos: the four Python repos on the
+  public benchmark range from 51× to 242×, and other languages and
+  repo shapes (polyglot monorepos, generated code) aren't benchmarked.
 
 A realistic mental model: **NeuralMind shrinks the "what context to
 load" decision from O(repo) to O(query)**. If your agent makes 100
-context-loading calls a day on a 50K-token repo, that compounds.
+context-loading calls a day on a 50K-token repo, that adds up.
 If it makes 5 calls a day on a 5K-token repo, it doesn't.
 
 ## The community benchmark caveat
@@ -129,19 +145,26 @@ neuralmind benchmark . --contribute
 
 ## What we haven't measured well yet
 
-The current benchmark suite covers **token reduction** rigorously
-(self-benchmark in CI, regression-gated). It covers **retrieval
-quality** weakly (top-k hit rate on a 10-query fixture). It does
-**not** yet cover:
+The current benchmark suite covers **token reduction** (a
+regression-gated self-benchmark in CI on a ~500-line fixture, and the
+public benchmark on four pinned OSS repos) and **retrieval** (the gold
+file on 40 public-benchmark queries; the 150-question retrieval eval
+over five public repos, which misses 10). Neither is a CI gate on real
+repos. It does **not** yet cover:
 
-- **Answer faithfulness.** Does the agent's answer get *better*
-  with NeuralMind context, or just shorter? We have anecdotes, not
-  measurements.
+- **Answer quality with a model in the loop.** The faithfulness eval
+  checks whether the selected context contains the facts an answer
+  needs, at a matched token budget, on the reference fixture. Whether
+  the agent's answer gets *better* with NeuralMind context, or just
+  shorter, is not measured.
 - **End-to-end cost reduction.** Real workloads have multi-turn
   conversations, tool calls, and output generation — not just
   retrieval. We measure the retrieval step, not the workload.
 - **Quality on languages other than Python.** The primary fixture is Python; v2.0 added golden-query suites for 9 more languages (TS, Go, Rust, Java, C, C++, C#, Ruby, PHP) but the cross-language retrieval quality comparison is still thin.
-- **Quality on large real-world repos.** The fixture is ~500 lines.
+- **Quality on large real-world repos.** The CI fixture is ~500
+  lines, and the largest public-benchmark repo is `rich` (232,483
+  tokens to paste every source file); monorepo-scale codebases aren't
+  benchmarked.
 
 These are tracked on [ROADMAP.md](../ROADMAP.md) under "Next" and
 are open contribution targets.
@@ -179,7 +202,7 @@ will.
   honest competitor. Caching gives you ~90% cost reduction with no
   retrieval infrastructure. NeuralMind is additive (smaller cached
   prompt = cheaper cache reads) but the marginal win is smaller
-  than the 12-50× headline suggests. Measure on your workload.
+  than the token ratios suggest. Measure on your workload.
 - **`grep` + `Read` + careful prompting** — if you only run a few
   questions a day, this is fine. NeuralMind's value scales with
   query volume.
@@ -221,11 +244,13 @@ legitimate reason not to install this.
 We'd downgrade our own claims if:
 
 - Community benchmarks (n ≥ 10 outside repos) show median
-  reduction below 5×. (Currently directionally above this on n=2.)
+  reduction below 5×. (Currently directionally above this on n=3, all
+  from the maintainer's own projects, on the fixed 50K-token estimate.)
 - Top-k retrieval hit rate on a real-world query set falls below
-  60%. (Recent runs land in a 72–83% cold / 78–86% warm band on the
-  reference fixture — the warm number reflects the learned synapse boost.
-  The band is wide because the fixture is tiny and the index is jittery.)
+  60%. (At v4.12.0 the 150-question retrieval eval over five public
+  repos puts a gold file in the top five for 93.3% of questions. On the
+  tiny reference fixture top-k hit rate is 97% with synapse recall off,
+  and recall adds nothing there.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.
 - A major agent vendor ships learned, git-portable **team** memory

@@ -41,11 +41,11 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | Claude Projects | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
 | Prompt caching | Caching amortizes a big prompt; NeuralMind makes the prompt small — combine both |
 | LangChain / LlamaIndex | Frameworks you assemble; NeuralMind is the assembled default for code agents |
-| Long context (1M/2M) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
+| Long context (1M/2M) | Possible ≠ cheap — a long window bills every token in it each turn; NeuralMind sends only the slice the question needs (670–961 mean tokens per question on the public benchmark, against 41,729–232,483 to paste every source file) |
 | Generic RAG | Text chunking loses structure; NeuralMind keeps the call graph |
 | Tree-sitter / ctags / grep | Deterministic but syntactic; use alongside NeuralMind, not instead of |
 | Graft | Closest architectural neighbour — both build local code graphs; Graft's is rebuilt fresh per query, NeuralMind's learns from usage. Graft publishes agent-loop SWE-bench results we don't have; no head-to-head run |
-| codebase-memory-mcp | The one competitor we've scored live: better ranking at ~10× fewer tokens on two Python repos, but it indexes 162 languages to our 10 and scales to kernel-size repos |
+| codebase-memory-mcp | The one competitor we've scored live: better ranking (MRR 0.96 vs 0.23 on `requests`, 0.60 vs 0.50 on `click`) at about 1,000 mean tokens per query against its 25,214–38,538, in a June 2026 run (v0.33.0) on those two Python repos, not re-run since — but it indexes 162 languages to our ten plus JavaScript and scales to kernel-size repos |
 | Headroom | Use both — Headroom compresses what flows to the model; NeuralMind stops most of it from flowing in the first place |
 | Context Engineering Stack (NeuralMind + Ponytail + Headroom) | These compose: NeuralMind (retrieval) + Headroom (transport) + Ponytail (generation) address token waste at every pipeline stage |
 
@@ -53,7 +53,7 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 
 Most alternatives cover **retrieval** (Cursor `@codebase`, Aider, LangChain) or **indexing** (Copilot, Cody) or **hosting** (Claude Projects, Windsurf). NeuralMind covers two things:
 
-1. What context the agent *retrieves* (progressive disclosure, ~800 tokens/query)
+1. What context the agent *retrieves* (progressive disclosure, 670–961 mean tokens per question on the public benchmark)
 2. What the agent *remembers* between sessions (a synapse layer learned from how you work)
 
 It doesn't compress tool output: that turned out to cost tokens in Claude Code ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)).

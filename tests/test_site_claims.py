@@ -14,16 +14,20 @@ actually read. That gap let four different classes of drift ship at once:
   (95% mean; ``click``, the weakest repo, is 0.86), and the real name of a private client
   whose field report every doc deliberately anonymizes.
 
-So this module enforces three rules:
+So this module enforces these rules:
 
-1. **Ratio provenance** — every ``N×`` performance ratio on the high-traffic
-   surfaces must be listed in ``site/claims.json`` with a source and a
+1. **Ratio provenance** — every ``N×`` performance ratio on any page or
+   component must be listed in ``site/claims.json`` with a source and a
    reproduction command. Small multipliers (< 2×) are exempt: those are decay
    coefficients and worked examples in the publications, not claims.
 2. **No private names** — names on the manifest's ``private_names_never_publish``
    list must not appear anywhere under ``site/``.
 3. **No absolute privacy claims** — the same ``FORBIDDEN`` patterns the docs
    guard uses, applied to the site too.
+4. **No overclaims, unscoped ranges or unsourced figures** — the docs guard's
+   ``OVERCLAIMS`` (learning "over time", "zero telemetry", "compliant", task
+   outcomes), its 12–50×-needs-a-baseline rule and its unsourced/superseded
+   figure lists, applied to every page.
 
 Stdlib-only, like the docs guard, so it runs without the full dep set.
 """
@@ -34,20 +38,37 @@ import json
 import re
 from pathlib import Path
 
-from tests.test_docs_claims import FORBIDDEN
+from tests.test_docs_claims import (
+    FORBIDDEN,
+    SUPERSEDED_FIGURES,
+    UNSOURCED_FIGURES,
+    _paragraph_before,
+    _without_ranges,
+    overclaims_in,
+    unscoped_12_50,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE_ROOT = REPO_ROOT / "site" / "src"
 CLAIMS_FILE = REPO_ROOT / "site" / "claims.json"
 
-# Surfaces where a bare ratio reads as a headline product claim. The
-# publications and field-report pages carry their own inline provenance
-# (and worked arithmetic), so they are checked for names and absolutes but
-# not for ratio provenance.
-RATIO_GATED = (
+# The homepage: where a recall percentage reads as the current headline, so
+# it must be the committed run's.
+HEADLINE_SURFACES = (
     "components/sections/*.tsx",
     "app/page.tsx",
     "app/layout.tsx",
+)
+
+# Every page and component. Until 2026-10-19 only the homepage was gated, on
+# the theory that publications and field reports carry their own provenance;
+# /measure-your-own then quoted a draft 54.9× and /publications/codex-setup a
+# bare 12–50× with no guard reading either. Worked arithmetic in a publication
+# (decay weights, merge coefficients) is exempt below 2×; above it, a line
+# that isn't a claim carries the allow marker.
+RATIO_GATED = (
+    "app/**/*.tsx",
+    "components/**/*.tsx",
 )
 
 # Registry manifests shipped to external indexes (Agent Zero's a0-plugins,
@@ -140,7 +161,7 @@ def _site_files(patterns: tuple[str, ...] | None = None) -> list[Path]:
         return sorted(SITE_ROOT.rglob("*.tsx")) + sorted(SITE_ROOT.rglob("*.ts"))
     files: list[Path] = []
     for pattern in patterns:
-        files.extend(sorted(SITE_ROOT.glob(pattern)))
+        files.extend(p for p in sorted(SITE_ROOT.glob(pattern)) if p not in files)
     return files
 
 
@@ -183,8 +204,9 @@ def test_every_site_ratio_has_provenance() -> None:
     violations: list[str] = []
     manifests = [REPO_ROOT / name for name in REGISTRY_MANIFESTS]
     for path in _site_files(RATIO_GATED) + manifests:
+        lines = _prose(path).splitlines()
         for lineno, ratio in _ratios_in(_prose(path)):
-            if ratio < MIN_CLAIM_RATIO or ratio in allowed:
+            if ratio < MIN_CLAIM_RATIO or ratio in allowed or _exempt(lines, lineno - 1):
                 continue
             rel = path.relative_to(REPO_ROOT)
             violations.append(f"{rel}:{lineno}: {ratio:g}× is not in site/claims.json")
@@ -633,7 +655,7 @@ def test_headline_surfaces_quote_the_current_recall_figures() -> None:
     """
     allowed = _canonical_percentages()
     violations: list[str] = []
-    for path in _site_files(RATIO_GATED):
+    for path in _site_files(HEADLINE_SURFACES):
         lines = _prose(path).splitlines()
         for lineno, value in _stale_recall_percentages(lines, allowed):
             rel = path.relative_to(REPO_ROOT)
@@ -657,3 +679,148 @@ def test_benchmark_guards_trip_on_the_copy_that_shipped() -> None:
     # Lines that don't talk about recall are out of scope ("90% of teams" etc).
     assert _stale_recall_percentages(["saves 90% of setup time"], {"93.75"}) == []
     assert _pct(0.9375) == "93.75" and _pct(0.85) == "85" and _pct(1.0) == "100"
+
+
+# ---------------------------------------------------------------------------
+# The overclaim, scope and unsourced-figure rules tests/test_docs_claims.py
+# applies to the docs, applied to every page under site/src. The 2026-10-19
+# audit found the site carrying "Fewer wrong turns, faster teams", "zero
+# telemetry", "a guarantee to you", a stale +0.25 faithfulness delta and a
+# bare 12–50× while the docs guard read none of it.
+# ---------------------------------------------------------------------------
+
+
+def _site_lines() -> list[tuple[Path, list[str], int]]:
+    out: list[tuple[Path, list[str], int]] = []
+    for path in _site_files():
+        lines = _prose(path).splitlines()
+        out.extend((path, lines, i) for i in range(len(lines)) if not _exempt(lines, i))
+    return out
+
+
+def test_site_has_no_overclaims() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {text!r} — {reason}"
+        for path, lines, i in _site_lines()
+        for text, reason in overclaims_in(lines[i], _paragraph_before(lines, i))
+    ]
+    assert not violations, (
+        "Overclaim(s) on the marketing site. Say what is measured, scoped to "
+        "what NeuralMind itself does:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_site_12_50_range_names_its_baseline() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {lines[i].strip()[:110]}"
+        for path, lines, i in _site_lines()
+        if unscoped_12_50(lines, i)
+    ]
+    assert not violations, (
+        "12–50× on the site without its baseline (the fixed 50K-token estimate "
+        "`neuralmind benchmark` divided by before v4.5.0):\n  " + "\n  ".join(violations)
+    )
+
+
+def test_site_quotes_no_unsourced_or_superseded_figures() -> None:
+    violations: list[str] = []
+    for path, lines, i in _site_lines():
+        rel = path.relative_to(REPO_ROOT)
+        for pattern, reason in UNSOURCED_FIGURES:
+            if m := pattern.search(lines[i]):
+                violations.append(f"{rel}:{i + 1}: {m.group(0)!r} — {reason}")
+        for pattern, reason in SUPERSEDED_FIGURES:
+            if m := pattern.search(_without_ranges(lines[i])):
+                violations.append(f"{rel}:{i + 1}: {m.group(0)!r} — {reason}")
+    assert not violations, (
+        "The site quotes a figure no committed measurement produces, or one a "
+        "later run replaced:\n  " + "\n  ".join(violations)
+    )
+
+
+# release.ts falls back to a hardcoded tag when the GitHub API is unreachable
+# at build time. It sat at v4.3.4 through fourteen releases. release-please now
+# bumps it (release-please-config.json extra-files, `x-release-please-version`),
+# so it can only match the package version.
+RELEASE_TS = SITE_ROOT / "lib" / "release.ts"
+PACKAGE_INIT = REPO_ROOT / "neuralmind" / "__init__.py"
+
+
+def test_release_fallback_tracks_the_package_version() -> None:
+    text = RELEASE_TS.read_text(encoding="utf-8")
+    m = re.search(r"const FALLBACK = \{ tag: 'v([\d.]+)'.*x-release-please-version", text)
+    assert m, "release.ts FALLBACK must carry the x-release-please-version annotation"
+    version = re.search(r'__version__ = "([\d.]+)"', PACKAGE_INIT.read_text(encoding="utf-8"))
+    assert version and m.group(1) == version.group(
+        1
+    ), f"release.ts FALLBACK is v{m.group(1)}, the package is v{version and version.group(1)}"
+    config = json.loads((REPO_ROOT / "release-please-config.json").read_text(encoding="utf-8"))
+    extra = config["packages"]["."]["extra-files"]
+    assert any(isinstance(e, dict) and e.get("path") == "site/src/lib/release.ts" for e in extra)
+
+
+def test_release_fallback_date_comes_from_the_changelog() -> None:
+    # release-please bumps the fallback tag but not a date beside it, so a
+    # hand-typed date would pair every future tag with an old release day on
+    # /security and in the JSON-LD dateModified. The date is read from the
+    # tag's CHANGELOG.md heading instead, which release-please writes in the
+    # same release PR.
+    text = RELEASE_TS.read_text(encoding="utf-8")
+    m = re.search(r"const FALLBACK = \{([^}]*)\}", text)
+    assert m and "date" not in m.group(1), "release.ts FALLBACK must not carry a hardcoded date"
+    tag = re.search(r"tag: 'v([\d.]+)'", m.group(1))
+    assert tag
+    changelog = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    heading = rf"^## \[{re.escape(tag.group(1))}\]\([^)]*\) \(\d{{4}}-\d{{2}}-\d{{2}}\)"
+    assert re.search(heading, changelog, re.M), (
+        f"CHANGELOG.md has no dated heading for v{tag.group(1)}, so a fallback build "
+        "would show no release date"
+    )
+
+
+# The hero leads with the grep comparison (the user's call, 2026-10-19): the
+# gold file on 40 of 40 queries where keyword ripgrep, opening its top five
+# files whole, finds 32 of 40. Pasting every file is the easiest baseline to
+# beat, so wherever the hero or the page metadata quotes NeuralMind's found
+# count it quotes ripgrep's beside it, and the 150-question figure stays on the
+# page so 40 queries isn't read as a perfect-recall claim.
+HERO_SURFACES = ("components/sections/Hero.tsx", "app/layout.tsx")
+
+
+def _found_counts() -> tuple[int, int, int]:
+    """(neuralmind found, ripgrep found, total) from the committed run."""
+    data = json.loads(PUBLIC_RESULTS.read_text(encoding="utf-8"))
+    nm = rg = total = 0
+    for repo in data["repos"]:
+        s = repo["summary"]
+        if "neuralmind" in s and "ripgrep" in s:
+            nm += round(s["neuralmind"]["found_rate"] * s["neuralmind"]["n"])
+            rg += round(s["ripgrep"]["found_rate"] * s["ripgrep"]["n"])
+            total += s["neuralmind"]["n"]
+    return nm, rg, total
+
+
+def test_hero_pairs_its_found_count_with_ripgreps() -> None:
+    nm, rg, total = _found_counts()
+    ours, theirs = f"{nm} of {total}", f"{rg} of {total}"
+    violations: list[str] = []
+    for path in _site_files(HERO_SURFACES):
+        lines = _prose(path).splitlines()
+        quoted = False
+        for index, line in enumerate(lines):
+            if ours not in line or _exempt(lines, index):
+                continue
+            quoted = True
+            if theirs not in line or "ripgrep" not in line.lower():
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{index + 1}: {ours} without ripgrep's {theirs}"
+                )
+        if quoted and "93.3" not in "\n".join(lines):
+            violations.append(
+                f"{path.relative_to(REPO_ROOT)}: quotes {ours} but not the 150-question eval's 93.3%"
+            )
+    assert not violations, (
+        "The hero quotes NeuralMind's public-benchmark found count without the "
+        "ripgrep comparison it leads with (keyword ripgrep, top five files opened "
+        "whole), or without the 150-question figure:\n  " + "\n  ".join(violations)
+    )

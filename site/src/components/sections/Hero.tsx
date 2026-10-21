@@ -14,8 +14,12 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // The site's own rule is that a CI gate and a per-repo mean are not the same
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
-    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos', figure: true },
-    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file', figure: true },
+    // The lead is the comparison against keyword ripgrep with its top five files
+    // opened whole, the baseline closest to how an agent works; an agent reading
+    // only the matching lines pays less than that baseline, which is not measured.
+    // Keep both found counts and the ratio on the one line below.
+    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos, at 31–67× fewer tokens than keyword ripgrep (top five files opened whole), which found 32 of 40', figure: true },
+    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file, same 40 queries', figure: true },
     { label: 'Top-5 hit rate', value: '93.3%', evidence: '150-question eval, 5 repos, every miss published', figure: true },
     { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
 ];
@@ -48,10 +52,10 @@ export default function Hero() {
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] gap-12 lg:gap-14 items-center">
                     {/* ── Copy ───────────────────────────────────────────── */}
                     <div>
-                        <div className="inline-flex items-center gap-2.5 mb-6 pl-3 pr-4 py-1.5 rounded-full border border-carbon-border bg-carbon-raised">
-                            <span className="w-1.5 h-1.5 rounded-full bg-proton" />
-                            <span className="text-faint text-[0.8125rem]">Native for</span>
-                            <span className="relative grid text-slate-100 font-medium text-[0.8125rem]">
+                        <div className="inline-flex items-center gap-2.5 mb-6 pl-3 pr-4 py-1.5 rounded-pill border border-carbon-border bg-carbon-raised">
+                            <span className="w-1.5 h-1.5 rounded-pill bg-proton" />
+                            <span className="text-faint text-caption">Native for</span>
+                            <span className="relative grid text-ink font-medium text-caption">
                                 {/* Every name stacked in one cell: the widest sets the
                                     width, so the pill never resizes mid-rotation. */}
                                 {tags.map((tag, i) => (
@@ -73,18 +77,19 @@ export default function Hero() {
                             Persistent codebase memory · MCP server for Claude Code, Codex &amp; Cursor
                         </p>
 
-                        <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.04] tracking-tightest mb-6">
+                        <h1 className="font-display text-4xl sm:text-5xl lg:text-hero font-semibold text-white leading-display tracking-tightest mb-6">
                             Your coding agent forgets your codebase.{' '}
                             <span className="gradient-text">NeuralMind remembers it.</span>
                         </h1>
 
-                        <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mb-9">
+                        <p className="text-muted text-base sm:text-lg leading-relaxed max-w-xl mb-9">
                             Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
                             NeuralMind maps your repo, learns which files belong together as you
                             work, and hands your agent the right code first —{' '}
-                            <span className="text-slate-100 font-medium">the gold file on 40 of 40 benchmark
-                            queries at 51–242× fewer tokens</span> than pasting every source file,
-                            with every miss on a larger 150-question eval published. No telemetry. MIT core.
+                            <span className="text-ink font-medium">the gold file on 40 of 40 public-benchmark queries, where keyword ripgrep opening its top five files whole found 32 of 40, at 31–67× fewer tokens than ripgrep</span>{' '}
+                            and 51–242× fewer than pasting every source file. On a larger 150-question
+                            eval it puts a gold file in the top five on 93.3%, and all 10 misses are
+                            published. By default, no telemetry. MIT core.
                         </p>
 
                         <div className="flex flex-wrap items-center gap-3">
@@ -106,44 +111,44 @@ export default function Hero() {
                     </div>
 
                     {/* ── Terminal ───────────────────────────────────────── */}
-                    <div className="panel rounded-xl overflow-hidden shadow-2xl shadow-black/40">
+                    <div className="panel rounded-card overflow-hidden shadow-2xl shadow-black/40">
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-carbon-border bg-carbon-raised">
-                            <span className="w-2.5 h-2.5 rounded-full bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-full bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-full bg-carbon-line" />
-                            <span className="ml-2 font-mono text-[0.6875rem] text-faint tracking-wide">
+                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
+                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
+                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
+                            <span className="ml-2 font-mono text-eyebrow text-faint tracking-wide">
                                 your-repo — zsh
                             </span>
                         </div>
-                        <div className="p-5 font-mono text-[0.8125rem] leading-loose">
+                        <div className="p-5 font-mono text-caption leading-loose">
                             {session.map((line) => (
                                 <div key={line.cmd} className="flex gap-2.5">
                                     <span className="text-proton select-none shrink-0">{line.prompt}</span>
-                                    <span className="text-slate-300 break-words">{line.cmd}</span>
+                                    <span className="text-body break-words">{line.cmd}</span>
                                 </div>
                             ))}
                             <div className="flex gap-2.5 mt-1">
                                 <span className="text-proton select-none shrink-0">$</span>
-                                <span className="w-2 h-[1.1em] bg-slate-600 translate-y-[0.2em]" />
+                                <span className="w-2 h-[1.1em] bg-faint translate-y-[0.2em]" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* ── Stats ──────────────────────────────────────────────── */}
-                <dl className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-carbon-border rounded-sm overflow-hidden mt-14 md:mt-20">
+                <dl className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-carbon-border overflow-hidden mt-14 md:mt-20">
                     {heroStats.map((stat) => (
                         <div key={stat.label} className="border-b border-r border-carbon-border px-5 py-6">
                             <dd
                                 className={
                                     stat.figure
-                                        ? 'metric text-2xl md:text-[1.75rem] text-white mb-2 leading-none'
+                                        ? 'metric text-2xl md:text-stat text-white mb-2 leading-none'
                                         : 'font-display text-xl md:text-2xl font-semibold tracking-tight text-white mb-2 leading-none'
                                 }
                             >
                                 {stat.value}
                             </dd>
-                            <dt className="text-slate-300 text-sm font-medium mb-1">{stat.label}</dt>
+                            <dt className="text-body text-sm font-medium mb-1">{stat.label}</dt>
                             <p className="text-faint text-xs">{stat.evidence}</p>
                         </div>
                     ))}

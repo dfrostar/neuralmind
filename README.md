@@ -11,26 +11,27 @@
 
 **Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue, and any MCP client.**
 
-Your agent learns your codebase the way a senior engineer would — what goes
-together, what you usually touch next — and remembers it across sessions.
-Local-first, no telemetry. Side effect: much cheaper code questions —
-**51–242× fewer tokens than pasting every source file, with the gold file
-found on 40 of 40 queries** of a [public benchmark](https://neuralmind.uk/benchmark/)
-that publishes every miss — and in the top five for 93.3% of a larger
-150-question eval, whose 10 misses are published too.
+Your agent gets a memory of your codebase — what goes together, what you
+usually touch next — that carries across sessions. Local-first, no telemetry
+by default. On a [public benchmark](https://neuralmind.uk/benchmark/) that
+publishes every miss, **NeuralMind finds the gold file on 40 of 40 queries,
+where keyword ripgrep (top five files opened whole) finds 32 of 40 — at 31–67×
+fewer tokens than ripgrep**, and 51–242× fewer than pasting every source file.
+On a larger 150-question eval it puts the gold file in the top five for 93.3%
+of questions; its 10 misses are published too.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
 > - Recalls related files for each prompt you send (Claude Code `UserPromptSubmit` hook; on Hermes-Agent, the plugin's `pre_llm_call` hook, v4.9.0+): from the first prompt on a fresh index, the files and symbols the prompt matches, with line numbers, and code the synapse graph links to them; and adds nothing when the prompt's best match in the code scores below a cutoff, which most replies like "yes" and off-topic questions do (v4.11.0+)
 > - Gets its own first prompt, latest prompts and edited files back after Claude Code compacts the session, prompts as written up to 200 characters (v4.11.0+)
-> - Queries your codebase in ~800 tokens instead of ~50,000
+> - Gets a few hundred tokens of ranked context per code question instead of whole files: 670–961 tokens a question on the [public benchmark](docs/benchmarks/public.md), where pasting every source file costs 41,729–232,483 (v4.12.0)
 > - Is told when the index is behind: one line on its query, search and prompt context when commits since the last build changed the project, the background rebuild failed, or the index is in the legacy layout (v4.17.0+)
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
-> - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+; since v4.12.0 an intent *detected* from the wording no longer re-weights hits, only a type you ask for does, and `NEURALMIND_AUTO_INTENT_BOOST=1` restores the old behaviour)
-> - **New in v4.19.0:** the audit log reaches your SIEM as it is written. Set `security.audit_syslog: /dev/log` (or `udp://` / `tcp://`) and every audit record goes to syslog right after it is written, from the CLI, the MCP server, the hooks and the daemon, with its hash so the SIEM can check the chain. Records a dead target missed are sent when it is back (`neuralmind audit forward` sends them on demand), and a record that can't be written raises an `alert`-severity syslog message at once (CMMC AU.L2-3.3.4, 3.3.5). Under `security.profile: cui` the target must be on this machine, since NeuralMind doesn't encrypt the connection; the host's syslog daemon forwards over TLS. `neuralmind doctor` gets an *Audit forwarding* line. Also new: an [OSCAL component definition](security/neuralmind.oscal-component-definition.json) of the 21 SP 800-53 Rev. 5 controls NeuralMind touches, with what stays yours ([readable version](docs/compliance/SP800-53.md)), for an agency's System Security Plan, and an [SP 800-53 hardening guide](docs/compliance/SP800-53-HARDENING.md): 17 rules, each mapped to its controls, that `neuralmind hardening` checks on a project and its host, exiting 1 when any fails ([release notes](docs/releases/RELEASE_NOTES_v4.19.0.md))
+> - Six synaptic learning rules adapted from published memory research (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+; since v4.12.0 an intent *detected* from the wording no longer re-weights hits, only a type you ask for does, and `NEURALMIND_AUTO_INTENT_BOOST=1` restores the old behaviour)
+> - **New in v4.19.0:** the audit log reaches your SIEM as it is written. Set `security.audit_syslog: /dev/log` (or `udp://` / `tcp://`) and every audit record goes to syslog right after it is written, from the CLI, the MCP server, the hooks and the daemon, with its hash so the SIEM can check the chain. Records a dead target missed are sent when it is back (`neuralmind audit forward` sends them on demand), and a record that can't be written raises an `alert`-severity syslog message at once (CMMC AU.L2-3.3.4, 3.3.5). Under `security.profile: cui` the target must be on this machine, since NeuralMind doesn't encrypt the connection; the host's syslog daemon forwards over TLS. `neuralmind doctor` gets an *Audit forwarding* line. Also new: an [OSCAL component definition](security/neuralmind.oscal-component-definition.json) of the 21 SP 800-53 Rev. 5 controls NeuralMind touches, with what stays yours ([readable version](docs/compliance/SP800-53.md)), for an agency's System Security Plan, and an [SP 800-53 hardening guide](docs/compliance/SP800-53-HARDENING.md): 17 rules, each mapped to its controls, that `neuralmind hardening` checks on a project and its host, exiting 1 when any fails. And `pip install neuralmind && neuralmind demo` now runs offline: the sample project's index and its questions' embeddings ship in the package, so the demo downloads nothing ([release notes](docs/releases/RELEASE_NOTES_v4.19.0.md))
 > - **v4.18.1:** no change to what your agent does. Every Python file in the package names its license in an SPDX tag (`MIT`, or `LicenseRef-NeuralMind-Commercial` under `neuralmind/tier2/`), so a dependency scanner reading the installed files can tell which license each is under ([release notes](docs/releases/RELEASE_NOTES_v4.18.1.md))
 > - **v4.18.0:** `neuralmind data-locations` lists every place a project's data lives, in the project, under the home directory and in the integrations that write it, so a deletion can be checked before and after. A failed audit write is noted and reported by `doctor` (*Audit log writes*) instead of vanishing, and `neuralmind audit record-gap` records the gap in the hash-chained log. Under `security.require_encrypted_storage`, Claude Code's synapse export and the global query log are written only to a verified volume, and `NEURALMIND_SYNAPSE_EXPORT=0` now stops the MCP export tool too ([release notes](docs/releases/RELEASE_NOTES_v4.18.0.md))
 > - **v4.17.2:** a machine policy whose `require_encrypted_storage` is neither true nor false (`flase`, blank) holds every project to the strictest settings, as v4.17.1 said any invalid value did. It used to switch the encryption check on and leave the CUI profile and OS identity off ([release notes](docs/releases/RELEASE_NOTES_v4.17.2.md))
@@ -86,8 +87,10 @@ Every large engineering organization has the same AI spend problem: token costs 
 ```
 You: "How does authentication work in my codebase?"
 
-❌ Naive:  Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind: Smart context → ~800 tokens → $0.002-$0.06/query
+❌ Paste every source file → 41,729–232,483 tokens a question
+✅ NeuralMind → 670–961 tokens a question, gold file found on 40 of 40 queries
+
+   (public benchmark, 4 pinned OSS repos, v4.12.0 — docs/benchmarks/public.md)
 ```
 
 Engineering leads are stuck between two bad options: let agents burn tokens loading whole files, or hand-curate context windows. Neither scales.
@@ -105,9 +108,9 @@ Two cooperating brains:
 | **Claude / GPT / Gemini** (your agent) | Cortex — stateless reasoning over a working-memory window |
 | **NeuralMind** | Hippocampus + associative cortex — persistent weighted graph of code nodes |
 
-The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
+The agent asks a question. NeuralMind retrieves only the relevant slice (670–961 tokens a question on the public benchmark). As you work, Hebbian co-activation strengthens edges between code that's used together and unused edges decay; recall re-ranks with those edges. Whether that improves retrieval on your repo is something to measure (`neuralmind eval . --synapse-ab`), not assume: CI checks only that it never lowers hit rate, on a ~500-line fixture.
 
-**NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
+**By default, NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
@@ -117,7 +120,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 
 | Agent | What You Get | Status |
 |-------|-------------|--------|
-| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. Prompt-time recall and a stale-decision guard run automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
+| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. Prompt-time recall and a stale-decision guard run automatically. Queries cost 670–961 tokens on the public benchmark, not whole files. | ✅ Tested |
 | **Claude Teams** | `neuralmind memory publish` writes a learned-weights bundle (no source code); commit it and teammates' agents inherit it on their next session. | ✅ Tested |
 | **Cursor** | `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory. | 🔬 Theoretical |
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
@@ -155,12 +158,12 @@ NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what 
 
 | Effect | What CI enforces | Observed magnitude |
 |--------|------------------|--------------------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** in earlier releases; **+0** at v4.12.0, where the fixture reaches 97% with recall off |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift ≥ 0, averaged over 3 runs | **+0.9 to +11.6 pts** across runs |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
 
-**Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI guarantees is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
+**Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI gates is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
 
 **What this does not show yet.** That the layer pays off on a real codebase over weeks of use. Nothing published measures that, and the layer only learns what the hooks or `neuralmind watch` show it: a project queried often but edited outside a hooked agent stays at 0 transitions (`neuralmind stats` says so). To find out on your repo *(v4.14.0+)*, write questions with the file that answers each in `.neuralmind.eval.yaml` (past incidents work well, phrased as the symptom) and run `neuralmind eval . --synapse-ab`: the same questions with synapse recall on and off, read-only, with the questions it moved up or down, an exact McNemar p-value, and the size of the layer it read. Recall covers the call and import edges every build seeds as well as what usage taught the layer, so each run is recorded with the usage-learned counts (LTP edges, transitions), and `neuralmind eval . --report` shows whether the gap grows as they do. Walkthrough: [Does NeuralMind earn its place on your repo?](docs/use-cases/does-it-earn-its-place.md)
 
@@ -316,13 +319,13 @@ logs, not build output in general.
 
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
-- **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
+- **NOT a replacement for Copilot/Cursor.** It composes with them: one memory layer that every agent you use can query.
 - **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, per-tool MCP permissions). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
 
-- **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all 10 bundled languages. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
+- **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all ten bundled tree-sitter languages, plus JavaScript, parsed with the TypeScript grammars since v4.12.0. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
 - **Synapse learning needs sessions.** The Hebbian layer learns from co-activation over time. A fresh install has no learned associations — they accumulate over days/weeks of real use. Whether they then improve retrieval on your repo is something to measure (`neuralmind eval . --synapse-ab`), not assume.
 - **Task outcomes aren't measured.** The benchmarks measure retrieval (tokens, and whether the right file is in the window), not whether agents finish tasks faster or with fewer errors.
 - **A stale index answers confidently.** Results from an index built before the latest changes look as authoritative as fresh ones. `neuralmind init-hook .` rebuilds after commits (and, v4.13.0+, after pulls, merges and branch switches); `neuralmind health .` exits 1 when the index is behind the files, so scripts and CI can check before trusting it.
@@ -349,7 +352,7 @@ cd your-project
 neuralmind build .          # index the codebase (tree-sitter, ~seconds to minutes)
 
 neuralmind wakeup .         # what the agent sees at session start
-neuralmind query . "How does authentication work?"  # ~800 tokens, not 50,000
+neuralmind query . "How does authentication work?"  # a few hundred tokens, not whole files
 
 neuralmind install-hooks .  # Claude Code: session memory, prompt recall, stale-decision guard
 neuralmind serve .          # Obsidian-style graph view in your browser
@@ -461,8 +464,21 @@ neuralmind probe .
 ## ⚡ 30-Second Proof
 
 The clearest evidence the memory is working is the measurable side effect:
-the agent stops re-loading context it already understood. Reproduce it on a
-fresh clone:
+the agent stops re-loading context it already understood. See it straight
+after installing, offline *(v4.19.0+)*:
+
+```bash
+pip install neuralmind
+neuralmind demo
+```
+
+It asks three questions of a small sample project bundled with the package.
+The sample's vector index, and the embeddings of the three questions, ship with
+it too, so the demo downloads nothing: your first `neuralmind build` on your
+own code fetches the embedding model (about 90 MB) once.
+
+Or reproduce the CI-gated numbers on a fresh clone, with the graph rebuilt from
+source:
 
 ```bash
 git clone https://github.com/dfrostar/neuralmind && cd neuralmind
@@ -482,7 +498,7 @@ Output looks like:
 The fixture is intentionally tiny (~500 lines) — it runs in CI as a
 regression gate. Before v4.5.0, `neuralmind benchmark` reported **12–50×** on
 real repos against a fixed 50K-token estimate; it now divides your measured
-code, so the ratio grows with the repo. The public benchmark measures
+code, so the ratio depends on how much code there is. The public benchmark measures
 **51–242×** against every source file
 ([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
@@ -499,12 +515,13 @@ neuralmind benchmark .
 
 ## 🧠 What You Get
 
-- **Progressive context disclosure (L0–L3).** A question costs ~800 tokens,
-  not your whole repo. The agent asks for more depth only where it needs it.
+- **Progressive context disclosure (L0–L3).** A question costs a few hundred
+  tokens (670–961 on the public benchmark), not your whole repo. The agent asks for more depth only where it needs it.
 - **A synapse layer that learns.** Hebbian co-activation strengthens edges
   between code that's used together; unused edges decay. Recall is spreading
-  activation over that graph — your agent's context gets *better* the more
-  you work.
+  activation over that graph. CI checks that it never lowers hit rate on a
+  ~500-line fixture; whether it raises it on your repo is for
+  `neuralmind eval . --synapse-ab` to tell you.
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
   A fresh or cleared session also gets a short recap of the previous one
@@ -652,7 +669,7 @@ The Hermes plugin runs the same hook actions, so the switches for those actions
 | Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 | Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
-| Read the latest release | [v4.19.0 release notes](docs/releases/RELEASE_NOTES_v4.19.0.md) — live audit forwarding to syslog, with an alert when an audit record can't be written; an OSCAL component definition for SP 800-53, and a hardening baseline `neuralmind hardening` checks · [v4.18.1](docs/releases/RELEASE_NOTES_v4.18.1.md) — every package file names its license in an SPDX tag; no change in behaviour · [v4.18.0](docs/releases/RELEASE_NOTES_v4.18.0.md) — `neuralmind data-locations`, failed audit writes reported, home-directory copies that follow the encryption policy · [v4.17.2](docs/releases/RELEASE_NOTES_v4.17.2.md) — a misspelled `require_encrypted_storage` in the machine policy holds every project to the strictest settings · [v4.17.1](docs/releases/RELEASE_NOTES_v4.17.1.md) — a machine policy the project's owner can't delete keeps the CUI profile on, the daemon and `neuralmind build` apply roles under `identity: os`, and concurrent writers keep the audit chain valid · [v4.17.0](docs/releases/RELEASE_NOTES_v4.17.0.md) — answers from a stale index say so, and package code in `__init__.py` stays in the graph · [v4.16.0](docs/releases/RELEASE_NOTES_v4.16.0.md) — `security.profile: cui`: the CUI-enclave posture as one setting, refusals audited, checked as a unit by `doctor`; signed, anchored audit checkpoints: truncation and a recomputed chain are detected; `neuralmind team` and `onboarding` exit 1 when they fail, as the CLI reference documents · [v4.15.1](docs/releases/RELEASE_NOTES_v4.15.1.md) — an expired Team license gets the full 30-day grace period, counted from expiry · [v4.15.0](docs/releases/RELEASE_NOTES_v4.15.0.md) — `scan-for-secrets` skips linked worktrees, honours `.gitignore` (`--include-ignored` for a full sweep), says what it skipped, and marks each finding tracked or untracked · [v4.14.0](docs/releases/RELEASE_NOTES_v4.14.0.md) — `eval --synapse-ab` to measure the synapse layer on your own questions, Hermes reads that train transitions, and public pages that say what isn't measured; and signed images, build-provenance attestations, bandit and pip-audit in CI, and a published VEX document: the evidence for a NIST SSDF attestation · [v4.13.0](docs/releases/RELEASE_NOTES_v4.13.0.md) — the git hooks rebuild after pulls, merges, branch switches and rebases, work from any git client, don't make git wait, and leave throwaway worktrees alone; usage counters in `neuralmind metrics`, synapse growth on every build, a `stale_after` grace period for `health` and `doctor`, MCP calls attributed to their client, and no silent leftover graphify graph · [v4.12.1](docs/releases/RELEASE_NOTES_v4.12.1.md) — `doctor` exits 1 when a check fails, as documented, and passes a repaired turbovec index; example scripts rank below the code they demonstrate · [v4.12.0](docs/releases/RELEASE_NOTES_v4.12.0.md) — eight search results chosen from a pool of 20, boosts that no longer outvote the ranking, JavaScript code nodes, search spread across files, and a 13–14 ms query p50 on one machine · [v4.11.1](docs/releases/RELEASE_NOTES_v4.11.1.md) — no empty turbovec store on a ChromaDB project, and `doctor` says the turbovec check doesn't apply there · [v4.11.0](docs/releases/RELEASE_NOTES_v4.11.0.md) — prompt recall that names files and symbols from the first turn and stays quiet off-topic, and a session's own record back after compaction · [v4.10.0](docs/releases/RELEASE_NOTES_v4.10.0.md) — Hermes can install the plugin itself, it logs why when it can't work, and a reinstall after uninstalling is enabled again; also opt-in trimming of noisy install and build logs, with the full output one Read away · [v4.9.2](docs/releases/RELEASE_NOTES_v4.9.2.md) — `--` works again in the `decisions` and `memory` subcommands · [v4.9.1](docs/releases/RELEASE_NOTES_v4.9.1.md) — the last four bug-hunt fixes: `feedback` with memory off, the LTP-protected count, prose query nodes in `validate`, and the path after options · [v4.9.0](docs/releases/RELEASE_NOTES_v4.9.0.md) — a Hermes-Agent plugin puts NeuralMind's context into every turn · [v4.8.2](docs/releases/RELEASE_NOTES_v4.8.2.md) — the low-severity bug-hunt fixes: mistyped project paths, malformed daemon requests, duplicate ingests · [v4.8.1](docs/releases/RELEASE_NOTES_v4.8.1.md) — the bug-hunt fixes: installers that can't destroy your config, redaction gaps, hooks, graph, retrieval and synapse learning, plus a stricter `audit verify` · [v4.8.0](docs/releases/RELEASE_NOTES_v4.8.0.md) — a new Claude Code session starts with a recap of the last one, decision search by meaning, and MCP policy mistakes refused · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, and a check for encrypted storage · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
+| Read the latest release | [v4.19.0 release notes](docs/releases/RELEASE_NOTES_v4.19.0.md) — live audit forwarding to syslog, with an alert when an audit record can't be written; an OSCAL component definition for SP 800-53, and a hardening baseline `neuralmind hardening` checks; `neuralmind demo` runs offline · [v4.18.1](docs/releases/RELEASE_NOTES_v4.18.1.md) — every package file names its license in an SPDX tag; no change in behaviour · [v4.18.0](docs/releases/RELEASE_NOTES_v4.18.0.md) — `neuralmind data-locations`, failed audit writes reported, home-directory copies that follow the encryption policy · [v4.17.2](docs/releases/RELEASE_NOTES_v4.17.2.md) — a misspelled `require_encrypted_storage` in the machine policy holds every project to the strictest settings · [v4.17.1](docs/releases/RELEASE_NOTES_v4.17.1.md) — a machine policy the project's owner can't delete keeps the CUI profile on, the daemon and `neuralmind build` apply roles under `identity: os`, and concurrent writers keep the audit chain valid · [v4.17.0](docs/releases/RELEASE_NOTES_v4.17.0.md) — answers from a stale index say so, and package code in `__init__.py` stays in the graph · [v4.16.0](docs/releases/RELEASE_NOTES_v4.16.0.md) — `security.profile: cui`: the CUI-enclave posture as one setting, refusals audited, checked as a unit by `doctor`; signed, anchored audit checkpoints: truncation and a recomputed chain are detected; `neuralmind team` and `onboarding` exit 1 when they fail, as the CLI reference documents · [v4.15.1](docs/releases/RELEASE_NOTES_v4.15.1.md) — an expired Team license gets the full 30-day grace period, counted from expiry · [v4.15.0](docs/releases/RELEASE_NOTES_v4.15.0.md) — `scan-for-secrets` skips linked worktrees, honours `.gitignore` (`--include-ignored` for a full sweep), says what it skipped, and marks each finding tracked or untracked · [v4.14.0](docs/releases/RELEASE_NOTES_v4.14.0.md) — `eval --synapse-ab` to measure the synapse layer on your own questions, Hermes reads that train transitions, and public pages that say what isn't measured; and signed images, build-provenance attestations, bandit and pip-audit in CI, and a published VEX document: the evidence for a NIST SSDF attestation · [v4.13.0](docs/releases/RELEASE_NOTES_v4.13.0.md) — the git hooks rebuild after pulls, merges, branch switches and rebases, work from any git client, don't make git wait, and leave throwaway worktrees alone; usage counters in `neuralmind metrics`, synapse growth on every build, a `stale_after` grace period for `health` and `doctor`, MCP calls attributed to their client, and no silent leftover graphify graph · [v4.12.1](docs/releases/RELEASE_NOTES_v4.12.1.md) — `doctor` exits 1 when a check fails, as documented, and passes a repaired turbovec index; example scripts rank below the code they demonstrate · [v4.12.0](docs/releases/RELEASE_NOTES_v4.12.0.md) — eight search results chosen from a pool of 20, boosts that no longer outvote the ranking, JavaScript code nodes, search spread across files, and a 13–14 ms query p50 on one machine · [v4.11.1](docs/releases/RELEASE_NOTES_v4.11.1.md) — no empty turbovec store on a ChromaDB project, and `doctor` says the turbovec check doesn't apply there · [v4.11.0](docs/releases/RELEASE_NOTES_v4.11.0.md) — prompt recall that names files and symbols from the first turn and stays quiet off-topic, and a session's own record back after compaction · [v4.10.0](docs/releases/RELEASE_NOTES_v4.10.0.md) — Hermes can install the plugin itself, it logs why when it can't work, and a reinstall after uninstalling is enabled again; also opt-in trimming of noisy install and build logs, with the full output one Read away · [v4.9.2](docs/releases/RELEASE_NOTES_v4.9.2.md) — `--` works again in the `decisions` and `memory` subcommands · [v4.9.1](docs/releases/RELEASE_NOTES_v4.9.1.md) — the last four bug-hunt fixes: `feedback` with memory off, the LTP-protected count, prose query nodes in `validate`, and the path after options · [v4.9.0](docs/releases/RELEASE_NOTES_v4.9.0.md) — a Hermes-Agent plugin puts NeuralMind's context into every turn · [v4.8.2](docs/releases/RELEASE_NOTES_v4.8.2.md) — the low-severity bug-hunt fixes: mistyped project paths, malformed daemon requests, duplicate ingests · [v4.8.1](docs/releases/RELEASE_NOTES_v4.8.1.md) — the bug-hunt fixes: installers that can't destroy your config, redaction gaps, hooks, graph, retrieval and synapse learning, plus a stricter `audit verify` · [v4.8.0](docs/releases/RELEASE_NOTES_v4.8.0.md) — a new Claude Code session starts with a recap of the last one, decision search by meaning, and MCP policy mistakes refused · [v4.7.0](docs/releases/RELEASE_NOTES_v4.7.0.md) — MCP roles bound to OS accounts, and a check for encrypted storage · [v4.6.1](docs/releases/RELEASE_NOTES_v4.6.1.md) — the MCP server applies `security.roles` and `security.rate_limit` · [v4.6.0](docs/releases/RELEASE_NOTES_v4.6.0.md) — one keyword index for docs and code, and the eval that chose it · [v4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) · [v4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) |
 
 ---
 
@@ -663,10 +680,12 @@ maintains a weighted graph of your code and *learns from use* — retrieval is
 spreading activation over structural edges plus Hebbian synapses, disclosed
 progressively so the agent pays only for the depth it needs.
 
-**Does my code leave my machine?** NeuralMind itself sends no telemetry and
-transmits no repository content off your machine; its only default outbound
-request is a one-time public embedding-model download on first build
-(pre-seedable). Your agent still sends its selected slice to its own model —
+**Does my code leave my machine?** By default, NeuralMind itself sends no
+telemetry and transmits no repository content off your machine; its only
+default outbound request is a one-time public embedding-model download on
+first build (pre-seedable). One opt-in, off by default: `NEURALMIND_LLM_SEED=1`
+with your own `ANTHROPIC_API_KEY` sends README and architecture-doc prose to
+Anthropic to seed doc synapses. Your agent still sends its selected slice to its own model —
 NeuralMind just makes that slice smaller.
 
 **What if it doesn't help on my repo?** Run `neuralmind benchmark .` and

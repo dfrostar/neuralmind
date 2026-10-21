@@ -1,7 +1,7 @@
 /**
  * The mark.
  *
- * Was a rounded square filled with a blue→purple gradient containing the
+ * Was a rounded-control square filled with a blue→purple gradient containing the
  * letter "N" — the default logo of every generated startup template, and the
  * one element that appears on every page of the site.
  *

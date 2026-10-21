@@ -3,7 +3,7 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for Claude Code and any MCP agent: the right file at 51–242× fewer tokens than pasting every source file on a public benchmark. Free MIT core.';
+    'Codebase memory for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
 
 export const metadata = {
     title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
@@ -36,7 +36,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Your coding agent forgets your codebase. NeuralMind remembers it.',
         description:
-            'The gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens than pasting every source file, and every miss on a larger 150-question eval published. Local-first, no telemetry, MIT core.',
+            'The gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file. 93.3% top-5 on a larger 150-question eval, every miss published. Local-first, no telemetry by default, MIT core.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -94,13 +94,15 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             applicationSubCategory: 'AI coding agent memory & code intelligence',
             operatingSystem: 'Linux, macOS, Windows',
             description:
-                'Local-first persistent memory for AI coding agents. NeuralMind indexes a codebase into a code graph, learns which files belong together from how you work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue or any MCP client — the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens than pasting every source file.',
+                'Local-first persistent memory for AI coding agents. NeuralMind indexes a codebase into a code graph, learns which files belong together from how you work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue or any MCP client — the gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, with its 10 misses published.',
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
             softwareVersion,
             datePublished: '2025-05-01',
-            dateModified,
+            // Empty when neither the API nor CHANGELOG.md dates the tag: omit it
+            // rather than publish another release's date.
+            ...(dateModified ? { dateModified } : {}),
             license: 'https://opensource.org/licenses/MIT',
             isAccessibleForFree: true,
             programmingLanguage: 'Python',
@@ -109,13 +111,13 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             keywords:
                 'AI coding agent memory, Claude Code memory, MCP server, codebase memory, context engineering, token reduction, code knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
-                '51–242× fewer tokens than pasting every source file, finding the gold file on 40 of 40 pre-registered queries on four public repos',
+                'The gold file on 40 of 40 pre-registered queries on four public repos vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, misses published',
                 'Hebbian synapse layer that learns which files go together from how you use the codebase — budget-neutral recall',
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
                 'MCP server for Claude Code, Codex, Cursor, Cline, Continue and any MCP-compatible agent',
                 'Claude Code lifecycle hooks: session-start memory, prompt-time recall, stale-decision guard',
                 'Team memory that travels with git clone, with a quality review queue for imports and a hash-chained audit log',
-                'Bundled tree-sitter code graph indexing ten languages',
+                'Bundled tree-sitter code graph indexing ten languages plus JavaScript (parsed with the TypeScript grammars)',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
                 'Commit-time drift guard, decision memory and stale-decision guard',
                 'Local engine — by default no telemetry and no repository content transmitted off your machine',
@@ -172,7 +174,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            <body className="bg-carbon text-slate-200 font-sans antialiased">{children}</body>
+            <body className="bg-carbon text-ink font-sans antialiased">{children}</body>
         </html>
     );
 }

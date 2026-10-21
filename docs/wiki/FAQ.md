@@ -202,10 +202,13 @@ index + one namespaced memory.
   cross-repo "workspace" store today; each repo is its own independent brain
   with its own `.neuralmind/`. Nothing stops you running it on ten repos —
   they're just ten separate stores, not one unified one.
-- **The memory compounds per codebase.** The synapse layer learns
-  associations from how you actually work *in that repo*, so sustained use on
-  one codebase sharpens recall over time. Splitting attention across many
-  repos means each accumulates less learning signal.
+- **The memory is per codebase.** The synapse layer learns which files you
+  use together *in that repo* and re-ranks recall with those links, so each
+  repo's store only learns from work done in it. Whether that improves
+  retrieval on your repo is something to measure, not assume:
+  `neuralmind eval . --synapse-ab` (v4.14.0+) runs your questions with recall
+  on and off. In CI it is gated on direction only (it never lowers top-k hit
+  rate on a ~500-line fixture).
 
 Within a single codebase it's still flexible: memory namespaces isolate
 `branch:<name>` / `personal` / `shared`, multiple agents (Claude Code,
@@ -372,11 +375,28 @@ Two protections need no flag:
 
 ### "Can I use NeuralMind in a regulated industry?"
 
-**Yes!** NeuralMind is built for compliance:
-- ✅ NIST AI RMF audit trail
-- ✅ SOC 2 compliance mapping
-- ✅ GDPR-compliant (local processing)
-- ✅ HIPAA-friendly (local processing, no calls home)
+You can, with the right expectations. NeuralMind holds no certification, and
+certification and assessment (SOC 2, CMMC, HIPAA, GDPR and the rest) are of
+*your* deployment, not of a tool. What NeuralMind provides is evidence for your
+review:
+- An audit trail of queries, builds and MCP calls (`neuralmind audit export`),
+  and a hash-chained log of team-memory publishes, imports, reviews and admin
+  changes
+- Framework mappings (NIST AI RMF, SOC 2), and annotation detection for CMMC
+  2.0, NIST SP 800-53, SOX ITGC, HIPAA, SOC 2 and ISO 27001 with a
+  control-to-code export (`neuralmind export --controls`)
+- Local processing: by default NeuralMind sends no telemetry and transmits no
+  repository content off your machine; its one default outbound request is a
+  one-time public embedding-model download on first build (pre-seedable via
+  `NEURALMIND_ONNX_MODEL_DIR`), and one opt-in, off by default
+  (`NEURALMIND_LLM_SEED=1`), sends README and architecture-doc prose to
+  Anthropic. Your agent still sends the slice it selects to its own model
+  provider — see
+  ["Does NeuralMind send data to external servers?"](#does-neuralmind-send-data-to-external-servers)
+
+The [compliance summary](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md)
+and the [offline / regulated use case](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md)
+go further.
 
 ---
 
@@ -609,10 +629,13 @@ Size matters apart from cost. On the largest repo, `rich`, pasting everything
 took 232,483 tokens per query (counted with tiktoken `o200k_base`), more than
 a 200K-token window holds.
 
-The trade-off is recall. Pasting everything always includes the right file;
-NeuralMind missed at least one gold file in 3 of the 40 queries. A plain
-top-k vector search over the same index used fewer tokens still, with equal
-or better recall, but without NeuralMind's project map and call edges. See
+The trade-off is recall. Pasting everything always includes the right file.
+At v4.12.0 NeuralMind found the gold file on all 40 queries, but 40 is a small
+sample: on the 150-question retrieval eval it misses the gold file in the top
+five on 10 questions. A plain top-k vector search over the same index used
+fewer tokens still, with recall at or below NeuralMind's, and ranked the gold
+file higher on `flask` (MRR 0.74 vs 0.72) and `rich` (0.94 vs 0.83), but
+without NeuralMind's project map and call edges. See
 [where NeuralMind loses](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses).
 
 To reproduce it, run `python -m evals.public.run` from a source checkout. To

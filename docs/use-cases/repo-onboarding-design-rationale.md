@@ -66,7 +66,8 @@ nodes) rather than asserting per-language custom logic. So:
 
 The requirement "token savings estimate" is a trap if answered with vibes.
 Design choice: the *only* authoritative multipliers are (a) `build --dry-run`
-(estimate) and (b) `savings` (actuals). The NeuralMind headline 12–50× is
+(estimate) and (b) `savings` (actuals). The NeuralMind headline (51–242× on the public benchmark; 12–50× in
+pre-v4.5.0 field reports against a fixed 50K-token estimate) is
 stated as a *claim to verify against the repo*, and both templates carry an
 explicit "never fabricate this number" rule. This keeps every plan credible.
 

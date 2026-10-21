@@ -94,7 +94,7 @@ const comparison: { feature: string; free: Cell; team: Cell; enterprise: Cell }[
 function Mark({ value }: { value: Cell }) {
     if (value === true) return <span className="text-proton" aria-label="Included">✓</span>;
     if (value === false) return <span className="text-faint" aria-label="Not included">—</span>;
-    return <span className="text-slate-300">{value}</span>;
+    return <span className="text-body">{value}</span>;
 }
 
 export default async function TeamPage() {
@@ -111,7 +111,7 @@ export default async function TeamPage() {
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-5 tracking-tight">
                         Team memory for AI coding agents
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-lg text-body max-w-2xl mx-auto leading-relaxed">
                         What one developer&apos;s agent learns about the codebase, every
                         teammate&apos;s agent inherits — through your git repo, with a review
                         queue for what comes in and an audit trail of every admin change.
@@ -131,19 +131,19 @@ export default async function TeamPage() {
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
                         How team memory works
                     </h2>
-                    <p className="text-slate-400 mb-8 max-w-3xl leading-relaxed">
+                    <p className="text-muted mb-8 max-w-3xl leading-relaxed">
                         No relay, no hosted service, no server of ours in the path. The shared memory
-                        is a file in your repository, so it travels with <code className="font-mono text-[0.9em] text-slate-300">git clone</code> and
+                        is a file in your repository, so it travels with <code className="font-mono text-code-inline text-body">git clone</code> and
                         inherits your existing review and access controls.
                     </p>
                     <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {steps.map((step) => (
-                            <li key={step.n} className="bg-carbon-card border border-carbon-border rounded-xl p-6">
-                                <span className="w-7 h-7 rounded-md border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums mb-4">
+                            <li key={step.n} className="bg-carbon-card border border-carbon-border rounded-card p-6">
+                                <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums mb-4">
                                     {step.n}
                                 </span>
                                 <h3 className="text-white font-semibold mb-2">{step.title}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">{step.body}</p>
+                                <p className="text-muted text-sm leading-relaxed">{step.body}</p>
                             </li>
                         ))}
                     </ol>
@@ -154,20 +154,20 @@ export default async function TeamPage() {
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
                         Governance: what is enforced today
                     </h2>
-                    <p className="text-slate-400 mb-8 max-w-3xl leading-relaxed">
+                    <p className="text-muted mb-8 max-w-3xl leading-relaxed">
                         Shared memory steers every teammate&apos;s agent, so what enters it is
                         screened, what leaves a machine follows the admin&apos;s policy, and every
                         change is on the record. Here is exactly what runs today.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {governance.map((g) => (
-                            <div key={g.title} className="bg-carbon-card border border-carbon-border rounded-xl p-6 flex flex-col min-w-0">
-                                <span className={`font-mono text-[0.6875rem] uppercase tracking-[0.12em] mb-3 ${g.status === 'Live' ? 'text-proton' : 'text-faint'}`}>
+                            <div key={g.title} className="bg-carbon-card border border-carbon-border rounded-card p-6 flex flex-col min-w-0">
+                                <span className={`font-mono text-eyebrow uppercase tracking-eyebrow mb-3 ${g.status === 'Live' ? 'text-proton' : 'text-faint'}`}>
                                     {g.status}
                                 </span>
                                 <h3 className="text-white font-semibold mb-2">{g.title}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed mb-4">{g.body}</p>
-                                <div className="mt-auto bg-carbon rounded-lg px-4 py-3 font-mono text-xs text-slate-300 overflow-x-auto">
+                                <p className="text-muted text-sm leading-relaxed mb-4">{g.body}</p>
+                                <div className="mt-auto bg-carbon rounded-control px-4 py-3 font-mono text-xs text-body overflow-x-auto">
                                     <span className="text-faint select-none">$ </span>
                                     {g.cmd}
                                 </div>
@@ -178,23 +178,23 @@ export default async function TeamPage() {
 
                 {/* Audit */}
                 <section className="max-w-5xl mx-auto mb-20">
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-6 md:p-8 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-6 md:p-8 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 md:gap-10">
                         <div>
                             <h2 className="font-display text-2xl font-bold text-white mb-3">
                                 An audit trail you can verify
                             </h2>
-                            <p className="text-slate-400 text-sm leading-relaxed mb-3">
+                            <p className="text-muted text-sm leading-relaxed mb-3">
                                 Every governance change and admin action — and every team-memory
                                 publish, import, review decision and retraction — is recorded with the
                                 acting user in an append-only log where each entry carries the SHA-256
                                 of the one before it, so an edited or deleted entry breaks the chain.
                             </p>
-                            <p className="text-slate-400 text-sm leading-relaxed">
+                            <p className="text-muted text-sm leading-relaxed">
                                 Query-level events export as JSONL or CEF for your SIEM with{' '}
-                                <code className="font-mono text-[0.9em] text-slate-300">neuralmind audit export</code>.
+                                <code className="font-mono text-code-inline text-body">neuralmind audit export</code>.
                             </p>
                         </div>
-                        <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto self-start">
+                        <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto self-start">
                             <p className="text-faint"># Walk the hash chain</p>
                             <p><span className="text-faint select-none">$ </span>neuralmind team audit verify</p>
                             <p className="text-faint mt-3"># Hand it to your auditors</p>
@@ -208,14 +208,14 @@ export default async function TeamPage() {
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
                         Seat management
                     </h2>
-                    <p className="text-slate-400 mb-6 max-w-3xl leading-relaxed">
+                    <p className="text-muted mb-6 max-w-3xl leading-relaxed">
                         Seats are managed from the CLI and every change is logged, and adding a seat
                         past your license limit fails instead of silently over-provisioning. Syncing
                         a roster from a signed seat manifest is not available yet: the CLI can verify
                         one, but nothing issues them.
                     </p>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
-                        <div className="font-mono text-xs md:text-sm text-slate-300 space-y-1 overflow-x-auto">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
+                        <div className="font-mono text-xs md:text-sm text-body space-y-1 overflow-x-auto">
                             {seatCommands.map((c, i) => (
                                 <div key={c.cmd} className={i > 0 ? 'pt-3' : ''}>
                                     <p className="text-faint">{c.comment}</p>
@@ -234,25 +234,25 @@ export default async function TeamPage() {
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
                         Free, Team and Enterprise
                     </h2>
-                    <p className="text-slate-400 mb-6 max-w-3xl leading-relaxed">
+                    <p className="text-muted mb-6 max-w-3xl leading-relaxed">
                         The product features are not gated. The license buys seats beyond one,
                         support and procurement-friendly billing.
                     </p>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl overflow-x-auto">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card overflow-x-auto">
                         <table className="w-full min-w-[36rem] text-sm">
                             <caption className="sr-only">What each NeuralMind tier includes</caption>
                             <thead>
                                 <tr className="border-b border-carbon-border">
-                                    <th scope="col" className="text-left py-3 px-4 text-slate-400 font-medium">Feature</th>
-                                    <th scope="col" className="text-center py-3 px-4 text-slate-400 font-medium">Free (1 seat)</th>
-                                    <th scope="col" className="text-center py-3 px-4 text-slate-400 font-medium">Team</th>
-                                    <th scope="col" className="text-center py-3 px-4 text-slate-400 font-medium">Enterprise</th>
+                                    <th scope="col" className="text-left py-3 px-4 text-muted font-medium">Feature</th>
+                                    <th scope="col" className="text-center py-3 px-4 text-muted font-medium">Free (1 seat)</th>
+                                    <th scope="col" className="text-center py-3 px-4 text-muted font-medium">Team</th>
+                                    <th scope="col" className="text-center py-3 px-4 text-muted font-medium">Enterprise</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {comparison.map((row) => (
                                     <tr key={row.feature} className="border-b border-carbon-border/50 last:border-0">
-                                        <th scope="row" className="text-left py-3 px-4 text-slate-300 font-normal">{row.feature}</th>
+                                        <th scope="row" className="text-left py-3 px-4 text-body font-normal">{row.feature}</th>
                                         <td className="text-center py-3 px-4"><Mark value={row.free} /></td>
                                         <td className="text-center py-3 px-4"><Mark value={row.team} /></td>
                                         <td className="text-center py-3 px-4"><Mark value={row.enterprise} /></td>
@@ -269,11 +269,11 @@ export default async function TeamPage() {
 
                 {/* CTA */}
                 <section className="max-w-3xl mx-auto text-center">
-                    <div className="panel-accent rounded-xl p-8">
+                    <div className="panel-accent rounded-card p-8">
                         <h2 className="font-display text-2xl font-bold text-white mb-3">
                             Evaluate it free, then talk to us about seats
                         </h2>
-                        <p className="text-slate-400 mb-6">
+                        <p className="text-muted mb-6">
                             Install the open-source core ({version}), run it on one repo with the
                             free 1-seat license, and contact us when the team wants more seats. There
                             is no self-serve checkout and no trial clock.

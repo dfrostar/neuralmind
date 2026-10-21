@@ -27,8 +27,13 @@
 ```
 You: "How does authentication work in my codebase?"
 
-❌ Traditional approach: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind approach: Load smart context → 766 tokens → $0.002-$0.06/query
+❌ Paste every source file → 41,729–232,483 tokens per question
+✅ NeuralMind's ranked context → 670–961 mean tokens per question (51–242× fewer)
+
+Measured on the public benchmark's four pinned repos at v4.12.0
+(docs/benchmarks/public.md). Against keyword ripgrep opening its top five
+files whole, NeuralMind uses 31–67× fewer tokens and finds the gold file on
+40 of 40 queries to ripgrep's 32 of 40.
 ```
 
 ### The Solution
@@ -71,7 +76,7 @@ NeuralMind creates a semantic understanding of your codebase and provides query-
 │ • Vector similarity search results                          │
 └─────────────────────────────────────────────────────────────┘
 
-Total: ~800-1,100 tokens vs 50,000+ for full codebase
+Total: roughly 1,000 tokens per question (670–961 mean on the public benchmark, v4.12.0)
 ```
 
 ### How It Works
@@ -491,37 +496,25 @@ echo "✅ Maintenance complete!"
 
 ---
 
-## ROI Calculator
+## Estimating your savings
 
-> **Honest framing:** the dollar figures in this section are **best-case project-side projections**, not independently audited cost studies. They assume every query loads ~50,000 tokens of context without NeuralMind and ~800 tokens with it — true for the "loading-the-codebase-to-answer" pattern this tool was built for, generous if your real workload mixes in queries that don't touch source files. Match the line that fits your usage; treat anything beyond that as upper-bound. For the skeptic's read on what these numbers mean (and don't), see [`docs/HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md).
+This guide used to carry per-model cost tables built on an assumed ~50,000
+tokens per query without NeuralMind and ~800 with it. No measurement produced
+that pairing, so the tables are gone. Price your own usage instead:
 
-### Cost Comparison by Model
+```bash
+neuralmind savings --cost      # what NeuralMind's context saved on your recorded queries
+neuralmind benchmark .         # your repo's measured code size over tokens per question
+```
 
-| Model | Input Price | Without NeuralMind | With NeuralMind | Per-Query Savings |
-|-------|-------------|-------------------|-----------------|------------------|
-| Claude 3.5 Sonnet | $3/1M tokens | $0.15/query | $0.0023/query | $0.1477 (98.5%) |
-| GPT-4o | $5/1M tokens | $0.25/query | $0.0038/query | $0.2462 (98.5%) |
-| GPT-4.5 | $75/1M tokens | $3.75/query | $0.0574/query | $3.6926 (98.5%) |
-| Claude Opus | $15/1M tokens | $0.75/query | $0.0115/query | $0.7385 (98.5%) |
-| Gemini 2.5 Pro | $2.50/1M tokens | $0.125/query | $0.0019/query | $0.1231 (98.5%) |
-
-### Monthly Savings Calculator
-
-| Daily Queries | Claude 3.5 Sonnet | GPT-4o | GPT-4.5 | Claude Opus |
-|---------------|-------------------|--------|---------|-------------|
-| 10 queries/day | $44/month | $74/month | $1,107/month | $221/month |
-| 50 queries/day | $221/month | $369/month | $5,539/month | $1,108/month |
-| 100 queries/day | **$443/month** | **$738/month** | **$11,078/month** | **$2,216/month** |
-| 500 queries/day | $2,216/month | $3,693/month | $55,389/month | $11,078/month |
-
-### Annual Savings
-
-| Usage Level | Annual Savings (Claude 3.5) | Annual Savings (GPT-4.5) |
-|-------------|----------------------------|-------------------------|
-| Light (10/day) | $531 | $13,284 |
-| Medium (50/day) | $2,658 | $66,468 |
-| Heavy (100/day) | **$5,316** | **$132,936** |
-| Enterprise (500/day) | $26,580 | $664,668 |
+For a reference point, the public benchmark measured 670–961 mean tokens per
+question against 41,729–232,483 for pasting every source file, and 31–67×
+fewer tokens than keyword ripgrep opening its top five files
+([docs/benchmarks/public.md](docs/benchmarks/public.md), v4.12.0). Fewer input
+tokens is what is measured. Task outcomes (time to finish, error rate) are
+not measured anywhere yet, and end-to-end bills also include
+output tokens and turns NeuralMind doesn't touch. See
+[`docs/HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md) for the skeptic's read.
 
 ---
 

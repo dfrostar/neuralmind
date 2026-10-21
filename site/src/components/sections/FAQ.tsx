@@ -38,7 +38,7 @@ const faqs = [
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Four places, all published. It finds all 40 public-benchmark queries, but 40 is a small sample: on a 150-question retrieval eval it misses the gold file in the top five on 10, most of them where vector search ranks that file outside the 20 candidates NeuralMind re-ranks. If all you need is to locate a file, a bare vector index is cheaper, and on flask and rich it still ranks the gold file higher. On the CI fixture it took until v4.12.0 to beat naive truncation at the same token budget (+0.26; v4.3.4 was a loss, −0.054), and that fixture is small. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
+        a: 'Four places, all published. It finds all 40 public-benchmark queries, but 40 is a small sample: on a 150-question retrieval eval it misses the gold file in the top five on 10, most of them where vector search ranks that file outside the 20 candidates NeuralMind re-ranks. If all you need is to locate a file, a bare vector index is cheaper, and on flask and rich it still ranks the gold file higher. On the CI fixture it took until v4.12.0 to beat naive truncation at the same token budget (+0.265 at v4.12.0, 0.839 vs 0.574, measured on one machine; v4.3.4 was a loss, −0.054), CI gates only that it stays above −0.10, and that fixture is small. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'Why not just use Cursor, Windsurf or Aider memory?',
@@ -83,11 +83,11 @@ export default function FAQ() {
                         // invisible to crawlers and to anything quoting the
                         // page. It is also keyboard-accessible and needs no JS,
                         // which is why this component is no longer a client one.
-                        <details key={i} className="card rounded-xl overflow-hidden group">
+                        <details key={i} className="card rounded-card overflow-hidden group">
                             <summary className="w-full px-6 py-5 flex items-center justify-between text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                 <h3 className="font-semibold text-white pr-4 text-base">{faq.q}</h3>
                                 <svg
-                                    className="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
+                                    className="w-5 h-5 text-muted shrink-0 transition-transform duration-200 group-open:rotate-180"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -97,7 +97,7 @@ export default function FAQ() {
                                 </svg>
                             </summary>
                             <div className="px-6 pb-5 pt-0">
-                                <p className="text-slate-400 leading-relaxed text-sm">{faq.a}</p>
+                                <p className="text-muted leading-relaxed text-sm">{faq.a}</p>
                             </div>
                         </details>
                     ))}

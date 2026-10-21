@@ -53,7 +53,7 @@ outside this block goes in a post.
 | Mean tokens per query, NeuralMind | 772 - 930 across the four repos | reproducible |
 | Mean tokens per query, full-file baseline | 41,729 - 232,483 | reproducible |
 | Corpus | 40 pre-registered queries, 4 repos pinned to fixed SHAs | reproducible |
-| Real-repo positioning range | 12-50x, directional, field-reported | field-report |
+| Real-repo positioning range | 12-50x, directional, field-reported, vs the fixed 50K-token estimate (pre-v4.5.0) | field-report |
 | Synapse A/B lift | CI gates *direction* (recall-on >= recall-off) at a neutral budget; observed band +3.5 to +14 pts | ci-gated on direction only |
 | MCP tools exposed | 21 | `grep -c '^def tool_' neuralmind/mcp_server.py` |
 
@@ -75,7 +75,7 @@ I build NeuralMind, a local MCP server that gives coding agents persistent memor
 
 **What it does.** It parses a repo into a weighted graph of symbols, then answers a question with progressive disclosure — project identity, then architecture, then the relevant cluster, then semantic search — instead of pasting files. On top of that sits a Hebbian synapse layer: files that get used together have their edge strengthened, unused edges decay, so retrieval adapts to how you actually work on that repo. Index and synapse store are SQLite plus a local vector store on your disk.
 
-**On "local."** No telemetry, no calls home, nothing at query time. I'll be precise about the one exception rather than say "makes no network calls", because that would be false: the first time it embeds on a machine with no cached model, NeuralMind's *own* embedder fetches the all-MiniLM-L6-v2 ONNX archive over HTTPS and verifies it against a pinned SHA256. It checks `$NEURALMIND_ONNX_MODEL_DIR` and two local cache locations first, so pre-seeding either one removes even that request — which is how the air-gapped path works. Plus the obvious one: install pulls from PyPI. And your agent still sends whatever slice it picks to whatever model you point it at. If that model is local, the whole loop is; if it's an API, NeuralMind changed how *much* leaves, not *whether*.
+**On "local."** No telemetry, and nothing on the wire at query time. I'll be precise about the one exception rather than say "makes no network calls", because that would be false: the first time it embeds on a machine with no cached model, NeuralMind's *own* embedder fetches the all-MiniLM-L6-v2 ONNX archive over HTTPS and verifies it against a pinned SHA256. It checks `$NEURALMIND_ONNX_MODEL_DIR` and two local cache locations first, so pre-seeding either one removes even that request — which is how the air-gapped path works. Plus the obvious one: install pulls from PyPI. And your agent still sends whatever slice it picks to whatever model you point it at. If that model is local, the whole loop is; if it's an API, NeuralMind changed how *much* leaves, not *whether*.
 
 **The benchmark.** 40 queries pre-registered before any tuning, across `requests`, `click`, `flask` and `rich`, each pinned to a fixed commit SHA. The gold file for each query is the definition site of a named symbol — verifiable with one `rg`, no LLM judge in the headline. Cost and correctness are reported together, because a token ratio without a correctness number is meaningless.
 

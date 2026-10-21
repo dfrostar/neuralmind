@@ -17,6 +17,7 @@ Complete command-line interface documentation for NeuralMind.
   - [probe](#probe-v0270)
   - [stats](#stats)
   - [validate](#validate-v0230)
+  - [demo](#demo)
   - [doctor](#doctor-v0120)
   - [hardening](#hardening-v4190)
   - [eval](#eval-v0140)
@@ -1157,8 +1158,9 @@ pip install codebase-memory-mcp==0.8.1     # pins 0.8.1 — on-device embeddings
 python -m evals.public.competitor   # prints the competitor row; fails closed without the binary
 ```
 
-On **reproducible retrieval ranking** NeuralMind reaches **100% gold-file recall**
-and ranks the right file far higher (MRR **0.96 vs 0.23** on `requests`, **0.60
+In this head-to-head — run in June 2026 (v0.33.0), on `requests` and `click` only,
+and not re-run since — NeuralMind found the gold file on every query of those two repos
+and ranked the right file far higher (MRR **0.96 vs 0.23** on `requests`, **0.60
 vs 0.50** on `click`), while the competitor surfaces the gold file in its top-8
 only ~half the time, at an order of magnitude more read cost. **Honest framing:**
 this measures *pure retrieval* — no LLM agent loop on either side, exactly how we
@@ -1612,6 +1614,42 @@ can't list, since a symlink in it would go unlisted.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.
+
+### demo
+
+Run three questions against a small sample project bundled with the package,
+and print what a coding agent would get for each, in tokens, next to pasting
+every source file. Needs no checkout and no setup:
+
+```bash
+pip install neuralmind
+neuralmind demo [--keep] [--quiet]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--keep` | No | — | Keep the temporary working copy and print its path |
+| `--quiet` | No | — | Print only the report |
+
+It copies the sample project to a temporary directory and queries it. The
+sample's graph and vector index are bundled, and so are the embeddings of its
+three questions *(v4.19.0+)*: when the embedding model isn't on disk, the demo
+embeds its questions from those, ranks exactly as it would with the model, and
+downloads nothing. Before v4.19.0 its first run downloaded the model (about
+90 MB), and failed with a traceback offline. With the model on disk, it uses
+the model. If this install can't use the bundled index (a turbovec release too
+old to read it, say), the demo falls back to building with the model, which
+downloads it once. The token counts use tiktoken; where its vocabulary can't be
+downloaded, they are estimated at about 4 characters a token, and the demo
+says so.
+
+The sample is small (about 500 lines), so its reduction is small;
+`neuralmind benchmark .` measures your own code.
+
+| Code | Meaning |
+|------|---------|
+| `0` | The report printed |
+| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or the build failed |
 
 ### doctor *(v0.12.0+)*
 
@@ -2182,8 +2220,11 @@ Learning is now handled entirely by the **synapse layer**, which learns
 continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. A 2×2 A/B on the
 benchmark fixture showed the old reranker added 0.0 points to top-k hit
-rate while the synapse layer alone moves it (+3.5 to +14 points across
-runs; CI gates the direction, not the magnitude).
+rate while the synapse layer alone moved it. Later releases measured +3.5 to
++14 points on that fixture, and +0 at v4.12.0, where it reaches 97% with recall
+off; CI gates the direction, not the magnitude. On your own repo,
+[`neuralmind eval . --synapse-ab`](#synapse-recall-on-vs-off---synapse-ab-v4140)
+measures it.
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale
@@ -3723,7 +3764,7 @@ neuralmind daemon stop
 
 ### savings *(v0.39.0+)*
 
-Show cumulative token savings from the local query event log. Verifies the 12-50× claim against your own real usage rather than trusting the demo.
+Show cumulative token savings from the local query event log — the reduction on your own real usage, rather than a published figure or the demo.
 
 ```bash
 neuralmind savings [project_path] [OPTIONS]
@@ -3782,13 +3823,14 @@ neuralmind savings --global --cost --model gemini-2.5-pro --queries-per-day 250
 neuralmind savings . --cost --json
 ```
 
-The dollar figures are estimates anchored to the same 50,000-tokens-per-query
-baseline as the token report, priced on **input** tokens only — retrieval
+The dollar figures are estimates anchored to the same per-query baseline as the
+token report (since v4.5.0 the measured code size; the fixed 50,000-token estimate
+with `--naive-50k` or `--global`), priced on **input** tokens only — retrieval
 decides which input tokens ship, so output pricing never enters the math.
-Prices are a 2026-07 snapshot (`MODEL_PRICING_PER_MTOK` in `neuralmind/memory.py`).
+Prices are a 2026-07 snapshot (`MODEL_PRICING_PER_MTOK` in `neuralmind/memory/__init__.py`).
 
 Only the *with-NeuralMind* cost is measured from logged tokens; *without-NM*
-(and therefore *saved* / *projected*) is estimated from the fixed baseline, so
+(and therefore *saved* / *projected*) is estimated from that baseline, so
 those figures are marked `(est)` in the human output. The JSON `dollar_savings`
 block makes this machine-readable too: `estimated: true`, a `basis` string, and
 `baseline_tokens_per_query`.

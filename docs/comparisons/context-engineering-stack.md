@@ -25,7 +25,7 @@ NeuralMind functions as a local-first semantic memory engine designed to model a
 
 ### Core Mechanism: AST Parsing and the Hebbian Synapse Layer
 
-NeuralMind employs Abstract Syntax Tree (AST) parsing natively for **Python, TypeScript, and Go** via its built-in tree-sitter backend. Additional language support is available through the optional [graphify](https://github.com/Graphify-Labs/graphify) backend — any language graphify supports feeds the same retrieval pipeline. Relationships are stored in an offline ChromaDB instance (or the dependency-free turbovec backend), providing a secure, local-first processing boundary: NeuralMind transmits no repository content, so it adds nothing to what your agent's workflow already sends. Its one outbound request is a one-time public embedding-model download on first build.
+NeuralMind employs Abstract Syntax Tree (AST) parsing natively for ten languages — **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby and PHP** — plus JavaScript through the TypeScript grammars (v4.12.0+), via its built-in tree-sitter backend. Additional language support is available through the optional [graphify](https://github.com/Graphify-Labs/graphify) backend — any language graphify supports feeds the same retrieval pipeline. Relationships are stored in an offline ChromaDB instance (or the dependency-free turbovec backend), providing a secure, local-first processing boundary: by default NeuralMind sends no telemetry and transmits no repository content off your machine, so it adds nothing to what your agent's workflow already sends. Its one default outbound request is a one-time public embedding-model download on first build (pre-seedable via `NEURALMIND_ONNX_MODEL_DIR`); one opt-in, off by default (`NEURALMIND_LLM_SEED=1`), sends README and architecture-doc prose to Anthropic.
 
 The system's primary learning signal is the **Hebbian Synapse Layer**. This layer continuously records user queries and file edits, allowing active associations to strengthen while unused connections naturally decay. In the v0.25.0 release, the previous co-occurrence reranker was deprecated and removed; internal benchmarks confirmed it was "runtime-inert on the warm path," adding 0.0 points to accuracy while increasing complexity.
 
@@ -39,6 +39,13 @@ The removal of the reranker highlights the efficacy of the synapse layer as a st
 | Synapses On | 83.3% | 83.3% | positive |
 
 Reproduce locally: `python -m tests.benchmark.run`
+
+Those are v0.25.0 figures from one run on the ~500-line reference fixture. CI now
+gates only the direction — synapse recall never lowers top-k hit rate at a neutral
+token budget; earlier releases measured +3.5 to +14 points, and at v4.12.0 the
+fixture reaches 97% with synapses off and recall adds nothing (+0). Its benefit on
+a real repo is not shown; `neuralmind eval . --synapse-ab` (v4.14.0+) measures it
+on yours.
 
 ### Self-Tuning and Namespace Isolation
 
@@ -125,7 +132,7 @@ Strategic efficacy is determined by the locus of intervention. While some tools 
 | Locus of Intervention | Retrieval Stage | Generation Stage | Network Transport Stage |
 | Target Audience | Regulated Enterprises | Teams Fighting Code Bloat | SRE / High-Volume Pipelines |
 | Primary Mechanism | Hebbian Synapse Networks | Sequential Decision Ladder | Reversible CCR Loops |
-| Verified Token Savings | 12-50× cheaper queries | 80–94% per-task output tokens | 60–95% payload reduction |
+| Published Token Savings (each tool's own measurement) | 51–242× fewer retrieval tokens than pasting every source file (public benchmark, v4.12.0) | 80–94% per-task output tokens | 60–95% payload reduction |
 
 ### The Deliberation Cost Paradox
 

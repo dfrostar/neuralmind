@@ -8,11 +8,11 @@
 
 ## What Tier 2 (Team) gives you
 
-Tier 2 is the paid tier on top of the MIT core. **The MIT core's 12-50x token reduction is free forever**, and the tier2 feature set — governance, audit, self-hosted — runs under the auto-issued free 1-seat license too. A paid Team license buys **seats beyond one (5-50), priority support, and an annual invoice**, not hidden features.
+Tier 2 is the paid tier on top of the MIT core. **The MIT core's token-efficient retrieval is free forever**, and the tier2 feature set — governance, audit, self-hosted — runs under the auto-issued free 1-seat license too. A paid Team license buys **seats beyond one (5-50), priority support, and an annual invoice**, not hidden features.
 
 | Feature | Free license (1 seat) | Team ($29/user/mo, 5-50 seats) |
 |---------|-----------------------|--------------------------------|
-| 12-50x token reduction | Yes | Yes |
+| Token-efficient retrieval | Yes | Yes |
 | Synapse learning | Yes | Yes |
 | MCP server | Yes | Yes |
 | Memory publish/inherit | Yes | Yes |

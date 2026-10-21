@@ -11,10 +11,10 @@ const dataPoints = [
     { metric: 'Tokens vs. grep-and-read', value: '31–67×', detail: 'same 40 queries, against ripgrep opening its top five files whole, which found the gold file on 32 of 40. An agent that reads only the matching lines pays less than this baseline; that is not measured' },
     { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget — on a ~500-line fixture, so it shows direction, not size' },
     { metric: 'Learning on your repo', value: 'Not yet shown', detail: 'nothing published shows the synapse layer improving retrieval on a real codebase over time. neuralmind eval . --synapse-ab measures it on yours: your own questions, synapse recall on and off' },
-    { metric: 'Facts vs. naive truncation', value: '+0.26', detail: 'at an equal token budget on the prose-heavy CI fixture, measured at v4.12.0 with CI’s command (v4.11.1: +0.03; v4.3.4 was a published loss, −0.054). CI fails the build below −0.10' },
+    { metric: 'Facts vs. naive truncation', value: '+0.265', detail: 'at an equal token budget on the prose-heavy CI fixture, measured at v4.12.0 with CI’s command on one machine — 0.839 vs 0.574 (v4.11.1: +0.027; v4.3.4 was a published loss, −0.054). CI fails the build below −0.10' },
     { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase, vs. the fixed 50K-token estimate the CLI used before v4.5.0 — method reproducible, not CI-gated' },
-    { metric: 'Task outcomes', value: 'Not measured', detail: 'every figure here is retrieval — what reaches the agent’s window and whether the right file is in it. Whether agents finish tasks faster or with fewer mistakes is not measured yet' },
-    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
+    { metric: 'Task outcomes', value: 'Not measured', detail: 'every figure here is retrieval — what reaches the agent’s window and whether the right file is in it. Nothing here measures yet whether agents finish tasks faster or with fewer mistakes' },
+    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; since v4.13.0, init-hook installs post-commit, post-merge, post-checkout and post-rewrite hooks that keep it current' },
 ];
 
 export default function Benchmarks() {
@@ -25,26 +25,26 @@ export default function Benchmarks() {
                     Two of these are recomputed by CI on every commit; the rest reproduce from a
                     fresh clone with one command. Where a number comes from a single repo, it says so,
                     and two cells say what isn&rsquo;t measured yet.
-                    Run <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">neuralmind benchmark .</code> for your own.
+                    Run <code className="font-mono text-code-inline text-electric-bright bg-electric/[0.07] rounded-control px-1 py-0.5">neuralmind benchmark .</code> for your own.
                 </SectionHeader>
 
                 {/* Same ruled matrix as the hero stats and the feature grid, so a
                     figure looks the same wherever it appears on the page. */}
-                <dl className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                <dl className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border overflow-hidden">
                     {dataPoints.map((dp) => (
                         <div key={dp.metric} className="border-b border-r border-carbon-border p-6">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">
+                            <dt className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint mb-3">
                                 {dp.metric}
                             </dt>
                             <dd>
                                 <p className={`text-white mb-2 leading-none ${
                                     /^[~\d]/.test(dp.value)
-                                        ? 'metric text-[1.75rem]'
+                                        ? 'metric text-stat'
                                         : 'font-display text-2xl font-semibold tracking-tight'
                                 }`}>
                                     {dp.value}
                                 </p>
-                                <p className="text-slate-400 text-sm leading-relaxed">{dp.detail}</p>
+                                <p className="text-muted text-sm leading-relaxed">{dp.detail}</p>
                             </dd>
                         </div>
                     ))}
@@ -52,7 +52,7 @@ export default function Benchmarks() {
 
                 {/* The full evidence page: per-repo tables, all four backends, and the
                     misses on the larger eval. The tiles above are the summary. */}
-                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
+                <p className="mt-6 text-muted text-sm max-w-3xl">
                     Every number above comes from{' '}
                     <a href="/benchmark/" className="text-electric hover:text-electric-bright transition-colors">
                         the public benchmark
@@ -64,8 +64,8 @@ export default function Benchmarks() {
                 </p>
 
                 {/* Field report — hand-measured, deliberately outside the CI-gated tiles above */}
-                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
-                    Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
+                <p className="mt-6 text-muted text-sm max-w-3xl">
+                    Plus one labeled <span className="text-body">field report</span> (measured with the CLI, not CI-gated):{' '}
                     <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
                     platform, through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0.{' '}
                     <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
@@ -74,12 +74,12 @@ export default function Benchmarks() {
                 </p>
 
                 {/* Demo callout */}
-                <div className="mt-12 p-6 md:p-7 rounded-xl panel-accent flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="mt-12 p-6 md:p-7 rounded-card panel-accent flex flex-col md:flex-row md:items-center justify-between gap-5">
                     <div className="max-w-2xl">
                         <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-1.5">See it in 30 seconds</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">
+                        <p className="text-muted text-sm leading-relaxed">
                             Clone the repo and run the demo on the bundled fixture, then run{' '}
-                            <code className="font-mono text-[0.9em] text-electric-bright">neuralmind benchmark .</code> on
+                            <code className="font-mono text-code-inline text-electric-bright">neuralmind benchmark .</code> on
                             your own codebase. Email the output to hello@neuralmind.uk with your team size
                             for a free spend model.
                         </p>

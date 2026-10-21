@@ -46,7 +46,7 @@ const groups: Group[] = [
             {
                 icon: 'recall',
                 title: 'Decision memory',
-                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When a commit changes a decision’s files after it was recorded, the post-commit hook from `neuralmind init-hook` marks it stale.',
+                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When a commit, pull or rebase changes a decision’s files after it was recorded, the git hooks from `neuralmind init-hook` mark it stale (v4.16.0+; commits only before that).',
                 badge: 'Decisions',
             },
             {
@@ -182,10 +182,10 @@ export default function Features() {
             <div className="max-w-6xl mx-auto">
                 <header className="max-w-2xl mb-10 md:mb-14">
                     <span className="eyebrow block mb-4">Capabilities</span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-semibold text-white tracking-tighter mb-4">
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-4">
                         What your agent gets
                     </h2>
-                    <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+                    <p className="text-muted text-base md:text-lg leading-relaxed">
                         Persistent memory, cheaper context, and the controls a team needs — in one
                         local install.
                     </p>
@@ -198,16 +198,16 @@ export default function Features() {
                                 <h3 className="font-display text-xl md:text-2xl font-semibold text-white tracking-tight mb-2">
                                     {group.heading}
                                 </h3>
-                                <p className="text-slate-400 text-[0.9375rem] leading-relaxed">{withCode(group.lede)}</p>
+                                <p className="text-muted text-body-sm leading-relaxed">{withCode(group.lede)}</p>
                             </div>
 
                             {/*
                                 One ruled matrix per group rather than floating
-                                rounded boxes: shared hairlines read as a
+                                rounded-control boxes: shared hairlines read as a
                                 specification table, which is what a capability
                                 list is.
                             */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border overflow-hidden">
                                 {group.features.map((f) => (
                                     <div
                                         key={f.title}
@@ -218,15 +218,15 @@ export default function Features() {
                                                 name={f.icon}
                                                 className="w-[1.375rem] h-[1.375rem] shrink-0 text-faint transition-colors duration-200 group-hover:text-electric"
                                             />
-                                            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint">
+                                            <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
                                                 {f.badge}
                                             </span>
                                         </div>
 
-                                        <h4 className="font-display text-[1.0625rem] font-semibold text-white tracking-tight mb-2 text-balance">
+                                        <h4 className="font-display text-title-sm font-semibold text-white tracking-tight mb-2 text-balance">
                                             {f.title}
                                         </h4>
-                                        <p className="text-slate-400 text-[0.875rem] leading-relaxed">
+                                        <p className="text-muted text-sm leading-relaxed">
                                             {withCode(f.desc)}
                                         </p>
                                     </div>

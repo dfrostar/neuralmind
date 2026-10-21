@@ -119,7 +119,7 @@ export default function PublicationsIndex() {
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
                         Research & Publications
                     </h1>
-                    <p className="text-lg text-slate-300">
+                    <p className="text-lg text-body">
                         Research reports and defensive publications from the NeuralMind project. All reports are verified against the live codebase.
                     </p>
                 </header>
@@ -129,16 +129,16 @@ export default function PublicationsIndex() {
                         <a
                             key={pub.slug}
                             href={`/publications/${pub.slug}`}
-                            className="block bg-carbon-card border border-carbon-border rounded-xl p-6 hover:border-electric/50 transition-colors group"
+                            className="block bg-carbon-card border border-carbon-border rounded-card p-6 hover:border-electric/50 transition-colors group"
                         >
                             <div className="flex items-center gap-3 mb-3">
-                                <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">{pub.type}</span>
+                                <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">{pub.type}</span>
                                 <span className="text-faint text-sm">{pub.date}</span>
                             </div>
                             <h2 className="font-display text-xl font-bold text-white mb-2 group-hover:text-electric transition-colors">
                                 {pub.title}
                             </h2>
-                            <p className="text-slate-400 text-sm leading-relaxed">
+                            <p className="text-muted text-sm leading-relaxed">
                                 {pub.description}
                             </p>
                         </a>

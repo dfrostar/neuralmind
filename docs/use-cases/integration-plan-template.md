@@ -67,7 +67,9 @@ neuralmind build .                 # real build
 - Measured by `neuralmind build --dry-run .`:
   - Files scanned: `N` · Lines of code: `N,N00` · Languages: `<...>`
   - Est. token reduction: **`~Nx` per query**
-- NeuralMind headline claim: 12–50× per query on real repos; cumulative
+- NeuralMind headline claim: 51–242× fewer tokens than pasting every source
+  file on the public benchmark (v4.12.0); field reports measured 12–50× before
+  v4.5.0, against the CLI's fixed 50K-token estimate; cumulative
   dollar view via `neuralmind savings . --cost --queries-per-day <N>`.
 - Note: only `neuralmind build` + real queries make the savings measurable;
   update this section after 1–2 weeks with `neuralmind savings .`.

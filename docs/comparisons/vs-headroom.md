@@ -9,8 +9,9 @@ description: "Honest comparison of NeuralMind and Headroom (chopratejas/headroom
 > the pipeline. Headroom compresses everything that flows between your
 > agent and the model (60–95%, their measurement). NeuralMind stops most
 > of those tokens from being fetched in the first place — semantic
-> retrieval answers code questions in ~800 tokens instead of 50,000+
-> (12-50× on the retrieval side in real-repo field reports) — and remembers
+> retrieval answers a code question in a few hundred tokens (670–961 mean
+> per question on the public benchmark, 51–242× fewer than pasting every
+> source file) — and remembers
 > your codebase across sessions. NeuralMind does not compress tool output:
 > its PostToolUse hooks used to, and
 > [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md),
@@ -50,7 +51,7 @@ The two products answer different questions:
 NeuralMind's core is a semantic index of your codebase (a code graph with
 4-layer progressive disclosure) plus a Hebbian synapse layer that learns
 which files go together from how you actually work. A code question is
-answered in ~800 tokens of *retrieved* context instead of the agent
+answered in a few hundred tokens of *retrieved* context instead of the agent
 reading whole files; next session the agent boots already knowing the
 shape of your code. NeuralMind does not compress tool output, so the two
 don't overlap. Its Claude Code PostToolUse hooks used to hand the model
@@ -107,9 +108,9 @@ sessions. Nothing in either tool conflicts with the other.
   150+ releases at the time of writing), and compression is its category,
   not NeuralMind's: NeuralMind no longer compresses tool output at all. If
   compression is the whole job, there is no contest — use Headroom.
-- NeuralMind's 12-50× headline is retrieval-input reduction, not total
+- NeuralMind's 51–242× headline is retrieval-input reduction, not total
   bill reduction; see our [honest assessment](../HONEST-ASSESSMENT.md)
-  for the ~1.6–3× end-to-end framing. Headroom's 60–95% is their claim
+  for the ~1.6–3× end-to-end framing (a derived estimate, not a measurement). Headroom's 60–95% is their claim
   under their eval suite — we have not independently reproduced it.
 - Both projects ultimately compete with the same baseline: long context
   plus prompt caching. Headroom embraces caching (CacheAligner);

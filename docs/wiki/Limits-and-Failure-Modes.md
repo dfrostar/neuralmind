@@ -33,9 +33,12 @@ question NeuralMind is built to answer:
 
 **Where it's enough.** Locating the right files/symbols, understanding one
 subsystem, answering "how does X work", seeding a focused change. The faithfulness
-eval shows that at a **matched budget**, smart selection beats naive truncation
-(**expected-fact recall delta CI-gated ≥ 0; +0.013 to +0.143 observed across runs**, [Benchmarks](Benchmarks)) — i.e. the ~2.5K
-tokens are *better-chosen* tokens, not just fewer.
+eval compares smart selection with naive truncation at a **matched budget** on the
+small reference fixture: expected-fact recall delta **+0.265 at v4.12.0** (0.839 vs
+0.574, measured with CI's command on one machine), after a published loss of −0.054
+at v4.3.4. CI fails the build below **−0.10** — it gates against a regression, not
+for a win ([Benchmarks](Benchmarks)). On that fixture, at v4.12.0, the tokens are
+*better-chosen*, not just fewer.
 
 **Where it gets thin.** A single ~2.5K-token window is a poor fit for work that
 genuinely needs *broad* context at once:
@@ -117,7 +120,8 @@ If a build OOMs on a very large tree, build incrementally and see
 
 ## 3. Language support matrix
 
-NeuralMind's built-in **tree-sitter** backend indexes the ten languages below with
+NeuralMind's built-in **tree-sitter** backend indexes the ten languages below, plus
+JavaScript through the TypeScript grammars (v4.12.0+), with
 **no graphify dependency** (`neuralmind build .` works standalone), plus four
 non-code schema/document artifacts. Structural coverage is **parity-gated in CI**
 (symbol-for-symbol vs graphify, zero dangling edges) — but parity is *structural
@@ -135,6 +139,7 @@ Source of truth for the parser: `_SUFFIX_LANG` in
 |---|---|---|---|
 | **Python** | `.py` | full reference language; the eval gold set | — |
 | **TypeScript** | `.ts` `.tsx` | types, functions, imports — 100% parity gate | type-level-only constructs are best-effort |
+| **JavaScript** *(v4.12.0+)* | `.js` `.mjs` `.cjs` `.jsx` | parsed with the TypeScript grammars (`.jsx` with TSX): functions, classes, methods, JSDoc docstrings, imports, calls; extensionless imports resolve | **no parity gate of its own** — it rides on the TypeScript grammars |
 | **Go** | `.go` | types, funcs, methods, imports — 100% parity gate | — |
 | **Rust** | `.rs` | structs, enums, traits, `impl` blocks, fields, free fns; `impl Trait for T`→`inherits`; `use`→`imports_from`; doc comments→rationale | macro-generated items; `target/` skipped |
 | **Java** | `.java` | classes/interfaces/enums/records, methods, ctors, fields; `extends`/`implements`→`inherits`; `import`→`imports_from`; Javadoc→rationale | — |
@@ -179,8 +184,11 @@ weak ones; the tools compose.
 Carried over from [`HONEST-ASSESSMENT.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md#what-we-havent-measured-well-yet)
 so it lives next to the limits it qualifies:
 
-- **End-to-end cost** is **~1.6–3×** on a real workload, *not* 12-50× — the headline
-  is a *retrieval-input-token* reduction, not a total-bill reduction.
+- **End-to-end cost** reduction is a *derived estimate* of **~1.6–3×**
+  ([business case](https://github.com/dfrostar/neuralmind/blob/main/docs/BUSINESS-CASE.md)),
+  not a measurement and not the token ratio — 51–242× on the public benchmark is a
+  *retrieval-input-token* reduction against pasting every source file, not a
+  total-bill reduction.
 - **Per-language answer quality** is gated *structurally*, not *for answer
   faithfulness* — the faithfulness gold set is Python-first.
 - **Large-real-repo quality and incremental latency** are "trust the gate," not yet

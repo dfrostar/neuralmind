@@ -14,6 +14,7 @@
     --border-strong: #2e333b;
 
     --text: #e8eaed;
+    --text-body: #c9ced6;
     --text-muted: #9aa3af;
     --text-faint: #7e8794;
 
@@ -22,6 +23,10 @@
     --accent-dim: #1b2742;
 
     --evidence: #4fd1a5;
+
+    --danger: #f27b7b;
+    --warn: #e5b567;
+    --success: #6ccb86;
 }
 
 * {
@@ -144,7 +149,7 @@ code, pre, kbd {
     font-weight: 600;
     letter-spacing: -0.01em;
     padding: 0.625rem 1.25rem;
-    border-radius: 0.5rem;
+    border-radius: theme('borderRadius.control');
     border: 1px solid transparent;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -167,7 +172,7 @@ code, pre, kbd {
     font-weight: 550;
     letter-spacing: -0.01em;
     padding: 0.625rem 1.25rem;
-    border-radius: 0.5rem;
+    border-radius: theme('borderRadius.control');
     border: 1px solid var(--border-strong);
     transition: border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -201,11 +206,84 @@ code, pre, kbd {
 /* Small uppercase section label. */
 .eyebrow {
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.6875rem;
+    font-size: theme('fontSize.eyebrow');
     font-weight: 500;
-    letter-spacing: 0.14em;
+    letter-spacing: theme('letterSpacing.eyebrow');
     text-transform: uppercase;
     color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   Data tables
+
+   One style for every table of results, replacing per-cell class lists that
+   each table spelled out again. Header row in the eyebrow style; cells in
+   `muted`; a row header (`<th scope="row">`) in mono. Mark numeric cells
+   `.num` so they right-align on tabular figures, and the row for the thing
+   being measured `.is-ours`, which tints it with the evidence colour. Wrap
+   the table in an `overflow-x-auto` box with a `min-w-*` on the table, so a
+   phone scrolls the table instead of the page.
+   --------------------------------------------------------------------------- */
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: theme('fontSize.sm');
+}
+
+.data-table thead th {
+    text-align: left;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: theme('fontSize.eyebrow');
+    font-weight: 500;
+    letter-spacing: theme('letterSpacing.eyebrow');
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border-strong);
+}
+
+.data-table tbody th,
+.data-table td {
+    text-align: left;
+    font-weight: 400;
+    color: var(--text-muted);
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody th {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: theme('fontSize.caption');
+}
+
+.data-table tbody tr:last-child > * {
+    border-bottom: 0;
+}
+
+.data-table :is(th, td):first-child {
+    padding-left: 0;
+}
+
+.data-table :is(th, td):last-child {
+    padding-right: 0;
+}
+
+.data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table tr.is-ours {
+    background: rgba(79, 209, 165, 0.06);
+}
+
+.data-table tr.is-ours > th {
+    color: var(--evidence);
+}
+
+.data-table tr.is-ours > td {
+    color: #ffffff;
 }
 
 /* ---------------------------------------------------------------------------

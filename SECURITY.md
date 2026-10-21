@@ -4,11 +4,11 @@
 
 NeuralMind is designed with **enterprise security as a first-class concern**:
 
-- **All processing happens locally** – all embeddings are generated and stored locally via a bundled ONNX model. There are **no cloud embedding API calls**.
-- **No telemetry** – no usage tracking, no analytics, no hidden data collection, no update checks.
+- **Indexing and retrieval happen locally** – all embeddings are generated and stored locally via a local ONNX model. There are **no cloud embedding API calls**.
+- **By default, no telemetry and no repository content off your machine** – no usage tracking, no analytics, no hidden data collection, no update checks. The one opt-in exception, off by default, is `NEURALMIND_LLM_SEED=1` (with your own `ANTHROPIC_API_KEY`), which sends README and architecture-doc prose to Anthropic. Your coding agent still sends the slice it selects to its own model provider; NeuralMind makes that slice smaller but does not control it.
 - **One network event by default, pinned** – the only outbound network activity by default is a **one-time, SHA256-pinned** download of the ONNX model archive on the first build (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that). Two opt-ins add more: LLM-assisted synapse seeding (`NEURALMIND_LLM_SEED=1`) sends documentation text to the Anthropic API, and `tiktoken`, if you install it, downloads its vocabulary on first use.
 - **Fully auditable** – the source is public: the core is MIT-licensed, and the Team modules in `neuralmind/tier2/` are source-available ([LICENSING.md](LICENSING.md)). Every claim below is verifiable.
-- **Architecture supports major compliance frameworks** (GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
+- **Evidence for your compliance review** – an audit trail, per-release SBOMs and framework mappings (GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27001, PCI DSS, FedRAMP) for your reviewers. **NeuralMind holds no certification; compliance is a property of your deployment, decided when it is assessed.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md).
 - **Supply-chain discipline** – minimal runtime dependencies, a CycloneDX SBOM for every release since v4.0.0 (served at [neuralmind.uk/security](https://neuralmind.uk/security), since published releases can't take a new asset), no cloud lock-in.
 
 ---
@@ -144,7 +144,7 @@ NeuralMind processes code from your projects. Here's what you should know:
    - Version-lock indexes to git commits for reproducibility
 
 2. **Secrets Management**
-   - NeuralMind never transmits code externally, but be cautious when processing repositories containing:
+   - By default NeuralMind transmits no repository content off your machine, but your agent sends the slice it selects to its model provider, so be cautious when processing repositories containing:
      - API keys or secrets (run `neuralmind scan-for-secrets .` first)
      - Credentials
      - Proprietary algorithms
@@ -281,7 +281,7 @@ exceptions that policy has accepted.
 
 5. **Graph view server (`neuralmind serve`).** Binds to `127.0.0.1` by default. If you expose it on a network interface, add a reverse proxy with auth in front. The `/healthz` endpoint is intentionally unauthenticated for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes.
 
-6. **Directional transitions (v0.11+).** The `synapse_transitions` table records `(from_node, to_node)` pairs derived from the watcher's edit order. The data shape is the same as the existing undirected synapses; the same local-only / no-exfiltration guarantees apply.
+6. **Directional transitions (v0.11+).** The `synapse_transitions` table records `(from_node, to_node)` pairs derived from the watcher's edit order. The data shape is the same as the existing undirected synapses; like the synapse store, it lives in the project's `.neuralmind/` and NeuralMind does not transmit it.
 
 7. **Team memory bundle (v0.30+).** `neuralmind memory publish` writes a **committed** `<project>/.neuralmind-team-memory.json` that teammates inherit on their next session/build. Threat model: import is **MAX-merge only** (it can never *weaken* a teammate's existing weights), is written **only** to the `shared` namespace (never `personal`/`branch`), is content-hash-gated (imported once), and is subject to normal decay — so a malicious or over-eager bundle cannot permanently distort recall. It carries learned associations, **not source code**. Disable inheritance with `NEURALMIND_TEAM_MEMORY=0` (fail-open). Namespaces (v0.24+) keep `branch:`/`personal`/`shared`/`ephemeral` memory partitioned so a branch spike can't pollute `main`.
 
@@ -332,54 +332,54 @@ Compression-tuning knobs (`NEURALMIND_BASH_TAIL`, `NEURALMIND_BASH_MAX_CHARS`,
 
 ## Compliance Framework Alignment
 
-NeuralMind is **designed to support** standard enterprise compliance requirements. Because it runs entirely locally and makes no external calls, it can fit into existing compliance workflows:
+NeuralMind provides **evidence and controls for your compliance review**: an append-only, hash-chained audit log, a CycloneDX SBOM per release, per-tool permission sets, and framework mappings in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md). By default it sends no telemetry and transmits no repository content off your machine (the one default outbound request is the pinned embedding-model download above; `NEURALMIND_LLM_SEED=1` is the opt-in exception), which keeps it inside your existing boundary.
 
-*Note: NeuralMind itself is not "certified" for any framework, but the tool's architecture aligns with the security requirements of these standards.*
+*NeuralMind holds no certification or attestation for any framework. Compliance is a property of your deployment: whether it meets a framework is decided when that deployment is assessed. The sections below say what NeuralMind provides toward each one, not that it meets it.*
 
-### ✅ GDPR (General Data Protection Regulation)
-- **Data Residency**: All code remains in your jurisdiction (on your machine/infrastructure)
-- **No External Processing**: No third-party APIs, no cloud services
-- **Data Deletion**: Delete `graphify-out/neuralmind_db/` to fully remove the index
-- **Transparency**: Open-source code for full audit trail
+### GDPR (General Data Protection Regulation) — what NeuralMind provides
+- **Data residency**: The index and learned memory stay on your machine or infrastructure, in your jurisdiction
+- **Third-party processing**: By default NeuralMind sends no repository content to any third party. The opt-in `NEURALMIND_LLM_SEED=1` sends README and architecture-doc prose to Anthropic under your own API key, and your coding agent sends the slice it selects to its own model provider — those providers are processors you assess
+- **Data deletion**: Delete the project's `.neuralmind/` and `graphify-out/` directories to remove the index; selective deletion is in [Data Deletion](docs/compliance/DATA_DELETION.md)
+- **Transparency**: The source is public, so what it processes can be audited
 
-### ✅ HIPAA (Health Insurance Portability and Accountability Act)
-- **Encryption at Rest**: Store index on encrypted filesystems (you control encryption)
-- **Access Controls**: Use OS-level permissions to restrict index access
-- **Audit Logging**: All processing happens locally with no external calls
-- **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
+### HIPAA (Health Insurance Portability and Accountability Act) — what NeuralMind provides
+- **Encryption at rest**: NeuralMind doesn't encrypt the index itself; store it on an encrypted filesystem you control (`security.require_encrypted_storage: true` *(v4.7.0+)* refuses to run without one)
+- **Access controls**: OS-level permissions on index files, plus per-tool permission sets
+- **Audit logging**: Append-only audit log with a SHA-256 hash chain, stored locally
+- **Business Associate Agreements**: The software doesn't send your data to us, so using it creates no data flow to Cheval-Volant. Your agent's model provider (and Anthropic, if you enable `NEURALMIND_LLM_SEED`) does receive content; whether you need a BAA with them is yours to determine
 
-### ✅ SOC 2 (Trust Services Criteria)
-- **Security**: Local processing, no repository content transmitted, encrypted at rest (your choice)
-- **Availability**: No dependencies on external services for core functionality
-- **Confidentiality**: NeuralMind stores and processes locally; no repository content is transmitted (its only outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
+### SOC 2 (Trust Services Criteria) — what NeuralMind provides
+- **Security**: Local processing; by default no repository content transmitted; encryption at rest is your choice of filesystem
+- **Availability**: No dependency on external services for core functionality once the embedding model is cached
+- **Confidentiality**: NeuralMind stores and processes locally; by default no repository content is transmitted (its only default outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
 - **Processing Integrity**: Deterministic, reproducible indexing from your source code
-- **Privacy**: No collection, no analytics, no tracking
+- **Privacy**: No telemetry, no analytics, no tracking
 - **No SOC 2 report**: NeuralMind runs inside your environment, so in your audit it is software within your system boundary. Criterion-by-criterion evidence is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
-### ✅ CMMC 2.0
+### CMMC 2.0 — what NeuralMind provides
 - **Scope**: CMMC assesses the contractor's environment. If NeuralMind indexes CUI source code, the index is CUI and NeuralMind is in your assessment scope
 - **Access Control** (AC.L2-3.1.1, 3.1.2): Per-tool permission sets. With `security.identity: os` *(v4.7.0+)* the role is bound to the caller's OS account; by default each MCP call declares its own role, unauthenticated
 - **Audit** (AU.L2-3.3.1, 3.3.8): Append-only audit log with a SHA-256 hash chain
 - **Encryption at rest** (SC.L2-3.13.11, 3.13.16): NeuralMind doesn't encrypt data itself; use FIPS-validated full-disk encryption on the host. `security.require_encrypted_storage: true` *(v4.7.0+)* verifies it and refuses to run without it
 - **Your agent's model provider**: If the code is CUI, the provider your coding agent sends it to must meet DFARS 252.204-7012. Level 2 practice mapping is in the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md)
 
-### ✅ ISO 27001 / 27002
-- **Information Security Management**: Runs entirely within your security perimeter
-- **Access Controls**: Fine-grained OS-level permissions on index files
+### ISO 27001 / 27002 — what NeuralMind provides
+- **Information security management**: Runs within your security perimeter, so it falls under your existing ISMS
+- **Access controls**: OS-level permissions on index files
 - **Encryption**: Compatible with whatever encryption strategy you use
-- **Supplier Management**: Open-source, no hidden dependencies or data sharing agreements
+- **Supplier management**: Public source, a per-release SBOM, and no data-sharing agreement needed for the software itself (your agent's model provider is a separate supplier)
 
-### ✅ PCI DSS (Payment Card Industry Data Security Standard)
-- **Local Processing**: Never transmits code to external networks
-- **Network Segmentation**: Can run on completely isolated networks
-- **Audit Capability**: Fully transparent, no black-box components
-- **Change Management**: Source code control, open-source, version-locked
+### PCI DSS (Payment Card Industry Data Security Standard) — what NeuralMind provides
+- **Local processing**: By default NeuralMind transmits no repository content to external networks
+- **Network segmentation**: Can run on an isolated network once the embedding model is pre-seeded
+- **Audit capability**: Public source and a local, hash-chained audit log
+- **Change management**: Version-pinned releases with a published SBOM
 
-### ✅ FedRAMP / Government Compliance
-- **Air-Gap Ready**: Works completely offline
-- **On-Premise**: No cloud dependencies
-- **Classified Environments**: Suitable for SCIF and other compartmented processing
-- **Supply Chain Security**: Minimal dependencies, vendorable, no external calls
+### FedRAMP / government environments — what NeuralMind provides
+- **Offline operation**: Works offline once the embedding model is pre-seeded via `NEURALMIND_ONNX_MODEL_DIR`
+- **On-premise**: No cloud dependency for core functionality
+- **Classified environments**: Whether it may run in a SCIF or other compartmented environment is the accrediting authority's decision; NeuralMind has no such accreditation
+- **Supply chain**: Minimal dependencies, vendorable, a CycloneDX SBOM per release, and no default outbound requests once the model is pre-seeded
 
 ## Support Commitment
 

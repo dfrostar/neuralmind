@@ -12,7 +12,7 @@ export const metadata: Metadata = pageMetadata({
 
 const headlineStats = [
     { label: 'Token Reduction', value: '48.8×', detail: '1,033 tokens/query vs the fixed 50K-token estimate the CLI used before v4.5.0', gradient: true },
-    { label: 'Wake-up Tokens', value: '455', detail: 'Per query, measured', gradient: false },
+    { label: 'Wake-up Tokens', value: '455', detail: 'Per session, measured', gradient: false },
     { label: 'Personal Edges', value: '+275%', detail: '36 → 135 co-activations', gradient: false },
     { label: 'Communities', value: '810', detail: 'Architectural boundaries', gradient: false },
 ];
@@ -54,10 +54,10 @@ export default function EffectivenessPage() {
                         <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">
                             Field report · one repo · not CI-gated
                         </span>
-                        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05] mb-6">
+                        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-display mb-6">
                             Before and after on a production codebase
                         </h1>
-                        <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-4 leading-relaxed">
+                        <p className="text-base sm:text-lg md:text-xl text-muted max-w-2xl mx-auto mb-4 leading-relaxed">
                             A private CRM platform (TypeScript/React/Node), measured before and after a major
                             rebuild. Every number traces to a CLI command such as{' '}
                             <code className="font-mono text-electric text-sm">neuralmind benchmark .</code>
@@ -76,10 +76,10 @@ export default function EffectivenessPage() {
                     <div className="max-w-5xl mx-auto">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {headlineStats.map((s) => (
-                                <div key={s.label} className="card rounded-2xl p-6">
+                                <div key={s.label} className="card rounded-card p-6">
                                     <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">{s.label}</p>
                                     <p className={`font-display text-3xl font-bold mb-1 ${s.gradient ? 'gradient-text' : 'text-white'}`}>{s.value}</p>
-                                    <p className="text-slate-400 text-sm">{s.detail}</p>
+                                    <p className="text-muted text-sm">{s.detail}</p>
                                 </div>
                             ))}
                         </div>
@@ -91,21 +91,21 @@ export default function EffectivenessPage() {
                         <div className="text-center mb-12 md:mb-16">
                             <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">Before / After</span>
                             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Phase 3 vs Phase 4</h2>
-                            <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-xl mx-auto">
+                            <p className="text-muted text-base sm:text-lg md:text-xl max-w-xl mx-auto">
                                 Full rebuild on a real production CRM codebase
                             </p>
                         </div>
-                        <div className="card rounded-2xl p-6 md:p-8 overflow-hidden">
+                        <div className="card rounded-card p-6 md:p-8 overflow-hidden">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-carbon-border">
-                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Metric</th>
-                                        <th className="text-right py-3 px-4 text-slate-400 font-medium">Before</th>
-                                        <th className="text-right py-3 px-4 text-slate-400 font-medium">After</th>
-                                        <th className="text-right py-3 px-4 text-slate-400 font-medium">Change</th>
+                                        <th className="text-left py-3 px-4 text-muted font-medium">Metric</th>
+                                        <th className="text-right py-3 px-4 text-muted font-medium">Before</th>
+                                        <th className="text-right py-3 px-4 text-muted font-medium">After</th>
+                                        <th className="text-right py-3 px-4 text-muted font-medium">Change</th>
                                     </tr>
                                 </thead>
-                                <tbody className="text-slate-300">
+                                <tbody className="text-body">
                                     {beforeAfter.map((row, i) => (
                                         <tr key={row.metric} className={i < beforeAfter.length - 1 ? 'border-b border-carbon-border/50' : ''}>
                                             <td className="py-3 px-4">{row.metric}</td>
@@ -129,15 +129,15 @@ export default function EffectivenessPage() {
                             </h2>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
-                            <div className="card rounded-2xl p-6">
+                            <div className="card rounded-card p-6">
                                 <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Full Rebuild</p>
                                 <p className="font-display text-3xl font-bold text-white mb-1">326s</p>
-                                <p className="text-slate-400 text-sm">All nodes, edges, embeddings</p>
+                                <p className="text-muted text-sm">All nodes, edges, embeddings</p>
                             </div>
-                            <div className="card rounded-2xl p-6">
+                            <div className="card rounded-card p-6">
                                 <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Incremental (after)</p>
                                 <p className="font-display text-3xl font-bold text-white mb-1">~30s</p>
-                                <p className="text-slate-400 text-sm">Changed files + dependents only</p>
+                                <p className="text-muted text-sm">Changed files + dependents only</p>
                             </div>
                         </div>
                     </div>
@@ -153,9 +153,9 @@ export default function EffectivenessPage() {
                         </div>
                         <div className="space-y-3">
                             {honestyGate.map((item) => (
-                                <div key={item.title} className="card rounded-2xl p-6">
+                                <div key={item.title} className="card rounded-card p-6">
                                     <h3 className="font-display text-xl font-bold text-white mb-2">{item.title}</h3>
-                                    <p className="text-slate-400 text-sm">{item.body}</p>
+                                    <p className="text-muted text-sm">{item.body}</p>
                                 </div>
                             ))}
                         </div>
@@ -164,10 +164,10 @@ export default function EffectivenessPage() {
 
                 <section className="relative py-16 md:py-32 px-4 md:px-6">
                     <div className="max-w-5xl mx-auto">
-                        <div className="card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="card rounded-card p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div>
                                 <h3 className="font-display text-2xl font-bold text-white mb-2">Measure your own</h3>
-                                <p className="text-slate-400 text-sm">
+                                <p className="text-muted text-sm">
                                     Run <code className="font-mono text-electric">neuralmind benchmark .</code> on your
                                     own codebase — about fifteen minutes, on your machine, with no account. Then
                                     email the output to{' '}
