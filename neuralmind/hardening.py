@@ -179,24 +179,48 @@ def _state_permissions(project: Path) -> Result:
 # --- host -------------------------------------------------------------------
 
 
+def _state_locations(project: Path) -> list[Path]:
+    """Where the project's state can land, as ``enforce_storage_policy`` checks
+    it at run time: the project root, ``.neuralmind/`` (through a symlink), and
+    a configured vector-index ``db_path``, which may be on another volume."""
+    from .backend_manager import load_backend_config, resolve_db_path
+    from .state_dir import STATE_DIR_NAME
+    from .storage_guard import _nearest_existing
+
+    targets = [project, project / STATE_DIR_NAME]
+    db_path = resolve_db_path(project, load_backend_config(project).get("db_path"))
+    if db_path and db_path != ":memory:":
+        targets.append(Path(db_path))
+    locations: list[Path] = []
+    for target in targets:
+        location = _nearest_existing(target.resolve())
+        if location not in locations:
+            locations.append(location)
+    return locations
+
+
 def _storage(project: Path) -> Result:
     from .security_config import load_security_settings
     from .storage_guard import check_storage
 
     required = load_security_settings(project).require_encrypted_storage
-    status = check_storage(project)
-    if status.encrypted is not True:
-        return _fail(
-            f"the volume isn't verified as encrypted: {status.detail}",
-            "Turn on FIPS-validated full-disk encryption (FileVault, BitLocker, LUKS).",
-        )
+    locations = _state_locations(project)
+    for location in locations:
+        status = check_storage(location)
+        if status.encrypted is not True:
+            return _fail(
+                f"{location} isn't verified as encrypted: {status.detail}",
+                "Turn on FIPS-validated full-disk encryption (FileVault, BitLocker, LUKS) "
+                "on every volume holding the project's state.",
+            )
+    where = f"{len(locations)} state location(s) verified as encrypted"
     if not required:
         return _fail(
-            f"{status.detail}, but security.require_encrypted_storage is off, so NeuralMind "
-            "would run on an unencrypted volume",
+            f"{where}, but security.require_encrypted_storage is off, so NeuralMind would "
+            "also run on an unencrypted volume",
             "Set security.require_encrypted_storage: true (security.profile: cui sets it).",
         )
-    return _ok(f"{status.detail}; required")
+    return _ok(f"{where}; required")
 
 
 def _os_fips(project: Path) -> Result:
@@ -241,10 +265,38 @@ def _checkpoint_crypto(project: Path) -> Result:
     return _ok(f"checkpoint signing runs in {version} with FIPS mode on")
 
 
-def _daemon(project: Path) -> Result:
-    from .doctor import _running_daemon_exposure
+def _daemon_exposure() -> str | None:
+    """Why the running daemon, if any, is exposed, or None.
 
-    exposure = _running_daemon_exposure()
+    Unlike ``doctor``'s probe, a discovery file that can't be read or doesn't
+    parse raises instead of reading as "no daemon": it may describe one.
+    """
+    import json
+
+    from .daemon import _pid_alive, discovery_path
+    from .security_profile import listener_problem
+
+    path = discovery_path()
+    if not path.exists():
+        return None
+    info = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(info, dict):
+        raise ValueError(f"{path} doesn't hold a JSON object")
+    pid = int(info.get("pid") or 0)
+    # pid 0 would make os.kill probe our own process group, not a daemon.
+    if pid <= 0 or not _pid_alive(pid):
+        return None
+    return listener_problem(str(info.get("host", "")), bool(info.get("token")))
+
+
+def _daemon(project: Path) -> Result:
+    try:
+        exposure = _daemon_exposure()
+    except (OSError, ValueError, TypeError) as exc:
+        return _fail(
+            f"can't tell whether a daemon is running: its discovery file can't be read ({exc})",
+            "Run `neuralmind daemon status`, and `neuralmind daemon restart` if one is running.",
+        )
     if exposure:
         return _fail(
             f"the running daemon is exposed: {exposure}",
@@ -317,12 +369,24 @@ def _checkpoint_anchored(project: Path) -> Result:
             "security.audit_anchor_dir isn't set, so every checkpoint copy is beside the log",
             "Set it to a directory only the administrator can write.",
         )
-    if not settings.anchor_dir.is_dir():
+    anchor = settings.anchor_dir.resolve()
+    if not anchor.is_dir():
         return _fail(
-            f"the anchor directory {settings.anchor_dir} doesn't exist",
+            f"the anchor directory {anchor} doesn't exist",
             "Create it, writable only by the administrator.",
         )
-    return _ok(f"anchored in {settings.anchor_dir}")
+    if anchor == project or project in anchor.parents:
+        return _fail(
+            f"the anchor directory {anchor} is inside the project, so whoever can rewrite "
+            "the project's state can roll back both checkpoint copies together",
+            "Move security.audit_anchor_dir outside the project, to a directory only the "
+            "administrator can write.",
+        )
+    if sys.platform != "win32":
+        writable = _not_writable_by_others(anchor, "the anchor directory", f"chmod go-w {anchor}")
+        if writable.status == FAIL:
+            return writable
+    return _ok(f"anchored in {anchor}, outside the project")
 
 
 def _checkpoint_recent(project: Path) -> Result:

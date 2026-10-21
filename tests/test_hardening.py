@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from neuralmind import audit_checkpoint as ac
-from neuralmind import cli, doctor, hardening, security_config, storage_guard
+from neuralmind import cli, hardening, security_config, storage_guard
 from neuralmind.audit import AuditTrail
 from neuralmind.audit_forward import forward_pending, load_forward_settings
 from neuralmind.storage_guard import StorageStatus
@@ -47,7 +47,7 @@ class Host:
         monkeypatch.setattr(
             hardening, "_signing_openssl", lambda: ("OpenSSL 3.0.9 FIPS", self.fips_openssl)
         )
-        monkeypatch.setattr(doctor, "_running_daemon_exposure", lambda: self.exposure)
+        monkeypatch.setattr(hardening, "_daemon_exposure", lambda: self.exposure)
 
         self.policy = tmp_path / "etc" / "neuralmind" / "policy.yaml"
         self.policy.parent.mkdir(parents=True)
@@ -66,6 +66,7 @@ class Host:
         public = ac.generate_key(self.key)
         self.anchor = tmp_path / "anchor"
         self.anchor.mkdir()
+        self.anchor.chmod(0o755)
         self.settings = {
             "profile": "cui",
             "users": "{alice: builder}",
@@ -195,6 +196,26 @@ def _unrecorded_write_failure(h: Host) -> None:
     )
 
 
+def _group_writable_anchor(h: Host) -> None:
+    h.anchor.chmod(0o775)
+
+
+def _index_on_an_unencrypted_volume(h: Host) -> None:
+    plain = h.project.parent / "plain-volume"
+    plain.mkdir()
+    h.config.write_text(h.config.read_text() + f"db_path: {plain}\n")
+    encrypted = h.storage
+    h.monkeypatch.setattr(
+        storage_guard,
+        "check_storage",
+        lambda p: (
+            StorageStatus(False, "", True, f"{p}: no dm-crypt layer (disk)")
+            if Path(p).name == "plain-volume"
+            else encrypted
+        ),
+    )
+
+
 def _no_anchor(h: Host) -> None:
     h.write_settings(audit_anchor_dir=None)
 
@@ -218,6 +239,7 @@ BREAKS = [
     (_machine_policy_without_profile, {"NMH-02"}),
     (_broad_default_role, {"NMH-04"}),
     (_unencrypted, {"NMH-07"}),
+    (_index_on_an_unencrypted_volume, {"NMH-07"}),
     (_fips_off, {"NMH-08"}),
     (_bundled_openssl, {"NMH-09"}),
     (_exposed_daemon, {"NMH-10"}),
@@ -229,7 +251,11 @@ BREAKS = [
     (_records_waiting, {"NMH-17"}),
 ]
 if sys.platform != "win32":
-    BREAKS += [(_group_writable_settings, {"NMH-05"}), (_world_writable_state, {"NMH-06"})]
+    BREAKS += [
+        (_group_writable_settings, {"NMH-05"}),
+        (_world_writable_state, {"NMH-06"}),
+        (_group_writable_anchor, {"NMH-14"}),
+    ]
 
 
 @pytest.mark.parametrize("undo, expected", BREAKS, ids=[b[0].__name__ for b in BREAKS])
@@ -271,6 +297,32 @@ def test_an_unknown_signing_openssl_fails(host, monkeypatch):
 
     monkeypatch.setattr(hardening, "_signing_openssl", unknown)
     assert host.failed() == {"NMH-09"}
+
+
+def test_an_anchor_inside_the_project_fails(host):
+    inside = host.project / ".neuralmind" / "anchor"
+    inside.mkdir()
+    host.write_settings(audit_anchor_dir=str(inside))
+    result = hardening._checkpoint_anchored(host.project.resolve())
+    assert result.status == "fail"
+    assert "inside the project" in result.detail
+
+
+def test_a_daemon_discovery_file_that_cant_be_read_fails(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path))
+    assert hardening._daemon(tmp_path).status == "pass"  # no discovery file: no daemon
+    (tmp_path / "daemon.json").write_text('{"pid": 12')
+    result = hardening._daemon(tmp_path)
+    assert result.status == "fail"
+    assert "can't tell" in result.detail
+    (tmp_path / "daemon.json").write_text("[]")
+    assert hardening._daemon(tmp_path).status == "fail"
+
+
+def test_a_stale_daemon_discovery_file_passes(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path))
+    (tmp_path / "daemon.json").write_text('{"pid": 0, "host": "0.0.0.0"}')
+    assert hardening._daemon(tmp_path).status == "pass"
 
 
 def test_permission_rules_dont_apply_on_windows(tmp_path, monkeypatch):

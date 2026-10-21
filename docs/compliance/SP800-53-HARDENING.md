@@ -60,14 +60,14 @@ every rule here must pass.
 | **NMH-04** | No role beyond reader by default | AC-6 | Leave `security.default_role` unset, or set it to `reader`; name each account that needs more in `security.users` |
 | **NMH-05** | The project's settings file is writable by its owner only | AC-3, CM-5 | `chmod go-w neuralmind-backend.yaml`, since it holds `security.users`. `n/a` on Windows: restrict it with an ACL |
 | **NMH-06** | The state directory is writable by its owner only | AU-9 | `chmod go-w .neuralmind`: it holds the audit log. `n/a` on Windows: restrict it with an ACL |
-| **NMH-07** | Encrypted storage is verified and required | SC-28 | FileVault, BitLocker or LUKS on the project's volume, verified by NeuralMind, and `security.require_encrypted_storage: true` (the profile sets it) |
+| **NMH-07** | Encrypted storage is verified and required | SC-28 | FileVault, BitLocker or LUKS on every volume holding the project's state (the project, `.neuralmind/` through a symlink, and a configured `db_path`), verified by NeuralMind as at run time, and `security.require_encrypted_storage: true` (the profile sets it) |
 | **NMH-08** | The OS FIPS mode is on | SC-13 | `fips-mode-setup --enable` (RHEL), the FIPS policy on Windows. `n/a` on macOS, which has no FIPS mode switch to read |
 | **NMH-09** | Checkpoint signing runs in a FIPS-mode OpenSSL | SC-13, AU-9(3) | Rebuild `cryptography` against the system OpenSSL: `pip install --force-reinstall --no-cache-dir --no-binary cryptography cryptography`. The prebuilt wheel bundles its own OpenSSL, which isn't FIPS-validated |
-| **NMH-10** | No daemon serves beyond loopback or without its token | CM-7, SC-8 | `neuralmind daemon restart` on 127.0.0.1 with its token; reach it from elsewhere through an SSH tunnel |
+| **NMH-10** | No daemon serves beyond loopback or without its token | CM-7, SC-8 | `neuralmind daemon restart` on 127.0.0.1 with its token; reach it from elsewhere through an SSH tunnel. A daemon discovery file that can't be read fails, since it may describe a running daemon |
 | **NMH-11** | The audit log's hash chain verifies | AU-9 | Nothing to set: a failure means the log was changed. Investigate with `neuralmind audit verify` |
 | **NMH-12** | No audit write failure is unrecorded | AU-5 | Fix the cause, then `neuralmind audit record-gap` |
 | **NMH-13** | Checkpoints are signed and verify | AU-9, AU-9(3) | `neuralmind audit keygen` in an administrator account, and its public key in `security.audit_checkpoint_key` |
-| **NMH-14** | Checkpoints are anchored outside the project | AU-9(2) | `security.audit_anchor_dir`: an existing directory only the administrator can write, ideally on another system |
+| **NMH-14** | Checkpoints are anchored outside the project | AU-9(2) | `security.audit_anchor_dir`: an existing directory outside the project, not writable by group or others (on POSIX), that only the administrator can write, ideally on another system |
 | **NMH-15** | The newest checkpoint is under a week old | AU-9 | `neuralmind audit checkpoint` daily, from the key owner's account (cron, a systemd timer, Task Scheduler) |
 | **NMH-16** | Audit records are forwarded to a local syslog | AU-4(1), AU-6(3), SC-8 | `security.audit_syslog: /dev/log` (or a loopback address), with the host's syslog daemon forwarding to the SIEM over TLS |
 | **NMH-17** | No audit record is waiting to be forwarded | AU-4(1), AU-5 | A reachable syslog daemon; `neuralmind audit forward` sends a backlog |
