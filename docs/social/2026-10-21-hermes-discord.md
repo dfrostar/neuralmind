@@ -13,7 +13,7 @@ in this repo so `tests/test_docs_claims.py` checks its claims.
       server's rules and pinned messages first. If there's a showcase or
       projects channel, post there instead, and don't cross-post the same
       message to several channels.
-- [ ] **Check the message fits.** The body below is 1,921 characters, under 2,000
+- [ ] **Check the message fits.** The body below is 1,914 characters, under 2,000
       (the limit without Nitro). Paste it as is: Discord renders the bold,
       bullets and code block.
 - [ ] **Attach the demo** if you've recorded it (see the Reddit doc's "Demo to
@@ -28,7 +28,7 @@ in this repo so `tests/test_docs_claims.py` checks its claims.
 
 ---
 
-## Message (1,921 characters; the limit is 2,000)
+## Message (1,914 characters; the limit is 2,000)
 
 **NeuralMind plugin for Hermes: codebase memory on every turn, no tool call**
 
@@ -44,7 +44,7 @@ pip install -U neuralmind
 neuralmind build /path/to/repo
 neuralmind install-hermes-plugin
 ```
-Or `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`. Tested with Hermes 0.21.5 and later. In Desktop or ACP sessions, pin a project or set `NEURALMIND_PROJECT`.
+Or `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`. Needs Hermes 0.21.5 or later. In Desktop or ACP sessions, pin a project or set `NEURALMIND_PROJECT`.
 
 **Numbers, misses included:** the right file was in the context for 40 of 40 pre-registered queries across requests, click, flask and rich, at 51–242x fewer tokens than pasting whole files. That's a small sample: a 150-question eval misses 10. A bare vector lookup costs fewer tokens and ranks the right file higher on 2 of the 4 repos.
 
@@ -75,6 +75,6 @@ its "Claim sources" table. Additions specific to this version:
 
 | Claim | Source |
 |---|---|
-| Tested with Hermes 0.21.5 and later | `neuralmind/hermes_plugin/plugin.yaml` (`requires_hermes: ">=0.21.5"`) |
+| Needs Hermes 0.21.5 or later (the version it was tested with; Hermes skips it on older ones) | `neuralmind/hermes_plugin/plugin.yaml` (`requires_hermes: ">=0.21.5"`) |
 | `read_file` recorded only inside the project | `docs/use-cases/hermes-agent.md` §4 |
 | MIT-licensed core | `LICENSE` (excludes `neuralmind/tier2/`) |
