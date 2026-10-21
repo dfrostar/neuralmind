@@ -70,13 +70,13 @@ export default function Terms() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Terms of Service</h1>
-                    <p className="text-slate-400 text-lg mb-12">Last updated: July 2026</p>
+                    <p className="text-muted text-lg mb-12">Last updated: July 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">
                             <h2 className="font-display text-2xl font-bold text-white mb-3 border-l-4 border-proton pl-4">{s.title}</h2>
-                            {s.body && <p className="text-slate-300 leading-relaxed">{s.body}</p>}
+                            {s.body && <p className="text-body leading-relaxed">{s.body}</p>}
                             {s.list && (
-                                <ul className="mt-3 space-y-2 text-slate-300">
+                                <ul className="mt-3 space-y-2 text-body">
                                     {s.list.map((item) => (
                                         <li key={item} className="flex items-start gap-2">
                                             <span className="text-proton mt-1.5">•</span>

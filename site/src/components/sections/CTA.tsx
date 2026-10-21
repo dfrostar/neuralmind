@@ -16,11 +16,11 @@ export default function CTA() {
     return (
         <section id="install" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <div className="panel-accent rounded-2xl px-6 py-14 md:px-14 md:py-16 text-center">
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-semibold text-white tracking-tighter mb-5 max-w-2xl mx-auto">
+                <div className="panel-accent rounded-card px-6 py-14 md:px-14 md:py-16 text-center">
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-5 max-w-2xl mx-auto">
                         Stop paying for tokens you don&apos;t use.
                     </h2>
-                    <p className="text-slate-400 text-base md:text-lg mb-9 max-w-xl mx-auto leading-relaxed">
+                    <p className="text-muted text-base md:text-lg mb-9 max-w-xl mx-auto leading-relaxed">
                         One command to install, one to index, one to measure it on your own repo.
                         Your agent remembers what matters.
                     </p>

@@ -88,28 +88,28 @@ export default function Privacy() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
-                    <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. By default the software sends no telemetry and transmits no repository content off your machine, it has no mechanism that sends your code to us, and this website uses only cookie-free, aggregate analytics.</p>
-                    <p className="text-slate-400 text-lg mb-12">Last updated: October 19, 2026</p>
+                    <p className="text-body text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. By default the software sends no telemetry and transmits no repository content off your machine, it has no mechanism that sends your code to us, and this website uses only cookie-free, aggregate analytics.</p>
+                    <p className="text-muted text-lg mb-12">Last updated: October 19, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">
                             <h2 className="font-display text-2xl font-bold text-white mb-3 border-l-4 border-electric pl-4">{s.title}</h2>
                             {Array.isArray(s.body) ? (
-                                <ul className="space-y-2 text-slate-300">
+                                <ul className="space-y-2 text-body">
                                     {s.body.map((item) => (
                                         <li key={item} className="flex items-start gap-2">
-                                            <span className="text-emerald-400 mt-1.5">•</span>
+                                            <span className="text-faint mt-1.5">•</span>
                                             <span>{item}</span>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-slate-300 leading-relaxed">{s.body}</p>
+                                <p className="text-body leading-relaxed">{s.body}</p>
                             )}
                             {s.list && (
-                                <ul className="mt-3 space-y-2 text-slate-300">
+                                <ul className="mt-3 space-y-2 text-body">
                                     {s.list.map((item) => (
                                         <li key={item} className="flex items-start gap-2">
-                                            <span className="text-emerald-400 mt-1.5">•</span>
+                                            <span className="text-faint mt-1.5">•</span>
                                             <span>{item}</span>
                                         </li>
                                     ))}

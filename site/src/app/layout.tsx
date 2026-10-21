@@ -174,7 +174,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            <body className="bg-carbon text-slate-200 font-sans antialiased">{children}</body>
+            <body className="bg-carbon text-ink font-sans antialiased">{children}</body>
         </html>
     );
 }

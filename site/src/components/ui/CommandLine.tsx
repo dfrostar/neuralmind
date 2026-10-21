@@ -40,8 +40,8 @@ export default function CommandLine({ command }: { command: string }) {
     };
 
     return (
-        <div className="inline-flex items-stretch rounded-lg border border-carbon-border bg-carbon-raised overflow-hidden">
-            <code className="flex items-center gap-2.5 font-mono text-sm text-slate-200 px-4 py-3 select-all">
+        <div className="inline-flex items-stretch rounded-control border border-carbon-border bg-carbon-raised overflow-hidden">
+            <code className="flex items-center gap-2.5 font-mono text-sm text-ink px-4 py-3 select-all">
                 <span className="text-faint select-none">$</span>
                 {command}
             </code>

@@ -1,5 +1,7 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import EvidenceBadge from '@/components/ui/EvidenceBadge';
+import Stat, { StatGrid } from '@/components/ui/Stat';
 import { pageMetadata } from '@/lib/seo';
 import type { Metadata } from 'next';
 
@@ -138,32 +140,27 @@ const METHOD = [
 function ResultTable({ repo }: { repo: Repo }) {
     return (
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <table className="w-full min-w-[34rem] border-collapse text-sm">
+            <table className="data-table min-w-[34rem]">
                 <caption className="sr-only">
                     {repo.name} at commit {repo.sha} — {repo.queries} pre-registered queries
                 </caption>
                 <thead>
-                    <tr className="border-b border-carbon-line">
-                        <th scope="col" className="text-left font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2.5 pr-4">Backend</th>
-                        <th scope="col" className="text-right font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2.5 px-3">Recall</th>
-                        <th scope="col" className="text-right font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2.5 px-3">Found</th>
-                        <th scope="col" className="text-right font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2.5 px-3">Tokens/query</th>
-                        <th scope="col" className="text-right font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint font-medium py-2.5 pl-3">MRR</th>
+                    <tr>
+                        <th scope="col">Backend</th>
+                        <th scope="col" className="num">Recall</th>
+                        <th scope="col" className="num">Found</th>
+                        <th scope="col" className="num">Tokens/query</th>
+                        <th scope="col" className="num">MRR</th>
                     </tr>
                 </thead>
                 <tbody>
                     {repo.rows.map((row) => (
-                        <tr
-                            key={row.backend}
-                            className={`border-b border-carbon-border last:border-0 ${row.nm ? 'bg-proton/[0.06]' : ''}`}
-                        >
-                            <th scope="row" className={`text-left font-mono text-[0.8125rem] py-2.5 pr-4 font-normal ${row.nm ? 'text-proton' : 'text-slate-400'}`}>
-                                {row.backend}
-                            </th>
-                            <td className={`text-right tabular-nums py-2.5 px-3 ${row.nm ? 'text-white font-semibold' : 'text-slate-400'}`}>{row.recall}</td>
-                            <td className={`text-right tabular-nums py-2.5 px-3 ${row.nm ? 'text-white' : 'text-slate-400'}`}>{row.found}</td>
-                            <td className={`text-right tabular-nums py-2.5 px-3 ${row.nm ? 'text-white font-semibold' : 'text-slate-400'}`}>{row.tokens}</td>
-                            <td className={`text-right tabular-nums py-2.5 pl-3 ${row.nm ? 'text-white' : 'text-slate-400'}`}>{row.mrr}</td>
+                        <tr key={row.backend} className={row.nm ? 'is-ours' : undefined}>
+                            <th scope="row">{row.backend}</th>
+                            <td className={`num ${row.nm ? 'font-semibold' : ''}`}>{row.recall}</td>
+                            <td className="num">{row.found}</td>
+                            <td className={`num ${row.nm ? 'font-semibold' : ''}`}>{row.tokens}</td>
+                            <td className="num">{row.mrr}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -210,20 +207,20 @@ export default function BenchmarkPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-lg bg-proton/10 text-proton text-xs font-mono">Reproducible</span>
+                        <EvidenceBadge level="reproducible" />
                         <span className="text-faint text-sm">4 pinned repos · 40 pre-registered queries</span>
                     </div>
-                    <h1 className="font-display text-3xl md:text-[2.75rem] font-bold text-white mb-5 leading-[1.08] tracking-tighter">
+                    <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         The public benchmark
                     </h1>
-                    <p className="text-lg text-slate-300 leading-relaxed mb-6">
+                    <p className="text-lg text-body leading-relaxed mb-6">
                         A no-cherry-picking comparison of how much context different approaches put in
                         an agent&rsquo;s window to answer a real code question — and whether the
                         objectively correct file actually makes it in. Cost and correctness are reported
                         together, because a token-reduction number with no correctness number attached
                         is meaningless.
                     </p>
-                    <p className="text-slate-400 leading-relaxed">
+                    <p className="text-muted leading-relaxed">
                         Every query was registered before tuning. Every miss is published below. If you
                         would rather not take any of it on trust, the whole thing reruns from a fresh
                         clone with one command.
@@ -234,19 +231,19 @@ export default function BenchmarkPage() {
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-4">Rerun it yourself</h2>
                     <div className="rounded-card border border-carbon-border bg-carbon-card overflow-x-auto">
-                        <pre className="font-mono text-[0.8125rem] leading-relaxed text-slate-300 p-5 whitespace-pre">
+                        <pre className="font-mono text-caption leading-relaxed text-body p-5 whitespace-pre">
 {`git clone `}<span className="text-electric">https://github.com/dfrostar/neuralmind</span>{` && cd neuralmind
 pip install -e . tiktoken                            `}<span className="text-faint"># source checkout ships the harness</span>{`
 NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-faint"># clones the pinned repos, prints the table</span>
                         </pre>
                     </div>
-                    <p className="text-slate-400 text-sm mt-4 leading-relaxed">
+                    <p className="text-muted text-sm mt-4 leading-relaxed">
                         The harness lives in the source tree, not the PyPI wheel, so run it from a clone.
                         The repos are cloned at fixed commit SHAs and nothing in the run is random, so
                         recall and found-rate should match the tables below exactly. Token counts
                         can shift slightly between machines — CI runners without AVX-512 land up to
                         0.8% off on a per-repo mean;{' '}
-                        <code className="font-mono text-[0.85em] text-slate-300">NEURALMIND_ORT_THREADS=1</code> matches
+                        <code className="font-mono text-code-inline text-body">NEURALMIND_ORT_THREADS=1</code> matches
                         CI&rsquo;s setup (
                         <a href={`${PUBLIC_MD}#how-exactly-a-re-run-reproduces`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
                             what moves, and the evidence
@@ -265,35 +262,29 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Headline */}
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-5">What it comes to</h2>
-                    <dl className="grid sm:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
-                        <div className="border-b border-r border-carbon-border p-5">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Gold file found</dt>
-                            <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">40 of 40</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Every query, on all four repos. A small sample: see where it still misses, below.</p>
-                            </dd>
-                        </div>
-                        <div className="border-b border-r border-carbon-border p-5">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Tokens vs pasting files</dt>
-                            <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">51–242×</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio. Against ripgrep opening its top five files, which found the gold file on 32 of 40: 31–67× fewer.</p>
-                            </dd>
-                        </div>
-                        <div className="border-b border-r border-carbon-border p-5">
-                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">Top-5 hit rate, 150 questions</dt>
-                            <dd>
-                                <p className="metric text-[1.75rem] text-white leading-none mb-2">93.3%</p>
-                                <p className="text-slate-400 text-sm leading-relaxed">A larger retrieval eval on five repos. Its 10 misses are listed question by question.</p>
-                            </dd>
-                        </div>
-                    </dl>
+                    <StatGrid className="sm:grid-cols-3">
+                        <Stat
+                            label="Gold file found"
+                            value="40 of 40"
+                            note="Every query, on all four repos. A small sample: see where it still misses, below."
+                        />
+                        <Stat
+                            label="Tokens vs pasting files"
+                            value="51–242×"
+                            note="Fewer. Not uniform across repos, which is the honest picture rather than one cherry-picked ratio. Against ripgrep opening its top five files, which found the gold file on 32 of 40: 31–67× fewer."
+                        />
+                        <Stat
+                            label="Top-5 hit rate, 150 questions"
+                            value="93.3%"
+                            note="A larger retrieval eval on five repos. Its 10 misses are listed question by question."
+                        />
+                    </StatGrid>
                 </section>
 
                 {/* Method */}
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-2">How it is built to be hard to dismiss</h2>
-                    <p className="text-slate-400 mb-6 leading-relaxed">
+                    <p className="text-muted mb-6 leading-relaxed">
                         Six design decisions, each aimed at a specific way a vendor benchmark usually
                         fails.
                     </p>
@@ -301,7 +292,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         {METHOD.map((m) => (
                             <div key={m.decision} className="py-4 grid md:grid-cols-[13rem_1fr] gap-2 md:gap-6">
                                 <dt className="text-white font-semibold text-sm">{m.decision}</dt>
-                                <dd className="text-slate-400 text-sm leading-relaxed">{m.why}</dd>
+                                <dd className="text-muted text-sm leading-relaxed">{m.why}</dd>
                             </div>
                         ))}
                     </dl>
@@ -310,8 +301,8 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Results */}
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-2">Results, per repo</h2>
-                    <p className="text-slate-400 mb-8 leading-relaxed">
-                        Tokenizer: tiktoken <code className="font-mono text-[0.85em] text-slate-300">o200k_base</code>.
+                    <p className="text-muted mb-8 leading-relaxed">
+                        Tokenizer: tiktoken <code className="font-mono text-code-inline text-body">o200k_base</code>.
                         Token counts are shown for every backend rather than a ratio, so the columns
                         compare directly — including where NeuralMind is the more expensive one.
                     </p>
@@ -325,7 +316,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                     <span className="text-faint text-sm">· {repo.queries} queries</span>
                                     <span className="ml-auto font-mono text-sm text-proton">{repo.ratio} fewer tokens</span>
                                 </div>
-                                {repo.note && <p className="text-slate-400 text-sm mb-3 leading-relaxed">{repo.note}</p>}
+                                {repo.note && <p className="text-muted text-sm mb-3 leading-relaxed">{repo.note}</p>}
                                 <ResultTable repo={repo} />
                             </article>
                         ))}
@@ -336,17 +327,17 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 <section className="mb-14">
                     <div className="rounded-card border border-carbon-line bg-carbon-raised p-6 md:p-7">
                         <h2 className="font-display text-xl font-bold text-white mb-2">Where NeuralMind loses</h2>
-                        <p className="text-slate-400 mb-6 leading-relaxed">
+                        <p className="text-muted mb-6 leading-relaxed">
                             Two loss modes, reported plainly. Most vendor benchmarks do not have this
                             section; it is here because a benchmark that never reports a loss is not
                             evidence, it is advertising.
                         </p>
 
-                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">1 — Misses beyond these 40 queries</h3>
-                        <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                        <h3 className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint mb-3">1 — Misses beyond these 40 queries</h3>
+                        <p className="text-muted text-sm mb-6 leading-relaxed">
                             This run finds every gold file, but 40 queries is a small sample, every earlier run had at least one
                             miss, and the next code change can bring one back. The previous committed run&rsquo;s three misses (v4.10.0)
-                            are found now: the two cross-file queries in <code className="font-mono text-[0.85em] text-slate-300">requests</code> and <code className="font-mono text-[0.85em] text-slate-300">flask</code>, and <code className="font-mono text-[0.85em] text-slate-300">click</code>&rsquo;s <code className="font-mono text-[0.85em] text-slate-300">echo-util</code>.
+                            are found now: the two cross-file queries in <code className="font-mono text-code-inline text-body">requests</code> and <code className="font-mono text-code-inline text-body">flask</code>, and <code className="font-mono text-code-inline text-body">click</code>&rsquo;s <code className="font-mono text-code-inline text-body">echo-util</code>.
                             On the larger 150-question retrieval eval (five repos, including NeuralMind&rsquo;s own), the same build misses
                             the gold file in the top five on 10 questions, listed in 
                             <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/on-v4.12/report.md" className="text-electric-bright hover:underline">bench/retrieval</a>.
@@ -354,13 +345,13 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             20 candidates NeuralMind re-ranks.
                         </p>
 
-                        <h3 className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">2 — Token cost against a bare vector index</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                            The <code className="font-mono text-[0.85em] text-slate-300">embedding-rag</code> baseline is the top 8 entries of
+                        <h3 className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint mb-3">2 — Token cost against a bare vector index</h3>
+                        <p className="text-muted text-sm leading-relaxed">
+                            The <code className="font-mono text-code-inline text-body">embedding-rag</code> baseline is the top 8 entries of
                             NeuralMind&rsquo;s own vector index, nothing added. NeuralMind&rsquo;s recall is now at or above it on every
-                            repo &mdash; it ties on <code className="font-mono text-[0.85em] text-slate-300">requests</code>, <code className="font-mono text-[0.85em] text-slate-300">click</code> and <code className="font-mono text-[0.85em] text-slate-300">rich</code>, and finds more
-                            gold files on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (1.00 against 0.85). But the baseline is cheaper on all four, and it still
-                            ranks the gold file higher on <code className="font-mono text-[0.85em] text-slate-300">flask</code> (MRR 0.74 against 0.72) and <code className="font-mono text-[0.85em] text-slate-300">rich</code> (0.94 against 0.83).
+                            repo &mdash; it ties on <code className="font-mono text-code-inline text-body">requests</code>, <code className="font-mono text-code-inline text-body">click</code> and <code className="font-mono text-code-inline text-body">rich</code>, and finds more
+                            gold files on <code className="font-mono text-code-inline text-body">flask</code> (1.00 against 0.85). But the baseline is cheaper on all four, and it still
+                            ranks the gold file higher on <code className="font-mono text-code-inline text-body">flask</code> (MRR 0.74 against 0.72) and <code className="font-mono text-code-inline text-body">rich</code> (0.94 against 0.83).
                             Its token count is a floor: it sends a symbol&rsquo;s name, module and docstring, not
                             its code, where NeuralMind spends the difference assembling a
                             structured context — project map, the query&rsquo;s other candidates, eight ranked
@@ -374,11 +365,11 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Not measured */}
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-2">What this benchmark does not measure</h2>
-                    <p className="text-slate-400 mb-6 leading-relaxed">Three omissions. The first two are deliberate and measured elsewhere, though only partly; the third is not measured anywhere yet.</p>
+                    <p className="text-muted mb-6 leading-relaxed">Three omissions. The first two are deliberate and measured elsewhere, though only partly; the third is not measured anywhere yet.</p>
                     <div className="space-y-5">
                         <div className="border-l-2 border-carbon-line pl-5">
                             <h3 className="text-white font-semibold text-sm mb-1.5">The synapse learning layer</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
+                            <p className="text-muted text-sm leading-relaxed">
                                 Synapse weights learn from how you actually work, so they are session- and
                                 usage-dependent and cannot be part of a fixed, reproducible public number.
                                 Injection is off for every run above. The learning lift is measured
@@ -386,14 +377,14 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 on is never worse than recall off, at a neutral token budget — rather than
                                 a magnitude. That gate runs on a ~500-line fixture, so it shows direction,
                                 not that learning pays off on a real codebase over weeks of use: nothing
-                                published shows that yet. <code className="font-mono text-[0.85em] text-slate-300">neuralmind eval . --synapse-ab</code> measures
+                                published shows that yet. <code className="font-mono text-code-inline text-body">neuralmind eval . --synapse-ab</code> measures
                                 it on your own repo (v4.14.0+): your questions, synapse recall on and off,
                                 recorded so you can see whether the gap grows as usage teaches the layer more.
                             </p>
                         </div>
                         <div className="border-l-2 border-carbon-line pl-5">
                             <h3 className="text-white font-semibold text-sm mb-1.5">End-to-end answer quality</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
+                            <p className="text-muted text-sm leading-relaxed">
                                 Gold-file recall is deliberately a findability metric: objective, no judge,
                                 nothing to argue with. There is an opt-in answerability arm that grades real
                                 answers built from each backend&rsquo;s actual window, with every transcript
@@ -403,7 +394,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         </div>
                         <div className="border-l-2 border-carbon-line pl-5">
                             <h3 className="text-white font-semibold text-sm mb-1.5">Whether agents get work done faster</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed">
+                            <p className="text-muted text-sm leading-relaxed">
                                 Every figure on this page is retrieval: what reaches the agent&rsquo;s window and
                                 whether the right file is in it. Nothing here measures time to fix a bug, error
                                 rate, or how much of the needed context a real debugging session got. A small
@@ -417,9 +408,9 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Close */}
                 <section className="rounded-card panel-accent p-6 md:p-7">
                     <h2 className="font-display text-lg font-semibold tracking-tight text-white mb-2">Run it on your own repo</h2>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                    <p className="text-muted text-sm leading-relaxed mb-4">
                         These four repos are public so the numbers can be audited. The number that
-                        decides anything for you is the one from your codebase — <code className="font-mono text-[0.85em] text-slate-300">neuralmind benchmark .</code> prints
+                        decides anything for you is the one from your codebase — <code className="font-mono text-code-inline text-body">neuralmind benchmark .</code> prints
                         it in about fifteen minutes.
                     </p>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">

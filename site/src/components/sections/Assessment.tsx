@@ -16,17 +16,17 @@ export default function Assessment() {
             <div className="max-w-3xl mx-auto">
                 <SectionHeader eyebrow="Free assessment" title="See your savings before you spend a dollar">
                     The core is MIT open source and every feature runs free at one seat —{' '}
-                    <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">pip install neuralmind</code> and
+                    <code className="font-mono text-code-inline text-electric-bright bg-electric/[0.07] rounded-control px-1 py-0.5">pip install neuralmind</code> and
                     you have the whole product. For teams evaluating at scale, we run a free
                     AI-spend assessment: measured on your code, modeled in your numbers, no obligation.
                 </SectionHeader>
 
-                <div className="rounded-xl p-6 md:p-8 panel-accent">
+                <div className="rounded-card p-6 md:p-8 panel-accent">
                     <h3 className="font-display text-xl font-semibold tracking-tight text-white mb-6">What the assessment gives you</h3>
                     <ul className="space-y-3 mb-8">
                         {assessmentIncludes.map((item) => (
-                            <li key={item} className="flex items-start gap-3 text-sm md:text-base text-slate-300">
-                                <svg className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <li key={item} className="flex items-start gap-3 text-sm md:text-base text-body">
+                                <svg className="w-5 h-5 text-success shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                                 {item}

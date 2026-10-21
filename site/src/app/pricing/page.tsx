@@ -116,7 +116,7 @@ export default async function PricingPage() {
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
                         Pricing
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+                    <p className="text-lg text-body max-w-2xl mx-auto">
                         NeuralMind&apos;s core engine ({version}) is MIT-licensed open source, and
                         every feature — governance, audit and self-hosted included — is free at
                         1 seat, forever. You pay for seats beyond one and for support, not for
@@ -129,7 +129,7 @@ export default async function PricingPage() {
                     {tiers.map((tier) => (
                         <div
                             key={tier.name}
-                            className={`rounded-xl p-6 flex flex-col ${
+                            className={`rounded-card p-6 flex flex-col ${
                                 tier.highlight
                                     ? 'bg-carbon-card border-2 border-electric shadow-electric/10 shadow-2xl'
                                     : 'bg-carbon-card border border-carbon-border'
@@ -144,20 +144,20 @@ export default async function PricingPage() {
                                         {tier.price}
                                     </span>
                                     {tier.period !== 'forever' && (
-                                        <span className="text-sm text-slate-400">
+                                        <span className="text-sm text-muted">
                                             / {tier.period}
                                         </span>
                                     )}
                                 </div>
                             </div>
-                            <p className="text-slate-400 text-sm mb-6 flex-grow">
+                            <p className="text-muted text-sm mb-6 flex-grow">
                                 {tier.description}
                             </p>
                             <ul className="space-y-3 mb-6">
                                 {tier.features.map((feature) => (
                                     <li
                                         key={feature}
-                                        className="flex items-start gap-2 text-sm text-slate-300"
+                                        className="flex items-start gap-2 text-sm text-body"
                                     >
                                         <span className="text-proton mt-0.5">✓</span>
                                         <span>{feature}</span>
@@ -166,7 +166,7 @@ export default async function PricingPage() {
                             </ul>
                             <a
                                 href={tier.ctaHref}
-                                className={`text-center text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors ${
+                                className={`text-center text-sm font-semibold py-2.5 px-4 rounded-control transition-colors ${
                                     tier.highlight
                                         ? 'bg-electric hover:bg-electric-bright text-carbon'
                                         : 'bg-carbon border border-carbon-border text-white hover:border-electric/40'
@@ -187,10 +187,10 @@ export default async function PricingPage() {
                         {faqs.map((faq) => (
                             <div
                                 key={faq.q}
-                                className="bg-carbon-card border border-carbon-border rounded-xl p-6"
+                                className="bg-carbon-card border border-carbon-border rounded-card p-6"
                             >
                                 <h3 className="text-white font-semibold mb-2">{faq.q}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">
+                                <p className="text-muted text-sm leading-relaxed">
                                     {faq.a}
                                 </p>
                             </div>

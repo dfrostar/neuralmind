@@ -1,5 +1,6 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import EvidenceBadge from '@/components/ui/EvidenceBadge';
 
 const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const CANONICAL = 'https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/';
@@ -145,18 +146,18 @@ export default function FieldReportPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4 flex-wrap">
-                        <span className="px-3 py-1 rounded-lg bg-proton/10 text-proton text-xs font-mono">Field Report — not CI-gated</span>
+                        <EvidenceBadge level="field-report">Field report — not CI-gated</EvidenceBadge>
                         <span className="text-faint text-sm">July 20, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         Measuring AI agent memory across a major refactor
                     </h1>
-                    <p className="text-lg text-slate-300 mb-4">
+                    <p className="text-lg text-body mb-4">
                         A ~9,300-node TypeScript SaaS platform was rebuilt with NeuralMind watching.
                         The memory didn&apos;t go stale — it grew into the new architecture. Here are the
                         numbers, where each one came from, and how to run the same measurement on your repo.
                     </p>
-                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                    <div className="flex items-center gap-4 text-sm text-muted">
                         <span>Darren Frost (dfrostar)</span>
                         <span>•</span>
                         <a
@@ -173,20 +174,20 @@ export default function FieldReportPage() {
                 {/* Headline stats */}
                 <section className="mb-10">
                     <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="card rounded-2xl p-6">
+                        <div className="card rounded-card p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">48.8×</p>
-                            <p className="text-slate-400 text-sm">~1,033 tokens/query vs the pre-v4.5.0 fixed 50K-token estimate</p>
+                            <p className="text-muted text-sm">~1,033 tokens/query vs the pre-v4.5.0 fixed 50K-token estimate</p>
                         </div>
-                        <div className="card rounded-2xl p-6">
+                        <div className="card rounded-card p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">36 → 135</p>
-                            <p className="text-slate-400 text-sm">the learning layer tracked the new code</p>
+                            <p className="text-muted text-sm">the learning layer tracked the new code</p>
                         </div>
-                        <div className="card rounded-2xl p-6">
+                        <div className="card rounded-card p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Full rebuild</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">326 s</p>
-                            <p className="text-slate-400 text-sm">then back to ~30 s incremental</p>
+                            <p className="text-muted text-sm">then back to ~30 s incremental</p>
                         </div>
                     </div>
                 </section>
@@ -194,7 +195,7 @@ export default function FieldReportPage() {
                 {/* The setting */}
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">The setting</h2>
-                    <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <div className="space-y-4 text-body leading-relaxed">
                         <p>
                             A private, mid-size TypeScript SaaS platform (~9,300 indexed nodes), maintained by
                             NeuralMind&apos;s own maintainer — see the honesty notes below. A major internal rebuild
@@ -212,23 +213,23 @@ export default function FieldReportPage() {
                 {/* The numbers */}
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">The numbers</h2>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-4 overflow-x-auto">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-4 overflow-x-auto">
                         <table className="w-full text-sm min-w-[540px]">
                             <thead>
                                 <tr className="border-b border-carbon-border">
-                                    <th className="text-left py-2 text-slate-400 font-medium">Metric</th>
-                                    <th className="text-right py-2 text-slate-400 font-medium">Before (Phase 3)</th>
-                                    <th className="text-right py-2 text-slate-400 font-medium">After (Phase 4)</th>
-                                    <th className="text-left py-2 pl-4 text-slate-400 font-medium">Change</th>
+                                    <th className="text-left py-2 text-muted font-medium">Metric</th>
+                                    <th className="text-right py-2 text-muted font-medium">Before (Phase 3)</th>
+                                    <th className="text-right py-2 text-muted font-medium">After (Phase 4)</th>
+                                    <th className="text-left py-2 pl-4 text-muted font-medium">Change</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-slate-300">
+                            <tbody className="text-body">
                                 {numbers.map((row) => (
                                     <tr key={row.metric} className="border-b border-carbon-border/50 last:border-0">
                                         <td className="py-2 pr-4">{row.metric}</td>
                                         <td className="py-2 text-right font-mono">{row.before}</td>
                                         <td className={`py-2 text-right font-mono ${row.highlight ? 'text-electric-bright font-bold' : ''}`}>{row.after}</td>
-                                        <td className={`py-2 pl-4 ${row.highlight ? 'text-white' : 'text-slate-400'}`}>{row.change}</td>
+                                        <td className={`py-2 pl-4 ${row.highlight ? 'text-white' : 'text-muted'}`}>{row.change}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -239,13 +240,13 @@ export default function FieldReportPage() {
                 {/* Interpretation */}
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">What the numbers say</h2>
-                    <div className="space-y-4 text-slate-300 leading-relaxed">
+                    <div className="space-y-4 text-body leading-relaxed">
                         <p>
                             <strong className="text-white">48.8× token reduction.</strong> After the rebuild, an average
                             code question cost ~1,033 tokens of context, against the 50,000-token estimate the CLI
                             then used for what a naive &quot;load the relevant files&quot; approach spends. That is one repo&apos;s ratio from{' '}
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark .</code>,
-                            consistent with the 12–50× field-report range, measured the same way (by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark</code> before v4.5.0, against its fixed 50K-token estimate) — not a prediction for your repo.
+                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark .</code>,
+                            consistent with the 12–50× field-report range, measured the same way (by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0, against its fixed 50K-token estimate) — not a prediction for your repo.
                         </p>
                         <p>
                             <strong className="text-white">Personal synapse edges tripled (36 → 135).</strong> The Hebbian
@@ -261,7 +262,7 @@ export default function FieldReportPage() {
                         </p>
                         <p>
                             <strong className="text-white">Rebuild cost stayed flat.</strong> One full{' '}
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">--force</code>{' '}
+                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">--force</code>{' '}
                             rebuild at 326 s to pick up the new structure, then incremental rebuilds back to ~30 s.
                             Re-indexing is not a tax you pay per edit.
                         </p>
@@ -271,21 +272,21 @@ export default function FieldReportPage() {
                 {/* Provenance */}
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">Where each number comes from</h2>
-                    <p className="text-slate-300 mb-4 leading-relaxed">
+                    <p className="text-body mb-4 leading-relaxed">
                         Honesty first: the before/after table is <strong className="text-white">hand-assembled from the
                         output of several commands</strong> — there is no single{' '}
-                        <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind compare-phases</code>{' '}
+                        <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind compare-phases</code>{' '}
                         command.
                     </p>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-4 overflow-x-auto">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-4 overflow-x-auto">
                         <table className="w-full text-sm min-w-[480px]">
                             <thead>
                                 <tr className="border-b border-carbon-border">
-                                    <th className="text-left py-2 text-slate-400 font-medium">Metric</th>
-                                    <th className="text-left py-2 text-slate-400 font-medium">Command</th>
+                                    <th className="text-left py-2 text-muted font-medium">Metric</th>
+                                    <th className="text-left py-2 text-muted font-medium">Command</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-slate-300">
+                            <tbody className="text-body">
                                 {provenance.map((row) => (
                                     <tr key={row.metric} className="border-b border-carbon-border/50 last:border-0">
                                         <td className="py-2 pr-4">{row.metric}</td>
@@ -303,36 +304,36 @@ export default function FieldReportPage() {
                     <div className="space-y-6">
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">1. Snapshot before you start</h3>
-                            <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
+                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind stats . --json &gt; .neuralmind-before.json</p>
                                 <p>neuralmind benchmark .      <span className="text-faint"># baseline reduction number</span></p>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">2. Refactor with the memory watching</h3>
-                            <p className="text-slate-300 mb-2 text-sm">
+                            <p className="text-body mb-2 text-sm">
                                 The synapse layer only learns from what it observes — install hooks <em>before</em> the work starts.
                             </p>
-                            <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
+                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind install-hooks .</p>
                                 <p>neuralmind watch &amp;   <span className="text-faint"># optional: always-on learning from edits</span></p>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">3. Rebuild and snapshot after</h3>
-                            <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
+                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>time neuralmind build . --force</p>
                                 <p>neuralmind stats . --json &gt; .neuralmind-after.json</p>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">4. Re-benchmark and price it</h3>
-                            <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
+                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind benchmark .   <span className="text-faint"># reduction on the post-refactor graph</span></p>
                                 <p>neuralmind savings .     <span className="text-faint"># what your logged queries cost vs naive</span></p>
                             </div>
                         </div>
-                        <p className="text-slate-300 leading-relaxed">
+                        <p className="text-body leading-relaxed">
                             Diff the two JSON files. The interesting deltas: node count (did the graph track the new
                             code?), personal edges (did the memory learn the new co-activations?), shared edge weight
                             (did the graph get denser or just bigger?). The{' '}
@@ -347,7 +348,7 @@ export default function FieldReportPage() {
                 {/* Honesty notes */}
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">Honesty notes</h2>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-6 space-y-3 text-slate-300 leading-relaxed text-sm">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-6 space-y-3 text-body leading-relaxed text-sm">
                         <p>
                             <strong className="text-white">One repo, one developer, measured by the maintainer on a private
                             codebase.</strong> It is an existence proof and a recipe, not an independent benchmark. You
@@ -365,7 +366,7 @@ export default function FieldReportPage() {
                         <p>
                             <strong className="text-white">The &quot;naive&quot; side of this ratio is an estimate.</strong>{' '}
                             This report predates v4.5.0, when{' '}
-                            <code className="font-mono text-[0.85em] text-slate-300">neuralmind benchmark .</code> divided
+                            <code className="font-mono text-code-inline text-body">neuralmind benchmark .</code> divided
                             a fixed 50,000-token estimate of naive context by the measured tokens per question
                             (~1,033 here); it did not count this repo&apos;s actual size. The measured half is the
                             tokens per question. Since v4.5.0 the CLI divides the measured size of the code the index
@@ -390,7 +391,7 @@ export default function FieldReportPage() {
 
                 {/* CTA */}
                 <footer className="mt-12 pt-8 border-t border-carbon-border text-center">
-                    <p className="text-slate-400 mb-4">
+                    <p className="text-muted mb-4">
                         Measure your own refactor — the whole recipe is four commands.
                     </p>
                     <div className="flex items-center justify-center gap-4 flex-wrap">

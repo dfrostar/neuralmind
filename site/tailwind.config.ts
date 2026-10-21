@@ -19,6 +19,15 @@
  *   became the evidence colour — verified, measured, CI-gated. Blue means
  *   "you can click this", green means "this was measured". Two colours with
  *   two jobs, which is a system; six colours with no jobs is a mood board.
+ * - Text has four named steps (`ink`, `body`, `muted`, `faint`) instead of
+ *   Tailwind's slate scale, whose blue cast fought the neutral surfaces.
+ * - `danger` / `warn` / `success` are verdict colours for tables of claims
+ *   (refuted / modeled / passing). They are not evidence: a result that was
+ *   measured is `proton`, never `success`.
+ *
+ * Type, radius and colour are closed sets: `tests/test_site_design_tokens.py`
+ * fails on arbitrary type values, raw palette colours and radii outside
+ * `control` / `card` / `pill`. site/DESIGN.md says which to use where.
  */
 module.exports = {
     content: [
@@ -27,6 +36,15 @@ module.exports = {
         './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     theme: {
+        // Replaces Tailwind's eight radii rather than extending them: three
+        // jobs, three values. `control` for anything you click or that sits
+        // inline in text, `card` for a surface, `pill` for dots and tags.
+        borderRadius: {
+            none: '0',
+            control: '0.375rem',
+            card: '0.75rem',
+            pill: '9999px',
+        },
         extend: {
             colors: {
                 // Surfaces — neutral, four steps, each a real elevation.
@@ -48,22 +66,44 @@ module.exports = {
                 // Retained so stray references resolve; deliberately near-neutral.
                 iris: '#8A93A3',
 
-                // Muted text that still clears WCAG AA on `carbon`. Tailwind's
-                // own slate-500 and slate-600 do not, which is what the whole
-                // site was using for captions, labels and legal lines.
+                // Text, brightest to dimmest. Contrast on `carbon` / `carbon-card`
+                // (WCAG AA body text needs 4.5): ink 16.3 / 15.2, body 12.5 /
+                // 11.6, muted 7.7 / 7.2, faint 5.4 / 5.0. `faint` is the floor:
+                // Tailwind's slate-500 and slate-600 do not clear AA, which is
+                // what the site was using for captions, labels and legal lines.
+                ink: '#E8EAED',
+                body: '#C9CED6',
+                muted: '#9AA3AF',
                 faint: '#7E8794',
+
+                // Verdicts. Each clears 6.6:1 on every surface.
+                danger: '#F27B7B',
+                warn: '#E5B567',
+                success: '#6CCB86',
             },
             fontFamily: {
                 sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
                 mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
                 display: ['var(--font-display)', 'var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
             },
+            // Named steps between Tailwind's own, so no page needs `text-[…]`.
+            fontSize: {
+                eyebrow: ['0.6875rem', { lineHeight: '1rem' }], // uppercase mono labels, table heads
+                caption: ['0.8125rem', { lineHeight: '1.25rem' }], // table cells, terminal text, small print
+                'body-sm': ['0.9375rem', { lineHeight: '1.5rem' }], // card ledes, mobile nav
+                'title-sm': ['1.0625rem', { lineHeight: '1.5rem' }], // card titles, wordmark
+                stat: ['1.75rem', { lineHeight: '1' }], // a measured number in a Stat
+                display: ['2.75rem', { lineHeight: '1.05' }], // page h1, section h2
+                hero: ['3.5rem', { lineHeight: '1.05' }], // the homepage h1 only
+                'code-inline': '0.875em', // <code> inside running text; relative to it
+            },
+            lineHeight: {
+                display: '1.05',
+            },
             letterSpacing: {
                 tightest: '-0.045em',
                 tighter: '-0.03em',
-            },
-            borderRadius: {
-                card: '0.625rem',
+                eyebrow: '0.14em',
             },
             animation: {
                 'fade-in': 'fadeIn 0.5s ease-out both',

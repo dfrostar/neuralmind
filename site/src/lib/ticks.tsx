@@ -20,7 +20,7 @@ export function withCode(text: string) {
         i % 2 === 1 ? (
             <code
                 key={i}
-                className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5 break-words"
+                className="font-mono text-code-inline text-electric-bright bg-electric/[0.07] rounded-control px-1 py-0.5 break-words"
             >
                 {part}
             </code>

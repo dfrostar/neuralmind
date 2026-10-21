@@ -94,7 +94,7 @@ export default function ServicesPage() {
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
                         Roll out AI coding agents on evidence
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+                    <p className="text-lg text-body max-w-2xl mx-auto">
                         The software is open source and the savings are free. What we
                         sell is certainty: fixed-fee engagements that measure what
                         NeuralMind does on <em>your</em> repos, wire it into your
@@ -107,7 +107,7 @@ export default function ServicesPage() {
                     {offerings.map((tier) => (
                         <div
                             key={tier.name}
-                            className={`rounded-xl p-6 flex flex-col ${
+                            className={`rounded-card p-6 flex flex-col ${
                                 tier.highlight
                                     ? 'bg-carbon-card border-2 border-electric shadow-electric/10 shadow-2xl'
                                     : 'bg-carbon-card border border-carbon-border'
@@ -121,19 +121,19 @@ export default function ServicesPage() {
                                     <span className="text-3xl font-bold text-white">
                                         {tier.price}
                                     </span>
-                                    <span className="text-sm text-slate-400">
+                                    <span className="text-sm text-muted">
                                         / {tier.period}
                                     </span>
                                 </div>
                             </div>
-                            <p className="text-slate-400 text-sm mb-6 flex-grow">
+                            <p className="text-muted text-sm mb-6 flex-grow">
                                 {tier.description}
                             </p>
                             <ul className="space-y-3 mb-6">
                                 {tier.features.map((feature) => (
                                     <li
                                         key={feature}
-                                        className="flex items-start gap-2 text-sm text-slate-300"
+                                        className="flex items-start gap-2 text-sm text-body"
                                     >
                                         <span className="text-proton mt-0.5">✓</span>
                                         <span>{feature}</span>
@@ -142,7 +142,7 @@ export default function ServicesPage() {
                             </ul>
                             <a
                                 href={tier.ctaHref}
-                                className={`text-center text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors ${
+                                className={`text-center text-sm font-semibold py-2.5 px-4 rounded-control transition-colors ${
                                     tier.highlight
                                         ? 'bg-electric hover:bg-electric-bright text-carbon'
                                         : 'bg-carbon border border-carbon-border text-white hover:border-electric/40'
@@ -163,9 +163,9 @@ export default function ServicesPage() {
                         {steps.map((step) => (
                             <div
                                 key={step.n}
-                                className="bg-carbon-card border border-carbon-border rounded-xl p-5"
+                                className="bg-carbon-card border border-carbon-border rounded-card p-5"
                             >
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-electric to-proton flex items-center justify-center mb-3">
+                                <div className="w-8 h-8 rounded-control bg-gradient-to-br from-electric to-proton flex items-center justify-center mb-3">
                                     <span className="text-white font-display font-bold text-sm">
                                         {step.n}
                                     </span>
@@ -173,7 +173,7 @@ export default function ServicesPage() {
                                 <h3 className="text-white font-semibold text-sm mb-2">
                                     {step.title}
                                 </h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">
+                                <p className="text-muted text-sm leading-relaxed">
                                     {step.text}
                                 </p>
                             </div>
@@ -183,11 +183,11 @@ export default function ServicesPage() {
 
                 {/* Audit-heavy environments */}
                 <section className="max-w-3xl mx-auto mb-20">
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-8">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-8">
                         <h2 className="font-display text-2xl font-bold text-white mb-4">
                             Built for audit-heavy environments
                         </h2>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                        <p className="text-muted text-sm leading-relaxed mb-4">
                             Teams adopting AI coding agents under compliance regimes —
                             SOC 2, HIPAA, CMMC, or obligations under the EU AI Act —
                             need to show their tooling is controlled and evidenced,
@@ -204,7 +204,7 @@ export default function ServicesPage() {
                             ].map((item) => (
                                 <li
                                     key={item}
-                                    className="flex items-start gap-2 text-sm text-slate-300"
+                                    className="flex items-start gap-2 text-sm text-body"
                                 >
                                     <span className="text-proton mt-0.5">✓</span>
                                     <span>{item}</span>
@@ -224,12 +224,12 @@ export default function ServicesPage() {
                     <h2 className="font-display text-2xl font-bold text-white mb-6 text-center">
                         What we won&apos;t do
                     </h2>
-                    <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
+                    <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <ul className="space-y-3">
                             {wontDo.map((item) => (
                                 <li
                                     key={item}
-                                    className="flex items-start gap-2 text-sm text-slate-300"
+                                    className="flex items-start gap-2 text-sm text-body"
                                 >
                                     <span className="text-faint mt-0.5">✕</span>
                                     <span>{item}</span>
@@ -241,13 +241,13 @@ export default function ServicesPage() {
 
                 {/* CTA */}
                 <section className="max-w-3xl mx-auto text-center">
-                    <p className="text-slate-300 mb-4">
+                    <p className="text-body mb-4">
                         Start with the 30-minute scope call — it costs nothing and
                         usually settles whether an engagement is worth it.
                     </p>
                     <a
                         href="mailto:hello@neuralmind.uk?subject=NeuralMind%20Services"
-                        className="inline-block bg-electric hover:bg-electric-bright text-carbon text-sm font-semibold py-2.5 px-6 rounded-lg transition-colors"
+                        className="inline-block bg-electric hover:bg-electric-bright text-carbon text-sm font-semibold py-2.5 px-6 rounded-control transition-colors"
                     >
                         hello@neuralmind.uk
                     </a>
