@@ -1637,7 +1637,9 @@ three questions *(v4.19.0+)*: when the embedding model isn't on disk, the demo
 embeds its questions from those, ranks exactly as it would with the model, and
 downloads nothing. Before v4.19.0 its first run downloaded the model (about
 90 MB), and failed with a traceback offline. With the model on disk, it uses
-the model. The token counts use tiktoken; where its vocabulary can't be
+the model. If this install can't use the bundled index (a turbovec release too
+old to read it, say), the demo falls back to building with the model, which
+downloads it once. The token counts use tiktoken; where its vocabulary can't be
 downloaded, they are estimated at about 4 characters a token, and the demo
 says so.
 
@@ -1647,7 +1649,7 @@ The sample is small (about 500 lines), so its reduction is small;
 | Code | Meaning |
 |------|---------|
 | `0` | The report printed |
-| `1` | The bundled data is missing or doesn't match this version, or the build failed |
+| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or the build failed |
 
 ### doctor *(v0.12.0+)*
 

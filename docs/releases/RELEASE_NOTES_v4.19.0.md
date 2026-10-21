@@ -185,12 +185,16 @@ offline it failed with a traceback.
   When the model isn't on disk, the demo embeds its questions from those: the
   ranking is the model's, and nothing is downloaded. It says so in one line.
   The same run with the model on disk prints the same token counts.
-- **A bundle that doesn't match the version** (any other text to embed) stops
-  the demo with a message, not a traceback.
+- **A bundle this install can't use** (a turbovec release too old to read the
+  index rebuilds it, which needs every node embedded) falls back to building
+  with the model, downloading it once, as before. Offline, that ends in a
+  message, not a traceback.
 - **It can't drift.** `scripts/build_demo_index.py` regenerates the bundle; in
   CI, the self-benchmark job rebuilds it with the real model and fails if the
-  committed copy is stale, and a unit test fails if the sample project would
-  need anything embedded.
+  committed copy is stale: changed nodes, changed question vectors, an index
+  this turbovec can't read, or different top-5 results for the demo questions.
+  Unit tests, which need no model, fail if the sample project would need
+  anything embedded or the index doesn't load.
 
 Your own code still needs the model: the first `neuralmind build` downloads it
 once, as before. A new [`demo`](../wiki/CLI-Reference.md#demo) section in the

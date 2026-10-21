@@ -1916,11 +1916,11 @@ class TestCLIDemoOffline:
 
     @staticmethod
     def _no_model(monkeypatch):
-        """No model on disk, and any attempt to download one fails the test."""
+        """No model on disk, and no network: a download attempt fails, as offline."""
         from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
 
         def no_download(self, dest):
-            raise AssertionError("the demo tried to download the embedding model")
+            raise OSError("no network in this test")
 
         monkeypatch.setattr(OnnxMiniLMEmbedder, "local_model_dir", lambda self: None)
         monkeypatch.setattr(OnnxMiniLMEmbedder, "_download_into", no_download)
@@ -1992,15 +1992,12 @@ class TestCLIDemoOffline:
         with pytest.raises(_demo_report.DemoIndexStaleError):
             embedder(["How does logging work?"])
 
-    def test_a_stale_bundle_fails_with_a_message_not_a_traceback(
-        self, tmp_path, monkeypatch, capsys
-    ):
+    @staticmethod
+    def _stale_bundle(tmp_path, monkeypatch):
+        """Package data whose question vectors don't cover the demo's questions."""
         import shutil
         from importlib import resources
 
-        from neuralmind.cli import cmd_demo
-
-        self._no_model(monkeypatch)
         with resources.as_file(resources.files("neuralmind") / "demo_data") as src:
             demo_data = tmp_path / "pkg" / "neuralmind" / "demo_data"
             shutil.copytree(src, demo_data)
@@ -2010,13 +2007,75 @@ class TestCLIDemoOffline:
         vectors.write_text(json.dumps(data), encoding="utf-8")
         monkeypatch.setattr(resources, "files", lambda _pkg: demo_data.parent)
 
+    def test_an_unusable_bundle_offline_fails_with_a_message_not_a_traceback(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from neuralmind.cli import cmd_demo
+
+        self._no_model(monkeypatch)
+        self._stale_bundle(tmp_path, monkeypatch)
         args = MagicMock()
         args.keep = False
         args.quiet = True
         with pytest.raises(SystemExit) as exc:
             cmd_demo(args)
         assert exc.value.code == 1
-        assert "the bundled demo index doesn't match this version" in capsys.readouterr().err
+        err = capsys.readouterr().err
+        assert "building it with the embedding model instead" in err
+        assert "the embedding model couldn't be downloaded (no network in this test)" in err
+
+    def test_an_unusable_bundle_falls_back_to_the_model(self, tmp_path, monkeypatch, capsys):
+        """Online, a bundle this install can't use (an older turbovec that can't
+        read the index rebuilds it, which needs every node embedded) falls back
+        to building with the model, as the demo did before it was bundled."""
+        import hashlib
+
+        from neuralmind.cli import cmd_demo
+        from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
+
+        def fake_model(self, texts):
+            # Stands in for the downloaded model: deterministic 384-d vectors.
+            vectors = []
+            for text in texts:
+                digest = hashlib.sha256(text.encode()).digest()
+                vectors.append([b / 255.0 for b in (digest * 12)[:384]])
+            return vectors
+
+        self._no_model(monkeypatch)
+        self._stale_bundle(tmp_path, monkeypatch)
+        monkeypatch.setattr(OnnxMiniLMEmbedder, "__call__", fake_model)
+        monkeypatch.setattr(OnnxMiniLMEmbedder, "embed", fake_model)
+        args = MagicMock()
+        args.keep = False
+        args.quiet = True
+        cmd_demo(args)
+
+        captured = capsys.readouterr()
+        assert "building it with the embedding model instead" in captured.err
+        assert captured.out.count("reduction =") == 3
+
+    def test_the_bundled_index_loads_with_the_installed_turbovec(self, tmp_path):
+        """The shipped index.tvim reads with this turbovec, holds a vector for
+        every stored node, and isn't quarantined (which would need the model)."""
+        import shutil
+        from importlib import resources
+
+        from neuralmind.cli import _copy_demo_fixture
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+
+        work = tmp_path / "sample_project"
+        with resources.as_file(resources.files("neuralmind") / "demo_data") as demo_data:
+            _copy_demo_fixture(Path(demo_data) / "sample_project", work)
+            shutil.copytree(
+                Path(demo_data) / "prebuilt" / "neuralmind_turbovec",
+                work / ".neuralmind" / "neuralmind_turbovec",
+            )
+        backend = TurboVecEmbedder(str(work))
+        index = backend._load_index()
+        assert index is not None
+        assert not list((work / ".neuralmind" / "neuralmind_turbovec").glob("*.stale"))
+        stored = backend._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()["c"]
+        assert len(index) == stored
 
     def test_the_bundled_vectors_match_the_model(self):
         """Where the model is on disk: the shipped vectors are the model's."""

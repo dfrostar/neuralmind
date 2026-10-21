@@ -5461,25 +5461,37 @@ def cmd_demo(args):
                     "downloads the embedding model (about 90 MB) once."
                 )
 
-        override = embed_fn_override(bundled) if bundled is not None else contextlib.nullcontext()
-        with override:
-            try:
-                result = NeuralMind(str(fixture_dir)).build()
-                if not result.get("success"):
-                    print(
-                        f"demo failed during build: {result.get('error', 'unknown error')}",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-                _demo_report.run_demo_report(
-                    fixture_dir,
-                    header_label="bundled sample_project",
-                )
-            except _demo_report.DemoIndexStaleError as exc:
+        def build_and_report(force: bool) -> None:
+            result = NeuralMind(str(fixture_dir)).build(force=force)
+            if not result.get("success"):
                 print(
-                    f"demo failed: the bundled demo index doesn't match this version ({exc}). "
-                    "Reinstall neuralmind, or run it once with network access so the "
-                    "embedding model can be downloaded.",
+                    f"demo failed during build: {result.get('error', 'unknown error')}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            _demo_report.run_demo_report(fixture_dir, header_label="bundled sample_project")
+
+        override = embed_fn_override(bundled) if bundled is not None else contextlib.nullcontext()
+        try:
+            with override:
+                build_and_report(force=False)
+        except _demo_report.DemoIndexStaleError as exc:
+            # The bundled index can't serve this install: say a turbovec
+            # release too old to read it quarantined it, and rebuilding needs
+            # every node embedded. Fall back to what the demo did before it
+            # was bundled: build with the model, downloading it once.
+            print(
+                f"[demo] the bundled index can't be used here ({exc}); building it "
+                "with the embedding model instead, which downloads it (about 90 MB) once.",
+                file=sys.stderr,
+            )
+            try:
+                build_and_report(force=True)
+            except OSError as download_exc:
+                print(
+                    f"demo failed: the bundled demo index can't be used with this install, and "
+                    f"the embedding model couldn't be downloaded ({download_exc}). Run it once "
+                    "with network access, or upgrade turbovec.",
                     file=sys.stderr,
                 )
                 sys.exit(1)

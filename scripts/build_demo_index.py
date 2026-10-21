@@ -12,9 +12,10 @@ from the MiniLM model; this script makes them from the sample project:
 
 `--check` runs in the self-benchmark workflow (ci-benchmark.yml), which has
 the model. It rebuilds into a temporary directory and compares what the
-ranking depends on: the indexed nodes and their content hashes, and the
-question vectors. Run the script without `--check`, and commit the result,
-whenever the sample project, its graph or the demo questions change.
+ranking depends on: the indexed nodes and their content hashes, the question
+vectors, and the top 5 nodes the committed index returns for each question.
+Run the script without `--check`, and commit the result, whenever the sample
+project, its graph or the demo questions change.
 """
 
 from __future__ import annotations
@@ -75,6 +76,31 @@ def _vectors(path: Path) -> dict[str, list[float]]:
     return json.loads(path.read_text(encoding="utf-8"))["vectors"]
 
 
+def _rankings(index_dir: Path) -> dict[str, list[str]] | None:
+    """The top 5 nodes the index at ``index_dir`` returns for each demo question,
+    embedded with the model, or None if this turbovec can't read the index."""
+    from neuralmind import _demo_report
+    from neuralmind.cli import _copy_demo_fixture
+    from neuralmind.turbovec_backend import TurboVecEmbedder
+
+    with tempfile.TemporaryDirectory(prefix="neuralmind-demo-rank-") as tmp:
+        project = Path(tmp) / "sample_project"
+        _copy_demo_fixture(DEMO / "sample_project", project)
+        shutil.copytree(index_dir, project / ".neuralmind" / INDEX_DIR)
+        backend = TurboVecEmbedder(str(project))
+        try:
+            if backend._load_index() is None or list(
+                (project / ".neuralmind" / INDEX_DIR).glob("*.stale")
+            ):
+                return None
+            return {
+                q: [hit["id"] for hit in backend.search(q, n=5)]
+                for _, q in _demo_report.DEMO_QUERIES
+            }
+        finally:
+            backend.close()
+
+
 def _check() -> int:
     with tempfile.TemporaryDirectory(prefix="neuralmind-demo-check-") as tmp:
         fresh = Path(tmp)
@@ -89,6 +115,13 @@ def _check() -> int:
             problems.append("the demo questions changed")
         elif any(abs(a - b) > 1e-4 for q in new for a, b in zip(old[q], new[q], strict=True)):
             problems.append("the question vectors changed")
+        # The vectors themselves: what the committed index returns for the
+        # demo questions must be what a fresh build returns.
+        committed = _rankings(PREBUILT / INDEX_DIR)
+        if committed is None:
+            problems.append("the committed index.tvim can't be read by this turbovec")
+        elif committed != _rankings(fresh / INDEX_DIR):
+            problems.append("the committed index ranks the demo questions differently")
     if problems:
         print(f"demo_data/prebuilt is stale: {'; '.join(problems)}.", file=sys.stderr)
         print("Regenerate it: python scripts/build_demo_index.py, and commit.", file=sys.stderr)
