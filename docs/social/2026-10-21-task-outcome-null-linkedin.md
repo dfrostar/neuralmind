@@ -1,6 +1,6 @@
-**Draft — post only after [#692](https://github.com/dfrostar/neuralmind/pull/692) merges**, so the link resolves to committed data.
-
 # LinkedIn post — 2026-10-21
+
+**Draft, ready to post.** [#692](https://github.com/dfrostar/neuralmind/pull/692) has merged, so the data link resolves to the committed run.
 
 Company-page post leading with the task-outcome pilot's null result. Every
 figure is in `site/claims.json` (the pilot entry, recomputed from

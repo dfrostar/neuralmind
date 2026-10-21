@@ -25,12 +25,15 @@ const steps: { icon: IconName; title: string; desc: string; tag: string }[] = [
     },
 ];
 
-// The quickstart: install, index, connect, keep fresh, measure. The comments
+// The quickstart: install, index, connect (MCP, then Claude Code's hooks),
+// keep fresh, measure. The hooks matter: in the task-outcome pilot the agent
+// never called the MCP tools, and the hooks were how NeuralMind reached it. The comments
 // are what each command does, not what it promises.
 const QUICKSTART: { cmd: string; note: string }[] = [
     { cmd: 'pip install neuralmind', note: 'Python 3.10+' },
     { cmd: 'cd your-repo && neuralmind build .', note: 'first build downloads a public embedding model' },
     { cmd: 'neuralmind install-mcp', note: 'Claude Code; --client cursor | cline | vscode | claude-desktop' },
+    { cmd: 'neuralmind install-hooks .', note: 'Claude Code: session-start memory, prompt-time recall, stale-decision guard' },
     { cmd: 'neuralmind init-hook .', note: 'rebuild after commits, pulls, checkouts and rebases' },
     { cmd: 'neuralmind benchmark .', note: 'your own tokens-per-question, on your code' },
 ];
@@ -79,7 +82,7 @@ export default function HowItWorks() {
                             Quickstart
                         </h3>
                         <p className="text-muted text-sm mb-5">
-                            Five commands. No account, no signup, no hosted service.
+                            Six commands. No account, no signup, no hosted service.
                         </p>
                         <ol className="space-y-3">
                             {QUICKSTART.map((s, i) => (

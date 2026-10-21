@@ -314,14 +314,17 @@ export default async function SecurityPage() {
                 <Section
                     id="air-gapped"
                     title="Air-gapped install"
-                    lede="Bundle the wheels and the embedding model on a connected machine with the target’s Python version, verify them there, and install with no index. The first build then makes no network request."
+                    lede="Bundle the wheels and the embedding model on a connected machine with the target’s Python version, carry both across, and install with no index. With the model restored to its cache, the first build makes no network request."
                 >
                     <Commands
                         lines={[
-                            { comment: 'On a connected machine', cmd: 'pip download neuralmind --dest ./offline-bundle' },
+                            { comment: 'On a connected machine: the wheels, then warm the model cache', cmd: 'pip download neuralmind --dest ./offline-bundle' },
                             { cmd: 'python -c "from neuralmind.onnx_embedder import OnnxMiniLMEmbedder as E; E()([\'warm\'])"' },
-                            { comment: 'On the air-gapped machine', cmd: 'pip install --no-index --find-links offline-bundle neuralmind' },
-                            { comment: 'Or point at a model directory you manage', cmd: 'export NEURALMIND_ONNX_MODEL_DIR=/opt/models/all-MiniLM-L6-v2/onnx' },
+                            { comment: 'Bundle the wheels and the cached model together', cmd: 'tar czf neuralmind-offline.tgz ./offline-bundle -C ~/.cache/neuralmind onnx_models' },
+                            { comment: 'On the air-gapped machine', cmd: 'tar xzf neuralmind-offline.tgz' },
+                            { cmd: 'pip install --no-index --find-links offline-bundle neuralmind' },
+                            { cmd: 'mkdir -p ~/.cache/neuralmind && cp -r onnx_models ~/.cache/neuralmind/' },
+                            { comment: 'Or point at a model directory you manage (model.onnx and tokenizer.json)', cmd: 'export NEURALMIND_ONNX_MODEL_DIR=/opt/models/all-MiniLM-L6-v2/onnx' },
                         ]}
                     />
                     <p className="text-muted text-sm mt-3">

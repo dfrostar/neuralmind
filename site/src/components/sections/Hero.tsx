@@ -6,10 +6,12 @@ import { headline, publicBenchmark, publicQuery, ratioRange, retrievalEval } fro
 
 const AGENTS = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Hermes', 'any MCP client'];
 
-// The three commands a reader runs to try it, verified against
-// neuralmind/cli.py: install, index, register the MCP server with Claude Code
-// (`--client` picks Cursor, Cline, VS Code or Claude Desktop instead).
-const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-mcp'];
+// The commands a reader runs to try it, verified against neuralmind/cli.py:
+// install, index, register the MCP server with Claude Code (`--client` picks
+// Cursor, Cline, VS Code or Claude Desktop instead), and install Claude Code's
+// hooks. In the task-outcome pilot the agent never called the MCP tools; the
+// hooks were how NeuralMind reached it, so they are part of the install.
+const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-mcp', 'neuralmind install-hooks .'];
 
 export default function Hero() {
     // Every figure below is read from the committed runs through lib/evidence,
@@ -47,7 +49,7 @@ export default function Hero() {
                             published. By default, no telemetry. MIT core, free at one seat.
                         </p>
 
-                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in three commands">
+                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in four commands">
                             {INSTALL.map((cmd, i) => (
                                 <li key={cmd} className="flex items-center gap-3">
                                     <span className="w-6 shrink-0 font-mono text-xs text-faint tabular-nums">
