@@ -1,4 +1,4 @@
-# NeuralMind v4.19.0 — live audit forwarding to syslog, an alert when an audit record can't be written, and SP 800-53: an OSCAL component definition and a hardening baseline that checks itself
+# NeuralMind v4.19.0 — live audit forwarding to syslog, an alert when an audit record can't be written, SP 800-53: an OSCAL component definition and a hardening baseline that checks itself, and a demo that runs offline
 
 **Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, the last audit item: AU.L2-3.3.4 (alert when audit logging fails) and AU.L2-3.3.5 (correlate audit records); and the SP 800-53 items: a machine-readable statement of NeuralMind's controls for an agency's System Security Plan, and a hardening baseline that `neuralmind hardening` checks
 
@@ -171,6 +171,35 @@ neuralmind hardening [project_path] [--json]
   and the command. CI checks that the guide lists exactly the rules and
   controls the code checks.
 
+### `neuralmind demo` runs offline, straight after `pip install`
+
+`neuralmind demo` asks three questions of a small sample project bundled with
+the package. Its graph was bundled already, but its first run built the vector
+index, which downloaded the embedding model (about 90 MB) into `~/.cache`, and
+offline it failed with a traceback.
+
+- **The sample's vector index ships in the package** (about 0.5 MB, in
+  `neuralmind/demo_data/prebuilt/`), so the build finds every node already
+  embedded.
+- **So do the embeddings of the three questions,** made with the same model.
+  When the model isn't on disk, the demo embeds its questions from those: the
+  ranking is the model's, and nothing is downloaded. It says so in one line.
+  The same run with the model on disk prints the same token counts.
+- **A bundle this install can't use** (a turbovec release too old to read the
+  index rebuilds it, which needs every node embedded) falls back to building
+  with the model, downloading it once, as before. Offline, that ends in a
+  message, not a traceback.
+- **It can't drift.** `scripts/build_demo_index.py` regenerates the bundle; in
+  CI, the self-benchmark job rebuilds it with the real model and fails if the
+  committed copy is stale: changed nodes, changed question vectors, an index
+  this turbovec can't read, or different top-5 results for the demo questions.
+  Unit tests, which need no model, fail if the sample project would need
+  anything embedded or the index doesn't load.
+
+Your own code still needs the model: the first `neuralmind build` downloads it
+once, as before. A new [`demo`](../wiki/CLI-Reference.md#demo) section in the
+CLI reference documents the command.
+
 ## What the agent actually sees
 
 Nothing changes for an agent. Forwarding runs after each audit record is
@@ -226,6 +255,10 @@ neuralmind doctor .               # Audit forwarding: … nothing waiting
 # The hardening baseline; a developer machine fails most rules, which is the point:
 pytest tests/test_hardening.py -v
 neuralmind hardening . ; echo "exit $?"
+
+# The demo, offline, from a fresh install (no model on disk, no network):
+pip install neuralmind && neuralmind demo
+pytest tests/test_cli.py -k "TestCLIDemo" -v
 ```
 
 ## Related

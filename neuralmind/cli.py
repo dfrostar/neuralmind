@@ -5393,18 +5393,23 @@ def _copy_demo_fixture(src: Path, dst: Path) -> None:
 def cmd_demo(args):
     """Run the bundled 30-second demo.
 
-    Copies the bundled sample project (with pre-built graph.json) to a
-    temp directory, builds the vector index, and runs three pre-canned
-    questions against it. Designed to work right after
-    ``pip install neuralmind`` — no git checkout, no graphify install,
-    no manual setup needed.
+    Copies the bundled sample project (with pre-built graph.json and vector
+    index) to a temp directory and runs three pre-canned questions against it.
+    Designed to work right after ``pip install neuralmind``, offline: no git
+    checkout, no graphify install, no setup. When the embedding model isn't on
+    disk, the demo embeds its questions from vectors shipped with the package
+    (``_demo_report.BundledQueryEmbedder``) instead of downloading the model,
+    and ranks exactly as it would with it.
     """
+    import contextlib
     import shutil
     import tempfile
     from importlib import resources
 
     from neuralmind import _demo_report
     from neuralmind.core import NeuralMind
+    from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
+    from neuralmind.turbovec_backend import embed_fn_override
 
     # Locate the bundled fixture inside the wheel via importlib.resources.
     # ``files()`` returns a Traversable; we materialize it to a real
@@ -5428,29 +5433,68 @@ def cmd_demo(args):
     workdir = tempfile.mkdtemp(prefix="neuralmind-demo-")
     fixture_dir = Path(workdir) / "sample_project"
 
+    prebuilt_root = resources.files("neuralmind") / "demo_data" / "prebuilt"
     try:
         # importlib.resources.as_file gives us a real path even if the
         # package was installed from a zip. _copy_demo_fixture then makes a
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
             _copy_demo_fixture(Path(src), fixture_dir)
+        with resources.as_file(prebuilt_root) as prebuilt:
+            prebuilt = Path(prebuilt)
+            # The bundled vector index: build() finds every node already
+            # embedded, so it needs no model.
+            shutil.copytree(
+                prebuilt / "neuralmind_turbovec",
+                fixture_dir / ".neuralmind" / "neuralmind_turbovec",
+            )
+            bundled = None
+            if OnnxMiniLMEmbedder().local_model_dir() is None:
+                bundled = _demo_report.BundledQueryEmbedder(prebuilt / "query_vectors.json")
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
-            print("[demo] building vector index (one-time, ~5s)…")
+            if bundled is not None:
+                print(
+                    "[demo] using the index and question vectors bundled with NeuralMind, "
+                    "so nothing is downloaded. `neuralmind build` on your own code "
+                    "downloads the embedding model (about 90 MB) once."
+                )
 
-        mind = NeuralMind(str(fixture_dir))
-        result = mind.build(force=True)
-        if not result.get("success"):
+        def build_and_report(force: bool) -> None:
+            result = NeuralMind(str(fixture_dir)).build(force=force)
+            if not result.get("success"):
+                print(
+                    f"demo failed during build: {result.get('error', 'unknown error')}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            _demo_report.run_demo_report(fixture_dir, header_label="bundled sample_project")
+
+        override = embed_fn_override(bundled) if bundled is not None else contextlib.nullcontext()
+        try:
+            with override:
+                build_and_report(force=False)
+        except _demo_report.DemoIndexStaleError as exc:
+            # The bundled index can't serve this install: say a turbovec
+            # release too old to read it quarantined it, and rebuilding needs
+            # every node embedded. Fall back to what the demo did before it
+            # was bundled: build with the model, downloading it once.
             print(
-                f"demo failed during build: {result.get('error', 'unknown error')}", file=sys.stderr
+                f"[demo] the bundled index can't be used here ({exc}); building it "
+                "with the embedding model instead, which downloads it (about 90 MB) once.",
+                file=sys.stderr,
             )
-            sys.exit(1)
-
-        _demo_report.run_demo_report(
-            fixture_dir,
-            header_label="bundled sample_project",
-        )
+            try:
+                build_and_report(force=True)
+            except OSError as download_exc:
+                print(
+                    f"demo failed: the bundled demo index can't be used with this install, and "
+                    f"the embedding model couldn't be downloaded ({download_exc}). Run it once "
+                    "with network access, or upgrade turbovec.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
     finally:
         if keep:
             print(f"[demo] keeping working copy at {workdir} (--keep)")

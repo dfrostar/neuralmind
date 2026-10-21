@@ -181,6 +181,16 @@ jobs:
           NEURALMIND_QUALITY_EVAL: "1"
         run: python -m pytest tests/test_quality_harness.py tests/test_trace.py -v
 
+      - name: Demo's bundled index matches the sample project
+        # `neuralmind demo` ships the sample project's vector index and the
+        # vectors of its three questions (neuralmind/demo_data/prebuilt/) so it
+        # runs offline with no model download. Rebuild both with the real
+        # model and fail if the committed copy has drifted; the last test
+        # compares the shipped question vectors with the model's.
+        run: |
+          python scripts/build_demo_index.py --check
+          python -m pytest tests/test_cli.py -k TestCLIDemoOffline -v
+
       - name: Generate chart
         run: python scripts/generate_chart.py
 
