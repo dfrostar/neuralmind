@@ -36,10 +36,13 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 from pathlib import Path
 
 from tests.test_docs_claims import (
     FORBIDDEN,
+    STALE_OUTCOME_DISCLOSURE_RE,
+    STALE_OUTCOME_REASON,
     SUPERSEDED_FIGURES,
     UNSOURCED_FIGURES,
     _paragraph_before,
@@ -824,3 +827,147 @@ def test_hero_pairs_its_found_count_with_ripgreps() -> None:
         "ripgrep comparison it leads with (keyword ripgrep, top five files opened "
         "whole), or without the 150-question figure:\n  " + "\n  ".join(violations)
     )
+
+
+# ---------------------------------------------------------------------------
+# The task-outcome pilot (2026-10-21). Until then claims.json carried a
+# disclosure, "Task outcomes are not measured". A pre-registered 20-task pilot
+# then measured them and found no difference, and the disclosure became a
+# result. These tests keep it a result: the entry must exist, its figures must
+# be the committed run's, /benchmark must render it, and no page may go back to
+# saying outcomes aren't measured — or sell the cost saving the pilot didn't find.
+# ---------------------------------------------------------------------------
+
+PILOT_DIR = REPO_ROOT / "bench" / "task_outcome" / "pilot"
+PILOT_SOURCE = "bench/task_outcome/pilot/report.txt"
+
+
+def _pilot_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == PILOT_SOURCE]
+    assert len(entries) == 1, (
+        "site/claims.json must carry exactly one entry for the task-outcome pilot "
+        f"(source {PILOT_SOURCE}); it replaced the 'task outcomes are not measured' "
+        "disclosure and must not be dropped"
+    )
+    return entries[0]
+
+
+def test_task_outcome_pilot_replaces_the_not_measured_disclosure() -> None:
+    entry = _pilot_entry()
+    assert entry["evidence"] == "pilot"
+    assert "pilot" in _claims()["_evidence_levels"]
+    assert entry["spec"] == "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md"
+    assert entry["figures"]["claim_supported"] is False
+    stale = [
+        c["claim"]
+        for c in _claims()["non_ratio_headline_claims"]
+        if STALE_OUTCOME_DISCLOSURE_RE.search(c["claim"])
+    ]
+    assert not stale, f"claims.json still says task outcomes aren't measured: {stale}"
+
+
+def test_task_outcome_pilot_figures_match_the_committed_run() -> None:
+    """Every figure the site renders for the pilot, recomputed from the run."""
+    f = _pilot_entry()["figures"]
+    report = (PILOT_DIR / "report.txt").read_text(encoding="utf-8")
+    runs = [
+        json.loads(line)
+        for line in (PILOT_DIR / "runs.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    def grab(pattern: str) -> tuple[str, ...]:
+        m = re.search(pattern, report)
+        assert m, f"report.txt has no line matching {pattern!r}"
+        return m.groups()
+
+    ci = f["cost_change_ci95"].replace("−", "-")
+    assert grab(
+        r"Median cost change per task with NeuralMind: (\S+) \(95% CI (\S+) to (\S+)\)"
+    ) == (
+        f["median_cost_change"],
+        *ci.split(" to "),
+    )
+    assert abs(float(grab(r"Wilcoxon one-sided p = ([\d.]+)")[0]) - f["wilcoxon_p"]) < 0.005
+    assert grab(r"Tasks solved: baseline (\d+), NeuralMind (\d+)") == tuple(
+        str(f["tasks_solved"][a]) for a in ("baseline", "neuralmind")
+    )
+    assert grab(r"Cost per solved task: baseline \$([\d.]+), neuralmind \$([\d.]+)") == tuple(
+        f"{f['cost_per_solved_task_usd'][a]:.3f}" for a in ("baseline", "neuralmind")
+    )
+    assert grab(r"Median turns per task: baseline ([\d.]+), neuralmind ([\d.]+)") == tuple(
+        str(f["median_turns"][a]) for a in ("baseline", "neuralmind")
+    )
+    assert grab(r"Claim supported: (\w+)")[0] == ("YES" if f["claim_supported"] else "NO")
+
+    assert len(runs) == f["runs"]
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    assert len({r["seed"] for r in runs}) == f["seeds"]
+    assert {r["model"] for r in runs} == {f["model"]}
+    assert {r["claude_code_version"].split()[0] for r in runs} == {f["claude_code"]}
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind"]}
+    for arm in ("baseline", "neuralmind"):
+        mine = [r for r in runs if r["arm"] == arm]
+        assert sum(r["solved"] for r in mine) == f["runs_solved"][arm]
+        assert statistics.median(r["explore_calls_before_first_edit"] for r in mine) == (
+            f["median_explore_calls_before_first_edit"][arm]
+        )
+    mcp_calls = sum(
+        n for r in runs for tool, n in r["tool_counts"].items() if tool.startswith("mcp__")
+    )
+    assert mcp_calls == f["mcp_tool_calls"]
+
+
+def test_benchmark_page_renders_the_task_outcome_pilot() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomePilot" in page, (
+        "/benchmark no longer renders the task-outcome pilot. A null result is "
+        "published with the same prominence as the retrieval wins (the spec's rule)."
+    )
+
+
+def test_site_reports_the_task_outcome_pilot() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
+        for path, lines, i in _site_lines()
+        if (m := STALE_OUTCOME_DISCLOSURE_RE.search(lines[i]))
+    ]
+    assert not violations, STALE_OUTCOME_REASON + "\n  " + "\n  ".join(violations)
+
+
+# Spend framing the pilot contradicts: it measured cost per task with and
+# without NeuralMind and found no difference. Fewer tokens in the context is
+# measured; a smaller bill is not.
+COST_CTA_RE = re.compile(
+    r"\bstop\s+paying\s+for\b|\bcut\s+(?:your\s+)?(?:ai\s+|llm\s+|token\s+|agent\s+)?(?:bill|spend|costs?)\b"
+    r"|\bsave\s+(?:\$|money|on\s+(?:your\s+)?(?:ai|llm|tokens?|inference))"
+    r"|\blower\s+(?:your\s+)?(?:ai\s+|llm\s+|inference\s+)?(?:bill|spend)\b"
+    r"|\bspend\s+(?:model|assessment|analysis)\b|\bai[-\s]spend\b"
+    r"|\bsavings?\s+(?:are|is)\s+free\b|\bcheaper\s+agents?\b",
+    re.IGNORECASE,
+)
+
+
+def test_site_has_no_cost_saving_ctas() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
+        for path, lines, i in _site_lines()
+        if (m := COST_CTA_RE.search(lines[i]))
+    ]
+    assert not violations, (
+        "Cost-saving framing on the site. The task-outcome pilot measured cost per "
+        "task and found no difference; say what is measured — the right code in "
+        "fewer tokens, misses published:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_cost_cta_guard_trips_on_the_copy_that_shipped() -> None:
+    shipped = [
+        "Stop paying for tokens you don't use.",
+        "for a free spend model.",
+        "we run a free AI-spend assessment",
+        "title: 'The savings are free',",
+    ]
+    for line in shipped:
+        assert COST_CTA_RE.search(line), line
+    assert not COST_CTA_RE.search("The right code in fewer tokens, with the misses published.")

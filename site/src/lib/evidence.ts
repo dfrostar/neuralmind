@@ -81,6 +81,46 @@ export function headline(phrase: string): Figure & { claim: string } {
     return { text: c.claim, claim: c.claim, evidence: c.evidence as EvidenceLevel, source: c.source, reproduce: c.reproduce };
 }
 
+/**
+ * The task-outcome pilot: Claude Code with and without NeuralMind on 20
+ * pre-registered bug-fix tasks. A null result, published with the retrieval
+ * wins rather than below them. `figures` is recomputed from
+ * bench/task_outcome/pilot/ by tests/test_site_claims.py.
+ */
+export const taskOutcomePilot = (() => {
+    const c = claims.non_ratio_headline_claims.find((e) => e.source === 'bench/task_outcome/pilot/report.txt');
+    if (!c || !('figures' in c) || !('spec' in c)) {
+        throw new Error('site/claims.json has no task-outcome pilot entry (source bench/task_outcome/pilot/report.txt).');
+    }
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        spec: c.spec as string,
+        reproduce: c.reproduce,
+        figures: c.figures as {
+            date: string;
+            tasks: number;
+            seeds: number;
+            runs: number;
+            model: string;
+            claude_code: string;
+            neuralmind: string;
+            tasks_solved: { baseline: number; neuralmind: number };
+            runs_solved: { baseline: number; neuralmind: number };
+            cost_per_solved_task_usd: { baseline: number; neuralmind: number };
+            median_cost_change: string;
+            cost_change_ci95: string;
+            wilcoxon_p: number;
+            median_turns: { baseline: number; neuralmind: number };
+            median_explore_calls_before_first_edit: { baseline: number; neuralmind: number };
+            mcp_tools_listed: number;
+            mcp_tool_calls: number;
+            claim_supported: boolean;
+        },
+    };
+})();
+
 /** Every `disclosure` entry: what the site states is not measured. */
 export const disclosures = claims.non_ratio_headline_claims
     .filter((c) => c.evidence === 'disclosure')

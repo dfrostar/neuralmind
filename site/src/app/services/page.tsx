@@ -97,8 +97,8 @@ export default function ServicesPage() {
                         Roll out AI coding agents on evidence
                     </h1>
                     <p className="text-lg text-body max-w-2xl mx-auto">
-                        The software is open source and the savings are free. What we
-                        sell is certainty: fixed-fee engagements that measure what
+                        The software is open source and every feature is free at one seat.
+                        What we sell is evidence: fixed-fee engagements that measure what
                         NeuralMind does on <em>your</em> repos, wire it into your
                         team&apos;s agents, and put the result in writing.
                     </p>

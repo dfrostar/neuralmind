@@ -649,7 +649,9 @@ things in mind when you present the result:
 - The token ratio is not the bill ratio. Output tokens, conversation history and
   other tool calls are unchanged, and prompt caching or flat-rate plans change
   the arithmetic. The [business case](https://github.com/dfrostar/neuralmind/blob/main/docs/BUSINESS-CASE.md)
-  puts end-to-end savings at a *derived estimate* of ~1.6–3×, not a measurement.
+  puts end-to-end savings at a *derived estimate* of ~1.6–3×, not a measurement;
+  a pre-registered 20-task pilot that measured cost per task found no difference
+  ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt)).
 - The public benchmark's 51–242× is against pasting every source file; an agent
   that already reads only a few files per question saves less. See the
   [honest assessment](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md).

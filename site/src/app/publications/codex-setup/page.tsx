@@ -329,6 +329,14 @@ export default function PublicationPage() {
                                         <td className="py-2">Benchmark suite (neuralmind benchmark --quality)</td>
                                         <td className="py-2 text-proton">Measured</td>
                                     </tr>
+                                    <tr className="border-b border-carbon-border/50">
+                                        <td className="py-2">End-to-end cost per task</td>
+                                        <td className="py-2">
+                                            A pre-registered 20-task pilot, Claude Code with and without NeuralMind:{' '}
+                                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">no difference</a>
+                                        </td>
+                                        <td className="py-2 text-danger">Not supported</td>
+                                    </tr>
                                     <tr>
                                         <td className="py-2">Self-improving product</td>
                                         <td className="py-2">Infrastructure built; tuning signal weak in production</td>
@@ -338,7 +346,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage savings: the Claude Code hooks add no compression on top (see the correction above).
+                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage reduction: the Claude Code hooks add no compression on top (see the correction above). Whether it lowers what a task costs was measured once: a 20-task pilot found <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">no difference</a>.
                         </p>
                     </div>
                 </section>
@@ -369,8 +377,8 @@ export default function PublicationPage() {
                                     </tr>
                                     <tr>
                                         <td className="py-2 font-semibold text-white">Enterprise</td>
-                                        <td className="py-2">$79/user/mo</td>
-                                        <td className="py-2">51+ seats, per-org assurance, custom contracts (future)</td>
+                                        <td className="py-2">Custom</td>
+                                        <td className="py-2">51+ seats, per-org assurance, custom contracts — contact hello@neuralmind.uk</td>
                                     </tr>
                                 </tbody>
                             </table>

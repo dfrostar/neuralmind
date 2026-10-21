@@ -14,6 +14,7 @@ import {
     ratio,
     ratioRange,
     retrievalEval,
+    taskOutcomePilot,
     type Figure,
     type RepoResult,
 } from '@/lib/evidence';
@@ -28,7 +29,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/benchmark',
     title: 'Code Retrieval Benchmark: Recall vs. Tokens — NeuralMind',
     description:
-        'NeuralMind vs. pasting files, ripgrep and vector RAG on 40 pre-registered queries over four pinned OSS repos — recall and tokens together, every miss published.',
+        'NeuralMind vs ripgrep, vector RAG and pasting files on 40 pre-registered queries, misses published — and a 20-task outcome pilot that found no difference.',
     keywords: [
         'AI coding agent benchmark',
         'gold-file recall',
@@ -39,6 +40,8 @@ export const metadata: Metadata = pageMetadata({
         'RAG baseline comparison',
         'context compression measurement',
         'NeuralMind benchmark',
+        'task-outcome benchmark',
+        'coding agent pilot study',
     ],
     ogTitle: 'The NeuralMind Public Benchmark',
     ogDescription:
@@ -178,6 +181,8 @@ export default function BenchmarkPage() {
     const vsGrep = ratioRange(31, 67);
     const vsPaste = ratioRange(51, 242);
     const grep = headline('ripgrep (query keywords');
+    const pilot = taskOutcomePilot.figures;
+    const usd = (v: number) => `$${v.toFixed(3)}`;
 
     // Where the bare vector baseline beats NeuralMind, read off the run.
     const row = (r: RepoResult, b: string) => r.rows.find((x) => x.backend === b)!;
@@ -190,7 +195,7 @@ export default function BenchmarkPage() {
     return (
         <>
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 md:px-6 pt-32 pb-16">
+            <main className="max-w-5xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
@@ -282,33 +287,152 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
 
                 {/* Headline */}
                 <section className="mb-14">
-                    <h2 className="font-display text-xl font-bold text-white mb-5">What it comes to</h2>
-                    <StatGrid className="sm:grid-cols-2">
-                        <Stat
-                            label="Gold file found"
-                            value={publicBenchmark.found('neuralmind')}
-                            note={`Every query, on all ${publicBenchmark.repoNames.length} repos. Keyword ripgrep, top five files opened whole: ${publicBenchmark.found('ripgrep')}. A small sample; see where it still misses, below.`}
-                            evidence={grep.evidence}
-                        />
-                        <Stat
-                            label="Fewer tokens vs ripgrep"
-                            value={vsGrep.text}
-                            note="Against ripgrep opening its top five files whole: the baseline closest to how an agent works."
-                            evidence={vsGrep.evidence}
-                        />
-                        <Stat
-                            label="Vs pasting every file"
-                            value={vsPaste.text}
-                            note={`${publicBenchmark.tokenRange('neuralmind')} mean tokens per question against ${publicBenchmark.tokenRange('full-file')}. Not uniform across repos, which is the honest picture.`}
-                            evidence={vsPaste.evidence}
-                        />
-                        <Stat
-                            label="Top-5 hit rate"
-                            value={retrievalEval.hitAt5}
-                            note={`A larger retrieval eval: ${retrievalEval.questions} questions on ${retrievalEval.repos} repos. Its ${retrievalEval.misses} misses are listed question by question.`}
-                            evidence={retrievalEval.evidence}
-                        />
-                    </StatGrid>
+                    <h2 className="font-display text-xl font-bold text-white mb-2">What it comes to</h2>
+                    <p className="text-muted mb-6 leading-relaxed">
+                        Two kinds of result, side by side: retrieval, where NeuralMind gets the right code into
+                        the window in far fewer tokens, and task outcomes, where a pre-registered pilot found it
+                        made no difference.
+                    </p>
+                    <div className="grid lg:grid-cols-2 gap-6 items-start">
+                        <div className="min-w-0">
+                            <p className="eyebrow mb-3">Retrieval · what reaches the window</p>
+                            <StatGrid className="grid-cols-2">
+                                <Stat
+                                    label="Gold file found"
+                                    value={publicBenchmark.found('neuralmind')}
+                                    note={`Keyword ripgrep, top five files whole: ${publicBenchmark.found('ripgrep')}.`}
+                                    evidence={grep.evidence}
+                                />
+                                <Stat
+                                    label="Fewer tokens vs ripgrep"
+                                    value={vsGrep.text}
+                                    note="The baseline closest to how an agent works."
+                                    evidence={vsGrep.evidence}
+                                />
+                                <Stat
+                                    label="Vs pasting every file"
+                                    value={vsPaste.text}
+                                    note={`${publicBenchmark.tokenRange('neuralmind')} mean tokens per question against ${publicBenchmark.tokenRange('full-file')}.`}
+                                    evidence={vsPaste.evidence}
+                                />
+                                <Stat
+                                    label="Top-5 hit rate"
+                                    value={retrievalEval.hitAt5}
+                                    note={`${retrievalEval.questions} questions on ${retrievalEval.repos} repos; ${retrievalEval.misses} misses, listed.`}
+                                    evidence={retrievalEval.evidence}
+                                />
+                            </StatGrid>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="eyebrow mb-3">Task outcomes · does the agent do better</p>
+                            <StatGrid className="grid-cols-2">
+                                <Stat
+                                    label="Tasks solved"
+                                    value={`${pilot.tasks_solved.baseline} vs ${pilot.tasks_solved.neuralmind}`}
+                                    note={`Of ${pilot.tasks}, without and with NeuralMind.`}
+                                    evidence={taskOutcomePilot.evidence}
+                                />
+                                <Stat
+                                    label="Cost per task"
+                                    value={pilot.median_cost_change}
+                                    note={`Median change with NeuralMind; 95% CI ${pilot.cost_change_ci95}.`}
+                                    evidence={taskOutcomePilot.evidence}
+                                />
+                                <Stat
+                                    label="Runs solved"
+                                    value={`${pilot.runs_solved.baseline} vs ${pilot.runs_solved.neuralmind}`}
+                                    note={`Of ${pilot.runs / 2} each, without and with.`}
+                                    evidence={taskOutcomePilot.evidence}
+                                />
+                                <Stat
+                                    label="NeuralMind tool calls"
+                                    value={String(pilot.mcp_tool_calls)}
+                                    note={`In ${pilot.runs / 2} runs with its ${pilot.mcp_tools_listed} MCP tools available.`}
+                                    evidence={taskOutcomePilot.evidence}
+                                />
+                            </StatGrid>
+                            <p className="mt-3 text-sm">
+                                <a href="#task-outcomes" className="text-electric hover:text-electric-bright">
+                                    What the pilot found, and why →
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Task outcomes */}
+                <section id="task-outcomes" className="mb-14 scroll-mt-24">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <h2 className="font-display text-xl font-bold text-white">Task outcomes: a pilot found no difference</h2>
+                        <EvidenceBadge level={taskOutcomePilot.evidence} />
+                    </div>
+                    <p className="text-muted mb-5 leading-relaxed">
+                        Fewer tokens in the window isn&rsquo;t the same as a cheaper or better agent, so we
+                        pre-registered a task-outcome benchmark and ran its pilot on {pilot.date}:{' '}
+                        {pilot.tasks} real bug-fix tasks, Claude Code with and without NeuralMind, {pilot.seeds}{' '}
+                        seeds each, {pilot.runs} runs. The claim it tested, that NeuralMind lowers cost per task
+                        without solving fewer, is not supported.
+                    </p>
+                    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mb-5">
+                        <table className="data-table min-w-[30rem]">
+                            <caption className="sr-only">Task-outcome pilot, baseline against NeuralMind</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Per arm</th>
+                                    <th scope="col" className="num">Without</th>
+                                    <th scope="col" className="num">With NeuralMind</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    ['Tasks solved', pilot.tasks_solved, (v: number) => `${v} of ${pilot.tasks}`],
+                                    ['Runs solved', pilot.runs_solved, (v: number) => `${v} of ${pilot.runs / 2}`],
+                                    ['Cost per solved task', pilot.cost_per_solved_task_usd, usd],
+                                    ['Median turns per task', pilot.median_turns, String],
+                                    ['Median explore calls before the first edit', pilot.median_explore_calls_before_first_edit, String],
+                                ].map(([label, pair, fmt]) => {
+                                    const p = pair as { baseline: number; neuralmind: number };
+                                    const f = fmt as (v: number) => string;
+                                    return (
+                                        <tr key={label as string}>
+                                            <th scope="row">{label as string}</th>
+                                            <td className="num">{f(p.baseline)}</td>
+                                            <td className="num">{f(p.neuralmind)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="space-y-4">
+                        <Callout variant="caution" title="Why: the agent never asked">
+                            In the {pilot.runs / 2} runs with NeuralMind, the agent called none of the{' '}
+                            {pilot.mcp_tools_listed} MCP tools the server listed. It explored the code itself, as it
+                            did without NeuralMind ({pilot.median_explore_calls_before_first_edit.neuralmind} explore
+                            calls before the first edit in both arms). NeuralMind reached it only through its Claude
+                            Code hooks, which ran in every one of those runs. Better retrieval doesn&rsquo;t help an
+                            agent that never asks for it, and that, not retrieval quality, is what the pilot measured.
+                        </Callout>
+                        <Callout variant="note" title="What it can and can’t show">
+                            It&rsquo;s a pilot: {pilot.tasks} tasks, one repository (NeuralMind&rsquo;s own), one agent
+                            and model ({pilot.model}, Claude Code {pilot.claude_code}, NeuralMind {pilot.neuralmind}),
+                            a cold index each run, and cost as Claude Code&rsquo;s estimate at API prices. It can rule
+                            out a large saving (the interval excludes the 15% reduction the confirmatory run is sized
+                            for), not a small one. The confirmatory run follows the same spec on new tasks, and is
+                            published the same way, whatever it shows.
+                        </Callout>
+                    </div>
+                    <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
+                        <a href={blob(taskOutcomePilot.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            Analyzer report →
+                        </a>
+                        <a href={blob('bench/task_outcome/pilot/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            All {pilot.runs} runs →
+                        </a>
+                        <a href={blob(taskOutcomePilot.spec)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            Pre-registered spec →
+                        </a>
+                    </p>
                 </section>
 
                 {/* Method */}

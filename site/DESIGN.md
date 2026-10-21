@@ -137,6 +137,7 @@ label here fails the TypeScript build.
 | `reproducible` | Reproducible | `proton`, outline |
 | `field-report` | Field report | `body`, neutral outline |
 | `community` | Community | `muted`, neutral outline |
+| `pilot` | Pilot | `body`, neutral outline — pre-registered and measured, but exploratory |
 | `disclosure` | Not measured | `faint`, dashed |
 
 `children` replaces the label ("Field report — not CI-gated").

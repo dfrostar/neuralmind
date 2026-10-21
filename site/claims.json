@@ -5,6 +5,7 @@
     "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number on the same machine. Token counts, and the ratios built on them, can shift slightly from one machine to another; where that has been measured, recall and found-rate did not move, and the source page states the spread (docs/benchmarks/public.md: for the current run, per-repo mean tokens within 0.8% between CI runners with and without AVX-512, recall, found-rate and NeuralMind's MRR identical, the embedding-rag baseline's MRR on click 0.69 against 0.60).",
     "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
     "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional.",
+    "pilot": "Pre-registered and run exactly as its spec says, with raw data committed, but exploratory: small n, one repository, one agent and model. It sizes a confirmatory run; it is not a product claim and not a gate.",
     "disclosure": "Not a result: something the site states is NOT measured or NOT shown, kept here so the copy can't quietly drop it. Its `reproduce` names how a reader could measure it."
   },
   "ratios": [
@@ -213,11 +214,32 @@
       "evidence": "ci-gated"
     },
     {
-      "claim": "Task outcomes are not measured: no benchmark here shows an agent finishing tasks faster or with fewer errors because of NeuralMind",
-      "source": "docs/benchmarks/public.md",
-      "reproduce": "not measurable here yet: needs an outcome benchmark (tasks, time, error rate) with committed raw data",
-      "evidence": "disclosure",
-      "note": "A disclosure, not a result. Every published figure is retrieval: what reaches the agent's window and whether the right file is in it. The site says so beside the numbers (Benchmarks section, benchmark page). Remove this entry only when an outcome benchmark with committed raw data exists."
+      "claim": "Task outcomes, pilot: on 20 pre-registered bug-fix tasks, Claude Code with and without NeuralMind solved the same number of tasks at no measurable difference in cost; the agent called none of NeuralMind's MCP tools",
+      "source": "bench/task_outcome/pilot/report.txt",
+      "spec": "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md",
+      "reproduce": "python -m evals.task_outcome.run --tasks evals/task_outcome/tasks.json --out bench/task_outcome/pilot --model claude-sonnet-5-5 --seeds 3 --tool-venv <venv with neuralmind==4.15.1> --test-python <venv>/bin/python --work-dir <scratch> && python -m evals.task_outcome.analyze bench/task_outcome/pilot",
+      "evidence": "pilot",
+      "figures": {
+        "date": "2026-10-20",
+        "tasks": 20,
+        "seeds": 3,
+        "runs": 120,
+        "model": "claude-sonnet-5-5",
+        "claude_code": "2.1.287",
+        "neuralmind": "4.15.1",
+        "tasks_solved": { "baseline": 18, "neuralmind": 18 },
+        "runs_solved": { "baseline": 53, "neuralmind": 55 },
+        "cost_per_solved_task_usd": { "baseline": 0.227, "neuralmind": 0.216 },
+        "median_cost_change": "+0.0%",
+        "cost_change_ci95": "\u22125.2% to +8.6%",
+        "wilcoxon_p": 0.66,
+        "median_turns": { "baseline": 10.3, "neuralmind": 10.8 },
+        "median_explore_calls_before_first_edit": { "baseline": 4, "neuralmind": 4 },
+        "mcp_tools_listed": 28,
+        "mcp_tool_calls": 0,
+        "claim_supported": false
+      },
+      "note": "Replaces the disclosure 'Task outcomes are not measured' (removed 2026-10-21, when this pilot was published). A RESULT, not a disclosure, and a null one: quote it with the same prominence as the retrieval wins, labelled 'pilot', with its interval, and never as a product claim (the spec says so). Say 'a 20-task pilot found no cost difference', with a link; never write that task outcomes are 'not measured' again, and never that NeuralMind makes agents cheaper, faster or more accurate. The finding: in the 60 neuralmind-arm runs the agent called none of the 28 MCP tools the server listed; NeuralMind reached it only through its Claude Code hooks (install-hooks), which ran in all 60. Pinned: claude-sonnet-5-5, Claude Code 2.1.287, NeuralMind 4.15.1; one repository (NeuralMind's own), cold start, cost is Claude Code's estimate at API prices. The confirmatory run follows the spec on new tasks; nothing about it may be claimed before it is run. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
     },
     {
       "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture",

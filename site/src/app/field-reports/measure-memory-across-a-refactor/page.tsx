@@ -357,10 +357,10 @@ export default function FieldReportPage() {
                         </p>
                         <p>
                             <strong className="text-white">48.8× is a reduction in retrieval input tokens</strong>, not your
-                            total LLM bill. For typical end-to-end agent sessions the realistic total-cost saving is
-                            smaller — see the{' '}
-                            <a href={`${GITHUB_URL}/blob/main/docs/HONEST-ASSESSMENT.md`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
-                                honest assessment
+                            total LLM bill. Whether fewer retrieval tokens lower what a task costs was measured
+                            later, by a pre-registered 20-task pilot on a different repo:{' '}
+                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
+                                it found no difference
                             </a>.
                         </p>
                         <p>

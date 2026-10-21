@@ -38,7 +38,12 @@ What you actually save depends on how much of your spend is retrieval
 vs. generation, which varies wildly by workload. For a typical
 Claude Code session the [business case](BUSINESS-CASE.md)'s
 **derived estimate** of end-to-end savings is **~1.6–3×** total cost —
-an estimate, not a measurement, and nowhere near the token ratio.
+an estimate, not a measurement, and nowhere near the token ratio. The one
+measurement since, a pre-registered 20-task pilot, found **no cost
+difference**: median per-task cost change +0.0% (95% CI −5.2% to +8.6%),
+18 of 20 tasks solved with and without NeuralMind, and the agent never called
+NeuralMind's MCP tools ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+[spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)).
 
 The community-benchmark table is currently **three entries from the
 maintainer's own projects**. Numbers from outside contributors are
@@ -159,7 +164,9 @@ repos. It does **not** yet cover:
   shorter, is not measured.
 - **End-to-end cost reduction.** Real workloads have multi-turn
   conversations, tool calls, and output generation — not just
-  retrieval. We measure the retrieval step, not the workload.
+  retrieval. A 20-task pilot measured the workload once and found no
+  cost difference ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt)); it is a pilot, and a confirmatory
+  run follows the [spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md).
 - **Quality on languages other than Python.** The primary fixture is Python; v2.0 added golden-query suites for 9 more languages (TS, Go, Rust, Java, C, C++, C#, Ruby, PHP) but the cross-language retrieval quality comparison is still thin.
 - **Quality on large real-world repos.** The CI fixture is ~500
   lines, and the largest public-benchmark repo is `rich` (232,483

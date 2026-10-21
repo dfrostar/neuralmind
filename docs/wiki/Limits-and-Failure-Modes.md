@@ -188,7 +188,10 @@ so it lives next to the limits it qualifies:
   ([business case](https://github.com/dfrostar/neuralmind/blob/main/docs/BUSINESS-CASE.md)),
   not a measurement and not the token ratio — 51–242× on the public benchmark is a
   *retrieval-input-token* reduction against pasting every source file, not a
-  total-bill reduction.
+  total-bill reduction. The one measurement of it, a pre-registered 20-task
+  pilot, found no cost difference (median per-task change +0.0%, 95% CI −5.2%
+  to +8.6%): the agent never called NeuralMind's MCP tools
+  ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt), [spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)).
 - **Per-language answer quality** is gated *structurally*, not *for answer
   faithfulness* — the faithfulness gold set is Python-first.
 - **Large-real-repo quality and incremental latency** are "trust the gate," not yet

@@ -2,7 +2,7 @@ import Callout from '@/components/ui/Callout';
 import EvidenceBadge from '@/components/ui/EvidenceBadge';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Stat, { StatGrid } from '@/components/ui/Stat';
-import { disclosures, headline, publicBenchmark, ratio } from '@/lib/evidence';
+import { disclosures, headline, publicBenchmark, ratio, taskOutcomePilot } from '@/lib/evidence';
 import { withCode } from '@/lib/ticks';
 
 // The one evidence block on the homepage. It replaces three in a row
@@ -61,14 +61,15 @@ export default function Proof() {
     const synapse = headline('Synapse recall never lowers');
     const faithfulness = headline('Faithfulness vs naive truncation');
     const rows = comparisons(publicBenchmark.found('neuralmind'), publicBenchmark.found('ripgrep'));
+    const pilot = taskOutcomePilot.figures;
 
     return (
         <section id="proof" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
                 <SectionHeader eyebrow="Proof" title="Measured, with the misses published">
                     Every number says which kind of evidence it is: gated in CI on every PR,
-                    reproducible from a fresh clone, or one repo&rsquo;s field report. And the
-                    block ends with what isn&rsquo;t measured.
+                    reproducible from a fresh clone, a pilot, or one repo&rsquo;s field report. The
+                    retrieval wins sit beside the task-outcome pilot that found no difference.
                 </SectionHeader>
 
                 {/* ── Public benchmark, per repo ─────────────────────────── */}
@@ -121,6 +122,26 @@ export default function Proof() {
                     </a>
                 </p>
 
+                {/* ── Task outcomes, beside the retrieval wins ───────────── */}
+                <div className="mt-8 rounded-card border border-warn/30 bg-warn/5 p-5 md:p-6">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">
+                            Task outcomes: a {pilot.tasks}-task pilot found no difference
+                        </h3>
+                        <EvidenceBadge level={taskOutcomePilot.evidence} />
+                    </div>
+                    <p className="text-body text-sm leading-relaxed">
+                        Fewer tokens in the window isn&rsquo;t the same as a lower cost per task. In a pre-registered pilot, Claude Code
+                        solved {pilot.tasks_solved.baseline} of {pilot.tasks} bug-fix tasks without NeuralMind and{' '}
+                        {pilot.tasks_solved.neuralmind} with it, at a median per-task cost change of{' '}
+                        {pilot.median_cost_change} (95% CI {pilot.cost_change_ci95}). The reason: in{' '}
+                        {pilot.runs / 2} runs the agent never called NeuralMind&rsquo;s tools.{' '}
+                        <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
+                            The pilot, its spec and every run →
+                        </a>
+                    </p>
+                </div>
+
                 {/* ── Gates and the field report ─────────────────────────── */}
                 <StatGrid className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mt-12">
                     <Stat
@@ -159,15 +180,8 @@ export default function Proof() {
                     <ul className="space-y-2">
                         {disclosures.map((d) => (
                             <li key={d.claim}>
-                                {d.claim}.{' '}
-                                {d.reproduce.startsWith('not measurable') ? (
-                                    <span className="text-faint">Measuring it {d.reproduce.split(': ')[1]}.</span>
-                                ) : (
-                                    <>
-                                        <span className="text-faint">Measure it on your repo: </span>
-                                        <code className="font-mono text-code-inline text-body whitespace-nowrap">{d.reproduce}</code>
-                                    </>
-                                )}
+                                {d.claim}. <span className="text-faint">Measure it on your repo: </span>
+                                <code className="font-mono text-code-inline text-body whitespace-nowrap">{d.reproduce}</code>
                             </li>
                         ))}
                         <li>
