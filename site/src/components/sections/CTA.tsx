@@ -27,8 +27,8 @@ export default function CTA() {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
                         <CommandLine command="pip install neuralmind" />
-                        <a href="https://pypi.org/project/neuralmind/" className="btn-primary py-3">
-                            Get started
+                        <a href="#quickstart" className="btn-primary py-3">
+                            Quickstart
                             <Icon name="arrow-right" className="w-4 h-4" />
                         </a>
                     </div>

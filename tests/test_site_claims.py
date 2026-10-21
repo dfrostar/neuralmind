@@ -88,7 +88,7 @@ MIN_CLAIM_RATIO = 2.0
 CLASSNAME_RE = re.compile(r"className=(?:\"[^\"]*\"|'[^']*'|\{[^}]*\})", re.DOTALL)
 
 # A page may legitimately *quote* a forbidden phrase in order to disown it —
-# the effectiveness page lists "Zero code egress" under what NeuralMind does
+# the field report names "zero code egress" among what NeuralMind does
 # not claim. Mark those lines (or the line above) so the guard stays useful
 # instead of being switched off wholesale.
 ALLOW_MARKER = "claims-guard:allow"

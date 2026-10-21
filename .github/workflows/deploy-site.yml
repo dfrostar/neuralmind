@@ -24,6 +24,11 @@ on:
       - 'site/**'
       # Served verbatim at https://neuralmind.uk/llms.txt (site/src/app/llms.txt).
       - 'docs/llms.txt'
+      # The pages render these at build time (site/src/lib/evidence.ts, the
+      # homepage's Teams section), so a change to one must redeploy them.
+      - 'bench/public/results.json'
+      - 'bench/retrieval/*/results.json'
+      - 'commercial-terms.json'
       - '.github/workflows/deploy-site.yml'
   release:
     types: [published]

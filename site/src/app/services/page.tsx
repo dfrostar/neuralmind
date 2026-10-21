@@ -19,6 +19,7 @@ export const metadata: Metadata = pageMetadata({
 
 const offerings = [
     {
+        id: 'fit-assessment',
         name: 'Codebase Fit Assessment',
         price: 'Fixed fee',
         period: 'per organization',
@@ -37,6 +38,7 @@ const offerings = [
         highlight: false,
     },
     {
+        id: 'team-pilot',
         name: 'Two-Week Team Pilot',
         price: 'Fixed fee',
         period: 'per organization',
@@ -107,7 +109,8 @@ export default function ServicesPage() {
                     {offerings.map((tier) => (
                         <div
                             key={tier.name}
-                            className={`rounded-card p-6 flex flex-col ${
+                            id={tier.id}
+                            className={`scroll-mt-24 rounded-card p-6 flex flex-col ${
                                 tier.highlight
                                     ? 'bg-carbon-card border-2 border-electric shadow-electric/10 shadow-2xl'
                                     : 'bg-carbon-card border border-carbon-border'

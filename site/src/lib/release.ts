@@ -35,6 +35,23 @@ export function releaseDateFromChangelog(tag: string, changelog?: string): strin
     return m ? m[1] : '';
 }
 
+/**
+ * True when `tag` ("v4.19.0") is `min` ("4.19.0") or later. Pages use it to
+ * say whether a feature on main has reached a release yet, against the latest
+ * release this build read, so the site never names a version as current by
+ * hand.
+ */
+export function tagAtLeast(tag: string, min: string): boolean {
+    const parse = (v: string) => v.replace(/^v/, '').split('.').map((p) => parseInt(p, 10));
+    const have = parse(tag);
+    const want = parse(min);
+    if (have.length < 3 || have.some(Number.isNaN)) return false;
+    for (let i = 0; i < 3; i++) {
+        if (have[i] !== want[i]) return have[i] > want[i];
+    }
+    return true;
+}
+
 export interface LatestRelease {
     tag: string; // e.g. "v1.9.1"
     version: string; // e.g. "1.9.1"

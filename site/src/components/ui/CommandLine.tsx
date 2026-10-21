@@ -12,7 +12,7 @@ import Icon from './Icon';
  * it. Developers try to copy that string; it should behave like a string you
  * can copy.
  */
-export default function CommandLine({ command }: { command: string }) {
+export default function CommandLine({ command, className = '' }: { command: string; className?: string }) {
     const [copied, setCopied] = useState(false);
     const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,8 +40,8 @@ export default function CommandLine({ command }: { command: string }) {
     };
 
     return (
-        <div className="inline-flex items-stretch rounded-control border border-carbon-border bg-carbon-raised overflow-hidden">
-            <code className="flex items-center gap-2.5 font-mono text-sm text-ink px-4 py-3 select-all">
+        <div className={`inline-flex items-stretch rounded-control border border-carbon-border bg-carbon-raised overflow-hidden ${className}`}>
+            <code className="flex flex-1 items-center gap-2.5 font-mono text-sm text-ink px-4 py-3 select-all">
                 <span className="text-faint select-none">$</span>
                 {command}
             </code>

@@ -25,6 +25,12 @@ on:
     paths:
       - 'site/**'
       - 'docs/llms.txt'
+      # Read at build time by site/src/lib/evidence.ts and the homepage's
+      # Teams section: a regenerated benchmark or a changed price rebuilds
+      # the pages that render it.
+      - 'bench/public/results.json'
+      - 'bench/retrieval/*/results.json'
+      - 'commercial-terms.json'
       - '.github/workflows/site-build.yml'
       - '.github/workflows/deploy-site.yml'
       - 'scripts/check_site_seo.py'

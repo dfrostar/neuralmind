@@ -1,100 +1,237 @@
+import Callout from '@/components/ui/Callout';
+import EvidenceBadge from '@/components/ui/EvidenceBadge';
 import SectionHeader from '@/components/ui/SectionHeader';
+import Stat, { StatGrid } from '@/components/ui/Stat';
+import { disclosures, headline, publicBenchmark, ratio } from '@/lib/evidence';
+import { withCode } from '@/lib/ticks';
 
-// What exists, as evidence. Each item says what strength of claim it is.
-const evidence = [
-    {
-        title: 'Reproducible public benchmark',
-        kind: 'Reproducible',
-        desc: '40 pre-registered queries on 4 pinned OSS repos: the gold file found on all 40, at 51–242× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
-        link: '/benchmark/',
-        linkText: 'See the benchmark →',
-    },
-    {
-        title: 'CI-gated regression floors',
-        kind: 'CI-gated',
-        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, synapse recall never lowers hit rate, and the faithfulness delta against naive truncation stays above −0.10 — at v4.12.0 it measured +0.265 (0.839 vs 0.574, with CI’s command on one machine; at v4.3.4 it was −0.054, a loss we published).',
-        link: 'https://github.com/dfrostar/neuralmind/blob/main/.github/workflows/ci-benchmark.yml',
-        linkText: 'CI config on GitHub →',
-    },
-    {
-        title: 'Production field report',
-        kind: 'Field report',
-        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild, against the fixed 50K-token estimate the CLI used before v4.5.0. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
-        link: '/field-reports/measure-memory-across-a-refactor/',
-        linkText: 'Read the field report →',
-    },
-];
+// The one evidence block on the homepage. It replaces three in a row
+// (Benchmarks, Prove it, Proof) that each restated the headline. Numbers come
+// from lib/evidence, which reads the committed runs and site/claims.json; the
+// hero already carries the headline, so this block carries what backs it and
+// what doesn't.
 
-// What does not exist yet. Stated plainly rather than implied away.
-const gaps = [
-    'Testimonials from users outside the project',
-    'Named case studies — the one field report is anonymized',
-    'A side-by-side video of a real repo, before and after',
-    'Adoption numbers large enough to be meaningful',
+const DOCS = 'https://docs.neuralmind.uk/comparisons';
+
+// Scoped to what the repo has measured. A row with no measurement says so
+// rather than leaving a blank a reader could fill with a guess.
+const comparisons = (found: string, grepFound: string) => [
+    {
+        name: 'NeuralMind',
+        gets: 'A project map, the relevant symbols and their callers, plus links learned from use. Rebuilt by git hooks; says when it is stale.',
+        measured: `Public benchmark: the gold file on ${found} queries.`,
+        href: '/benchmark/',
+        ours: true,
+    },
+    {
+        name: 'Keyword search (ripgrep)',
+        gets: 'Files that contain the question’s words, opened whole. Always current.',
+        measured: `Same benchmark, top five files opened whole: the gold file on ${grepFound}, at more tokens on every repo.`,
+        href: '/benchmark/',
+    },
+    {
+        name: 'Vector RAG',
+        gets: 'The chunks whose embeddings sit closest to the question.',
+        measured: 'Same benchmark, NeuralMind’s own index alone: cheaper on all four repos, and it ranks the gold file higher on flask and rich. NeuralMind’s recall is at or above it on every repo.',
+        href: `${DOCS}/vs-rag.html`,
+    },
+    {
+        name: 'CLAUDE.md and rules files',
+        gets: 'What you wrote by hand, current until the code moves on.',
+        measured: 'Not benchmarked: a different job. They compose — CLAUDE.md can import the SYNAPSE_MEMORY.md NeuralMind exports.',
+        href: `${DOCS}/vs-claude-code-native-memory.html`,
+    },
+    {
+        name: 'Cursor and Windsurf memory',
+        gets: 'Memories and an index inside one editor’s agent.',
+        measured: 'Not benchmarked here. NeuralMind serves every MCP agent from one index in your repo.',
+        href: `${DOCS}/vs-cursor-codebase.html`,
+    },
+    {
+        name: 'codebase-memory-mcp',
+        gets: 'A structural graph from one static binary, across far more languages, indexed faster.',
+        measured: 'One retrieval head-to-head, June 2026 (NeuralMind v0.33.0), on requests and click only, not re-run since.',
+        href: `${DOCS}/vs-codebase-memory-mcp.html`,
+    },
 ];
 
 export default function Proof() {
+    const floor = ratio(4.0, 1);
+    const field = ratio(48.8);
+    const synapse = headline('Synapse recall never lowers');
+    const faithfulness = headline('Faithfulness vs naive truncation');
+    const rows = comparisons(publicBenchmark.found('neuralmind'), publicBenchmark.found('ripgrep'));
+
     return (
-        <section id="proof" className="relative py-16 md:py-32 px-4 md:px-6">
+        <section id="proof" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="Honest about proof" title="What we can prove, and what we can&apos;t yet">
-                    Reproducibility is not social proof — anyone can benchmark fixture data. So here is
-                    the evidence that exists, labelled by strength, and the evidence that doesn&apos;t.
+                <SectionHeader eyebrow="Proof" title="Measured, with the misses published">
+                    Every number says which kind of evidence it is: gated in CI on every PR,
+                    reproducible from a fresh clone, or one repo&rsquo;s field report. And the
+                    block ends with what isn&rsquo;t measured.
                 </SectionHeader>
 
-                <div className="grid md:grid-cols-3 gap-4">
-                    {evidence.map((item) => (
-                        <div key={item.title} className="rounded-card border border-carbon-border bg-carbon-card p-6 md:p-7 flex flex-col">
-                            <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-proton mb-3">
-                                {item.kind}
-                            </span>
-                            <h3 className="font-display text-lg font-bold text-white mb-3">{item.title}</h3>
-                            <p className="text-muted text-sm leading-relaxed mb-4">{item.desc}</p>
-                            <a
-                                href={item.link}
-                                className="mt-auto text-electric hover:text-electric-bright text-sm font-medium transition-colors"
-                            >
-                                {item.linkText}
-                            </a>
-                        </div>
-                    ))}
+                {/* ── Public benchmark, per repo ─────────────────────────── */}
+                <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4">
+                    <h3 className="font-display text-xl font-semibold text-white tracking-tight">
+                        The public benchmark, per repo
+                    </h3>
+                    <EvidenceBadge level={headline('ripgrep (query keywords').evidence} />
+                </div>
+                <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <table className="data-table min-w-[40rem]">
+                        <caption className="sr-only">
+                            Mean tokens per query and gold-file found counts, NeuralMind against ripgrep and pasting every file
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Repo</th>
+                                <th scope="col" className="num">Queries</th>
+                                <th scope="col" className="num">NeuralMind tokens</th>
+                                <th scope="col" className="num">ripgrep tokens</th>
+                                <th scope="col" className="num">Every file</th>
+                                <th scope="col" className="num">Found: NM / rg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {publicBenchmark.repos.map((r) => {
+                                const by = Object.fromEntries(r.rows.map((x) => [x.backend, x]));
+                                return (
+                                    <tr key={r.name}>
+                                        <th scope="row">{r.name}</th>
+                                        <td className="num">{r.queries}</td>
+                                        <td className="num text-proton font-semibold">{by.neuralmind.tokens}</td>
+                                        <td className="num">{by.ripgrep.tokens}</td>
+                                        <td className="num">{by['full-file'].tokens}</td>
+                                        <td className="num">
+                                            {by.neuralmind.found} / {by.ripgrep.found}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                <p className="mt-3 text-faint text-caption">
+                    Mean tokens per query ({publicBenchmark.tokenizer}), from the committed run. Pre-registered
+                    queries on pinned commits; a gold file is the definition site of the symbol asked about, so
+                    there is no judge to argue with.{' '}
+                    <a href="/benchmark/" className="text-electric hover:text-electric-bright">
+                        All four backends, MRR and the reproduce command →
+                    </a>
+                </p>
+
+                {/* ── Gates and the field report ─────────────────────────── */}
+                <StatGrid className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mt-12">
+                    <Stat
+                        label="Token-reduction floor"
+                        value={floor.text}
+                        note="On the ~500-line CI fixture; the build fails below it. A floor, not the headline."
+                        evidence={floor.evidence}
+                    />
+                    <Stat
+                        label="Learned recall"
+                        value="Never lowers hit rate"
+                        figure={false}
+                        note="Synapse recall on vs off, at a neutral token budget, on the same fixture: it shows direction, not size."
+                        evidence={synapse.evidence}
+                    />
+                    <Stat
+                        label="Facts vs naive truncation"
+                        value="+0.265"
+                        note="At an equal token budget, measured with CI’s command on one machine at v4.12.0 (0.839 vs 0.574). CI fails below −0.10; v4.3.4 was a published loss."
+                        evidence={faithfulness.evidence}
+                    />
+                    <Stat
+                        label="Field report, one repo"
+                        value={field.text}
+                        note="A ~9,300-node private TypeScript codebase, against the fixed 50K-token estimate the CLI used before v4.5.0. Method reproducible, not CI-gated."
+                        evidence={field.evidence}
+                    />
+                </StatGrid>
+                <p className="mt-3 text-faint text-caption">
+                    <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright">
+                        Read the field report, before-and-after numbers included →
+                    </a>
+                </p>
+
+                <Callout variant="not-measured" className="mt-10">
+                    <ul className="space-y-2">
+                        {disclosures.map((d) => (
+                            <li key={d.claim}>
+                                {d.claim}.{' '}
+                                {d.reproduce.startsWith('not measurable') ? (
+                                    <span className="text-faint">Measuring it {d.reproduce.split(': ')[1]}.</span>
+                                ) : (
+                                    <>
+                                        <span className="text-faint">Measure it on your repo: </span>
+                                        <code className="font-mono text-code-inline text-body whitespace-nowrap">{d.reproduce}</code>
+                                    </>
+                                )}
+                            </li>
+                        ))}
+                        <li>
+                            Testimonials, named case studies and adoption numbers: we don&rsquo;t have them yet.
+                            The one field report is anonymized.
+                        </li>
+                    </ul>
+                </Callout>
+
+                {/* ── Comparison ─────────────────────────────────────────── */}
+                <h3 className="font-display text-xl font-semibold text-white tracking-tight mt-16 mb-2">
+                    How it compares
+                </h3>
+                <p className="text-muted text-sm mb-5 max-w-3xl">
+                    Each row says only what has been measured here. Where nothing has, it says that.
+                </p>
+                <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <table className="data-table min-w-[44rem]">
+                        <caption className="sr-only">NeuralMind compared with other ways to give an agent codebase context</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Approach</th>
+                                <th scope="col">What your agent gets</th>
+                                <th scope="col">What&rsquo;s measured here</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((r) => (
+                                <tr key={r.name} className={r.ours ? 'is-ours' : undefined}>
+                                    <th scope="row">
+                                        <a href={r.href} className="hover:text-electric-bright">
+                                            {r.name}
+                                        </a>
+                                    </th>
+                                    <td>{r.gets}</td>
+                                    <td>{r.measured}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
 
-                <div className="mt-6 rounded-card border border-carbon-line bg-carbon-raised p-6 md:p-8 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 md:gap-10">
+                {/* ── Your repo ──────────────────────────────────────────── */}
+                <div className="mt-12 panel-accent rounded-card p-6 md:p-8 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-center">
                     <div>
-                        <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-3">
-                            What we don&apos;t have yet
+                        <h3 className="font-display text-xl font-semibold text-white tracking-tight mb-2">
+                            The number that decides it is yours
                         </h3>
-                        <ul className="space-y-2">
-                            {gaps.map((gap) => (
-                                <li key={gap} className="flex items-start gap-2.5 text-sm text-muted">
-                                    <span className="mt-2 w-1.5 h-1.5 rounded-pill bg-faint shrink-0" aria-hidden="true" />
-                                    {gap}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className="space-y-3 text-muted text-sm leading-relaxed">
-                        <p>
-                            The biggest missing piece is{' '}
-                            <span className="text-white font-medium">social proof from real users</span>,
-                            not another benchmark. So the honest way to evaluate NeuralMind is to{' '}
-                            <code className="font-mono text-code-inline text-body">pip install neuralmind</code>,{' '}
-                            <code className="font-mono text-code-inline text-body">neuralmind build .</code>,{' '}
-                            <code className="font-mono text-code-inline text-body">neuralmind benchmark .</code> — and
-                            read your own number.
-                        </p>
-                        <p>
-                            If you do, send it to{' '}
-                            <a href="mailto:hello@neuralmind.uk" className="text-electric hover:text-electric-bright">
-                                hello@neuralmind.uk
-                            </a>
-                            . We publish results attributed or anonymized — your choice — including the ones
-                            that don&apos;t flatter us.{' '}
+                        <p className="text-muted text-sm leading-relaxed">
+                            {withCode(
+                                'Run `neuralmind benchmark .` for tokens per question on your code, and `neuralmind eval . --synapse-ab` with your own questions to see whether learned recall helps on your repo.',
+                            )}{' '}
                             <a href="/measure-your-own/" className="text-electric hover:text-electric-bright">
                                 How to measure your own →
                             </a>
                         </p>
+                    </div>
+                    <div className="bg-carbon rounded-control p-4 font-mono text-caption text-body overflow-x-auto">
+                        {['pip install neuralmind', 'cd your-repo && neuralmind build .', 'neuralmind benchmark .'].map((line) => (
+                            <p key={line} className="whitespace-nowrap">
+                                <span className="text-faint select-none">$ </span>
+                                {line}
+                            </p>
+                        ))}
                     </div>
                 </div>
             </div>

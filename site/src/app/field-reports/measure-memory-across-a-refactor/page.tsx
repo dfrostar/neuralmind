@@ -376,15 +376,25 @@ export default function FieldReportPage() {
                             measures against every source file too.
                         </p>
                         <p>
+                            <strong className="text-white">What this report can&apos;t show.</strong> That the
+                            synapse layer improves retrieval here: there is no production fitness data, and the
+                            personal-edge growth above is activity, not a measured gain. That team memory learns:
+                            structural seeds exist, but learning needs weeks of sessions with a co-view signal this
+                            repo didn&apos;t have. And no claim of
+                            {/* claims-guard:allow — names the overclaim in order to disown it */}
+                            zero code egress: the agent still sends its context to its model. What NeuralMind itself
+                            does is transmit no repository content and send no telemetry, by default.
+                        </p>
+                        <p>
                             <strong className="text-white">The CI-gated, reproducible numbers</strong> live in{' '}
                             <a href={`${GITHUB_URL}/blob/main/docs/wiki/Benchmarks.md`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
                                 Benchmarks &amp; Results
                             </a>{' '}
-                            and on the{' '}
-                            <a href="/#benchmarks" className="text-electric hover:text-electric-bright">
-                                benchmarks section
-                            </a>{' '}
-                            of this site; this page is deliberately labeled a field report.
+                            and on{' '}
+                            <a href="/benchmark/" className="text-electric hover:text-electric-bright">
+                                the benchmark page
+                            </a>
+                            ; this page is deliberately labeled a field report.
                         </p>
                     </div>
                 </section>

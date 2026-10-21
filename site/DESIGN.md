@@ -183,8 +183,39 @@ phone scrolls the table, not the page.
   number. `SectionHeader` — eyebrow + `display` title + `muted` lede, used by
   every homepage section.
 
+### Numbers — `@/lib/evidence`
+
+A page doesn't type a measured number. It asks `lib/evidence.ts`, which reads
+`site/claims.json`, the committed public-benchmark run
+(`bench/public/results.json`) and the 150-question retrieval eval at build
+time:
+
+| Export | Gives |
+|---|---|
+| `ratio(48.8)`, `ratioRange(31, 67)` | `{ text, evidence, source, reproduce }`. Throws, failing `next build`, when claims.json doesn't list the value. |
+| `headline('ripgrep (query keywords')` | A non-ratio claim by a phrase from its text, with its evidence level. |
+| `publicBenchmark` | Per-repo tables, `found('ripgrep')` → "32 of 40", token ranges. Each per-repo ratio is checked against claims.json. |
+| `publicQuery(repo, id)` | One query's context files and tokens per backend (the homepage's side-by-side). |
+| `retrievalEval` | The 150-question top-5 rate and miss count, counted from the raw ranks. |
+| `disclosures` | The `disclosure` entries, for a `not-measured` `Callout`. |
+
+Pass a figure's `evidence` straight to `Stat` or `EvidenceBadge`, so the badge
+can't claim more than claims.json does. The module is server-only: its imports
+are large, and a client component that imported it would ship them. Copy that
+quotes a number literally still works and is still read by
+`tests/test_site_claims.py`; prefer the module for anything in a stat or table.
+
+### `CommandLine` — `@/components/ui/CommandLine`
+
+A copyable shell command. `className` sizes the box (`flex-1` to fill a row,
+so a stack of commands lines up).
+
 ## Not covered yet
 
+- Hero stats now use `Stat`; `site/public/graph-view.webp` is a real
+  `neuralmind serve` capture of the psf/requests index (re-capture it the same
+  way, cropped above the sidebar's per-query ratios, which aren't in
+  claims.json).
 - `docs/about.html` carries a third palette (light background, the
   violet template gradient) and its own markup; it is left for the docs IA
   rework rather than restyled piecemeal.

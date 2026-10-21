@@ -179,6 +179,13 @@
       "note": "Pair it with the 31-67x token figure wherever the site compares against grep. tests/test_site_claims.py recomputes both from bench/public/results.json."
     },
     {
+      "claim": "A gold file in the top five for 93.3% of the 150-question retrieval eval (30 pre-registered questions on each of requests, click, flask, rich and NeuralMind's own repo); 10 misses, listed per question",
+      "source": "bench/retrieval/on-v4.12/report.md",
+      "reproduce": "python -m evals.retrieval.run",
+      "evidence": "reproducible",
+      "note": "The larger sample the 40-query public benchmark is always paired with, so '40 of 40' is never read as perfect recall. The site computes the rate and the miss count from the baseline configuration in bench/retrieval/on-v4.12/results.json at build time (site/src/lib/evidence.ts), so they can't be retyped wrong; when the eval is re-run into a new directory, update this entry's source and that import together."
+    },
+    {
       "claim": "NeuralMind's assembled context costs 670-961 mean tokens per question (per repo) on the public benchmark; pasting every source file costs 41,729-232,483",
       "source": "docs/benchmarks/public.md",
       "reproduce": "NEURALMIND_ORT_THREADS=1 python -m evals.public.run",
