@@ -188,10 +188,24 @@ def parse_stream(lines: list[str]) -> dict:
         "duration_ms": result.get("duration_ms"),
         "is_error": result.get("is_error"),
         "subtype": result.get("subtype"),
+        "terminal_reason": result.get("terminal_reason"),
         "tool_counts": tool_counts,
         "explore_calls_before_first_edit": explore_before_edit,
         "edited": edited,
     }
+
+
+def harness_failure(agent: dict, timed_out: bool) -> bool:
+    """Did Claude Code fail before or instead of the agent, rather than the agent fail?
+
+    No final ``result`` event is one way. The other is a ``result`` event that
+    ends on an API error: a logged-out CLI reports "Not logged in" that way,
+    with ``subtype`` "success" and no model call, so the event alone is no proof
+    the agent ran.
+    """
+    if timed_out:
+        return False
+    return agent["subtype"] is None or agent.get("terminal_reason") == "api_error"
 
 
 def hook_activity(ws: Path) -> dict:
@@ -249,12 +263,14 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     transcript.write_text(stdout)
     transcript_sha256 = hashlib.sha256(stdout.encode()).hexdigest()
     agent = parse_stream(stdout.splitlines())
-    if not timed_out and agent["subtype"] is None:
-        # No final result event: authentication, model or CLI failure. That is
-        # the harness failing, not the agent, so it must not become an outcome.
+    if harness_failure(agent, timed_out):
+        # Authentication, model or CLI failure. That is the harness failing,
+        # not the agent, so it must not become an outcome.
         shutil.rmtree(ws, ignore_errors=True)
+        transcript.unlink(missing_ok=True)
         raise RunAbortedError(
-            f"{task['id']} {arm} s{seed}: claude exited {exit_code} without a result; "
+            f"{task['id']} {arm} s{seed}: claude exited {exit_code} without an agent result "
+            f"(terminal_reason={agent.get('terminal_reason')}); "
             f"stderr: {proc.stderr.strip()[-500:]}"
         )
     changed = sorted(

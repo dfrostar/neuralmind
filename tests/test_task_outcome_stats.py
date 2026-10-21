@@ -102,6 +102,37 @@ def test_parse_stream_counts_exploration_before_the_first_edit() -> None:
     assert parsed["edited"] is True
 
 
+def test_a_logged_out_cli_is_a_harness_failure_not_an_outcome() -> None:
+    # What Claude Code 2.1.287 prints when it isn't logged in: a result event,
+    # subtype "success", that ends on an API error before any model call.
+    logged_out = json.dumps(
+        {
+            "type": "result",
+            "subtype": "success",
+            "is_error": True,
+            "num_turns": 1,
+            "total_cost_usd": 0,
+            "terminal_reason": "api_error",
+            "result": "Not logged in · Please run /login",
+        }
+    )
+    assert run.harness_failure(run.parse_stream([logged_out]), timed_out=False)
+    assert run.harness_failure(run.parse_stream([]), timed_out=False)
+    assert not run.harness_failure(run.parse_stream([]), timed_out=True)
+
+    # A run that hits --max-budget-usd is the agent's outcome, not a harness failure.
+    capped = json.dumps(
+        {
+            "type": "result",
+            "subtype": "error_max_budget_usd",
+            "is_error": True,
+            "num_turns": 30,
+            "terminal_reason": "budget_exhausted",
+        }
+    )
+    assert not run.harness_failure(run.parse_stream([capped]), timed_out=False)
+
+
 def test_plan_is_deterministic_and_complete() -> None:
     tasks = [{"id": "a"}, {"id": "b"}]
     first = run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)

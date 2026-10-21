@@ -1,6 +1,6 @@
 # Task-outcome benchmark — pre-registration
 
-**Status:** pre-registered — design, 20 pilot tasks, prompts and pinned versions committed; not yet run · **Harness:** `evals/task_outcome/`
+**Status:** pre-registered; pilot run 2026-10-20 (claim not supported, see the change log); confirmatory run not started · **Harness:** `evals/task_outcome/`
 
 Every number NeuralMind publishes today measures retrieval: whether the right
 file reaches the agent's context, and at what token cost. None measures what a
@@ -200,3 +200,25 @@ drawn by the same rule, that the pilot didn't use.
   - A smoke test of 4 runs comes first: the first two tasks in `tasks.json`,
     one seed per arm. It checks the harness end to end. Its runs go to
     `bench/task_outcome/smoke/` and are never pooled with the pilot.
+- 2026-10-20 — before any pilot run was kept:
+  - The first pilot attempt ran with a logged-out Claude Code. It printed
+    "Not logged in" as a `result` event with subtype "success", so the
+    harness recorded two runs as unsolved at $0. That breaks the missing-data
+    rule above.
+  - Those two records were deleted. The harness now treats a `result` event
+    that ends on an API error (`terminal_reason` "api_error") as a harness
+    failure, the same as no `result` event: nothing is recorded and the run
+    is retried.
+  - No design, endpoint or decision rule changed.
+- 2026-10-20 — pilot run, all 120 runs recorded in `bench/task_outcome/pilot/`:
+  - Pinned versions as above. The test venv ran Python 3.12.14 with the
+    project's dependencies and the package uninstalled.
+  - One run ended on a transient API error. The harness recorded nothing for
+    it and stopped, and the run was resumed from that run, as the
+    missing-data rule says.
+  - Every `neuralmind`-arm run recorded hook activity (prompts and edits,
+    60 of 60), so none was dropped by the manipulation check.
+  - Result, labelled "pilot": claim not supported. Median per-task cost
+    change +0.0% (95% CI −5.2% to +8.6%), Wilcoxon p = 0.66, 18 of 20 tasks
+    solved in each arm. The interval excludes the 15% reduction the
+    confirmatory run was to be powered for.
