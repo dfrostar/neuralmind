@@ -67,11 +67,10 @@ ALLOWED_RADII = {"control", "card", "pill", "none"}
 
 # Colour names the site's own palette uses; a utility naming one of these
 # families must resolve to a defined colour (rule 4).
-PALETTE_FAMILIES = (
-    "carbon|electric|proton|iris|ink|body|muted|faint|danger|warn|success"
-)
+PALETTE_FAMILIES = "carbon|electric|proton|iris|ink|body|muted|faint|danger|warn|success"
 TOKEN_COLOUR = re.compile(
-    _START + rf"(?:{COLOUR_UTILITIES})(?:-[trblxy])?-((?:{PALETTE_FAMILIES})(?:-[a-z]+)*)(?:/[\w.\[\]]+)?(?![\w\-])"
+    _START
+    + rf"(?:{COLOUR_UTILITIES})(?:-[trblxy])?-((?:{PALETTE_FAMILIES})(?:-[a-z]+)*)(?:/[\w.\[\]]+)?(?![\w\-])"
 )
 
 
@@ -143,11 +142,12 @@ def test_no_raw_palette_colours() -> None:
 
 
 def test_only_named_radii() -> None:
-    hits = [f"{where}: {m.group(0)}" for where, m in _matches(RADIUS) if m.group(1) not in ALLOWED_RADII]
+    hits = [
+        f"{where}: {m.group(0)}" for where, m in _matches(RADIUS) if m.group(1) not in ALLOWED_RADII
+    ]
     assert not hits, (
         "Radius outside rounded-control / rounded-card / rounded-pill. The "
-        "config replaces Tailwind's radius scale, so these generate no CSS:\n  "
-        + "\n  ".join(hits)
+        "config replaces Tailwind's radius scale, so these generate no CSS:\n  " + "\n  ".join(hits)
     )
 
 
@@ -183,9 +183,10 @@ def test_design_doc_lists_every_token() -> None:
         for key in sorted(_keys(kind))
         if key != "none" and f"`{key}`" not in doc
     ]
-    assert not missing, (
-        "Tokens in tailwind.config.ts that site/DESIGN.md does not document:\n  "
-        + "\n  ".join(missing)
+    assert (
+        not missing
+    ), "Tokens in tailwind.config.ts that site/DESIGN.md does not document:\n  " + "\n  ".join(
+        missing
     )
 
 
