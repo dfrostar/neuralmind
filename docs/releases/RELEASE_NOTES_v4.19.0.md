@@ -1,6 +1,6 @@
-# NeuralMind v4.19.0 — live audit forwarding to syslog, an alert when an audit record can't be written, and an OSCAL component definition for SP 800-53
+# NeuralMind v4.19.0 — live audit forwarding to syslog, an alert when an audit record can't be written, and SP 800-53: an OSCAL component definition and a hardening baseline that checks itself
 
-**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, the last audit item: AU.L2-3.3.4 (alert when audit logging fails) and AU.L2-3.3.5 (correlate audit records); and the first SP 800-53 item, a machine-readable statement of NeuralMind's controls for an agency's System Security Plan
+**Type:** Minor release | **Theme:** NIST SP 800-171 / CMMC Level 2 hardening, the last audit item: AU.L2-3.3.4 (alert when audit logging fails) and AU.L2-3.3.5 (correlate audit records); and the SP 800-53 items: a machine-readable statement of NeuralMind's controls for an agency's System Security Plan, and a hardening baseline that `neuralmind hardening` checks
 
 The audit log stayed on the host until someone ran `neuralmind audit export`.
 A SIEM saw the records hours or days later, if at all, and a failed audit write
@@ -123,10 +123,10 @@ retyping them.
 
 [`security/neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)
 is an [OSCAL](https://pages.nist.gov/OSCAL/) 1.1.3 component definition: one
-`software` component and the 20 SP 800-53 Rev. 5 controls it touches.
+`software` component and the 21 SP 800-53 Rev. 5 controls it touches.
 
 - **The controls:** AC-3, AC-6, IA-2, AU-2, AU-3, AU-4(1), AU-5, AU-6(3), AU-8,
-  AU-9, AU-9(2), AU-9(3), AU-12, CM-7, SC-8, SC-13, SC-28, SI-2, SI-7, SR-4.
+  AU-9, AU-9(2), AU-9(3), AU-12, CM-6, CM-7, SC-8, SC-13, SC-28, SI-2, SI-7, SR-4.
 - **Each requirement** says what NeuralMind provides in its `description`, and
   what stays yours in `remarks` ("Customer responsibility: …"). It names both
   roles: no control is met by NeuralMind alone.
@@ -137,6 +137,39 @@ is an [OSCAL](https://pages.nist.gov/OSCAL/) 1.1.3 component definition: one
   control ID against the Rev. 5 catalog, and checks that every setting and
   command it names exists and that its provider matches the commercial terms.
   release-please bumps its version with the package's.
+
+### An SP 800-53 hardening baseline, and `neuralmind hardening` to check it
+
+The component definition says what NeuralMind does for each control; an
+assessor also asks how it is configured (CM-6), and wants evidence rather than
+a screenshot of a YAML file. The
+[hardening guide](../compliance/SP800-53-HARDENING.md) is that configuration:
+17 rules, `NMH-01` to `NMH-17`, each mapped to the controls it supports.
+
+| Area | Rules |
+|---|---|
+| Configuration | The `cui` profile on, set by the machine policy; identity from the OS account; no role beyond `reader` by default; settings file and `.neuralmind/` writable by their owner only |
+| Host | Encrypted storage verified and required; the OS FIPS mode on; checkpoint signing in a FIPS-mode OpenSSL; no daemon beyond loopback or without its token |
+| Audit | The hash chain verifies; no unrecorded write failure; checkpoints signed, anchored and under a week old; forwarding to a local syslog with nothing waiting |
+
+```bash
+neuralmind hardening [project_path] [--json]
+```
+
+- **Every rule is checked**, against what NeuralMind enforces (machine policy
+  included) and what it can see of the host. A rule that can't be checked
+  fails. Exits `0` when every rule passes, `1` when any fails; `--json` gives
+  each rule's controls, status, detail and fix, to keep as evidence.
+- **NMH-09 is new ground:** it asks the `cryptography` package whether the
+  OpenSSL that signs checkpoints runs in FIPS mode. The prebuilt wheel's
+  bundled OpenSSL doesn't, so on a FIPS host the rule fails until
+  `cryptography` is rebuilt against the system OpenSSL, which the
+  [NIST page](../compliance/NIST.md) has recommended since v4.16.0.
+- **What it can't see** (clock sync, the syslog daemon's TLS, Windows ACLs)
+  the guide lists as checked by you.
+- **The component definition gains CM-6** (21 controls), naming the baseline
+  and the command. CI checks that the guide lists exactly the rules and
+  controls the code checks.
 
 ## What the agent actually sees
 
@@ -167,13 +200,15 @@ now reaches your SIEM as it happens instead of at the next export.
   turning it on.
 - **Keep exporting.** Forwarding is how the SIEM sees records live; an
   `audit export` copy is still what you would restore the log from.
+- **In an authorized system,** run `neuralmind hardening` on each host after
+  upgrading and on a schedule; record any rule you deviate from in the SSP.
 
 ## Not in this release
 
-The SP 800-171 audit items are done, and the SP 800-53 component definition
-ships here. Next is an SP 800-53 hardening guide with settings that can be
-checked automatically. See [NIST.md §3](../compliance/NIST.md#3-whats-next).
-The Tier-2 team audit log isn't forwarded.
+The SP 800-171 audit items and the SP 800-53 items on the roadmap are done:
+nothing is scheduled in [NIST.md §3](../compliance/NIST.md#3-whats-next). The
+Tier-2 team audit log isn't forwarded, and `hardening` doesn't emit OSCAL
+assessment results yet.
 
 ## Reproduce
 
@@ -187,6 +222,10 @@ python -c 'import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); 
 printf 'security:\n  audit_syslog: udp://127.0.0.1:5514\n' > neuralmind-backend.yaml
 neuralmind audit forward .        # ✓ Forwarded N record(s) to udp://127.0.0.1:5514; none waiting.
 neuralmind doctor .               # Audit forwarding: … nothing waiting
+
+# The hardening baseline; a developer machine fails most rules, which is the point:
+pytest tests/test_hardening.py -v
+neuralmind hardening . ; echo "exit $?"
 ```
 
 ## Related
@@ -196,4 +235,5 @@ neuralmind doctor .               # Audit forwarding: … nothing waiting
 - [Compliance Summary: CMMC 2.0](../COMPLIANCE-SUMMARY.md#cmmc-20--practice-evidence): AU.L2-3.3.4, AU.L2-3.3.5
 - [NIST: what applies, where it stands, what's next](../compliance/NIST.md)
 - [Use NeuralMind in a CMMC CUI enclave](../use-cases/cmmc-cui-enclave.md)
+- [SP 800-53 hardening guide](../compliance/SP800-53-HARDENING.md) and [CLI reference: hardening](../wiki/CLI-Reference.md#hardening-v4190)
 - [SP 800-53 controls and what stays yours](../compliance/SP800-53.md), and the [OSCAL component definition](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)

@@ -107,10 +107,15 @@ To point an assessor at where a practice is implemented in your own code, `neura
 
 *(v4.19.0+)* For an agency installing NeuralMind inside an authorized system,
 [`security/neuralmind.oscal-component-definition.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json)
-is an OSCAL 1.1.3 component definition of the 20 SP 800-53 Rev. 5 controls
+is an OSCAL 1.1.3 component definition of the 21 SP 800-53 Rev. 5 controls
 NeuralMind touches. Each states what NeuralMind provides and what stays yours.
 GRC tools load it into a System Security Plan. The same content as a table is
 in [compliance/SP800-53.md](compliance/SP800-53.md).
+
+The [hardening guide](compliance/SP800-53-HARDENING.md) is the configuration
+baseline that goes with it (CM-6): 17 rules, each mapped to its controls.
+`neuralmind hardening` checks a project and its host against every rule and
+exits 1 when any fails; `--json` keeps the result as evidence.
 
 ## GDPR considerations
 

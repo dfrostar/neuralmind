@@ -18,6 +18,7 @@ Complete command-line interface documentation for NeuralMind.
   - [stats](#stats)
   - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
+  - [hardening](#hardening-v4190)
   - [eval](#eval-v0140)
   - [ingest-content](#ingest-content-v340)
   - [learn — document ingestion](#learn-document-ingestion-v1110)
@@ -1799,6 +1800,42 @@ JSON output (`--json`) is stable for scripting and agent consumption:
 ```
 
 ---
+
+### hardening *(v4.19.0+)*
+
+Check a project, and the host it runs on, against the
+[SP 800-53 hardening baseline](../compliance/SP800-53-HARDENING.md): 17 rules
+(`NMH-01` to `NMH-17`), each mapped to the SP 800-53 Rev. 5 controls it
+supports. Read-only.
+
+```bash
+neuralmind hardening [project_path] [--json]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root |
+| `--json`, `-j` | No | — | Print `baseline`, `version`, `project`, `passed`, `failed`, `not_applicable` and `rules` (each with `id`, `title`, `controls`, `status`, `detail`, `fix`) |
+
+The rules cover the security profile and the machine policy, OS identity and
+the default role, permissions on `neuralmind-backend.yaml` and `.neuralmind/`,
+verified encrypted storage, the OS FIPS mode and the OpenSSL that signs
+checkpoints, the running daemon, the audit log's hash chain and unrecorded
+write failures, signed, anchored and recent checkpoints, and forwarding to a
+local syslog with nothing waiting. Each reads what NeuralMind enforces, the
+machine policy included.
+
+A rule that can't be checked (an OS FIPS mode that can't be read, a volume
+whose encryption can't be verified) fails. The two permission rules report
+`n/a` on Windows, where permissions are ACLs, and the OS FIPS mode rule on
+macOS, which has no FIPS mode switch. `doctor` reports most of the
+same state as warnings sized for a developer; `hardening` is the baseline for
+an authorized system, where every rule must pass.
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every rule passes, or doesn't apply on this platform |
+| `1` | At least one rule fails; the report is printed first |
 
 ### eval *(v0.14.0+; project eval v4.5.0+)*
 

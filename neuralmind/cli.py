@@ -2699,6 +2699,54 @@ def cmd_doctor(args):
         sys.exit(1)
 
 
+def cmd_hardening(args):
+    """Check a project and this host against the SP 800-53 hardening baseline."""
+    from neuralmind import __version__, hardening
+
+    project = Path(args.project_path).resolve()
+    findings = hardening.check(project)
+    failed = [f for f in findings if f.result.status == hardening.FAIL]
+    if args.json:
+        counts = {
+            s: sum(f.result.status == s for f in findings)
+            for s in (hardening.PASS, hardening.FAIL, hardening.NA)
+        }
+        print(
+            json.dumps(
+                {
+                    "baseline": hardening.BASELINE,
+                    "version": __version__,
+                    "project": str(project),
+                    "passed": counts[hardening.PASS],
+                    "failed": counts[hardening.FAIL],
+                    "not_applicable": counts[hardening.NA],
+                    "rules": [f.to_dict() for f in findings],
+                },
+                indent=2,
+            )
+        )
+    else:
+        markers = {hardening.PASS: "[pass]", hardening.FAIL: "[FAIL]", hardening.NA: "[ na ]"}
+        print(f"NeuralMind SP 800-53 hardening baseline — {project}")
+        print("=" * 60)
+        for f in findings:
+            controls = ", ".join(hardening.control_label(c) for c in f.rule.controls)
+            print(f"  {markers[f.result.status]} {f.rule.id} {f.rule.title} ({controls})")
+            print(f"         {f.result.detail}")
+            if f.result.fix and f.result.status == hardening.FAIL:
+                print(f"         -> {f.result.fix}")
+        print("=" * 60)
+        applicable = [f for f in findings if f.result.status != hardening.NA]
+        print(
+            f"{len(applicable) - len(failed)} of {len(applicable)} rule(s) pass"
+            + (f"; {len(failed)} fail." if failed else ".")
+        )
+    # Exit 1 when any rule fails, so a scheduled job can gate on it; the
+    # report (or --json payload) is printed first.
+    if failed:
+        sys.exit(1)
+
+
 def _tier2_doctor_checks(args) -> list:
     """Return extra Tier 2 doctor checks (license, governance, audit)."""
     from neuralmind import doctor
@@ -7478,6 +7526,15 @@ def build_parser() -> argparse.ArgumentParser:
         ".neuralmind.yaml.",
     )
     doctor_p.set_defaults(func=cmd_doctor)
+
+    hardening_p = subparsers.add_parser(
+        "hardening",
+        help="Check a project and this host against the SP 800-53 hardening baseline "
+        "(exit 1 when any rule fails)",
+    )
+    hardening_p.add_argument("project_path", nargs="?", default=".")
+    hardening_p.add_argument("--json", "-j", action="store_true")
+    hardening_p.set_defaults(func=cmd_hardening)
 
     data_locations_help = (
         "List every place NeuralMind keeps data for a project, inside and outside it "

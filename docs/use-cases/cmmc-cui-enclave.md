@@ -158,6 +158,22 @@ mode on *(v4.13.0+; before that, `neuralmind ingest` crashed there)*. A
 group-writable policy file is a warning too, since anyone in the group could
 change roles.
 
+For the stricter, all-or-nothing check *(v4.19.0+)*, run the
+[SP 800-53 hardening baseline](../compliance/SP800-53-HARDENING.md):
+
+```bash
+neuralmind hardening . --json > hardening-$(hostname)-$(date +%F).json
+```
+
+Its 17 rules check the profile, the machine policy, FIPS mode, encryption and
+the daemon as above, and add the checkpoint key, anchor and schedule,
+forwarding with nothing waiting, permissions on `neuralmind-backend.yaml` and
+`.neuralmind/`, and whether `cryptography`'s OpenSSL runs in FIPS mode. The
+embedding-model and `NEURALMIND_LLM_SEED` warnings stay `doctor`'s. It
+exits 1 when any rule fails, so the same provisioning script can gate on it,
+and the JSON names the SP 800-53 controls each rule supports. SP 800-171
+derives from SP 800-53, so it serves as evidence here too.
+
 ## 5. What an assessor can look at
 
 Everything lands in `.neuralmind/audit_events.jsonl`, hash-chained:

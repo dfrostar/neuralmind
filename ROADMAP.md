@@ -174,9 +174,9 @@ See above — the public launch of the MIT + paid tier architecture.
 
 ## Next (~1–2 quarters)
 
-- **NIST SP 800-53 readiness** — a hardening guide with settings that can be
-  checked automatically. The OSCAL component definition for agency
-  authorizations ships in v4.19.0. The SP 800-171 work is done: the hardened
+- **NIST SP 800-53 readiness** — done in v4.19.0: an OSCAL component
+  definition for agency authorizations, and a hardening guide whose 17 rules
+  `neuralmind hardening` checks automatically. The SP 800-171 work is done: the hardened
   CUI profile, with loopback-only servers, and signed, anchored audit
   checkpoints shipped in v4.16.0; live syslog forwarding, with an alert when
   audit logging fails, in v4.19.0.

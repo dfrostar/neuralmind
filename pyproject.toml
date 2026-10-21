@@ -122,6 +122,8 @@ keywords = [
     "oscal",
     "nist-800-53",
     "customer-responsibility-matrix",
+    "security-hardening-baseline",
+    "configuration-baseline-check",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
