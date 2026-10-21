@@ -124,6 +124,7 @@ keywords = [
     "customer-responsibility-matrix",
     "security-hardening-baseline",
     "configuration-baseline-check",
+    "offline-demo",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

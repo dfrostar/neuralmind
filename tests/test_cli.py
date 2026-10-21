@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1834,11 +1835,10 @@ class TestCLIDemo:
         import shutil
         from importlib import resources
 
-        with resources.as_file(
-            resources.files("neuralmind") / "demo_data" / "sample_project"
-        ) as src:
-            bundle = tmp_path / "pkg" / "neuralmind" / "demo_data" / "sample_project"
-            shutil.copytree(src, bundle)
+        with resources.as_file(resources.files("neuralmind") / "demo_data") as src:
+            demo_data = tmp_path / "pkg" / "neuralmind" / "demo_data"
+            shutil.copytree(src, demo_data)
+        bundle = demo_data / "sample_project"
         for path in bundle.rglob("*"):
             if path.is_file():
                 os.utime(path, (1_600_000_000, 1_600_000_000))  # 2020-09
@@ -1903,6 +1903,136 @@ class TestCLIDemo:
         assert "How does authentication work" in captured.out
         assert "API endpoints" in captured.out
         assert "billing flow" in captured.out
+
+
+class TestCLIDemoOffline:
+    """`neuralmind demo` right after `pip install`, with no network.
+
+    It used to download the 88 MB embedding model on first run, and crash with
+    a traceback offline. It now ships the sample project's vector index and
+    the vectors of its three questions (demo_data/prebuilt/, made by
+    scripts/build_demo_index.py), and ranks exactly as the model would.
+    """
+
+    @staticmethod
+    def _no_model(monkeypatch):
+        """No model on disk, and any attempt to download one fails the test."""
+        from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
+
+        def no_download(self, dest):
+            raise AssertionError("the demo tried to download the embedding model")
+
+        monkeypatch.setattr(OnnxMiniLMEmbedder, "local_model_dir", lambda self: None)
+        monkeypatch.setattr(OnnxMiniLMEmbedder, "_download_into", no_download)
+
+    @staticmethod
+    def _prebuilt():
+        from importlib import resources
+
+        return resources.files("neuralmind") / "demo_data" / "prebuilt"
+
+    def test_the_demo_runs_without_the_model_or_a_download(self, monkeypatch, capsys):
+        from neuralmind.cli import cmd_demo
+
+        self._no_model(monkeypatch)
+        args = MagicMock()
+        args.keep = False
+        args.quiet = False
+        cmd_demo(args)
+
+        out = capsys.readouterr().out
+        assert "bundled with NeuralMind, so nothing is downloaded" in out
+        assert "Average reduction:" in out
+        assert out.count("reduction =") == 3
+
+    def test_the_bundled_vectors_are_the_demo_questions(self):
+        from neuralmind import _demo_report
+
+        data = json.loads((self._prebuilt() / "query_vectors.json").read_text(encoding="utf-8"))
+        assert data["model"] == "all-MiniLM-L6-v2"
+        assert set(data["vectors"]) == {q for _, q in _demo_report.DEMO_QUERIES}
+        assert all(len(v) == 384 for v in data["vectors"].values())
+
+    def test_the_bundled_index_covers_every_node(self, tmp_path, monkeypatch):
+        """Every node the build indexes is already in the bundled store with
+        the same content hash, so the build embeds nothing: if the sample
+        project or its graph changes, this fails until the index is rebuilt."""
+        import shutil
+        from importlib import resources
+
+        from neuralmind import _demo_report
+        from neuralmind.cli import _copy_demo_fixture
+        from neuralmind.core import NeuralMind
+        from neuralmind.turbovec_backend import embed_fn_override
+
+        self._no_model(monkeypatch)
+        work = tmp_path / "sample_project"
+        with resources.as_file(resources.files("neuralmind") / "demo_data") as demo_data:
+            _copy_demo_fixture(Path(demo_data) / "sample_project", work)
+            shutil.copytree(
+                Path(demo_data) / "prebuilt" / "neuralmind_turbovec",
+                work / ".neuralmind" / "neuralmind_turbovec",
+            )
+            embedder = _demo_report.BundledQueryEmbedder(
+                Path(demo_data) / "prebuilt" / "query_vectors.json"
+            )
+        with embed_fn_override(embedder):
+            result = NeuralMind(str(work)).build()
+        assert result.get("success"), result.get("error")
+
+    def test_the_bundled_embedder_refuses_other_text(self):
+        from importlib import resources
+
+        from neuralmind import _demo_report
+
+        with resources.as_file(self._prebuilt()) as prebuilt:
+            embedder = _demo_report.BundledQueryEmbedder(Path(prebuilt) / "query_vectors.json")
+        question = _demo_report.DEMO_QUERIES[0][1]
+        assert len(embedder([question])[0]) == 384
+        with pytest.raises(_demo_report.DemoIndexStaleError):
+            embedder(["How does logging work?"])
+
+    def test_a_stale_bundle_fails_with_a_message_not_a_traceback(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        import shutil
+        from importlib import resources
+
+        from neuralmind.cli import cmd_demo
+
+        self._no_model(monkeypatch)
+        with resources.as_file(resources.files("neuralmind") / "demo_data") as src:
+            demo_data = tmp_path / "pkg" / "neuralmind" / "demo_data"
+            shutil.copytree(src, demo_data)
+        vectors = demo_data / "prebuilt" / "query_vectors.json"
+        data = json.loads(vectors.read_text(encoding="utf-8"))
+        data["vectors"] = {"another question": next(iter(data["vectors"].values()))}
+        vectors.write_text(json.dumps(data), encoding="utf-8")
+        monkeypatch.setattr(resources, "files", lambda _pkg: demo_data.parent)
+
+        args = MagicMock()
+        args.keep = False
+        args.quiet = True
+        with pytest.raises(SystemExit) as exc:
+            cmd_demo(args)
+        assert exc.value.code == 1
+        assert "the bundled demo index doesn't match this version" in capsys.readouterr().err
+
+    def test_the_bundled_vectors_match_the_model(self):
+        """Where the model is on disk: the shipped vectors are the model's."""
+        from neuralmind import _demo_report
+        from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
+
+        model = OnnxMiniLMEmbedder()
+        if model.local_model_dir() is None:
+            pytest.skip("needs the embedding model on disk; checked in ci-benchmark.yml")
+        from importlib import resources
+
+        with resources.as_file(self._prebuilt()) as prebuilt:
+            bundled = _demo_report.BundledQueryEmbedder(Path(prebuilt) / "query_vectors.json")
+        questions = [q for _, q in _demo_report.DEMO_QUERIES]
+        for got, want in zip(bundled(questions), model(questions), strict=True):
+            assert max(abs(a - b) for a, b in zip(got, want, strict=True)) < 1e-4
 
 
 class TestCmdScanForSecrets:

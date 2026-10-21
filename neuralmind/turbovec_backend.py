@@ -37,7 +37,8 @@ import logging
 import os
 import sqlite3
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
@@ -68,6 +69,27 @@ def _l2_normalize(matrix: np.ndarray) -> np.ndarray:
     return matrix / (norms + _EPS)
 
 
+# Set by ``embed_fn_override``: the embedder every TurboVecEmbedder built
+# meanwhile uses instead of the MiniLM model.
+_EMBED_FN_OVERRIDE: Callable[[list[str]], list[list[float]]] | None = None
+
+
+@contextmanager
+def embed_fn_override(fn: Callable[[list[str]], list[list[float]]]) -> Iterator[None]:
+    """Make backends created inside the block embed with ``fn``.
+
+    For ``neuralmind demo``, which ships its sample project's vectors and the
+    vectors of its three questions, so it runs the real ranking without
+    downloading the model. ``fn`` must produce the model's vectors.
+    """
+    global _EMBED_FN_OVERRIDE
+    previous, _EMBED_FN_OVERRIDE = _EMBED_FN_OVERRIDE, fn
+    try:
+        yield
+    finally:
+        _EMBED_FN_OVERRIDE = previous
+
+
 def _default_embed_fn() -> Callable[[list[str]], list[list[float]]]:
     """Build the ChromaDB-free MiniLM embedder.
 
@@ -76,6 +98,8 @@ def _default_embed_fn() -> Callable[[list[str]], list[list[float]]]:
     backend needs no ChromaDB at all. Imported lazily so merely importing this
     module doesn't require onnxruntime; only constructing the backend does.
     """
+    if _EMBED_FN_OVERRIDE is not None:
+        return _EMBED_FN_OVERRIDE
     from .onnx_embedder import OnnxMiniLMEmbedder
 
     return OnnxMiniLMEmbedder()

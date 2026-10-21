@@ -17,6 +17,7 @@ Complete command-line interface documentation for NeuralMind.
   - [probe](#probe-v0270)
   - [stats](#stats)
   - [validate](#validate-v0230)
+  - [demo](#demo)
   - [doctor](#doctor-v0120)
   - [hardening](#hardening-v4190)
   - [eval](#eval-v0140)
@@ -1612,6 +1613,40 @@ can't list, since a symlink in it would go unlisted.
 
 The [data deletion procedure](../compliance/DATA_DELETION.md) runs it before
 deleting and again after.
+
+### demo
+
+Run three questions against a small sample project bundled with the package,
+and print what a coding agent would get for each, in tokens, next to pasting
+every source file. Needs no checkout and no setup:
+
+```bash
+pip install neuralmind
+neuralmind demo [--keep] [--quiet]
+```
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--keep` | No | — | Keep the temporary working copy and print its path |
+| `--quiet` | No | — | Print only the report |
+
+It copies the sample project to a temporary directory and queries it. The
+sample's graph and vector index are bundled, and so are the embeddings of its
+three questions *(v4.19.0+)*: when the embedding model isn't on disk, the demo
+embeds its questions from those, ranks exactly as it would with the model, and
+downloads nothing. Before v4.19.0 its first run downloaded the model (about
+90 MB), and failed with a traceback offline. With the model on disk, it uses
+the model. The token counts use tiktoken; where its vocabulary can't be
+downloaded, they are estimated at about 4 characters a token, and the demo
+says so.
+
+The sample is small (about 500 lines), so its reduction is small;
+`neuralmind benchmark .` measures your own code.
+
+| Code | Meaning |
+|------|---------|
+| `0` | The report printed |
+| `1` | The bundled data is missing or doesn't match this version, or the build failed |
 
 ### doctor *(v0.12.0+)*
 

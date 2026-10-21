@@ -9,6 +9,7 @@ convenience inside the repo). Keep them in sync by routing through here.
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Iterable
 from pathlib import Path
@@ -21,6 +22,38 @@ DEMO_QUERIES: list[tuple[str, str]] = [
     ("api-endpoints", "What are the main API endpoints?"),
     ("billing-flow", "Explain the billing flow from a user perspective."),
 ]
+
+
+class DemoIndexStaleError(RuntimeError):
+    """The bundled index or question vectors don't match what the demo asks."""
+
+
+class BundledQueryEmbedder:
+    """Embeds only the demo's questions, from vectors shipped with the package.
+
+    ``demo_data/prebuilt/query_vectors.json`` holds the MiniLM vectors of
+    ``DEMO_QUERIES``, made by ``scripts/build_demo_index.py`` with the same
+    model ``neuralmind build`` uses. With the bundled index, the demo ranks
+    exactly as it would with the model, without downloading it. Any other text
+    (a node the bundled index lacks, another question) raises
+    ``DemoIndexStaleError``: this is no substitute for the model.
+    """
+
+    dim = 384
+
+    def __init__(self, path: Path):
+        self._vectors: dict[str, list[float]] = json.loads(path.read_text(encoding="utf-8"))[
+            "vectors"
+        ]
+
+    def __call__(self, texts: list[str]) -> list[list[float]]:
+        unknown = [t for t in texts if t not in self._vectors]
+        if unknown:
+            raise DemoIndexStaleError(
+                f"{len(unknown)} text(s) aren't in the bundled demo vectors, e.g. {unknown[0][:60]!r}"
+            )
+        return [self._vectors[t] for t in texts]
+
 
 # Claude 3.5 Sonnet input price per 1M tokens. Mirrors the constant of
 # the same name in tests/benchmark/run.py so the demo and the CI

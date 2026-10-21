@@ -192,7 +192,9 @@ See above — the public launch of the MIT + paid tier architecture.
   `ci-benchmark.yml` already gates the reference-fixture numbers, so a stale
   snapshot can't sit uncorrected again.
 - **Self-contained pip-only demo** — `pip install neuralmind &&
-  neuralmind demo` by shipping a pre-built sample graph in the wheel.
+  neuralmind demo` by shipping a pre-built sample graph in the wheel. ✅ DONE
+  in v4.19.0: the sample's vector index and its questions' embeddings ship
+  too, so the demo runs offline and downloads nothing.
 - **More integration walkthroughs** — One end-to-end guide per
   ecosystem (Claude Code, Cursor, Cline, Continue, Hermes-Agent,
   OpenClaw).
