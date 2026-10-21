@@ -96,7 +96,7 @@ const whatYouGet = [
     },
     {
         metric: 'Reduction',
-        desc: 'Your code over NeuralMind’s context: the measured size of every code file the index covers, divided by the tokens each question costs and averaged — on psf/requests, 94,069 tokens of code at ~1,200 a question, 78.6×. Docs and changelogs are left out, so prose can’t pad it. (The public benchmark’s 54.9× on the same repo is a different measurement — 14 pre-registered questions against non-test source only — so the two don’t compare directly.) Before v4.5.0 the CLI divided a fixed 50K-token estimate instead (41.8× on the same run); the community submissions so far (46× to 65.6×) and the 12–50× field-report range were measured that way.',
+        desc: 'Your code over NeuralMind’s context: the measured size of every code file the index covers, divided by the tokens each question costs and averaged — on psf/requests, 94,069 tokens of code at ~1,200 a question, 78.6×. Docs and changelogs are left out, so prose can’t pad it. (The public benchmark’s 51.2× on the same repo, at v4.12.0, is a different measurement — 14 pre-registered questions against non-test source only — so the two don’t compare directly.) Before v4.5.0 the CLI divided a fixed 50K-token estimate instead (41.8× on the same run); the community submissions so far (46× to 65.6×) and the 12–50× field-report range were measured that way.',
     },
     {
         metric: 'Answerability & recall@k',

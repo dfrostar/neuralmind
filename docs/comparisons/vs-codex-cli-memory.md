@@ -127,7 +127,7 @@ Where NeuralMind's [synapse layer](../../neuralmind/synapses.py) and
 
 | Dimension | Hindsight | Mem0 (Codex) | Basic Memory | NeuralMind |
 |---|---|---|---|---|
-| Parses source code / builds a call graph | No | No | No | Yes — tree-sitter, 10 languages |
+| Parses source code / builds a call graph | No | No | No | Yes — tree-sitter, ten languages plus JavaScript |
 | Ranked-file retrieval against a gold-file oracle | No | No | No | Yes — CI-gated, reproducible |
 | Extraction mechanism | LLM (retain), LLM synthesis (reflect) | LLM (single-pass extraction) | Manual / agent-written notes | Explicit record; local ONNX embeddings, no LLM |
 | Storage | PostgreSQL + pgvector (or Oracle AI DB) | Hosted (Mem0 platform) or self-hosted | Local markdown files, or hosted cloud | Local SQLite + files (`.neuralmind/`) |

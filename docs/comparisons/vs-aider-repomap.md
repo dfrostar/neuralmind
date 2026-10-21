@@ -20,7 +20,7 @@ Aider builds a concise, tree-sitter-derived map of your repository — a ranked 
 ## When to pick which
 
 - **Pick Aider repo-map** if you use Aider and want a zero-dependency, deterministic map.
-- **Pick NeuralMind** if you want semantic (not just syntactic) retrieval or want it outside Aider. Aider's map answers "what symbols exist"; NeuralMind's query answers "which 800 tokens best explain X".
+- **Pick NeuralMind** if you want semantic (not just syntactic) retrieval or want it outside Aider. Aider's map answers "what symbols exist"; NeuralMind's query answers "which few hundred tokens best explain X".
 
 They compose: you can feed NeuralMind's `wakeup` output into an Aider session as additional context.
 

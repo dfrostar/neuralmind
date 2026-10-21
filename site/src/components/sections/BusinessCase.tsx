@@ -19,7 +19,7 @@ const cards = [
     },
     {
         audience: 'For the CTO',
-        title: 'Fewer wrong turns, faster teams',
+        title: 'The right file in the window — measured, misses published',
         accent: 'text-electric',
         points: [
             'The gold file found on 40 of 40 pre-registered queries on four public repos, and in the top five on 93.3% of a larger 150-question eval — with every miss published rather than dropped.',

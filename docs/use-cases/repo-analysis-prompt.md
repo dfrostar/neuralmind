@@ -60,8 +60,9 @@ repo, e.g.:
 
 ## 5. Token-savings estimate
 - Give a rough LOC estimate from your read.
-- State the NeuralMind headline claim (12–50× reduction per query on real
-  repos) and note that the repo's real number comes from `neuralmind build
+- State the NeuralMind headline claim (51–242× fewer tokens than pasting every
+  source file on the public benchmark, v4.12.0; the older 12–50× field-report
+  range was measured against a fixed 50K-token estimate) and note that the repo's real number comes from `neuralmind build
   --dry-run` (files, LOC, languages, est. reduction), which should be run
   next as the Plan step.
 - Do not fabricate a specific multiplier; compute it in the Plan step.

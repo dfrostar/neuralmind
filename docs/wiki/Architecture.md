@@ -23,9 +23,9 @@ Deep dive into NeuralMind's 4-layer progressive disclosure system and technical 
 
 ## Overview
 
-NeuralMind is designed to solve a fundamental problem in AI-assisted coding: **context window limitations**. When working with AI coding assistants, loading an entire codebase can consume 50,000+ tokens, leaving little room for meaningful conversation.
+NeuralMind is designed to solve a fundamental problem in AI-assisted coding: **context window limitations**. When working with AI coding assistants, loading an entire codebase can consume tens of thousands of tokens or more (41,729–232,483 per query for the four repos on the public benchmark), leaving little room for meaningful conversation.
 
-NeuralMind achieves **12-50x token reduction** through intelligent, query-aware context selection using a 4-layer progressive disclosure architecture.
+NeuralMind cuts that through query-aware context selection using a 4-layer progressive disclosure architecture: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) (v4.12.0) it uses **51–242× fewer tokens than pasting every source file** (670–961 mean tokens per question) and finds the gold file on 40 of 40 queries; the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10.
 
 ### The Problem
 
@@ -35,7 +35,7 @@ NeuralMind achieves **12-50x token reduction** through intelligent, query-aware 
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Full Codebase ──────────────────────────────────► AI Context    │
-│  (50,000+ tokens)                                (50,000 tokens) │
+│  (41K–232K tokens*)                            (41K–232K tokens*)│
 │                                                                  │
 │  Problems:                                                       │
 │  • Exceeds context windows                                       │
@@ -54,16 +54,20 @@ NeuralMind achieves **12-50x token reduction** through intelligent, query-aware 
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  Full Codebase ────► Knowledge ────► Progressive ────► AI Context│
-│  (50,000+ tokens)    Graph          Disclosure      (1,000 tokens)│
+│  (41K–232K tokens*)  Graph          Disclosure     (670–961 tok*)│
 │                                                                  │
 │  Benefits:                                                       │
-│  • 12-50x token reduction                                        │
+│  • 51–242x fewer tokens than pasting every file*                 │
 │  • Query-relevant content only                                   │
 │  • Cost effective                                                │
 │  • Fast response                                                 │
 │  • Focused, relevant context                                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+\* Mean tokens per query across the four pinned repos of the
+[public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)
+(`requests`, `click`, `flask`, `rich`; v4.12.0).
 
 ---
 
@@ -436,10 +440,10 @@ Set `NEURALMIND_BM25=0` to revert to pure vector search.
 │                           ─────────────                          │
 │                           1500 tokens max                        │
 │                                                                  │
-│  COMPARISON                                                      │
-│  ├── Full Codebase     50,000 tokens  ████████████████████████   │
-│  ├── NeuralMind Query   1,000 tokens  ██                         │
-│  └── Reduction              50x                                  │
+│  COMPARISON (psf/requests, public benchmark, v4.12.0)            │
+│  ├── Full Codebase     41,729 tokens  ████████████████████████   │
+│  ├── NeuralMind Query     816 tokens  █                          │
+│  └── Reduction              51x                                  │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -656,8 +660,10 @@ def expand_context(matched_nodes: List[Node], budget: int) -> List[Node]:
 In v0.4.0 NeuralMind grew a **second brain that runs alongside the LLM**.
 The 4-layer progressive disclosure system above is unchanged — that's the
 retrieval brain. The synapse layer adds an *associative* brain that learns
-from how the agent and the codebase actually interact, so retrieval gets
-sharper the longer the system runs.
+from how the agent and the codebase actually interact, and re-ranks recall
+with those learned links. Whether that helps on your repo is measured, not
+assumed: `neuralmind eval . --synapse-ab` (v4.14.0+) compares recall on and
+off, and CI gates only that it never lowers top-k hit rate on its fixture.
 
 ### Two-brain split
 
@@ -667,7 +673,7 @@ sharper the longer the system runs.
 | NeuralMind retrieval (4 layers) | Vector DB + graph | Static, rebuilt on `build` | Query-aware compression |
 | **NeuralMind synapses (v0.4)** | **SQLite weighted graph** | **Persistent, continuously learning** | **Usage-based associative recall** |
 
-The agent never sees the synapse weights directly. It just gets better
+The agent never sees the synapse weights directly. It just gets the
 context: the files each prompt matches and the code the synapse graph links
 to them, injected via the `UserPromptSubmit` hook, plus a markdown export
 that lands in Claude Code's auto-memory directory each session.

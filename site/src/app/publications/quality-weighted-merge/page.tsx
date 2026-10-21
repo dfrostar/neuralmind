@@ -263,6 +263,7 @@ export default function PublicationPage() {
                             <p><span className="text-faint">decay_factor</span> = 2<sup>(−fast_decay / half_life)</sup> = 2<sup>(−5/30)</sup> ≈ 0.891 <span className="text-faint">per pass</span></p>
                         </div>
                         <p className="text-slate-300">
+                            {/* claims-guard:allow — worked example: decay arithmetic, not a performance claim */}
                             After 30 daily passes: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">0.891³⁰ = 2<sup>−5</sup> = 1/32</code> — exactly 5× normal decay, <strong className="text-white">no compounding explosion</strong>.
                         </p>
                     </div>

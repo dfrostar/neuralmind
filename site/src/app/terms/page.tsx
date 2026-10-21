@@ -41,7 +41,7 @@ const sections = [
         list: [
             'Remove or obscure the MIT license notice in distributions',
             'Sell the OSS version without modification under the NeuralMind trademark',
-            'Use NeuralMind to exfiltrate code from environments without authorization — its local-only design is a guarantee to you, not a license to bypass security controls on others\' codebases',
+            'Use NeuralMind to exfiltrate code from environments without authorization — its local-first design protects your own code, it is not a license to bypass security controls on others\' codebases',
             'Use the consulting or CFO advisory offerings to misrepresent financial or technical outcomes',
         ],
     },

@@ -105,7 +105,7 @@ processes.
 
 ## Graphify Integration
 
-NeuralMind generates its own code graph — `neuralmind build` uses the built-in tree-sitter backend (ten languages), so no external install is required. [graphify](https://github.com/Graphify-Labs/graphify) (Apache-2.0; originally by Safi Shamsi, now under the Graphify-Labs org) is an optional alternative graph producer: it analyzes a corpus (code, docs, papers, images) into a richer structured graph, and where a graphify-generated `graph.json` is present it takes priority automatically.
+NeuralMind generates its own code graph — `neuralmind build` uses the built-in tree-sitter backend (ten languages, plus JavaScript through the TypeScript grammars since v4.12.0), so no external install is required. [graphify](https://github.com/Graphify-Labs/graphify) (Apache-2.0; originally by Safi Shamsi, now under the Graphify-Labs org) is an optional alternative graph producer: it analyzes a corpus (code, docs, papers, images) into a richer structured graph, and where a graphify-generated `graph.json` is present it takes priority automatically.
 
 ### Installing Graphify
 
@@ -178,7 +178,12 @@ neuralmind build /path/to/project
 
 ### Git Hook for Automatic Updates
 
-Add to `.git/hooks/post-commit`:
+The simplest route is `neuralmind init-hook .`: it installs `post-commit` and,
+since v4.13.0, `post-merge`, `post-checkout` and `post-rewrite` hooks, so the
+index is rebuilt after merges and pulls, branch switches and rebases as well as
+commits (see [CLI Reference](CLI-Reference.md#init-hook)). A hand-written hook
+works too, but covers only the events you add it to. For commits, add to
+`.git/hooks/post-commit`:
 
 ```bash
 #!/bin/bash

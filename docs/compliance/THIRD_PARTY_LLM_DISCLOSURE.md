@@ -71,7 +71,7 @@ Local files (code, .md, .pdf, .txt)
 
 No step in that pipeline makes a network call. This is what
 `COMPLIANCE-SUMMARY.md`'s "Outbound network at runtime: None" row and
-`SECURITY-GUIDE.md`'s "No Calls Home" principle correctly describe for the
+`SECURITY-GUIDE.md`'s "No Telemetry by Default" principle correctly describe for the
 default configuration.
 
 ### 3.1 The one opt-in exception: documentation-synapse seeding via Anthropic
@@ -170,7 +170,7 @@ arbitrary client files.
 - [`../COMPLIANCE-SUMMARY.md`](../COMPLIANCE-SUMMARY.md) — one-page
   procurement summary; its "Outbound network" and GDPR rows should be read
   together with §3.1 above.
-- [`../SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) — "No Calls Home"
+- [`../SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) — "No Telemetry by Default"
   principle; same caveat applies.
 - [`../PRIVACY-POLICY.md`](../PRIVACY-POLICY.md) §6 — covers NeuralMind's
   own commercial operations (manual license issuance and invoicing; GitHub).

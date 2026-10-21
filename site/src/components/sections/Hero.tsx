@@ -14,8 +14,12 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // The site's own rule is that a CI gate and a per-repo mean are not the same
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
-    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos', figure: true },
-    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file', figure: true },
+    // The lead is the comparison against keyword ripgrep with its top five files
+    // opened whole, the baseline closest to how an agent works; an agent reading
+    // only the matching lines pays less than that baseline, which is not measured.
+    // Keep both found counts and the ratio on the one line below.
+    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos, at 31–67× fewer tokens than keyword ripgrep (top five files opened whole), which found 32 of 40', figure: true },
+    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file, same 40 queries', figure: true },
     { label: 'Top-5 hit rate', value: '93.3%', evidence: '150-question eval, 5 repos, every miss published', figure: true },
     { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
 ];
@@ -82,9 +86,10 @@ export default function Hero() {
                             Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
                             NeuralMind maps your repo, learns which files belong together as you
                             work, and hands your agent the right code first —{' '}
-                            <span className="text-slate-100 font-medium">the gold file on 40 of 40 benchmark
-                            queries at 51–242× fewer tokens</span> than pasting every source file,
-                            with every miss on a larger 150-question eval published. No telemetry. MIT core.
+                            <span className="text-slate-100 font-medium">the gold file on 40 of 40 public-benchmark queries, where keyword ripgrep opening its top five files whole found 32 of 40, at 31–67× fewer tokens than ripgrep</span>{' '}
+                            and 51–242× fewer than pasting every source file. On a larger 150-question
+                            eval it puts a gold file in the top five on 93.3%, and all 10 misses are
+                            published. By default, no telemetry. MIT core.
                         </p>
 
                         <div className="flex flex-wrap items-center gap-3">

@@ -164,7 +164,7 @@ export default function PublicationPage() {
                             <p>cd /path/to/your-project</p>
                             <p>neuralmind build .             # builds knowledge graph + vector index (1-3 min)</p>
                             <p>neuralmind install-hooks .     # registers PostToolUse + SessionStart + PreCompact hooks</p>
-                            <p>neuralmind init-hook .         # auto-rebuild on every git commit</p>
+                            <p>neuralmind init-hook .         # auto-rebuild on commit, merge, checkout and rebase (v4.13.0+)</p>
                             <p>neuralmind watch . &           # always-on file watcher — the "brain" that learns</p>
                         </div>
                     </div>
@@ -194,9 +194,9 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">3. Daily Claude Code Workflow</h3>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3">
-                            <p>claude&gt; neuralmind_wakeup(project_path=".")                # ~400 tokens instead of 50K</p>
-                            <p>claude&gt; neuralmind_query(project_path=".", question="...")  # ~800-1100 tokens</p>
-                            <p>claude&gt; neuralmind_skeleton(project_path=".", file_path="...") # ~88% cheaper than Read</p>
+                            <p>claude&gt; neuralmind_wakeup(project_path=".")                # compact project overview, once per session</p>
+                            <p>claude&gt; neuralmind_query(project_path=".", question="...")  # 670–961 mean tokens per question (public benchmark, v4.12.0)</p>
+                            <p>claude&gt; neuralmind_skeleton(project_path=".", file_path="...") # outline only: ~87% fewer tokens than a whole-file Read, no source lines (compression benchmark)</p>
                             <p>claude&gt; neuralmind_review(project_path=".")              # catch co-breaks</p>
                             <p>claude&gt; neuralmind_next_likely(project_path=".", from_node="...") # predict next file</p>
                         </div>
@@ -243,7 +243,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p className="text-slate-300 text-sm">
-                            <strong className="text-white">Total wakeup:</strong> ~600 tok. <strong className="text-white">Per-query:</strong> ~500-1000 tok. <strong className="text-white">Vs full codebase:</strong> 50K+ tok loaded naively.
+                            <strong className="text-white">Wakeup:</strong> L0 + L1, capped by the budgets above, once per session. <strong className="text-white">Per-query:</strong> 670–961 mean tokens per repo on the public benchmark (v4.12.0). <strong className="text-white">Vs pasting every source file:</strong> 41,729–232,483 tokens on the same four repos.
                         </p>
                     </div>
 
@@ -330,6 +330,7 @@ export default function PublicationPage() {
                                     <td className="py-2 text-red-400">Refuted</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
+                                    {/* claims-guard:allow — the refuted original claim, quoted in the correction log */}
                                     <td className="py-2">30-50x reduction (measured)</td>
                                     <td className="py-2">Modeled estimate with 50K default baseline.</td>
                                     <td className="py-2 text-yellow-400">Modeled</td>
@@ -340,7 +341,9 @@ export default function PublicationPage() {
                                     <td className="py-2 text-red-400">Refuted</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
+                                    {/* claims-guard:allow — the original claim, quoted in the correction log (a parameter, not a result) */}
                                     <td className="py-2">"5x acceleration" (total speedup)</td>
+                                    {/* claims-guard:allow — LTP arithmetic in the correction log, not a performance claim */}
                                     <td className="py-2">Parameter is 5.0, cumulative speedup is 16×.</td>
                                     <td className="py-2 text-yellow-400">Overclaim</td>
                                 </tr>

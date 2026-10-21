@@ -5,9 +5,14 @@
 
 ## Overview
 
-NeuralMind's learning system improves automatically as you use it. The
-more you query, edit, and run tools over your code, the smarter recall
-gets — with no manual step to remember.
+NeuralMind's learning system runs automatically as you use it: it learns
+which files you query, edit and run tools over together, and re-ranks recall
+with those links — with no manual step to remember. Whether that helps
+retrieval on your repo is something to measure, not assume:
+`neuralmind eval . --synapse-ab` (v4.14.0+) runs your questions with recall on
+and off. In CI the synapse A/B gates direction only — recall never lowers top-k
+hit rate on a ~500-line fixture (earlier releases +3.5 to +14 points; +0 at
+v4.12.0, where the fixture reaches 97% without it).
 
 As of **v3.9.0 the learning system combines six modern brain-inspired
 techniques** in the synapse layer. It learns continuously from queries,
@@ -34,13 +39,13 @@ instead of a stale snapshot.
 │    potentiation protects frequently-used connections.     │
 │    ↓ Recall tracks current usage, not a stale batch       │
 ├──────────────────────────────────────────────────────────┤
-│ 4. Continuous improvement                                 │
+│ 4. Continuous learning                                    │
 │    No `neuralmind learn` step — the graph grows as you    │
 │    work.                                                   │
 └──────────────────────────────────────────────────────────┘
 ```
 
-## v3.9.0: Six SOTA Synapse Dynamics
+## v3.9.0: Six Synapse Dynamics
 
 ### 1. Lateral Inhibition (SYNAPSE paper, arXiv 2025)
 When one concept activates, it suppresses competing activations rather
@@ -156,9 +161,9 @@ Each query also logs (when memory is enabled):
 - Which communities matched
 
 The query event log is a local, auditable record; the synapse layer is
-what turns that activity into better recall.
+what turns that activity into learned associations for recall.
 
-### Step 4: Automatic Improvements
+### Step 4: Learned Recall
 
 On later queries, the synapse layer surfaces associations it has learned
 — including related code that pure vector search would not have found,
@@ -190,7 +195,7 @@ TypeScript SaaS platform, personal synapse edges grew **36 → 135** as the
 layer learned the new code's co-activations — see the
 [field report](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
 
-### Step 5: Continuous Improvement
+### Step 5: Continuous Learning
 
 There is no weekly `neuralmind learn` step to run. The synapse store
 grows continuously as you work, and `SessionStart` runs decay so weights

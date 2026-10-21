@@ -126,7 +126,7 @@ export default async function SecurityPage() {
                         <div className="flex items-center justify-between flex-wrap gap-4">
                             <div>
                                 <span className="text-electric-bright font-mono font-bold text-xl">{version}</span>
-                                <span className="text-slate-400 ml-3">Released {releaseDate}</span>
+                                {releaseDate && <span className="text-slate-400 ml-3">Released {releaseDate}</span>}
                             </div>
                             <div className="flex gap-3">
                                 <a href={releaseUrl} target="_blank" rel="noopener noreferrer"
@@ -263,16 +263,16 @@ export default async function SecurityPage() {
                     </div>
                 </section>
 
-                {/* Compliance & Certification */}
+                {/* Compliance evidence */}
                 <section className="mb-10">
-                    <h2 className="font-display text-2xl font-bold text-white mb-4">Compliance & Certification</h2>
+                    <h2 className="font-display text-2xl font-bold text-white mb-4">Compliance evidence</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6 space-y-4">
                         <div>
-                            <p className="text-white font-semibold">Architecture supports, certification is yours</p>
+                            <p className="text-white font-semibold">Evidence for your review — NeuralMind holds no certification</p>
                             <p className="text-slate-400 text-sm mt-1">
-                                NeuralMind&apos;s architecture supports GDPR, SOC 2, CMMC 2.0, HIPAA, and ISO 27017 requirements.
-                                We provide the evidence (audit trail, SBOM, hash chain); certification is maintained by the
-                                operator. See <a href={COMPLIANCE_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">COMPLIANCE-SUMMARY.md</a>.
+                                NeuralMind provides evidence your reviewers can map to GDPR, SOC 2, CMMC 2.0, HIPAA, ISO 27017 and NIST AI RMF controls:
+                                an audit trail, a per-release SBOM, a hash chain, and framework mappings. Whether a deployment meets a
+                                framework is decided by assessing that deployment; NeuralMind itself holds no certification. See <a href={COMPLIANCE_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">COMPLIANCE-SUMMARY.md</a>.
                             </p>
                         </div>
                         <div className="flex gap-3 flex-wrap">

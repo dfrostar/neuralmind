@@ -12,7 +12,7 @@ const evidence = [
     {
         title: 'CI-gated regression floors',
         kind: 'CI-gated',
-        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, synapse recall never lowers hit rate, and the faithfulness delta against naive truncation stays above −0.10 — at v4.12.0 it measured +0.25 (at v4.3.4 it was −0.054, a loss we published).',
+        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, synapse recall never lowers hit rate, and the faithfulness delta against naive truncation stays above −0.10 — at v4.12.0 it measured +0.265 (0.839 vs 0.574, with CI’s command on one machine; at v4.3.4 it was −0.054, a loss we published).',
         link: 'https://github.com/dfrostar/neuralmind/blob/main/.github/workflows/ci-benchmark.yml',
         linkText: 'CI config on GitHub →',
     },

@@ -46,6 +46,7 @@ Before: "Sub-second retrieval — 0.81s."
 After: Retrieval is a local index lookup, not another model call.
 Why: We couldn't find a benchmark anywhere in our repo that produces 0.81s. It didn't measure anything, so we removed it rather than requote it more carefully.
 
+<!-- claims-guard:allow — historical record of the 2026-08-19 correction (the range's baseline, the fixed 50K-token estimate, is named in site/claims.json) -->
 Before: "12–50x Average Token Reduction."
 After: 12–50x token reduction on real repos — the low and high end of a range, not an average.
 Why: 12 and 50 are real, field-reported numbers. Calling them an "average" implied a calculation that was never done.
@@ -65,5 +66,5 @@ The same audit that caught these produced the CI gate in this week's post: every
 | Before → After | Source |
 |---|---|
 | 0.81s → "local index lookup, not another model call" | `site/claims.json`, `unsourced_do_not_use`: "No measurement anywhere in the repo produces this number... Speed claims must be mechanism-based." The replacement phrase is quoted directly from that entry. |
-| "Average" 12-50x → "range, low/high end, not an average" | `site/claims.json` `ratios`, entries `value: 12` / `value: 50`, `evidence: "field-report"`, "Directional, not a guarantee." |
+| "Average" 12-50x (vs the fixed 50K-token estimate) → "range, low/high end, not an average" | `site/claims.json` `ratios`, entries `value: 12` / `value: 50`, `evidence: "field-report"`, "Directional, not a guarantee." |
 | "Never leaves your machine / zero code egress" → "no network calls of its own" (itself superseded 2026-08-28) | `tests/test_docs_claims.py` FORBIDDEN patterns (`egress`, `never leaves... machine`) and its prescribed replacement phrasing; `site/src/app/effectiveness/page.tsx`'s own "honesty gate" disclaims "zero code egress" as an overclaim. | <!-- claims-guard:allow — row quotes the retracted claim it corrects -->

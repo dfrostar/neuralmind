@@ -1,6 +1,6 @@
 ---
 name: neuralmind
-description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
+description: Answer questions about a code repository from a few hundred tokens of ranked context instead of loading whole source files. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
 version: 4.18.1 # x-release-please-version
 author: dfrostar
 license: MIT
@@ -55,7 +55,8 @@ metadata:
 You have access to a neural index of the current project. Prefer it over
 reading source files directly whenever you need to **locate**, **explain**,
 or **navigate** code. The index returns compact, structured context that is
-typically 12-50× cheaper than raw source.
+51–242× smaller than pasting every source file on the public benchmark
+(v4.12.0; your repo's ratio comes from `neuralmind benchmark .`).
 
 The index is **not** a code rewriter or executor. It retrieves; you reason.
 Treat it like a librarian: ask narrow questions, escalate only on a miss.
