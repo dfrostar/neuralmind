@@ -312,6 +312,15 @@
       "why": "From the June 2026 codebase-memory-mcp head-to-head (v0.33.0, requests and click only), never re-run on the current corpus. It may stay in body text with that date and scope beside it (tests/test_docs_claims.py checks), never in a headline or summary row."
     }
   ],
+  "longitudinal_record": {
+    "source": "benchmarks/ai9970/record.jsonl",
+    "profile": "benchmarks/ai9970/profile.json",
+    "narratives": "benchmarks/ai9970/narratives/",
+    "page": "/performance/",
+    "reproduce": "neuralmind eval . && neuralmind benchmark .",
+    "evidence": "field-report",
+    "note": "The one surface whose numbers are rows, not copy: /performance renders each committed row of the record, so its figures are not listed in `ratios` and the ratio guard never sees them in TSX. The gates are in the components instead, through site/src/lib/record.ts: a row whose baseline_src is not exactly \"measured\" is withheld whole, and the count withheld is shown; a ratio renders only beside its measured baseline_tok; a hit rate renders only with its gold-set size and miss count, and a gold set under 50 questions carries a small-sample badge; a metric lower than in the last run that showed it highlights the row. Nothing between rows is interpolated. The site build rejects a row whose rates or ratio contradict its own fields. tests/test_performance_record.py runs the site claims rules over the narratives' published blocks (A, B and C); block D is never read into a page."
+  },
   "private_names_never_publish": [
     "Level2Logic",
     "cmmc20"
