@@ -1,6 +1,6 @@
 # Show HN draft — 2026-10-22: `neuralmind demo`, offline after `pip install`
 
-**Draft, ready to post** once v4.21.0 is on PyPI (the offline demo shipped in
+**Draft, ready to post:** v4.21.0 is on PyPI (the offline demo shipped in
 v4.19.0; v4.21.0 makes it run on Intel macOS and Windows ARM).
 
 A "Show HN" post for developers, built around the lowest-friction way to try
@@ -14,7 +14,7 @@ posted. Hacker News readers check numbers, so every figure is from
       ChromaDB is installed instead). Fixed in v4.21.0: there it now builds
       the sample with ChromaDB, downloading the model once. It still isn't
       offline there, so keep the platform caveat in the post.
-- [ ] Post only once v4.21.0 or later is on PyPI.
+- [x] Post only once v4.21.0 or later is on PyPI (it is, as of 2026-10-22).
 - [ ] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
       `pip install neuralmind && neuralmind demo` with the network off after
       the install. It should finish without downloading the model. Paste its
