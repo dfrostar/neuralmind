@@ -59,8 +59,24 @@ gh attestation verify oci://ghcr.io/dfrostar/neuralmind:v$V --repo dfrostar/neur
 
 **What it proves:** a signed SLSA build-provenance statement for this image
 names the workflow, the commit and the runner that built it. Add
-`--format json` to keep it as evidence. The commit it names is the source the
-image was built from.
+`--format json` to keep it as evidence.
+
+**Check the commit against the tag.** The commit in the provenance is the one
+the workflow *ran from*, not necessarily the one it checked out. release-please
+starts the release workflows from `main` right after it merges the release
+commit, and they check out the version tag. So the two match unless `main`
+moved in between, or someone re-ran a release by hand later. Compare them:
+
+```bash
+gh attestation verify oci://ghcr.io/dfrostar/neuralmind:v$V --repo dfrostar/neuralmind \
+  --cert-identity-regex '^https://github\.com/dfrostar/neuralmind/\.github/workflows/docker-publish\.yml@refs/(heads/main|tags/v[0-9]+\.[0-9]+\.[0-9]+)$' \
+  --format json | jq -r '.[0].verificationResult.statement.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit'
+gh api repos/dfrostar/neuralmind/commits/v$V --jq .sha
+```
+
+The two hashes should be the same. If they differ, the attestation proves which
+workflow run built the image, but not that it built it from the tagged commit.
+Ask before you deploy it.
 
 The release workflow runs steps 1 and 2 against every image it publishes, and
 stops before `:latest` moves if either fails. You are re-running a check the
@@ -79,7 +95,9 @@ gh attestation verify dist/neuralmind-$V-py3-none-any.whl --repo dfrostar/neural
 `release.yml` built, because the attestation is over its SHA-256. The sdist
 (`neuralmind-$V.tar.gz`, from `pip download --no-binary :all: --no-deps`) has
 its own attestation and is checked the same way. PyPI also holds the PEP 740
-attestations that trusted publishing uploads.
+attestations that trusted publishing uploads. The commit check in step 2
+works the same way here: pass `--format json` and compare the commit with the
+tag's.
 
 **Install what you verified:**
 
@@ -89,8 +107,9 @@ pip install --no-deps dist/neuralmind-$V-py3-none-any.whl
 
 Use `--no-deps` only if you install the dependencies separately (for example
 from your own mirror). Otherwise drop it. pip then resolves the dependencies
-from your index, and they are covered by step 4, not by NeuralMind's
-attestation.
+from your index, at whatever versions it finds that day. NeuralMind's
+attestation doesn't cover them, and step 4's SBOM may not match them either.
+Scan the environment you actually installed.
 
 ## 4. What's inside: the SBOM
 
@@ -102,10 +121,22 @@ It is served from the site instead:
 curl -fsSLO https://neuralmind.uk/sbom/neuralmind-v$V.sbom.json
 ```
 
-It lists `neuralmind` itself and every package a default install brings in,
-with versions and package URLs. Opt-in extras such as `chromadb` aren't in it.
-Load it into the tool you already use (Dependency-Track, Grype, Trivy), or scan
-it directly:
+It lists `neuralmind` itself and every package a default install brought in,
+with versions and package URLs. Read it for what it is: **one install, on Linux,
+on release day.** The workflow runs `pip install .` at the tag on an Ubuntu
+runner and records the result. Two things can make your install differ:
+
+- **Your platform.** The vector backend depends on the platform. On Linux,
+  Apple Silicon macOS and Windows x86_64, a default install uses turbovec. On
+  platforms turbovec has no wheel for, notably Intel macOS and Windows on ARM,
+  it installs `chromadb` instead. The SBOM doesn't list ChromaDB or its
+  dependencies, so it doesn't describe those installs.
+- **The date.** Most requirements set a minimum version, not an exact one. An
+  install a week later can resolve newer dependency versions, with different
+  advisories.
+
+The SBOM is still the record of what NeuralMind shipped against. Load it into the
+tool you already use (Dependency-Track, Grype, Trivy), or scan it directly:
 
 ```bash
 grype sbom:neuralmind-v$V.sbom.json
@@ -113,20 +144,28 @@ grype sbom:neuralmind-v$V.sbom.json
 trivy sbom neuralmind-v$V.sbom.json
 ```
 
-**What it doesn't prove:** an SBOM says what a release depends on. Steps 1 to 3
-are what show you have that release.
+**What it doesn't prove:** an SBOM says what one install of a release contained.
+Steps 1 to 3 show you have that release. For what is on *your* machine, scan the
+environment itself, after installing:
+
+```bash
+grype dir:/path/to/venv
+# or
+pip-audit        # inside the activated environment
+```
 
 ## 5. Which advisories don't apply: the VEX
 
 [`security/neuralmind.openvex.json`](https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.openvex.json)
 is an OpenVEX document. It lists the advisories in NeuralMind's dependencies
 that NeuralMind is not affected by, each with the reason. Today those are four
-ChromaDB advisories: ChromaDB is an opt-in extra, and NeuralMind uses only its
-local, on-disk `PersistentClient`. It never starts ChromaDB's server.
+ChromaDB advisories. NeuralMind uses only ChromaDB's local, on-disk
+`PersistentClient` and never starts ChromaDB's server.
 
-They matter when you scan an environment that has the `chromadb` extra
-installed. Pass the VEX with the scan, and those advisories show as not
-affected, with the reason, instead of open:
+They matter when you scan an environment that has `chromadb` in it: the default
+install on Intel macOS and Windows on ARM, or any install with the `chromadb`
+extra. Pass the VEX with the scan, and those advisories show as not affected,
+with the reason, instead of open:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/dfrostar/neuralmind/main/security/neuralmind.openvex.json
