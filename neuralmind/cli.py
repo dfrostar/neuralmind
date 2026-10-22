@@ -6045,10 +6045,10 @@ def cmd_install_hermes_plugin(args):
     if getattr(args, "mcp", False) is True:
         if _report_mcp_install(mcp_install, "hermes", project_dir, hermes_home=home):
             print(f"  {HERMES_MCP_RELOAD}")
-    elif (
-        result["initialised"]
-        and not mcp_install.registration("hermes", project_dir, hermes_home=home).registered
-    ):
+        return
+    # Offered only where `install-mcp --client hermes` can write: a config.yaml.
+    mcp_state = mcp_install.registration("hermes", project_dir, hermes_home=home)
+    if mcp_state.detected and not mcp_state.registered:
         print(
             "  NeuralMind's MCP tools (query, search, …) are a separate opt-in: "
             "neuralmind install-mcp --client hermes"

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -157,6 +158,20 @@ def test_git_hooks_skipped_by_core_hooks_path(repo, capsys):
     item = wiring.git_hooks_item(repo)
     assert item.wired is False and "core.hooksPath" in item.detail
     assert item.fix == ""  # nothing of ours to run: the user's hook setup decides
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX executable bit")
+def test_a_hook_git_cant_execute_isnt_wired(repo, capsys):
+    # git skips a hook without its executable bit, block or no block.
+    _init_hook(repo)
+    hooks = repo / ".git" / "hooks"
+    (hooks / "post-merge").chmod(0o644)
+    item = wiring.git_hooks_item(repo, ".")
+    assert item.wired is False and item.detail.startswith("partial:")
+    assert "post-merge not executable, so git skips them" in item.detail
+    assert item.fix == "neuralmind init-hook ."
+    _init_hook(repo)  # the fix: init-hook sets the bit again
+    assert wiring.git_hooks_item(repo).wired is True
 
 
 def test_git_hooks_outside_git_dont_apply(tmp_path):
@@ -321,6 +336,14 @@ def test_next_steps_on_a_fresh_machine_with_hermes(home, repo):
         "neuralmind daemon start && neuralmind init-hook .",
         "neuralmind install-hermes-plugin && neuralmind install-mcp --client hermes",
     ]
+
+
+def test_next_steps_offer_hermes_mcp_only_where_it_can_be_written(home, repo):
+    # A Hermes home with .env but no config.yaml: the plugin can be installed,
+    # but install-mcp --client hermes has no file to add the entry to.
+    (home / ".hermes").mkdir()
+    (home / ".hermes" / ".env").write_text("X=1\n")
+    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-hermes-plugin"
 
 
 def test_next_steps_without_hermes_offers_one_agent_host(home, repo):

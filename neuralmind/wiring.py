@@ -194,16 +194,21 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
     target = "." if rel == "." else shlex.quote(rel.replace(os.sep, "/"))
     present: list[str] = []
     elsewhere: list[str] = []
+    skipped: list[str] = []
     for hook in GIT_HOOKS:
-        block = _managed_block(hooks_dir / hook)
+        hook_file = hooks_dir / hook
+        block = _managed_block(hook_file)
         if block is None:
             continue
         pattern = _DRIFT_TARGET if hook == "pre-commit" else _REBUILD_TARGET
         found = pattern.search(block)
-        if found is None or found.group(1) == target:
-            present.append(hook)
-        else:
+        if found is not None and found.group(1) != target:
             elsewhere.append(f"{hook} ({found.group(1)})")
+        elif not os.access(hook_file, os.X_OK):
+            # git skips a hook it can't execute; init-hook sets the bit again.
+            skipped.append(hook)
+        else:
+            present.append(hook)
     fix = f"neuralmind init-hook {_arg(project, project_arg)}"
     missing = [h for h in GIT_HOOKS if h not in present]
     if not missing:
@@ -214,10 +219,12 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
             "pre-commit runs the drift guard",
         )
     note = ""
+    if skipped:
+        note += f"; {', '.join(skipped)} not executable, so git skips them"
     if elsewhere:
         # One managed block per hook file: another project in this repository
         # took it over.
-        note = (
+        note += (
             f"; serving another project in this repository: {', '.join(elsewhere)} "
             "(init-hook here takes them over)"
         )
@@ -229,7 +236,7 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
             f"the next manual build{note}",
             fix=fix,
         )
-    if missing == ["pre-commit"] and not elsewhere:
+    if missing == ["pre-commit"] and not elsewhere and not skipped:
         what = "the pre-commit drift guard is missing (an install with --no-drift)"
     else:
         what = f"missing {', '.join(missing)}"

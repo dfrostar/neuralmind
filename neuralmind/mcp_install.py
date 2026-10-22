@@ -140,11 +140,11 @@ def config_path(client: str, project_dir: Path, hermes_home: Path | None = None)
 
 def is_detected(client: str, project_dir: Path, hermes_home: Path | None = None) -> bool:
     """True when ``client`` looks installed: its config file exists, or the
-    user-scoped clients' config directory exists. Hermes counts once its home
-    is set up (``config.yaml``, ``.env`` or ``state.db``)."""
+    user-scoped clients' config directory exists. Hermes counts once its
+    ``config.yaml`` exists: the installer adds to that file and never creates
+    it, so a home with only ``.env`` or ``state.db`` has nothing to register in."""
     if client == "hermes":
-        hermes = _hermes_install()
-        return bool(hermes.is_hermes_home(hermes_home or hermes.hermes_home()))
+        return config_path(client, project_dir, hermes_home).exists()
     path = config_path(client, project_dir)
     if path.exists():
         return True
