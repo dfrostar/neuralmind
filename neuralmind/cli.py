@@ -5414,7 +5414,6 @@ def cmd_demo(args):
     from importlib import resources
 
     from neuralmind import _demo_report
-    from neuralmind.backend_manager import turbovec_available
     from neuralmind.core import NeuralMind
     from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
     from neuralmind.turbovec_backend import embed_fn_override
@@ -5438,8 +5437,10 @@ def cmd_demo(args):
         sys.exit(1)
 
     # None: the default (turbovec) backend, served from the bundled index.
+    # Only turbovec itself is checked, not turbovec_available(): with the
+    # bundled question vectors the demo needs no onnxruntime or tokenizers.
     backend = None
-    if not turbovec_available():
+    if importlib.util.find_spec("turbovec") is None:
         if importlib.util.find_spec("chromadb") is None:
             print(
                 "demo failed: neither turbovec nor ChromaDB is installed. turbovec ships "

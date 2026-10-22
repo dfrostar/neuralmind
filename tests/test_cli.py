@@ -2168,6 +2168,32 @@ class TestCLIDemoWithoutTurbovec:
         assert "Traceback" not in captured.err
         assert captured.out.count("reduction =") == 3
 
+    def test_turbovec_without_the_model_stack_still_uses_the_bundle(self, monkeypatch, capsys):
+        """The bundled question vectors replace the model, so a turbovec install
+        missing onnxruntime or tokenizers still runs the demo from the bundle."""
+        import importlib.util
+
+        from neuralmind.cli import cmd_demo
+
+        pytest.importorskip("turbovec")
+        TestCLIDemoOffline._no_model(monkeypatch)
+        real_find_spec = importlib.util.find_spec
+
+        def find_spec(name, *a, **kw):
+            if name.split(".")[0] in {"onnxruntime", "tokenizers"}:
+                return None
+            return real_find_spec(name, *a, **kw)
+
+        monkeypatch.setattr(importlib.util, "find_spec", find_spec)
+        args = self._args()
+        args.quiet = False
+        cmd_demo(args)
+
+        captured = capsys.readouterr()
+        assert "bundled with NeuralMind, so nothing is downloaded" in captured.out
+        assert "ChromaDB" not in captured.err
+        assert captured.out.count("reduction =") == 3
+
     def test_a_failing_chromadb_build_exits_1_with_one_line(self, monkeypatch, capsys):
         from neuralmind import backend_manager
         from neuralmind.cli import cmd_demo
