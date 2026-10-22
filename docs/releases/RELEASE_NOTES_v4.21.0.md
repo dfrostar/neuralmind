@@ -1,4 +1,4 @@
-# NeuralMind v4.21.0 — an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file's code in the prompt block; and Intel macOS and Windows ARM work again out of the box
+# NeuralMind v4.21.0 — an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file's code in the prompt block; and NeuralMind builds again on Intel macOS and Windows ARM
 
 **Type:** Minor release | **Theme:** getting what NeuralMind finds in front of the agent, measured before and after; and the default backend falls back to ChromaDB where turbovec has no wheel
 
@@ -166,7 +166,7 @@ same factor in SQL for personal, branch and shared memory
 
 ---
 
-## Intel macOS and Windows ARM work again out of the box
+## NeuralMind builds again on Intel macOS and Windows ARM
 
 turbovec publishes wheels for Linux, Apple Silicon macOS and 64-bit Windows.
 On every other platform, notably Intel macOS and Windows ARM, `pip install
@@ -183,6 +183,25 @@ way. Some of our docs described setting `backend: chroma` there as required.
 
 v4.21.0 restores the fallback. Nothing changes where turbovec is
 installed.
+
+### What installing there still needs
+
+An earlier version of these notes said these platforms work "out of the box".
+They don't quite. Some dependencies publish no wheel for them, so `pip install
+neuralmind` compiles those packages, and the build needs a toolchain. The gaps,
+checked against PyPI for Python 3.12 on 2026-10-22:
+
+| Platform | Built from source | Needs |
+|---|---|---|
+| Intel macOS | `cryptography` | A Rust toolchain, and OpenSSL to link against |
+| Windows on ARM | `cryptography`, `chromadb`, `grpcio` | A Rust toolchain and Visual Studio's C++ build tools |
+
+`cryptography` has had no Intel macOS wheel since 49.0.0, and NeuralMind
+requires 50.0.0 or later, the first release clear of the advisories against
+earlier ones. Without the toolchain, `pip install` fails while building that
+package, before NeuralMind is installed. The
+[`cryptography` installation guide](https://cryptography.io/en/latest/installation/)
+covers building it on each platform.
 
 ### The default backend falls back to ChromaDB where turbovec isn't installed
 
@@ -281,6 +300,7 @@ For an air-gapped install, stage ChromaDB's model cache as the
   server's environment.
 - Nothing to rebuild: the excerpt reads the index you have.
 - **On Intel macOS and Windows ARM** you can delete a `backend: chroma` line you added only to make NeuralMind run; it is harmless to keep.
+- **Installing on Intel macOS or Windows ARM** compiles `cryptography` (and on Windows ARM, `chromadb` and `grpcio`), so have a Rust toolchain ready, plus Visual Studio's C++ build tools on Windows. See [What installing there still needs](#what-installing-there-still-needs).
 
 ## New environment variables
 
