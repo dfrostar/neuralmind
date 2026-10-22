@@ -136,7 +136,7 @@ export default function Proof() {
                         {pilot.tasks_solved.neuralmind} with it, at a median per-task cost change of{' '}
                         {pilot.median_cost_change} (95% CI {pilot.cost_change_ci95}). The reason: in{' '}
                         {pilot.runs / 2} runs the agent never called NeuralMind&rsquo;s tools, and an exploratory
-                        rerun with v{taskOutcomeRerun.figures.neuralmind}, which tells it when to, found the same.{' '}
+                        rerun with the change released in v{taskOutcomeRerun.figures.released_in}, which tells it when to, found the same.{' '}
                         <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
                             The pilot, its spec and every run →
                         </a>

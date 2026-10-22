@@ -146,7 +146,9 @@ export const taskOutcomeRerun = (() => {
             tasks: number;
             seeds: number;
             runs: number;
-            neuralmind: string;
+            neuralmind_reported: string;
+            neuralmind_commit: string;
+            released_in: string;
             mcp_tools_listed: number;
             mcp_tool_calls: number;
             median_cost_change: string;

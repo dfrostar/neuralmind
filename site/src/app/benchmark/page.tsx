@@ -431,10 +431,12 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 <EvidenceBadge level={taskOutcomeRerun.evidence} />
                             </div>
                             <p className="text-muted text-sm leading-relaxed">
-                                NeuralMind {rerun.neuralmind} sends MCP server instructions saying when to call its tools,
+                                The change released in NeuralMind {rerun.released_in} sends MCP server instructions saying
+                                when to call its tools,
                                 lists {rerun.mcp_tools_listed} tools instead of {pilot.mcp_tools_listed}, and quotes the
                                 leading file&rsquo;s code in the prompt block. Rerun on the same {rerun.tasks} tasks
-                                ({rerun.runs} runs, against the pilot&rsquo;s baseline, not pre-registered), the agent
+                                ({rerun.runs} runs with a build of commit {rerun.neuralmind_commit}, against the
+                                pilot&rsquo;s baseline, not pre-registered), the agent
                                 called its tools {rerun.mcp_tool_calls} times and made a median of{' '}
                                 {rerun.median_explore_calls_before_first_edit.neuralmind} explore calls before its first
                                 edit, as without NeuralMind; median per-task cost change {rerun.median_cost_change} (95% CI{' '}

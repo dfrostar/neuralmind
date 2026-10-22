@@ -950,6 +950,10 @@ def test_task_outcome_rerun_figures_match_the_committed_run() -> None:
         "YES" if f["claim_supported"] else "NO"
     )
     assert len(runs) == f["runs"] and {r["arm"] for r in runs} == {"neuralmind"}
+    # The version the build reported, not the release its change shipped in.
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind_reported"]}
+    readme = (RERUN_DIR / "README.md").read_text(encoding="utf-8")
+    assert f"`{f['neuralmind_commit']}`" in readme and f"v{f['released_in']}" in readme
     assert len({r["task"] for r in runs}) == f["tasks"]
     assert len({r["seed"] for r in runs}) == f["seeds"]
     by_task: dict[str, list[int]] = {}
