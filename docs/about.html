@@ -208,14 +208,15 @@
                 <li><strong>The leading file&rsquo;s code in the prompt block</strong> &mdash; when one file&rsquo;s summed match score is at least twice the next file&rsquo;s, the <code>UserPromptSubmit</code> block (and the Hermes plugin&rsquo;s) quotes that file&rsquo;s best-matching function or class from the working tree: at most 40 lines, secrets redacted. With no clear lead the block is the file list as before. <code>NEURALMIND_RECALL_EXCERPT=0</code> turns it off</li>
                 <li><strong>Scored offline, in CI</strong> &mdash; <code>python -m evals.task_outcome.replay</code> sends each pilot task&rsquo;s prompt through the hook at the fix&rsquo;s parent commit and scores the block against the fix&rsquo;s diff, with no agent and no API cost. A new <em>Prompt-recall replay</em> workflow fails a pull request that touches the recall path below its floors. On this release, of 20 tasks: the block names a file the fix changed in 17 and names it first in 10; it quotes code in 9, from a changed file in 7 of 9, covering changed lines in 2 of 9. The gate was set on these same 20 prompts, so 7 of 9 is a ceiling, not an estimate</li>
                 <li><strong>Measured after: no change in what the agent does</strong> &mdash; an exploratory rerun of the 20 tasks with this release: the agent called no NeuralMind tool in 60 runs, made a median of 4.0 search or read calls before its first edit (4.0 without NeuralMind), and cost &minus;2.1% per task (95% CI &minus;6.9% to +6.5%): no difference shown. Whether NeuralMind helps on a larger, unfamiliar repository with harder fixes is not measured yet</li>
+                <li><strong>Also: an idle association&rsquo;s decay rate relaxes back to the default</strong> &mdash; the blend was computed only at reinforcement, so an association used three times a month apart kept its short learned half-life and was pruned after two idle months; it is now kept after two and pruned within five</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md">v4.21.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/check-what-your-agent-is-handed.md">Check what your agent is handed &rarr;</a></p>
         </div>
     </section>
 
     <section>
-        <div class="container" id="whats-new-v4201">
-            <h2>What&rsquo;s New in v4.20.1 &mdash; Intel macOS and Windows ARM work again out of the box</h2>
+        <div class="container" id="whats-new-v4210-backends">
+            <h2>Also New in v4.21.0 &mdash; Intel macOS and Windows ARM work again out of the box</h2>
             <p>turbovec has no wheel for Intel macOS or Windows ARM, so <code>pip install neuralmind</code> installs ChromaDB there instead. From v0.46.0 the default backend ignored it, and every build failed with <code>No module named 'turbovec'</code> unless the project set <code>backend: graph</code>.</p>
             <ul>
                 <li><strong>The default falls back to ChromaDB</strong> &mdash; where the turbovec stack isn&rsquo;t installed and ChromaDB is. Nothing changes where turbovec is installed</li>
@@ -223,7 +224,7 @@
                 <li><strong>A missing backend says what to install</strong> &mdash; instead of a bare <code>ModuleNotFoundError</code> deep inside a build</li>
                 <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.1.md">v4.20.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md">v4.21.0 release notes</a></p>
         </div>
     </section>
 
