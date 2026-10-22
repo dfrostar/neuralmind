@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -24,7 +25,12 @@ def home(tmp_path, monkeypatch):
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
-    monkeypatch.delenv("HERMES_HOME", raising=False)
+    # Windows keeps Hermes's default home under %LOCALAPPDATA% and Claude
+    # Desktop's and VS Code's settings under %APPDATA%: point all three into
+    # the fake home, so the runner's own apps stay out of the test.
+    monkeypatch.setenv("HERMES_HOME", str(home / ".hermes"))
+    monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     monkeypatch.delenv("NEURALMIND_NO_DAEMON", raising=False)
     monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path / "daemon"))
     return home
@@ -134,7 +140,7 @@ def test_git_hooks_none_partial_full(repo, capsys):
     partial = wiring.git_hooks_item(repo)
     assert partial.wired is False and partial.detail.startswith("partial:")
     assert "drift guard is missing" in partial.detail
-    assert partial.fix == f"neuralmind init-hook {repo}"
+    assert partial.fix == f"neuralmind init-hook {shlex.quote(str(repo))}"
 
     _init_hook(repo)
     full = wiring.git_hooks_item(repo)
