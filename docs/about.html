@@ -229,6 +229,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4200">
+            <h2>What&rsquo;s New in v4.20.0 &mdash; the site shows its evidence, and its security page starts with verifying the release</h2>
+            <p><strong>No change to what your agent does.</strong> The package is the same as v4.19.0; this release is the redesign of <a href="https://neuralmind.uk/">neuralmind.uk</a>:</p>
+            <ul>
+                <li><strong>One proof page</strong> &mdash; <a href="https://neuralmind.uk/benchmark/">/benchmark</a> holds the per-repo results, where NeuralMind loses, the task-outcome pilot (a pre-registered 20-task pilot found no cost difference) and a ledger of every number the site quotes, each with its evidence level and the command that reproduces it</li>
+                <li><strong>Numbers rendered, not retyped</strong> &mdash; the site reads <code>site/claims.json</code> and the committed runs at build time, and the build fails if a quoted number isn&rsquo;t in them or the ledger leaves one out</li>
+                <li><strong>A security page for security teams</strong> &mdash; <a href="https://neuralmind.uk/security/">/security</a> opens with verifying a release (cosign, <code>gh attestation verify</code>, SBOM, VEX, SSDF), then lists everything NeuralMind can send over the network, the air-gapped install, and the controls a regulated deployment turns on</li>
+                <li><strong>A shorter homepage</strong> &mdash; six sections instead of eleven; the free AI-spend assessment and cost-saving calls to action are gone, and <code>/effectiveness</code> redirects to the refactor field report it duplicated</li>
+            </ul>
+            <p><strong>New walkthrough:</strong> <a href="use-cases/verify-a-release.html">Verify a NeuralMind release before installing it</a> &mdash; each check, what it proves and what it doesn&rsquo;t, and what to keep as evidence.</p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.0.md">v4.20.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4190">
             <h2>What&rsquo;s New in v4.19.0 &mdash; the audit log reaches your SIEM as it is written</h2>
             <p>The audit log left the host only when someone exported it. With <code>security.audit_syslog</code> set, it goes to syslog record by record (CMMC AU.L2-3.3.4, 3.3.5):</p>

@@ -21,12 +21,13 @@ Key facts, each backed by a runnable eval with its data committed:
 ## Product
 
 - [Homepage](https://neuralmind.uk/): what NeuralMind is, how it works, evidence, FAQ
-- [Public benchmark](https://neuralmind.uk/benchmark/): per-repo results, baselines, and every miss
+- [Public benchmark](https://neuralmind.uk/benchmark/): per-repo results, baselines, every miss, the task-outcome pilot, and a ledger of every number the site quotes with its evidence and reproduce command
 - [Measure your own repo](https://neuralmind.uk/measure-your-own/): three commands to get your own numbers
+- [Field report: memory across a refactor](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/): one repo before and after a subsystem rebuild, with what it can't claim
 - [What it remembers](https://neuralmind.uk/what-it-remembers/): preferences, feature branches, other models and decay, answered from the code
 - [Team memory](https://neuralmind.uk/team/): sharing learned memory through git, governance, audit, seats
 - [Pricing](https://neuralmind.uk/pricing/): free at 1 seat; Team $29/user/mo
-- [Security](https://neuralmind.uk/security/): what goes over the network, SBOM, disclosure
+- [Security](https://neuralmind.uk/security/): verifying a release (cosign, build-provenance attestations, SBOM, VEX, SSDF), what goes over the network, air-gapped install, the controls a regulated deployment turns on, disclosure
 
 ## Docs
 
@@ -68,6 +69,7 @@ Key facts, each backed by a runnable eval with its data committed:
 - [Growing monorepo](https://docs.neuralmind.uk/use-cases/growing-monorepo.html)
 - [Offline / regulated environments](https://docs.neuralmind.uk/use-cases/offline-regulated.html)
 - [Run NeuralMind air-gapped](https://docs.neuralmind.uk/use-cases/air-gapped.html)
+- [Verify a NeuralMind release before installing it](https://docs.neuralmind.uk/use-cases/verify-a-release.html): image signature, build provenance, SBOM and VEX, and what each proves
 - [Team memory across a squad of agents](https://docs.neuralmind.uk/use-cases/multi-agent.html)
 - [Benchmark your own repo](https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html)
 - [Measure memory across a refactor](https://docs.neuralmind.uk/use-cases/measure-memory-across-a-refactor.html)

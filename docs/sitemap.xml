@@ -211,6 +211,18 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.20.0.html</loc>
+    <lastmod>2026-10-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/use-cases/verify-a-release.html</loc>
+    <lastmod>2026-10-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.19.0.html</loc>
     <lastmod>2026-10-20</lastmod>
     <changefreq>monthly</changefreq>
