@@ -141,8 +141,8 @@ def blended_decay_factor(
         return 1.0
     d = namespace_default
     a = learned_half_life - d
-    u = 2.0 ** (-elapsed_days / d)
-    v = 2.0 ** (-(max(0.0, idle_days) + elapsed_days) / d)
+    u = math.exp(-LN2 * elapsed_days / d)
+    v = math.exp(-LN2 * (max(0.0, idle_days) + elapsed_days) / d)
     return (d * u + a * v) / (d + a * v)
 
 
