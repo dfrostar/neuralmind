@@ -49,7 +49,7 @@ const answers: Answer[] = [
         tone: 'design',
         short: 'No. It remembers your code, the decisions recorded about it, and what your last session was doing. It does not keep a profile of you or of how you like to work.',
         points: [
-            '**The last session’s thread** (v4.8.0+). A fresh or cleared Claude Code session, and a Hermes-Agent session through its plugin, starts with a recap of the previous one: its first prompt and its last three, each credential-redacted and cut at 200 characters, and the files it edited. Say “remember this endpoint tomorrow” near the end of a session and tomorrow’s session sees it, labelled as context rather than an instruction. Recaps older than 14 days are dropped (`NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`).',
+            '**The last session’s thread** (v4.8.0+). A fresh or cleared Claude Code session, and a Hermes-Agent session through its plugin, starts with a recap of the previous one: its first prompt and its last three, each credential-redacted and cut at 200 characters, and the files it edited. Say “remember this endpoint tomorrow” near the end of a session and tomorrow’s session sees it, labelled as context rather than an instruction. A recap older than 14 days isn’t shown (`NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS`). The newest ten session records stay on disk, and `neuralmind recap --clear` deletes them.',
             '**Decisions about the code.** `neuralmind decisions record` stores a decision with its rationale and the files it governs. With `neuralmind init-hook .` installed, it goes STALE when a commit changes one of those files, and `neuralmind decisions query` finds it by meaning, not only by shared words. A project convention with a reason behind it belongs here.',
             '**Which files go together.** The synapse layer learns which files you edit and query together, per project.',
         ],
@@ -67,16 +67,16 @@ const answers: Answer[] = [
     {
         id: 'branches',
         q: 'Will a feature branch pollute the memory main uses?',
-        label: 'No, built in since v0.24.0',
-        tone: 'built',
-        short: 'No. On any branch other than the default, what NeuralMind learns goes into that branch’s own memory namespace, with no setup.',
+        label: 'Mostly not, since v0.24.0',
+        tone: 'partly',
+        short: 'Mostly not. On any branch other than the default, what NeuralMind learns from your work goes into that branch’s own memory namespace, with no setup. The exception is the call graph: call and import edges a build finds go into the shared baseline every branch reads.',
         points: [
-            'On a non-default branch, every learned association is written to `branch:<name>`. The default branch comes from `origin/HEAD`, or `main` / `master` when there is no remote. A detached HEAD writes to `personal`.',
+            'On a non-default branch, every association learned from use is written to `branch:<name>`. The default branch comes from `origin/HEAD`, or `main` / `master` when there is no remote. A detached HEAD writes to `personal`.',
             'Recall reads a weighted merge: the branch you are on at full weight, your `personal` memory at 0.8 and the team’s `shared` baseline at 0.5. On the default branch the active namespace is `personal` itself, so nothing changes until you branch.',
             'The code index follows the checkout too: `neuralmind init-hook .` installs a post-checkout hook that rebuilds it after a branch switch (v4.13.0+).',
             'To pin a namespace instead, set `NEURALMIND_NAMESPACE`, or `memory_namespace` in `neuralmind-backend.yaml`.',
         ],
-        limit: 'A branch’s memory is not folded into `personal` when the branch merges, so what the agent learned on the branch stays there and the default branch does not inherit it. An abandoned branch’s namespace is never read from another branch, but it stays in the store until you drop it.',
+        limit: 'Call and import edges are the exception. Every build seeds them into the `shared` baseline, which every branch reads at half weight, so a call that exists only on a feature branch is still recalled after you switch back, fading on the shared 60-day half-life. The code index itself is rebuilt for whatever is checked out. A branch’s learned memory is not folded into `personal` when the branch merges, so the default branch does not inherit it, and an abandoned branch’s namespace stays in the store until you drop it.',
         check: ['neuralmind memory inspect .', 'neuralmind memory reset . --namespace branch:feature-x'],
         sources: [
             { label: 'namespaces.py', href: blob('neuralmind/namespaces.py') },
