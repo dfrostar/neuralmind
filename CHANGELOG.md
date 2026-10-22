@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.21.0](https://github.com/dfrostar/neuralmind/compare/v4.20.0...v4.21.0) (2026-10-22)
+
+
+### Features
+
+* **mcp:** server instructions, a six-tool default list, and the leading file's code in the prompt block ([#696](https://github.com/dfrostar/neuralmind/issues/696)) ([b4a61c3](https://github.com/dfrostar/neuralmind/commit/b4a61c3e39f6a5c6b036b3b990ad1975c121c145))
+
+
+### Bug Fixes
+
+* **backend:** fall back to ChromaDB where turbovec has no wheel, so Intel macOS and Windows ARM work again ([#704](https://github.com/dfrostar/neuralmind/issues/704)) ([bd438a8](https://github.com/dfrostar/neuralmind/commit/bd438a8f1505fb1ef1317c9494954468d1c5c0e2))
+* **synapses:** blend an idle edge's learned half-life back to the namespace default ([#706](https://github.com/dfrostar/neuralmind/issues/706)) ([8bb5f54](https://github.com/dfrostar/neuralmind/commit/8bb5f54146e040d0fbfaf87c37016769f65adf6b))
+
+
+### Documentation
+
+* bring the public surfaces up to v4.20.0, and add a release-verification walkthrough ([#702](https://github.com/dfrostar/neuralmind/issues/702)) ([3ca8a5b](https://github.com/dfrostar/neuralmind/commit/3ca8a5b672cf450c404d5db808558e5608946816))
+* ship the ChromaDB fallback notes as v4.21.0, and point the demo docs at it ([#703](https://github.com/dfrostar/neuralmind/issues/703)) ([0ac83b8](https://github.com/dfrostar/neuralmind/commit/0ac83b8c605d0a9670ee6186e7553b516d9ba584))
+* **site:** answer what NeuralMind remembers and forgets, from the code ([#705](https://github.com/dfrostar/neuralmind/issues/705)) ([3837974](https://github.com/dfrostar/neuralmind/commit/3837974c67d52a338111df57bafa02fa5b0ad98e))
+* **social:** draft the v4.19.0 compliance LinkedIn post and the offline-demo Show HN ([#698](https://github.com/dfrostar/neuralmind/issues/698)) ([5851bc0](https://github.com/dfrostar/neuralmind/commit/5851bc04243f95b556c458c0793c0864aad1bf64))
+
 ## [4.20.0](https://github.com/dfrostar/neuralmind/compare/v4.19.0...v4.20.0) (2026-10-21)
 
 
