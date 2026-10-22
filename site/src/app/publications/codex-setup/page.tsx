@@ -6,7 +6,7 @@ const POST_COMMIT = '3fe5a61';
 
 export const metadata = {
     title: 'NeuralMind + OpenAI Codex: MCP Setup & Token Savings Guide',
-    description: 'Set up NeuralMind as an MCP server for OpenAI Codex: install it, register with any MCP client, measure L0–L3 token budgets and check your real dollar savings.',
+    description: 'Set up NeuralMind as an MCP server for OpenAI Codex: install it, register with any MCP client, measure L0–L3 token budgets and estimate their cost.',
     keywords: [
         'OpenAI Codex',
         'Codex CLI',
@@ -74,7 +74,7 @@ export default function PublicationPage() {
                             '@context': 'https://schema.org',
                             '@type': 'Article',
                             headline: 'How to Use NeuralMind with OpenAI Codex: Setup, Token Measurement, and Savings',
-                            description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, run the self-improvement loop, and verify real dollar savings.',
+                            description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, run the self-improvement loop, and estimate what those tokens would cost.',
                             author: {
                                 '@type': 'Person',
                                 name: 'Darren Frost',
