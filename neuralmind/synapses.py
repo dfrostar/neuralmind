@@ -133,7 +133,7 @@ LTP_ROW_PARAMS = (LTP_THRESHOLD, LTP_FLOOR, EPHEMERAL_NAMESPACE)
 #   than your own memory.
 # - ``structural`` reads at W_STRUCTURAL — the checked-out code's call and
 #   import edges. Equal to W_SHARED because these seeds lived in ``shared``
-#   until v4.21.0, so moving them changed no merged weight.
+#   through v4.21.0, so moving them changed no merged weight.
 #
 # On the default branch the active namespace *is* personal, so it reads
 # at W_BRANCH (1.0) and merged behavior is identical to the
@@ -1584,7 +1584,7 @@ class SynapseStore:
         The namespace is replaced, not merged: every pass clears it and writes
         the call graph of the code checked out now, so an edge that exists
         only on a feature branch is gone after the next build on another
-        branch. Until v4.21.0 seeds were upserted into ``shared``, which every
+        branch. Through v4.21.0 seeds were upserted into ``shared``, which every
         branch reads and nothing cleared, so a branch's call edges leaked into
         the default branch's recall until they decayed (60-day half-life).
 

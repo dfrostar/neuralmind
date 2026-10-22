@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4211">
+            <h2>What&rsquo;s New in v4.21.1 &mdash; a feature branch&rsquo;s calls stay on the branch</h2>
+            <p>Every build seeds the call and import edges it finds into the synapse layer. They went into the <code>shared</code> baseline every branch reads, and nothing cleared them, so a call added on a feature branch was still recalled on <code>main</code> until it decayed.</p>
+            <ul>
+                <li><strong>A <code>structural</code> namespace each build replaces</strong> &mdash; it holds the call graph of the code checked out, so after the next build on <code>main</code> a branch&rsquo;s calls are gone from recall</li>
+                <li><strong>Recall on a clean <code>main</code> doesn&rsquo;t change</strong> &mdash; it reads <code>structural</code> at 0.5, the weight the seeds had in <code>shared</code></li>
+                <li><strong>Not published, not decayed</strong> &mdash; the team bundle carries learned memory only, and each build replaces the call graph</li>
+                <li><strong>Still open</strong> &mdash; <code>SYNAPSE_MEMORY.md</code>, written for Claude Code at session start, lists associations from every namespace, other branches&rsquo; included</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.1.md">v4.21.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4210">
             <h2>What&rsquo;s New in v4.21.0 &mdash; an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file&rsquo;s code in the prompt block</h2>
             <p>The task-outcome pilot ran the same agent on 20 real bug fixes with and without NeuralMind, 120 runs, and found no difference: median cost per task +0.0% (95% CI &minus;5.2% to +8.6%), 18 of 20 tasks solved either way. Replaying what NeuralMind gave the agent showed why. Claude Code saw 28 deferred tool names with nothing saying when to use one, and called none in 60 runs. The prompt block named the file the fix changed in 17 of 20 tasks, and the agent still made a median of 4 search or read calls before its first edit. This release changes both:</p>
@@ -209,7 +223,6 @@
                 <li><strong>Scored offline, in CI</strong> &mdash; <code>python -m evals.task_outcome.replay</code> sends each pilot task&rsquo;s prompt through the hook at the fix&rsquo;s parent commit and scores the block against the fix&rsquo;s diff, with no agent and no API cost. A new <em>Prompt-recall replay</em> workflow fails a pull request that touches the recall path below its floors. On this release, of 20 tasks: the block names a file the fix changed in 17 and names it first in 10; it quotes code in 9, from a changed file in 7 of 9, covering changed lines in 2 of 9. The gate was set on these same 20 prompts, so 7 of 9 is a ceiling, not an estimate</li>
                 <li><strong>Measured after: no change in what the agent does</strong> &mdash; an exploratory rerun of the 20 tasks with this release: the agent called no NeuralMind tool in 60 runs, made a median of 4.0 search or read calls before its first edit (4.0 without NeuralMind), and cost &minus;2.1% per task (95% CI &minus;6.9% to +6.5%): no difference shown. Whether NeuralMind helps on a larger, unfamiliar repository with harder fixes is not measured yet</li>
                 <li><strong>Also: an idle association&rsquo;s decay rate relaxes back to the default</strong> &mdash; the blend was computed only at reinforcement, so an association used three times a month apart kept its short learned half-life and was pruned after two idle months; it is now kept after two and pruned within five</li>
-                <li><strong>Also: a feature branch&rsquo;s calls stay on the branch</strong> &mdash; the call and import edges each build seeds went into the <code>shared</code> baseline every branch reads, so a branch&rsquo;s calls were still recalled on <code>main</code> until they decayed; they now go into a <code>structural</code> namespace each build replaces</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md">v4.21.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/check-what-your-agent-is-handed.md">Check what your agent is handed &rarr;</a></p>
         </div>

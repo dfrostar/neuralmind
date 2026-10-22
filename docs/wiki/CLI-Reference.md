@@ -2421,7 +2421,7 @@ merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared  +  0.5 × s
 On the default branch the active namespace *is* `personal` (read at
 1.0×), so behavior is identical to pre-namespace releases. `structural`
 holds the checked-out code's call and import edges and is replaced by
-every build (v4.21.0+), so a feature branch's calls don't reach the
+every build (v4.21.1+), so a feature branch's calls don't reach the
 default branch's recall. Per-namespace decay: `shared` is sticky,
 `personal`/`branch:*` decay at the standard rates, `ephemeral` fades fast
 with no LTP floor, and `structural` doesn't decay. `NEURALMIND_NAMESPACE`

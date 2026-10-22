@@ -695,7 +695,7 @@ def test_seed_from_structural_uses_structural_namespace(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# Call-graph seeds follow the checkout (v4.21.0). They were upserted into
+# Call-graph seeds follow the checkout (v4.21.1). They were upserted into
 # 'shared', which every branch reads and nothing cleared, so a call that
 # existed only on a feature branch stayed in the default branch's recall
 # until it decayed (60-day half-life).
@@ -1384,7 +1384,7 @@ def test_call_count_counts_call_sites_within_one_build(tmp_path):
 def test_removed_call_path_is_dropped_on_rebuild(tmp_path):
     """A call deleted from the code leaves structural_edges and its synapse.
 
-    Until v4.21.0 the stale seeded synapse was left in 'shared' to decay and
+    Through v4.21.0 the stale seeded synapse was left in 'shared' to decay and
     prune; the next build now replaces the whole structural namespace.
     """
     s = _store(tmp_path)
