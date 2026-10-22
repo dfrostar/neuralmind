@@ -383,10 +383,13 @@ the index went on drifting.
 *(v4.21.0+)* After a successful build, at most three lines name the commands
 for whatever isn't wired yet, read the way `neuralmind doctor`'s Wiring
 section reads them: the daemon and the Git hooks first, then the agent. With
-Hermes set up on the machine that's the plugin and its MCP entry; without it,
-and with no agent host wired, `neuralmind install-hooks` (Claude Code) or
-`neuralmind install-mcp --all`. A pin to another project is never offered for
-undoing. When there's room, the `watch --reindex` hint follows. Once
+Hermes set up on the machine that's the plugin and its MCP entry. Without it,
+and with no agent host wired, it's `neuralmind install-hooks <project>` when
+Claude Code is set up (`~/.claude`), else `neuralmind install-mcp <project> --all`
+when an MCP client looks installed, else `neuralmind install-mcp --print`, the
+entry to paste into your client. Commands that take a project name the one just
+built, so they work pasted from the directory the build ran in. A pin to another
+project is never offered for undoing. When there's room, the `watch --reindex` hint follows. Once
 everything is wired, only that hint prints. `NEURALMIND_NO_INIT_HINT=1` still
 turns the closing lines off.
 

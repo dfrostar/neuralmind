@@ -287,13 +287,16 @@ def test_mcp_detected_client_without_the_entry(home, tmp_path):
     assert hermes.wired is False and hermes.fix == "neuralmind install-mcp --client hermes"
 
 
-def test_mcp_disabled_in_hermes(home, tmp_path):
+@pytest.mark.parametrize("key", ["neuralmind", "nm"])
+def test_mcp_disabled_in_hermes(home, tmp_path, key):
     _hermes_home(
         home,
-        "mcp_servers:\n  neuralmind:\n    command: neuralmind-mcp\n    enabled: false\n",
+        f"mcp_servers:\n  {key}:\n    command: neuralmind-mcp\n    enabled: false\n",
     )
     hermes = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (hermes)"]
     assert hermes.wired is False and "disabled" in hermes.detail and hermes.suggest is False
+    # The fix names the entry that is actually there.
+    assert hermes.fix == f"hermes config set mcp_servers.{key}.enabled true"
 
 
 # --------------------------------------------------------------------------- #
@@ -321,9 +324,23 @@ def test_next_steps_on_a_fresh_machine_with_hermes(home, repo):
 
 
 def test_next_steps_without_hermes_offers_one_agent_host(home, repo):
-    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-mcp --all"
+    # No MCP client to write to, so `install-mcp --all` would find none: the
+    # entry to paste is the step that does something.
+    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-mcp --print"
+    # A client that's set up but lacks the entry: --all writes it.
+    (repo / ".cursor").mkdir()
+    (repo / ".cursor" / "mcp.json").write_text("{}")
+    assert wiring.next_steps(repo, "proj")[-1] == "neuralmind install-mcp proj --all"
     (home / ".claude").mkdir()
-    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-hooks"
+    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-hooks ."
+
+
+def test_next_steps_name_the_project_that_was_built(home, repo):
+    # Pasted from the directory build ran in, the commands still wire `repo`.
+    (home / ".claude").mkdir()
+    steps = wiring.next_steps(repo, "../my proj")
+    assert steps[0].endswith("neuralmind init-hook '../my proj'")
+    assert steps[-1] == "neuralmind install-hooks '../my proj'"
 
 
 def test_next_steps_say_nothing_once_wired(home, repo, monkeypatch, capsys):

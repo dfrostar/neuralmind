@@ -333,6 +333,17 @@ class HermesTests(unittest.TestCase):
         self.config.write_text("mcp_servers:\n  nm:\n    command: neuralmind-mcp\n")
         state = mcp_install.registration("hermes", self.proj, hermes_home=self.home)
         self.assertTrue(state.detected and state.registered and not state.disabled)
+        self.assertEqual(state.name, "nm")
+
+    def test_registration_prefers_an_enabled_entry(self) -> None:
+        self.config.write_text(
+            "mcp_servers:\n"
+            "  neuralmind:\n    command: neuralmind-mcp\n    enabled: false\n"
+            "  nm:\n    command: /venv/bin/neuralmind-mcp\n"
+        )
+        state = mcp_install.registration("hermes", self.proj, hermes_home=self.home)
+        self.assertTrue(state.registered and not state.disabled)
+        self.assertEqual(state.name, "nm")
 
     def test_detected_through_hermes_home(self) -> None:
         old = os.environ.get("HERMES_HOME")

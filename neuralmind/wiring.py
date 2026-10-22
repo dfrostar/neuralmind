@@ -24,6 +24,8 @@ import json
 import os
 import re
 import shlex
+import shutil
+import subprocess  # nosec B404 - runs git, by absolute path, with a fixed argument list
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -123,56 +125,36 @@ def daemon_item(timeout: float = 1.0) -> WiringItem:
 # --------------------------------------------------------------------------- #
 # Git hooks
 # --------------------------------------------------------------------------- #
-def _hooks_location(project: Path) -> tuple[Path | None, Path | None]:
-    """Where ``init-hook`` writes hooks for ``project``: ``(hooks dir, repo root)``.
+def _hooks_location(project: Path) -> tuple[Path | None, Path | None, Path | None]:
+    """``(hooks dir init-hook writes, repository root, hooks dir git runs)``.
 
-    The same lookup as the CLI's ``_git_hooks_location``, without creating
-    the directory.
+    The first two are the CLI's ``_git_hooks_location``, without creating the
+    directory; the third honours ``core.hooksPath``. One ``git rev-parse``, by
+    git's absolute path (not one a changed PATH could swap), with a fixed
+    argument list and no shell. All None outside a repository.
     """
     direct = project / ".git" / "hooks"
-    if direct.is_dir():
-        return direct, project
-    import subprocess
-
-    def rev_parse(flag: str) -> str | None:
+    git = shutil.which("git")
+    lines: list[str] = []
+    if git is not None:
+        command = [git, "-C", str(project), "rev-parse", "--show-toplevel"]
+        command += ["--git-common-dir", "--git-path", "hooks"]
         try:
-            out = subprocess.run(
-                ["git", "-C", str(project), "rev-parse", flag],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
+            out = subprocess.run(  # nosec B603 - git by absolute path, fixed arguments, no shell
+                command, capture_output=True, text=True, timeout=10, check=False
             )
+            lines = out.stdout.strip().splitlines() if out.returncode == 0 else []
         except (OSError, subprocess.SubprocessError):
-            return None
-        return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
-
-    top = rev_parse("--show-toplevel")
-    common = rev_parse("--git-common-dir")
-    if not top or not common:
-        return None, None
-    common_path = Path(common) if os.path.isabs(common) else project / common
-    return Path(os.path.normpath(common_path)) / "hooks", Path(top)
-
-
-def _effective_hooks_dir(project: Path) -> Path | None:
-    """The hooks directory git actually runs, honouring ``core.hooksPath``."""
-    import subprocess
-
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(project), "rev-parse", "--git-path", "hooks"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    path = out.stdout.strip()
-    if out.returncode != 0 or not path:
-        return None
-    return Path(os.path.realpath(path if os.path.isabs(path) else project / path))
+            lines = []
+    if len(lines) != 3:
+        # No git to ask: init-hook still writes to a .git/hooks it finds.
+        return (direct, project, None) if direct.is_dir() else (None, None, None)
+    top, common, runs = (
+        Path(os.path.normpath(line if os.path.isabs(line) else project / line)) for line in lines
+    )
+    if direct.is_dir():
+        return direct, project, runs
+    return common / "hooks", top, runs
 
 
 def _managed_block(hook_file: Path) -> str | None:
@@ -189,7 +171,7 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
     """none / partial / full: which of init-hook's five hooks serve this project."""
     name = "Git hooks"
     try:
-        hooks_dir, repo_root = _hooks_location(project)
+        hooks_dir, repo_root, runs = _hooks_location(project)
     except Exception as exc:  # pragma: no cover - diagnostic must never raise
         return WiringItem(name, None, f"could not check ({exc})")
     if hooks_dir is None or repo_root is None:
@@ -198,14 +180,13 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
             None,
             "not a Git repository: rebuild with `neuralmind build` after changes",
         )
-    effective = _effective_hooks_dir(project)
-    if effective is not None and effective != Path(os.path.realpath(hooks_dir)):
+    if runs is not None and os.path.realpath(runs) != os.path.realpath(hooks_dir):
         # init-hook writes the repository's own hooks directory; with
         # core.hooksPath set (husky, a shared hooks repo) git never runs it.
         return WiringItem(
             name,
             False,
-            f"git runs the hooks in {effective} (core.hooksPath), but init-hook writes "
+            f"git runs the hooks in {runs} (core.hooksPath), but init-hook writes "
             f"{hooks_dir}, so NeuralMind's rebuilds never run there; add its blocks to the "
             "hooks git runs, or unset core.hooksPath",
         )
@@ -260,6 +241,15 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
 # --------------------------------------------------------------------------- #
 # Claude Code hooks
 # --------------------------------------------------------------------------- #
+def _read_json(path: Path) -> object | None:
+    """``path`` parsed as JSON; None when it's missing or isn't JSON."""
+    try:
+        data: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data
+
+
 def claude_code_hook_scopes(project: Path) -> list[str]:
     """The settings scopes (``project``, ``global``) holding NeuralMind's hooks.
 
@@ -268,23 +258,13 @@ def claude_code_hook_scopes(project: Path) -> list[str]:
     """
     from .hooks import _is_neuralmind_block, _settings_path
 
-    scopes: list[tuple[str, Path]] = []
-    try:
-        scopes.append(("project", _settings_path("project", str(project))))
-    except Exception:
-        pass
-    try:
-        scopes.append(("global", _settings_path("global")))
-    except Exception:
-        pass
+    scopes = (
+        ("project", _settings_path("project", str(project))),
+        ("global", _settings_path("global")),
+    )
     installed = []
     for label, path in scopes:
-        if not path.exists():
-            continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
+        data = _read_json(path)
         hooks = data.get("hooks") if isinstance(data, dict) else None
         blocks = [
             block
@@ -478,8 +458,9 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
                     WiringItem(
                         label,
                         False,
-                        f"registered in {state.path}, but disabled there (enabled: false)",
-                        fix=f"hermes config set mcp_servers.{mcp_install.SERVER_NAME}.enabled true",
+                        f"mcp_servers.{state.name} in {state.path} starts neuralmind-mcp, but "
+                        "is disabled there (enabled: false)",
+                        fix=f"hermes config set mcp_servers.{state.name}.enabled true",
                         host=True,
                         suggest=False,
                     )
@@ -574,9 +555,18 @@ def next_steps(project: Path, project_arg: str | None = None, limit: int = 2) ->
         except Exception:
             claude_hooks = False
         if state([hermes, *mcp], claude_hooks) == INERT:
-            claude = Path.home() / ".claude"
-            agent.append(
-                "neuralmind install-hooks" if claude.is_dir() else "neuralmind install-mcp --all"
+            # Named with the project, so the commands wire the project just
+            # built from whatever directory they're pasted into.
+            arg = _arg(project, project_arg)
+            detected = any(
+                i.wired is False and i.name.startswith("MCP registration (") for i in mcp
             )
+            if (Path.home() / ".claude").is_dir():
+                agent.append(f"neuralmind install-hooks {arg}")
+            elif detected:
+                agent.append(f"neuralmind install-mcp {arg} --all")
+            else:
+                # No client to write to (--all would find none): the entry to paste.
+                agent.append("neuralmind install-mcp --print")
     lines = [" && ".join(cmds) for cmds in (fresh, agent) if cmds]
     return lines[:limit]

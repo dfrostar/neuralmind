@@ -107,7 +107,8 @@ def _hermes_install():
         spec = importlib.util.spec_from_file_location(
             name, Path(__file__).with_name("hermes_install.py")
         )
-        assert spec and spec.loader
+        if spec is None or spec.loader is None:
+            raise ImportError(f"can't load {name} beside {__file__}") from None
         hermes_install = importlib.util.module_from_spec(spec)
         sys.modules[name] = hermes_install
         spec.loader.exec_module(hermes_install)
@@ -450,7 +451,8 @@ class Registration:
     path: Path
     detected: bool
     registered: bool = False  # an entry, under any name, starts neuralmind-mcp
-    disabled: bool = False  # Hermes: that entry has enabled: false
+    disabled: bool = False  # Hermes: every such entry has enabled: false
+    name: str = ""  # that entry's key, which a fix must name
     unreadable: str = ""  # why the config couldn't be read, so the answer is unknown
 
 
@@ -487,11 +489,18 @@ def registration(client: str, project_dir: Path, hermes_home: Path | None = None
             state.unreadable = why
             return state
     servers = _servers_of(client, config)
-    entries = [servers.get(SERVER_NAME), *servers.values()]
-    entry = next((e for e in entries if isinstance(e, dict) and _launches_neuralmind(e)), None)
-    if entry is not None:
+    matches = [
+        (key, entry)
+        for key, entry in servers.items()
+        if isinstance(entry, dict) and _launches_neuralmind(entry)
+    ]
+    if matches:
+        off = _hermes_entry_disabled if client == "hermes" else (lambda _entry: False)
+        # An enabled entry first, then the name install writes.
+        matches.sort(key=lambda m: (off(m[1]), m[0] != SERVER_NAME))
+        state.name, entry = str(matches[0][0]), matches[0][1]
         state.registered = True
-        state.disabled = client == "hermes" and _hermes_entry_disabled(entry)
+        state.disabled = off(entry)
     return state
 
 
