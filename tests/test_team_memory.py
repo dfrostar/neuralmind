@@ -62,6 +62,23 @@ class TeamMemoryTests(unittest.TestCase):
         self.assertIn("content_hash", bundle)
         self.assertIn("provenance", bundle)
 
+    def test_publish_leaves_out_the_call_graph(self) -> None:
+        # Call-graph seeds live in 'structural' (v4.21.0): each teammate's own
+        # build writes them, so the committed bundle carries only what was
+        # learned from use.
+        store = _store(self.project)
+        self._seed(store)
+        store.persist_structural_edges(
+            [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}]
+        )
+        store.seed_from_structural()
+        publish_team_memory(self.project, store)
+
+        bundle = json.loads(team_bundle_path(self.project).read_text())
+        nodes = {n for e in bundle["synapses"] for n in (e["source"], e["target"])}
+        self.assertIn("auth/handlers.py", nodes)
+        self.assertNotIn("billing.charge", nodes)
+
     def test_fresh_clone_inherits_into_shared_only(self) -> None:
         # Engineer A publishes from their personal memory.
         a = _store(self.project)

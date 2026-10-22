@@ -164,6 +164,41 @@ same factor in SQL for personal, branch and shared memory
 (`TestDecayAppliesTheBlend`, which fails on v4.20.0);
 `TestForgettingInPractice` replays the schedules above.
 
+
+### Also: a feature branch's calls stay on the branch
+
+Every build seeds the call and import edges it finds into the synapse layer,
+so recall can follow the code's structure from the first query. Those seeds
+went into the `shared` baseline, which every branch reads and nothing cleared.
+A call you added on a feature branch was seeded there by the branch's build,
+and after you switched back to `main` it was still recalled, at half weight,
+until it decayed on the shared 60-day half-life. The same went for a call
+deleted from the code.
+
+Seeds now go into a `structural` namespace that every build replaces with the
+graph of the code checked out. After the `post-checkout` hook's rebuild (or any
+build) on `main`, a feature branch's calls are gone from recall. Recall reads
+`structural` at 0.5, the weight the seeds had in `shared`, so recall on a clean
+`main` doesn't change. `structural` doesn't decay, is never written by use and
+isn't published to the team bundle: each teammate's build writes their own.
+`NEURALMIND_NAMESPACE` or `memory_namespace` naming it is ignored.
+
+Each seeding pass deletes the single-activation `shared` copies of the pairs it
+seeds, so a current call isn't counted twice. A branch-only call already in
+`shared` can't be told apart from team memory, so it stays and fades on its
+60-day half-life.
+
+Still open: the `SYNAPSE_MEMORY.md` file written for Claude Code at session
+start lists the strongest associations from every namespace, other branches'
+included. Recall doesn't read them; the agent does see the file.
+
+Tests: in `tests/test_synapses.py`, a branch-only call is gone from the default
+branch's recall after switching back (on v4.20.0 it was still recalled), a
+deleted call is dropped on rebuild, `structural` reads at the weight `shared`
+seeds had and doesn't decay, and seeding removes legacy `shared` seeds but not
+team memory; `tests/test_synapse_namespaces.py` ignores a `structural`
+override; `tests/test_team_memory.py` publishes no call-graph seeds.
+
 ---
 
 ## Intel macOS and Windows ARM work again out of the box

@@ -19,11 +19,19 @@ recall reads a transparent, weighted merge.
 
 ## How the merged view works (the part worth understanding)
 
-Reads default to **active namespace × 1.0 + personal × 0.8 + shared × 0.5**
-— three published constants (`W_BRANCH` / `W_PERSONAL` / `W_SHARED` in
-`neuralmind/synapses.py`), summed per edge. On the default branch the active
-namespace *is* `personal`, so the merged view is identical to pre-namespace
-behavior — nothing about your current setup changes until you branch.
+Reads default to **active namespace × 1.0 + personal × 0.8 + shared × 0.5**,
+plus **structural × 0.5** — published constants (`W_BRANCH` / `W_PERSONAL` /
+`W_SHARED` / `W_STRUCTURAL` in `neuralmind/synapses.py`), summed per edge. On
+the default branch the active namespace *is* `personal`, so the merged view is
+identical to pre-namespace behavior — nothing about your current setup changes
+until you branch.
+
+`structural` is the call graph, not memory: the call and import edges of the
+code checked out, which every build replaces (v4.21.0+). A call you add on
+`feature-x` is in it while you build there and gone after the next build on
+`main` (the `post-checkout` hook from `neuralmind init-hook .` runs that build).
+Before v4.21.0 these edges were seeded into `shared`, so a branch's calls stayed
+in `main`'s recall until they decayed.
 
 Don't take the weighting on faith — trace it:
 

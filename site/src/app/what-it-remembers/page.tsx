@@ -69,14 +69,15 @@ const answers: Answer[] = [
         q: 'Will a feature branch pollute the memory main uses?',
         label: 'Mostly not, since v0.24.0',
         tone: 'partly',
-        short: 'Mostly not. On any branch other than the default, what NeuralMind learns from your work goes into that branch’s own memory namespace, with no setup. The exception is the call graph: call and import edges a build finds go into the shared baseline every branch reads.',
+        short: 'Mostly not. On any branch other than the default, what NeuralMind learns from your work goes into that branch’s own memory namespace, with no setup, and since v4.21.0 the call graph follows the checkout too, so recall on the default branch doesn’t see a feature branch. The exception is the memory file NeuralMind writes for Claude Code.',
         points: [
             'On a non-default branch, every association learned from use is written to `branch:<name>`. The default branch comes from `origin/HEAD`, or `main` / `master` when there is no remote. A detached HEAD writes to `personal`.',
-            'Recall reads a weighted merge: the branch you are on at full weight, your `personal` memory at 0.8 and the team’s `shared` baseline at 0.5. On the default branch the active namespace is `personal` itself, so nothing changes until you branch.',
+            'Recall reads a weighted merge: the branch you are on at full weight, your `personal` memory at 0.8, and the team’s `shared` baseline and the code’s call graph at 0.5 each. On the default branch the active namespace is `personal` itself, so nothing changes until you branch.',
+            'The call and import edges a build finds go into a `structural` namespace that every build replaces with the graph of the code checked out (v4.21.0+). A call you add on a feature branch is gone after the next build on the default branch.',
             'The code index follows the checkout too: `neuralmind init-hook .` installs a post-checkout hook that rebuilds it after a branch switch (v4.13.0+).',
             'To pin a namespace instead, set `NEURALMIND_NAMESPACE`, or `memory_namespace` in `neuralmind-backend.yaml`.',
         ],
-        limit: 'Call and import edges are the exception. Every build seeds them into the `shared` baseline, which every branch reads at half weight, so a call that exists only on a feature branch is still recalled after you switch back, fading on the shared 60-day half-life. The code index itself is rebuilt for whatever is checked out. A branch’s learned memory is not folded into `personal` when the branch merges, so the default branch does not inherit it, and an abandoned branch’s namespace stays in the store until you drop it.',
+        limit: 'The memory file NeuralMind writes for Claude Code at session start (`SYNAPSE_MEMORY.md`) lists the strongest associations from every namespace, other branches’ included: recall doesn’t read them, but the agent sees that file. Call edges a branch’s build seeded into the `shared` baseline before v4.21.0 fade on its 60-day half-life. A branch’s learned memory is not folded into `personal` when the branch merges, so the default branch does not inherit it, and an abandoned branch’s namespace stays in the store until you drop it.',
         check: ['neuralmind memory inspect .', 'neuralmind memory reset . --namespace branch:feature-x'],
         sources: [
             { label: 'namespaces.py', href: blob('neuralmind/namespaces.py') },
