@@ -282,3 +282,63 @@ class TestDecayFunctionWithLearnedRate:
         assert result is not None
         lo, hi = learned_decay.default_bounds(tmp_path)
         assert lo <= result <= hi
+
+
+class TestForgettingInPractice:
+    """How long a learned association lasts, from first use to idle.
+
+    The answer to "will it forget code I haven't touched?" on the marketing
+    site (site/src/app/what-it-remembers/page.tsx) quotes these three cases.
+    Change them together: if decay tuning moves, the page has to say so.
+
+    Each case reinforces one pair on a schedule, running a decay pass before
+    each use the way the SessionStart hook does, then leaves it idle. The
+    half-life is learned at each reinforcement, so a pair keeps the rate its
+    last use gave it while it sits idle.
+    """
+
+    DAY = 86400.0
+
+    def _use_then_idle(self, tmp_path, monkeypatch, every_days, uses, idle_days):
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        # compute_edge_half_life reads the wall clock; pin it to the schedule.
+        clock = [1_700_000_000.0]
+        monkeypatch.setattr(learned_decay.time, "time", lambda: clock[0])
+        store = SynapseStore(default_db_path(tmp_path))
+        start = clock[0]
+        for i in range(uses):
+            clock[0] = start + i * every_days * self.DAY
+            store.decay(now=clock[0])
+            store.reinforce(["api_handler", "db_model"], now=clock[0])
+        with store._connect() as conn:
+            half_life = conn.execute("SELECT half_life_days FROM synapses").fetchone()[0]
+        clock[0] += idle_days * self.DAY
+        store.decay(now=clock[0])
+        with store._connect() as conn:
+            row = conn.execute("SELECT weight FROM synapses").fetchone()
+        return half_life, (row[0] if row else None)
+
+    def test_daily_use_outlasts_the_default_half_life(self, tmp_path, monkeypatch) -> None:
+        from neuralmind.synapses import HALF_LIFE_DAYS
+
+        half_life, weight = self._use_then_idle(tmp_path, monkeypatch, 1, 10, 14)
+        assert HALF_LIFE_DAYS < 60 < half_life
+        # Two idle weeks keep more than 80% of a full-strength edge.
+        assert weight > 0.8
+
+    def test_five_uses_keep_the_ltp_floor_however_long_idle(self, tmp_path, monkeypatch) -> None:
+        from neuralmind.synapses import LTP_FLOOR, LTP_THRESHOLD
+
+        assert LTP_THRESHOLD <= 6
+        _, weight = self._use_then_idle(tmp_path, monkeypatch, 7, 6, 365)
+        assert weight == pytest.approx(LTP_FLOOR)
+
+    def test_rare_use_learns_a_short_half_life_and_is_pruned(self, tmp_path, monkeypatch) -> None:
+        from neuralmind.synapses import HALF_LIFE_DAYS
+
+        half_life, weight = self._use_then_idle(tmp_path, monkeypatch, 30, 3, 60)
+        # Three uses a month apart: shorter than the 30-day default, not longer.
+        assert half_life < 15 < HALF_LIFE_DAYS
+        # Two idle months later the pair is gone.
+        assert weight is None
