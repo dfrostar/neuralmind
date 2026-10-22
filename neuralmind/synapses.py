@@ -30,6 +30,9 @@ different kinds of memory don't pollute each other:
 - ``branch:<name>`` — per-git-branch working memory.
 - ``ephemeral`` — session-scoped scratch; decays fast and is cleared at
   session boundaries.
+- ``structural`` — the call and import edges of the checked-out code,
+  replaced by every build (``seed_from_structural``); never decayed,
+  published or written by use.
 
 Namespaces are plain strings (no enum table) so import/export and new
 kinds stay trivial. Writes go to the store's active namespace (the
@@ -102,6 +105,7 @@ SCHEMA_VERSION = 1
 DEFAULT_NAMESPACE = "personal"
 SHARED_NAMESPACE = "shared"
 EPHEMERAL_NAMESPACE = "ephemeral"
+STRUCTURAL_NAMESPACE = "structural"
 BRANCH_NAMESPACE_PREFIX = "branch:"
 
 # The LTP criterion decay() and decay_node() apply to a stored row: enough
@@ -118,7 +122,7 @@ LTP_ROW_PARAMS = (LTP_THRESHOLD, LTP_FLOOR, EPHEMERAL_NAMESPACE)
 # edge:
 #
 #   merged_weight = W_BRANCH * w_active + W_PERSONAL * w_personal
-#                 + W_SHARED * w_shared
+#                 + W_SHARED * w_shared + W_STRUCTURAL * w_structural
 #
 # - The *active* namespace (whatever the store writes to — a feature
 #   branch, ``ephemeral``, or ``personal`` itself on the default branch)
@@ -127,6 +131,9 @@ LTP_ROW_PARAMS = (LTP_THRESHOLD, LTP_FLOOR, EPHEMERAL_NAMESPACE)
 #   W_PERSONAL — useful long-term priors, slightly behind the branch.
 # - ``shared`` reads at W_SHARED — imported team baseline, never louder
 #   than your own memory.
+# - ``structural`` reads at W_STRUCTURAL — the checked-out code's call and
+#   import edges. Equal to W_SHARED because these seeds lived in ``shared``
+#   through v4.21.0, so moving them changed no merged weight.
 #
 # On the default branch the active namespace *is* personal, so it reads
 # at W_BRANCH (1.0) and merged behavior is identical to the
@@ -135,6 +142,7 @@ LTP_ROW_PARAMS = (LTP_THRESHOLD, LTP_FLOOR, EPHEMERAL_NAMESPACE)
 W_BRANCH = 1.0
 W_PERSONAL = 0.8
 W_SHARED = 0.5
+W_STRUCTURAL = 0.5
 
 # --------------------------------------------------------------------------- #
 # Structural edges — persisted call/import/inherits graph (Tier 1, BRD §4.1)
@@ -321,13 +329,15 @@ def merge_weight_for(namespace: str, active_namespace: str) -> float:
 
     See the MERGED-READ WEIGHTING comment above the W_* constants: the
     active namespace reads at W_BRANCH, non-active ``personal`` at
-    W_PERSONAL, ``shared`` at W_SHARED. Any other merged-in namespace
-    reads at W_PERSONAL.
+    W_PERSONAL, ``shared`` at W_SHARED, ``structural`` at W_STRUCTURAL.
+    Any other merged-in namespace reads at W_PERSONAL.
     """
     if namespace == active_namespace:
         return W_BRANCH
     if namespace == SHARED_NAMESPACE:
         return W_SHARED
+    if namespace == STRUCTURAL_NAMESPACE:
+        return W_STRUCTURAL
     return W_PERSONAL
 
 
@@ -617,12 +627,14 @@ class SynapseStore:
     def _read_namespaces(self, namespaces: list[str] | None) -> list[tuple[str, float]]:
         """Resolve a read's namespace set to ``[(namespace, multiplier), ...]``.
 
-        ``None`` selects the merged default — active + personal + shared,
-        each at its documented W_* multiplier. An explicit list reads only
-        those namespaces at raw weight (multiplier 1.0).
+        ``None`` selects the merged default — active + personal + shared +
+        structural, each at its documented W_* multiplier. An explicit list
+        reads only those namespaces at raw weight (multiplier 1.0).
         """
         if namespaces is None:
-            merged = dict.fromkeys((self.namespace, DEFAULT_NAMESPACE, SHARED_NAMESPACE))
+            merged = dict.fromkeys(
+                (self.namespace, DEFAULT_NAMESPACE, SHARED_NAMESPACE, STRUCTURAL_NAMESPACE)
+            )
             return [(ns, merge_weight_for(ns, self.namespace)) for ns in merged]
         return [(ns, 1.0) for ns in dict.fromkeys(namespaces) if ns]
 
@@ -1106,11 +1118,12 @@ class SynapseStore:
     def _default_namespaces(self) -> list[str]:
         """Return namespaces whose rows should decay at the default rate.
 
-        These are all stored namespaces except the two special ones
-        (``shared`` and ``ephemeral``) which have their own dedicated
-        handlers. Includes ``personal``, ``branch:*`` and any custom
-        namespace. Scans both ``synapses`` and ``synapse_transitions``
-        because one signal may exist without the other.
+        These are all stored namespaces except the special ones: ``shared``
+        and ``ephemeral`` have their own dedicated handlers, and
+        ``structural`` doesn't decay (every build replaces it). Includes
+        ``personal``, ``branch:*`` and any custom namespace. Scans both
+        ``synapses`` and ``synapse_transitions`` because one signal may
+        exist without the other.
         """
         with self._connect() as conn:
             cur = conn.execute(
@@ -1119,9 +1132,9 @@ class SynapseStore:
                     SELECT namespace FROM synapses
                     UNION
                     SELECT namespace FROM synapse_transitions
-                ) WHERE namespace NOT IN (?, ?)
+                ) WHERE namespace NOT IN (?, ?, ?)
                 """,
-                (SHARED_NAMESPACE, EPHEMERAL_NAMESPACE),
+                (SHARED_NAMESPACE, EPHEMERAL_NAMESPACE, STRUCTURAL_NAMESPACE),
             )
             return [row[0] for row in cur.fetchall()]
 
@@ -1530,13 +1543,15 @@ class SynapseStore:
         activation_count: int,
         last_activated: float,
         created_at: float,
+        namespace: str = SHARED_NAMESPACE,
     ) -> tuple[str, str, str, float, int, float, float]:
-        """Canonicalize undirected edge direction and add ``shared`` namespace.
+        """Canonicalize undirected edge direction and attach a namespace.
 
         Synapses are undirected and stored under ``node_a < node_b`` — this
-        helper enforces that ordering and attaches the ``SHARED_NAMESPACE``
-        string so seeded edges land in the slower-decaying shared pool
-        (60-day half-life) instead of the personal one.
+        helper enforces that ordering. The namespace defaults to
+        ``SHARED_NAMESPACE`` so document seeds land in the slower-decaying
+        shared pool (60-day half-life) instead of the personal one;
+        ``seed_from_structural`` passes ``STRUCTURAL_NAMESPACE``.
 
         Returns a 7-tuple matching the ``synapses`` table column order:
         ``(node_a, node_b, namespace, weight, activation_count,
@@ -1547,7 +1562,7 @@ class SynapseStore:
         return (
             node_a,
             node_b,
-            SHARED_NAMESPACE,
+            namespace,
             weight,
             activation_count,
             last_activated,
@@ -1555,10 +1570,10 @@ class SynapseStore:
         )
 
     def seed_from_structural(self, now: float | None = None) -> int:
-        """Seed synapse weights from the ``structural_edges`` table.
+        """Mirror the ``structural_edges`` table into the ``structural`` namespace.
 
-        For each ``(caller, callee)`` row in ``structural_edges``, create or
-        reinforce an undirected synapse edge using the weight formula::
+        For each ``(caller, callee)`` row in ``structural_edges``, write an
+        undirected synapse edge using the weight formula::
 
             weight = clamp(
                 STRUCTURAL_BASE_WEIGHT
@@ -1566,18 +1581,27 @@ class SynapseStore:
                 STRUCTURAL_MAX_WEIGHT,
             )
 
-        Seeded edges land in ``shared`` namespace with ``activation_count =
-        1``. They decay at the namespace's half-life (60 days) and are NOT
-        LTP-protected, so a path that disappears from the graph will
-        eventually prune after enough builds skip it.
+        The namespace is replaced, not merged: every pass clears it and writes
+        the call graph of the code checked out now, so an edge that exists
+        only on a feature branch is gone after the next build on another
+        branch. Through v4.21.0 seeds were upserted into ``shared``, which every
+        branch reads and nothing cleared, so a branch's call edges leaked into
+        the default branch's recall until they decayed (60-day half-life).
 
-        Idempotent: re-running ``build()`` re-seeds (refreshing
-        ``last_activated``; weight is clamped at ``STRUCTURAL_MAX_WEIGHT``)
-        but leaves ``activation_count`` alone — seeding is not an activation,
-        so rebuilding an unchanged graph never makes its edges LTP-protected.
+        Seeded rows have ``activation_count = 1`` (seeding is not an
+        activation, so rebuilding an unchanged graph never makes its edges
+        LTP-protected) and don't decay: ``decay()`` skips this namespace,
+        since the next build replaces it.
 
-        Returns the number of synapse edges upserted (0 if the structural
-        table is empty, e.g. a fresh project with no graph).
+        Each pass also deletes the ``shared`` rows with at most one activation
+        for the pairs it seeds: the copies earlier releases wrote there, or
+        that a team bundle published by one carried in, which would otherwise
+        double those pairs' weight in a merged read. A ``shared`` row
+        activated more than once is team memory, not a seed, and stays.
+
+        Returns the number of structural rows seeded (0 when the table is
+        empty, e.g. a fresh project with no graph; the namespace is then
+        empty too).
         """
         ts = now if now is not None else time.time()
 
@@ -1586,9 +1610,6 @@ class SynapseStore:
                 "SELECT caller, callee, call_count FROM structural_edges"
             ).fetchall()
 
-        if not structural_rows:
-            return 0
-
         rows: list[tuple[str, str, str, float, int, float, float]] = []
         for caller, callee, call_count in structural_rows:
             pair = _canonical(caller, callee)
@@ -1596,26 +1617,43 @@ class SynapseStore:
                 continue
             raw = STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(call_count + 1)
             weight = min(raw, STRUCTURAL_MAX_WEIGHT)
-            rows.append(self._canonical_synapse_row(pair[0], pair[1], weight, 1, ts, ts))
-
-        if not rows:
-            return 0
+            rows.append(
+                self._canonical_synapse_row(
+                    pair[0], pair[1], weight, 1, ts, ts, namespace=STRUCTURAL_NAMESPACE
+                )
+            )
 
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
-                conn.executemany(
-                    """
-                    INSERT INTO synapses(
-                        node_a, node_b, namespace, weight, activation_count,
-                        last_activated, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
-                        weight = MAX(synapses.weight, excluded.weight),
-                        last_activated = excluded.last_activated
-                    """,
-                    rows,
-                )
+                conn.execute("DELETE FROM synapses WHERE namespace = ?", (STRUCTURAL_NAMESPACE,))
+                if rows:
+                    # A pair can appear more than once (a call and an import,
+                    # or calls both ways): keep its strongest weight.
+                    conn.executemany(
+                        """
+                        INSERT INTO synapses(
+                            node_a, node_b, namespace, weight, activation_count,
+                            last_activated, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                            weight = MAX(synapses.weight, excluded.weight)
+                        """,
+                        rows,
+                    )
+                    conn.execute(
+                        """
+                        DELETE FROM synapses
+                        WHERE namespace = ? AND activation_count <= 1
+                          AND EXISTS (
+                              SELECT 1 FROM synapses AS seeded
+                              WHERE seeded.namespace = ?
+                                AND seeded.node_a = synapses.node_a
+                                AND seeded.node_b = synapses.node_b
+                          )
+                        """,
+                        (SHARED_NAMESPACE, STRUCTURAL_NAMESPACE),
+                    )
                 conn.execute("COMMIT")
             except Exception:
                 conn.execute("ROLLBACK")

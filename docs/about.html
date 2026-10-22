@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4211">
+            <h2>What&rsquo;s New in v4.21.1 &mdash; a feature branch&rsquo;s calls stay on the branch</h2>
+            <p>Every build seeds the call and import edges it finds into the synapse layer. They went into the <code>shared</code> baseline every branch reads, and nothing cleared them, so a call added on a feature branch was still recalled on <code>main</code> until it decayed.</p>
+            <ul>
+                <li><strong>A <code>structural</code> namespace each build replaces</strong> &mdash; it holds the call graph of the code checked out, so after the next build on <code>main</code> a branch&rsquo;s calls are gone from recall</li>
+                <li><strong>Recall on a clean <code>main</code> doesn&rsquo;t change</strong> &mdash; it reads <code>structural</code> at 0.5, the weight the seeds had in <code>shared</code></li>
+                <li><strong>Not published, not decayed</strong> &mdash; the team bundle carries learned memory only, and each build replaces the call graph</li>
+                <li><strong>Still open</strong> &mdash; <code>SYNAPSE_MEMORY.md</code>, written for Claude Code at session start, lists associations from every namespace, other branches&rsquo; included</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.1.md">v4.21.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4210">
             <h2>What&rsquo;s New in v4.21.0 &mdash; an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file&rsquo;s code in the prompt block</h2>
             <p>The task-outcome pilot ran the same agent on 20 real bug fixes with and without NeuralMind, 120 runs, and found no difference: median cost per task +0.0% (95% CI &minus;5.2% to +8.6%), 18 of 20 tasks solved either way. Replaying what NeuralMind gave the agent showed why. Claude Code saw 28 deferred tool names with nothing saying when to use one, and called none in 60 runs. The prompt block named the file the fix changed in 17 of 20 tasks, and the agent still made a median of 4 search or read calls before its first edit. This release changes both:</p>

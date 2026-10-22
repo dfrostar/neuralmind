@@ -15,6 +15,7 @@ from neuralmind.synapses import (
     PRUNE_THRESHOLD,
     SHARED_NAMESPACE,
     STRUCTURAL_MAX_WEIGHT,
+    STRUCTURAL_NAMESPACE,
     TRANSITION_PRUNE_THRESHOLD,
     TRANSITION_WEIGHT_CAP,
     WEIGHT_CAP,
@@ -657,12 +658,12 @@ def test_seed_from_structural_weight_capped(tmp_path):
         conn.execute("UPDATE structural_edges SET call_count = 50000 WHERE caller = 'A'")
     count = s.seed_from_structural()
     assert count == 1
-    # Read shared namespace raw so we test the stored weight, not the merged
-    # view (which scales by W_SHARED=0.5).
+    # Read the structural namespace raw so we test the stored weight, not the
+    # merged view (which scales by W_STRUCTURAL=0.5).
     with s._connect() as conn:
         raw_weight = conn.execute(
             "SELECT weight FROM synapses WHERE namespace = ?",
-            (SHARED_NAMESPACE,),
+            (STRUCTURAL_NAMESPACE,),
         ).fetchone()[0]
     assert raw_weight == pytest.approx(STRUCTURAL_MAX_WEIGHT)
 
@@ -682,16 +683,101 @@ def test_seed_from_structural_idempotent(tmp_path):
     assert s.edges()[0][3] == 1  # activation_count not inflated by re-seeding
 
 
-def test_seed_from_structural_uses_shared_namespace(tmp_path):
-    """Seeded edges should land in 'shared' namespace."""
+def test_seed_from_structural_uses_structural_namespace(tmp_path):
+    """Seeded edges land in 'structural', which no branch writes by use."""
     s = _store(tmp_path)
     edges = [{"source": "A", "target": "B", "relation": "calls"}]
     s.persist_structural_edges(edges)
     s.seed_from_structural()
-    # Check namespace via raw SQL
     with s._connect() as conn:
         ns = conn.execute("SELECT namespace FROM synapses WHERE node_a = 'A'").fetchone()[0]
-    assert ns == "shared"
+    assert ns == STRUCTURAL_NAMESPACE
+
+
+# --------------------------------------------------------------------------- #
+# Call-graph seeds follow the checkout (v4.21.1). They were upserted into
+# 'shared', which every branch reads and nothing cleared, so a call that
+# existed only on a feature branch stayed in the default branch's recall
+# until it decayed (60-day half-life).
+# --------------------------------------------------------------------------- #
+
+MAIN_GRAPH = [{"source": "billing.charge", "target": "stripe.call", "relation": "calls"}]
+BRANCH_GRAPH = MAIN_GRAPH + [
+    {"source": "billing.charge", "target": "audit.log", "relation": "calls"}
+]
+
+
+def test_branch_only_call_is_gone_after_switching_back(tmp_path):
+    main = SynapseStore(tmp_path / "synapses.db", namespace="personal")
+    branch = SynapseStore(tmp_path / "synapses.db", namespace="branch:feature-x")
+
+    main.persist_structural_edges(MAIN_GRAPH)  # build on main
+    main.seed_from_structural()
+    branch.persist_structural_edges(BRANCH_GRAPH)  # checkout feature-x, rebuild
+    branch.seed_from_structural()
+    assert "audit.log" in dict(branch.neighbors("billing.charge"))
+
+    main.persist_structural_edges(MAIN_GRAPH)  # back on main, rebuild
+    main.seed_from_structural()
+    assert [n for n, _ in main.neighbors("billing.charge")] == ["stripe.call"]
+    with main._connect() as conn:
+        left = conn.execute(
+            "SELECT COUNT(*) FROM synapses WHERE 'audit.log' IN (node_a, node_b)"
+        ).fetchone()[0]
+    assert left == 0, "the branch-only call left a row in some namespace"
+
+
+def test_structural_reads_at_the_weight_shared_seeds_had(tmp_path):
+    """Moving the seeds out of 'shared' changes no merged weight on main."""
+    from neuralmind.synapses import W_SHARED, W_STRUCTURAL
+
+    assert W_STRUCTURAL == W_SHARED
+    s = _store(tmp_path)
+    s.persist_structural_edges(MAIN_GRAPH)
+    s.seed_from_structural()
+    with s._connect() as conn:
+        raw = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert dict(s.neighbors("billing.charge"))["stripe.call"] == pytest.approx(W_SHARED * raw)
+
+
+def test_seeding_removes_legacy_shared_seeds_but_not_team_memory(tmp_path):
+    s = _store(tmp_path)
+    # Rows an earlier release seeded into 'shared' (or a team bundle carried
+    # in): one for a call still in the code, one for a call no longer in it.
+    s.import_edges(
+        [("billing.charge", "stripe.call", 0.29, 1), ("old.a", "old.b", 0.29, 1)],
+        namespace=SHARED_NAMESPACE,
+    )
+    # Team memory on a pair that is also a call: activated more than once.
+    s.import_edges([("audit.log", "billing.charge", 0.9, 4)], namespace=SHARED_NAMESPACE)
+    s.persist_structural_edges(BRANCH_GRAPH)
+    s.seed_from_structural()
+
+    shared = {(a, b) for a, b, *_ in s.edges(namespaces=[SHARED_NAMESPACE])}
+    # The legacy copy of a current call is gone (structural now holds it);
+    # a stale one can't be told from team memory, so it stays and decays.
+    assert ("billing.charge", "stripe.call") not in shared
+    assert ("old.a", "old.b") in shared
+    assert ("audit.log", "billing.charge") in shared
+
+
+def test_structural_namespace_does_not_decay(tmp_path):
+    s = _store(tmp_path)
+    s.persist_structural_edges(MAIN_GRAPH)
+    s.seed_from_structural(now=time.time())
+    before = s.edges(namespaces=[STRUCTURAL_NAMESPACE])
+    s.decay(now=time.time() + 365 * 86400)
+    assert s.edges(namespaces=[STRUCTURAL_NAMESPACE]) == before
+
+
+def test_empty_graph_empties_the_structural_namespace(tmp_path):
+    s = _store(tmp_path)
+    s.persist_structural_edges(MAIN_GRAPH)
+    s.seed_from_structural()
+    with s._connect() as conn:
+        conn.execute("DELETE FROM structural_edges")
+    assert s.seed_from_structural() == 0
+    assert s.edges(namespaces=[STRUCTURAL_NAMESPACE]) == []
 
 
 # --------------------------------------------------------------------------- #
@@ -1280,7 +1366,7 @@ def test_rebuilds_do_not_make_structural_edges_ltp(tmp_path):
     with s._connect() as conn:
         weight, count = conn.execute(
             "SELECT weight, activation_count FROM synapses WHERE namespace = ?",
-            (SHARED_NAMESPACE,),
+            (STRUCTURAL_NAMESPACE,),
         ).fetchone()
     assert count == 1 < LTP_THRESHOLD
     assert weight == pytest.approx(STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(2))
@@ -1295,8 +1381,12 @@ def test_call_count_counts_call_sites_within_one_build(tmp_path):
     assert _structural_rows(s) == [("a", "b", "call", 3)]
 
 
-def test_removed_call_path_is_not_reseeded(tmp_path):
-    """A call deleted from the code drops out of structural_edges on rebuild."""
+def test_removed_call_path_is_dropped_on_rebuild(tmp_path):
+    """A call deleted from the code leaves structural_edges and its synapse.
+
+    Through v4.21.0 the stale seeded synapse was left in 'shared' to decay and
+    prune; the next build now replaces the whole structural namespace.
+    """
     s = _store(tmp_path)
     t0 = time.time() - 86400
     s.persist_structural_edges(
@@ -1308,12 +1398,7 @@ def test_removed_call_path_is_not_reseeded(tmp_path):
     s.seed_from_structural()
 
     assert _structural_rows(s) == [("other.a", "other.b", "call", 1)]
-    with s._connect() as conn:
-        last = conn.execute(
-            "SELECT last_activated FROM synapses WHERE node_a = 'billing.charge'"
-        ).fetchone()[0]
-    # The stale seeded synapse is left to decay and prune; it is not refreshed.
-    assert last == pytest.approx(t0)
+    assert [(a, b) for a, b, *_ in s.edges()] == [("other.a", "other.b")]
 
 
 def test_empty_graph_does_not_wipe_structural_edges(tmp_path):
