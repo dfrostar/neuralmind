@@ -23,7 +23,8 @@ for `audit verify`, `tests/test_audit_checkpoint.py` for `audit keygen`,
 `audit checkpoint` and `audit verify` against checkpoints,
 `tests/test_audit_forward.py` for `audit forward` reaching its target,
 `tests/test_hardening.py` for `hardening` passing every rule,
-`tests/test_cli.py` (`TestCLIDemo`, `TestCLIDemoOffline`) for `demo`).
+`tests/test_cli.py` (`TestCLIDemo`, `TestCLIDemoOffline`,
+`TestCLIDemoWithoutTurbovec`) for `demo`).
 """
 
 from __future__ import annotations

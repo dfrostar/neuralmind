@@ -1639,7 +1639,11 @@ downloads nothing. Before v4.19.0 its first run downloaded the model (about
 90 MB), and failed with a traceback offline. With the model on disk, it uses
 the model. If this install can't use the bundled index (a turbovec release too
 old to read it, say), the demo falls back to building with the model, which
-downloads it once. The token counts use tiktoken; where its vocabulary can't be
+downloads it once. The bundled index is a turbovec index, so the demo runs
+offline only where turbovec installs: Linux, Apple Silicon macOS and 64-bit
+Windows. On Intel macOS and Windows ARM the install gets ChromaDB instead, and
+the demo builds the sample with ChromaDB, which downloads the model once; with
+neither installed it exits 1 and names the package to install. The token counts use tiktoken; where its vocabulary can't be
 downloaded, they are estimated at about 4 characters a token, and the demo
 says so.
 

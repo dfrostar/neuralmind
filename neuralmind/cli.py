@@ -5400,13 +5400,21 @@ def cmd_demo(args):
     disk, the demo embeds its questions from vectors shipped with the package
     (``_demo_report.BundledQueryEmbedder``) instead of downloading the model,
     and ranks exactly as it would with it.
+
+    The bundled index is a turbovec index, and turbovec only ships on Linux,
+    Apple Silicon macOS and 64-bit Windows. Elsewhere (Intel macOS, Windows ARM)
+    pyproject installs ChromaDB instead, and the demo builds the sample project
+    with it, which downloads the embedding model once.
     """
     import contextlib
+    import importlib.util
     import shutil
     import tempfile
+    import warnings
     from importlib import resources
 
     from neuralmind import _demo_report
+    from neuralmind.backend_manager import turbovec_available
     from neuralmind.core import NeuralMind
     from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
     from neuralmind.turbovec_backend import embed_fn_override
@@ -5429,6 +5437,19 @@ def cmd_demo(args):
         )
         sys.exit(1)
 
+    # None: the default (turbovec) backend, served from the bundled index.
+    backend = None
+    if not turbovec_available():
+        if importlib.util.find_spec("chromadb") is None:
+            print(
+                "demo failed: neither turbovec nor ChromaDB is installed. turbovec ships "
+                "only for Linux, Apple Silicon macOS and 64-bit Windows; elsewhere install "
+                'ChromaDB with `pip install "neuralmind[chromadb]"` and rerun.',
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        backend = "chroma"
+
     keep = bool(getattr(args, "keep", False))
     workdir = tempfile.mkdtemp(prefix="neuralmind-demo-")
     fixture_dir = Path(workdir) / "sample_project"
@@ -5440,17 +5461,18 @@ def cmd_demo(args):
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
             _copy_demo_fixture(Path(src), fixture_dir)
-        with resources.as_file(prebuilt_root) as prebuilt:
-            prebuilt = Path(prebuilt)
-            # The bundled vector index: build() finds every node already
-            # embedded, so it needs no model.
-            shutil.copytree(
-                prebuilt / "neuralmind_turbovec",
-                fixture_dir / ".neuralmind" / "neuralmind_turbovec",
-            )
-            bundled = None
-            if OnnxMiniLMEmbedder().local_model_dir() is None:
-                bundled = _demo_report.BundledQueryEmbedder(prebuilt / "query_vectors.json")
+        bundled = None
+        if backend is None:
+            with resources.as_file(prebuilt_root) as prebuilt:
+                prebuilt = Path(prebuilt)
+                # The bundled vector index: build() finds every node already
+                # embedded, so it needs no model.
+                shutil.copytree(
+                    prebuilt / "neuralmind_turbovec",
+                    fixture_dir / ".neuralmind" / "neuralmind_turbovec",
+                )
+                if OnnxMiniLMEmbedder().local_model_dir() is None:
+                    bundled = _demo_report.BundledQueryEmbedder(prebuilt / "query_vectors.json")
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
@@ -5460,16 +5482,43 @@ def cmd_demo(args):
                     "so nothing is downloaded. `neuralmind build` on your own code "
                     "downloads the embedding model (about 90 MB) once."
                 )
+        if backend is not None:
+            print(
+                "[demo] turbovec isn't installed (it ships only for Linux, Apple Silicon "
+                "macOS and 64-bit Windows), so the bundled index can't be used; building "
+                "the sample project with ChromaDB instead, which downloads the embedding "
+                "model once.",
+                file=sys.stderr,
+            )
 
         def build_and_report(force: bool) -> None:
-            result = NeuralMind(str(fixture_dir)).build(force=force)
-            if not result.get("success"):
+            with warnings.catch_warnings():
+                # The chroma backend's deprecation warning is about configuring
+                # it, which the demo user didn't do.
+                warnings.simplefilter("ignore", DeprecationWarning)
+                result = NeuralMind(str(fixture_dir), backend_type=backend).build(force=force)
+                if not result.get("success"):
+                    print(
+                        f"demo failed during build: {result.get('error', 'unknown error')}",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                _demo_report.run_demo_report(
+                    fixture_dir, header_label="bundled sample_project", backend=backend
+                )
+
+        if backend is not None:
+            try:
+                build_and_report(force=False)
+            except Exception as exc:  # noqa: BLE001 - the demo prints a line, never a traceback
                 print(
-                    f"demo failed during build: {result.get('error', 'unknown error')}",
+                    f"demo failed: building the sample project with ChromaDB failed ({exc}). "
+                    "The embedding model is downloaded on first use, so run it once with "
+                    "network access.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            _demo_report.run_demo_report(fixture_dir, header_label="bundled sample_project")
+            return
 
         override = embed_fn_override(bundled) if bundled is not None else contextlib.nullcontext()
         try:

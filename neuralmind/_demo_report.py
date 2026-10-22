@@ -119,12 +119,14 @@ def run_demo_report(
     *,
     queries: Iterable[tuple[str, str]] = DEMO_QUERIES,
     header_label: str = "tests/fixtures/sample_project",
+    backend: str | None = None,
 ) -> int:
     """Run the demo queries against ``fixture_dir`` and print the report.
 
     Returns the process exit code (0 on success). The fixture must
     already have a ``.neuralmind/graph.json`` and (after build) a
-    ``neuralmind_db`` populated by NeuralMind.
+    ``neuralmind_db`` populated by NeuralMind. ``backend`` is passed to
+    ``NeuralMind`` as ``backend_type`` (None: the project's configured one).
     """
     from neuralmind import NeuralMind
 
@@ -144,7 +146,7 @@ def run_demo_report(
     print()
 
     naive_total = naive_baseline_tokens(fixture_dir, enc)
-    nm = NeuralMind(str(fixture_dir))
+    nm = NeuralMind(str(fixture_dir), backend_type=backend)
 
     rows = []
     t0 = time.time()
