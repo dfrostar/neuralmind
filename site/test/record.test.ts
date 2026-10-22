@@ -92,10 +92,21 @@ describe('parseRecord', () => {
         ['a rate that is no whole count of gold_n', { hit_at_1: 0.625, gold_n: 12 }, /not a whole number of hits/],
         ['a ratio its own fields contradict', { ratio_vs_indexed: 60.3, baseline_tok: 52218, avg_ctx_tok: 500 }, /disagrees/],
         ['a bad timestamp', { ts: 'last tuesday' }, /ts must be an ISO 8601/],
+        ['a day past the end of its month', { ts: '2026-04-31' }, /ts must be an ISO 8601/],
+        ['February 30', { ts: '2026-02-30T03:38:39' }, /ts must be an ISO 8601/],
+        ['February 29 outside a leap year', { ts: '2026-02-29' }, /ts must be an ISO 8601/],
+        ['an hour past 23', { ts: '2026-10-22T25:00' }, /ts must be an ISO 8601/],
         ['a fractional node count', { nodes: 61.8 }, /nodes must be a whole number/],
     ])('rejects %s', (_label, change, message) => {
         const r = { ...JSON.parse(SEED_JSONL.split('\n')[0]), ...change };
         expect(() => parseRecord(JSON.stringify(r))).toThrow(message);
+    });
+
+    it('accepts a real leap day and a date-time with a zone', () => {
+        for (const ts of ['2028-02-29', '2026-10-22T03:38:39', '2026-10-22T03:38:39+01:00']) {
+            const r = { ...JSON.parse(SEED_JSONL.split('\n')[0]), ts };
+            expect(parseRecord(JSON.stringify(r))[0].ts).toBe(ts);
+        }
     });
 
     it('rejects a missing field rather than guessing it', () => {

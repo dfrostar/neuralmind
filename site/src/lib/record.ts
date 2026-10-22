@@ -89,6 +89,18 @@ const NON_NEGATIVE = ['avg_ctx_tok', 'ratio_vs_indexed', 'index_age_h', 'mean_bu
 const STRINGS = ['version', 'git_sha', 'baseline_src'] as const;
 
 const TS_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/**
+ * Whether the date part names a real day. `Date.parse` rolls an overflowing
+ * day into the next month (2026-02-30 parses as March 2), which would plot the
+ * run on a date the row doesn't say; an out-of-range month or time already
+ * parses as NaN.
+ */
+function isCalendarDate(ts: string): boolean {
+    const [y, m, d] = ts.slice(0, 10).split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
 const PROJECT_RE = /^[A-Za-z0-9._-]+$/;
 
 function fail(where: string, message: string): never {
@@ -131,7 +143,7 @@ export function validateRow(raw: unknown, where: string): RecordRow {
     }
     const row = { gold_n: null, baseline_tok: null, ...obj } as RecordRow;
 
-    if (typeof row.ts !== 'string' || !TS_RE.test(row.ts) || Number.isNaN(Date.parse(row.ts))) {
+    if (typeof row.ts !== 'string' || !TS_RE.test(row.ts) || Number.isNaN(Date.parse(row.ts)) || !isCalendarDate(row.ts)) {
         fail(where, `ts must be an ISO 8601 date or date-time, got ${JSON.stringify(row.ts)}`);
     }
     if (typeof row.project !== 'string' || !PROJECT_RE.test(row.project)) {
