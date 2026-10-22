@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from neuralmind import mcp_server
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SMOKE_PATH = REPO_ROOT / "scripts" / "mcp_stdio_smoke.py"
 
@@ -62,7 +64,8 @@ def test_mcp_server_answers_initialize_list_and_call_over_stdio(
     assert summary["neuralmind_origin"], summary
     origin = Path(summary["neuralmind_origin"]).resolve()
     assert not origin.is_relative_to(tmp_path.resolve()), origin
-    assert summary["tool_count"] >= 20
+    assert summary["tool_count"] == len(mcp_server.CORE_TOOLS)
+    assert "neuralmind_search" in summary["instructions"]
     assert summary["exit_code"] == 0, summary
     assert any(step.startswith("tools/call ok") for step in summary["steps"])
     assert any("validation error ok" in step for step in summary["steps"])
@@ -83,7 +86,7 @@ def test_installed_console_script_answers_over_stdio(temp_project):
         pytest.skip(f"{script.name} is not installed next to {sys.executable}")
     summary = smoke.run_smoke(timeout=90.0, project_path=str(temp_project), entry_point=True)
     assert summary["command"] == [str(script)]
-    assert summary["tool_count"] >= 20
+    assert summary["tool_count"] == len(mcp_server.CORE_TOOLS)
     assert summary["exit_code"] == 0, summary
     assert any(step.startswith("tools/call ok") for step in summary["steps"])
 

@@ -183,6 +183,32 @@ def test_backend_check_reports_auto_resolution(temp_project, monkeypatch):
     assert "turbovec" in doctor._check_backend(temp_project).detail
 
 
+def test_backend_check_without_a_config_file_is_auto(temp_project, monkeypatch):
+    # The default config fills in "turbovec"; from v0.46.0 doctor took that
+    # for a pin and said "pinned via neuralmind-backend.yaml" with no file.
+    import neuralmind.backend_manager as bm
+
+    check = doctor._check_backend(temp_project)
+    assert "auto-selected" in check.detail
+    assert "pinned" not in check.detail
+
+    # Intel macOS / Windows ARM: ChromaDB in place of the turbovec stack.
+    monkeypatch.setattr(bm, "_installed", lambda module: module == "chromadb")
+    check = doctor._check_backend(temp_project)
+    assert check.detail == "graph (auto-selected; turbovec stack not installed)"
+
+
+def test_backend_check_explains_a_turbovec_pin_served_by_chromadb(temp_project, monkeypatch):
+    import neuralmind.backend_manager as bm
+
+    monkeypatch.setattr(bm, "_installed", lambda module: module == "chromadb")
+    (temp_project / "neuralmind-backend.yaml").write_text("backend: turbovec\n", encoding="utf-8")
+    check = doctor._check_backend(temp_project)
+    assert check.status == doctor.OK
+    assert check.detail.startswith("graph (neuralmind-backend.yaml names turbovec")
+    assert "so ChromaDB is used" in check.detail
+
+
 def test_backend_check_reports_pinned_choice(temp_project):
     (temp_project / "neuralmind-backend.yaml").write_text("backend: graph\n", encoding="utf-8")
     check = doctor._check_backend(temp_project)
