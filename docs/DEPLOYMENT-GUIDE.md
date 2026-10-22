@@ -285,7 +285,7 @@ tests/fixtures/
 | Backend | How to select | Status |
 |---|---|---|
 | `turbovec` | Default, no configuration | Installed with NeuralMind on Linux, macOS arm64, and Windows AMD64 |
-| `chroma` / `graph` | `backend: chroma` in `neuralmind-backend.yaml`, plus `pip install "neuralmind[chromadb]"` | Deprecated. On other platforms (such as Intel macOS), pip installs ChromaDB instead of turbovec, and the default selects it *(v4.20.1+; from v0.46.0 to v4.20.0 the first command failed there without `backend: chroma`)* |
+| `chroma` / `graph` | `backend: chroma` in `neuralmind-backend.yaml`, plus `pip install "neuralmind[chromadb]"` | Deprecated. On other platforms (such as Intel macOS), pip installs ChromaDB instead of turbovec, and the default selects it *(v4.21.0+; from v0.46.0 to v4.20.0 the first command failed there without `backend: chroma`)* |
 
 Both backends store the index as local files under `.neuralmind/`. There is no
 server backend. If you build your own image, use a glibc base such as

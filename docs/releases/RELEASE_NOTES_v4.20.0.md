@@ -122,7 +122,7 @@ v4.20.0 behaves the same as v4.19.0. That includes a known defect: on Intel
 macOS and Windows on ARM, where `pip install neuralmind` installs ChromaDB
 instead of turbovec, every build fails unless the project sets
 `backend: graph`.
-[v4.20.1](RELEASE_NOTES_v4.20.1.md) fixes it. Every release is still signed,
+[v4.21.0](RELEASE_NOTES_v4.21.0.md) fixes it. Every release is still signed,
 attested and has an SBOM, and you can verify v4.20.0 like any other:
 [Verify a NeuralMind release before installing it](../use-cases/verify-a-release.md).
 
