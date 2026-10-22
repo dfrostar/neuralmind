@@ -33,6 +33,17 @@ up to three parts:
   the strongest seed is dropped.
 - **Docs:** one line naming the documentation files that match.
 
+When one file clearly leads (its matches' summed score is at least
+``EXCERPT_MARGIN`` times the next file's), the block also shows the code of its
+best-matching symbol, from the working tree, at most ``EXCERPT_LINES`` lines,
+secrets redacted. A list of names alone didn't change what the agent did: in
+the task-outcome pilot (``bench/task_outcome/pilot``) the hook named the file
+to fix in 17 of 20 tasks, and the agent searched before its first edit as much
+as it did without NeuralMind. The margin is the confidence gate: on those 20
+tasks' prompts, a leading file was the one to fix in 7 of the 9 where it held,
+against 10 of 20 for the top file overall. ``NEURALMIND_RECALL_EXCERPT=0``
+turns the excerpt off.
+
 When none of a prompt's matches is code (a book, a docs repository, or a
 question only the docs answer), its document matches are the main list
 instead. Nothing here writes to the index.
@@ -78,6 +89,11 @@ LINKED_SYMBOLS = 2
 # 0.044) doesn't, nor does an edge that has decayed to a third of its weight.
 LINK_FLOOR = 0.05
 LABEL_MAX = 60
+# The excerpt's confidence gate: the top file's summed match score against the
+# next file's. Several strong matches in one file is what a 2:1 lead takes.
+EXCERPT_MARGIN = 2.0
+# Lines of the leading symbol's code to show, from its first line.
+EXCERPT_LINES = 40
 # Control characters, including line and paragraph separators: a path or label
 # containing one could otherwise forge extra lines in the injected block.
 _CONTROL_RUN = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]+")
@@ -107,6 +123,18 @@ class FileRecall:
     score: float = 0.0
     best: float = 0.0
     symbols: list[str] = field(default_factory=list)
+    # The id of the file's best-scoring symbol (not the file's own node).
+    top: str = ""
+
+
+@dataclass
+class Excerpt:
+    """The leading symbol's code, as the block shows it."""
+
+    path: str
+    start: int
+    end: int
+    text: str
 
 
 @dataclass
@@ -120,6 +148,7 @@ class PromptRecall:
     # Node ids behind ``linked``, strongest first, for the opt-in cohesion check.
     linked_ids: list[str] = field(default_factory=list)
     code: bool = True
+    excerpt: Excerpt | None = None
 
     @property
     def count(self) -> int:
@@ -168,6 +197,8 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     primary, secondary = (code, other) if code else (other, {})
     tests_last = not _TEST_PROMPT.search(prompt)
     result.matches = _by_file(primary, info, MATCH_FILES, tests_last=tests_last)
+    if result.code and os.environ.get("NEURALMIND_RECALL_EXCERPT") != "0":
+        result.excerpt = _excerpt(mind, result.matches, nodes, info)
     # Only the files the block lists: a match past MATCH_FILES can still be linked.
     matched = {entry.path for entry in result.matches}
 
@@ -208,6 +239,14 @@ def format_block(result: PromptRecall) -> str:
     if result.matches:
         lines.append("Code matching this prompt:" if result.code else "Files matching this prompt:")
         lines.extend(_file_line(entry) for entry in result.matches)
+    if result.excerpt:
+        ex = result.excerpt
+        fence = "`" * max(3, _longest_backtick_run(ex.text) + 1)
+        lines.append(
+            f"Most matches are in {ex.path}. Its best match, L{ex.start}-L{ex.end} "
+            "(read the file before you edit it):"
+        )
+        lines.extend([fence, ex.text, fence])
     if result.linked:
         lines.append("Connected to it in the synapse graph:")
         lines.extend(_file_line(entry) for entry in result.linked)
@@ -332,6 +371,62 @@ def _one_per_symbol(
     return dict(sorted(merged.items(), key=lambda kv: kv[1], reverse=True))
 
 
+def _excerpt(
+    mind: Any, files: list[FileRecall], nodes: dict[str, dict], info: dict[str, dict]
+) -> Excerpt | None:
+    """The leading file's best symbol, when that file leads by ``EXCERPT_MARGIN``.
+
+    The symbol runs from its own line to the line before the next symbol the
+    graph records in the file, at most ``EXCERPT_LINES``. Read from the working
+    tree, so it's what the agent would read; None when the file can't be read
+    or the node has no line. Fails open.
+    """
+    if not files or not files[0].top:
+        return None
+    lead = files[0]
+    runner_up = files[1].score if len(files) > 1 else 0.0
+    if runner_up > 0 and lead.score < EXCERPT_MARGIN * runner_up:
+        return None
+    start = _line_of(info.get(lead.top) or nodes.get(lead.top))
+    if start is None:
+        return None
+    # Code nodes only: a docstring's node starts inside the symbol it documents.
+    later = [
+        line
+        for node in nodes.values()
+        if _path(node) == lead.path
+        and is_code_node(node)
+        and (line := _line_of(node)) is not None
+        and line > start
+    ]
+    end = min([start + EXCERPT_LINES - 1] + [line - 1 for line in later])
+    try:
+        from .secret_scan import redact_text
+
+        source = os.path.join(str(mind.project_path), lead.path)
+        with open(source, encoding="utf-8", errors="replace") as fh:
+            text = fh.read().splitlines()[start - 1 : end]
+    except Exception:
+        return None
+    while text and not text[-1].strip():
+        text.pop()
+    if not text:
+        return None
+    scrubbed, _ = redact_text("\n".join(text))
+    return Excerpt(path=lead.path, start=start, end=start + len(text) - 1, text=scrubbed)
+
+
+def _line_of(node: dict | None) -> int | None:
+    """The line a node's ``source_location`` (``L42``) starts on."""
+    location = str((node or {}).get("source_location") or "")
+    match = re.match(r"L(\d+)", location)
+    return int(match.group(1)) if match else None
+
+
+def _longest_backtick_run(text: str) -> int:
+    return max((len(run) for run in re.findall(r"`+", text)), default=0)
+
+
 def _hub_factor(degree: int, hub_degree: int) -> float:
     return math.sqrt(hub_degree / degree) if degree > hub_degree else 1.0
 
@@ -359,6 +454,8 @@ def _by_file(
         entry.score += max(score, 0.0)
         entry.best = max(entry.best, score)
         symbol = _symbol(node, path)
+        if symbol and not entry.top:
+            entry.top = node_id
         if symbol and symbol not in entry.symbols and len(entry.symbols) < symbols:
             entry.symbols.append(symbol)
 

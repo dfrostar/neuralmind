@@ -118,9 +118,12 @@ There is no per-agent table because every agent gets the same as with v4.19.0.
 
 ## Upgrading
 
-`pip install -U neuralmind` installs v4.20.0. Its behaviour is the same as
-v4.19.0's. Every release is still signed, attested and has an SBOM, and you can
-verify v4.20.0 like any other:
+v4.20.0 behaves the same as v4.19.0. That includes a known defect: on Intel
+macOS and Windows on ARM, where `pip install neuralmind` installs ChromaDB
+instead of turbovec, every build fails unless the project sets
+`backend: graph`.
+[v4.20.1](RELEASE_NOTES_v4.20.1.md) fixes it. Every release is still signed,
+attested and has an SBOM, and you can verify v4.20.0 like any other:
 [Verify a NeuralMind release before installing it](../use-cases/verify-a-release.md).
 
 ## Reproduce
