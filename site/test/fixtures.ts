@@ -1,9 +1,11 @@
 import { FIELDS, type RecordRow } from '@/lib/record';
 
 /**
- * t0, as measured on 2026-10-22 and committed in benchmarks/ai9970/record.jsonl.
- * Only these values were reported; every other field is null, as it is in the
- * record, rather than a plausible guess.
+ * t0 (2026-10-22) as first reported, before the gold-set size and bible-llm's
+ * baseline were read from the run: rates rounded to three places, everything
+ * unreported null. The committed record now carries the run's full values;
+ * this stays as the 2-row fixture with nulls where a ratio or rate must be
+ * withheld.
  */
 export const SEED_JSONL = [
     '{"ts": "2026-10-22", "project": "rfnode-guide", "version": null, "git_sha": null, "hit_at_1": 0.667, "hit_at_5": 0.750, "mrr": 0.688, "avg_ctx_tok": null, "ratio_vs_indexed": 60.3, "baseline_src": "measured", "baseline_tok": 52218, "gold_n": null, "nodes": 618, "synapse_edges": null, "index_age_h": null, "builds_7d": null, "mean_build_s": null, "saved_tokens_cum": null, "median_query_s": 0.095}',
@@ -20,10 +22,9 @@ export function row(fields: Partial<RecordRow> & Pick<RecordRow, 'ts' | 'project
 export const jsonl = (rows: object[]) => rows.map((r) => JSON.stringify(r)).join('\n');
 
 /**
- * rfnode-guide's t0 with a gold-set size, then a second month that drops on
- * hit@1 and ratio under a new version. Hypothetical: the t0 record has no
- * gold_n, and there is no second run yet. Gold-set size 12 is what the t0
- * rates are consistent with, not a reported value.
+ * rfnode-guide's t0 (gold set of 12, as recorded), then a second month that
+ * drops on hit@1, MRR and ratio under a new version. The second run is
+ * hypothetical: there isn't one yet.
  */
 export const TWO_RUNS = jsonl([
     row({ ts: '2026-10-22', project: 'rfnode-guide', version: '4.20.0', hit_at_1: 0.667, hit_at_5: 0.75, mrr: 0.688, ratio_vs_indexed: 60.3, baseline_src: 'measured', baseline_tok: 52218, gold_n: 12, nodes: 618, median_query_s: 0.095 }),
