@@ -10,6 +10,9 @@ posted. Hacker News readers check numbers, so every figure is from
 
 ## Before posting
 
+- [ ] Check the demo still can't run offline on Intel macOS and Windows ARM
+      (no turbovec wheel; ChromaDB is installed instead). If that's been
+      fixed, drop the platform caveat from the post.
 - [ ] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
       `pip install neuralmind && neuralmind demo` with the network off after
       the install. It should finish without downloading the model. Paste its
@@ -40,7 +43,10 @@ package and prints what an agent would get for each, in tokens, next to
 pasting every source file. As of this week it needs no model download: the
 sample's vector index and its three questions' embeddings ship in the package,
 so it ranks exactly as it would with the embedding model, on a plane or behind
-a proxy that blocks model downloads.
+a proxy that blocks model downloads. That holds on Linux, Apple Silicon macOS
+and 64-bit Windows, where the default install includes the turbovec index; on
+Intel macOS and Windows ARM the install uses ChromaDB instead and the demo
+needs the model.
 
 The numbers we can back up, with the misses:
 
@@ -50,7 +56,9 @@ The numbers we can back up, with the misses:
 - A larger 150-question retrieval eval: 93.3% top-five. The 10 misses are
   published.
 - A pre-registered 20-task pilot running Claude Code with and without
-  NeuralMind found no difference in tasks solved or cost per task. The agent
+  NeuralMind found no difference: 18 of 20 tasks solved in both arms, and a
+  median per-task cost change of +0.0% (95% CI −5.2% to +8.6%). Twenty tasks
+  can't rule out an effect inside that interval. The agent
   never called NeuralMind's tools; better retrieval doesn't help an agent that
   doesn't ask for it. That's what we're working on next.
 
@@ -66,8 +74,9 @@ https://neuralmind.uk/benchmark
 | Claim | Source |
 |---|---|
 | Demo bundles the vector index and question embeddings; no model download | `docs/wiki/CLI-Reference.md#demo`, `tests/test_cli.py::TestCLIDemoOffline` |
+| Only on Linux, Apple Silicon macOS and 64-bit Windows | `pyproject.toml` turbovec / chromadb platform markers |
 | Ranks exactly as with the model | `scripts/build_demo_index.py --check` in `ci-benchmark.yml` compares top-5 rankings |
 | 40 of 40 vs ripgrep's 32 of 40, 31–67× | `bench/public/results.json`, `site/claims.json` |
 | 93.3% top-five, 10 misses | `bench/retrieval/on-v4.12/results.json`, `site/claims.json` |
-| Pilot: no difference; agent never called the MCP tools | `bench/task_outcome/pilot/`, `site/claims.json` |
+| Pilot: 18 of 20 in both arms, +0.0% (95% CI −5.2% to +8.6%); agent never called the MCP tools | `bench/task_outcome/pilot/report.txt`, `site/claims.json` |
 | Sends no telemetry and transmits no repository content off the machine | `docs/SECURITY-GUIDE.md`, the wording `tests/test_docs_claims.py` prescribes |

@@ -28,13 +28,15 @@ plan says.
 
 NeuralMind v4.19.0 gives you an answer to each of those.
 
-Where the logs go: every audit record goes to syslog as it is written, from
-the CLI, the MCP server, the editor hooks and the daemon. Each record carries
-its hash-chain fields, so your SIEM can check that none were altered or
-dropped. If a record can't be written (say, a full disk), an alert-severity
-message goes straight to syslog, without going through the log that failed.
-That's AU.L2-3.3.4 and 3.3.5. Under the hardened profile, records go only to
-the local syslog daemon, which forwards to your SIEM over TLS.
+Where the logs go: set `security.audit_syslog` and every audit record goes to
+syslog as it is written, from the CLI, the MCP server, the editor hooks and
+the daemon. Each record carries its hash-chain fields, so your SIEM can verify
+the chain it receives and spot gaps in it; signed, anchored checkpoints catch
+records removed from the end. If a record can't be written (say, a full disk),
+an alert-severity message goes straight to syslog, without going through the
+log that failed. That's AU.L2-3.3.4 and 3.3.5. Under the hardened profile,
+records go only to the local syslog daemon; you configure that daemon to
+forward to your SIEM over TLS.
 
 What it does for your SSP: we publish an OSCAL component definition, NIST's
 machine-readable format, stating which SP 800-53 controls NeuralMind
@@ -57,10 +59,10 @@ https://neuralmind.uk/security
 
 | Claim | Source |
 |---|---|
-| Every record to syslog as written, from CLI, MCP server, hooks and daemon | `docs/releases/RELEASE_NOTES_v4.19.0.md` ("Each record goes out right after it is written") |
-| Records carry `sha256` and `prev_sha256` | same, and `docs/SECURITY-GUIDE.md#forwarding-to-syslog-v4190` |
+| Every record to syslog as written, from CLI, MCP server, hooks and daemon, once `security.audit_syslog` is set (off by default) | `docs/releases/RELEASE_NOTES_v4.19.0.md` ("Each record goes out right after it is written"); `AuditTrail._forward()` returns early with no target |
+| Records carry `sha256` and `prev_sha256`; the SIEM can verify what it receives, and checkpoints catch a removed tail | same, `docs/SECURITY-GUIDE.md#forwarding-to-syslog-v4190`, `docs/compliance/SP800-53-HARDENING.md` (NMH-13, NMH-14) |
 | Alert-severity `audit_write_failed` sent straight to syslog, not through the log | release notes, "The AU.L2-3.3.4 alert" |
-| Under `security.profile: cui`, only a unix socket or loopback target | release notes, "Under `security.profile: cui`, the target must be on this machine" |
+| Under `security.profile: cui`, only a unix socket or loopback target; the daemon's TLS forwarding is the customer's configuration | release notes, "Under `security.profile: cui`, the target must be on this machine" |
 | OSCAL component definition | `security/neuralmind.oscal-component-definition.json` |
 | 17 rules mapped to SP 800-53, pass/fail/n/a, fix, exit 1, `--json` | `docs/compliance/SP800-53-HARDENING.md`, `tests/test_cli_exit_codes.py` |
 | SBOM, VEX, signatures on `/security` | `site/src/app/security/` (#695) |
