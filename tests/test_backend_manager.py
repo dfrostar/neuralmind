@@ -81,6 +81,50 @@ def test_resolve_backend_non_string_or_blank_is_turbovec(monkeypatch):
     assert resolve_backend(True) == "turbovec"  # type: ignore[arg-type]
 
 
+def _only_installed(monkeypatch, *modules):
+    """Pretend only ``modules`` are importable, as on a given platform's install."""
+    monkeypatch.setattr(bm, "_installed", lambda module: module in modules)
+
+
+def test_default_falls_back_to_chromadb_where_turbovec_has_no_wheel(monkeypatch, recwarn):
+    # Intel macOS and Windows ARM: pyproject.toml installs ChromaDB in place of
+    # the turbovec stack. v0.46.0's hard default left them selecting turbovec
+    # anyway, and every build failed with "No module named 'turbovec'".
+    _only_installed(monkeypatch, "chromadb")
+    for default in (None, "", "auto", "turbovec", DEFAULT_BACKEND_CONFIG["backend"]):
+        assert resolve_backend(default) == "graph"
+    # The user didn't choose ChromaDB, so no deprecation warning for it.
+    assert not [w for w in recwarn if issubclass(w.category, DeprecationWarning)]
+
+
+def test_default_stays_turbovec_where_its_stack_is_installed(monkeypatch):
+    _only_installed(monkeypatch, "turbovec", "onnxruntime", "tokenizers", "chromadb")
+    assert resolve_backend(None) == "turbovec"
+    assert resolve_backend("turbovec") == "turbovec"
+
+
+def test_default_stays_turbovec_when_neither_backend_is_installed(monkeypatch):
+    # Nothing to fall back to: create_backend then says what to install.
+    _only_installed(monkeypatch)
+    assert resolve_backend(None) == "turbovec"
+
+
+def test_explicit_non_default_backends_are_never_rerouted(monkeypatch):
+    _only_installed(monkeypatch, "chromadb")
+    assert resolve_backend("in_memory") == "in_memory"
+    with pytest.warns(DeprecationWarning):
+        assert resolve_backend("graph") == "graph"
+
+
+def test_create_backend_turbovec_without_turbovec_is_actionable(temp_project, monkeypatch):
+    # turbovec is imported only when the index loads, deep inside a build; the
+    # missing module must be named up front, with what to install.
+    _only_installed(monkeypatch)
+    with pytest.raises(ModuleNotFoundError, match=r"pip install turbovec") as exc:
+        create_backend("turbovec", str(temp_project))
+    assert "neuralmind[chromadb]" in str(exc.value)
+
+
 def test_load_backend_config_yaml(temp_project):
     config_file = temp_project / "neuralmind-backend.yaml"
     config_file.write_text("backend: in_memory\nhybrid_context: true\n", encoding="utf-8")
