@@ -214,6 +214,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4201">
+            <h2>What&rsquo;s New in v4.20.1 &mdash; Intel macOS and Windows ARM work again out of the box</h2>
+            <p>turbovec has no wheel for Intel macOS or Windows ARM, so <code>pip install neuralmind</code> installs ChromaDB there instead. From v0.46.0 the default backend ignored it, and every build failed with <code>No module named 'turbovec'</code> unless the project set <code>backend: graph</code>.</p>
+            <ul>
+                <li><strong>The default falls back to ChromaDB</strong> &mdash; where the turbovec stack isn&rsquo;t installed and ChromaDB is. Nothing changes where turbovec is installed</li>
+                <li><strong><code>neuralmind demo</code> runs there</strong> &mdash; it builds the sample&rsquo;s index with the embedding model, downloading it once, and says so; offline it exits 1 with one line, not a traceback</li>
+                <li><strong>A missing backend says what to install</strong> &mdash; instead of a bare <code>ModuleNotFoundError</code> deep inside a build</li>
+                <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.1.md">v4.20.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4190">
             <h2>What&rsquo;s New in v4.19.0 &mdash; the audit log reaches your SIEM as it is written</h2>
             <p>The audit log left the host only when someone exported it. With <code>security.audit_syslog</code> set, it goes to syslog record by record (CMMC AU.L2-3.3.4, 3.3.5):</p>

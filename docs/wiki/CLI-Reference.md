@@ -1639,7 +1639,11 @@ downloads nothing. Before v4.19.0 its first run downloaded the model (about
 90 MB), and failed with a traceback offline. With the model on disk, it uses
 the model. If this install can't use the bundled index (a turbovec release too
 old to read it, say), the demo falls back to building with the model, which
-downloads it once. The token counts use tiktoken; where its vocabulary can't be
+downloads it once. The bundled index is turbovec's, so on an install with
+ChromaDB instead (Intel macOS, Windows ARM, which have no turbovec wheel) the
+demo builds the sample's index with the model, downloading it once, and says
+so *(v4.20.1+; before, it failed there with `No module named 'turbovec'`)*. The
+token counts use tiktoken; where its vocabulary can't be
 downloaded, they are estimated at about 4 characters a token, and the demo
 says so.
 
@@ -1649,7 +1653,7 @@ The sample is small (about 500 lines), so its reduction is small;
 | Code | Meaning |
 |------|---------|
 | `0` | The report printed |
-| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or the build failed |
+| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or no vector backend is installed; or the build failed |
 
 ### doctor *(v0.12.0+)*
 
@@ -4583,7 +4587,9 @@ platform-gated base dependency**, so a plain `pip install neuralmind` resolves
 to turbovec (ChromaDB-free) out of the box on platforms with turbovec wheels
 (Linux, macOS arm64, Windows x86_64). On platforms without a turbovec wheel
 (Intel macOS, Windows ARM) ChromaDB is auto-installed as the fallback backend,
-so the install always works. Install `pip install "neuralmind[chromadb]"` (and
+and the default selects it, so the install always works *(v4.20.1+: from
+v0.46.0 to v4.20.0 the default selected turbovec even there, and every command
+failed with `No module named 'turbovec'` unless you set `backend: graph`)*. Install `pip install "neuralmind[chromadb]"` (and
 pin `backend: graph`) to force ChromaDB anywhere. (Alpine/musl Linux: use a
 `python:slim` glibc image or the `[chromadb]` extra — markers can't gate musl.)
 

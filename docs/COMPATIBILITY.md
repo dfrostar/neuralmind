@@ -49,7 +49,7 @@
 | Backend | `backend:` value | Status | Notes |
 |---------|------------------|--------|-------|
 | turbovec | `turbovec` (default; `auto` is an alias) | ✅ Default since v0.29.0 | ChromaDB-free, quantized vectors in local files. Installed with NeuralMind on Linux, macOS arm64 and Windows AMD64 |
-| ChromaDB | `chroma` or `graph` | ⚠️ Deprecated since v0.46.0 | Needs `pip install "neuralmind[chromadb]"`. Required on platforms without a turbovec wheel, such as Intel macOS: pip installs ChromaDB there but doesn't select it, so set `backend: chroma` |
+| ChromaDB | `chroma` or `graph` | ⚠️ Deprecated since v0.46.0 | Needs `pip install "neuralmind[chromadb]"`. On platforms without a turbovec wheel (Intel macOS, Windows ARM), pip installs ChromaDB instead and the default selects it *(v4.20.1+; from v0.46.0 to v4.20.0 you had to set `backend: chroma` there, or every command failed)* |
 | In-memory | `in_memory` | 🧪 Tests and offline use | The index lives in process memory and isn't saved |
 
 **Note:** Pick a backend with `backend:` in `neuralmind-backend.yaml`; there is no command-line flag or environment variable for it. Every backend keeps its index on the local machine. There is no server or database backend, and PostgreSQL/pgvector and LanceDB aren't supported. `neuralmind doctor` shows the resolved backend.
