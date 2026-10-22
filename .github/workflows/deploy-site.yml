@@ -29,6 +29,8 @@ on:
       - 'bench/public/results.json'
       - 'bench/retrieval/*/results.json'
       - 'commercial-terms.json'
+      # /performance: the record's rows and monthly narratives.
+      - 'benchmarks/ai9970/**'
       - '.github/workflows/deploy-site.yml'
   release:
     types: [published]
