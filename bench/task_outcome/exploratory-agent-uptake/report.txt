@@ -1,0 +1,17 @@
+Exploratory rerun, not pre-registered: the neuralmind arm on commit eee0a5be
+(v4.21.0's MCP instructions, six-tool list and prompt excerpt), against the
+pilot's baseline arm (bench/task_outcome/pilot, run 2026-10-20).
+
+Tasks paired: 20 (120 runs)
+Median cost change per task with NeuralMind: -2.1% (95% CI -6.9% to +6.5%)
+Cheaper on 12 task(s), dearer on 8; Wilcoxon one-sided p = 0.3371
+Tasks solved: baseline 18, NeuralMind 18 (McNemar p = 1.0000)
+Cost per solved task: baseline $0.227, neuralmind $0.211
+Median turns per task: baseline 10.3, neuralmind 10.3; median minutes per task: baseline 0.5, neuralmind 0.6
+Runs that hit the timeout (scored unsolved at the budget cap): baseline 0, neuralmind 0
+Claim supported: NO (p<0.05: False, CI below 0: False, solve rate not worse: True)
+
+Per group, 60 runs each (medians are over per-task means):
+- baseline (pilot): runs calling a NeuralMind tool 0; explore calls before first edit 4.0; turns 10.3; cost per task $0.175; solved runs 53; cost per solved run $0.190; tools {'Grep': 123, 'Read': 125, 'Bash': 205, 'Edit': 178, 'Write': 9}
+- neuralmind 4.15.1 (pilot): runs calling a NeuralMind tool 0; explore calls before first edit 4.2; turns 10.8; cost per task $0.183; solved runs 55; cost per solved run $0.192; tools {'Read': 122, 'Bash': 208, 'Edit': 178, 'Grep': 99, 'Write': 8}
+- neuralmind branch (rerun): runs calling a NeuralMind tool 0; explore calls before first edit 4.0; turns 10.3; cost per task $0.174; solved runs 55; cost per solved run $0.187; tools {'Grep': 108, 'Read': 137, 'Bash': 171, 'Edit': 173, 'Write': 11}

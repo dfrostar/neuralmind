@@ -24,7 +24,7 @@ neuralmind_wakeup(project_path=".")
 
 That gives the agent ~400 tokens of architecture/cluster context instead of 50K tokens of file reads.
 
-**What Claude sees of the MCP server** *(v4.20.0+)*: Claude Code defers MCP tools, so the model sees their names and has to look one up before calling it. The server's `initialize` reply now carries instructions, which Claude Code shows the model even while the tools are deferred: call `neuralmind_search` before Grep or Glob to find where something is implemented or the code behind a bug, `neuralmind_query` to understand how a part works, `neuralmind_skeleton`, `neuralmind_impact` and `neuralmind_query_decisions` for structure, dependents and recorded decisions, and start from a prompt's NeuralMind block when it has one. `tools/list` offers those five tools and `neuralmind_wakeup`. The other 22 still answer when called by name; set `NEURALMIND_MCP_TOOLS=all` in the server's environment to list all 28 again. Before v4.20.0 the model saw 28 names with nothing saying when to use one, and in the [task-outcome pilot](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.0.md) it called none in 60 runs.
+**What Claude sees of the MCP server** *(v4.21.0+)*: Claude Code defers MCP tools, so the model sees their names and has to look one up before calling it. The server's `initialize` reply now carries instructions, which Claude Code shows the model even while the tools are deferred: call `neuralmind_search` before Grep or Glob to find where something is implemented or the code behind a bug, `neuralmind_query` to understand how a part works, `neuralmind_skeleton`, `neuralmind_impact` and `neuralmind_query_decisions` for structure, dependents and recorded decisions, and start from a prompt's NeuralMind block when it has one. `tools/list` offers those five tools and `neuralmind_wakeup`. The other 22 still answer when called by name; set `NEURALMIND_MCP_TOOLS=all` in the server's environment to list all 28 again. Before v4.21.0 the model saw 28 names with nothing saying when to use one, and in the [task-outcome pilot](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md) it called none in 60 runs.
 
 With the hooks installed, a fresh session, or one after `/clear`, also opens with a short recap of the previous session in the project: its first prompt, its last three, and the files it edited *(v4.8.0+)*. It's labelled as context, not instructions; ask "where were we?" when you want to carry on. See [Pick up where you left off](./pick-up-where-you-left-off.md).
 
@@ -43,7 +43,7 @@ Docs: docs/parameters.md, docs/arguments.md, docs/complex.md
 
 The links start out structural (calls, imports, inheritance) and come to reflect what you edit together. A prompt whose best match scores below that cutoff, like "yes", gets nothing; it's a similarity threshold, not a topic check, so an off-topic prompt can still clear it (1 of 15 did in the measurement). On fresh indexes the block named a file that answers the prompt for 14 of 14 Click prompts and 14 of 15 prompts about NeuralMind's own code ([measured](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.11.0.md#measured)); whether that makes the agent's answers better isn't measured.
 
-**When one file clearly leads** *(v4.20.0+)*, the block also quotes that file's best-matching function or class: when the file's summed match score is at least twice the next file's, it adds a line such as `Most matches are in neuralmind/secret_scan.py. Its best match, L348-L377 (read the file before you edit it):` and the code, read from the working tree, at most 40 lines, with secrets redacted by the scanner `neuralmind last` uses. With no file that far ahead, the block is the file list as before. `NEURALMIND_RECALL_EXCERPT=0` turns the excerpt off. On the pilot's 20 bug-fix prompts the block quoted code for 9, from a file the fix changed for 7 of them, and covering lines the fix changed for 2: the best match is usually in the right file and usually not the function the fix touched. The gate was set on those same 20 prompts, so 7 of 9 is a ceiling, not an estimate. Whether the excerpt changes what the agent does isn't measured yet. [Check what your agent is handed](./check-what-your-agent-is-handed.md) shows how those numbers are produced.
+**When one file clearly leads** *(v4.21.0+)*, the block also quotes that file's best-matching function or class: when the file's summed match score is at least twice the next file's, it adds a line such as `Most matches are in neuralmind/secret_scan.py. Its best match, L348-L377 (read the file before you edit it):` and the code, read from the working tree, at most 40 lines, with secrets redacted by the scanner `neuralmind last` uses. With no file that far ahead, the block is the file list as before. `NEURALMIND_RECALL_EXCERPT=0` turns the excerpt off. On the pilot's 20 bug-fix prompts the block quoted code for 9, from a file the fix changed for 7 of them, and covering lines the fix changed for 2: the best match is usually in the right file and usually not the function the fix touched. The gate was set on those same 20 prompts, so 7 of 9 is a ceiling, not an estimate. It didn't change what the agent did on those tasks: in an [exploratory rerun](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/exploratory-agent-uptake/README.md) the agent still searched as much before its first edit, and called no NeuralMind tool in 60 runs, despite the server's instructions. [Check what your agent is handed](./check-what-your-agent-is-handed.md) shows how those numbers are produced.
 
 **When asking a code question**, prefer `neuralmind_query` over raw exploration:
 
@@ -97,7 +97,7 @@ Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.4 … requests-2.32.3 rich-13
 | An eleventh handler quietly skips the auth check the other ten share *(v3.2.0+)* | `pre-commit` drift guard flags it before the commit lands |
 | "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
 | The first question in a repo you just cloned starts with a search *(v4.11.0+)* | The prompt arrives with the files, symbols and line numbers it matches |
-| Claude sees 28 deferred NeuralMind tool names and nothing saying when to use one *(before v4.20.0)* | Six tool names and the server's instructions on when to call them; on a prompt where one file clearly leads, that file's best match as code |
+| Claude sees 28 deferred NeuralMind tool names and nothing saying when to use one *(before v4.21.0)* | Six tool names and the server's instructions on when to call them; on a prompt where one file clearly leads, that file's best match as code |
 
 ## Predict the next file *(v0.11.0+)*
 
@@ -115,7 +115,7 @@ After src/auth/handlers.py:
 
 Same data via the `neuralmind_next_likely` MCP tool — Claude Code
 can call it right after finishing edits in one file to surface the
-files you usually touch next, no manual prompt needed. Since v4.20.0 it
+files you usually touch next, no manual prompt needed. Since v4.21.0 it
 isn't in the default `tools/list`: it answers when called by name, and
 `NEURALMIND_MCP_TOOLS=all` lists it.
 
@@ -179,7 +179,7 @@ Co-break candidates for 3 changed files:
   3. src/auth/token_validator.py   (weight 0.58,  6 activations)
 ```
 
-Same data via the `neuralmind_review` MCP tool — Claude Code can call it automatically after editing a file, before a commit or push. Since v4.20.0 it isn't in the default `tools/list`: it answers when called by name, and `NEURALMIND_MCP_TOOLS=all` lists it.
+Same data via the `neuralmind_review` MCP tool — Claude Code can call it automatically after editing a file, before a commit or push. Since v4.21.0 it isn't in the default `tools/list`: it answers when called by name, and `NEURALMIND_MCP_TOOLS=all` lists it.
 
 ## Flag a commit that drifts from its own patterns *(v3.2.0+)*
 

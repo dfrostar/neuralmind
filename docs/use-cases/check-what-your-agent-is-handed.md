@@ -6,7 +6,7 @@ benchmark.
 
 **Primary goal:** see, offline and with no API cost, what the
 `UserPromptSubmit` hook gives the agent on real bug-fix tasks, scored against
-the fixes themselves (v4.20.0+).
+the fixes themselves (v4.21.0+).
 
 A context tool can find the right file and still not help. The only way to
 know is to run the agent on real tasks with and without it, and that costs a
@@ -78,9 +78,9 @@ What each score means:
 The summary counts each over the 20 tasks, and `excerpt_on_gold_share` is
 `excerpt_on_gold` divided by `excerpt_shown`.
 
-Measured on v4.20.0:
+Measured on v4.21.0:
 
-| Of 20 tasks | v4.20.0 |
+| Of 20 tasks | v4.21.0 |
 |---|---|
 | The block names a file the fix changed | 17 |
 | …and names it first | 10 |
@@ -122,9 +122,13 @@ changed, and `--task <id>` runs only those.
 
 The replay scores what NeuralMind hands the agent, not what the agent does
 with it. A block that names the right file first didn't stop the pilot's agent
-from making a median of 4 search or read calls before its first edit. v4.20.0
-doesn't claim the agent now costs less or edits sooner: that takes the outcome
-benchmark's confirmatory run, on new tasks. The 20 tasks also come from one
+from making a median of 4 search or read calls before its first edit, and
+v4.21.0 didn't change that: an
+[exploratory rerun](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/exploratory-agent-uptake/README.md)
+with it found the agent still called no NeuralMind tool in 60 runs and made a
+median of 4.0 such calls (4.0 without NeuralMind), at a cost per task within
+−6.9% to +6.5% of the baseline. The right file in the block is necessary, not
+sufficient. The 20 tasks also come from one
 repository, NeuralMind's own.
 
 ## The potential use case: look before you pay, for any context tool
@@ -134,7 +138,7 @@ symptom someone saw, feed the prompt to whatever your context tool injects, and
 score the output against the fix's diff. If the right file isn't there, an
 agent benchmark will only measure that more expensively. If it is there and
 the outcome still doesn't move, the problem is how the agent uses it, which is
-what v4.20.0's MCP server instructions and code excerpt try to change.
+what v4.21.0's MCP server instructions and code excerpt try to change.
 
 On your own repository, the closest built-in check is
 [`neuralmind eval` with symptom-phrased gold questions](./does-it-earn-its-place.md).
@@ -143,4 +147,4 @@ Related: [NeuralMind in Claude Code](./claude-code.md) ·
 [Does NeuralMind earn its place?](./does-it-earn-its-place.md) ·
 [Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md) ·
 [Task-outcome benchmark spec](../specs/TASK-OUTCOME-BENCHMARK-SPEC.md) ·
-[Release notes v4.20.0](../releases/RELEASE_NOTES_v4.20.0.md)
+[Release notes v4.21.0](../releases/RELEASE_NOTES_v4.21.0.md)

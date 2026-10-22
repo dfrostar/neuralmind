@@ -1,4 +1,4 @@
-# NeuralMind v4.20.0 — an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file's code in the prompt block
+# NeuralMind v4.21.0 — an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file's code in the prompt block
 
 **Type:** Minor release | **Theme:** getting what NeuralMind finds in front of the agent, measured before and after
 
@@ -17,9 +17,11 @@ runs, with no agent and no API cost, showed why:
   tasks. The agent made a median of 4 search or read calls before its first
   edit, with NeuralMind or without it.
 
-This release changes both. It doesn't claim the agent now costs less: that
-takes the outcome benchmark's confirmatory run, on new tasks. What it does
-measure is below.
+This release changes both, and the agent's behaviour on those 20 tasks didn't
+change: an exploratory rerun with this release found the agent still called
+no NeuralMind tool, and searched as much before its first edit as without
+NeuralMind ([measured after](#measured-after-the-agents-behaviour-didnt-change)).
+What the release does change, and what it doesn't, is below.
 
 ---
 
@@ -52,7 +54,7 @@ as before. They're just not in the list an agent chooses from.
 | `NEURALMIND_MCP_TOOLS` | `tools/list` offers |
 |---|---|
 | unset, empty or `core` | the six above |
-| `all` | all 28, as before v4.20.0 |
+| `all` | all 28, as before v4.21.0 |
 | `name,name,…` | those tools (unknown names are ignored) |
 
 ### The prompt block shows the leading file's code
@@ -88,7 +90,7 @@ scores the block against the fix's own diff. A new workflow,
 **Prompt-recall replay**, runs it on every pull request that touches the
 recall path and fails below its floors. Measured on this release:
 
-| Of 20 tasks | v4.20.0 |
+| Of 20 tasks | v4.21.0 |
 |---|---|
 | The block names a file the fix changed | 17 |
 | …and names it first | 10 |
@@ -100,14 +102,41 @@ The last row is the honest limit of the excerpt. The best-matching symbol is
 usually in the right file, and usually not the function the fix touched: a
 symptom reads like what the code is *about*, not where it breaks. The
 excerpt's gate was set on these same 20 prompts, so 7 of 9 is a ceiling, not
-an estimate. Whether it changes what the agent does is for the outcome
-benchmark to say.
+an estimate.
+
+### Measured after: the agent's behaviour didn't change
+
+An [exploratory rerun](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/exploratory-agent-uptake/README.md)
+(not pre-registered) ran the pilot's 20 tasks again, 3 times each, with this
+release in the NeuralMind arm. Same model, Claude Code version, prompts and
+budget, against the pilot's baseline runs:
+
+| Per task, 60 runs each | Without NeuralMind | v4.15.1 (pilot) | v4.21.0 |
+|---|---|---|---|
+| Runs calling a NeuralMind tool | 0 | 0 | 0 |
+| Search or read calls before the first edit (median) | 4.0 | 4.2 | 4.0 |
+| Turns (median) | 10.3 | 10.8 | 10.3 |
+| Runs solved | 53 | 55 | 55 |
+
+- **The instructions reached the model and didn't change its choice.** Asked,
+  it names `neuralmind_search`; given a real bug, it used Grep and Read in all
+  60 runs and never called ToolSearch, which a deferred tool needs first.
+- **The excerpt didn't replace the agent's own search.** On the 9 tasks where
+  the block quoted code, the agent made a median of 4.0 search or read calls
+  before its first edit, against 3.0 without NeuralMind.
+- **Cost:** median −2.1% per task against the baseline (95% CI −6.9% to
+  +6.5%, p = 0.34), 18 of 20 tasks solved in each arm. No difference shown.
+
+On these tasks an agent finds the file to fix in about four searches with or
+without help, which leaves little to save. Whether NeuralMind changes the
+outcome on a larger, unfamiliar repository with harder fixes is not measured
+yet.
 
 ---
 
 ## What the agent actually sees post-install
 
-| Agent | Before v4.20.0 | From v4.20.0 |
+| Agent | Before v4.21.0 | From v4.21.0 |
 |---|---|---|
 | **Claude Code** | 28 deferred tool names, nothing saying when to use one; a list of file names on each prompt | Six deferred tool names and the server's instructions on when to call them; on a prompt where one file clearly leads, that file's best match as code |
 | **Cursor / Cline / Continue** | All 28 tools with descriptions in the tool list | The six core tools, with the server's instructions where the client shows them; `NEURALMIND_MCP_TOOLS=all` in the server's environment restores the full list |
