@@ -573,6 +573,34 @@ class TestToolDefinitions:
 
         assert len(TOOLS) == 28
 
+    def test_tools_list_offers_the_core_tools_by_default(self, monkeypatch):
+        """Claude Code defers MCP tools, and the pilot's agent called none of 28: list few."""
+        from neuralmind.mcp_server import CORE_TOOLS, TOOLS, listed_tools
+
+        monkeypatch.delenv("NEURALMIND_MCP_TOOLS", raising=False)
+        names = [t["name"] for t in listed_tools()]
+        assert set(names) == set(CORE_TOOLS)
+        assert set(CORE_TOOLS) <= {t["name"] for t in TOOLS}
+        monkeypatch.setenv("NEURALMIND_MCP_TOOLS", "core")
+        assert [t["name"] for t in listed_tools()] == names
+
+    def test_neuralmind_mcp_tools_lists_all_or_the_named_tools(self, monkeypatch):
+        from neuralmind.mcp_server import TOOLS, listed_tools
+
+        monkeypatch.setenv("NEURALMIND_MCP_TOOLS", "all")
+        assert listed_tools() == TOOLS
+        monkeypatch.setenv("NEURALMIND_MCP_TOOLS", "neuralmind_stats, no_such_tool")
+        assert [t["name"] for t in listed_tools()] == ["neuralmind_stats"]
+
+    def test_server_instructions_name_only_listed_tools(self):
+        """The instructions steer the model to tools it can actually load by default."""
+        import re
+
+        from neuralmind.mcp_server import CORE_TOOLS, SERVER_INSTRUCTIONS
+
+        named = set(re.findall(r"neuralmind_\w+", SERVER_INSTRUCTIONS))
+        assert named and named <= set(CORE_TOOLS)
+
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
         from neuralmind.mcp_server import TOOLS
@@ -716,7 +744,7 @@ class TestRunMcpServer:
         assert "on_call_tool" in kwargs
         assert created["run"] == ("read-stream", "write-stream", {"init": True})
         assert [tool.name for tool in tools_result.tools] == [
-            tool["name"] for tool in mcp_server.TOOLS
+            tool["name"] for tool in mcp_server.listed_tools()
         ]
 
     def test_falls_back_to_legacy_decorators_when_server_signature_is_unavailable(self):

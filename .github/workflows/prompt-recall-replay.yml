@@ -1,0 +1,73 @@
+name: Prompt-recall replay
+
+# Replays the prompt-submit hook on the task-outcome pilot's 20 bug-fix tasks
+# (evals/task_outcome/replay.py): each task's parent commit is exported and
+# indexed, the task's prompt goes through `neuralmind _hook prompt-submit`,
+# and the block is scored against the fix. Fails when the block names the
+# file the fix changed in fewer tasks than FLOORS allows, or names it first
+# less often, or its code excerpt is in the wrong file too often.
+#
+# No agent runs and no API cost: it checks what NeuralMind hands the agent,
+# not what the agent does with it (that's evals/task_outcome/run.py, by hand).
+# Only on PRs that touch the hook's recall path: it builds 20 indexes.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "neuralmind/bm25.py"
+      - "neuralmind/core.py"
+      - "neuralmind/embedder.py"
+      - "neuralmind/graphgen.py"
+      - "neuralmind/hooks.py"
+      - "neuralmind/node_text.py"
+      - "neuralmind/onnx_embedder.py"
+      - "neuralmind/prompt_recall.py"
+      - "neuralmind/secret_scan.py"
+      - "neuralmind/turbovec_backend.py"
+      - "evals/task_outcome/**"
+      - ".github/workflows/prompt-recall-replay.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prompt-recall-replay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # The tasks' parent commits are exported from history.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install NeuralMind
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Replay the hook and check the floors
+        run: |
+          set -o pipefail
+          python -m evals.task_outcome.replay --check \
+            --work-dir "$RUNNER_TEMP/replay-work" --out "$RUNNER_TEMP/replay" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the blocks and scores
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: prompt-recall-replay
+          path: ${{ runner.temp }}/replay/
+          if-no-files-found: warn

@@ -39,6 +39,44 @@ ranking*, not their LLM-agent loop. Full numbers and reproduction commands on th
 
 ## What's New
 
+### v4.20.0 — The site shows its evidence; its security page starts with verifying the release (October 2026)
+
+No change to what your agent does: the package is the same as v4.19.0. The
+site is rebuilt around its evidence.
+[neuralmind.uk/benchmark](https://neuralmind.uk/benchmark/) is the one proof
+page: per-repo results, where NeuralMind loses, the task-outcome pilot (a
+pre-registered 20-task pilot found no cost difference), and a ledger of every
+number the site quotes, rendered from `site/claims.json` and the committed runs.
+[neuralmind.uk/security](https://neuralmind.uk/security/) opens with verifying a
+release (cosign, `gh attestation verify`, SBOM, VEX, SSDF). The new walkthrough
+[Verify a NeuralMind release before installing it](https://docs.neuralmind.uk/use-cases/verify-a-release.html)
+covers each check. `/effectiveness` now redirects to the refactor field report.
+See the [release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.0.md).
+
+### v4.13.0 – v4.19.0 (October 2026)
+
+Not summarised on this page. Each has release notes: the index stays fresh
+after pulls, merges and rebases
+([v4.13.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.13.0.md));
+`eval --synapse-ab`, signed releases with build provenance
+([v4.14.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.14.0.md));
+`scan-for-secrets` reports each finding once
+([v4.15.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.15.0.md),
+[v4.15.1](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.15.1.md));
+the `cui` security profile, signed audit checkpoints
+([v4.16.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.16.0.md));
+stale-index warnings
+([v4.17.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.0.md));
+security fixes to the CUI profile and machine policy
+([v4.17.1](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.1.md),
+[v4.17.2](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.17.2.md));
+`data-locations`
+([v4.18.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.18.0.md));
+SPDX license tags on every package file
+([v4.18.1](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.18.1.md));
+syslog audit forwarding, an SP 800-53 hardening check, and an offline demo
+([v4.19.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.19.0.md)).
+
 ### v4.12.1 — `doctor` exits 1 on a failed check; examples rank below code (October 2026)
 
 `neuralmind doctor` exits 1 again when a check fails, as documented (v0.55.0
