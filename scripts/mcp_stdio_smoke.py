@@ -6,9 +6,12 @@ newline-delimited JSON-RPC on stdin/stdout), then drives the four messages
 every client sends first:
 
 1. ``initialize``                 → must answer with ``serverInfo.name == "neuralmind"``
+                                   and ``instructions`` naming ``neuralmind_search``
 2. ``notifications/initialized``  → (no reply)
 3. ``tools/list``                 → must list ``neuralmind_query``
 4. ``tools/call``                 → must return ``content[0].text`` that parses as JSON
+                                   (``neuralmind_stats``, which the default list leaves
+                                   out: every tool stays callable by name)
 
 plus one call with a missing required argument, which must come back as an
 ``invalid_request`` error *inside* the result rather than as a transport-level
@@ -217,6 +220,12 @@ def _round_trip(
         if (result.get("serverInfo") or {}).get("name") != "neuralmind":
             raise SmokeFailureError(f"unexpected initialize reply: {json.dumps(init)[:300]}")
         summary["protocolVersion"] = result.get("protocolVersion")
+        # Claude Code defers MCP tools: the instructions are what the model
+        # reads about NeuralMind before it has loaded any tool.
+        instructions = result.get("instructions") or ""
+        if "neuralmind_search" not in instructions:
+            raise SmokeFailureError(f"initialize reply carries no instructions: {instructions!r}")
+        summary["instructions"] = instructions
         summary["steps"].append("initialize ok")
 
         send({"jsonrpc": "2.0", "method": "notifications/initialized"})

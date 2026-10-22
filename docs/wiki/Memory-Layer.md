@@ -184,7 +184,11 @@ anything, and the maintenance tasks scored 50% recall and 83% precision.
 
 ## MCP Tools
 
-Registered in the MCP server (28 tools total as of v4.3.0):
+Registered in the MCP server (28 tools total as of v4.3.0). Since v4.21.0,
+`neuralmind_query_decisions` is the only one of the tools below in the default
+`tools/list`, which offers six core tools. The rest still answer when called by
+name, and `NEURALMIND_MCP_TOOLS=all` in the server's environment lists them (see
+the [CLI reference](CLI-Reference.md#environment-variables)):
 
 | Tool | Arguments | Description |
 |------|-----------|-------------|

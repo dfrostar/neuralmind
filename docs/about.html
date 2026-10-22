@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory that goes stale when a commit changes its files and finds a decision by meaning as well as by its words, with a stale-decision guard, progressive context disclosure with one keyword index over docs and code (the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens; a 150-question eval misses 10), incremental content ingestion for books and docs corpora, and a local-first code graph over ten languages plus JavaScript.">
-    <meta name="keywords" content="NeuralMind, OSCAL component definition, NIST SP 800-53, SP 800-53 hardening baseline, CM-6 configuration baseline, automated compliance check, syslog audit forwarding, SIEM integration, audit failure alerting, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, stale context warning, query-time freshness, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, NIST SP 800-171, CMMC Level 2 security profile, tamper-evident audit log, signed audit checkpoints, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX">
+    <meta name="keywords" content="NeuralMind, OSCAL component definition, NIST SP 800-53, SP 800-53 hardening baseline, CM-6 configuration baseline, automated compliance check, syslog audit forwarding, SIEM integration, audit failure alerting, AI coding agent memory, hybrid BM25 retrieval, pre-registered retrieval eval, retrieval A/B testing, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, stale context warning, query-time freshness, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source, read deduplication, decision invalidation, team memory governance, CMMC 2.0, CUI enclave, NIST SP 800-171, CMMC Level 2 security profile, tamper-evident audit log, signed audit checkpoints, OS identity RBAC, encrypted storage verification, semantic decision search, hybrid search, decision memory, session recap, session continuity, Hermes plugin, Hermes-Agent, retrieval reranking, JavaScript code indexing, retrieval eval McNemar, NIST SSDF, SP 800-218, signed container images, Sigstore, build provenance, OpenVEX, MCP server instructions, agent tool discovery, prompt context excerpt, offline prompt-recall replay">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -20,7 +20,7 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-10-19",
+      "dateModified": "2026-10-21",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure that finds the gold file on 40 of 40 public-benchmark queries at 51–242× fewer tokens than pasting every source file (the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10), a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) plus JavaScript, parsed with the TypeScript grammars (v4.12.0+), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Organization", "name": "Cheval-Volant LLC", "alternateName": "NeuralMind", "url": "https://neuralmind.uk" },
@@ -199,6 +199,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4210">
+            <h2>What&rsquo;s New in v4.21.0 &mdash; an agent that can see NeuralMind: MCP server instructions, a six-tool default list, and the leading file&rsquo;s code in the prompt block</h2>
+            <p>The task-outcome pilot ran the same agent on 20 real bug fixes with and without NeuralMind, 120 runs, and found no difference: median cost per task +0.0% (95% CI &minus;5.2% to +8.6%), 18 of 20 tasks solved either way. Replaying what NeuralMind gave the agent showed why. Claude Code saw 28 deferred tool names with nothing saying when to use one, and called none in 60 runs. The prompt block named the file the fix changed in 17 of 20 tasks, and the agent still made a median of 4 search or read calls before its first edit. This release changes both:</p>
+            <ul>
+                <li><strong>The MCP server says what it&rsquo;s for</strong> &mdash; its <code>initialize</code> reply now carries instructions, which Claude Code shows the model even while the tools are deferred: call <code>neuralmind_search</code> before Grep or Glob to find where something is implemented or the code behind a bug, <code>neuralmind_query</code> to understand how a part works, and start from a prompt&rsquo;s NeuralMind block when it has one</li>
+                <li><strong>Six tools in <code>tools/list</code> by default</strong> &mdash; <code>neuralmind_search</code>, <code>neuralmind_query</code>, <code>neuralmind_skeleton</code>, <code>neuralmind_impact</code>, <code>neuralmind_wakeup</code> and <code>neuralmind_query_decisions</code>. The other 22 still answer when called by name. <code>NEURALMIND_MCP_TOOLS=all</code> lists all 28 again, or name the tools you want listed</li>
+                <li><strong>The leading file&rsquo;s code in the prompt block</strong> &mdash; when one file&rsquo;s summed match score is at least twice the next file&rsquo;s, the <code>UserPromptSubmit</code> block (and the Hermes plugin&rsquo;s) quotes that file&rsquo;s best-matching function or class from the working tree: at most 40 lines, secrets redacted. With no clear lead the block is the file list as before. <code>NEURALMIND_RECALL_EXCERPT=0</code> turns it off</li>
+                <li><strong>Scored offline, in CI</strong> &mdash; <code>python -m evals.task_outcome.replay</code> sends each pilot task&rsquo;s prompt through the hook at the fix&rsquo;s parent commit and scores the block against the fix&rsquo;s diff, with no agent and no API cost. A new <em>Prompt-recall replay</em> workflow fails a pull request that touches the recall path below its floors. On this release, of 20 tasks: the block names a file the fix changed in 17 and names it first in 10; it quotes code in 9, from a changed file in 7 of 9, covering changed lines in 2 of 9. The gate was set on these same 20 prompts, so 7 of 9 is a ceiling, not an estimate</li>
+                <li><strong>Measured after: no change in what the agent does</strong> &mdash; an exploratory rerun of the 20 tasks with this release: the agent called no NeuralMind tool in 60 runs, made a median of 4.0 search or read calls before its first edit (4.0 without NeuralMind), and cost &minus;2.1% per task (95% CI &minus;6.9% to +6.5%): no difference shown. Whether NeuralMind helps on a larger, unfamiliar repository with harder fixes is not measured yet</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md">v4.21.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/check-what-your-agent-is-handed.md">Check what your agent is handed &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4201">
             <h2>What&rsquo;s New in v4.20.1 &mdash; Intel macOS and Windows ARM work again out of the box</h2>
             <p>turbovec has no wheel for Intel macOS or Windows ARM, so <code>pip install neuralmind</code> installs ChromaDB there instead. From v0.46.0 the default backend ignored it, and every build failed with <code>No module named 'turbovec'</code> unless the project set <code>backend: graph</code>.</p>
@@ -209,6 +224,21 @@
                 <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.1.md">v4.20.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4200">
+            <h2>What&rsquo;s New in v4.20.0 &mdash; the site shows its evidence, and its security page starts with verifying the release</h2>
+            <p><strong>No change to what your agent does.</strong> The package is the same as v4.19.0; this release is the redesign of <a href="https://neuralmind.uk/">neuralmind.uk</a>:</p>
+            <ul>
+                <li><strong>One proof page</strong> &mdash; <a href="https://neuralmind.uk/benchmark/">/benchmark</a> holds the per-repo results, where NeuralMind loses, the task-outcome pilot (a pre-registered 20-task pilot found no cost difference) and a ledger of every number the site quotes, each with its evidence level and the command that reproduces it</li>
+                <li><strong>Numbers rendered, not retyped</strong> &mdash; the site reads <code>site/claims.json</code> and the committed runs at build time, and the build fails if a quoted number isn&rsquo;t in them or the ledger leaves one out</li>
+                <li><strong>A security page for security teams</strong> &mdash; <a href="https://neuralmind.uk/security/">/security</a> opens with verifying a release (cosign, <code>gh attestation verify</code>, SBOM, VEX, SSDF), then lists everything NeuralMind can send over the network, the air-gapped install, and the controls a regulated deployment turns on</li>
+                <li><strong>A shorter homepage</strong> &mdash; six sections instead of eleven; the free AI-spend assessment and cost-saving calls to action are gone, and <code>/effectiveness</code> redirects to the refactor field report it duplicated</li>
+            </ul>
+            <p><strong>New walkthrough:</strong> <a href="use-cases/verify-a-release.html">Verify a NeuralMind release before installing it</a> &mdash; each check, what it proves and what it doesn&rsquo;t, and what to keep as evidence.</p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.0.md">v4.20.0 release notes</a></p>
         </div>
     </section>
 
