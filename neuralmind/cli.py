@@ -2666,12 +2666,26 @@ def cmd_doctor(args):
     except Exception:
         pass  # fail-open — don't break doctor if tier2 import fails
     checks = base_checks + extra
-    status = doctor.overall_status(checks)
+    # Wiring: is anything calling NeuralMind? Only ever WARN, so the exit
+    # status below still depends on the core checks alone.
+    try:
+        wiring_checks, wiring_state = doctor.run_wiring(args.project_path)
+    except Exception as exc:  # fail-open — the core checks still print
+        wiring_checks = [doctor.Check("Wiring", doctor.WARN, f"could not check ({exc})")]
+        wiring_state = None
+    status = doctor.overall_status(wiring_checks + checks)
 
     if args.json:
         print(
             json.dumps(
-                {"status": status, "checks": [c.to_dict() for c in checks]},
+                {
+                    "status": status,
+                    "wiring": {
+                        "state": wiring_state,
+                        "checks": [c.to_dict() for c in wiring_checks],
+                    },
+                    "checks": [c.to_dict() for c in checks],
+                },
                 indent=2,
             )
         )
@@ -2679,17 +2693,28 @@ def cmd_doctor(args):
         markers = {doctor.OK: "[ ok ]", doctor.WARN: "[warn]", doctor.FAIL: "[FAIL]"}
         print(f"NeuralMind doctor — {Path(args.project_path).resolve()}")
         print("=" * 60)
-        for c in checks:
-            print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
-            if c.fix and c.status != doctor.OK:
-                print(f"         -> {c.fix}")
+        for title, section in (("Wiring", wiring_checks), ("Checks", checks)):
+            print(title)
+            for c in section:
+                print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
+                if c.fix and c.status != doctor.OK:
+                    print(f"         -> {c.fix}")
         print("=" * 60)
         summary = {
             doctor.OK: "All checks passed.",
             doctor.WARN: "Up and running; optional pieces are missing (see above).",
             doctor.FAIL: "Setup incomplete — run the fixes above, then re-check.",
         }
-        print(summary.get(status, ""))
+        if status != doctor.FAIL and wiring_state == "inert":
+            # Installed but inert: every core check can pass while no agent
+            # ever queries the index, so "Up and running" would be false.
+            print(
+                "Installed but not wired: nothing calls NeuralMind for this project yet "
+                "(no Claude Code hooks, Hermes plugin or MCP registration). "
+                "Run a Wiring fix above."
+            )
+        else:
+            print(summary.get(status, ""))
 
     # Exit 1 on a failed check (warnings don't count) so a script or CI step
     # can gate on `neuralmind doctor`. Same for --json: the payload is printed

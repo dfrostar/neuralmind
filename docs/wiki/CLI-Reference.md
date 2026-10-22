@@ -1671,6 +1671,26 @@ neuralmind doctor [project_path] [--json] [--stale-after DURATION]
 | `--json`, `-j` | No | `false` | Emit machine-readable JSON |
 | `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* Fail the Code graph check, so doctor exits `1`, once the index has been behind the files for longer than this (`30m`, `2h`, `1d`). See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
+**Wiring** *(v4.21.0+)* comes first: whether anything calls NeuralMind for
+this project. A built index that no agent queries passes every check below,
+so doctor used to read "Up and running" on an install that was doing nothing.
+Each line is `ok` or `warn`, never `fail`, so wiring never changes the exit
+code; a warning carries the command that fixes it.
+
+| Line | States |
+|------|--------|
+| **Daemon** | running on `host:port` (pid, version) · not running → `neuralmind daemon start` · alive but not answering, or running an older version than the one installed → `neuralmind daemon restart` · off under `NEURALMIND_NO_DAEMON=1` (`ok`) |
+| **Git hooks** | full (the four rebuild hooks and the pre-commit drift guard) · partial (names the missing ones; a `--no-drift` install is partial) · none → `neuralmind init-hook <project>` · not a Git repository (`ok`). A hook whose managed block serves another project in the same repository doesn't count, and with `core.hooksPath` set (husky, a shared hooks directory) none do, since git never runs the `.git/hooks` that `init-hook` writes: that line has no command of ours to suggest |
+| **Hermes plugin** | enabled, pinned to this project or following `TERMINAL_CWD` · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` → `hermes plugins enable neuralmind` · not installed in a set-up Hermes home → `neuralmind install-hermes-plugin` · pinned to another project → `neuralmind install-hermes-plugin --unpin` · plugin code older than the installed NeuralMind → re-run `neuralmind install-hermes-plugin` (`hermes plugins update neuralmind` for one Hermes installed) · no Hermes home (`ok`) |
+| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json`, and `claude mcp add`'s user and local scopes in `~/.claude.json`), or looks installed without it → `neuralmind install-mcp --client <client>`. Hermes's entry with `enabled: false` warns too. When no known client has it, one line says so → `neuralmind install-mcp --print`, which is expected if you registered it by hand in another client |
+
+When no agent host is wired (no Claude Code hooks, no enabled Hermes plugin,
+no MCP registration), the closing line reads *Installed but not wired*
+instead of *Up and running*. `--json` adds a `wiring` object beside `checks`:
+`{"state": "inert" | "partial" | "wired", "checks": [...]}`, and the
+top-level `status` counts its warnings; `checks` holds the same core checks
+as before.
+
 **Checks:** code graph, semantic index, **backend** *(v0.22.0+)*, synapse
 memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
 `ok`, `warn` (optional/learned-over-time), or `fail` (setup incomplete). The
@@ -1770,6 +1790,16 @@ neuralmind doctor .
 ```
 NeuralMind doctor — /path/to/project
 ============================================================
+Wiring
+  [warn] Daemon: not running: CLI queries load the index from cold on every call
+         -> neuralmind daemon start
+  [warn] Git hooks: none: the index goes stale after commits, pulls and branch switches until the next manual build
+         -> neuralmind init-hook .
+  [warn] Hermes plugin: Hermes is set up at /home/you/.hermes, but the NeuralMind plugin isn't installed
+         -> neuralmind install-hermes-plugin
+  [warn] MCP registration (hermes): hermes looks installed (/home/you/.hermes/config.yaml), but NeuralMind isn't registered
+         -> neuralmind install-mcp --client hermes
+Checks
   [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
   [ ok ] Semantic index: 1240 nodes embedded (turbovec backend)
   [ ok ] Query freshness: queries carry no staleness notice
@@ -1781,6 +1811,7 @@ NeuralMind doctor — /path/to/project
          -> Install them: neuralmind install-hooks
   [ ok ] Query memory: enabled (logging queries for learning)
 ===========================================================
+Installed but not wired: nothing calls NeuralMind for this project yet (no Claude Code hooks, Hermes plugin or MCP registration). Run a Wiring fix above.
 ```
 
 **Code graph freshness (v4.4.0+).** The *Code graph* check compares the graph
@@ -4554,7 +4585,7 @@ emits, and runs the documented cases.
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
 | `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` removes that dependence at some indexing-throughput cost. It does not make output identical on every machine: with `1` set, public-benchmark CI runs still split into two states with slightly different token counts depending on the runner, while on an Apple M3 the public benchmark gave byte-identical output with and without it ([details](../benchmarks/public.md#how-exactly-a-re-run-reproduces)). The self-benchmark harness sets `1` automatically, and the public-benchmark CI job runs with it. |
-| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
+| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). *(v4.21.0+)* `doctor`'s Wiring section then reports the daemon as off, not missing |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 | `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. `0` also turns off the v4.6.0 keyword indexes below. |

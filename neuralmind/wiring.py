@@ -1,0 +1,543 @@
+# SPDX-License-Identifier: MIT
+"""wiring.py — is anything actually calling NeuralMind for this project?
+
+A built index that no agent queries is installed but inert: the graph and the
+vectors are fine, so every health check passes, and nothing uses them. A field
+deployment sat that way for eleven days with two logged queries. The pieces
+that connect a built project to its use are:
+
+- the daemon, which keeps the index warm for CLI queries;
+- the Git hooks ``neuralmind init-hook`` installs, which rebuild the index
+  after commits, merges, branch switches and rebases, and guard commits for
+  drift;
+- the agent hosts: Claude Code's hooks, the Hermes-Agent plugin, and the MCP
+  server registered in a client's config.
+
+Each probe here is read-only and never raises: one it can't run reports what
+it couldn't see. ``neuralmind doctor`` shows them as its Wiring section.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shlex
+from dataclasses import dataclass
+from pathlib import Path
+
+# Hook files ``neuralmind init-hook`` writes a managed block into: the four
+# that rebuild the index, then the pre-commit drift guard.
+REBUILD_HOOKS = ("post-commit", "post-merge", "post-checkout", "post-rewrite")
+GIT_HOOKS = (*REBUILD_HOOKS, "pre-commit")
+_BLOCK_START = "# neuralmind-hook-start"
+_BLOCK_END = "# neuralmind-hook-end"
+# How a managed block names its project: the rebuild hooks test the built
+# marker, the drift guard passes the path to `drift`.
+_REBUILD_TARGET = re.compile(r"\[ -f (.+?)/\.neuralmind/build_status\.json \]")
+_DRIFT_TARGET = re.compile(r'"\$_nm_bin" drift (.+?) --staged')
+_PLUGIN_VERSION = re.compile(r'^version:\s*["\']?([^"\'\s#]+)', re.MULTILINE)
+
+
+@dataclass
+class WiringItem:
+    """One piece of wiring.
+
+    ``wired`` is True or False, or None when it doesn't apply here (no Hermes
+    on this machine, a project outside Git). ``fix`` is the one command that
+    wires it. ``host`` marks an item through which an agent calls NeuralMind.
+    ``outdated`` marks a piece that is wired but runs old code (a daemon or
+    plugin copy from before an upgrade): it still works, and ``fix`` updates
+    it.
+    """
+
+    name: str
+    wired: bool | None
+    detail: str
+    fix: str = ""
+    host: bool = False
+    outdated: bool = False
+
+    @property
+    def needs_fix(self) -> bool:
+        return self.wired is False or self.outdated
+
+
+def _arg(project: Path, project_arg: str | None) -> str:
+    """The project as a command argument: what the user typed, else the path."""
+    return shlex.quote(project_arg if project_arg else str(project))
+
+
+# --------------------------------------------------------------------------- #
+# Daemon
+# --------------------------------------------------------------------------- #
+def daemon_item(timeout: float = 1.0) -> WiringItem:
+    """Is the daemon up, answering, and running the installed version?"""
+    name = "Daemon"
+    if os.environ.get("NEURALMIND_NO_DAEMON") == "1":
+        return WiringItem(name, None, "off: NEURALMIND_NO_DAEMON=1 keeps every CLI call direct")
+    try:
+        from . import __version__
+        from .daemon import DEFAULT_PORT, _pid_alive, read_discovery
+        from .daemon_client import DaemonClient, DaemonUnavailableError
+
+        info = read_discovery()
+    except Exception as exc:  # pragma: no cover - diagnostic must never raise
+        return WiringItem(name, None, f"could not check the daemon ({exc})")
+    start = "neuralmind daemon start"
+    cold = "not running: CLI queries load the index from cold on every call"
+    if not info:
+        return WiringItem(name, False, cold, fix=start)
+    host = info.get("host", "127.0.0.1")
+    port = info.get("port", DEFAULT_PORT)
+    pid = info.get("pid")
+    if isinstance(pid, int) and pid > 0 and not _pid_alive(pid):
+        return WiringItem(
+            name, False, f"{cold} (pid {pid} in its discovery file has exited)", start
+        )
+    try:
+        health = DaemonClient(info).health(timeout=timeout)
+    except (DaemonUnavailableError, KeyError, TypeError, ValueError):
+        return WiringItem(
+            name,
+            False,
+            f"pid {pid} is alive but doesn't answer on {host}:{port}",
+            fix="neuralmind daemon restart",
+        )
+    running = f"running on {host}:{port} (pid {health.get('pid', pid)}"
+    version = health.get("version")
+    if version and version != __version__:
+        return WiringItem(
+            name,
+            True,
+            f"{running}) runs v{version}, but v{__version__} is installed",
+            fix="neuralmind daemon restart",
+            outdated=True,
+        )
+    return WiringItem(name, True, f"{running}, v{version or '?'})")
+
+
+# --------------------------------------------------------------------------- #
+# Git hooks
+# --------------------------------------------------------------------------- #
+def _hooks_location(project: Path) -> tuple[Path | None, Path | None]:
+    """Where ``init-hook`` writes hooks for ``project``: ``(hooks dir, repo root)``.
+
+    The same lookup as the CLI's ``_git_hooks_location``, without creating
+    the directory.
+    """
+    direct = project / ".git" / "hooks"
+    if direct.is_dir():
+        return direct, project
+    import subprocess
+
+    def rev_parse(flag: str) -> str | None:
+        try:
+            out = subprocess.run(
+                ["git", "-C", str(project), "rev-parse", flag],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+    top = rev_parse("--show-toplevel")
+    common = rev_parse("--git-common-dir")
+    if not top or not common:
+        return None, None
+    common_path = Path(common) if os.path.isabs(common) else project / common
+    return Path(os.path.normpath(common_path)) / "hooks", Path(top)
+
+
+def _effective_hooks_dir(project: Path) -> Path | None:
+    """The hooks directory git actually runs, honouring ``core.hooksPath``."""
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(project), "rev-parse", "--git-path", "hooks"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    path = out.stdout.strip()
+    if out.returncode != 0 or not path:
+        return None
+    return Path(os.path.realpath(path if os.path.isabs(path) else project / path))
+
+
+def _managed_block(hook_file: Path) -> str | None:
+    try:
+        text = hook_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    if _BLOCK_START not in text or _BLOCK_END not in text:
+        return None
+    return text.partition(_BLOCK_START)[2].partition(_BLOCK_END)[0]
+
+
+def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
+    """none / partial / full: which of init-hook's five hooks serve this project."""
+    name = "Git hooks"
+    try:
+        hooks_dir, repo_root = _hooks_location(project)
+    except Exception as exc:  # pragma: no cover - diagnostic must never raise
+        return WiringItem(name, None, f"could not check ({exc})")
+    if hooks_dir is None or repo_root is None:
+        return WiringItem(
+            name,
+            None,
+            "not a Git repository: rebuild with `neuralmind build` after changes",
+        )
+    effective = _effective_hooks_dir(project)
+    if effective is not None and effective != Path(os.path.realpath(hooks_dir)):
+        # init-hook writes the repository's own hooks directory; with
+        # core.hooksPath set (husky, a shared hooks repo) git never runs it.
+        return WiringItem(
+            name,
+            False,
+            f"git runs the hooks in {effective} (core.hooksPath), but init-hook writes "
+            f"{hooks_dir}, so NeuralMind's rebuilds never run there; add its blocks to the "
+            "hooks git runs, or unset core.hooksPath",
+        )
+    rel = os.path.relpath(os.path.realpath(project), os.path.realpath(repo_root))
+    target = "." if rel == "." else shlex.quote(rel.replace(os.sep, "/"))
+    present: list[str] = []
+    elsewhere: list[str] = []
+    for hook in GIT_HOOKS:
+        block = _managed_block(hooks_dir / hook)
+        if block is None:
+            continue
+        pattern = _DRIFT_TARGET if hook == "pre-commit" else _REBUILD_TARGET
+        found = pattern.search(block)
+        if found is None or found.group(1) == target:
+            present.append(hook)
+        else:
+            elsewhere.append(f"{hook} ({found.group(1)})")
+    fix = f"neuralmind init-hook {_arg(project, project_arg)}"
+    missing = [h for h in GIT_HOOKS if h not in present]
+    if not missing:
+        return WiringItem(
+            name,
+            True,
+            "full: commits, merges, branch switches and rebases rebuild the index; "
+            "pre-commit runs the drift guard",
+        )
+    note = ""
+    if elsewhere:
+        # One managed block per hook file: another project in this repository
+        # took it over.
+        note = (
+            f"; serving another project in this repository: {', '.join(elsewhere)} "
+            "(init-hook here takes them over)"
+        )
+    if not present:
+        return WiringItem(
+            name,
+            False,
+            "none: the index goes stale after commits, pulls and branch switches until "
+            f"the next manual build{note}",
+            fix=fix,
+        )
+    if missing == ["pre-commit"] and not elsewhere:
+        what = "the pre-commit drift guard is missing (an install with --no-drift)"
+    else:
+        what = f"missing {', '.join(missing)}"
+    return WiringItem(
+        name, False, f"partial: {', '.join(present)} installed; {what}{note}", fix=fix
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Claude Code hooks
+# --------------------------------------------------------------------------- #
+def claude_code_hook_scopes(project: Path) -> list[str]:
+    """The settings scopes (``project``, ``global``) holding NeuralMind's hooks.
+
+    Raises if :mod:`neuralmind.hooks` can't be imported, so doctor can say it
+    couldn't check rather than "not installed".
+    """
+    from .hooks import _is_neuralmind_block, _settings_path
+
+    scopes: list[tuple[str, Path]] = []
+    try:
+        scopes.append(("project", _settings_path("project", str(project))))
+    except Exception:
+        pass
+    try:
+        scopes.append(("global", _settings_path("global")))
+    except Exception:
+        pass
+    installed = []
+    for label, path in scopes:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        hooks = data.get("hooks") if isinstance(data, dict) else None
+        blocks = [
+            block
+            for event_blocks in (hooks if isinstance(hooks, dict) else {}).values()
+            if isinstance(event_blocks, list)
+            for block in event_blocks
+        ]
+        if any(_is_neuralmind_block(b) for b in blocks):
+            installed.append(label)
+    return installed
+
+
+# --------------------------------------------------------------------------- #
+# Hermes-Agent plugin
+# --------------------------------------------------------------------------- #
+def _hermes_config(home: Path) -> dict | None:
+    """``<home>/config.yaml`` as a dict; None when absent or unreadable."""
+    try:
+        import yaml
+
+        data = yaml.safe_load((home / "config.yaml").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else ({} if data is None else None)
+
+
+def _names(value) -> list[str]:
+    return [str(v) for v in value] if isinstance(value, list) else []
+
+
+def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
+    """not installed / installed / enabled, for the Hermes home plain `hermes` uses."""
+    name = "Hermes plugin"
+    try:
+        from . import __version__
+        from .hermes_install import (
+            PLUGIN_NAME,
+            hermes_home,
+            is_hermes_home,
+            managed_by_hermes,
+        )
+
+        home = home or hermes_home()
+    except Exception as exc:  # pragma: no cover - diagnostic must never raise
+        return WiringItem(name, None, f"could not check ({exc})")
+    where = str(home) + (f" (Hermes profile {home.name})" if home.parent.name == "profiles" else "")
+    target = home / "plugins" / PLUGIN_NAME
+    installed = (target / "plugin.yaml").is_file()
+    if not installed:
+        if not is_hermes_home(home):
+            return WiringItem(name, None, f"no Hermes home at {where}; skip unless you use Hermes")
+        return WiringItem(
+            name,
+            False,
+            f"Hermes is set up at {where}, but the NeuralMind plugin isn't installed",
+            fix="neuralmind install-hermes-plugin",
+            host=True,
+        )
+    config = _hermes_config(home)
+    plugins = (config or {}).get("plugins")
+    plugins = plugins if isinstance(plugins, dict) else {}
+    enabled = _names(plugins.get("enabled"))
+    disabled = _names(plugins.get("disabled"))
+    enable = f"hermes plugins enable {PLUGIN_NAME}"
+    if config is None:
+        return WiringItem(
+            name,
+            False,
+            f"installed at {target}, but {home / 'config.yaml'} is missing or unreadable, "
+            "so Hermes doesn't load it; set Hermes up (run `hermes`), then enable it",
+            fix=enable,
+            host=True,
+        )
+    if PLUGIN_NAME in disabled:
+        return WiringItem(
+            name,
+            False,
+            f"installed at {target}, but on Hermes's plugins.disabled list",
+            enable,
+            True,
+        )
+    if PLUGIN_NAME not in enabled:
+        return WiringItem(
+            name,
+            False,
+            f"installed at {target}, but not on Hermes's plugins.enabled list, so it never loads",
+            enable,
+            True,
+        )
+    try:
+        settings = json.loads((target / "config.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        settings = {}
+    settings = settings if isinstance(settings, dict) else {}
+    pinned = settings.get("project")
+    python = settings.get("python")
+    reinstall = "neuralmind install-hermes-plugin"
+    if isinstance(pinned, str) and pinned:
+        if Path(pinned).resolve() != project.resolve():
+            return WiringItem(
+                name,
+                False,
+                f"enabled in {where}, but pinned to {pinned}: every Hermes session there is "
+                "served and recorded as that project (to pin this one instead: "
+                f"{reinstall} {shlex.quote(str(project))})",
+                fix=f"{reinstall} --unpin",
+                host=True,
+            )
+        serves = "pinned to this project"
+    else:
+        serves = "serves the directory Hermes works in (TERMINAL_CWD)"
+    problems: list[str] = []
+    if isinstance(python, str) and python and not Path(python).exists():
+        problems.append(f"the interpreter it records, {python}, no longer exists")
+    try:
+        found = _PLUGIN_VERSION.search((target / "plugin.yaml").read_text(encoding="utf-8"))
+    except OSError:
+        found = None
+    plugin_version = found.group(1) if found else None
+    if plugin_version and plugin_version != __version__:
+        problems.append(f"its code is from v{plugin_version}, NeuralMind is v{__version__}")
+    if problems:
+        managed = managed_by_hermes(home)
+        fix = f"hermes plugins update {PLUGIN_NAME}" if managed else reinstall
+        return WiringItem(
+            name,
+            True,
+            f"enabled in {where}, {serves}; but {'; '.join(problems)}",
+            fix,
+            host=True,
+            outdated=True,
+        )
+    return WiringItem(name, True, f"enabled in {where}, {serves}", host=True)
+
+
+# --------------------------------------------------------------------------- #
+# MCP registrations
+# --------------------------------------------------------------------------- #
+def _claude_json_scopes(project: Path) -> list[str]:
+    """Claude Code scopes in ``~/.claude.json`` (``claude mcp add``) registering NeuralMind."""
+    from .mcp_install import _home, _launches_neuralmind
+
+    try:
+        data = json.loads((_home() / ".claude.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    scopes = []
+    if _servers_launch(data.get("mcpServers"), _launches_neuralmind):
+        scopes.append("user scope, ~/.claude.json")
+    projects = data.get("projects")
+    local = projects.get(str(project.resolve())) if isinstance(projects, dict) else None
+    if isinstance(local, dict) and _servers_launch(local.get("mcpServers"), _launches_neuralmind):
+        scopes.append("local scope, ~/.claude.json")
+    return scopes
+
+
+def _servers_launch(servers, launches) -> bool:
+    return isinstance(servers, dict) and any(
+        isinstance(entry, dict) and launches(entry) for entry in servers.values()
+    )
+
+
+def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]:
+    """One item per MCP client that has NeuralMind registered or looks installed."""
+    try:
+        from . import mcp_install
+    except Exception as exc:  # pragma: no cover - diagnostic must never raise
+        return [WiringItem("MCP registration", None, f"could not check ({exc})")]
+    items: list[WiringItem] = []
+    for client in mcp_install.CLIENTS:
+        label = f"MCP registration ({client})"
+        try:
+            state = mcp_install.registration(client, project)
+            extra = _claude_json_scopes(project) if client == "claude-code" else []
+        except Exception as exc:  # pragma: no cover - diagnostic must never raise
+            items.append(WiringItem(label, None, f"could not check ({exc})"))
+            continue
+        install = f"neuralmind install-mcp --client {client}"
+        if client in ("claude-code", "cursor") and project_arg not in (None, "."):
+            install = f"neuralmind install-mcp {_arg(project, project_arg)} --client {client}"
+        where = [str(state.path)] if state.registered else []
+        where += extra
+        if state.registered or extra:
+            if state.disabled:
+                items.append(
+                    WiringItem(
+                        label,
+                        False,
+                        f"registered in {state.path}, but disabled there (enabled: false)",
+                        fix=f"hermes config set mcp_servers.{mcp_install.SERVER_NAME}.enabled true",
+                        host=True,
+                    )
+                )
+                continue
+            items.append(WiringItem(label, True, f"registered ({'; '.join(where)})", host=True))
+        elif state.unreadable:
+            items.append(
+                WiringItem(
+                    label,
+                    None,
+                    f"can't tell: {state.path} {state.unreadable}",
+                    host=True,
+                )
+            )
+        elif state.detected:
+            items.append(
+                WiringItem(
+                    label,
+                    False,
+                    f"{client} looks installed ({state.path}), but NeuralMind isn't registered",
+                    fix=install,
+                    host=True,
+                )
+            )
+    if not items:
+        known = ", ".join(mcp_install.CLIENTS)
+        items.append(
+            WiringItem(
+                "MCP registration",
+                False,
+                f"none found in the client configs NeuralMind knows ({known}); registered by "
+                "hand in another client? Then this is expected. For a known one: "
+                "neuralmind install-mcp --client <name>",
+                fix="neuralmind install-mcp --print",
+                host=True,
+            )
+        )
+    return items
+
+
+# --------------------------------------------------------------------------- #
+# Summary
+# --------------------------------------------------------------------------- #
+INERT = "inert"
+PARTIAL = "partial"
+WIRED = "wired"
+
+
+def collect(project: Path, project_arg: str | None = None) -> list[WiringItem]:
+    """Every wiring item for ``project``, in doctor's order."""
+    project = project.resolve()
+    return [
+        daemon_item(),
+        git_hooks_item(project, project_arg),
+        hermes_plugin_item(project),
+        *mcp_items(project, project_arg),
+    ]
+
+
+def state(items: list[WiringItem], claude_code_hooks: bool) -> str:
+    """``inert`` when no agent host calls NeuralMind, ``wired`` when every item
+    that applies is wired, else ``partial``."""
+    if not claude_code_hooks and not any(i.wired for i in items if i.host):
+        return INERT
+    if not any(i.needs_fix for i in items):
+        return WIRED
+    return PARTIAL
