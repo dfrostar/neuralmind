@@ -6,8 +6,7 @@ export const dynamic = 'force-static';
 /**
  * https://neuralmind.uk/performance/linkedin.txt — block B of the latest
  * month's narrative, verbatim, so the post can be copied in one go. Blocks A
- * and C render on /performance; block D is dropped by the parser and never
- * reaches either. Empty when the month has no block B.
+ * and C render on /performance. Empty when the month has no block B.
  */
 export function GET() {
     const body = performanceRecord().narrative?.linkedin ?? '';

@@ -61,8 +61,4 @@ Our first month of public numbers.
 - [moved] Top-1 ranking on bible-llm,
   where most misses are.
 - [stalled] Gold sets are still small.
-
-## D. Integrity
-
-SECRET-INTEGRITY-NOTE: t0 was re-run once after a cold cache.
 `;

@@ -19,6 +19,8 @@
  * Nothing here interpolates: a null stays null all the way to the page.
  */
 
+import claims from '../../claims.json';
+
 export const MEASURED = 'measured';
 
 /**
@@ -388,9 +390,10 @@ export interface WorkItem {
 }
 
 /**
- * The published parts of a month's narrative. Block D (integrity) is not a
- * field: the parser drops its text as it reads, so nothing downstream can
- * render it.
+ * A month's narrative. Every block is published: A on /performance, B at
+ * /performance/linkedin.txt, C on /performance. Integrity notes are not a
+ * block: they live in the private repo (`INTEGRITY_NOTES`), because this repo
+ * and everything committed to it is public on GitHub.
  */
 export interface Narrative {
     month: string;
@@ -402,40 +405,44 @@ export interface Narrative {
     working: WorkItem[];
 }
 
+/** Where integrity notes go instead, from site/claims.json. */
+export const INTEGRITY_NOTES = claims.longitudinal_record.integrity_notes;
+
 const BLOCK_RE = /^##\s+([A-Z])\b/;
 const ANY_HEADING_RE = /^\s{0,3}#{1,6}(\s|$)/;
 const ITEM_RE = /^- \[([a-z]+)\]\s+(.+)$/;
 
 /**
- * Split a narrative into blocks A–D by its `## A` … `## D` headings. Any other
- * heading is an error rather than content: a `### D` nested under C would
- * otherwise publish the integrity notes.
+ * Split a narrative into blocks A–C by its `## A` … `## C` headings. Any other
+ * heading is an error rather than content, so nothing can sit in a published
+ * block under a heading of its own; one that looks like integrity notes (a
+ * `## D` block, or a heading naming integrity) says where those go.
  */
 export function parseNarrative(fileName: string, text: string): Narrative {
     const m = NARRATIVE_FILE_RE.exec(fileName);
     if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) fail(fileName, 'narratives are named YYYY-MM.md');
     const blocks: Partial<Record<'A' | 'B' | 'C', string[]>> = {};
-    let current: 'A' | 'B' | 'C' | 'D' | null = null;
-    const seen = new Set<string>();
+    let current: 'A' | 'B' | 'C' | null = null;
     text.split('\n').forEach((line, i) => {
         const where = `${fileName}:${i + 1}`;
+        if (ANY_HEADING_RE.test(line) && (/integrity/i.test(line) || /^##\s+D\b/.test(line))) {
+            fail(where, `integrity notes are not committed to this public repo; keep them in ${INTEGRITY_NOTES}`);
+        }
         const block = BLOCK_RE.exec(line);
         if (block) {
             const letter = block[1];
-            if (!'ABCD'.includes(letter)) fail(where, `unknown block "${letter}" (A–D only)`);
-            if (seen.has(letter)) fail(where, `block ${letter} appears twice`);
-            seen.add(letter);
-            current = letter as 'A' | 'B' | 'C' | 'D';
-            if (current !== 'D') blocks[current] = [];
+            if (letter !== 'A' && letter !== 'B' && letter !== 'C') fail(where, `unknown block "${letter}" (A–C only)`);
+            if (blocks[letter]) fail(where, `block ${letter} appears twice`);
+            current = letter;
+            blocks[letter] = [];
             return;
         }
         if (ANY_HEADING_RE.test(line)) {
             // The title line above the first block is the only other heading allowed.
             if (current === null && /^#\s/.test(line)) return;
-            fail(where, 'only the ## A–D block headings may appear in a narrative');
+            fail(where, 'only the ## A–C block headings may appear in a narrative');
         }
-        if (current === null || current === 'D') return;
-        blocks[current]!.push(line);
+        if (current !== null) blocks[current]!.push(line);
     });
 
     const body = (lines?: string[]) => {

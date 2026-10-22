@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadNarratives, performanceRecord } from '@/lib/performance';
 import {
+    INTEGRITY_NOTES,
     histories,
     impliedHits,
     isMeasured,
@@ -137,7 +138,7 @@ describe('histories', () => {
 });
 
 describe('narratives', () => {
-    it('parses blocks A–C and drops D', () => {
+    it('parses blocks A–C', () => {
         const n = parseNarrative('2026-10.md', NARRATIVE);
         expect(n.month).toBe('2026-10');
         expect(n.site).toContain('First month on the record');
@@ -146,18 +147,32 @@ describe('narratives', () => {
             { tag: 'moved', text: 'Top-1 ranking on bible-llm, where most misses are.' },
             { tag: 'stalled', text: 'Gold sets are still small.' },
         ]);
-        expect(JSON.stringify(n)).not.toContain('SECRET-INTEGRITY-NOTE');
         expect(Object.keys(n).sort()).toEqual(['linkedin', 'month', 'site', 'working']);
     });
 
     it.each([
-        ['a nested heading that could smuggle D into C', NARRATIVE.replace('## D. Integrity', '### D. Integrity'), /only the ## A–D/],
+        ['a heading nested in a block', `${NARRATIVE}\n### Aside\n`, /only the ## A–C/],
         ['an unknown block', `${NARRATIVE}\n## E. Extra\n`, /unknown block "E"/],
         ['a repeated block', `${NARRATIVE}\n## A. Again\n`, /block A appears twice/],
         ['an untagged C item', NARRATIVE.replace('- [stalled]', '- '), /block C lines are/],
         ['an unknown C tag', NARRATIVE.replace('[stalled]', '[shipped]'), /\[shipped\] is not/],
     ])('rejects %s', (_label, text, message) => {
         expect(() => parseNarrative('2026-10.md', text)).toThrow(message);
+    });
+
+    it.each([
+        ['a block D', `${NARRATIVE}\n## D. Integrity\n\nt0 was re-run once.\n`],
+        ['a bare D heading', `${NARRATIVE}\n## D\n`],
+        ['an integrity heading at any level', `${NARRATIVE}\n### Integrity notes\n`],
+        ['an integrity title', `# 2026-10 integrity\n\n## A. Site\n\nText.\n`],
+    ])('sends %s to the private repo instead of parsing it', (_label, text) => {
+        expect(() => parseNarrative('2026-10.md', text)).toThrow(
+            new RegExp(`not committed to this public repo; keep them in ${INTEGRITY_NOTES.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}`),
+        );
+    });
+
+    it('names the private repo for integrity notes', () => {
+        expect(INTEGRITY_NOTES).toContain('dfrostar/neuralmind-marketing');
     });
 
     it('reads only YYYY-MM.md files and picks the latest month', () => {

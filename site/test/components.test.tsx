@@ -149,7 +149,7 @@ describe('narrative blocks', () => {
 });
 
 describe('/performance/linkedin.txt', () => {
-    it('serves block B verbatim and nothing from block D', async () => {
+    it('serves block B verbatim and nothing from the other blocks', async () => {
         vi.resetModules();
         vi.doMock('@/lib/performance', () => ({
             performanceRecord: () => ({ narrative: parseNarrative('2026-10.md', NARRATIVE) }),
@@ -157,7 +157,8 @@ describe('/performance/linkedin.txt', () => {
         const { GET } = await import('@/app/performance/linkedin.txt/route');
         const body = await GET().text();
         expect(body).toBe('Our first month of public numbers.\n#retrieval\n');
-        expect(body).not.toContain('SECRET-INTEGRITY-NOTE');
+        expect(body).not.toContain('First month on the record');
+        expect(body).not.toContain('Gold sets are still small');
         vi.doUnmock('@/lib/performance');
     });
 

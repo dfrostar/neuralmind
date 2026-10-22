@@ -6,13 +6,17 @@ monthly narratives beside it, and the narratives' blocks A and C go on the page
 and block B to https://neuralmind.uk/performance/linkedin.txt. Without this
 module, hand-written copy would reach both with no guard reading it.
 
-1. **Published narrative blocks pass the site's rules** — no absolute privacy
-   claims, no overclaims, no unsourced or superseded figures, no bare 12–50×,
-   and every ratio either listed in ``site/claims.json`` or the ratio of a
-   measured record row with its baseline recorded (the only ratios the page
-   itself would show). Block D is never read: it is not published.
-2. **No private names** in the record, the profile or the narratives.
-3. **The canon names files that exist.**
+1. **Narratives pass the site's rules** — no absolute privacy claims, no
+   overclaims, no unsourced or superseded figures, no bare 12–50×, and every
+   ratio either listed in ``site/claims.json`` or the ratio of a measured
+   record row with its baseline recorded (the only ratios the page itself
+   would show). Every block is published, so every block is read.
+2. **No integrity notes in this repo.** It is public on GitHub, so notes on how
+   the rows were produced live in the private repo ``site/claims.json`` names
+   (``longitudinal_record.integrity_notes``). A ``## D`` block, a heading that
+   names integrity, or a file named for it under ``benchmarks/ai9970/`` fails.
+3. **No private names** in the record, the profile or the narratives.
+4. **The canon names files that exist.**
 
 Row-level arithmetic (rates against gold-set size, ratio against baseline and
 context tokens) is checked where the rows are rendered, in
@@ -47,9 +51,10 @@ from tests.test_site_claims import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RECORD = _claims()["longitudinal_record"]
 NARRATIVE_FILE_RE = re.compile(r"^\d{4}-\d{2}\.md$")
-# The same block headings site/src/lib/record.ts splits on.
+# The same headings site/src/lib/record.ts splits on and rejects.
 BLOCK_RE = re.compile(r"^##\s+([A-Z])\b")
-PUBLISHED_BLOCKS = {"A", "B", "C"}
+HEADING_RE = re.compile(r"^\s{0,3}#{1,6}(\s|$)")
+D_BLOCK_RE = re.compile(r"^##\s+D\b")
 
 
 def _rows() -> list[dict]:
@@ -69,18 +74,27 @@ def _measured_ratios(rows: list[dict]) -> set[float]:
 
 
 def published_lines(text: str) -> list[str]:
-    """The lines of blocks A–C; block D and anything before block A are dropped."""
+    """Every line from the first block heading on; the title above it is dropped."""
     out: list[str] = []
-    current: str | None = None
+    started = False
     for line in text.splitlines():
-        m = BLOCK_RE.match(line)
-        if m:
-            current = m.group(1)
+        if BLOCK_RE.match(line):
+            started = True
             out.append("")  # a block boundary ends the paragraph
             continue
-        if current in PUBLISHED_BLOCKS:
+        if started:
             out.append(line)
     return out
+
+
+def integrity_headings(text: str) -> list[int]:
+    """Line numbers of headings that hold integrity notes: a ``## D`` block, or any
+    heading naming integrity."""
+    return [
+        i
+        for i, line in enumerate(text.splitlines(), start=1)
+        if HEADING_RE.match(line) and ("integrity" in line.lower() or D_BLOCK_RE.match(line))
+    ]
 
 
 def violations_in(lines: list[str], allowed_ratios: set[float]) -> list[str]:
@@ -121,6 +135,25 @@ def test_canon_names_files_that_exist() -> None:
     for key in ("source", "profile", "narratives"):
         assert (REPO_ROOT / RECORD[key]).exists(), f"site/claims.json longitudinal_record.{key}"
     assert RECORD["evidence"] in _claims()["_evidence_levels"]
+
+
+def test_no_integrity_notes_in_the_public_repo() -> None:
+    folder = REPO_ROOT / RECORD["source"]
+    record_dir = folder.parent
+    problems = [
+        f"{path.relative_to(REPO_ROOT)}: a file named for integrity notes"
+        for path in record_dir.rglob("*")
+        if "integrity" in path.name.lower()
+    ]
+    for path in sorted((REPO_ROOT / RECORD["narratives"]).iterdir()):
+        problems.extend(
+            f"{path.relative_to(REPO_ROOT)}:{n}: an integrity heading"
+            for n in integrity_headings(path.read_text(encoding="utf-8"))
+        )
+    assert not problems, (
+        "Integrity notes are committed to this public repo. Keep them in "
+        f"{RECORD['integrity_notes']}:\n  " + "\n  ".join(problems)
+    )
 
 
 def test_published_narrative_blocks_follow_the_site_rules() -> None:
@@ -164,7 +197,6 @@ def test_guards_trip_on_bad_narrative_copy() -> None:
             "NeuralMind gets smarter with every session.",
             "## C. What we are working on",
             "- [stalled] bible-llm at 273.0× — its baseline size is not recorded.",
-            "## D. Integrity",
             "Zero code egress, and 999× once on a warm cache.",
         ]
     )
@@ -172,11 +204,13 @@ def test_guards_trip_on_bad_narrative_copy() -> None:
     joined = "\n".join(found)
     # A measured ratio with its baseline passes.
     assert "60.3" not in joined
-    # Block B's overclaim and block C's ratio without a recorded baseline fail.
+    # Block B's overclaim, block C's ratio without a recorded baseline, and
+    # every block's absolutes and unsourced ratios fail.
     assert "smarter" in joined
     assert "273×" in joined
-    # Block D is not published, so it is not checked.
-    assert "egress" not in joined and "999" not in joined
+    assert "egress" in joined and "999×" in joined
+    # The title above block A is not published copy.
+    assert published_lines("# 999× title\n## A\nText.") == ["", "Text."]
     # A synthetic-baseline row's ratio is never quotable.
     assert 41.8 not in _measured_ratios(rows)
     # The opt-out marker covers its own line and the next.
@@ -184,3 +218,17 @@ def test_guards_trip_on_bad_narrative_copy() -> None:
         "## A\n<!-- claims-guard:allow -->\nZero code egress, quoted to disown it."
     )
     assert violations_in(marked, allowed) == []
+
+
+def test_integrity_guard_trips_on_notes_in_any_heading_form() -> None:
+    for text, line in (
+        ("## A\nText.\n## D. Integrity\nRe-ran once.", 3),
+        ("## A\nText.\n## D\nRe-ran once.", 3),
+        ("## C\n- [moved] x\n### Integrity notes\nRe-ran once.", 3),
+        ("# 2026-10 integrity\n## A\nText.", 1),
+    ):
+        assert integrity_headings(text) == [line], text
+    # Prose that mentions the word, and block A–C headings, are fine.
+    clean = "## A. Site\nIntegrity of the rows is checked privately.\n## B. LinkedIn\n## C. Work"
+    assert integrity_headings(clean) == []
+    assert "neuralmind-marketing" in RECORD["integrity_notes"]

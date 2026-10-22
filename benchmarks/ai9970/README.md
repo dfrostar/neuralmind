@@ -9,7 +9,7 @@ run produced them. Registered in [`site/claims.json`](../../site/claims.json)
 |---|---|
 | `record.jsonl` | One row per project per run. Append-only. |
 | `profile.json` | What doesn't change run to run: the machine, the method, each project's shape. Every project in the record needs an entry. |
-| `narratives/YYYY-MM.md` | The month's write-up, in four blocks (see `narratives/TEMPLATE.md`). |
+| `narratives/YYYY-MM.md` | The month's write-up, in three published blocks (see `narratives/TEMPLATE.md`). |
 
 ## Row contract
 
@@ -67,9 +67,15 @@ a hit rate that is not a whole number of hits out of `gold_n`, or a
 1. Append the month's rows to `record.jsonl` (and a `profile.json` entry for a
    new project).
 2. Copy `narratives/TEMPLATE.md` to `narratives/YYYY-MM.md` and fill it in.
-   Block D is never published; blocks A–C go through the site's claims guards
+   Every block is published, and all three go through the site's claims guards
    (`tests/test_performance_record.py`).
-3. Open a PR. The site build and its tests run on any change here, and merging
+3. Put the month's integrity notes (how the rows were produced: reruns,
+   withheld rows, open questions) in the private repo, at
+   `dfrostar/neuralmind-marketing` `internal/performance-record/ai9970/YYYY-MM.md`.
+   Never here: this repo is public on GitHub, and a narrative with a `## D`
+   block, an integrity heading, or a file named for integrity notes under
+   `benchmarks/ai9970/` fails the build and the tests.
+4. Open a PR. The site build and its tests run on any change here, and merging
    to `main` redeploys the site.
 
 The record is read from this one path, so a `workflow_dispatch` job that
