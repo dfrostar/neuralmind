@@ -2872,7 +2872,7 @@ It registers two Hermes hooks:
 | `post_tool_call` on `write_file` and `patch` | Edited-path record, on a background thread (V4A patches included) | Note the edited file, by the absolute path Hermes reports (`files_modified`), for the next session's recap and the synapse layer. Only an edit that landed (Hermes's status `ok`) is recorded: a cancelled, timed-out, blocked or failed one isn't, and neither is a file changed through the terminal. A file a V4A patch deletes or moves away isn't listed as edited |
 
 ```bash
-neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-enable] [--hermes-home HERMES_HOME]
+neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-enable] [--hermes-home HERMES_HOME] [--mcp]
 ```
 
 #### Arguments
@@ -2888,6 +2888,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
 | `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
+| `--mcp` | False | *(v4.21.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a set-up home where the entry is missing ends with that command |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
 #### Examples
@@ -3059,6 +3060,36 @@ neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 | `claude-desktop` | user | platform `claude_desktop_config.json` |
 | `cline` | user | VS Code `cline_mcp_settings.json` |
 | `vscode` | user | VS Code `settings.json` (`mcp.servers` key, requires VS Code 1.99+) |
+| `hermes` *(v4.21.0+)* | user | Hermes-Agent's `config.yaml` (`mcp_servers:` key) in the Hermes home plain `hermes` uses: the active profile's, else `$HERMES_HOME`, else `~/.hermes` |
+
+*(v4.21.0+)* **Hermes.** `--client hermes` adds
+
+```yaml
+mcp_servers:
+  neuralmind:
+    command: neuralmind-mcp
+    args: []
+```
+
+to Hermes's `config.yaml`, the launch spec the other clients get. Hermes keeps
+comments in that file, so the entry is added as text: under an existing
+block-style `mcp_servers:` (at its indentation) or as a new section at the
+end. The file is written only when the result parses to the old config plus
+that entry, and keeps its file mode (Hermes keeps it `0600`). Otherwise it
+isn't touched, and the command prints the entry to paste: `skipped-no-hermes-config`
+(no `config.yaml`: run `hermes` first; writing one would make Hermes skip its
+first-run setup), `skipped-symlink` (a declaratively managed config),
+`skipped-unmergeable` (a flow-style `mcp_servers: {...}`), `skipped-conflict`
+(a `neuralmind` entry that starts something else), `skipped-invalid-yaml`, or
+`skipped-not-object`. An entry with `enabled: false` is left off and named.
+`--all` includes Hermes once its home is set up. Hermes starts MCP servers when
+a session starts: start a new one, run `/reload-mcp` in a running one, or
+restart the gateway, then check with `hermes mcp test neuralmind`.
+`neuralmind install-hermes-plugin --mcp` does the same as `--client hermes`
+for the home it installs into: one implementation, two ways to reach it. The
+plugin alone adds NeuralMind's context to each turn with no tool call; the MCP
+entry also gives the agent the tools to query and search on its own.
+`--client hermes --print` prints the YAML entry.
 
 #### Options
 
@@ -3079,6 +3110,9 @@ neuralmind install-mcp --all
 
 # A specific client
 neuralmind install-mcp --client cursor
+
+# Hermes-Agent (YAML config.yaml in the active Hermes home)
+neuralmind install-mcp --client hermes
 
 # Just show me the snippet
 neuralmind install-mcp --print

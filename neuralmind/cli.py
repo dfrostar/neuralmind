@@ -5992,6 +5992,20 @@ def cmd_install_hermes_plugin(args):
         )
     else:
         print(f"  Once it's enabled, each Hermes turn gets {what}.")
+    from . import mcp_install
+
+    project_dir = Path(args.project_path or ".").resolve()
+    if getattr(args, "mcp", False) is True:
+        if _report_mcp_install(mcp_install, "hermes", project_dir, hermes_home=home):
+            print(f"  {HERMES_MCP_RELOAD}")
+    elif (
+        result["initialised"]
+        and not mcp_install.registration("hermes", project_dir, hermes_home=home).registered
+    ):
+        print(
+            "  NeuralMind's MCP tools (query, search, …) are a separate opt-in: "
+            "neuralmind install-mcp --client hermes"
+        )
 
 
 def cmd_install_hooks(args):
@@ -6034,11 +6048,19 @@ def cmd_install_mcp(args):
     project_dir = Path(args.project_path or ".").resolve()
 
     if getattr(args, "print_only", False):
+        if args.client == "hermes" and not getattr(args, "all", False):
+            print(mcp_install.hermes_snippet(), end="")
+            print(
+                f"\nPaste the above into {mcp_install.config_path('hermes', project_dir)} "
+                "(merge it into an existing mcp_servers: section)."
+            )
+            return
         print(mcp_install.snippet())
         print(
             "\nPaste the above into your client's MCP config "
             "(Claude Code: .mcp.json · Cursor: .cursor/mcp.json · "
-            "Claude Desktop / Cline: the app's settings file)."
+            "Claude Desktop / Cline: the app's settings file). "
+            "Hermes reads YAML: use --client hermes --print."
         )
         return
 
@@ -6051,25 +6073,41 @@ def cmd_install_mcp(args):
     else:
         clients = [args.client]
 
-    any_change = False
-    for client in clients:
-        try:
-            result = mcp_install.install(client, project_dir)
-        except ValueError as exc:
-            print(f"Error: {exc}")
-            sys.exit(1)
-        if result.action.startswith("skipped"):
-            print(f"✗ {client}: {result.action} → {result.detail}")
-            continue
-        symbol = "✓" if result.action != "already-present" else "•"
-        print(f"{symbol} {client}: {result.action} → {result.path}")
-        any_change = any_change or result.action != "already-present"
-
-    if any_change:
+    changed = [c for c in clients if _report_mcp_install(mcp_install, c, project_dir)]
+    if any(c != "hermes" for c in changed):
         print(
             "\nThe agent exposes NeuralMind's tools (wakeup, query, search, "
             "skeleton, …). Restart the client to pick up the new server."
         )
+    if "hermes" in changed:
+        print(f"\n{HERMES_MCP_RELOAD}")
+
+
+# What a Hermes user does after the MCP entry lands in config.yaml.
+HERMES_MCP_RELOAD = (
+    "Hermes starts MCP servers when a session starts: start a new session, run "
+    "/reload-mcp in a running one, or restart the gateway. "
+    "Check it with `hermes mcp test neuralmind`."
+)
+
+
+def _report_mcp_install(
+    mcp_install, client: str, project_dir: Path, hermes_home: Path | None = None
+) -> bool:
+    """Register NeuralMind with one client and print the outcome; True if the file changed."""
+    try:
+        result = mcp_install.install(client, project_dir, hermes_home=hermes_home)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        sys.exit(1)
+    if result.action.startswith("skipped"):
+        print(f"✗ {client}: {result.action} → {result.detail}")
+        return False
+    symbol = "✓" if result.action != "already-present" else "•"
+    print(f"{symbol} {client}: {result.action} → {result.path}")
+    if result.detail:
+        print(f"  ⚠ {result.detail}")
+    return bool(result.action != "already-present")
 
 
 def cmd_hook(args):
@@ -8875,12 +8913,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Hermes home directory (default: the active Hermes profile, else $HERMES_HOME, "
         "else ~/.hermes, or %%LOCALAPPDATA%%\\hermes on Windows)",
     )
+    hermes_p.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Also register NeuralMind's MCP server in that Hermes home's config.yaml "
+        "(an alias for `install-mcp --client hermes`), so Hermes gets its query and "
+        "search tools as well as the per-turn context",
+    )
     hermes_p.set_defaults(func=cmd_install_hermes_plugin)
 
     # install-mcp command — register the MCP server with AI coding agents
     mcp_p = subparsers.add_parser(
         "install-mcp",
-        help="Register the NeuralMind MCP server with Claude Code / Cursor / Cline / Claude Desktop",
+        help="Register the NeuralMind MCP server with Claude Code / Cursor / Cline / "
+        "Claude Desktop / VS Code / Hermes-Agent",
     )
     mcp_p.add_argument(
         "project_path",
@@ -8890,9 +8936,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     mcp_p.add_argument(
         "--client",
-        choices=("claude-code", "cursor", "cline", "claude-desktop", "vscode"),
+        choices=("claude-code", "cursor", "cline", "claude-desktop", "vscode", "hermes"),
         default="claude-code",
-        help="Which client to register with (default: claude-code)",
+        help="Which client to register with (default: claude-code). hermes adds the "
+        "server under mcp_servers: in the active Hermes home's config.yaml; "
+        "`install-hermes-plugin --mcp` does the same",
     )
     mcp_p.add_argument(
         "--all",
