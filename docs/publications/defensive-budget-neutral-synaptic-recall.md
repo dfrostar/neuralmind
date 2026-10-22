@@ -75,9 +75,9 @@ bounded to `[lo, hi] = [3.0, 120.0]` days (tuner-owned bounds): a rarely-used ed
 > from the formula above. The ratio is `log1p(freq) / ln(2)`: multiplying
 > `freq` by `age_days` cancelled the age back out, leaving the raw activation
 > count. And the blend was computed only at each reinforcement, when
-> `days_since_last` is zero and `recency_confidence` is 1, so until v4.20.1 an
+> `days_since_last` is zero and `recency_confidence` is 1, so until v4.21.0 an
 > idle edge kept its learned rate instead of drifting back to the namespace
-> default. Since v4.20.1 decay integrates the blend over the idle time, in
+> default. Since v4.21.0 decay integrates the blend over the idle time, in
 > closed form (`learned_decay.blended_decay_factor`), so the edge decays as the
 > formula describes. The bounds sentence above also had its directions
 > reversed; it now reads as the code behaves.

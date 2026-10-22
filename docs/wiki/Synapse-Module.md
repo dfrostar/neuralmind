@@ -88,7 +88,7 @@ The store learns by *co-activation*: nodes that fire together wire together.
   from how often it is reinforced, between 3 and 120 days by default
   (`learned_decay.py`). Just after an activation it decays at that rate; the
   longer it stays idle, the closer its rate gets back to the namespace
-  default. Before v4.20.1 an idle edge kept its learned rate, so one
+  default. Before v4.21.0 an idle edge kept its learned rate, so one
   reinforced rarely kept fading fast however long it sat.
 - **Pruning** — weights decaying below `PRUNE_THRESHOLD` are deleted; stale
   synapses older than N days can be cleared with `neuralmind synapse prune`.

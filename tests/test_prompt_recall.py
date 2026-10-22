@@ -546,3 +546,99 @@ def test_older_graphs_per_symbol_code_types_count_as_code(file_type):
     assert result.code
     assert [f.path for f in result.matches] == ["src/click/parser.py"]
     assert result.docs == []
+
+
+# The excerpt: in the task-outcome pilot the hook named the file to fix in 17
+# of 20 tasks and the agent searched as much as it did without NeuralMind, so
+# when one file clearly leads, the block now shows its best symbol's code.
+
+SOURCE = "\n".join(
+    [
+        '"""pkg.m: the module."""',  # L1
+        "",
+        "def parse(argv):",  # L3
+        "    opts = {}",
+        "    for arg in argv:",
+        "        opts[arg] = True",
+        "    return opts",
+        "",
+        "",
+        "def other():",  # L10
+        "    return 1",
+    ]
+)
+
+
+class _RootedMind(_Mind):
+    def __init__(self, root, **kwargs):
+        super().__init__(None, **kwargs)
+        self.project_path = str(root)
+
+
+def _excerpt_mind(tmp_path, hits, source=SOURCE, extra_nodes=()):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "m.py").write_text(source)
+    nodes = [
+        _node("pkg_m_py", "pkg/m.py", "m.py", 1),
+        _node("pkg_m_py__parse_fn", "pkg/m.py", "parse()", 3),
+        _node("pkg_m_py__parse_fn__rationale", "pkg/m.py", "Parse argv.", 4, "rationale"),
+        _node("pkg_m_py__other_fn", "pkg/m.py", "other()", 10),
+        _node("pkg_n_py__n_fn", "pkg/n.py", "n()", 1),
+        *extra_nodes,
+    ]
+    return _RootedMind(tmp_path, hits=hits, nodes=nodes)
+
+
+LEADING = [("pkg_m_py__parse_fn", 0.7), ("pkg_m_py__other_fn", 0.6), ("pkg_n_py__n_fn", 0.5)]
+
+
+def test_a_leading_file_shows_its_best_symbol_up_to_the_next_one(tmp_path):
+    result = recall(_excerpt_mind(tmp_path, LEADING), "q")
+    assert result.excerpt is not None
+    assert (result.excerpt.path, result.excerpt.start, result.excerpt.end) == ("pkg/m.py", 3, 7)
+    block = format_block(result)
+    assert "Most matches are in pkg/m.py. Its best match, L3-L7" in block
+    assert "```\ndef parse(argv):\n" in block
+    assert "def other" not in block
+
+
+def test_no_excerpt_without_a_two_to_one_lead(tmp_path):
+    hits = [("pkg_m_py__parse_fn", 0.7), ("pkg_n_py__n_fn", 0.6)]
+    assert recall(_excerpt_mind(tmp_path, hits), "q").excerpt is None
+
+
+def test_the_files_own_node_is_never_the_excerpt(tmp_path):
+    hits = [("pkg_m_py", 0.9), ("pkg_m_py__other_fn", 0.6), ("pkg_n_py__n_fn", 0.5)]
+    result = recall(_excerpt_mind(tmp_path, hits), "q")
+    assert result.excerpt is not None and result.excerpt.start == 10
+
+
+def test_the_excerpt_is_capped(tmp_path, monkeypatch):
+    monkeypatch.setattr(prompt_recall, "EXCERPT_LINES", 2)
+    result = recall(_excerpt_mind(tmp_path, LEADING), "q")
+    assert (result.excerpt.start, result.excerpt.end) == (3, 4)
+
+
+def test_the_excerpt_redacts_secrets(tmp_path):
+    key = "AKIA" + "Q3XJ5ZK2M7N4P8RT"
+    source = SOURCE.replace("opts = {}", f'opts = {{"key": "{key}"}}')
+    result = recall(_excerpt_mind(tmp_path, LEADING, source=source), "q")
+    assert key not in result.excerpt.text
+    assert "REDACTED" in result.excerpt.text
+
+
+def test_backticks_in_the_code_cant_close_the_fence(tmp_path):
+    source = SOURCE.replace("opts = {}", 'opts = {"doc": "````"}')
+    block = format_block(recall(_excerpt_mind(tmp_path, LEADING, source=source), "q"))
+    assert "\n`````\ndef parse(argv):" in block
+
+
+def test_no_excerpt_when_the_file_cant_be_read_or_its_turned_off(tmp_path, monkeypatch):
+    mind = _excerpt_mind(tmp_path, LEADING)
+    (tmp_path / "pkg" / "m.py").unlink()
+    result = recall(mind, "q")
+    assert result.excerpt is None
+    assert "- pkg/m.py: parse() L3" in format_block(result)
+    (tmp_path / "pkg" / "m.py").write_text(SOURCE)
+    monkeypatch.setenv("NEURALMIND_RECALL_EXCERPT", "0")
+    assert recall(mind, "q").excerpt is None
