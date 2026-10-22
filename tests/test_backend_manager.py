@@ -97,6 +97,44 @@ def test_default_falls_back_to_chromadb_where_turbovec_has_no_wheel(monkeypatch,
     assert not [w for w in recwarn if issubclass(w.category, DeprecationWarning)]
 
 
+def test_backend_manager_fallback_raises_no_deprecation_warning(temp_project, monkeypatch):
+    # BackendManager resolves the default to "graph", then create_backend
+    # resolved that name again and warned as if the user had chosen ChromaDB.
+    import sys
+    import types
+    import warnings
+
+    class FakeGraphEmbedder:
+        def __init__(self, project_path, db_path=None):
+            self.db_path = None
+
+    fake = types.ModuleType("neuralmind.embedder")
+    fake.GraphEmbedder = FakeGraphEmbedder
+    monkeypatch.setitem(sys.modules, "neuralmind.embedder", fake)
+    _only_installed(monkeypatch, "chromadb")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        manager = BackendManager(str(temp_project))
+    assert manager.backend_name == "graph"
+    assert isinstance(manager.backend, FakeGraphEmbedder)
+
+
+def test_explicit_chromadb_choice_warns_once(temp_project, monkeypatch):
+    import sys
+    import types
+
+    class FakeGraphEmbedder:
+        def __init__(self, project_path, db_path=None):
+            self.db_path = None
+
+    fake = types.ModuleType("neuralmind.embedder")
+    fake.GraphEmbedder = FakeGraphEmbedder
+    monkeypatch.setitem(sys.modules, "neuralmind.embedder", fake)
+    with pytest.warns(DeprecationWarning) as record:
+        BackendManager(str(temp_project), backend="graph")
+    assert len([w for w in record if issubclass(w.category, DeprecationWarning)]) == 1
+
+
 def test_default_stays_turbovec_where_its_stack_is_installed(monkeypatch):
     _only_installed(monkeypatch, "turbovec", "onnxruntime", "tokenizers", "chromadb")
     assert resolve_backend(None) == "turbovec"

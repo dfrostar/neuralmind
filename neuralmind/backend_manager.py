@@ -60,7 +60,7 @@ def _default_backend() -> str:
     return "turbovec"
 
 
-def resolve_backend(backend: str | None) -> str:
+def resolve_backend(backend: str | None, *, warn: bool = True) -> str:
     """Resolve the ``auto`` default (or ``None``) to a concrete backend name.
 
     The shipped default is ``turbovec``: the ChromaDB-free path (base deps
@@ -70,7 +70,8 @@ def resolve_backend(backend: str | None) -> str:
     ``turbovec`` resolve to ``graph`` instead (``_default_backend``).
     ``graph`` / ``chroma`` / ``chromadb`` chosen explicitly are deprecated and
     trigger a deprecation warning — they still work when the ``[chromadb]``
-    extra is installed.
+    extra is installed. ``warn=False`` resolves without it, for a name that
+    was resolved once already.
     """
     # None, "", or a non-string (e.g. `backend: null` in YAML) all mean the default.
     if not isinstance(backend, str) or not backend.strip():
@@ -80,7 +81,7 @@ def resolve_backend(backend: str | None) -> str:
     # so "turbovec" is the default as often as it is a choice.
     if name in {"auto", "turbovec"}:
         return _default_backend()
-    if name in {"graph", "chroma", "chromadb"}:
+    if warn and name in {"graph", "chroma", "chromadb"}:
         import warnings
 
         warnings.warn(
@@ -172,7 +173,10 @@ def create_backend(
     db_path: str | None = None,
     scope: str = "all",
 ) -> EmbeddingBackend:
-    normalized = resolve_backend(backend)
+    # BackendManager passes a name it has already resolved, which for the
+    # ChromaDB fallback is "graph": resolving it again with the warning on
+    # would call the fallback the user's deprecated choice.
+    normalized = resolve_backend(backend, warn=False)
     if normalized in CHROMA_BACKENDS:
         # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
         # the chroma backend is actually selected, so the turbovec backend can
