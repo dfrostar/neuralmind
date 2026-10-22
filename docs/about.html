@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4201">
+            <h2>What&rsquo;s New in v4.20.1 &mdash; Intel macOS and Windows ARM work again out of the box</h2>
+            <p>turbovec has no wheel for Intel macOS or Windows ARM, so <code>pip install neuralmind</code> installs ChromaDB there instead. From v0.46.0 the default backend ignored it, and every build failed with <code>No module named 'turbovec'</code> unless the project set <code>backend: graph</code>.</p>
+            <ul>
+                <li><strong>The default falls back to ChromaDB</strong> &mdash; where the turbovec stack isn&rsquo;t installed and ChromaDB is. Nothing changes where turbovec is installed</li>
+                <li><strong><code>neuralmind demo</code> runs there</strong> &mdash; it builds the sample&rsquo;s index with the embedding model, downloading it once, and says so; offline it exits 1 with one line, not a traceback</li>
+                <li><strong>A missing backend says what to install</strong> &mdash; instead of a bare <code>ModuleNotFoundError</code> deep inside a build</li>
+                <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.1.md">v4.20.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4190">
             <h2>What&rsquo;s New in v4.19.0 &mdash; the audit log reaches your SIEM as it is written</h2>
             <p>The audit log left the host only when someone exported it. With <code>security.audit_syslog</code> set, it goes to syslog record by record (CMMC AU.L2-3.3.4, 3.3.5):</p>
@@ -210,7 +224,7 @@
             </ul>
             <p><strong>Also: an OSCAL component definition for SP 800-53.</strong> <a href="https://github.com/dfrostar/neuralmind/blob/main/security/neuralmind.oscal-component-definition.json">One machine-readable file</a> lists the 21 SP 800-53 Rev. 5 controls NeuralMind touches, what it does for each and what stays yours, for an agency to load into its System Security Plan. CI checks it against the OSCAL schema, the Rev. 5 catalog and the code. <a href="compliance/SP800-53.html">Readable version</a>.</p>
             <p><strong>And an SP 800-53 hardening baseline that checks itself.</strong> The <a href="compliance/SP800-53-HARDENING.html">hardening guide</a> is NeuralMind&rsquo;s CM-6 configuration baseline: 17 rules, from the machine policy and OS identity to FIPS mode, signed and anchored checkpoints and forwarding, each mapped to the SP 800-53 controls it supports. <code>neuralmind hardening</code> checks a project and its host against every rule, fails a rule it can&rsquo;t check, exits 1 when any fails, and prints JSON to keep as assessment evidence.</p>
-            <p><strong>And a demo that runs offline.</strong> <code>pip install neuralmind &amp;&amp; neuralmind demo</code> no longer downloads the 90&nbsp;MB embedding model on its first run: the sample project&rsquo;s vector index and the embeddings of its three questions ship in the package, so the demo ranks exactly as the model would and downloads nothing. That holds on Linux, Apple Silicon macOS and 64-bit Windows, where turbovec installs; on Intel macOS and Windows ARM, which get ChromaDB instead, the demo builds the sample with ChromaDB and downloads the model once.</p>
+            <p><strong>And a demo that runs offline.</strong> <code>pip install neuralmind &amp;&amp; neuralmind demo</code> no longer downloads the 90&nbsp;MB embedding model on its first run: the sample project&rsquo;s vector index and the embeddings of its three questions ship in the package, so the demo ranks exactly as the model would and downloads nothing.</p>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.19.0.md">v4.19.0 release notes</a></p>
         </div>
     </section>

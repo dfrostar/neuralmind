@@ -2095,120 +2095,60 @@ class TestCLIDemoOffline:
 
 
 class TestCLIDemoWithoutTurbovec:
-    """`neuralmind demo` where turbovec has no wheel (Intel macOS, Windows ARM).
+    """`neuralmind demo` where the install has no turbovec.
 
-    pyproject installs ChromaDB there instead, and the bundled index is a
-    turbovec index, so the demo used to die with `ModuleNotFoundError: No
-    module named 'turbovec'` from deep in the build. It now builds the sample
-    project with ChromaDB, or exits 1 with one line when that's missing too.
+    turbovec has no wheel for Intel macOS or Windows ARM, so pyproject.toml
+    installs ChromaDB there instead. The demo used to copy in the bundled
+    turbovec index and fail with a traceback: No module named 'turbovec'.
     """
 
     @staticmethod
-    def _no_turbovec(monkeypatch, *, chromadb: bool):
-        import importlib.util
-
+    def _only_installed(monkeypatch, *modules):
         from neuralmind import backend_manager
 
-        real_find_spec = importlib.util.find_spec
-
-        def find_spec(name, *a, **kw):
-            if name.split(".")[0] == "turbovec":
-                return None
-            if name.split(".")[0] == "chromadb" and not chromadb:
-                return None
-            if name.split(".")[0] == "chromadb":
-                return real_find_spec("json")  # any spec: "importable"
-            return real_find_spec(name, *a, **kw)
-
-        monkeypatch.setattr(importlib.util, "find_spec", find_spec)
-        assert not backend_manager.turbovec_available()
+        monkeypatch.setattr(backend_manager, "_installed", lambda module: module in modules)
 
     @staticmethod
     def _args():
         args = MagicMock()
         args.keep = False
-        args.quiet = True
+        args.quiet = False
         return args
 
-    def test_without_turbovec_or_chromadb_it_exits_1_with_one_line(self, monkeypatch, capsys):
+    def test_on_chromadb_it_builds_with_the_model_and_says_so(self, monkeypatch, capsys):
+        import neuralmind.core
         from neuralmind.cli import cmd_demo
 
-        self._no_turbovec(monkeypatch, chromadb=False)
+        class OfflineChromaBuild:
+            def __init__(self, project_path):
+                pass
+
+            def build(self, force=False):
+                raise ConnectionError("no network in this test")
+
+        self._only_installed(monkeypatch, "chromadb")
+        monkeypatch.setattr(neuralmind.core, "NeuralMind", OfflineChromaBuild)
+        with pytest.raises(SystemExit) as exc:
+            cmd_demo(self._args())
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "this install uses the ChromaDB backend" in captured.out
+        assert "nothing is downloaded" not in captured.out
+        assert (
+            "couldn't build the sample's index with ChromaDB "
+            "(ConnectionError: no network in this test)" in captured.err
+        )
+
+    def test_with_no_vector_backend_it_says_what_to_install(self, monkeypatch, capsys):
+        from neuralmind.cli import cmd_demo
+
+        self._only_installed(monkeypatch)
         with pytest.raises(SystemExit) as exc:
             cmd_demo(self._args())
         assert exc.value.code == 1
         err = capsys.readouterr().err
-        assert err.count("\n") == 1
-        assert "turbovec ships only for Linux, Apple Silicon macOS and 64-bit Windows" in err
-        assert 'pip install "neuralmind[chromadb]"' in err
-        assert "Traceback" not in err
-
-    def test_without_turbovec_it_builds_with_chromadb(self, monkeypatch, capsys):
-        from neuralmind import backend_manager
-        from neuralmind.cli import cmd_demo
-        from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
-
-        self._no_turbovec(monkeypatch, chromadb=True)
-        backends = []
-        real_create = backend_manager.create_backend
-
-        def create_backend(backend, project_path, db_path=None, scope="all"):
-            backends.append(backend)
-            if backend in backend_manager.CHROMA_BACKENDS:
-                # Stands in for ChromaDB and its model download.
-                return InMemoryEmbeddingBackend(project_path, db_path=db_path)
-            return real_create(backend, project_path, db_path, scope=scope)
-
-        monkeypatch.setattr(backend_manager, "create_backend", create_backend)
-        cmd_demo(self._args())
-
-        captured = capsys.readouterr()
-        assert backends and set(backends) == {"chroma"}
-        assert "building the sample project with ChromaDB instead" in captured.err
-        assert "Traceback" not in captured.err
-        assert captured.out.count("reduction =") == 3
-
-    def test_turbovec_without_the_model_stack_still_uses_the_bundle(self, monkeypatch, capsys):
-        """The bundled question vectors replace the model, so a turbovec install
-        missing onnxruntime or tokenizers still runs the demo from the bundle."""
-        import importlib.util
-
-        from neuralmind.cli import cmd_demo
-
-        pytest.importorskip("turbovec")
-        TestCLIDemoOffline._no_model(monkeypatch)
-        real_find_spec = importlib.util.find_spec
-
-        def find_spec(name, *a, **kw):
-            if name.split(".")[0] in {"onnxruntime", "tokenizers"}:
-                return None
-            return real_find_spec(name, *a, **kw)
-
-        monkeypatch.setattr(importlib.util, "find_spec", find_spec)
-        args = self._args()
-        args.quiet = False
-        cmd_demo(args)
-
-        captured = capsys.readouterr()
-        assert "bundled with NeuralMind, so nothing is downloaded" in captured.out
-        assert "ChromaDB" not in captured.err
-        assert captured.out.count("reduction =") == 3
-
-    def test_a_failing_chromadb_build_exits_1_with_one_line(self, monkeypatch, capsys):
-        from neuralmind import backend_manager
-        from neuralmind.cli import cmd_demo
-
-        self._no_turbovec(monkeypatch, chromadb=True)
-
-        def create_backend(backend, project_path, db_path=None, scope="all"):
-            raise ConnectionError("no network in this test")
-
-        monkeypatch.setattr(backend_manager, "create_backend", create_backend)
-        with pytest.raises(SystemExit) as exc:
-            cmd_demo(self._args())
-        assert exc.value.code == 1
-        err = capsys.readouterr().err
-        assert "building the sample project with ChromaDB failed (no network in this test)" in err
+        assert "demo failed: the turbovec backend needs turbovec" in err
+        assert "neuralmind[chromadb]" in err
         assert "Traceback" not in err
 
 

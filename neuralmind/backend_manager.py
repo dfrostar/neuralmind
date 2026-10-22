@@ -14,8 +14,10 @@ from .in_memory_backend import InMemoryEmbeddingBackend
 
 DEFAULT_BACKEND_CONFIG: dict[str, Any] = {
     # Hard-default to turbovec as of v0.46.0 — the ChromaDB-free path. "auto"
-    # is accepted as an alias for turbovec for backward compatibility.
-    # Selecting chroma/graph explicitly triggers a deprecation warning.
+    # is accepted as an alias for turbovec for backward compatibility. Where
+    # the turbovec stack isn't installed but ChromaDB is, resolve_backend
+    # falls back to ChromaDB. Selecting chroma/graph explicitly triggers a
+    # deprecation warning.
     "backend": "turbovec",
     "db_path": None,
     "hybrid_context": False,
@@ -28,31 +30,58 @@ DEFAULT_BACKEND_CONFIG: dict[str, Any] = {
 _TURBOVEC_DEPS = ("turbovec", "onnxruntime", "tokenizers")
 
 
-def turbovec_available() -> bool:
-    """True when the turbovec stack (turbovec + onnxruntime + tokenizers) is
-    importable. These are base dependencies since v0.29.0, so this is normally
-    True; it can be False only if a user force-uninstalled them."""
+def _installed(module: str) -> bool:
+    """True when ``module`` can be imported, without importing it."""
     import importlib.util
 
-    return all(importlib.util.find_spec(mod) is not None for mod in _TURBOVEC_DEPS)
+    return importlib.util.find_spec(module) is not None
 
 
-def resolve_backend(backend: str | None) -> str:
+def turbovec_available() -> bool:
+    """True when the turbovec stack (turbovec + onnxruntime + tokenizers) is
+    importable. These are base dependencies where turbovec publishes wheels
+    (Linux, Apple Silicon macOS, Windows x86_64); elsewhere, notably Intel
+    macOS and Windows ARM, the default install has ChromaDB instead and this
+    is False."""
+    return all(_installed(mod) for mod in _TURBOVEC_DEPS)
+
+
+def _default_backend() -> str:
+    """The backend the default (no config, ``auto``, ``turbovec``) resolves to.
+
+    turbovec wherever its stack imports. On a platform it has no wheel for,
+    pyproject.toml installs ChromaDB in its place, and v0.46.0's hard default
+    left those installs selecting a backend they don't have: every build
+    failed with ``No module named 'turbovec'``. There, fall back to the
+    ChromaDB backend that was installed for the purpose.
+    """
+    if not turbovec_available() and _installed("chromadb"):
+        return "graph"
+    return "turbovec"
+
+
+def resolve_backend(backend: str | None, *, warn: bool = True) -> str:
     """Resolve the ``auto`` default (or ``None``) to a concrete backend name.
 
     The shipped default is ``turbovec``: the ChromaDB-free path (base deps
     since v0.29.0). ``auto``, ``None``, and blanks are all accepted as aliases
-    for turbovec for backward compatibility. ``graph`` / ``chroma`` /
-    ``chromadb`` are deprecated and trigger a deprecation warning — they still
-    work when the ``[chromadb]`` extra is installed.
+    for turbovec for backward compatibility. Where the turbovec stack isn't
+    installed but ChromaDB is (Intel macOS, Windows ARM), the default and
+    ``turbovec`` resolve to ``graph`` instead (``_default_backend``).
+    ``graph`` / ``chroma`` / ``chromadb`` chosen explicitly are deprecated and
+    trigger a deprecation warning — they still work when the ``[chromadb]``
+    extra is installed. ``warn=False`` resolves without it, for a name that
+    was resolved once already.
     """
-    # None, "", or a non-string (e.g. `backend: null` in YAML) all mean turbovec.
+    # None, "", or a non-string (e.g. `backend: null` in YAML) all mean the default.
     if not isinstance(backend, str) or not backend.strip():
-        return "turbovec"
+        return _default_backend()
     name = backend.strip().lower()
-    if name == "auto":
-        return "turbovec"
-    if name in {"graph", "chroma", "chromadb"}:
+    # DEFAULT_BACKEND_CONFIG fills in "turbovec" for a project with no config,
+    # so "turbovec" is the default as often as it is a choice.
+    if name in {"auto", "turbovec"}:
+        return _default_backend()
+    if warn and name in {"graph", "chroma", "chromadb"}:
         import warnings
 
         warnings.warn(
@@ -144,7 +173,10 @@ def create_backend(
     db_path: str | None = None,
     scope: str = "all",
 ) -> EmbeddingBackend:
-    normalized = resolve_backend(backend)
+    # BackendManager passes a name it has already resolved, which for the
+    # ChromaDB fallback is "graph": resolving it again with the warning on
+    # would call the fallback the user's deprecated choice.
+    normalized = resolve_backend(backend, warn=False)
     if normalized in CHROMA_BACKENDS:
         # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
         # the chroma backend is actually selected, so the turbovec backend can
@@ -170,6 +202,19 @@ def create_backend(
     if normalized in IN_MEMORY_BACKENDS:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
     if normalized in TURBOVEC_BACKENDS:
+        # turbovec itself is imported only when the index loads, deep in a
+        # build, so a missing install would surface there as a bare
+        # ModuleNotFoundError. Say what to install instead, as the chroma
+        # branch does. (With ChromaDB installed, resolve_backend has already
+        # chosen it.)
+        if not _installed("turbovec"):
+            raise ModuleNotFoundError(
+                "the turbovec backend needs turbovec, which isn't installed. "
+                "Install it with `pip install turbovec onnxruntime tokenizers`; "
+                "where turbovec has no wheel (Intel macOS, Windows ARM), install "
+                'ChromaDB instead with `pip install "neuralmind[chromadb]"`.',
+                name="turbovec",
+            )
         # Lazy import, mirroring the chroma branch — keeps construction symmetric
         # and import-light. turbovec is the default backend since v0.29.0.
         from .turbovec_backend import TurboVecEmbedder

@@ -477,7 +477,9 @@ def _check_backend(project: Path) -> Check:
     """
     try:
         from neuralmind.backend_manager import (
+            backend_config_path,
             load_backend_config,
+            read_backend_config_file,
             resolve_backend,
             turbovec_available,
         )
@@ -486,16 +488,32 @@ def _check_backend(project: Path) -> Check:
     raw = load_backend_config(project).get("backend", "auto")
     resolved = resolve_backend(raw)
     tv = "available" if turbovec_available() else "not installed"
-    # A non-string (e.g. `backend: null`) or "auto"/"" means auto-selection —
-    # match BackendManager, which treats None like auto. Don't str() first, or
-    # `null` would look like a backend literally named "none".
-    is_auto = not isinstance(raw, str) or raw.strip().lower() in {"", "auto"}
+    # Auto-selection unless the project's file names a backend. The default
+    # config fills in "turbovec", so the merged value alone can't tell: from
+    # v0.46.0 a project with no file was reported as pinned. A non-string
+    # (`backend: null`) or "auto"/"" also means auto — match BackendManager,
+    # which treats None like auto. Don't str() first, or `null` would look
+    # like a backend literally named "none".
+    config_file = backend_config_path(project)
+    try:
+        pinned = config_file is not None and "backend" in read_backend_config_file(config_file)
+    except Exception:
+        pinned = False  # load_backend_config ignores an unreadable file too
+    is_auto = not pinned or not isinstance(raw, str) or raw.strip().lower() in {"", "auto"}
     if is_auto:
         return Check(
             "Backend",
             OK,
             f"{resolved} (auto-selected; turbovec stack {tv})",
             fix="Pin a backend with `backend: graph|turbovec` in neuralmind-backend.yaml.",
+        )
+    if resolved != raw.strip().lower():
+        # `backend: turbovec` where only ChromaDB is installed.
+        return Check(
+            "Backend",
+            OK,
+            f"{resolved} (neuralmind-backend.yaml names {raw.strip()}, but the "
+            f"turbovec stack is {tv}, so ChromaDB is used)",
         )
     return Check("Backend", OK, f"{resolved} (pinned via neuralmind-backend.yaml; turbovec {tv})")
 
