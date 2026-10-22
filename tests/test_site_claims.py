@@ -918,6 +918,57 @@ def test_task_outcome_pilot_figures_match_the_committed_run() -> None:
     assert mcp_calls == f["mcp_tool_calls"]
 
 
+RERUN_DIR = REPO_ROOT / "bench" / "task_outcome" / "exploratory-agent-uptake"
+RERUN_SOURCE = "bench/task_outcome/exploratory-agent-uptake/report.txt"
+
+
+def test_task_outcome_rerun_figures_match_the_committed_run() -> None:
+    """The exploratory rerun: labelled as such, and its figures are the run's."""
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == RERUN_SOURCE]
+    assert len(entries) == 1, f"site/claims.json needs one entry for {RERUN_SOURCE}"
+    entry = entries[0]
+    assert entry["evidence"] == "exploratory" and "exploratory" in _claims()["_evidence_levels"]
+    f = entry["figures"]
+    report = (RERUN_DIR / "report.txt").read_text(encoding="utf-8")
+    runs = [
+        json.loads(line)
+        for line in (RERUN_DIR / "runs.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    m = re.search(
+        r"Median cost change per task with NeuralMind: (\S+) \(95% CI (\S+) to (\S+)\)", report
+    )
+    assert m and m.groups() == (
+        f["median_cost_change"].replace("\u2212", "-"),
+        *f["cost_change_ci95"].replace("\u2212", "-").split(" to "),
+    )
+    m = re.search(r"Wilcoxon one-sided p = ([\d.]+)", report)
+    assert m and abs(float(m.group(1)) - f["wilcoxon_p"]) < 0.005
+    m = re.search(r"Tasks solved: baseline (\d+), NeuralMind (\d+)", report)
+    assert m and m.groups() == tuple(str(f["tasks_solved"][a]) for a in ("baseline", "neuralmind"))
+    assert re.search(r"Claim supported: (\w+)", report).group(1) == (
+        "YES" if f["claim_supported"] else "NO"
+    )
+    assert len(runs) == f["runs"] and {r["arm"] for r in runs} == {"neuralmind"}
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    assert len({r["seed"] for r in runs}) == f["seeds"]
+    by_task: dict[str, list[int]] = {}
+    for r in runs:
+        by_task.setdefault(r["task"], []).append(r["explore_calls_before_first_edit"])
+    assert statistics.median(statistics.mean(v) for v in by_task.values()) == (
+        f["median_explore_calls_before_first_edit"]["neuralmind"]
+    )
+    mcp_calls = sum(
+        n for r in runs for tool, n in r["tool_counts"].items() if tool.startswith("mcp__")
+    )
+    assert mcp_calls == f["mcp_tool_calls"]
+
+
+def test_benchmark_page_renders_the_task_outcome_rerun() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomeRerun" in page
+
+
 def test_benchmark_page_renders_the_task_outcome_pilot() -> None:
     page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
     assert "taskOutcomePilot" in page, (
@@ -943,7 +994,10 @@ COST_CTA_RE = re.compile(
     r"|\bsave\s+(?:\$|money|on\s+(?:your\s+)?(?:ai|llm|tokens?|inference))"
     r"|\blower\s+(?:your\s+)?(?:ai\s+|llm\s+|inference\s+)?(?:bill|spend)\b"
     r"|\bspend\s+(?:model|assessment|analysis)\b|\bai[-\s]spend\b"
-    r"|\bsavings?\s+(?:are|is)\s+free\b|\bcheaper\s+agents?\b",
+    r"|\bsavings?\s+(?:are|is)\s+free\b|\bcheaper\s+agents?\b"
+    # Narrowed 2026-10-22: "cheaper context" read as a smaller bill, and a
+    # dollar figure computed from token counts isn't a measured saving.
+    r"|\bcheaper\s+context\b|\breal\s+dollar\s+savings?\b|\bmonthly\s+savings\b",
     re.IGNORECASE,
 )
 
@@ -961,12 +1015,37 @@ def test_site_has_no_cost_saving_ctas() -> None:
     )
 
 
+# The pages a reader or an LLM lands on outside the site, which repeat its
+# headline numbers: the same rule applies there.
+ENTRY_SURFACES = ("README.md", "docs/llms.txt", "docs/wiki/Home.md", "docs/index.html")
+
+
+def test_entry_surfaces_have_no_cost_saving_framing() -> None:
+    violations = []
+    for name in ENTRY_SURFACES:
+        lines = (REPO_ROOT / name).read_text(encoding="utf-8").splitlines()
+        violations += [
+            f"{name}:{i + 1}: {m.group(0)!r}"
+            for i in range(len(lines))
+            if not _exempt(lines, i) and (m := COST_CTA_RE.search(lines[i]))
+        ]
+    assert not violations, (
+        "Cost-saving framing on an entry page. Fewer context tokens is measured; "
+        "a lower cost per task is not (the task-outcome pilot found no difference):"
+        "\n  " + "\n  ".join(violations)
+    )
+
+
 def test_cost_cta_guard_trips_on_the_copy_that_shipped() -> None:
     shipped = [
         "Stop paying for tokens you don't use.",
         "for a free spend model.",
         "we run a free AI-spend assessment",
         "title: 'The savings are free',",
+        "Every large engineering organization has the same AI spend problem",
+        "### 1. Cheaper context",
+        "measure L0–L3 token budgets, and verify real dollar savings.",
+        "an estimated monthly savings figure at Claude 3.5 Sonnet pricing.",
     ]
     for line in shipped:
         assert COST_CTA_RE.search(line), line

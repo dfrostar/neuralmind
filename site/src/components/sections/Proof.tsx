@@ -2,7 +2,7 @@ import Callout from '@/components/ui/Callout';
 import EvidenceBadge from '@/components/ui/EvidenceBadge';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Stat, { StatGrid } from '@/components/ui/Stat';
-import { disclosures, headline, publicBenchmark, ratio, taskOutcomePilot } from '@/lib/evidence';
+import { disclosures, headline, publicBenchmark, ratio, taskOutcomePilot, taskOutcomeRerun } from '@/lib/evidence';
 import { withCode } from '@/lib/ticks';
 
 // The one evidence block on the homepage. It replaces three in a row
@@ -135,7 +135,8 @@ export default function Proof() {
                         solved {pilot.tasks_solved.baseline} of {pilot.tasks} bug-fix tasks without NeuralMind and{' '}
                         {pilot.tasks_solved.neuralmind} with it, at a median per-task cost change of{' '}
                         {pilot.median_cost_change} (95% CI {pilot.cost_change_ci95}). The reason: in{' '}
-                        {pilot.runs / 2} runs the agent never called NeuralMind&rsquo;s tools.{' '}
+                        {pilot.runs / 2} runs the agent never called NeuralMind&rsquo;s tools, and an exploratory
+                        rerun with v{taskOutcomeRerun.figures.neuralmind}, which tells it when to, found the same.{' '}
                         <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
                             The pilot, its spec and every run →
                         </a>

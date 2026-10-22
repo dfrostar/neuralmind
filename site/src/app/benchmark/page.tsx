@@ -15,6 +15,7 @@ import {
     ratioRange,
     retrievalEval,
     taskOutcomePilot,
+    taskOutcomeRerun,
     type Figure,
     type RepoResult,
 } from '@/lib/evidence';
@@ -182,6 +183,7 @@ export default function BenchmarkPage() {
     const vsPaste = ratioRange(51, 242);
     const grep = headline('ripgrep (query keywords');
     const pilot = taskOutcomePilot.figures;
+    const rerun = taskOutcomeRerun.figures;
     const usd = (v: number) => `$${v.toFixed(3)}`;
 
     // Where the bare vector baseline beats NeuralMind, read off the run.
@@ -421,6 +423,33 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             for), not a small one. The confirmatory run follows the same spec on new tasks, and is
                             published the same way, whatever it shows.
                         </Callout>
+                        <div className="border border-carbon-line rounded-card p-4">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                <h3 className="font-semibold text-white">
+                                    Follow-up: telling the agent about the tools didn&rsquo;t change what it did
+                                </h3>
+                                <EvidenceBadge level={taskOutcomeRerun.evidence} />
+                            </div>
+                            <p className="text-muted text-sm leading-relaxed">
+                                NeuralMind {rerun.neuralmind} sends MCP server instructions saying when to call its tools,
+                                lists {rerun.mcp_tools_listed} tools instead of {pilot.mcp_tools_listed}, and quotes the
+                                leading file&rsquo;s code in the prompt block. Rerun on the same {rerun.tasks} tasks
+                                ({rerun.runs} runs, against the pilot&rsquo;s baseline, not pre-registered), the agent
+                                called its tools {rerun.mcp_tool_calls} times and made a median of{' '}
+                                {rerun.median_explore_calls_before_first_edit.neuralmind} explore calls before its first
+                                edit, as without NeuralMind; median per-task cost change {rerun.median_cost_change} (95% CI{' '}
+                                {rerun.cost_change_ci95}), {rerun.tasks_solved.neuralmind} of {rerun.tasks} tasks solved
+                                either way.{' '}
+                                <a
+                                    href={blob('bench/task_outcome/exploratory-agent-uptake/README.md')}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-electric hover:text-electric-bright"
+                                >
+                                    The rerun →
+                                </a>
+                            </p>
+                        </div>
                     </div>
                     <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
                         <a href={blob(taskOutcomePilot.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
