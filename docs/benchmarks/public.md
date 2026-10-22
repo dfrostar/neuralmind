@@ -207,13 +207,17 @@ Three loss modes, reported plainly:
   multi-repo retrieval eval measures that case on the same four repos and
   commits (`python -m evals.retrieval.run --full-repo`, v4.12.1+; raw output in
   [`bench/retrieval/examples-v4.12/`](https://github.com/dfrostar/neuralmind/blob/main/bench/retrieval/README.md)).
-- **Task outcomes.** Nothing here, or anywhere in this repository, measures
-  whether an agent fixes a bug faster or makes fewer mistakes with NeuralMind.
-  Every number on this page is retrieval: what reaches the window, and whether
-  the right file is in it. A small window can also leave out a caveat a whole
-  file would have shown; only an outcome benchmark (real tasks, solved with and
-  without, timed and checked) would show whether that costs anything. None has
-  been run.
+- **Task outcomes.** Every number on this page is retrieval: what reaches the
+  window, and whether the right file is in it. Outcomes are measured separately,
+  and the first measurement, a pre-registered 20-task pilot, found no cost
+  difference: Claude Code solved 18 of 20 bug-fix tasks with and without
+  NeuralMind, at a median per-task cost change of +0.0% (95% CI −5.2% to +8.6%,
+  Wilcoxon p = 0.66). In the 60 runs with NeuralMind the agent never called its
+  MCP tools, so better retrieval had nothing to act on
+  ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+  [spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)). It is a
+  pilot (20 tasks, one repository, one agent and model); a confirmatory run
+  follows the same spec on new tasks.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
   metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds
   the *answering* signal — see below — but it stays a clearly-labeled secondary,

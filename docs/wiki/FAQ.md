@@ -141,6 +141,19 @@ neuralmind build . --force
 
 ## Performance & Scaling
 
+### "Does NeuralMind make my agent cheaper?"
+
+It puts the right code into the agent's window in far fewer tokens (51–242×
+fewer than pasting every source file on the public benchmark). Whether that
+lowers what a task costs was measured once, and the answer was no: a
+pre-registered 20-task pilot ran Claude Code with and without NeuralMind and
+found the same 18 of 20 tasks solved, at a median per-task cost change of +0.0%
+(95% CI −5.2% to +8.6%). In the 60 runs with NeuralMind the agent never called
+its MCP tools. It's a pilot, so a confirmatory run follows the
+[spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md);
+the [report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt) and every run are
+published.
+
 ### "Is NeuralMind slow for large codebases?"
 
 **The first build is the expensive step.** After that, builds are incremental,

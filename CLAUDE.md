@@ -84,8 +84,12 @@ Rules that follow from it:
   are recomputed in CI from `bench/public/results.json`; re-running the
   benchmark means committing that file (`--out bench/public`) and updating
   `site/claims.json` in the same change.
-- A page that quotes a forbidden phrase in order to *disown* it (the
-  effectiveness page's list of overclaims) marks the line
+- **Render numbers, don't retype them.** `site/src/lib/evidence.ts` reads
+  `site/claims.json`, `bench/public/results.json` and the retrieval eval's raw
+  output at build time; `ratio()` throws on a value claims.json doesn't list,
+  and `/benchmark` fails the build if its ledger leaves out a claims.json
+  ratio. Stats, tables and evidence badges go through it.
+- A page that quotes a forbidden phrase in order to *disown* it marks the line
   `claims-guard:allow`.
 
 ## Internal docs — routed to the marketing repo

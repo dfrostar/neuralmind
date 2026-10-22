@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import Logo from '@/components/ui/Logo';
 
 // Root-relative so the menu works from every page, not just the homepage.
-// A bare "#benchmarks" does nothing on /security, /privacy, /terms — those
-// sections only exist on "/". "/#benchmarks" navigates home, then scrolls.
+// A bare "#features" does nothing on /security, /privacy, /terms — those
+// sections only exist on "/". "/#features" navigates home, then scrolls.
 //
 // All ten destinations are still reachable; they are grouped now rather than
 // laid out as ten equal-weight links that only stopped colliding at 1280px
@@ -15,16 +15,16 @@ type NavItem = { href: string; label: string; hint?: string };
 
 const productLinks: NavItem[] = [
     { href: '/#how-it-works', label: 'How it works', hint: 'Index, query, remember' },
-    { href: '/#features', label: 'Features', hint: 'The full capability list' },
+    { href: '/#quickstart', label: 'Quickstart', hint: 'Five commands' },
+    { href: '/#features', label: 'Features', hint: 'Four things your agent gets' },
     { href: '/benchmark', label: 'Benchmark', hint: '40 public queries, every miss published' },
-    { href: '/effectiveness', label: 'Field report', hint: 'One production repo, before and after' },
+    { href: '/field-reports/measure-memory-across-a-refactor', label: 'Field report', hint: 'One production repo, before and after' },
 ];
 
 const resourceLinks: NavItem[] = [
     { href: '/publications', label: 'Research', hint: 'Write-ups and methodology' },
     { href: '/measure-your-own', label: 'Measure Your Own', hint: 'Run the benchmark on your repo' },
-    { href: '/#assessment', label: 'Assessment', hint: 'Free spend analysis' },
-    { href: '/security', label: 'Security', hint: 'SBOM, integrity, disclosure' },
+    { href: '/security', label: 'Security', hint: 'Verify releases, CUI profile, SP 800-53' },
     { href: '/#faq', label: 'FAQ', hint: 'Common questions' },
     { href: 'https://docs.neuralmind.uk/wiki/Home', label: 'Docs', hint: 'CLI and wiki' },
 ];

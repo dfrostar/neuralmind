@@ -10,7 +10,7 @@ const faqs = [
     },
     {
         q: 'How much does NeuralMind reduce Claude Code token usage?',
-        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 51–242× smaller than pasting every source file, and it found the gold file on all 40. Pasting everything is the easiest baseline to beat: against ripgrep opening its top five files, closer to how an agent works, it was 31–67× smaller, and ripgrep found the gold file on 32 of 40. An agent that reads only the matching lines pays less still, and that is not measured. On private repos, "neuralmind benchmark ." reported 12–50× before v4.5.0, against a fixed 50K-token estimate; it now divides the measured size of your own code, so run it and read yours. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly. NeuralMind no longer claims savings on tool output: its old compression hooks, measured against how Claude Code actually handles hook output, added tokens instead of saving them, so they were switched off (docs.neuralmind.uk/benchmarks/compression.html).',
+        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 51–242× smaller than pasting every source file, and it found the gold file on all 40. Pasting everything is the easiest baseline to beat: against ripgrep opening its top five files, closer to how an agent works, it was 31–67× smaller, and ripgrep found the gold file on 32 of 40. An agent that reads only the matching lines pays less still, and that is not measured. On private repos, "neuralmind benchmark ." reported 12–50× before v4.5.0, against a fixed 50K-token estimate; it now divides the measured size of your own code, so run it and read yours. That is what reaches the agent’s window, not what a task costs: a pre-registered 20-task pilot ran Claude Code with and without NeuralMind and found no difference in tasks solved or cost per task, because the agent never called NeuralMind’s tools (neuralmind.uk/benchmark/#task-outcomes). NeuralMind no longer claims savings on tool output: its old compression hooks, measured against how Claude Code actually handles hook output, added tokens instead of saving them, so they were switched off (docs.neuralmind.uk/benchmarks/compression.html).',
     },
     {
         q: 'How is this different from RAG or a vector database?',
@@ -18,7 +18,7 @@ const faqs = [
     },
     {
         q: 'Does NeuralMind get better the more I use it?',
-        a: 'It is built to: the synapse layer strengthens links between files you use together and lets unused ones fade, and recall uses those links to re-rank results. What is shown so far is narrower. CI checks that learned recall never lowers the hit rate, on a ~500-line fixture, which shows direction rather than size. Nothing we publish yet shows it improving retrieval on a real codebase over weeks of use, and nothing measures whether agents finish tasks faster. You can measure the first on your own repo: write down questions with the file that answers each (past incidents, phrased as the symptom), then run "neuralmind eval . --synapse-ab" (v4.14.0+), which runs them with synapse recall on and off and records the difference each time.',
+        a: 'It is built to: the synapse layer strengthens links between files you use together and lets unused ones fade, and recall uses those links to re-rank results. What is shown so far is narrower. CI checks that learned recall never lowers the hit rate, on a ~500-line fixture, which shows direction rather than size. Nothing we publish yet shows it improving retrieval on a real codebase over weeks of use, and a 20-task pilot found agents solved the same tasks at the same cost with and without NeuralMind. You can measure the first on your own repo: write down questions with the file that answers each (past incidents, phrased as the symptom), then run "neuralmind eval . --synapse-ab" (v4.14.0+), which runs them with synapse recall on and off and records the difference each time.',
     },
     {
         q: 'How is NeuralMind different from CLAUDE.md or Cursor rules?',
@@ -38,19 +38,11 @@ const faqs = [
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Four places, all published. It finds all 40 public-benchmark queries, but 40 is a small sample: on a 150-question retrieval eval it misses the gold file in the top five on 10, most of them where vector search ranks that file outside the 20 candidates NeuralMind re-ranks. If all you need is to locate a file, a bare vector index is cheaper, and on flask and rich it still ranks the gold file higher. On the CI fixture it took until v4.12.0 to beat naive truncation at the same token budget (+0.265 at v4.12.0, 0.839 vs 0.574, measured on one machine; v4.3.4 was a loss, −0.054), CI gates only that it stays above −0.10, and that fixture is small. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
-    },
-    {
-        q: 'Why not just use Cursor, Windsurf or Aider memory?',
-        a: 'Built-in memory is tied to one agent. NeuralMind is agent-agnostic: the same memory serves Claude Code, Codex, Cursor and anything else that speaks MCP, survives switching tools, lives in your repo, and is inspectable. It composes with those tools rather than replacing them.',
+        a: 'Five places, all published. On real tasks, a pre-registered 20-task pilot found no difference: 18 of 20 solved with and without NeuralMind, at the same cost per task, and the agent never called NeuralMind’s tools. It finds all 40 public-benchmark queries, but 40 is a small sample: on a 150-question retrieval eval it misses the gold file in the top five on 10, most of them where vector search ranks that file outside the 20 candidates NeuralMind re-ranks. If all you need is to locate a file, a bare vector index is cheaper, and on flask and rich it still ranks the gold file higher. On the CI fixture it took until v4.12.0 to beat naive truncation at the same token budget (+0.265 at v4.12.0, 0.839 vs 0.574, measured on one machine; v4.3.4 was a loss, −0.054), CI gates only that it stays above −0.10, and that fixture is small. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'What languages does it support?',
         a: 'Ten out of the box via bundled tree-sitter grammars: Python, TypeScript (and JavaScript/JSX, parsed with the TypeScript grammars), Go, Rust, Java, C, C++, C#, Ruby and PHP — plus OpenAPI, SQL DDL and Protocol Buffers schema files. Markdown and text can be indexed too, as their own content project.',
-    },
-    {
-        q: 'What is the business case for a team?',
-        a: 'Two lines: the measured token reduction (free — verify it on your own repo in about 15 minutes) and time lost to context-limit thrashing and re-prompting, which the business case models but does not measure. The full model and its assumptions are published, and the free assessment measures both in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
     },
 ];
 

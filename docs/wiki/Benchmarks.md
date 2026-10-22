@@ -57,6 +57,33 @@ not their LLM-agent loop
 ([comparison](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codebase-memory-mcp.md)).
 Full tables and reproduction commands below.
 
+## Task outcomes: a pilot found no difference
+
+Everything above is retrieval: what reaches the agent's window. Whether that
+makes the agent do better is a separate question, and the first measurement of
+it found **no difference**. A pre-registered pilot
+([spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)) ran Claude
+Code (claude-sonnet-5-5, Claude Code 2.1.287) on 20 real bug-fix tasks with and
+without NeuralMind 4.15.1, three seeds each, 120 runs, on 2026-10-20:
+
+| Per arm | Without | With NeuralMind |
+|---|---:|---:|
+| Tasks solved | 18 of 20 | 18 of 20 |
+| Runs solved | 53 of 60 | 55 of 60 |
+| Cost per solved task | $0.227 | $0.216 |
+| Median turns per task | 10.3 | 10.8 |
+| Median explore calls before the first edit | 4 | 4 |
+
+Median per-task cost change with NeuralMind: **+0.0%** (95% CI −5.2% to
++8.6%; Wilcoxon one-sided p = 0.66). The claim it tested, that NeuralMind
+lowers cost per task without solving fewer, is not supported. The reason
+matters more than the number: in the 60 runs with NeuralMind the agent called
+**none of its 28 MCP tools**; NeuralMind reached it only through its Claude Code
+hooks. It is a pilot (20 tasks, one repository, one agent and model, cost as
+Claude Code's estimate at API prices); a confirmatory run follows the spec on new
+tasks. Raw data: [report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+[runs](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/runs.jsonl).
+
 ## The honest headline
 
 **On code questions, NeuralMind sends the agent the few entities that matter
@@ -338,6 +365,9 @@ replaced, or if any call costs more tokens than with no hook
 
 ## What we *don't* claim
 
+- That fewer tokens make a cheaper or better agent. The one task-outcome
+  measurement, a 20-task pilot, found no difference
+  ([above](#task-outcomes-a-pilot-found-no-difference)).
 - The CI numbers come from a **deliberately tiny fixture** — they prove the
   mechanism and catch regressions, not a real-repo ceiling. Point it at your own
   repo with [`benchmark-your-repo`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md).

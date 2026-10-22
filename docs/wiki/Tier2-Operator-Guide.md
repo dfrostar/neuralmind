@@ -178,8 +178,8 @@ every case.
 - No compliance/audit requirements
 - Solo developer (1-seat free tier is sufficient)
 
-The honest boundary is documented on the NeuralMind site at
-https://neuralmind.uk/effectiveness/ — free-tier users whose codebases
+The honest boundary is documented in the
+[honest assessment](../HONEST-ASSESSMENT.md) — free-tier users whose codebases
 fall below the sweet spot should verify their own reduction ratio
 before purchasing.
 

@@ -262,7 +262,11 @@ export default function PublicationPage() {
                         <p className="text-body text-sm">
                             Earlier versions of this report described consumption-side compression by PostToolUse hooks, with reductions of up to ~88% (Read) and ~91% (Bash) that were never measured. When the hooks were finally benchmarked against Claude Code’s documented hook protocol, they turned out not to shrink anything: Claude Code adds a hook’s output next to the tool result instead of replacing it, so they added tokens, and the Read hook never received Claude Code’s payload. The hooks no longer inject anything; the{' '}
                             <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="text-electric hover:text-electric-bright">compression benchmark</a>{' '}
-                            has the measurements. The savings come from retrieval.
+                            has the measurements. The token reduction comes from retrieval; a 20-task pilot found it{' '}
+                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
+                                made no difference to cost per task
+                            </a>
+                            .
                         </p>
                     </div>
                 </section>

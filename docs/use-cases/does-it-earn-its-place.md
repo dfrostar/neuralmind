@@ -145,10 +145,15 @@ not NeuralMind.
 ## What this doesn't tell you
 
 Even a good hit@5 on your incidents is still retrieval: the right file was in
-the window. It doesn't measure whether the agent then fixed the bug faster, or
-whether a small window left out a caveat a whole file would have shown. A
-proper outcome test solves real tasks with and without NeuralMind and compares
-time and errors. Nobody has published one for NeuralMind yet, including us.
+the window. Whether the agent then does better is an outcome question, and an
+outcome test solves real tasks with and without NeuralMind. We published the
+first one: a pre-registered 20-task pilot found no cost difference (18 of 20
+tasks solved in both arms, median per-task cost change +0.0%), because the
+agent never called NeuralMind's tools
+([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+[spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)). Your
+own hit@5 tells you the right file can be found; it doesn't tell you the agent
+will ask.
 
 ## The potential use case: a running incident log that grades its own tools
 

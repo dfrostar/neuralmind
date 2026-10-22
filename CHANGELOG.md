@@ -1,5 +1,32 @@
 # Changelog
 
+## [4.20.0](https://github.com/dfrostar/neuralmind/compare/v4.19.0...v4.20.0) (2026-10-21)
+
+
+### Features
+
+* **site:** six-section homepage, one proof page rendered from claims.json, /security as the enterprise landing ([#695](https://github.com/dfrostar/neuralmind/issues/695)) ([61916d3](https://github.com/dfrostar/neuralmind/commit/61916d3409fc8bce451577f2e5b400b21494cbc4))
+
+## [4.19.0](https://github.com/dfrostar/neuralmind/compare/v4.18.1...v4.19.0) (2026-10-21)
+
+
+### Features
+
+* **audit:** forward the audit log to syslog, alert when a record can't be written, and publish an OSCAL component definition for SP 800-53 ([#688](https://github.com/dfrostar/neuralmind/issues/688)) ([8dff2ad](https://github.com/dfrostar/neuralmind/commit/8dff2ad282e48668a302c64e68190cb0fb5f6353))
+* **compliance:** an SP 800-53 hardening baseline, checked by `neuralmind hardening` ([#690](https://github.com/dfrostar/neuralmind/issues/690)) ([3775da8](https://github.com/dfrostar/neuralmind/commit/3775da8edc66746b1da023f5b39a882909687e65))
+* **demo:** `neuralmind demo` runs offline, with no model download ([#694](https://github.com/dfrostar/neuralmind/issues/694)) ([59991df](https://github.com/dfrostar/neuralmind/commit/59991df73715bcb41b5ee57555f70a4f9c817c6c))
+* **site:** design-system foundation — type, text, verdict and radius tokens; Stat, EvidenceBadge, Callout, data table; docs on the site palette ([#693](https://github.com/dfrostar/neuralmind/issues/693)) ([8e2a919](https://github.com/dfrostar/neuralmind/commit/8e2a919c9abdd6f649b9f0ebccceffe4b39901d0))
+
+
+### Bug Fixes
+
+* **docs:** public surfaces match canon; claims guards cover every page ([#687](https://github.com/dfrostar/neuralmind/issues/687)) ([c3155c9](https://github.com/dfrostar/neuralmind/commit/c3155c908d7e1f597d64caf94d24cf3eb7865141))
+
+
+### Documentation
+
+* **social:** draft the Hermes plugin's debut message for the Nous Research Discord ([#691](https://github.com/dfrostar/neuralmind/issues/691)) ([ec2ac86](https://github.com/dfrostar/neuralmind/commit/ec2ac86df162bb4560b3f27c2ee79a009f2a8da9))
+
 ## [4.18.1](https://github.com/dfrostar/neuralmind/compare/v4.18.0...v4.18.1) (2026-10-19)
 
 

@@ -9,8 +9,8 @@ import claims from '../../../claims.json';
  * without a label here fails the build rather than rendering blank.
  *
  * Strength reads in the styling: the two levels a reader can check for
- * themselves are `proton` (measured), a one-repo field report and a community
- * submission are neutral, and a disclosure — something we say is NOT
+ * themselves are `proton` (measured), a one-repo field report, a community
+ * submission and an exploratory pilot are neutral, and a disclosure — something we say is NOT
  * measured — is dashed, so it never passes for a result at a glance.
  */
 export type EvidenceLevel = keyof typeof claims._evidence_levels;
@@ -20,6 +20,7 @@ const LEVELS: Record<EvidenceLevel, { label: string; className: string }> = {
     reproducible: { label: 'Reproducible', className: 'text-proton border-proton/30' },
     'field-report': { label: 'Field report', className: 'text-body border-carbon-line' },
     community: { label: 'Community', className: 'text-muted border-carbon-line' },
+    pilot: { label: 'Pilot', className: 'text-body border-carbon-line' },
     disclosure: { label: 'Not measured', className: 'text-faint border-carbon-line border-dashed' },
 };
 

@@ -1,5 +1,14 @@
 # Use Case: LLM Cost Optimization
 
+> **Read this first.** NeuralMind cuts the tokens of retrieved context, and
+> you can measure that on your repo with the steps below. Whether it cuts what
+> a *task* costs end to end was measured once: a pre-registered 20-task pilot,
+> Claude Code with and without NeuralMind, found **no cost difference** (median
+> per-task change +0.0%, 95% CI −5.2% to +8.6%), because the agent never called
+> NeuralMind's tools ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+> [spec](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)). Measure your own bill
+> before you report a saving to anyone.
+
 ## What you're solving for
 
 Your team or product spends measurable money on LLM API calls for code questions. You need to reduce spend **without** moving to a cheaper model or cutting features, and report the savings to a stakeholder.

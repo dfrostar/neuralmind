@@ -742,9 +742,10 @@ OVERCLAIMS: list[tuple[re.Pattern[str], str, bool]] = [
             re.IGNORECASE,
         ),
         (
-            "Task outcomes are not measured (site/claims.json disclosure): every "
-            "published figure is retrieval — what reaches the window and whether the "
-            "right file is in it. Say that, not an outcome."
+            "The one task-outcome measurement, a 20-task pre-registered pilot "
+            "(bench/task_outcome/pilot/report.txt, site/claims.json), found no "
+            "difference: 18 of 20 tasks solved in both arms, median cost change +0.0%. "
+            "Every other published figure is retrieval. Say that, not an outcome."
         ),
         True,
     ),
@@ -839,6 +840,29 @@ UNSOURCED_FIGURES = [
     ),
 ]
 
+# Task outcomes were "not measured" until 2026-10-21, when a pre-registered
+# 20-task pilot (bench/task_outcome/pilot/, docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)
+# measured them and found no difference. A surface that still says they aren't
+# measured hides a published null result behind a disclosure that is no longer
+# true; say what the pilot found, with a link. Dated history lines take the
+# allow marker.
+STALE_OUTCOME_DISCLOSURE_RE = re.compile(
+    r"\btask[-\s]outcomes?\b[^.\n]{0,30}?\b(?:are\s+not|aren(?:[’']|&rsquo;)t|is\s+not|isn(?:[’']|&rsquo;)t|not)\s+"
+    r"(?:yet\s+)?(?:measured|benchmarked)"
+    r"|\btask[-\s]outcomes?\s+(?:are\s+not|aren(?:[’']|&rsquo;)t)\s*[.;,)]"
+    r"|\bnot\s+measured[^.\n]{0,20}?\btask[-\s]outcomes?\b"
+    r"|\bnothing\b[^.\n]{0,60}?\bmeasures?\s+whether\s+(?:an\s+)?agents?\s+"
+    r"(?:fix|finish|make|get|complete)"
+    r"|\bnot\s+whether\s+agents?\s+(?:finish|fix|complete)",
+    re.IGNORECASE,
+)
+STALE_OUTCOME_REASON = (
+    "Task outcomes are measured now: a pre-registered 20-task pilot found no cost "
+    "difference (bench/task_outcome/pilot/report.txt). Say 'a 20-task pilot found "
+    "no cost difference' and link it, rather than 'not measured'."
+)
+
+
 # The codebase-memory-mcp head-to-head ran once, in June 2026, on two repos. It
 # may be quoted in body text with that date beside it — not as a current
 # headline. tests above already require the competitor's name in the window;
@@ -912,6 +936,35 @@ def test_published_surfaces_quote_no_unsourced_figures() -> None:
     )
 
 
+def test_published_surfaces_report_the_task_outcome_pilot() -> None:
+    violations = [
+        f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
+        for path, lines, i in _claim_lines()
+        if (m := STALE_OUTCOME_DISCLOSURE_RE.search(lines[i]))
+    ]
+    assert not violations, STALE_OUTCOME_REASON + "\n  " + "\n  ".join(violations)
+
+
+def test_stale_outcome_guard_trips_on_the_copy_that_shipped() -> None:
+    shipped = [
+        "- **Task outcomes aren't measured.** The benchmarks measure retrieval (tokens, and",
+        "and state that task outcomes are not measured ([release notes](docs/releases/x.md))",
+        "the right file is in it; task outcomes are not.",
+        "a range rather than a promise for yours, and task outcomes aren&rsquo;t measured.",
+        "Nothing here measures whether an agent fixes a bug faster or makes fewer mistakes",
+        "not whether agents finish tasks faster or with fewer errors.",
+        "and nothing measures whether agents finish tasks faster.",
+    ]
+    for line in shipped:
+        assert STALE_OUTCOME_DISCLOSURE_RE.search(line), line
+    honest = [
+        "A 20-task pilot found no cost difference: 18 of 20 tasks solved in both arms.",
+        "Task outcomes: a pre-registered pilot found no difference.",
+    ]
+    for line in honest:
+        assert not STALE_OUTCOME_DISCLOSURE_RE.search(line), line
+
+
 def test_competitor_recall_is_dated_where_quoted() -> None:
     violations = [
         f"{path.relative_to(REPO_ROOT)}:{i + 1}: {lines[i].strip()[:110]}"
@@ -966,7 +1019,7 @@ def test_overclaim_guards_trip_on_the_copy_that_shipped() -> None:
         assert overclaims_in(line), line
     honest = [
         "Nothing here measures whether an agent fixes a bug faster or makes fewer mistakes",
-        "- **Task outcomes aren't measured.** not whether agents finish with fewer errors.",
+        "- **Task outcomes.** A 20-task pilot found no difference, so not fewer errors either.",
         "Using NeuralMind does not by itself make you compliant with any regulation.",
         'rationale="Single-file, no server, ACID-compliant",',
         "**SOC 2-ready posture, certification on the roadmap.**",

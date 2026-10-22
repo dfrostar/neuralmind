@@ -14,6 +14,15 @@ If you want to know what could go wrong before adopting, see
 
 ## Bottom line
 
+> **Measured since this was written.** The ~1.6–3× end-to-end figure below is
+> derived from a model, not measured. A pre-registered 20-task pilot then
+> measured cost per task directly, Claude Code with and without NeuralMind, and
+> found **no difference**: median per-task change +0.0% (95% CI −5.2% to
+> +8.6%), 18 of 20 tasks solved in both arms. The agent never called
+> NeuralMind's MCP tools ([report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt),
+> [spec](specs/TASK-OUTCOME-BENCHMARK-SPEC.md)). Until a confirmatory run shows
+> otherwise, don't present the derived figure as an expected saving.
+
 For a team spending **$500+/month on AI coding agent inference** on a
 **codebase larger than ~10K lines**, NeuralMind's tooling
 **measured a 12-50× reduction in retrieval-stage input tokens** on

@@ -107,7 +107,7 @@
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>
-            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; the public benchmark&rsquo;s 51&ndash;242&times; is four pinned repos and 40 queries, a range rather than a promise for yours, and task outcomes aren&rsquo;t measured. Point it at your own repo to see your ratio.</em></p>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; the public benchmark&rsquo;s 51&ndash;242&times; is four pinned repos and 40 queries, a range rather than a promise for yours, and task outcomes aren&rsquo;t measured. Point it at your own repo to see your ratio.</em></p> <!-- claims-guard:allow — dated history; a 20-task pilot measured task outcomes on 2026-10-20 -->
         </div>
     </section>
 
@@ -351,7 +351,7 @@
             <ul>
                 <li><strong><code>neuralmind eval . --synapse-ab</code></strong> &mdash; your own gold questions, run read-only with synapse recall on and then off: questions moved up or down, hit@5 won and lost with an exact McNemar p-value, and the size of the layer it read. <code>eval --report</code> keeps a table of these runs, so you can see whether the gap grows as the usage-learned part (LTP edges, transitions) does; the switch also covers the call and import edges every build seeds, so a fresh build can already differ (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/does-it-earn-its-place.md">walkthrough</a>)</li>
                 <li><strong>Hermes reads train transitions</strong> &mdash; the Hermes plugin recorded only edits; a <code>read_file</code> of a file inside the project now records a transition step too, as Claude Code&rsquo;s Read hook does (reinstall the plugin after upgrading)</li>
-                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li>
+                <li><strong>Public pages say what isn&rsquo;t measured</strong> &mdash; the benchmarks now quote the ripgrep comparison (31.2&ndash;67.2&times; fewer tokens than ripgrep opening its top five files, which found the gold file on 32 of 40) beside the whole-file one, and state that task outcomes, and the learned layer&rsquo;s benefit on a real codebase, are not measured</li> <!-- claims-guard:allow — dated history; a 20-task pilot measured task outcomes on 2026-10-20 -->
             </ul>
             <p><strong>Also: releases you can verify.</strong> You can check that the NeuralMind you install is the one this repository built. NIST doesn&rsquo;t certify software against its Secure Software Development Framework (SP&nbsp;800-218): a federal agency may ask the producer to attest to it, on CISA&rsquo;s form or its own, signed by an officer of the company. This release adds the evidence that attestation rests on.</p>
             <ul>
@@ -1806,7 +1806,7 @@ $ neuralmind query . "CMMC gap analysis"
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Efficient</strong>
-                    <p>Selected context instead of whole files: 51&ndash;242&times; fewer tokens than pasting every source file on the public benchmark (v4.12.0). What is measured is what reaches the agent&rsquo;s window and whether the right file is in it; task outcomes are not.</p>
+                    <p>Selected context instead of whole files: 51&ndash;242&times; fewer tokens than pasting every source file on the public benchmark (v4.12.0). What is measured is what reaches the agent&rsquo;s window and whether the right file is in it. On task outcomes, a pre-registered 20-task pilot found no cost difference: the agent never called NeuralMind&rsquo;s tools (<a href="https://neuralmind.uk/benchmark/#task-outcomes">the pilot</a>).</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Community Driven</strong>

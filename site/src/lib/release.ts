@@ -13,7 +13,7 @@ export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 // There is no fallback date to go stale beside it: the date comes from the
 // tag's CHANGELOG.md heading, which release-please writes in the same release
 // PR (see releaseDateFromChangelog).
-const FALLBACK = { tag: 'v4.18.1' }; // x-release-please-version
+const FALLBACK = { tag: 'v4.20.0' }; // x-release-please-version
 
 // "## [4.18.1](…compare/v4.18.0...v4.18.1) (2026-10-19)" → "2026-10-19".
 // Returns '' when the heading isn't there (a build outside the repo, or a tag
@@ -33,6 +33,23 @@ export function releaseDateFromChangelog(tag: string, changelog?: string): strin
     const version = tag.replace(/^v/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const m = text.match(new RegExp(`^## \\[${version}\\]\\([^)]*\\) \\((\\d{4}-\\d{2}-\\d{2})\\)`, 'm'));
     return m ? m[1] : '';
+}
+
+/**
+ * True when `tag` ("v4.19.0") is `min` ("4.19.0") or later. Pages use it to
+ * say whether a feature on main has reached a release yet, against the latest
+ * release this build read, so the site never names a version as current by
+ * hand.
+ */
+export function tagAtLeast(tag: string, min: string): boolean {
+    const parse = (v: string) => v.replace(/^v/, '').split('.').map((p) => parseInt(p, 10));
+    const have = parse(tag);
+    const want = parse(min);
+    if (have.length < 3 || have.some(Number.isNaN)) return false;
+    for (let i = 0; i < 3; i++) {
+        if (have[i] !== want[i]) return have[i] > want[i];
+    }
+    return true;
 }
 
 export interface LatestRelease {

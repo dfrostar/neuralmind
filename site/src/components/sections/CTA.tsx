@@ -18,17 +18,18 @@ export default function CTA() {
             <div className="max-w-6xl mx-auto">
                 <div className="panel-accent rounded-card px-6 py-14 md:px-14 md:py-16 text-center">
                     <h2 className="font-display text-3xl sm:text-4xl md:text-display font-semibold text-white tracking-tighter mb-5 max-w-2xl mx-auto">
-                        Stop paying for tokens you don&apos;t use.
+                        The right code, in fewer tokens. Measured in the open.
                     </h2>
                     <p className="text-muted text-base md:text-lg mb-9 max-w-xl mx-auto leading-relaxed">
                         One command to install, one to index, one to measure it on your own repo.
-                        Your agent remembers what matters.
+                        Every benchmark is published with its misses, and so is the task-outcome pilot that
+                        found no difference.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
                         <CommandLine command="pip install neuralmind" />
-                        <a href="https://pypi.org/project/neuralmind/" className="btn-primary py-3">
-                            Get started
+                        <a href="#quickstart" className="btn-primary py-3">
+                            Quickstart
                             <Icon name="arrow-right" className="w-4 h-4" />
                         </a>
                     </div>

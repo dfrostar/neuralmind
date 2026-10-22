@@ -1,78 +1,34 @@
-'use client';
-
-import { useState, useEffect } from 'react';
 import CommandLine from '@/components/ui/CommandLine';
 import Icon from '@/components/ui/Icon';
+import Stat, { StatGrid } from '@/components/ui/Stat';
+import { QUERY_ID, QUERY_REPO, QUERY_TEXT } from '@/lib/capturedQuery';
+import { headline, publicBenchmark, publicQuery, ratioRange, retrievalEval } from '@/lib/evidence';
 
-const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
+const AGENTS = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Hermes', 'any MCP client'];
 
-// Every figure here is registered in site/claims.json with its source and
-// reproduction command, and gated by tests/test_site_claims.py.
-//
-// `evidence` is new, and it is presentational only — it labels which kind of
-// claim each figure is, the same grading the Benchmarks table already applies.
-// The site's own rule is that a CI gate and a per-repo mean are not the same
-// strength of claim, so the hero should not render them identically.
-const heroStats = [
-    // The lead is the comparison against keyword ripgrep with its top five files
-    // opened whole, the baseline closest to how an agent works; an agent reading
-    // only the matching lines pays less than that baseline, which is not measured.
-    // Keep both found counts and the ratio on the one line below.
-    { label: 'Gold file found', value: '40 of 40', evidence: 'public-benchmark queries, 4 repos, at 31–67× fewer tokens than keyword ripgrep (top five files opened whole), which found 32 of 40', figure: true },
-    { label: 'Fewer tokens', value: '51–242×', evidence: 'than pasting every source file, same 40 queries', figure: true },
-    { label: 'Top-5 hit rate', value: '93.3%', evidence: '150-question eval, 5 repos, every miss published', figure: true },
-    { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
-];
-
-// Real commands, verified against neuralmind/cli.py. Nothing here prints
-// fabricated output — the terminal shows the three calls you actually make.
-const session = [
-    { prompt: '$', cmd: 'pip install neuralmind' },
-    { prompt: '$', cmd: 'neuralmind build .' },
-    { prompt: '$', cmd: 'neuralmind query . "where is auth handled?"' },
-];
+// The commands a reader runs to try it, verified against neuralmind/cli.py:
+// install, index, register the MCP server with Claude Code (`--client` picks
+// Cursor, Cline, VS Code or Claude Desktop instead), and install Claude Code's
+// hooks. In the task-outcome pilot the agent never called the MCP tools; the
+// hooks were how NeuralMind reached it, so they are part of the install.
+const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-mcp', 'neuralmind install-hooks .'];
 
 export default function Hero() {
-    const [tagIndex, setTagIndex] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTagIndex((i) => (i + 1) % tags.length);
-        }, 2400);
-        return () => clearInterval(interval);
-    }, []);
+    // Every figure below is read from the committed runs through lib/evidence,
+    // which checks each ratio against site/claims.json at build time.
+    const vsGrep = ratioRange(31, 67);
+    const vsPaste = ratioRange(51, 242);
+    const foundEvidence = headline('ripgrep (query keywords').evidence;
+    const side = publicQuery(QUERY_REPO, QUERY_ID);
 
     return (
-        <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-20">
-            {/* A 72px hairline grid, masked to fade out. Replaces three
-                600–800px blurred blue/purple radial blobs. */}
+        <section className="relative overflow-hidden pt-28 pb-12 md:pt-36 md:pb-16 px-4 md:px-6">
             <div className="grid-bg absolute inset-0 -z-10" aria-hidden="true" />
 
-            <div className="max-w-6xl mx-auto px-4 md:px-6">
-                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] gap-12 lg:gap-14 items-center">
+            <div className="max-w-6xl mx-auto">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] gap-12 lg:gap-14 items-start">
                     {/* ── Copy ───────────────────────────────────────────── */}
                     <div>
-                        <div className="inline-flex items-center gap-2.5 mb-6 pl-3 pr-4 py-1.5 rounded-pill border border-carbon-border bg-carbon-raised">
-                            <span className="w-1.5 h-1.5 rounded-pill bg-proton" />
-                            <span className="text-faint text-caption">Native for</span>
-                            <span className="relative grid text-ink font-medium text-caption">
-                                {/* Every name stacked in one cell: the widest sets the
-                                    width, so the pill never resizes mid-rotation. */}
-                                {tags.map((tag, i) => (
-                                    <span
-                                        key={tag}
-                                        aria-hidden={i !== tagIndex}
-                                        className={`col-start-1 row-start-1 transition-opacity duration-500 ${
-                                            i === tagIndex ? 'opacity-100' : 'opacity-0'
-                                        }`}
-                                    >
-                                        {tag}
-                                    </span>
-                                ))}
-                            </span>
-                        </div>
-
-                        {/* The H1 is the brand line; this names the search terms it doesn't. */}
                         <p className="eyebrow mb-4">
                             Persistent codebase memory · MCP server for Claude Code, Codex &amp; Cursor
                         </p>
@@ -82,77 +38,127 @@ export default function Hero() {
                             <span className="gradient-text">NeuralMind remembers it.</span>
                         </h1>
 
-                        <p className="text-muted text-base sm:text-lg leading-relaxed max-w-xl mb-9">
-                            Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
-                            NeuralMind maps your repo, learns which files belong together as you
-                            work, and hands your agent the right code first —{' '}
+                        {/* tests/test_site_claims.py: the found count stays on one
+                            line with ripgrep's, and the 150-question figure stays
+                            in this file. */}
+                        <p className="text-muted text-base sm:text-lg leading-relaxed max-w-xl mb-8">
+                            A local index of your repo that hands your agent the right code first —{' '}
                             <span className="text-ink font-medium">the gold file on 40 of 40 public-benchmark queries, where keyword ripgrep opening its top five files whole found 32 of 40, at 31–67× fewer tokens than ripgrep</span>{' '}
                             and 51–242× fewer than pasting every source file. On a larger 150-question
                             eval it puts a gold file in the top five on 93.3%, and all 10 misses are
-                            published. By default, no telemetry. MIT core.
+                            published. By default, no telemetry. MIT core, free at one seat.
                         </p>
 
+                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in four commands">
+                            {INSTALL.map((cmd, i) => (
+                                <li key={cmd} className="flex items-center gap-3">
+                                    <span className="w-6 shrink-0 font-mono text-xs text-faint tabular-nums">
+                                        {String(i + 1).padStart(2, '0')}
+                                    </span>
+                                    <CommandLine command={cmd} className="flex-1" />
+                                </li>
+                            ))}
+                        </ol>
+
                         <div className="flex flex-wrap items-center gap-3">
-                            <CommandLine command="pip install neuralmind" />
-                            <a href="/pricing" className="btn-primary py-3">
+                            <a href="/team" className="btn-primary py-3">
                                 For teams
                                 <Icon name="arrow-right" className="w-4 h-4" />
                             </a>
-                            <a
-                                href="https://github.com/dfrostar/neuralmind"
-                                className="btn-secondary py-3"
-                            >
-                                <svg className="w-[1.125rem] h-[1.125rem]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                                </svg>
+                            <a href="#quickstart" className="btn-secondary py-3">
+                                Quickstart
+                            </a>
+                            <a href="https://github.com/dfrostar/neuralmind" className="btn-secondary py-3">
                                 Source
                             </a>
                         </div>
+
+                        <p className="mt-6 text-faint text-sm">
+                            Works with {AGENTS.join(' · ')}
+                        </p>
                     </div>
 
-                    {/* ── Terminal ───────────────────────────────────────── */}
-                    <div className="panel rounded-card overflow-hidden shadow-2xl shadow-black/40">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-carbon-border bg-carbon-raised">
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="ml-2 font-mono text-eyebrow text-faint tracking-wide">
-                                your-repo — zsh
-                            </span>
+                    {/* ── The same question, two retrievers ──────────────── */}
+                    <figure className="panel rounded-card overflow-hidden shadow-2xl shadow-black/40">
+                        <div className="px-5 py-4 border-b border-carbon-border bg-carbon-raised">
+                            <p className="eyebrow mb-2">Same question · {side.repo} @ {side.sha}</p>
+                            <p className="text-white text-body-sm font-medium">&ldquo;{QUERY_TEXT}&rdquo;</p>
+                            <p className="text-faint text-caption mt-1">
+                                Gold file: <span className="font-mono text-body">{side.gold.join(', ')}</span>
+                            </p>
                         </div>
-                        <div className="p-5 font-mono text-caption leading-loose">
-                            {session.map((line) => (
-                                <div key={line.cmd} className="flex gap-2.5">
-                                    <span className="text-proton select-none shrink-0">{line.prompt}</span>
-                                    <span className="text-body break-words">{line.cmd}</span>
+
+                        {[
+                            { name: 'ripgrep, top five files opened whole', r: side.ripgrep },
+                            { name: 'neuralmind query', r: side.neuralmind },
+                        ].map(({ name, r }) => (
+                            <div key={name} className="px-5 py-4 border-b border-carbon-border last:border-b-0">
+                                <div className="flex items-baseline justify-between gap-3 mb-2.5">
+                                    <p className="font-mono text-caption text-ink">{name}</p>
+                                    <p className="metric text-caption text-muted whitespace-nowrap">{r.tokens} tokens</p>
                                 </div>
-                            ))}
-                            <div className="flex gap-2.5 mt-1">
-                                <span className="text-proton select-none shrink-0">$</span>
-                                <span className="w-2 h-[1.1em] bg-faint translate-y-[0.2em]" />
+                                <ul className="flex flex-wrap gap-1.5 mb-2.5">
+                                    {r.files.map((f) => (
+                                        <li
+                                            key={f}
+                                            className={`font-mono text-eyebrow px-2 py-1 rounded-control border ${
+                                                side.gold.includes(f)
+                                                    ? 'border-proton/40 text-proton bg-proton/10'
+                                                    : 'border-carbon-line text-muted'
+                                            }`}
+                                        >
+                                            {f}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <p className={`text-caption ${r.found ? 'text-proton' : 'text-danger'}`}>
+                                    {r.found
+                                        ? `Gold file found, ranked ${r.rank === 1 ? 'first' : `#${r.rank}`}`
+                                        : 'Gold file not in the context'}
+                                </p>
                             </div>
-                        </div>
-                    </div>
+                        ))}
+
+                        <figcaption className="px-5 py-3 bg-carbon-raised text-faint text-caption leading-relaxed">
+                            One of the 40 queries, from the committed run (bench/public/results.json). The real{' '}
+                            <a href="#real-output" className="text-electric hover:text-electric-bright">query output</a> is below.
+                        </figcaption>
+                    </figure>
                 </div>
 
                 {/* ── Stats ──────────────────────────────────────────────── */}
-                <dl className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-carbon-border overflow-hidden mt-14 md:mt-20">
-                    {heroStats.map((stat) => (
-                        <div key={stat.label} className="border-b border-r border-carbon-border px-5 py-6">
-                            <dd
-                                className={
-                                    stat.figure
-                                        ? 'metric text-2xl md:text-stat text-white mb-2 leading-none'
-                                        : 'font-display text-xl md:text-2xl font-semibold tracking-tight text-white mb-2 leading-none'
-                                }
-                            >
-                                {stat.value}
-                            </dd>
-                            <dt className="text-body text-sm font-medium mb-1">{stat.label}</dt>
-                            <p className="text-faint text-xs">{stat.evidence}</p>
-                        </div>
-                    ))}
-                </dl>
+                <StatGrid className="grid-cols-2 lg:grid-cols-4 mt-14 md:mt-20">
+                    <Stat
+                        label="Gold file found"
+                        value={publicBenchmark.found('neuralmind')}
+                        note={`public-benchmark queries on ${publicBenchmark.repoNames.length} pinned repos; keyword ripgrep found ${publicBenchmark.found('ripgrep')}`}
+                        evidence={foundEvidence}
+                    />
+                    <Stat
+                        label="Fewer tokens vs ripgrep"
+                        value={vsGrep.text}
+                        note="same queries, against ripgrep opening its top five files whole"
+                        evidence={vsGrep.evidence}
+                    />
+                    <Stat
+                        label="Vs pasting every file"
+                        value={vsPaste.text}
+                        note="same queries; the easiest baseline to beat"
+                        evidence={vsPaste.evidence}
+                    />
+                    <Stat
+                        label="Top-5 hit rate"
+                        value={retrievalEval.hitAt5}
+                        note={`${retrievalEval.questions} questions on ${retrievalEval.repos} repos; all ${retrievalEval.misses} misses published`}
+                        evidence={retrievalEval.evidence}
+                    />
+                </StatGrid>
+                <p className="mt-4 text-faint text-caption">
+                    Each reruns from a fresh clone with one command.{' '}
+                    <a href="/benchmark/" className="text-electric hover:text-electric-bright">
+                        Every number, its source and where NeuralMind loses →
+                    </a>
+                </p>
             </div>
         </section>
     );
