@@ -21,6 +21,10 @@ const faqs = [
         a: 'It is built to: the synapse layer strengthens links between files you use together and lets unused ones fade, and recall uses those links to re-rank results. What is shown so far is narrower. CI checks that learned recall never lowers the hit rate, on a ~500-line fixture, which shows direction rather than size. Nothing we publish yet shows it improving retrieval on a real codebase over weeks of use, and a 20-task pilot found agents solved the same tasks at the same cost with and without NeuralMind. You can measure the first on your own repo: write down questions with the file that answers each (past incidents, phrased as the symptom), then run "neuralmind eval . --synapse-ab" (v4.14.0+), which runs them with synapse recall on and off and records the difference each time.',
     },
     {
+        q: 'What does NeuralMind remember, and what does it forget?',
+        a: 'It remembers your code, which files you use together, the decisions recorded about the code and what your last session was doing. It keeps no profile of you or your preferences; those belong in CLAUDE.md or your agent’s own memory. Learning on a feature branch goes into that branch’s own namespace automatically (v0.24.0+), so it stays out of the memory the default branch uses. The code index does not decay. Learned associations do, on a 30-day default half-life that each one adjusts between 3 and 120 days by how often it was used, and an association used five or more times keeps a floor. Every agent gets the same plain-text context, and Claude Code gets the most from it through its hooks. Each answer, with the code behind it: neuralmind.uk/what-it-remembers/.',
+    },
+    {
         q: 'How is NeuralMind different from CLAUDE.md or Cursor rules?',
         a: 'CLAUDE.md and rules files are instructions you write and maintain by hand. NeuralMind is memory the agent builds by working: a queryable index of the whole codebase plus associations learned from use. The two compose — NeuralMind exports its learned hub files and associations to SYNAPSE_MEMORY.md, which Claude Code loads at session start and your CLAUDE.md can import.',
     },
