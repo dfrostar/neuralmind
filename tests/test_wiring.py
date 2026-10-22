@@ -228,6 +228,7 @@ def test_hermes_plugin_pinned_here_or_elsewhere(home, tmp_path):
     elsewhere = wiring.hermes_plugin_item(tmp_path)
     assert elsewhere.wired is False and "pinned to" in elsewhere.detail
     assert elsewhere.fix == "neuralmind install-hermes-plugin --unpin"
+    assert elsewhere.suggest is False  # build never offers to undo a pin
 
     (hermes / "plugins" / "neuralmind" / "config.json").write_text(
         json.dumps({"project": str(tmp_path)}), encoding="utf-8"
@@ -292,11 +293,11 @@ def test_mcp_disabled_in_hermes(home, tmp_path):
         "mcp_servers:\n  neuralmind:\n    command: neuralmind-mcp\n    enabled: false\n",
     )
     hermes = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (hermes)"]
-    assert hermes.wired is False and "disabled" in hermes.detail
+    assert hermes.wired is False and "disabled" in hermes.detail and hermes.suggest is False
 
 
 # --------------------------------------------------------------------------- #
-# Summary state
+# Summary state and build's next steps
 # --------------------------------------------------------------------------- #
 def _item(wired, host=False, outdated=False):
     return wiring.WiringItem("x", wired, "", host=host, outdated=outdated)
@@ -309,3 +310,65 @@ def test_state():
     assert wiring.state(unwired_host, claude_code_hooks=True) == wiring.PARTIAL
     assert wiring.state([_item(True, host=True), _item(None)], False) == wiring.WIRED
     assert wiring.state([_item(True, host=True, outdated=True)], False) == wiring.PARTIAL
+
+
+def test_next_steps_on_a_fresh_machine_with_hermes(home, repo):
+    _hermes_home(home)
+    assert wiring.next_steps(repo, ".") == [
+        "neuralmind daemon start && neuralmind init-hook .",
+        "neuralmind install-hermes-plugin && neuralmind install-mcp --client hermes",
+    ]
+
+
+def test_next_steps_without_hermes_offers_one_agent_host(home, repo):
+    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-mcp --all"
+    (home / ".claude").mkdir()
+    assert wiring.next_steps(repo, ".")[-1] == "neuralmind install-hooks"
+
+
+def test_next_steps_say_nothing_once_wired(home, repo, monkeypatch, capsys):
+    _init_hook(repo)
+    hermes = _hermes_home(
+        home,
+        "plugins:\n  enabled: [neuralmind]\nmcp_servers:\n  neuralmind:\n    command: neuralmind-mcp\n",
+    )
+    _plugin(hermes)
+    monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+    assert wiring.next_steps(repo, ".") == []
+
+
+def test_next_steps_never_offer_to_undo_a_pin(home, repo, monkeypatch, capsys):
+    _init_hook(repo)
+    hermes = _hermes_home(
+        home,
+        "plugins:\n  enabled: [neuralmind]\nmcp_servers:\n  neuralmind:\n    command: neuralmind-mcp\n",
+    )
+    _plugin(hermes, project=str(repo.parent / "other"))
+    monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+    assert wiring.next_steps(repo, ".") == []
+
+
+def test_build_prints_at_most_three_lines(home, repo, capsys):
+    from neuralmind.cli import _print_next_steps
+
+    _hermes_home(home)
+    _print_next_steps(str(repo))
+    lines = capsys.readouterr().out.strip("\n").splitlines()
+    assert len(lines) == 3
+    assert lines[1].strip().startswith("neuralmind daemon start")
+    assert lines[2].strip().endswith("neuralmind install-mcp --client hermes")
+
+
+def test_build_keeps_the_watch_hint_when_there_is_room(home, repo, monkeypatch, capsys):
+    from neuralmind.cli import _print_next_steps
+
+    _init_hook(repo)
+    monkeypatch.setenv("NEURALMIND_NO_DAEMON", "1")
+    monkeypatch.chdir(repo)
+    entry = {"mcpServers": {"neuralmind": {"command": "neuralmind-mcp"}}}
+    (repo / ".mcp.json").write_text(json.dumps(entry))
+    capsys.readouterr()
+    _print_next_steps(".")
+    out = capsys.readouterr().out
+    assert "Next, wire it in" not in out
+    assert "neuralmind watch . --reindex" in out

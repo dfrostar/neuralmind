@@ -857,17 +857,39 @@ def cmd_build(args):
     # Save build stats to ir_meta.json for build-status / status commands
     _save_build_stats(project_path, result)
 
-    # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
-        print()
-        print(
-            "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
-        )
+        _print_next_steps(project_path)
+
+
+def _print_next_steps(project_path: str) -> None:
+    """After a build: the commands for whatever isn't wired yet, three lines at most.
+
+    A built index nothing calls is inert, so the commands that wire it in come
+    first: the daemon and the Git hooks, then the agent (the Hermes plugin and
+    its MCP entry when Hermes is set up here). With room left, the hint for
+    files that change without a commit follows. Fail-open: a probe that
+    can't run leaves the hint out, never the build's result.
+    """
+    import shlex
+
+    try:
+        from neuralmind.wiring import next_steps
+
+        steps = next_steps(Path(project_path), project_arg=project_path)
+    except Exception:
+        steps = []
+    lines = []
+    if steps:
+        lines.append("  Next, wire it in (`neuralmind doctor` shows what's wired):")
+        lines += [f"    {step}" for step in steps]
+    if len(lines) < 3:
         # Plain `watch` only learns from edits; --reindex is what re-indexes them.
-        print(
-            "     Files that change without a commit: neuralmind watch . --reindex  "
-            "(re-indexes edited files as they change)"
+        lines.append(
+            f"  Files that change without a commit: neuralmind watch {shlex.quote(project_path)} "
+            "--reindex"
         )
+    print()
+    print("\n".join(lines))
 
 
 # What a learned transition ("after A, you edit B") comes from, for anyone
@@ -6110,8 +6132,8 @@ def cmd_install_mcp(args):
 
 # What a Hermes user does after the MCP entry lands in config.yaml.
 HERMES_MCP_RELOAD = (
-    "Hermes starts MCP servers when a session starts: start a new session, run "
-    "/reload-mcp in a running one, or restart the gateway. "
+    "A running Hermes reloads its MCP servers when config.yaml changes (run /reload-mcp "
+    "if mcp.auto_reload_on_config_change is off); restart the gateway if one is running. "
     "Check it with `hermes mcp test neuralmind`."
 )
 

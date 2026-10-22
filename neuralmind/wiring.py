@@ -14,7 +14,8 @@ that connect a built project to its use are:
   server registered in a client's config.
 
 Each probe here is read-only and never raises: one it can't run reports what
-it couldn't see. ``neuralmind doctor`` shows them as its Wiring section.
+it couldn't see. ``neuralmind doctor`` shows them as its Wiring section, and
+``neuralmind build`` prints the commands for the ones still missing.
 """
 
 from __future__ import annotations
@@ -48,7 +49,8 @@ class WiringItem:
     wires it. ``host`` marks an item through which an agent calls NeuralMind.
     ``outdated`` marks a piece that is wired but runs old code (a daemon or
     plugin copy from before an upgrade): it still works, and ``fix`` updates
-    it.
+    it. ``suggest`` is False for a fix that undoes a deliberate choice
+    (another project's pin), which ``build`` doesn't offer unasked.
     """
 
     name: str
@@ -56,6 +58,7 @@ class WiringItem:
     detail: str
     fix: str = ""
     host: bool = False
+    suggest: bool = True
     outdated: bool = False
 
     @property
@@ -389,6 +392,7 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
                 f"{reinstall} {shlex.quote(str(project))})",
                 fix=f"{reinstall} --unpin",
                 host=True,
+                suggest=False,
             )
         serves = "pinned to this project"
     else:
@@ -468,6 +472,8 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
         where += extra
         if state.registered or extra:
             if state.disabled:
+                # Someone turned it off in Hermes: doctor says how to turn it
+                # back on, build doesn't offer to.
                 items.append(
                     WiringItem(
                         label,
@@ -475,6 +481,7 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
                         f"registered in {state.path}, but disabled there (enabled: false)",
                         fix=f"hermes config set mcp_servers.{mcp_install.SERVER_NAME}.enabled true",
                         host=True,
+                        suggest=False,
                     )
                 )
                 continue
@@ -509,6 +516,7 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
                 "neuralmind install-mcp --client <name>",
                 fix="neuralmind install-mcp --print",
                 host=True,
+                suggest=False,
             )
         )
     return items
@@ -541,3 +549,34 @@ def state(items: list[WiringItem], claude_code_hooks: bool) -> str:
     if not any(i.needs_fix for i in items):
         return WIRED
     return PARTIAL
+
+
+def next_steps(project: Path, project_arg: str | None = None, limit: int = 2) -> list[str]:
+    """Up to ``limit`` lines of commands that wire what isn't wired yet.
+
+    The first line keeps the index fresh (daemon, Git hooks); the second wires
+    the agent: Hermes when it's set up on this machine, else Claude Code's
+    hooks or MCP when no agent host is wired at all.
+    """
+    project = project.resolve()
+    daemon = daemon_item()
+    hooks = git_hooks_item(project, project_arg)
+    hermes = hermes_plugin_item(project)
+    mcp = mcp_items(project, project_arg)
+    offered = [i for i in (daemon, hooks, hermes, *mcp) if i.needs_fix and i.suggest and i.fix]
+    fresh = [i.fix for i in offered if i in (daemon, hooks)]
+    agent: list[str] = []
+    if hermes.wired is not None:  # Hermes is set up on this machine
+        agent = [i.fix for i in offered if i is hermes or i.name == "MCP registration (hermes)"]
+    else:
+        try:
+            claude_hooks = bool(claude_code_hook_scopes(project))
+        except Exception:
+            claude_hooks = False
+        if state([hermes, *mcp], claude_hooks) == INERT:
+            claude = Path.home() / ".claude"
+            agent.append(
+                "neuralmind install-hooks" if claude.is_dir() else "neuralmind install-mcp --all"
+            )
+    lines = [" && ".join(cmds) for cmds in (fresh, agent) if cmds]
+    return lines[:limit]

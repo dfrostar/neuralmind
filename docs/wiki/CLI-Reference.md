@@ -380,6 +380,22 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 `neuralmind watch .`, which learns from edits but doesn't re-index them, so
 the index went on drifting.
 
+*(v4.21.0+)* After a successful build, at most three lines name the commands
+for whatever isn't wired yet, read the way `neuralmind doctor`'s Wiring
+section reads them: the daemon and the Git hooks first, then the agent. With
+Hermes set up on the machine that's the plugin and its MCP entry; without it,
+and with no agent host wired, `neuralmind install-hooks` (Claude Code) or
+`neuralmind install-mcp --all`. A pin to another project is never offered for
+undoing. When there's room, the `watch --reindex` hint follows. Once
+everything is wired, only that hint prints. `NEURALMIND_NO_INIT_HINT=1` still
+turns the closing lines off.
+
+```
+  Next, wire it in (`neuralmind doctor` shows what's wired):
+    neuralmind daemon start && neuralmind init-hook .
+    neuralmind install-hermes-plugin && neuralmind install-mcp --client hermes
+```
+
 #### Graph source *(v4.4.0+)*
 
 `graph_source` in `.neuralmind.yaml` picks which graph the index is built from:
@@ -3113,9 +3129,10 @@ first-run setup), `skipped-symlink` (a declaratively managed config),
 `skipped-unmergeable` (a flow-style `mcp_servers: {...}`), `skipped-conflict`
 (a `neuralmind` entry that starts something else), `skipped-invalid-yaml`, or
 `skipped-not-object`. An entry with `enabled: false` is left off and named.
-`--all` includes Hermes once its home is set up. Hermes starts MCP servers when
-a session starts: start a new one, run `/reload-mcp` in a running one, or
-restart the gateway, then check with `hermes mcp test neuralmind`.
+`--all` includes Hermes once its home is set up. A running Hermes reloads its
+MCP servers when `config.yaml` changes (run `/reload-mcp` if
+`mcp.auto_reload_on_config_change` is off); restart the gateway if one is
+running. Check with `hermes mcp test neuralmind`.
 `neuralmind install-hermes-plugin --mcp` does the same as `--client hermes`
 for the home it installs into: one implementation, two ways to reach it. The
 plugin alone adds NeuralMind's context to each turn with no tool call; the MCP
@@ -4586,6 +4603,7 @@ emits, and runs the documented cases.
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
 | `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` removes that dependence at some indexing-throughput cost. It does not make output identical on every machine: with `1` set, public-benchmark CI runs still split into two states with slightly different token counts depending on the runner, while on an Apple M3 the public benchmark gave byte-identical output with and without it ([details](../benchmarks/public.md#how-exactly-a-re-run-reproduces)). The self-benchmark harness sets `1` automatically, and the public-benchmark CI job runs with it. |
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). *(v4.21.0+)* `doctor`'s Wiring section then reports the daemon as off, not missing |
+| `NEURALMIND_NO_INIT_HINT` | unset | Set to any value to skip the lines `neuralmind build` prints after a successful build: *(v4.21.0+)* the commands for whatever isn't wired yet (daemon, Git hooks, agent host), and the `watch --reindex` hint. See [build](#build) |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 | `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. `0` also turns off the v4.6.0 keyword indexes below. |
