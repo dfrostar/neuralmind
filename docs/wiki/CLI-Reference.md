@@ -1642,7 +1642,7 @@ old to read it, say), the demo falls back to building with the model, which
 downloads it once. The bundled index is turbovec's, so on an install with
 ChromaDB instead (Intel macOS, Windows ARM, which have no turbovec wheel) the
 demo builds the sample's index with the model, downloading it once, and says
-so *(v4.20.1+; before, it failed there with `No module named 'turbovec'`)*. The
+so *(v4.21.0+; before, it failed there with `No module named 'turbovec'`)*. The
 token counts use tiktoken; where its vocabulary can't be
 downloaded, they are estimated at about 4 characters a token, and the demo
 says so.
@@ -4587,7 +4587,7 @@ platform-gated base dependency**, so a plain `pip install neuralmind` resolves
 to turbovec (ChromaDB-free) out of the box on platforms with turbovec wheels
 (Linux, macOS arm64, Windows x86_64). On platforms without a turbovec wheel
 (Intel macOS, Windows ARM) ChromaDB is auto-installed as the fallback backend,
-and the default selects it, so the install always works *(v4.20.1+: from
+and the default selects it, so the install always works *(v4.21.0+: from
 v0.46.0 to v4.20.0 the default selected turbovec even there, and every command
 failed with `No module named 'turbovec'` unless you set `backend: graph`)*. Install `pip install "neuralmind[chromadb]"` (and
 pin `backend: graph`) to force ChromaDB anywhere. (Alpine/musl Linux: use a

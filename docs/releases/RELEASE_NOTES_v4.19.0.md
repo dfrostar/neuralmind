@@ -204,7 +204,7 @@ CLI reference documents the command.
 > The bundled index is a turbovec index, and turbovec, onnxruntime and
 > tokenizers are installed only on those platforms; Intel macOS and Windows ARM
 > get ChromaDB instead. There, v4.19.0's demo failed with `ModuleNotFoundError:
-> No module named 'turbovec'`. [v4.20.1](RELEASE_NOTES_v4.20.1.md) fixes it:
+> No module named 'turbovec'`. [v4.21.0](RELEASE_NOTES_v4.21.0.md) fixes it:
 > there the demo builds the sample with ChromaDB, downloading the embedding
 > model once, and exits 1 with a one-line message when it can't.
 

@@ -61,7 +61,7 @@ instead.
 The ChromaDB backend has been deprecated since v0.46.0, and `turbovec` is the
 default. turbovec installs on Linux, macOS arm64, and Windows AMD64. On other
 platforms, such as Intel macOS, ChromaDB is still the only on-disk backend.
-From v4.20.1 the default selects it there on its own; before that, from
+From v4.21.0 the default selects it there on its own; before that, from
 v0.46.0, you had to keep `backend: chroma` there.
 
 Elsewhere, if the project's `neuralmind-backend.yaml` has `backend: graph` or
