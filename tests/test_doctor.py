@@ -358,7 +358,12 @@ def bare_machine(tmp_path, monkeypatch):
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
-    monkeypatch.delenv("HERMES_HOME", raising=False)
+    # Windows keeps Hermes's default home under %LOCALAPPDATA% and Claude
+    # Desktop's and VS Code's settings under %APPDATA%: point all three into
+    # the fake home, so the runner's own apps stay out of the test.
+    monkeypatch.setenv("HERMES_HOME", str(home / ".hermes"))
+    monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     monkeypatch.delenv("NEURALMIND_NO_DAEMON", raising=False)
     monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path / "bare-daemon"))
     return home
