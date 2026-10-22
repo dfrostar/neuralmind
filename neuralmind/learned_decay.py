@@ -100,8 +100,50 @@ def compute_edge_half_life(
         ratio = 0.0
     learned = lo + (hi - lo) * (ratio / (1.0 + ratio))
     # Blend: confident (fresh) → learned value, stale → namespace default.
+    # reinforce() calls this the moment it sets last_activated, where the
+    # confidence is 1, so it stores the learned value; decay() applies the
+    # blend over the idle time that follows (blended_decay_factor).
     blended = (1.0 - recency_confidence) * namespace_default + recency_confidence * learned
     return max(lo, min(hi, blended))
+
+
+def blended_decay_factor(
+    learned_half_life: float,
+    namespace_default: float,
+    idle_days: float,
+    elapsed_days: float,
+) -> float:
+    """Weight multiplier for ``elapsed_days`` of decay that starts ``idle_days``
+    after the edge's last activation, while its half-life blends from the
+    learned value back to the namespace default.
+
+    ``t`` days after the last activation the half-life is the blend
+    :func:`compute_edge_half_life` describes::
+
+        H(t) = (1 - c(t)) * D + c(t) * L,    c(t) = 2 ** (-t / D)
+
+    ``L`` is the learned half-life stored at the last reinforcement and ``D``
+    the namespace default. Integrating the decay rate ``ln 2 / H(t)`` from
+    ``t1 = idle_days`` to ``t2 = t1 + elapsed_days`` gives::
+
+        factor = (D * u + a * v) / (D + a * v)
+        a = L - D,    u = 2 ** (-elapsed_days / D),    v = 2 ** (-t2 / D)
+
+    Every power is at most 1, so nothing overflows, and the factor composes
+    exactly: decaying over [t0, t1] and then [t1, t2] equals decaying over
+    [t0, t2], so how often decay runs doesn't change the result. With
+    ``L == D`` it is the plain ``2 ** (-elapsed_days / D)``; just after an
+    activation the edge decays at its learned rate, and the longer it stays
+    idle the closer its rate gets to the default. ``SynapseStore.decay()``
+    computes the same expression in SQL.
+    """
+    if elapsed_days <= 0.0:
+        return 1.0
+    d = namespace_default
+    a = learned_half_life - d
+    u = 2.0 ** (-elapsed_days / d)
+    v = 2.0 ** (-(max(0.0, idle_days) + elapsed_days) / d)
+    return (d * u + a * v) / (d + a * v)
 
 
 def update_learned_half_life(

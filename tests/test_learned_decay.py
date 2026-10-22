@@ -115,6 +115,65 @@ class TestFrequencySignal:
         assert all(lo <= v <= hi for v in values)
 
 
+class TestBlendedDecayFactor:
+    """Decay while the learned half-life blends back to the namespace default."""
+
+    @staticmethod
+    def _integrated(learned: float, default: float, t1: float, elapsed: float) -> float:
+        # exp(-∫ ln2 / H(t) dt) over [t1, t1 + elapsed] by Simpson's rule, with
+        # H(t) the blend compute_edge_half_life describes.
+        import math
+
+        def rate(t: float) -> float:
+            c = 2.0 ** (-t / default)
+            return math.log(2) / ((1.0 - c) * default + c * learned)
+
+        n = 2000
+        h = elapsed / n
+        total = rate(t1) + rate(t1 + elapsed)
+        for i in range(1, n):
+            total += (4 if i % 2 else 2) * rate(t1 + i * h)
+        return math.exp(-total * h / 3.0)
+
+    @pytest.mark.parametrize("learned", [3.0, 10.7, 30.0, 63.7, 120.0])
+    @pytest.mark.parametrize("t1", [0.0, 5.0, 40.0])
+    @pytest.mark.parametrize("elapsed", [1.0, 14.0, 60.0])
+    def test_matches_the_integrated_blend(self, learned, t1, elapsed) -> None:
+        factor = learned_decay.blended_decay_factor(learned, 30.0, t1, elapsed)
+        assert factor == pytest.approx(self._integrated(learned, 30.0, t1, elapsed), rel=1e-6)
+
+    def test_equal_rates_is_the_plain_half_life(self) -> None:
+        for t1, elapsed in [(0.0, 30.0), (12.0, 7.5), (300.0, 60.0)]:
+            factor = learned_decay.blended_decay_factor(30.0, 30.0, t1, elapsed)
+            assert factor == pytest.approx(2.0 ** (-elapsed / 30.0), rel=1e-12)
+
+    def test_composes_exactly(self) -> None:
+        # Two decay passes owe exactly what one pass over the same span does.
+        for learned in (3.0, 63.7):
+            split = learned_decay.blended_decay_factor(
+                learned, 30.0, 4.0, 10.0
+            ) * learned_decay.blended_decay_factor(learned, 30.0, 14.0, 50.0)
+            whole = learned_decay.blended_decay_factor(learned, 30.0, 4.0, 60.0)
+            assert split == pytest.approx(whole, rel=1e-12)
+
+    def test_fresh_edge_decays_at_its_learned_rate(self) -> None:
+        for learned in (3.0, 120.0):
+            factor = learned_decay.blended_decay_factor(learned, 30.0, 0.0, 0.01)
+            assert factor == pytest.approx(2.0 ** (-0.01 / learned), rel=1e-5)
+
+    def test_stale_edge_decays_at_the_default_rate(self) -> None:
+        for learned in (3.0, 120.0):
+            factor = learned_decay.blended_decay_factor(learned, 30.0, 365.0, 1.0)
+            assert factor == pytest.approx(2.0 ** (-1.0 / 30.0), rel=1e-3)
+
+    def test_never_raises_a_weight_or_overflows(self) -> None:
+        assert learned_decay.blended_decay_factor(3.0, 30.0, 10.0, 0.0) == 1.0
+        assert learned_decay.blended_decay_factor(3.0, 30.0, 10.0, -5.0) == 1.0
+        for learned in (3.0, 120.0):
+            factor = learned_decay.blended_decay_factor(learned, 30.0, 1e6, 1e6)
+            assert 0.0 <= factor <= 1.0
+
+
 class TestSchemaMigration:
     """A3 schema additions"""
 
@@ -284,6 +343,92 @@ class TestDecayFunctionWithLearnedRate:
         assert lo <= result <= hi
 
 
+class TestDecayAppliesTheBlend:
+    """SynapseStore.decay() integrates the blend, in SQL, as the Python does.
+
+    Before this, decay() applied the learned half-life as a constant rate.
+    reinforce() stores it the moment it sets ``last_activated``, where the
+    recency blend's confidence is 1, so the blend never took effect: an edge
+    reinforced rarely kept its short half-life however long it sat idle.
+    """
+
+    T0 = 1_700_000_000.0
+    DAY = 86400.0
+
+    def _edge(self, tmp_path, namespace: str, half_life: float, count: int = 1):
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path), namespace=namespace)
+        store.reinforce(["a", "b"], now=self.T0)
+        with store._connect() as conn:
+            conn.execute(
+                "UPDATE synapses SET half_life_days = ?, activation_count = ?",
+                (half_life, count),
+            )
+            weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+        return store, weight
+
+    @staticmethod
+    def _weight(store):
+        with store._connect() as conn:
+            row = conn.execute("SELECT weight FROM synapses").fetchone()
+        return row[0] if row else None
+
+    @pytest.mark.parametrize(
+        "namespace, default",
+        [("personal", 30.0), ("branch:feature-x", 30.0), ("shared", 60.0)],
+    )
+    @pytest.mark.parametrize("half_life", [5.0, 75.0])
+    def test_sql_matches_blended_decay_factor(
+        self, tmp_path, namespace, default, half_life
+    ) -> None:
+        store, w0 = self._edge(tmp_path, namespace, half_life)
+        store.decay(now=self.T0 + 10 * self.DAY)
+        store.decay(now=self.T0 + 40 * self.DAY)
+        expected = (
+            w0
+            * learned_decay.blended_decay_factor(half_life, default, 0.0, 10.0)
+            * learned_decay.blended_decay_factor(half_life, default, 10.0, 30.0)
+        )
+        assert self._weight(store) == pytest.approx(expected, rel=1e-9)
+
+    def test_many_passes_decay_as_much_as_one(self, tmp_path) -> None:
+        from neuralmind.synapses import PRUNE_THRESHOLD
+
+        daily, w0 = self._edge(tmp_path / "daily", "personal", 5.0)
+        once, _ = self._edge(tmp_path / "once", "personal", 5.0)
+        for day in range(1, 61):
+            daily.decay(now=self.T0 + day * self.DAY)
+        once.decay(now=self.T0 + 60 * self.DAY)
+        expected = w0 * learned_decay.blended_decay_factor(5.0, 30.0, 0.0, 60.0)
+        assert expected > PRUNE_THRESHOLD
+        assert self._weight(daily) == pytest.approx(expected, rel=1e-9)
+        assert self._weight(once) == pytest.approx(expected, rel=1e-9)
+
+    def test_idle_rare_edge_relaxes_toward_the_default(self, tmp_path) -> None:
+        store, w0 = self._edge(tmp_path, "personal", 5.0)
+        store.decay(now=self.T0 + 30 * self.DAY)
+        weight = self._weight(store)
+        # More than five times what a constant 5-day half-life leaves (the
+        # old behaviour), and still less than the 30-day default leaves.
+        assert w0 * 2.0 ** (-30 / 5.0) * 5 < weight < w0 * 2.0 ** (-30 / 30.0)
+
+    def test_idle_hot_edge_relaxes_toward_the_default(self, tmp_path) -> None:
+        store, w0 = self._edge(tmp_path, "personal", 120.0)
+        store.decay(now=self.T0 + 60 * self.DAY)
+        weight = self._weight(store)
+        assert w0 * 2.0 ** (-60 / 30.0) < weight < w0 * 2.0 ** (-60 / 120.0)
+
+    def test_ltp_floor_still_holds(self, tmp_path) -> None:
+        from neuralmind.synapses import LTP_FLOOR, LTP_THRESHOLD
+
+        store, _ = self._edge(tmp_path, "personal", 5.0, count=LTP_THRESHOLD)
+        with store._connect() as conn:
+            conn.execute("UPDATE synapses SET weight = 1.0")
+        store.decay(now=self.T0 + 365 * self.DAY)
+        assert self._weight(store) == pytest.approx(LTP_FLOOR)
+
+
 class TestForgettingInPractice:
     """How long a learned association lasts, from first use to idle.
 
@@ -293,13 +438,13 @@ class TestForgettingInPractice:
 
     Each case reinforces one pair on a schedule, running a decay pass before
     each use the way the SessionStart hook does, then leaves it idle. The
-    half-life is learned at each reinforcement, so a pair keeps the rate its
-    last use gave it while it sits idle.
+    half-life is learned at each reinforcement; while the pair sits idle its
+    rate blends back toward the 30-day default.
     """
 
     DAY = 86400.0
 
-    def _use_then_idle(self, tmp_path, monkeypatch, every_days, uses, idle_days):
+    def _use_then_idle(self, tmp_path, monkeypatch, every_days, uses, *idle_days):
         from neuralmind.synapses import SynapseStore, default_db_path
 
         # compute_edge_half_life reads the wall clock; pin it to the schedule.
@@ -313,11 +458,14 @@ class TestForgettingInPractice:
             store.reinforce(["api_handler", "db_model"], now=clock[0])
         with store._connect() as conn:
             half_life = conn.execute("SELECT half_life_days FROM synapses").fetchone()[0]
-        clock[0] += idle_days * self.DAY
-        store.decay(now=clock[0])
-        with store._connect() as conn:
-            row = conn.execute("SELECT weight FROM synapses").fetchone()
-        return half_life, (row[0] if row else None)
+        last_use = clock[0]
+        weights = []
+        for idle in idle_days:
+            store.decay(now=last_use + idle * self.DAY)
+            with store._connect() as conn:
+                row = conn.execute("SELECT weight FROM synapses").fetchone()
+            weights.append(row[0] if row else None)
+        return half_life, *weights
 
     def test_daily_use_outlasts_the_default_half_life(self, tmp_path, monkeypatch) -> None:
         from neuralmind.synapses import HALF_LIFE_DAYS
@@ -335,10 +483,15 @@ class TestForgettingInPractice:
         assert weight == pytest.approx(LTP_FLOOR)
 
     def test_rare_use_learns_a_short_half_life_and_is_pruned(self, tmp_path, monkeypatch) -> None:
-        from neuralmind.synapses import HALF_LIFE_DAYS
+        from neuralmind.synapses import HALF_LIFE_DAYS, PRUNE_THRESHOLD
 
-        half_life, weight = self._use_then_idle(tmp_path, monkeypatch, 30, 3, 60)
+        half_life, after_two_months, after_five_months = self._use_then_idle(
+            tmp_path, monkeypatch, 30, 3, 60, 150
+        )
         # Three uses a month apart: shorter than the 30-day default, not longer.
         assert half_life < 15 < HALF_LIFE_DAYS
-        # Two idle months later the pair is gone.
-        assert weight is None
+        # Its rate relaxes toward the default while idle: two idle months
+        # leave it in the store, five remove it. (Before the blend applied
+        # during decay, two idle months were enough.)
+        assert after_two_months is not None and after_two_months > PRUNE_THRESHOLD
+        assert after_five_months is None

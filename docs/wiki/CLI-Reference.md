@@ -1350,8 +1350,9 @@ neuralmind stats /path/to/project --json
 the project's learned memory, using the same machinery the hooks use:
 
 1. **Decay** — the synapse store's half-life decay (30 days for personal and
-   branch memory, 60 for shared, 1 for ephemeral; long-term edges keep their
-   floor; dead edges are pruned). It charges only the time since the previous
+   branch memory, 60 for shared, 1 for ephemeral; an edge's own learned rate,
+   3 to 120 days, blends back to these while it sits idle; long-term edges
+   keep their floor; dead edges are pruned). It charges only the time since the previous
    decay, so running it often never decays anything twice.
 2. **Read-dedup cleanup** — drops `.neuralmind/read_cache.db` rows untouched
    for a day.

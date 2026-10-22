@@ -343,6 +343,24 @@ def _chunks(items: list, size: int) -> Iterable[list]:
 DECAY_NAMESPACE_CHUNK = 900
 
 
+def _blended_decay_sql(namespace_default: float) -> str:
+    """``learned_decay.blended_decay_factor`` as SQL over a ``synapses`` row.
+
+    The weight multiplier for the decay owed since the later of the row's
+    ``last_activated`` and the previous decay tick, while its learned
+    ``half_life_days`` blends back to ``namespace_default``. Binds six
+    parameters, ``(ts, since, since, ts, since, ts)``; the default and its
+    rate are inlined.
+    """
+    d = repr(float(namespace_default))
+    k = repr(0.6931471805599453 / float(namespace_default))
+    # u: the elapsed interval alone; v: the whole idle time up to ts.
+    u = f"EXP(-{k} * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)"
+    v = f"EXP(-{k} * MAX(0.0, ? - last_activated, ? - last_activated) / 86400.0)"
+    a = f"(half_life_days - {d})"
+    return f"(({d} * {u} + {a} * {v}) / ({d} + {a} * {v}))"
+
+
 def decay_weight(
     current_weight: float,
     last_activated: float,
@@ -892,6 +910,13 @@ class SynapseStore:
         EPHEMERAL_HALF_LIFE_DAYS with no LTP exemption. Transitions follow
         the same policy with the same half-lives.
 
+        An edge with a learned ``half_life_days`` (set by ``reinforce()``)
+        decays at that rate just after its last activation, and its rate
+        blends back to the namespace default the longer it stays idle
+        (``learned_decay.blended_decay_factor``): a rarely-reinforced edge's
+        short half-life lengthens toward the default, a heavily-reinforced
+        edge's long one shortens toward it.
+
         Each call applies only the decay owed since the later of the row's
         ``last_activated`` and the previous ``decay()`` tick (``meta.last_decay``),
         so running decay on every session start doesn't compound: N calls over
@@ -906,6 +931,7 @@ class SynapseStore:
 
         # λ = ln(2) / half_life_days for each namespace class
         default_lambda = 0.6931471805599453 / HALF_LIFE_DAYS
+        default_factor = _blended_decay_sql(HALF_LIFE_DAYS)
         shared_lambda = 0.6931471805599453 / SHARED_HALF_LIFE_DAYS
         ephemeral_lambda = 0.6931471805599453 / EPHEMERAL_HALF_LIFE_DAYS
 
@@ -922,6 +948,8 @@ class SynapseStore:
                     since = float(row[0]) if row else 0.0
                 except (TypeError, ValueError):
                     since = 0.0
+                # _blended_decay_sql's placeholders, in order.
+                blend_params = (ts, since, since, ts, since, ts)
                 # ephemeral: fast decay, no LTP floor, prune regardless of count.
                 conn.execute(
                     "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
@@ -963,17 +991,19 @@ class SynapseStore:
                     "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NULL",
                     (shared_lambda, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
-                # A3: per-edge learned overrides for shared.
+                # A3: per-edge learned overrides for shared, blending back to
+                # the namespace default with idle time.
+                shared_factor = _blended_decay_sql(SHARED_HALF_LIFE_DAYS)
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                    f"UPDATE synapses SET weight = MAX(weight * {shared_factor}, "
                     "CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                     "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NOT NULL",
-                    (ts, since, LTP_FLOOR, LTP_FLOOR, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (*blend_params, LTP_FLOOR, LTP_FLOOR, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
+                    f"UPDATE synapses SET weight = weight * {shared_factor} "
                     "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NOT NULL",
-                    (ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (*blend_params, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ? "
@@ -1005,17 +1035,19 @@ class SynapseStore:
                         f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NULL",
                         (default_lambda, ts, since, *chunk, LTP_THRESHOLD),
                     )
-                    # A3: per-edge learned half-life overrides for non-ephemeral, non-shared namespaces.
+                    # A3: per-edge learned half-life overrides for non-ephemeral,
+                    # non-shared namespaces, blending back to the default with
+                    # idle time.
                     conn.execute(
-                        f"UPDATE synapses SET weight = MAX(weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0), "
+                        f"UPDATE synapses SET weight = MAX(weight * {default_factor}, "
                         f"CASE WHEN weight >= ? THEN ? ELSE 0.0 END) "
                         f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NOT NULL",
-                        (ts, since, LTP_FLOOR, LTP_FLOOR, *chunk, LTP_THRESHOLD),
+                        (*blend_params, LTP_FLOOR, LTP_FLOOR, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
-                        f"UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
+                        f"UPDATE synapses SET weight = weight * {default_factor} "
                         f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NOT NULL",
-                        (ts, since, *chunk, LTP_THRESHOLD),
+                        (*blend_params, *chunk, LTP_THRESHOLD),
                     )
                     cur = conn.execute(
                         f"DELETE FROM synapses WHERE namespace IN ({ph}) AND weight < ? "

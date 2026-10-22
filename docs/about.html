@@ -207,6 +207,7 @@
                 <li><strong><code>neuralmind demo</code> runs there</strong> &mdash; it builds the sample&rsquo;s index with the embedding model, downloading it once, and says so; offline it exits 1 with one line, not a traceback</li>
                 <li><strong>A missing backend says what to install</strong> &mdash; instead of a bare <code>ModuleNotFoundError</code> deep inside a build</li>
                 <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
+                <li><strong>Also: an idle association&rsquo;s decay rate relaxes back to the default</strong> &mdash; the blend was computed only at reinforcement, so an association used three times a month apart kept its short learned half-life and was pruned after two idle months; it is now kept after two and pruned within five</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.20.1.md">v4.20.1 release notes</a></p>
         </div>

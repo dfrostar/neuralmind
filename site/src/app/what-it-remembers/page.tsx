@@ -114,11 +114,11 @@ const answers: Answer[] = [
         short: 'Not the code. The index, meaning every symbol, import and call edge and their embeddings, is rebuilt from your source and does not decay. What fades are learned associations, at a rate set by how often you used them.',
         points: [
             'Learned associations decay on a wall-clock half-life: 30 days by default for personal and branch memory, 60 for the team’s shared baseline, 1 day for session scratch.',
-            'Each association learns its own half-life from how often it was reinforced, between 3 and 120 days. Used often, it outlasts the default; used rarely, it fades faster than the default. While idle, it keeps the rate its last use gave it.',
+            'Each association learns its own half-life from how often it was reinforced, between 3 and 120 days. Used often, it outlasts the default; used rarely, it fades faster than the default. The longer it sits idle, the closer its rate gets back to the default.',
             'An association reinforced five or more times gets long-term status: it decays to a floor of 0.20 and is never pruned. Others are pruned below 0.01.',
             'Call and import edges are seeded into the shared baseline again on every build, so the structure of code you never edit comes back with each rebuild.',
         ],
-        limit: 'Two weeks on the frontend weakens backend associations you had used only a handful of times, and ones you touched a few times, weeks apart, can be gone within two months. That costs re-ranking, not findability: the backend is still indexed and still found by search. What it loses is the extra weight recall gives files you have used together.',
+        limit: 'Two weeks on the frontend weakens backend associations you had used only a handful of times, and ones you touched only a few times, weeks apart, are gone within five idle months. That costs re-ranking, not findability: the backend is still indexed and still found by search. What it loses is the extra weight recall gives files you have used together.',
         check: ['neuralmind synapse stats .', 'neuralmind memory inspect .'],
         sources: [
             { label: 'synapses.py', href: blob('neuralmind/synapses.py') },
@@ -132,7 +132,7 @@ const answers: Answer[] = [
 const decayCases = [
     { usage: 'Every day for ten days', learns: 'A half-life over 60 days', idle: 'Two idle weeks: above 80% of full weight' },
     { usage: 'Once a week, six times', learns: 'Long-term status (five uses or more)', idle: 'A year idle: held at the 0.20 floor' },
-    { usage: 'Three times, a month apart', learns: 'A half-life under 15 days', idle: 'Two idle months: pruned' },
+    { usage: 'Three times, a month apart', learns: 'A half-life under 15 days', idle: 'Two idle months: still kept; five: pruned' },
 ];
 
 const TONES: Record<Answer['tone'], string> = {

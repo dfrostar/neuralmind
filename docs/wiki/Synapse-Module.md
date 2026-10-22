@@ -84,6 +84,12 @@ The store learns by *co-activation*: nodes that fire together wire together.
   A 60-day-old edge has exactly half the weight of a 1-day-old edge at the
   default 30-day half-life. Decay is one-way — it never re-inflates a fresh
   edge, and never resurrects a pruned one.
+- **Learned per-edge half-life** — each edge also learns its own half-life
+  from how often it is reinforced, between 3 and 120 days by default
+  (`learned_decay.py`). Just after an activation it decays at that rate; the
+  longer it stays idle, the closer its rate gets back to the namespace
+  default. Before v4.20.1 an idle edge kept its learned rate, so one
+  reinforced rarely kept fading fast however long it sat.
 - **Pruning** — weights decaying below `PRUNE_THRESHOLD` are deleted; stale
   synapses older than N days can be cleared with `neuralmind synapse prune`.
 - **Long-term potentiation (LTP)** — edges whose lifetime activation count
