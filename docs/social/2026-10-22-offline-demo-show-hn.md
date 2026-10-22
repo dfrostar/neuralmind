@@ -1,7 +1,7 @@
 # Show HN draft — 2026-10-22: `neuralmind demo`, offline after `pip install`
 
-**Draft, ready to post** once v4.20.0 is on PyPI (the offline demo shipped in
-v4.19.0).
+**Draft, ready to post** once v4.20.1 is on PyPI (the offline demo shipped in
+v4.19.0; v4.20.1 makes it run on Intel macOS and Windows ARM).
 
 A "Show HN" post for developers, built around the lowest-friction way to try
 NeuralMind. Drafted here so `tests/test_docs_claims.py` vets it before it is
@@ -11,10 +11,10 @@ posted. Hacker News readers check numbers, so every figure is from
 ## Before posting
 
 - [x] The demo crashed on Intel macOS and Windows ARM (no turbovec wheel;
-      ChromaDB is installed instead). Fixed: there it now builds the sample
-      with ChromaDB, downloading the model once. It still isn't offline
-      there, so keep the platform caveat in the post.
-- [ ] Post only once a release with that fix is on PyPI.
+      ChromaDB is installed instead). Fixed in v4.20.1: there it now builds
+      the sample with ChromaDB, downloading the model once. It still isn't
+      offline there, so keep the platform caveat in the post.
+- [ ] Post only once v4.20.1 or later is on PyPI.
 - [ ] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
       `pip install neuralmind && neuralmind demo` with the network off after
       the install. It should finish without downloading the model. Paste its
@@ -77,7 +77,7 @@ https://neuralmind.uk/benchmark
 |---|---|
 | Demo bundles the vector index and question embeddings; no model download | `docs/wiki/CLI-Reference.md#demo`, `tests/test_cli.py::TestCLIDemoOffline` |
 | Only on Linux, Apple Silicon macOS and 64-bit Windows | `pyproject.toml` turbovec / chromadb platform markers |
-| Elsewhere the demo builds with ChromaDB and downloads the model once | `neuralmind/cli.py::cmd_demo`, `tests/test_cli.py::TestCLIDemoWithoutTurbovec` |
+| Elsewhere the demo builds with ChromaDB and downloads the model once | `docs/releases/RELEASE_NOTES_v4.20.1.md`, `neuralmind/cli.py::cmd_demo` |
 | Ranks exactly as with the model | `scripts/build_demo_index.py --check` in `ci-benchmark.yml` compares top-5 rankings |
 | 40 of 40 vs ripgrep's 32 of 40, 31–67× | `bench/public/results.json`, `site/claims.json` |
 | 93.3% top-five, 10 misses | `bench/retrieval/on-v4.12/results.json`, `site/claims.json` |
