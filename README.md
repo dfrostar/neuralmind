@@ -450,6 +450,68 @@ neuralmind install-hermes-plugin .
 neuralmind memory publish
 ```
 
+### Pairing: Hermes Agent via uv
+
+Five commands, on a machine where Hermes Agent is already set up:
+
+```bash
+uv tool install neuralmind               # puts neuralmind and neuralmind-mcp on your PATH
+neuralmind build ~/code/your-project     # the code graph and its embeddings
+neuralmind init-hook ~/code/your-project # rebuild after commits, merges, branch switches, rebases
+neuralmind daemon start                  # keep the index warm for CLI queries
+neuralmind install-hermes-plugin         # NeuralMind context on every Hermes turn
+```
+
+Then check it: `neuralmind doctor ~/code/your-project`. Its Wiring section
+comes first and says, line by line, whether the daemon is running, which Git
+hooks are installed, whether the Hermes plugin is enabled, and which MCP
+clients have NeuralMind registered, each with the command that fixes it. For
+the query and search tools as well, run `neuralmind install-mcp --client hermes`.
+Without a path, the plugin serves whichever built project Hermes works in; the
+[Hermes pairing tips](docs/wiki/Tips-and-Tricks-Hermes-Pairing.md) cover
+pinning, upgrades and the switches.
+
+**What each Hermes turn gets, with no tool call.** Before the model runs, the
+plugin adds the files the user's message matches, the code linked to them, and
+the decisions recorded against them to that turn's user message (not the
+system prompt, so the prompt cache holds). A session's first turn also gets the
+recap of the previous session in the project. Files the agent writes, patches
+and reads are recorded for the next recap and for the synapse layer. Per-turn
+recall doesn't go through the daemon, and it fails open: when NeuralMind
+errors or takes longer than `NEURALMIND_HERMES_TIMEOUT` (8 seconds by
+default), the turn goes ahead without that context.
+
+**One deployment, measured.** A Hermes Agent deployment on a single-GPU
+workstation, one project of 618 graph nodes, ran `neuralmind benchmark .` on
+v4.20.0. It is a one-repo field report, not a CI-gated benchmark:
+
+| Measure | Result |
+|---------|--------|
+| Baseline: the indexed code, counted | 52,218 tokens in 29 code files |
+| Wake-up context | 378 tokens |
+| Average query context | 878 tokens |
+| Average reduction against that baseline | 60.2× |
+
+Reproduce with: `neuralmind benchmark .`. It reports these measures for
+your project, measured against your own indexed code, so expect different
+numbers on a different repository and question set.
+
+What it doesn't show: `benchmark` measures how much context a query returns,
+not whether the right code was in it. That deployment reported no retrieval
+run, so there's no miss list for it. `neuralmind probe .` gives one for your
+project: it queries a sample of your indexed symbols and lists the ones it
+didn't find. The public evaluations publish theirs: the gold file in the top
+five for 140 of 150 questions in the [retrieval eval](bench/retrieval/on-v4.12/report.md),
+with the 10 misses in its [per-question results](bench/retrieval/on-v4.12/results.json),
+and 40 of 40 on the [public benchmark](docs/benchmarks/public.md), a small sample.
+
+The same deployment had been installed but unused for 11 days, with 2 logged
+queries: the Hermes plugin was never installed, no Git hooks were, and doctor
+didn't check either. `uv tool upgrade neuralmind`, `neuralmind install-hermes-plugin`,
+`neuralmind daemon start` and `neuralmind init-hook` fixed it. Doctor's Wiring
+section and the next steps `neuralmind build` prints *(v4.21.0+)* exist to
+catch that state.
+
 ### Run the benchmark
 
 ```bash
