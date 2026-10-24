@@ -740,25 +740,26 @@ def test_structural_reads_at_the_weight_shared_seeds_had(tmp_path):
     assert dict(s.neighbors("billing.charge"))["stripe.call"] == pytest.approx(W_SHARED * raw)
 
 
-def test_seeding_removes_legacy_shared_seeds_but_not_team_memory(tmp_path):
+def test_seeding_never_deletes_shared_rows(tmp_path):
     s = _store(tmp_path)
-    # Rows an earlier release seeded into 'shared' (or a team bundle carried
-    # in): one for a call still in the code, one for a call no longer in it.
-    s.import_edges(
-        [("billing.charge", "stripe.call", 0.29, 1), ("old.a", "old.b", 0.29, 1)],
-        namespace=SHARED_NAMESPACE,
-    )
-    # Team memory on a pair that is also a call: activated more than once.
+    # An edge approved from the review queue, written the way
+    # `memory review-approve` writes it: weight 1.0, one activation.
+    s.import_edges([("billing.charge", "stripe.call", 1.0, 1)], namespace=SHARED_NAMESPACE)
+    # A copy an earlier release seeded into 'shared', and team memory, both on
+    # pairs that are also calls in the code.
+    s.import_edges([("billing.charge", "db.write", 0.29, 1)], namespace=SHARED_NAMESPACE)
     s.import_edges([("audit.log", "billing.charge", 0.9, 4)], namespace=SHARED_NAMESPACE)
-    s.persist_structural_edges(BRANCH_GRAPH)
+    before = s.edges(namespaces=[SHARED_NAMESPACE])
+    s.persist_structural_edges(
+        BRANCH_GRAPH + [{"source": "billing.charge", "target": "db.write", "relation": "calls"}]
+    )
     s.seed_from_structural()
 
-    shared = {(a, b) for a, b, *_ in s.edges(namespaces=[SHARED_NAMESPACE])}
-    # The legacy copy of a current call is gone (structural now holds it);
-    # a stale one can't be told from team memory, so it stays and decays.
-    assert ("billing.charge", "stripe.call") not in shared
-    assert ("old.a", "old.b") in shared
-    assert ("audit.log", "billing.charge") in shared
+    # None of them can be told apart from team memory by its columns, so
+    # seeding leaves 'shared' exactly as it was; an old seed fades on decay.
+    assert s.edges(namespaces=[SHARED_NAMESPACE]) == before
+    weights = dict(s.neighbors("billing.charge", k=10))
+    assert weights["stripe.call"] > 0.5  # the approved edge still reads at W_SHARED
 
 
 def test_structural_namespace_does_not_decay(tmp_path):

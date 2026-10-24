@@ -1593,11 +1593,10 @@ class SynapseStore:
         LTP-protected) and don't decay: ``decay()`` skips this namespace,
         since the next build replaces it.
 
-        Each pass also deletes the ``shared`` rows with at most one activation
-        for the pairs it seeds: the copies earlier releases wrote there, or
-        that a team bundle published by one carried in, which would otherwise
-        double those pairs' weight in a merged read. A ``shared`` row
-        activated more than once is team memory, not a seed, and stays.
+        ``shared`` is never touched. The seeds earlier releases wrote there
+        look like team memory (``memory review-approve`` and bundle imports
+        write single-activation rows too), so they stay, stop being
+        refreshed, and fade on the shared half-life.
 
         Returns the number of structural rows seeded (0 when the table is
         empty, e.g. a fresh project with no graph; the namespace is then
@@ -1640,19 +1639,6 @@ class SynapseStore:
                             weight = MAX(synapses.weight, excluded.weight)
                         """,
                         rows,
-                    )
-                    conn.execute(
-                        """
-                        DELETE FROM synapses
-                        WHERE namespace = ? AND activation_count <= 1
-                          AND EXISTS (
-                              SELECT 1 FROM synapses AS seeded
-                              WHERE seeded.namespace = ?
-                                AND seeded.node_a = synapses.node_a
-                                AND seeded.node_b = synapses.node_b
-                          )
-                        """,
-                        (SHARED_NAMESPACE, STRUCTURAL_NAMESPACE),
                     )
                 conn.execute("COMMIT")
             except Exception:

@@ -25,7 +25,9 @@ build) on `main`, a feature branch's calls are gone from recall, and so is a
 call deleted from the code.
 
 - **Recall on a clean `main` doesn't change.** The merged read takes
-  `structural` at 0.5, the weight the seeds had in `shared`.
+  `structural` at 0.5, the weight the seeds had in `shared`. In a store an
+  earlier release seeded, the old copies in `shared` add to it until they
+  fade (below).
 - **It doesn't decay**: the next build replaces it.
 - **It isn't published.** `neuralmind memory publish` exports `personal` and
   `shared`, so the team bundle no longer carries call-graph seeds; each
@@ -37,10 +39,13 @@ call deleted from the code.
 
 ### Old copies in `shared`
 
-Each seeding pass deletes the single-activation `shared` copies of the pairs it
-seeds, so a current call isn't counted twice. A branch-only call already in
-`shared` can't be told apart from team memory, so it stays and fades on its
-60-day half-life.
+The seeds earlier releases wrote to `shared` are left there. Their rows look
+like team memory (an edge approved with `neuralmind memory review-approve` or
+imported from a bundle is a single-activation `shared` row too), so deleting
+them would delete approved memory. Builds no longer refresh them, so they fade
+on the 60-day shared half-life. Until then, a call still in the code is
+counted in both `shared` and `structural`, and a branch-only call already in
+`shared` is still recalled.
 
 ### Still open
 
@@ -71,7 +76,7 @@ the `structural` namespace. Nothing else to change.
   branch's recall, and from every namespace, after switching back (on v4.21.0
   it was still recalled); a deleted call is dropped on rebuild; `structural`
   reads at the weight `shared` seeds had and doesn't decay; an empty graph
-  empties it; seeding removes legacy `shared` seeds but keeps team memory.
+  empties it; seeding never deletes a `shared` row, approved edges included.
 - `tests/test_synapse_namespaces.py`: a `structural` override falls through
   to branch detection.
 - `tests/test_team_memory.py`: a published bundle carries no call-graph seeds.

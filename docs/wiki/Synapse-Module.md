@@ -209,9 +209,9 @@ call deleted from the code is gone after the next build. Seeds keep
 `activation_count = 1`, so they are never LTP-protected, and they don't decay.
 Through v4.21.0 they were upserted into `shared`, which every branch reads and
 nothing cleared, so a branch's calls stayed in the default branch's recall
-until they decayed (60-day half-life). Each seeding pass also deletes the
-single-activation `shared` copies of the pairs it seeds; a `shared` row
-activated more than once is team memory and stays.
+until they decayed (60-day half-life). Seeding never touches `shared`: those
+old seeds look like team memory (approved and imported edges are
+single-activation rows too), so they stay and fade on the shared half-life.
 
 ### Business-context seeding — N-13
 
