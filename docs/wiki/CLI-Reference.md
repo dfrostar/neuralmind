@@ -2470,14 +2470,18 @@ Recall, `next`, and stats default to a merged view with explicit,
 published constants (`neuralmind/synapses.py`):
 
 ```
-merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared
-                (W_BRANCH)       (W_PERSONAL)        (W_SHARED)
+merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared  +  0.5 × structural
+                (W_BRANCH)       (W_PERSONAL)        (W_SHARED)      (W_STRUCTURAL)
 ```
 
 On the default branch the active namespace *is* `personal` (read at
-1.0×), so behavior is identical to pre-namespace releases. Per-namespace
-decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
-rates, `ephemeral` fades fast with no LTP floor. Traced queries
+1.0×), so behavior is identical to pre-namespace releases. `structural`
+holds the checked-out code's call and import edges and is replaced by
+every build (v4.22.0+), so a feature branch's calls don't reach the
+default branch's recall. Per-namespace decay: `shared` is sticky,
+`personal`/`branch:*` decay at the standard rates, `ephemeral` fades fast
+with no LTP floor, and `structural` doesn't decay. `NEURALMIND_NAMESPACE`
+or `memory_namespace` naming `structural` is ignored. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
 

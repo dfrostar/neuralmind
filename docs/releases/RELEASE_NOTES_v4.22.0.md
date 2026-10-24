@@ -1,6 +1,6 @@
-# NeuralMind v4.22.0 — doctor says whether anything calls NeuralMind, `install-mcp --client hermes`, and a build that ends with the commands that wire it in
+# NeuralMind v4.22.0 — doctor says whether anything calls NeuralMind, `install-mcp --client hermes`, a build that ends with the commands that wire it in, and a feature branch's calls stay on the branch
 
-**Type:** Minor release | **Theme:** an installed index that no agent queries is visible, and each missing piece is one command away
+**Type:** Minor release | **Theme:** an installed index that no agent queries is visible, and each missing piece is one command away; and the call graph each build seeds follows the checkout, so a branch's calls no longer reach the default branch's recall
 
 A Hermes Agent deployment sat installed but unused for 11 days, with 2 logged
 queries. The daemon wasn't running, no Git hooks were installed, and the
@@ -11,9 +11,11 @@ Four commands fixed it (`uv tool upgrade neuralmind`,
 `neuralmind init-hook <project>`). This release makes that state show up, in
 `doctor` and at the end of a build, with the command for each missing piece.
 
-No hook, MCP tool or prompt block changes. What an agent sees on each turn is
-the same as in v4.21.0; what changes is whether the pieces that put it there
-are connected, and whether you can tell.
+That part changes no hook, MCP tool or prompt block: what changes is whether
+the pieces that put context in front of the agent are connected, and whether
+you can tell. The one change to what recall returns is
+[a feature branch's calls stay on the branch](#also-in-v4220-a-feature-branchs-calls-stay-on-the-branch),
+below.
 
 ---
 
@@ -123,6 +125,55 @@ enabled, and `hermes mcp test neuralmind` connected over stdio in 2.2 s and
 discovered the six default tools. Doctor's Hermes MCP line then read `ok`.
 That is one machine; the YAML cases it didn't meet are covered by tests.
 
+### Also in v4.22.0: a feature branch's calls stay on the branch
+
+Every build seeds the call and import edges it finds into the synapse layer,
+so recall can follow the code's structure from the first query. Those seeds
+went into the `shared` baseline, which every branch reads and nothing cleared.
+A call you added on a feature branch was seeded there by the branch's build,
+and after you switched back to `main` it was still recalled, at half weight,
+until it decayed on the shared 60-day half-life. The same went for a call
+deleted from the code.
+
+Associations learned from use were never affected: they go into the branch's
+own `branch:<name>` namespace, as they have since v0.24.0.
+
+#### Call-graph seeds live in a `structural` namespace each build replaces
+
+Seeds now go into a `structural` namespace that every build replaces with the
+graph of the code checked out. After the `post-checkout` hook's rebuild (or any
+build) on `main`, a feature branch's calls are gone from recall, and so is a
+call deleted from the code.
+
+- **Recall on a clean `main` doesn't change.** The merged read takes
+  `structural` at 0.5, the weight the seeds had in `shared`. In a store an
+  earlier release seeded, the old copies in `shared` add to it until they
+  fade (below).
+- **It doesn't decay**: the next build replaces it.
+- **It isn't published.** `neuralmind memory publish` exports `personal` and
+  `shared`, so the team bundle no longer carries call-graph seeds; each
+  teammate's own build writes theirs.
+- **It's never the active namespace.** `NEURALMIND_NAMESPACE` or
+  `memory_namespace` naming `structural` is ignored, since a build would wipe
+  anything learned there.
+- `neuralmind memory inspect .` lists it as its own row.
+
+#### Old copies in `shared`
+
+The seeds earlier releases wrote to `shared` are left there. Their rows look
+like team memory (an edge approved with `neuralmind memory review-approve` or
+imported from a bundle is a single-activation `shared` row too), so deleting
+them would delete approved memory. Builds no longer refresh them, so they fade
+on the 60-day shared half-life. Until then, a call still in the code is
+counted in both `shared` and `structural`, and a branch-only call already in
+`shared` is still recalled.
+
+#### Still open
+
+The `SYNAPSE_MEMORY.md` file written for Claude Code at session start lists
+the strongest associations from every namespace, other branches' included.
+Recall doesn't read them; the agent does see the file.
+
 ### Also in v4.22.0: one SBOM per platform
 
 The release's SBOM workflow installs each release natively on six runners
@@ -145,13 +196,21 @@ others.
   idempotent, every refusal leaves the file byte-identical, no config created,
   a disabled entry under another name).
 - `tests/test_hermes_plugin.py`: `install-hermes-plugin --mcp` end to end.
+- `tests/test_synapses.py`: a branch-only call is gone from the default
+  branch's recall, and from every namespace, after switching back (on v4.21.0
+  it was still recalled); a deleted call is dropped on rebuild; `structural`
+  reads at the weight `shared` seeds had and doesn't decay; an empty graph
+  empties it; seeding never deletes a `shared` row, approved edges included.
+- `tests/test_synapse_namespaces.py`: a `structural` override falls through
+  to branch detection.
+- `tests/test_team_memory.py`: a published bundle carries no call-graph seeds.
 
 ---
 
 ## What the agent actually sees post-install
 
-Nothing new per turn or per tool call. What changes is how likely it is that
-the agent gets anything at all:
+The wiring work adds nothing per turn or per tool call. What it changes is how
+likely it is that the agent gets anything at all:
 
 | Agent | Before v4.22.0 | From v4.22.0 |
 |---|---|---|
@@ -159,6 +218,14 @@ the agent gets anything at all:
 | **Hermes-Agent** | The plugin from `install-hermes-plugin`; the MCP server added to `config.yaml` by hand | `install-mcp --client hermes` (or `install-hermes-plugin --mcp`) adds the MCP server; doctor reports the plugin enabled, pinned or outdated, and the MCP entry |
 | **Cursor / Cline / Claude Desktop / VS Code** | `install-mcp` | Unchanged; doctor shows each one registered, or installed without the entry |
 | **Generic MCP client** | `install-mcp --print` | Unchanged; doctor's MCP line says when no known client has the entry, which is expected for a client registered by hand |
+
+The call-graph fix changes what recall returns on the default branch:
+
+| Agent | Before (to v4.21.0) | After |
+|---|---|---|
+| Claude Code (hooks + MCP) | Prompt-time recall on `main` could name a file linked only by a call that exists on a feature branch, until it decayed | Recall follows the call graph of the code checked out |
+| Cursor / Cline / generic MCP | The same, in `neuralmind_query` and search results | The same fix |
+| Hermes-Agent plugin | The same, in the per-turn block | The same fix |
 
 ## Upgrading
 
@@ -170,7 +237,9 @@ the agent gets anything at all:
 - **Scripts that read `doctor --json`** keep their `checks` list as it was.
   The top-level `status` can now be `warn` where it was `ok`, from wiring
   warnings; the exit code doesn't change.
-- Nothing to rebuild.
+- **Build once** (`neuralmind build .`, or let the Git hooks run it) to fill
+  the `structural` namespace that holds the call graph. Nothing else to
+  change.
 
 ## Use cases
 
@@ -179,6 +248,9 @@ the agent gets anything at all:
   project, and `install-mcp --client hermes` adds the tools beside it. The
   [Hermes pairing tips](../wiki/Tips-and-Tricks-Hermes-Pairing.md) cover
   verifying, upgrading and the switches.
+- **Existing: [branch-isolated memory](../use-cases/branch-isolated-memory.md).**
+  The call graph each build seeds now stays with the checkout too, so a
+  feature branch's calls are gone from `main`'s recall after the next build.
 - **New: a wiring check for any setup.** `neuralmind doctor --json` and its
   `wiring.state` tell a provisioning script or a CI job whether a machine's
   agents are connected to the index, not only whether the index is healthy.

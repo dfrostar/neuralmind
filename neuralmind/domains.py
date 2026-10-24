@@ -215,7 +215,8 @@ def cross_domain_edges(store: SynapseStore) -> dict[str, int]:
 
     with store._connect() as conn:
         cur = conn.execute(
-            "SELECT node_a, node_b FROM synapses WHERE namespace NOT IN ('shared', 'ephemeral')"
+            "SELECT node_a, node_b FROM synapses "
+            "WHERE namespace NOT IN ('shared', 'ephemeral', 'structural')"
         )
         pairs = cur.fetchall()
 

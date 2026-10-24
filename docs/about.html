@@ -200,13 +200,20 @@
 
     <section>
         <div class="container" id="whats-new-v4220">
-            <h2>What&rsquo;s New in v4.22.0 &mdash; doctor says whether anything calls NeuralMind</h2>
-            <p>A Hermes Agent deployment sat installed but unused for 11 days, with 2 logged queries, while <code>neuralmind doctor</code> printed &ldquo;Up and running&rdquo;: every check it ran was about the index, and the index was fine. This release makes that state visible, with the command for each missing piece. No hook, tool or prompt block changes.</p>
+            <h2>What&rsquo;s New in v4.22.0 &mdash; doctor says whether anything calls NeuralMind, and a feature branch&rsquo;s calls stay on the branch</h2>
+            <p>A Hermes Agent deployment sat installed but unused for 11 days, with 2 logged queries, while <code>neuralmind doctor</code> printed &ldquo;Up and running&rdquo;: every check it ran was about the index, and the index was fine. This release makes that state visible, with the command for each missing piece; that part changes no hook, tool or prompt block.</p>
             <ul>
                 <li><strong>A Wiring section in <code>doctor</code></strong> &mdash; before the other checks: the daemon (running, version), the Git hooks (full, partial or none; a hook git can&rsquo;t execute doesn&rsquo;t count), the Hermes plugin (enabled, pinned, or older than the installed NeuralMind) and the MCP entry in each client. Each line is ok or warn, never fail, so the exit code is unchanged; with no agent host wired the summary reads &ldquo;Installed but not wired&rdquo;. <code>--json</code> adds <code>wiring.state</code>: <code>inert</code>, <code>partial</code> or <code>wired</code>.</li>
                 <li><strong><code>install-mcp --client hermes</code></strong> &mdash; adds <code>neuralmind-mcp</code> under <code>mcp_servers:</code> in Hermes&rsquo;s <code>config.yaml</code> as text, so its comments stay, and only when the result parses to the old config plus that entry; <code>install-hermes-plugin --mcp</code> does the same. Checked on Hermes v0.22.5: Hermes connected and found the six default tools.</li>
                 <li><strong>A build ends with the next commands</strong> &mdash; at most three lines naming what isn&rsquo;t wired yet: the daemon and the Git hooks, then the agent.</li>
                 <li><strong>Also: one SBOM per platform</strong> &mdash; each release is installed natively on six runners, with one CycloneDX SBOM each, recording any dependency built from source there.</li>
+            </ul>
+            <p><strong>Also in v4.22.0: a feature branch&rsquo;s calls stay on the branch.</strong> Every build seeds the call and import edges it finds into the synapse layer. They went into the <code>shared</code> baseline every branch reads, and nothing cleared them, so a call added on a feature branch was still recalled on <code>main</code> until it decayed.</p>
+            <ul>
+                <li><strong>A <code>structural</code> namespace each build replaces</strong> &mdash; it holds the call graph of the code checked out, so after the next build on <code>main</code> a branch&rsquo;s calls are gone from recall</li>
+                <li><strong>Recall on a clean <code>main</code> doesn&rsquo;t change</strong> &mdash; it reads <code>structural</code> at 0.5, the weight the seeds had in <code>shared</code>; in a store an earlier release seeded, the old copies left in <code>shared</code> add to it until they fade (60-day half-life)</li>
+                <li><strong>Not published, not decayed</strong> &mdash; the team bundle carries learned memory only, and each build replaces the call graph</li>
+                <li><strong>Still open</strong> &mdash; <code>SYNAPSE_MEMORY.md</code>, written for Claude Code at session start, lists associations from every namespace, other branches&rsquo; included</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.22.0.md">v4.22.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Tips-and-Tricks-Hermes-Pairing.md">Hermes pairing tips</a></p>
         </div>
