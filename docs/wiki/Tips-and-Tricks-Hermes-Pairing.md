@@ -1,7 +1,7 @@
 # Tips & Tricks: Hermes pairing
 
 **Audience:** anyone running NeuralMind with [Hermes Agent](https://github.com/NousResearch/hermes-agent)
-**Applies to:** v4.21.0+ (the doctor Wiring section and `install-mcp --client hermes`); the rest from v4.9.0
+**Applies to:** v4.22.0+ (the doctor Wiring section and `install-mcp --client hermes`); the rest from v4.9.0
 
 NeuralMind pairs with Hermes in two ways. The **plugin**
 (`neuralmind install-hermes-plugin`) adds related files, the code linked to

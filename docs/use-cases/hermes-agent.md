@@ -71,7 +71,7 @@ The build matters: the plugin serves only a project where `neuralmind build`
 has run. If the path you pass isn't built, the install says so, and the plugin
 does nothing until it is.
 
-*(v4.21.0+)* Check what's connected with `neuralmind doctor /path/to/project`.
+*(v4.22.0+)* Check what's connected with `neuralmind doctor /path/to/project`.
 Its Wiring section comes first: whether the plugin is enabled (and which
 project it serves), the daemon, the Git hooks that keep the index fresh
 (`neuralmind init-hook`), and the MCP registration in each client, Hermes's
@@ -252,7 +252,7 @@ the code itself, `neuralmind_query`, `neuralmind_skeleton` and the other MCP
 tools (or the skill's CLI calls) are still how it gets it. With the plugin, it
 starts each turn knowing where to look, whether or not it calls them.
 
-*(v4.21.0+)* `neuralmind install-mcp --client hermes` registers the MCP server
+*(v4.22.0+)* `neuralmind install-mcp --client hermes` registers the MCP server
 under `mcp_servers:` in the Hermes home's `config.yaml`, keeping the file's
 comments; `neuralmind install-hermes-plugin --mcp` does the same while
 installing the plugin. A running Hermes reloads its MCP servers when
