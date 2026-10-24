@@ -216,7 +216,7 @@
 
     <section>
         <div class="container" id="whats-new-v4210-backends">
-            <h2>Also New in v4.21.0 &mdash; NeuralMind builds again on Intel macOS and Windows ARM</h2>
+            <h2>Also New in v4.21.0 &mdash; the default backend works again on Intel macOS and Windows ARM</h2>
             <p>turbovec has no wheel for Intel macOS or Windows ARM, so <code>pip install neuralmind</code> installs ChromaDB there instead. From v0.46.0 the default backend ignored it, and every build failed with <code>No module named 'turbovec'</code> unless the project set <code>backend: graph</code>.</p>
             <ul>
                 <li><strong>The default falls back to ChromaDB</strong> &mdash; where the turbovec stack isn&rsquo;t installed and ChromaDB is. Nothing changes where turbovec is installed</li>
@@ -224,7 +224,7 @@
                 <li><strong>A missing backend says what to install</strong> &mdash; instead of a bare <code>ModuleNotFoundError</code> deep inside a build</li>
                 <li><strong><code>neuralmind doctor</code> reports it honestly</strong> &mdash; a project with no config file is &ldquo;auto-selected&rdquo;, not &ldquo;pinned&rdquo;</li>
             </ul>
-            <p><strong>What installing there still needs:</strong> <code>cryptography</code>, and on Windows ARM also <code>chromadb</code> and <code>grpcio</code>, publish no wheel for these platforms, so <code>pip install neuralmind</code> compiles them. That needs a Rust toolchain, plus Visual Studio&rsquo;s C++ build tools on Windows (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs">details</a>).</p>
+            <p><strong>What installing there still needs:</strong> on Intel macOS, <code>pip install neuralmind</code> compiles <code>cryptography</code>, which has no wheel there, so it needs a Rust toolchain and OpenSSL. On Windows on ARM a native install fails to build <code>cryptography</code>, <code>chromadb</code> and <code>grpcio</code>; use WSL 2, where every dependency has a wheel, or the <code>linux/arm64</code> container image (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs">details</a>).</p>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md">v4.21.0 release notes</a></p>
         </div>
     </section>
