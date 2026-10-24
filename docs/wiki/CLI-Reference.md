@@ -388,8 +388,10 @@ and with no agent host wired, it's `neuralmind install-hooks <project>` when
 Claude Code is set up (`~/.claude`), else `neuralmind install-mcp <project> --all`
 when an MCP client looks installed, else `neuralmind install-mcp --print`, the
 entry to paste into your client. Commands that take a project name the one just
-built, so they work pasted from the directory the build ran in. A pin to another
-project is never offered for undoing. When there's room, the `watch --reindex` hint follows. Once
+built, so they work pasted from the directory the build ran in, quoted for the
+platform's shell. A pin to another project, Git hooks serving another project
+in the same repository, and a fix doctor can't print as one command are never
+offered. When there's room, the `watch --reindex` hint follows. Once
 everything is wired, only that hint prints. `NEURALMIND_NO_INIT_HINT=1` still
 turns the closing lines off.
 
@@ -1706,11 +1708,15 @@ code; a warning carries the command that fixes it.
 | **Daemon** | running on `host:port` (pid, version) · not running → `neuralmind daemon start` · alive but not answering, or running an older version than the one installed → `neuralmind daemon restart` · off under `NEURALMIND_NO_DAEMON=1` (`ok`) |
 | **Git hooks** | full (the four rebuild hooks and the pre-commit drift guard) · partial (names the missing ones; a `--no-drift` install is partial) · none → `neuralmind init-hook <project>` · not a Git repository (`ok`). A hook whose managed block serves another project in the same repository doesn't count, nor does one without its executable bit (git skips it; `init-hook` sets the bit again), and with `core.hooksPath` set (husky, a shared hooks directory) none do, since git never runs the `.git/hooks` that `init-hook` writes: that line has no command of ours to suggest |
 | **Hermes plugin** | enabled, pinned to this project or following `TERMINAL_CWD` · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` → `hermes plugins enable neuralmind` · not installed in a set-up Hermes home → `neuralmind install-hermes-plugin` · pinned to another project → `neuralmind install-hermes-plugin --unpin` · plugin code older than the installed NeuralMind → re-run `neuralmind install-hermes-plugin` (`hermes plugins update neuralmind` for one Hermes installed) · no Hermes home (`ok`) |
-| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json`, and `claude mcp add`'s user and local scopes in `~/.claude.json`), or looks installed without it → `neuralmind install-mcp --client <client>`. Hermes's entry with `enabled: false` warns too. When no known client has it, one line says so → `neuralmind install-mcp --print`, which is expected if you registered it by hand in another client |
+| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json`, and `claude mcp add`'s user and local scopes in `~/.claude.json`; Cursor's `.cursor/mcp.json` or user-wide `~/.cursor/mcp.json`), or looks installed without it → `neuralmind install-mcp --client <client>`. A config doctor can't parse (VS Code allows comments) reads *can't tell*, as `ok`. Hermes's entry with `enabled: false` warns too, with `hermes config set mcp_servers.<key>.enabled true` for the key it found; a Hermes `config.yaml` that is a symlink gets the entry to paste (`--client hermes --print`). When no known client has it, one line says so → `neuralmind install-mcp --print`, which is expected if you registered it by hand in another client |
 
-When no agent host is wired (no Claude Code hooks, no enabled Hermes plugin,
-no MCP registration), the closing line reads *Installed but not wired*
-instead of *Up and running*. `--json` adds a `wiring` object beside `checks`:
+When no agent host is wired (no Claude Code hooks in the project's
+`settings.json` or `settings.local.json` or the global one, no enabled Hermes
+plugin, no MCP registration), the closing line reads *Installed but not
+wired* instead of *Up and running*. A host doctor couldn't read (a *can't
+tell* line, or a probe that failed) keeps it from saying so: the verdict is
+then *partial*. Each probe is guarded on its own, so a malformed file one of
+them reads leaves the other lines standing. `--json` adds a `wiring` object beside `checks`:
 `{"state": "inert" | "partial" | "wired", "checks": [...]}`, and the
 top-level `status` counts its warnings; `checks` holds the same core checks
 as before.
@@ -1835,7 +1841,7 @@ Checks
          -> Install them: neuralmind install-hooks
   [ ok ] Query memory: enabled (logging queries for learning)
 ===========================================================
-Installed but not wired: nothing calls NeuralMind for this project yet (no Claude Code hooks, Hermes plugin or MCP registration). Run a Wiring fix above.
+Installed but not wired: no Claude Code hooks, Hermes plugin or MCP entry doctor can see calls NeuralMind for this project. Run a Wiring fix above (registered by hand in a client doctor doesn't know? then ignore this).
 ```
 
 **Code graph freshness (v4.4.0+).** The *Code graph* check compares the graph
@@ -2943,7 +2949,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
 | `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
-| `--mcp` | False | *(v4.22.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a set-up home where the entry is missing ends with that command |
+| `--mcp` | False | *(v4.22.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a home with a `config.yaml` and no entry ends with the command that adds it: `install-mcp --client hermes`, or with `--hermes-home`, this command with `--mcp` against the same home |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
 #### Examples
@@ -3136,7 +3142,7 @@ isn't touched, and the command prints the entry to paste: `skipped-no-hermes-con
 first-run setup), `skipped-symlink` (a declaratively managed config),
 `skipped-unmergeable` (a flow-style `mcp_servers: {...}`), `skipped-conflict`
 (a `neuralmind` entry that starts something else), `skipped-invalid-yaml`, or
-`skipped-not-object`. An entry with `enabled: false` is left off and named.
+`skipped-not-object`. NeuralMind registered under another key (say `nm`) counts as `already-present`, so Hermes doesn't start a second server; an entry with `enabled: false` is left off and named. The file is replaced through a unique temporary file and keeps its owner when run as root.
 `--all` includes Hermes once its `config.yaml` exists. A running Hermes reloads its
 MCP servers when `config.yaml` changes (run `/reload-mcp` if
 `mcp.auto_reload_on_config_change` is off); restart the gateway if one is

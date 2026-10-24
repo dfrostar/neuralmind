@@ -88,7 +88,7 @@ body:
     id: health
     attributes:
       label: "`neuralmind doctor .` (and `neuralmind metrics .` if you have it)"
-      description: Index freshness, a leftover graph, and query and build counts. No query text is recorded. `doctor` prints the project's full path in its header and fix lines, and example file paths when the index is stale; `metrics` names the project. Replace them with `<repo>` and `<file>`.
+      description: Index freshness, a leftover graph, wiring, and query and build counts. No query text is recorded. `doctor` prints the project's full path in its header and fix lines, and example file paths when the index is stale; its Wiring section (v4.22.0+) also prints your home directory's paths (the Hermes home, client config files), the interpreter the Hermes plugin records, and the path of any other project the plugin is pinned to, which can name it. `metrics` names the project. Replace them with `<repo>`, `<file>`, `<home>` and `<other-project>`.
       render: text
 
   - type: textarea

@@ -870,11 +870,11 @@ def _print_next_steps(project_path: str) -> None:
     files that change without a commit follows. Fail-open: a probe that
     can't run leaves the hint out, never the build's result.
     """
-    import shlex
-
     try:
-        from neuralmind.wiring import next_steps
-
+        from neuralmind.wiring import next_steps, shell_arg
+    except Exception:  # the hint is optional; the build has already succeeded
+        return
+    try:
         steps = next_steps(Path(project_path), project_arg=project_path)
     except Exception:
         steps = []
@@ -885,7 +885,7 @@ def _print_next_steps(project_path: str) -> None:
     if len(lines) < 3:
         # Plain `watch` only learns from edits; --reindex is what re-indexes them.
         lines.append(
-            f"  Files that change without a commit: neuralmind watch {shlex.quote(project_path)} "
+            f"  Files that change without a commit: neuralmind watch {shell_arg(project_path)} "
             "--reindex"
         )
     print()
@@ -2731,9 +2731,9 @@ def cmd_doctor(args):
             # Installed but inert: every core check can pass while no agent
             # ever queries the index, so "Up and running" would be false.
             print(
-                "Installed but not wired: nothing calls NeuralMind for this project yet "
-                "(no Claude Code hooks, Hermes plugin or MCP registration). "
-                "Run a Wiring fix above."
+                "Installed but not wired: no Claude Code hooks, Hermes plugin or MCP entry "
+                "doctor can see calls NeuralMind for this project. Run a Wiring fix above "
+                "(registered by hand in a client doctor doesn't know? then ignore this)."
             )
         else:
             print(summary.get(status, ""))
@@ -6080,10 +6080,16 @@ def cmd_install_hermes_plugin(args):
     # Offered only where `install-mcp --client hermes` can write: a config.yaml.
     mcp_state = mcp_install.registration("hermes", project_dir, hermes_home=home)
     if mcp_state.detected and not mcp_state.registered:
-        print(
-            "  NeuralMind's MCP tools (query, search, …) are a separate opt-in: "
-            "neuralmind install-mcp --client hermes"
+        # install-mcp writes the default Hermes home; for another one, the
+        # alias run against the same --hermes-home.
+        from .wiring import shell_arg
+
+        offer = (
+            f"neuralmind install-hermes-plugin --hermes-home {shell_arg(str(home))} --mcp"
+            if args.hermes_home
+            else "neuralmind install-mcp --client hermes"
         )
+        print(f"  NeuralMind's MCP tools (query, search, …) are a separate opt-in: {offer}")
 
 
 def cmd_install_hooks(args):
