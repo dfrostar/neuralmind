@@ -5446,7 +5446,9 @@ def cmd_demo(args):
     checkout, no graphify install, no setup. When the embedding model isn't on
     disk, the demo embeds its questions from vectors shipped with the package
     (``_demo_report.BundledQueryEmbedder``) instead of downloading the model,
-    and ranks exactly as it would with it.
+    and ranks exactly as it would with it. The bundled index is turbovec's:
+    where the install has ChromaDB instead (Intel macOS, Windows ARM), the
+    demo builds the index with the model, downloading it once.
     """
     import contextlib
     import shutil
@@ -5454,6 +5456,7 @@ def cmd_demo(args):
     from importlib import resources
 
     from neuralmind import _demo_report
+    from neuralmind.backend_manager import TURBOVEC_BACKENDS, project_backend
     from neuralmind.core import NeuralMind
     from neuralmind.onnx_embedder import OnnxMiniLMEmbedder
     from neuralmind.turbovec_backend import embed_fn_override
@@ -5487,17 +5490,22 @@ def cmd_demo(args):
         # writable working copy so the build doesn't pollute site-packages.
         with resources.as_file(bundle_root) as src:
             _copy_demo_fixture(Path(src), fixture_dir)
-        with resources.as_file(prebuilt_root) as prebuilt:
-            prebuilt = Path(prebuilt)
-            # The bundled vector index: build() finds every node already
-            # embedded, so it needs no model.
-            shutil.copytree(
-                prebuilt / "neuralmind_turbovec",
-                fixture_dir / ".neuralmind" / "neuralmind_turbovec",
-            )
-            bundled = None
-            if OnnxMiniLMEmbedder().local_model_dir() is None:
-                bundled = _demo_report.BundledQueryEmbedder(prebuilt / "query_vectors.json")
+        # The bundled index and question vectors are turbovec's. An install
+        # without turbovec (Intel macOS, Windows ARM, which get ChromaDB
+        # instead) builds the sample's index with the embedding model.
+        on_turbovec = project_backend(fixture_dir) in TURBOVEC_BACKENDS
+        bundled = None
+        if on_turbovec:
+            with resources.as_file(prebuilt_root) as prebuilt:
+                prebuilt = Path(prebuilt)
+                # The bundled vector index: build() finds every node already
+                # embedded, so it needs no model.
+                shutil.copytree(
+                    prebuilt / "neuralmind_turbovec",
+                    fixture_dir / ".neuralmind" / "neuralmind_turbovec",
+                )
+                if OnnxMiniLMEmbedder().local_model_dir() is None:
+                    bundled = _demo_report.BundledQueryEmbedder(prebuilt / "query_vectors.json")
 
         if not args.quiet:
             print(f"[demo] working copy: {fixture_dir}")
@@ -5507,9 +5515,32 @@ def cmd_demo(args):
                     "so nothing is downloaded. `neuralmind build` on your own code "
                     "downloads the embedding model (about 90 MB) once."
                 )
+            elif not on_turbovec:
+                print(
+                    "[demo] this install uses the ChromaDB backend (turbovec has no wheel "
+                    "for this platform), so the demo builds the sample's index with the "
+                    "embedding model, which downloads it once."
+                )
 
         def build_and_report(force: bool) -> None:
-            result = NeuralMind(str(fixture_dir)).build(force=force)
+            try:
+                result = NeuralMind(str(fixture_dir)).build(force=force)
+            except ModuleNotFoundError as exc:
+                # No vector backend installed: create_backend says what to install.
+                print(f"demo failed: {exc}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as exc:
+                if on_turbovec:
+                    raise
+                # The ChromaDB path downloads its model here; offline, that
+                # fails with whatever its HTTP client raises.
+                print(
+                    f"demo failed: couldn't build the sample's index with ChromaDB "
+                    f"({type(exc).__name__}: {exc}). It downloads the embedding model "
+                    "once; run it with network access.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             if not result.get("success"):
                 print(
                     f"demo failed during build: {result.get('error', 'unknown error')}",

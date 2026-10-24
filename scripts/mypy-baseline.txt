@@ -1,7 +1,7 @@
 # Known mypy errors: CI fails on any error not listed here, and on any
 # listed error mypy no longer reports. Regenerate after fixing errors with
 #   python scripts/check_mypy_baseline.py --update
-# 242 errors
+# 228 errors
 neuralmind/bge_embedder.py: Returning Any from function declared to return "list[list[float]]"  [no-any-return]
 neuralmind/bm25.py: Function "builtins.callable" is not valid as a type  [valid-type]
 neuralmind/chapter_indexer.py: Item "None" of "Any | None" has no attribute "embed"  [union-attr]
@@ -125,20 +125,6 @@ neuralmind/mcp_server.py: "Collection[str]" has no attribute "get"  [attr-define
 neuralmind/mcp_server.py: "Server[Any]" has no attribute "call_tool"  [attr-defined]
 neuralmind/mcp_server.py: "Server[Any]" has no attribute "list_tools"  [attr-defined]
 neuralmind/mcp_server.py: "Server[Any]" has no attribute "request_context"  [attr-defined]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "ToolAnnotations | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "ToolAnnotations | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "ToolExecution | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "ToolExecution | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "dict[str, Any] | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "dict[str, Any] | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "dict[str, Any]"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "dict[str, Any]"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "list[Icon] | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "list[Icon] | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "str | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "str | None"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "str"  [arg-type]
-neuralmind/mcp_server.py: Argument 1 to "Tool" has incompatible type "**dict[str, Collection[str]]"; expected "str"  [arg-type]
 neuralmind/medical_retriever.py: Argument "key" to "max" has incompatible type overloaded function; expected "Callable[[str], SupportsDunderLT[Any] | SupportsDunderGT[Any]]"  [arg-type]
 neuralmind/medical_retriever.py: Argument 1 to "append" of "list" has incompatible type "tuple[int, float, float, float, float, SectionDocument]"; expected "tuple[int, float, float, float, float, float]"  [arg-type]
 neuralmind/medical_retriever.py: Incompatible types in assignment (expression has type "None", variable has type "OnnxMiniLMEmbedder")  [assignment]

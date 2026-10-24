@@ -69,7 +69,18 @@ learned            = lo + (hi − lo) × ratio / (1 + ratio)
 half_life          = (1 − recency_confidence) × ns_default + recency_confidence × learned
 ```
 
-bounded to `[lo, hi] = [3.0, 120.0]` days (tuner-owned bounds): a rarely-used edge never decays slower than 3 days of half-life, a heavily-used one never faster than 120. Edges younger than 1 day fall back to the namespace default; `shared` edges are floored at their namespace default so the team baseline never decays faster than promised.
+bounded to `[lo, hi] = [3.0, 120.0]` days (tuner-owned bounds): a rarely-used edge never decays faster than a 3-day half-life, a heavily-used one never slower than a 120-day one. Edges younger than 1 day fall back to the namespace default; `shared` edges are floored at their namespace default so the team baseline never decays faster than promised.
+
+> **Correction (October 2026).** Two details of the shipped code differed
+> from the formula above. The ratio is `log1p(freq) / ln(2)`: multiplying
+> `freq` by `age_days` cancelled the age back out, leaving the raw activation
+> count. And the blend was computed only at each reinforcement, when
+> `days_since_last` is zero and `recency_confidence` is 1, so until v4.21.0 an
+> idle edge kept its learned rate instead of drifting back to the namespace
+> default. Since v4.21.0 decay integrates the blend over the idle time, in
+> closed form (`learned_decay.blended_decay_factor`), so the edge decays as the
+> formula describes. The bounds sentence above also had its directions
+> reversed; it now reads as the code behaves.
 
 **Long-term potentiation:** edges whose lifetime `activation_count ≥ 5` (`LTP_THRESHOLD`) are floored at weight `0.20` (`LTP_FLOOR`) during decay — proven associations can fade but never vanish. `ephemeral` has no LTP exemption. Weights below `0.01` (`PRUNE_THRESHOLD`) are deleted.
 

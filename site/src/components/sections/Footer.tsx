@@ -22,6 +22,7 @@ const groups: { heading: string; links: { label: string; href: string }[] }[] = 
         links: [
             { label: 'Docs', href: 'https://docs.neuralmind.uk/wiki/Home' },
             { label: 'Measure your own', href: '/measure-your-own' },
+            { label: 'What it remembers', href: '/what-it-remembers' },
             { label: 'Research', href: '/publications' },
             { label: 'GitHub', href: 'https://github.com/dfrostar/neuralmind' },
             { label: 'PyPI', href: 'https://pypi.org/project/neuralmind/' },

@@ -257,7 +257,10 @@ export default async function SecurityPage() {
                     <div className="grid sm:grid-cols-3 gap-4 mt-6">
                         <div className="panel rounded-card p-5">
                             <p className="text-white font-semibold text-sm mb-1.5">SBOM</p>
-                            <p className="text-muted text-sm leading-relaxed mb-3">A CycloneDX SBOM for every release since v4.0.0.</p>
+                            <p className="text-muted text-sm leading-relaxed mb-3">
+                                A CycloneDX SBOM for every release since v4.0.0: what a default install contains on Linux
+                                x86_64. Dependencies differ by platform, so newer releases also have one per platform.
+                            </p>
                             {rel.sbomUrl ? (
                                 <a href={rel.sbomUrl} target="_blank" rel="noopener noreferrer" className={`text-sm font-mono ${link}`}>
                                     SBOM for {version} →
@@ -266,6 +269,17 @@ export default async function SecurityPage() {
                                 <a href={`${GITHUB_URL}/actions/workflows/sbom.yml`} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
                                     Still generating — SBOM workflow →
                                 </a>
+                            )}
+                            {rel.platformSboms.length > 0 && (
+                                <ul className="mt-3 space-y-1 text-sm">
+                                    {rel.platformSboms.map((p) => (
+                                        <li key={p.url}>
+                                            <a href={p.url} target="_blank" rel="noopener noreferrer" className={link}>
+                                                {p.label} →
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
                         <div className="panel rounded-card p-5">

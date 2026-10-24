@@ -380,7 +380,7 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 `neuralmind watch .`, which learns from edits but doesn't re-index them, so
 the index went on drifting.
 
-*(v4.21.0+)* After a successful build, at most three lines name the commands
+*(v4.22.0+)* After a successful build, at most three lines name the commands
 for whatever isn't wired yet, read the way `neuralmind doctor`'s Wiring
 section reads them: the daemon and the Git hooks first, then the agent. With
 Hermes set up on the machine that's the plugin and its MCP entry. Without it,
@@ -1369,8 +1369,9 @@ neuralmind stats /path/to/project --json
 the project's learned memory, using the same machinery the hooks use:
 
 1. **Decay** — the synapse store's half-life decay (30 days for personal and
-   branch memory, 60 for shared, 1 for ephemeral; long-term edges keep their
-   floor; dead edges are pruned). It charges only the time since the previous
+   branch memory, 60 for shared, 1 for ephemeral; an edge's own learned rate,
+   3 to 120 days, blends back to these while it sits idle; long-term edges
+   keep their floor; dead edges are pruned). It charges only the time since the previous
    decay, so running it often never decays anything twice.
 2. **Read-dedup cleanup** — drops `.neuralmind/read_cache.db` rows untouched
    for a day.
@@ -1658,7 +1659,11 @@ downloads nothing. Before v4.19.0 its first run downloaded the model (about
 90 MB), and failed with a traceback offline. With the model on disk, it uses
 the model. If this install can't use the bundled index (a turbovec release too
 old to read it, say), the demo falls back to building with the model, which
-downloads it once. The token counts use tiktoken; where its vocabulary can't be
+downloads it once. The bundled index is turbovec's, so on an install with
+ChromaDB instead (Intel macOS, Windows ARM, which have no turbovec wheel) the
+demo builds the sample's index with the model, downloading it once, and says
+so *(v4.21.0+; before, it failed there with `No module named 'turbovec'`)*. The
+token counts use tiktoken; where its vocabulary can't be
 downloaded, they are estimated at about 4 characters a token, and the demo
 says so.
 
@@ -1668,7 +1673,7 @@ The sample is small (about 500 lines), so its reduction is small;
 | Code | Meaning |
 |------|---------|
 | `0` | The report printed |
-| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or the build failed |
+| `1` | The bundled data is missing; or it can't be used here and the model couldn't be downloaded; or no vector backend is installed; or the build failed |
 
 ### doctor *(v0.12.0+)*
 
@@ -1690,7 +1695,7 @@ neuralmind doctor [project_path] [--json] [--stale-after DURATION]
 | `--json`, `-j` | No | `false` | Emit machine-readable JSON |
 | `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* Fail the Code graph check, so doctor exits `1`, once the index has been behind the files for longer than this (`30m`, `2h`, `1d`). See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
-**Wiring** *(v4.21.0+)* comes first: whether anything calls NeuralMind for
+**Wiring** *(v4.22.0+)* comes first: whether anything calls NeuralMind for
 this project. A built index that no agent queries passes every check below,
 so doctor used to read "Up and running" on an install that was doing nothing.
 Each line is `ok` or `warn`, never `fail`, so wiring never changes the exit
@@ -2795,7 +2800,7 @@ NeuralMind block, leaving any user hooks untouched):
 | `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
 | `PostToolUse` | Bash output cache for `neuralmind last`; Edit/Write reuse feedback *(v0.41.0)* and edited-path record *(v4.8.0)* | The Read/Bash/Grep hooks inject nothing by default ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)); opt-in `NEURALMIND_BASH_REPLACE=1` *(v4.10.0)* trims the progress lines of `pip install` and `neuralmind build` output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`); note the edited file for the next session's [recap](#recap-v480) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export; session recap *(v4.8.0)* | Age unused synapses; surface learned associations to Claude Code's auto-memory; on a fresh or cleared session, inject a [recap](#recap-v480) of the previous one; after a compaction, the session's own record *(v4.11.0)* |
-| `UserPromptSubmit` *(v0.4.0)* | Semantic search and one-hop spreading activation from the prompt; prompt record *(v4.8.0)* | Inject, as `additionalContext`, the files the prompt matches with their symbols and lines, other files (mostly code) the synapse graph links directly to them, and matching docs *(v4.11.0; before, ranked synapse neighbors as node ids)*, or nothing when the prompt matches the code poorly *(v4.11.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
+| `UserPromptSubmit` *(v0.4.0)* | Semantic search and one-hop spreading activation from the prompt; prompt record *(v4.8.0)* | Inject, as `additionalContext`, the files the prompt matches with their symbols and lines, other files (mostly code) the synapse graph links directly to them, and matching docs *(v4.11.0; before, ranked synapse neighbors as node ids)*, or nothing when the prompt matches the code poorly *(v4.11.0, `NEURALMIND_RECALL_MIN_SIMILARITY`)*; when one file's summed match score is at least twice the next file's, that file's best-matching function or class as code, from the working tree, at most 40 lines, secrets redacted *(v4.21.0, off-switch `NEURALMIND_RECALL_EXCERPT=0`)*; record the prompt (credentials redacted) for the next session's [recap](#recap-v480) |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
 | `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
 | `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
@@ -2938,7 +2943,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
 | `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
-| `--mcp` | False | *(v4.21.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a set-up home where the entry is missing ends with that command |
+| `--mcp` | False | *(v4.22.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a set-up home where the entry is missing ends with that command |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
 #### Examples
@@ -3110,9 +3115,9 @@ neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 | `claude-desktop` | user | platform `claude_desktop_config.json` |
 | `cline` | user | VS Code `cline_mcp_settings.json` |
 | `vscode` | user | VS Code `settings.json` (`mcp.servers` key, requires VS Code 1.99+) |
-| `hermes` *(v4.21.0+)* | user | Hermes-Agent's `config.yaml` (`mcp_servers:` key) in the Hermes home plain `hermes` uses: the active profile's, else `$HERMES_HOME`, else `~/.hermes` |
+| `hermes` *(v4.22.0+)* | user | Hermes-Agent's `config.yaml` (`mcp_servers:` key) in the Hermes home plain `hermes` uses: the active profile's, else `$HERMES_HOME`, else `~/.hermes` |
 
-*(v4.21.0+)* **Hermes.** `--client hermes` adds
+*(v4.22.0+)* **Hermes.** `--client hermes` adds
 
 ```yaml
 mcp_servers:
@@ -3172,6 +3177,18 @@ neuralmind install-mcp --print
 Restart the client after registering so it picks up the new server. The agent
 then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 `build`, `stats`, …).
+
+*(v4.21.0+)* The server's `initialize` reply carries instructions on when to
+call which tool (`neuralmind_search` before Grep or Glob to find where
+something is implemented or the code behind a bug, `neuralmind_query` to
+understand how a part works, and the prompt's NeuralMind block first when it
+has one). Claude Code shows them to the model even while the tools are
+deferred. `tools/list` offers six tools by default: `neuralmind_search`,
+`neuralmind_query`, `neuralmind_skeleton`, `neuralmind_impact`,
+`neuralmind_wakeup` and `neuralmind_query_decisions`. The other 22 still answer
+when called by name. Set `NEURALMIND_MCP_TOOLS=all` in the server's
+environment to list all 28, as before v4.21.0, or a comma-separated list of
+tool names to list those (see [Environment Variables](#environment-variables)).
 
 ---
 
@@ -4576,6 +4593,8 @@ emits, and runs the documented cases.
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable prompt-time recall in the `UserPromptSubmit` hook (and the Hermes plugin's `pre_llm_call`): the files a prompt matches and the code linked to them *(v4.11.0; before, spreading-activation neighbors)* |
 | `NEURALMIND_RECALL_MIN_SIMILARITY` | `0.35` | *(v4.11.0+)* Prompt-time recall injects nothing when the prompt's best semantic match in the code scores below this similarity, so "yes", "continue" or an off-topic question gets no recall block. Measured on this repository's own index: 15 prompts about the code scored 0.371–0.645, 15 off-topic prompts 0.145–0.364 (one above 0.35). Reproduce from a source checkout (the harness is in `tests/`, not in the pip package) with `python -m tests.benchmark.recall_gate <project>`, and pass `--prompts` with your own sets to calibrate another project or embedder. `0` never abstains. Each outcome is counted in `neuralmind metrics` |
+| `NEURALMIND_RECALL_EXCERPT` | on | *(v4.21.0+)* Set to `0` to leave the leading file's code out of the prompt-time recall block. By default, when one file's summed match score is at least twice the next file's, the block quotes that file's best-matching function or class from the working tree: from the symbol's first line to the line before the next symbol the graph records in that file, at most 40 lines, secrets redacted with the scanner `neuralmind last` uses. With no file 2:1 ahead the block is the file list alone. Applies to the `UserPromptSubmit` hook and the Hermes plugin's `pre_llm_call` |
+| `NEURALMIND_MCP_TOOLS` | `core` | *(v4.21.0+)* Which tools the MCP server's `tools/list` offers. Unset, empty or `core`: six (`neuralmind_search`, `neuralmind_query`, `neuralmind_skeleton`, `neuralmind_impact`, `neuralmind_wakeup`, `neuralmind_query_decisions`). `all`: all 28, as before v4.21.0. A comma-separated list of tool names: those tools (unknown names are ignored). Every tool stays callable by name whatever this lists; set it in the MCP server's environment when a client's tool picker needs to see a tool outside the six |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history, and *(v4.16.0+)* each trailer's status in the decision store when there is one: INVALIDATED trailers are left out, STALE ones marked; fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.44.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export. *(v4.18.0+)* Also stops the MCP `neuralmind_export_synapse_memory` tool |
@@ -4605,8 +4624,8 @@ emits, and runs the documented cases.
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
 | `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` removes that dependence at some indexing-throughput cost. It does not make output identical on every machine: with `1` set, public-benchmark CI runs still split into two states with slightly different token counts depending on the runner, while on an Apple M3 the public benchmark gave byte-identical output with and without it ([details](../benchmarks/public.md#how-exactly-a-re-run-reproduces)). The self-benchmark harness sets `1` automatically, and the public-benchmark CI job runs with it. |
-| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). *(v4.21.0+)* `doctor`'s Wiring section then reports the daemon as off, not missing |
-| `NEURALMIND_NO_INIT_HINT` | unset | Set to any value to skip the lines `neuralmind build` prints after a successful build: *(v4.21.0+)* the commands for whatever isn't wired yet (daemon, Git hooks, agent host), and the `watch --reindex` hint. See [build](#build) |
+| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). *(v4.22.0+)* `doctor`'s Wiring section then reports the daemon as off, not missing |
+| `NEURALMIND_NO_INIT_HINT` | unset | Set to any value to skip the lines `neuralmind build` prints after a successful build: *(v4.22.0+)* the commands for whatever isn't wired yet (daemon, Git hooks, agent host), and the `watch --reindex` hint. See [build](#build) |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 | `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. `0` also turns off the v4.6.0 keyword indexes below. |
@@ -4655,7 +4674,9 @@ platform-gated base dependency**, so a plain `pip install neuralmind` resolves
 to turbovec (ChromaDB-free) out of the box on platforms with turbovec wheels
 (Linux, macOS arm64, Windows x86_64). On platforms without a turbovec wheel
 (Intel macOS, Windows ARM) ChromaDB is auto-installed as the fallback backend,
-so the install always works. Install `pip install "neuralmind[chromadb]"` (and
+and the default selects it, so the install always works *(v4.21.0+: from
+v0.46.0 to v4.20.0 the default selected turbovec even there, and every command
+failed with `No module named 'turbovec'` unless you set `backend: graph`)*. Install `pip install "neuralmind[chromadb]"` (and
 pin `backend: graph`) to force ChromaDB anywhere. (Alpine/musl Linux: use a
 `python:slim` glibc image or the `[chromadb]` extra — markers can't gate musl.)
 
