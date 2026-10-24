@@ -16,11 +16,13 @@ imports the heavy retrieval stack.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import stat
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -392,10 +394,11 @@ def install_hermes(path: Path, command: str = SERVER_COMMAND) -> InstallResult:
         raw = path.read_bytes()
         bom = raw.startswith(b"\xef\xbb\xbf")
         text = raw.decode("utf-8-sig")
-        data = yaml.safe_load(text)
     except (OSError, UnicodeDecodeError) as exc:
         return _hermes_skip(path, "skipped-unreadable", f"could not be read ({exc})", command)
-    except yaml.YAMLError:
+    try:
+        data = yaml.safe_load(text)
+    except Exception:  # YAMLError, or a ValueError from a scalar like `2001-13-45`
         return _hermes_skip(path, "skipped-invalid-yaml", "is not valid YAML", command)
     if data is None:
         data = {}
@@ -404,12 +407,25 @@ def install_hermes(path: Path, command: str = SERVER_COMMAND) -> InstallResult:
         return _hermes_skip(
             path, "skipped-not-object", f"does not hold a {HERMES_KEY} mapping", command
         )
+    # NeuralMind under any key counts: a second entry would start a second
+    # server, with every tool twice. An enabled entry first.
+    matches = [
+        (str(key), entry)
+        for key, entry in (servers or {}).items()
+        if isinstance(entry, dict) and _launches_neuralmind(entry)
+    ]
+    if matches:
+        matches.sort(key=lambda m: (_hermes_entry_disabled(m[1]), m[0] != SERVER_NAME))
+        key, entry = matches[0]
+        notes = []
+        if key != SERVER_NAME:
+            notes.append(f"registered as {HERMES_KEY}.{key}")
+        if _hermes_entry_disabled(entry):
+            notes.append(f"disabled there: set {HERMES_KEY}.{key}.enabled: true to use it")
+        return InstallResult(
+            client="hermes", path=path, action="already-present", detail="; ".join(notes)
+        )
     existing = (servers or {}).get(SERVER_NAME)
-    if isinstance(existing, dict) and _launches_neuralmind(existing):
-        detail = ""
-        if _hermes_entry_disabled(existing):
-            detail = f"disabled there: set {HERMES_KEY}.{SERVER_NAME}.enabled: true to use it"
-        return InstallResult(client="hermes", path=path, action="already-present", detail=detail)
     if existing is not None:
         return _hermes_skip(
             path,
@@ -421,7 +437,7 @@ def install_hermes(path: Path, command: str = SERVER_COMMAND) -> InstallResult:
     expected = {**data, HERMES_KEY: {**(servers or {}), SERVER_NAME: server_entry(command)}}
     try:
         merged = yaml.safe_load(new_text) if new_text is not None else None
-    except yaml.YAMLError:
+    except Exception:
         merged = None
     if new_text is None or merged != expected:
         return _hermes_skip(
@@ -430,16 +446,36 @@ def install_hermes(path: Path, command: str = SERVER_COMMAND) -> InstallResult:
             "couldn't take the entry without other changes",
             command,
         )
-    tmp = path.with_name(f".{path.name}.neuralmind-tmp")
     try:
-        tmp.write_bytes((b"\xef\xbb\xbf" if bom else b"") + new_text.encode("utf-8"))
-        # config.yaml can hold credentials: Hermes keeps it 0600, so keep its mode.
-        os.chmod(tmp, stat.S_IMODE(path.stat().st_mode))
-        os.replace(tmp, path)
+        _replace_keeping_owner(path, (b"\xef\xbb\xbf" if bom else b"") + new_text.encode("utf-8"))
     except OSError as exc:
-        tmp.unlink(missing_ok=True)
         return _hermes_skip(path, "skipped-unwritable", f"could not be written ({exc})", command)
     return InstallResult(client="hermes", path=path, action="installed")
+
+
+def _replace_keeping_owner(path: Path, data: bytes) -> None:
+    """Replace ``path`` with ``data`` atomically, keeping its mode and owner.
+
+    The temporary file is unique (two runs can't swap in each other's half-
+    written file) and starts at 0600, since config.yaml can hold credentials;
+    it then takes the old file's mode. Run as root against a user's home
+    (``sudo -E``), it is given back to the file's owner, as Hermes's own writer
+    does, so Hermes can still read its config.
+    """
+    st = path.stat()
+    fd, name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".neuralmind-tmp")
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+        os.chmod(tmp, stat.S_IMODE(st.st_mode))
+        if hasattr(os, "geteuid") and os.geteuid() == 0 and st.st_uid != 0:
+            os.chown(tmp, st.st_uid, st.st_gid)
+        os.replace(tmp, path)
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
 
 
 # --------------------------------------------------------------------------- #

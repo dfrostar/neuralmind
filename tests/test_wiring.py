@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex
 import subprocess
 from pathlib import Path
 
@@ -37,7 +36,10 @@ def home(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def repo(tmp_path):
+def repo(tmp_path, monkeypatch):
+    # The machine's own git config (a global core.hooksPath, say) stays out.
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     project = tmp_path / "proj"
     project.mkdir()
     subprocess.run(["git", "init", "-q", str(project)], check=True)
@@ -140,7 +142,7 @@ def test_git_hooks_none_partial_full(repo, capsys):
     partial = wiring.git_hooks_item(repo)
     assert partial.wired is False and partial.detail.startswith("partial:")
     assert "drift guard is missing" in partial.detail
-    assert partial.fix == f"neuralmind init-hook {shlex.quote(str(repo))}"
+    assert partial.fix == f"neuralmind init-hook {wiring.shell_arg(str(repo))}"
 
     _init_hook(repo)
     full = wiring.git_hooks_item(repo)
@@ -368,8 +370,9 @@ def test_next_steps_name_the_project_that_was_built(home, repo):
     # Pasted from the directory build ran in, the commands still wire `repo`.
     (home / ".claude").mkdir()
     steps = wiring.next_steps(repo, "../my proj")
-    assert steps[0].endswith("neuralmind init-hook '../my proj'")
-    assert steps[-1] == "neuralmind install-hooks '../my proj'"
+    arg = wiring.shell_arg("../my proj")
+    assert steps[0].endswith(f"neuralmind init-hook {arg}")
+    assert steps[-1] == f"neuralmind install-hooks {arg}"
 
 
 def test_next_steps_say_nothing_once_wired(home, repo, monkeypatch, capsys):
@@ -418,3 +421,114 @@ def test_build_keeps_the_watch_hint_when_there_is_room(home, repo, monkeypatch, 
     out = capsys.readouterr().out
     assert "Next, wire it in" not in out
     assert "neuralmind watch . --reindex" in out
+
+
+# --------------------------------------------------------------------------- #
+# Review fixes
+# --------------------------------------------------------------------------- #
+def test_shell_arg_quotes_for_the_platform(monkeypatch):
+    monkeypatch.setattr(wiring, "_WINDOWS", False)
+    assert wiring.shell_arg("my proj") == "'my proj'"
+    monkeypatch.setattr(wiring, "_WINDOWS", True)
+    # cmd.exe and PowerShell would keep single quotes as part of the path.
+    assert wiring.shell_arg(r".\proj") == r".\proj"
+    assert wiring.shell_arg(r"C:\my proj") == r'"C:\my proj"'
+
+
+def test_another_projects_hooks_are_never_offered_for_taking_over(repo, capsys):
+    sub = repo / "pkg"
+    sub.mkdir()
+    _init_hook(sub)
+    item = wiring.git_hooks_item(repo, ".")
+    assert item.wired is False and item.fix and item.suggest is False
+
+
+def test_a_client_doctor_cant_read_keeps_the_verdict_off_inert(home, tmp_path):
+    # VS Code accepts comments in settings.json; doctor's JSON reader doesn't,
+    # so it can't tell whether NeuralMind is registered there.
+    from neuralmind import mcp_install
+
+    settings = mcp_install.config_path("vscode", tmp_path)  # under the fake home
+    settings.parent.mkdir(parents=True)
+    settings.write_text(
+        '{\n  // mine\n  "mcp.servers": {"neuralmind": {"command": "neuralmind-mcp"}}\n}\n'
+    )
+    items = wiring.mcp_items(tmp_path)
+    vscode = {i.name: i for i in items}["MCP registration (vscode)"]
+    assert vscode.wired is None and "can't tell" in vscode.detail
+    assert wiring.state(items, claude_code_hooks=False) == wiring.PARTIAL
+
+
+def test_one_failing_probe_leaves_the_others_standing(home, repo, monkeypatch):
+    def broken():
+        raise AttributeError("'list' object has no attribute 'get'")
+
+    monkeypatch.setattr(wiring, "daemon_item", broken)
+    items = wiring.collect(repo, ".")
+    assert items[0].name == "Daemon" and items[0].wired is None
+    assert "could not check (AttributeError" in items[0].detail
+    assert [i.name for i in items[1:3]] == ["Git hooks", "Hermes plugin"]
+    assert wiring.next_steps(repo, ".")[0] == "neuralmind init-hook ."
+
+
+def test_a_discovery_file_that_isnt_an_object(home):
+    from neuralmind import daemon
+
+    daemon.discovery_path().parent.mkdir(parents=True, exist_ok=True)
+    daemon.discovery_path().write_text("[1]")
+    item = wiring.daemon_item()
+    assert item.wired is False and "delete it" in item.detail and item.fix == ""
+
+
+def test_a_plugin_yaml_that_isnt_utf8(home, tmp_path):
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    target = _plugin(hermes)
+    (target / "plugin.yaml").write_bytes(b"name: neuralmind\nversion: \xff\n")
+    assert wiring.hermes_plugin_item(tmp_path).wired is True
+
+
+def test_an_outdated_plugin_with_unreadable_install_records(home, tmp_path):
+    # install-hermes-plugin leaves the code alone then, so it isn't the fix.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _plugin(hermes, version="4.15.0")
+    (hermes / "plugins" / ".install-metadata.json").write_text("{not json")
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.outdated and item.fix == "" and item.suggest is False
+    assert ".install-metadata.json can't be read" in item.detail
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
+def test_a_symlinked_hermes_config_gets_the_entry_to_paste(home, tmp_path):
+    hermes = home / ".hermes"
+    hermes.mkdir()
+    managed = tmp_path / "managed.yaml"
+    managed.write_text("model: x\n")
+    (hermes / "config.yaml").symlink_to(managed)
+    item = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (hermes)"]
+    assert item.fix == "neuralmind install-mcp --client hermes --print"
+    assert item.suggest is False and "symlink" in item.detail
+
+
+def test_a_disabled_entry_hermes_config_set_cant_address(home, tmp_path):
+    _hermes_home(
+        home, "mcp_servers:\n  nm.local:\n    command: neuralmind-mcp\n    enabled: false\n"
+    )
+    item = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (hermes)"]
+    assert item.wired is False and item.fix == ""
+    assert "set enabled: true on that entry" in item.detail
+
+
+def test_claude_code_hooks_in_settings_local_count(home, tmp_path):
+    local = tmp_path / ".claude" / "settings.local.json"
+    local.parent.mkdir()
+    block = {"hooks": [{"type": "command", "command": "neuralmind _hook prompt-submit"}]}
+    local.write_text(json.dumps({"hooks": {"UserPromptSubmit": [block]}}))
+    assert wiring.claude_code_hook_scopes(tmp_path) == ["project local"]
+
+
+def test_cursor_registered_user_wide(home, tmp_path):
+    (home / ".cursor").mkdir()
+    entry = {"mcpServers": {"neuralmind": {"command": "neuralmind-mcp"}}}
+    (home / ".cursor" / "mcp.json").write_text(json.dumps(entry))
+    cursor = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (cursor)"]
+    assert cursor.wired is True and "~/.cursor/mcp.json" in cursor.detail

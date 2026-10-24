@@ -1206,7 +1206,9 @@ def test_cli_install_with_mcp_registers_the_server_too(tmp_path, capsys, monkeyp
     monkeypatch.setattr(sys, "argv", argv)
     main()
     out = capsys.readouterr().out
-    assert "neuralmind install-mcp --client hermes" in out  # offered, not done
+    # Offered, not done, and for the same Hermes home: plain install-mcp would
+    # write the default one.
+    assert f"neuralmind install-hermes-plugin --hermes-home {home} --mcp" in out
     assert "mcp_servers" not in (home / "config.yaml").read_text(encoding="utf-8")
 
     monkeypatch.setattr(sys, "argv", [*argv, "--mcp"])

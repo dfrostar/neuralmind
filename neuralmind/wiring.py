@@ -26,6 +26,7 @@ import re
 import shlex
 import shutil
 import subprocess  # nosec B404 - runs git, by absolute path, with a fixed argument list
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +41,10 @@ _BLOCK_END = "# neuralmind-hook-end"
 _REBUILD_TARGET = re.compile(r"\[ -f (.+?)/\.neuralmind/build_status\.json \]")
 _DRIFT_TARGET = re.compile(r'"\$_nm_bin" drift (.+?) --staged')
 _PLUGIN_VERSION = re.compile(r'^version:\s*["\']?([^"\'\s#]+)', re.MULTILINE)
+# A Hermes config key `hermes config set` can address as one dotted segment.
+_PLAIN_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
+# Whether pasted commands are for cmd.exe / PowerShell (tests flip it).
+_WINDOWS = os.name == "nt"
 
 
 @dataclass
@@ -52,7 +57,8 @@ class WiringItem:
     ``outdated`` marks a piece that is wired but runs old code (a daemon or
     plugin copy from before an upgrade): it still works, and ``fix`` updates
     it. ``suggest`` is False for a fix that undoes a deliberate choice
-    (another project's pin), which ``build`` doesn't offer unasked.
+    (another project's pin, another project's Git hooks) or can't apply as
+    printed, which ``build`` doesn't offer unasked.
     """
 
     name: str
@@ -68,9 +74,19 @@ class WiringItem:
         return self.wired is False or self.outdated
 
 
+def shell_arg(value: str) -> str:
+    """``value`` quoted for pasting into this platform's shell.
+
+    POSIX shells take single quotes; cmd.exe and PowerShell would pass them on
+    literally, so Windows gets the double quotes ``list2cmdline`` adds when
+    they're needed (a path with a backslash and no space needs none).
+    """
+    return subprocess.list2cmdline([value]) if _WINDOWS else shlex.quote(value)
+
+
 def _arg(project: Path, project_arg: str | None) -> str:
     """The project as a command argument: what the user typed, else the path."""
-    return shlex.quote(project_arg if project_arg else str(project))
+    return shell_arg(project_arg if project_arg else str(project))
 
 
 # --------------------------------------------------------------------------- #
@@ -93,6 +109,13 @@ def daemon_item(timeout: float = 1.0) -> WiringItem:
     cold = "not running: CLI queries load the index from cold on every call"
     if not info:
         return WiringItem(name, False, cold, fix=start)
+    if not isinstance(info, dict):
+        # `daemon start` reads this file too and can't use it: say so.
+        return WiringItem(
+            name,
+            False,
+            f"{cold}; its discovery file isn't one the daemon wrote: delete it, then: {start}",
+        )
     host = info.get("host", "127.0.0.1")
     port = info.get("port", DEFAULT_PORT)
     pid = info.get("pid")
@@ -228,6 +251,9 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
             f"; serving another project in this repository: {', '.join(elsewhere)} "
             "(init-hook here takes them over)"
         )
+    # Taking over another project's hooks is a choice for doctor's reader,
+    # not a step `build` offers.
+    suggest = not elsewhere
     if not present:
         return WiringItem(
             name,
@@ -235,13 +261,18 @@ def git_hooks_item(project: Path, project_arg: str | None = None) -> WiringItem:
             "none: the index goes stale after commits, pulls and branch switches until "
             f"the next manual build{note}",
             fix=fix,
+            suggest=suggest,
         )
     if missing == ["pre-commit"] and not elsewhere and not skipped:
         what = "the pre-commit drift guard is missing (an install with --no-drift)"
     else:
         what = f"missing {', '.join(missing)}"
     return WiringItem(
-        name, False, f"partial: {', '.join(present)} installed; {what}{note}", fix=fix
+        name,
+        False,
+        f"partial: {', '.join(present)} installed; {what}{note}",
+        fix=fix,
+        suggest=suggest,
     )
 
 
@@ -258,15 +289,18 @@ def _read_json(path: Path) -> object | None:
 
 
 def claude_code_hook_scopes(project: Path) -> list[str]:
-    """The settings scopes (``project``, ``global``) holding NeuralMind's hooks.
+    """The settings scopes (``project``, ``project local``, ``global``) holding NeuralMind's hooks.
 
     Raises if :mod:`neuralmind.hooks` can't be imported, so doctor can say it
     couldn't check rather than "not installed".
     """
     from .hooks import _is_neuralmind_block, _settings_path
 
+    project_settings = _settings_path("project", str(project))
     scopes = (
-        ("project", _settings_path("project", str(project))),
+        ("project", project_settings),
+        # Claude Code also reads hooks someone moved to the uncommitted file.
+        ("project local", project_settings.with_name("settings.local.json")),
         ("global", _settings_path("global")),
     )
     installed = []
@@ -376,7 +410,7 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
                 False,
                 f"enabled in {where}, but pinned to {pinned}: every Hermes session there is "
                 "served and recorded as that project (to pin this one instead: "
-                f"{reinstall} {shlex.quote(str(project))})",
+                f"{reinstall} {shell_arg(str(project))})",
                 fix=f"{reinstall} --unpin",
                 host=True,
                 suggest=False,
@@ -389,22 +423,29 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
         problems.append(f"the interpreter it records, {python}, no longer exists")
     try:
         found = _PLUGIN_VERSION.search((target / "plugin.yaml").read_text(encoding="utf-8"))
-    except OSError:
+    except (OSError, ValueError):
         found = None
     plugin_version = found.group(1) if found else None
     if plugin_version and plugin_version != __version__:
         problems.append(f"its code is from v{plugin_version}, NeuralMind is v{__version__}")
     if problems:
         managed = managed_by_hermes(home)
+        detail = f"enabled in {where}, {serves}; but {'; '.join(problems)}"
+        if managed is None:
+            # install-hermes-plugin leaves the code alone while Hermes's install
+            # records can't be read, so re-running it wouldn't update anything.
+            records = home / "plugins" / ".install-metadata.json"
+            return WiringItem(
+                name,
+                True,
+                f"{detail}. {records} can't be read, so a re-install leaves the code "
+                f"alone: fix or delete it, then: {reinstall}",
+                host=True,
+                outdated=True,
+                suggest=False,
+            )
         fix = f"hermes plugins update {PLUGIN_NAME}" if managed else reinstall
-        return WiringItem(
-            name,
-            True,
-            f"enabled in {where}, {serves}; but {'; '.join(problems)}",
-            fix,
-            host=True,
-            outdated=True,
-        )
+        return WiringItem(name, True, detail, fix, host=True, outdated=True)
     return WiringItem(name, True, f"enabled in {where}, {serves}", host=True)
 
 
@@ -431,6 +472,17 @@ def _claude_json_scopes(project: Path) -> list[str]:
     return scopes
 
 
+def _cursor_global_scope() -> list[str]:
+    """Cursor's user-wide ``~/.cursor/mcp.json``, beside the project file install writes."""
+    from .mcp_install import _home, _launches_neuralmind
+
+    data = _read_json(_home() / ".cursor" / "mcp.json")
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    return (
+        ["user scope, ~/.cursor/mcp.json"] if _servers_launch(servers, _launches_neuralmind) else []
+    )
+
+
 def _servers_launch(servers, launches) -> bool:
     return isinstance(servers, dict) and any(
         isinstance(entry, dict) and launches(entry) for entry in servers.values()
@@ -448,9 +500,13 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
         label = f"MCP registration ({client})"
         try:
             state = mcp_install.registration(client, project)
-            extra = _claude_json_scopes(project) if client == "claude-code" else []
+            scopes = {
+                "claude-code": lambda: _claude_json_scopes(project),
+                "cursor": _cursor_global_scope,
+            }
+            extra = scopes[client]() if client in scopes else []
         except Exception as exc:  # pragma: no cover - diagnostic must never raise
-            items.append(WiringItem(label, None, f"could not check ({exc})"))
+            items.append(WiringItem(label, None, f"could not check ({exc})", host=True))
             continue
         install = f"neuralmind install-mcp --client {client}"
         if client in ("claude-code", "cursor") and project_arg not in (None, "."):
@@ -460,14 +516,18 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
         if state.registered or extra:
             if state.disabled:
                 # Someone turned it off in Hermes: doctor says how to turn it
-                # back on, build doesn't offer to.
+                # back on, build doesn't offer to. `hermes config set` splits
+                # its key on dots, so only a plain key gets the command.
+                entry = f"mcp_servers.{state.name}"
+                plain = bool(_PLAIN_KEY.match(state.name))
                 items.append(
                     WiringItem(
                         label,
                         False,
-                        f"mcp_servers.{state.name} in {state.path} starts neuralmind-mcp, but "
-                        "is disabled there (enabled: false)",
-                        fix=f"hermes config set mcp_servers.{state.name}.enabled true",
+                        f"{entry} in {state.path} starts neuralmind-mcp, but is disabled "
+                        "there (enabled: false)"
+                        + ("" if plain else "; set enabled: true on that entry in the file"),
+                        fix=f"hermes config set {entry}.enabled true" if plain else "",
                         host=True,
                         suggest=False,
                     )
@@ -481,6 +541,20 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
                     None,
                     f"can't tell: {state.path} {state.unreadable}",
                     host=True,
+                )
+            )
+        elif state.detected and client == "hermes" and state.path.is_symlink():
+            # install-mcp won't write through a symlink (a declaratively managed
+            # config): the entry goes in its source, by hand.
+            items.append(
+                WiringItem(
+                    label,
+                    False,
+                    f"{state.path} is a symlink (a managed config?) without NeuralMind's "
+                    "entry; install-mcp won't write through it: add the entry where it's managed",
+                    fix="neuralmind install-mcp --client hermes --print",
+                    host=True,
+                    suggest=False,
                 )
             )
         elif state.detected:
@@ -518,21 +592,46 @@ PARTIAL = "partial"
 WIRED = "wired"
 
 
+def _checked(
+    name: str, probe: Callable[[], WiringItem | list[WiringItem]], host: bool = False
+) -> list[WiringItem]:
+    """``probe()``'s items, or one "could not check" item if it raises.
+
+    A malformed file one probe reads (a daemon discovery file that isn't an
+    object, an unreadable Hermes home) leaves the other lines standing.
+    """
+    try:
+        result = probe()
+    except Exception as exc:
+        return [WiringItem(name, None, f"could not check ({type(exc).__name__}: {exc})", host=host)]
+    return result if isinstance(result, list) else [result]
+
+
+def _probes(project: Path, project_arg: str | None) -> tuple[list[WiringItem], ...]:
+    """``(daemon, Git hooks, Hermes plugin, MCP)`` items, each probe guarded."""
+    return (
+        _checked("Daemon", daemon_item),
+        _checked("Git hooks", lambda: git_hooks_item(project, project_arg)),
+        _checked("Hermes plugin", lambda: hermes_plugin_item(project), host=True),
+        _checked("MCP registration", lambda: mcp_items(project, project_arg), host=True),
+    )
+
+
 def collect(project: Path, project_arg: str | None = None) -> list[WiringItem]:
     """Every wiring item for ``project``, in doctor's order."""
-    project = project.resolve()
-    return [
-        daemon_item(),
-        git_hooks_item(project, project_arg),
-        hermes_plugin_item(project),
-        *mcp_items(project, project_arg),
-    ]
+    return [item for items in _probes(project.resolve(), project_arg) for item in items]
 
 
 def state(items: list[WiringItem], claude_code_hooks: bool) -> str:
     """``inert`` when no agent host calls NeuralMind, ``wired`` when every item
-    that applies is wired, else ``partial``."""
+    that applies is wired, else ``partial``.
+
+    A host doctor couldn't read (a client config with comments, a probe that
+    failed) may be wired, so it keeps the verdict at ``partial``, not ``inert``.
+    """
     if not claude_code_hooks and not any(i.wired for i in items if i.host):
+        if any(i.host and i.wired is None for i in items):
+            return PARTIAL
         return INERT
     if not any(i.needs_fix for i in items):
         return WIRED
@@ -547,10 +646,7 @@ def next_steps(project: Path, project_arg: str | None = None, limit: int = 2) ->
     hooks or MCP when no agent host is wired at all.
     """
     project = project.resolve()
-    daemon = daemon_item()
-    hooks = git_hooks_item(project, project_arg)
-    hermes = hermes_plugin_item(project)
-    mcp = mcp_items(project, project_arg)
+    (daemon,), (hooks,), (hermes,), mcp = _probes(project, project_arg)
     offered = [i for i in (daemon, hooks, hermes, *mcp) if i.needs_fix and i.suggest and i.fix]
     fresh = [i.fix for i in offered if i in (daemon, hooks)]
     agent: list[str] = []

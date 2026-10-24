@@ -98,8 +98,17 @@ class InstallTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             proj = Path(d) / "proj"
             proj.mkdir()
-            old_home = os.environ.get("HOME")
-            os.environ["HOME"] = str(Path(d) / "home")
+            home = Path(d) / "home"
+            # Every place a client's config can live, so the machine's own
+            # Hermes (HERMES_HOME, %LOCALAPPDATA%) or apps (%APPDATA%) stay out.
+            fake = {
+                "HOME": str(home),
+                "HERMES_HOME": str(home / ".hermes"),
+                "APPDATA": str(home / "AppData" / "Roaming"),
+                "LOCALAPPDATA": str(home / "AppData" / "Local"),
+            }
+            saved = {key: os.environ.get(key) for key in fake}
+            os.environ.update(fake)
             try:
                 # Nothing present yet.
                 self.assertEqual(mcp_install.detect_clients(proj), [])
@@ -107,10 +116,11 @@ class InstallTests(unittest.TestCase):
                 mcp_install.install("claude-code", proj)
                 self.assertIn("claude-code", mcp_install.detect_clients(proj))
             finally:
-                if old_home is not None:
-                    os.environ["HOME"] = old_home
-                else:
-                    os.environ.pop("HOME", None)
+                for key, value in saved.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
 
 
 class UnparsableConfigTests(unittest.TestCase):
@@ -309,6 +319,25 @@ class HermesTests(unittest.TestCase):
                 self.assertEqual(result.action, action)
                 self.assertIn("mcp_servers:\n  neuralmind:", result.detail)
                 self.assertEqual(self.config.read_text(encoding="utf-8"), text)
+
+    def test_registered_under_another_key_is_already_present(self) -> None:
+        # A second entry would start a second server, every tool twice.
+        text = "mcp_servers:\n  nm:\n    command: /venv/bin/neuralmind-mcp\n"
+        result = self._install(text)
+        self.assertEqual(result.action, "already-present")
+        self.assertIn("mcp_servers.nm", result.detail)
+        self.assertEqual(self.config.read_text(encoding="utf-8"), text)
+
+    def test_a_scalar_yaml_cant_parse_is_invalid_yaml_not_a_crash(self) -> None:
+        # PyYAML raises ValueError, not YAMLError, for an impossible date.
+        text = "model: x\nsince: 2001-13-45\n"
+        result = self._install(text)
+        self.assertEqual(result.action, "skipped-invalid-yaml")
+        self.assertEqual(self.config.read_text(encoding="utf-8"), text)
+
+    def test_the_write_leaves_no_temporary_file(self) -> None:
+        self._install("model: x\n")
+        self.assertEqual(sorted(p.name for p in self.home.iterdir()), ["config.yaml"])
 
     def test_never_creates_a_config(self) -> None:
         # config.yaml marks a set-up Hermes home; writing one would skip
