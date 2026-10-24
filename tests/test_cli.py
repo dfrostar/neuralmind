@@ -2094,6 +2094,64 @@ class TestCLIDemoOffline:
             assert max(abs(a - b) for a, b in zip(got, want, strict=True)) < 1e-4
 
 
+class TestCLIDemoWithoutTurbovec:
+    """`neuralmind demo` where the install has no turbovec.
+
+    turbovec has no wheel for Intel macOS or Windows ARM, so pyproject.toml
+    installs ChromaDB there instead. The demo used to copy in the bundled
+    turbovec index and fail with a traceback: No module named 'turbovec'.
+    """
+
+    @staticmethod
+    def _only_installed(monkeypatch, *modules):
+        from neuralmind import backend_manager
+
+        monkeypatch.setattr(backend_manager, "_installed", lambda module: module in modules)
+
+    @staticmethod
+    def _args():
+        args = MagicMock()
+        args.keep = False
+        args.quiet = False
+        return args
+
+    def test_on_chromadb_it_builds_with_the_model_and_says_so(self, monkeypatch, capsys):
+        import neuralmind.core
+        from neuralmind.cli import cmd_demo
+
+        class OfflineChromaBuild:
+            def __init__(self, project_path):
+                pass
+
+            def build(self, force=False):
+                raise ConnectionError("no network in this test")
+
+        self._only_installed(monkeypatch, "chromadb")
+        monkeypatch.setattr(neuralmind.core, "NeuralMind", OfflineChromaBuild)
+        with pytest.raises(SystemExit) as exc:
+            cmd_demo(self._args())
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert "this install uses the ChromaDB backend" in captured.out
+        assert "nothing is downloaded" not in captured.out
+        assert (
+            "couldn't build the sample's index with ChromaDB "
+            "(ConnectionError: no network in this test)" in captured.err
+        )
+
+    def test_with_no_vector_backend_it_says_what_to_install(self, monkeypatch, capsys):
+        from neuralmind.cli import cmd_demo
+
+        self._only_installed(monkeypatch)
+        with pytest.raises(SystemExit) as exc:
+            cmd_demo(self._args())
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "demo failed: the turbovec backend needs turbovec" in err
+        assert "neuralmind[chromadb]" in err
+        assert "Traceback" not in err
+
+
 class TestCmdScanForSecrets:
     """The exit-code contract is a CI gate, so it needs CLI-level cover.
 

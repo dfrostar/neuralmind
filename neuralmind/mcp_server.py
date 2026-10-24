@@ -1310,6 +1310,57 @@ TOOLS = [
 # Decision memory tools (Memory Layer v1.0) from neuralmind.memory.mcp_tools.
 TOOLS = TOOLS + MEMORY_TOOLS
 
+# The tools tools/list offers by default. Claude Code defers MCP tools behind
+# tool search: the model sees bare names and must look a tool up before it can
+# call it. In the task-outcome pilot (bench/task_outcome/pilot, 2026-10-20) the
+# agent had all 28 names and called none in 60 runs, so the default list is the
+# few a coding agent needs, and SERVER_INSTRUCTIONS says when to use them.
+# Every tool in TOOLS stays callable by name; NEURALMIND_MCP_TOOLS=all lists
+# them all, or names the ones to list, comma-separated.
+CORE_TOOLS = (
+    "neuralmind_query",
+    "neuralmind_search",
+    "neuralmind_skeleton",
+    "neuralmind_impact",
+    "neuralmind_wakeup",
+    "neuralmind_query_decisions",
+)
+
+# Sent in the initialize reply. Claude Code shows a server's instructions to
+# the model even while the server's tools are deferred, so this is what tells
+# an agent NeuralMind is there and what it's for.
+SERVER_INSTRUCTIONS = (
+    "NeuralMind indexes this repository's code. Pass the repository root as "
+    "project_path.\n"
+    "- To find where something is implemented, or the code behind a bug from "
+    "its symptom, call neuralmind_search with the description in plain words "
+    "before searching with Grep or Glob. It ranks the matching functions and "
+    "classes with their files.\n"
+    "- To understand how a part of the codebase works, call neuralmind_query.\n"
+    "- neuralmind_skeleton shows a file's functions and call graph without "
+    "reading the whole file; neuralmind_impact lists what depends on a symbol "
+    "before you change it; neuralmind_query_decisions finds the recorded "
+    "reasons behind the code.\n"
+    "- A prompt may already start with a 'NeuralMind' block naming the likely "
+    "files. Start there."
+)
+
+
+def listed_tools() -> list[dict]:
+    """The tools ``tools/list`` offers: ``CORE_TOOLS`` unless NEURALMIND_MCP_TOOLS says otherwise.
+
+    ``all`` lists every tool; a comma-separated list of names lists those
+    (unknown names are ignored). Empty or ``core`` gives the default.
+    """
+    choice = os.environ.get("NEURALMIND_MCP_TOOLS", "").strip()
+    if choice.lower() == "all":
+        return list(TOOLS)
+    if choice and choice.lower() != "core":
+        wanted = {name.strip() for name in choice.split(",")}
+    else:
+        wanted = set(CORE_TOOLS)
+    return [tool for tool in TOOLS if tool["name"] in wanted]
+
 
 _JSON_SCHEMA_TYPES: dict[str, tuple[type, ...]] = {
     "string": (str,),
@@ -1564,7 +1615,7 @@ async def run_mcp_server():
         sys.exit(1)
 
     async def list_tools_v2(_ctx, _params):
-        return mcp_types.ListToolsResult(tools=[Tool(**t) for t in TOOLS])
+        return mcp_types.ListToolsResult(tools=[Tool(**t) for t in listed_tools()])
 
     async def call_tool_v2(ctx, params):
         arguments = params.arguments or {}
@@ -1577,6 +1628,12 @@ async def run_mcp_server():
     except (AttributeError, TypeError, ValueError):
         server_signature = None
 
+    # Both SDK lines take ``instructions`` (1.x since 1.2, 2.x); an SDK that
+    # doesn't still gets a working server, just without them.
+    extra: dict[str, Any] = {}
+    if server_signature is not None and "instructions" in server_signature.parameters:
+        extra["instructions"] = SERVER_INSTRUCTIONS
+
     if (
         server_signature is not None
         and "on_list_tools" in server_signature.parameters
@@ -1586,13 +1643,14 @@ async def run_mcp_server():
             "neuralmind",
             on_list_tools=list_tools_v2,
             on_call_tool=call_tool_v2,
+            **extra,
         )
     else:
-        server = Server("neuralmind")
+        server = Server("neuralmind", **extra)
 
         @server.list_tools()
         async def list_tools():
-            return [Tool(**t) for t in TOOLS]
+            return [Tool(**t) for t in listed_tools()]
 
         @server.call_tool()
         async def call_tool(name: str, arguments: dict):

@@ -13,7 +13,7 @@ export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 // There is no fallback date to go stale beside it: the date comes from the
 // tag's CHANGELOG.md heading, which release-please writes in the same release
 // PR (see releaseDateFromChangelog).
-const FALLBACK = { tag: 'v4.20.0' }; // x-release-please-version
+const FALLBACK = { tag: 'v4.21.0' }; // x-release-please-version
 
 // "## [4.18.1](…compare/v4.18.0...v4.18.1) (2026-10-19)" → "2026-10-19".
 // Returns '' when the heading isn't there (a build outside the repo, or a tag
@@ -59,7 +59,20 @@ export interface LatestRelease {
     htmlUrl: string; // GitHub release page (always exists)
     pypiUrl: string; // verified at build time — never a dead link
     sbomUrl: string | null; // direct SBOM download, or null if none exists yet
+    platformSboms: { label: string; url: string }[]; // per-platform SBOMs published for this tag
 }
+
+// The platforms sbom.yml installs on, in the order /security lists them. The
+// dependency set differs by platform (turbovec where it has a wheel, ChromaDB
+// elsewhere), so each gets its own SBOM: neuralmind-vX.Y.Z-<id>.sbom.json.
+const SBOM_PLATFORMS: [string, string][] = [
+    ['linux-x86_64', 'Linux x86_64'],
+    ['linux-aarch64', 'Linux ARM64'],
+    ['macos-arm64', 'macOS Apple Silicon'],
+    ['macos-x86_64', 'macOS Intel'],
+    ['windows-amd64', 'Windows x86_64'],
+    ['windows-arm64', 'Windows ARM64'],
+];
 
 function githubHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
@@ -88,6 +101,16 @@ async function verifiedPypiUrl(version: string): Promise<string> {
 // Prefer an SBOM asset on the release itself; otherwise use the copy that
 // sbom.yml commits into site/public/sbom/ (GitHub releases on this repo are
 // immutable, so assets can't be attached after release-please publishes).
+// The per-platform SBOMs sbom.yml committed for this tag. Releases before
+// per-platform SBOMs began have none, and a platform whose install failed in
+// that run is missing; only files that exist are listed.
+function platformSbomsFor(tag: string): { label: string; url: string }[] {
+    return SBOM_PLATFORMS.flatMap(([id, label]) => {
+        const served = `sbom/neuralmind-${tag}-${id}.sbom.json`;
+        return fs.existsSync(path.join(process.cwd(), 'public', served)) ? [{ label, url: `/${served}` }] : [];
+    });
+}
+
 function sbomUrlFor(
     tag: string,
     assets: { name?: string; browser_download_url?: string }[],
@@ -137,5 +160,6 @@ export async function getLatestRelease(): Promise<LatestRelease> {
         htmlUrl,
         pypiUrl: await verifiedPypiUrl(version),
         sbomUrl: sbomUrlFor(tag, assets),
+        platformSboms: platformSbomsFor(tag),
     };
 }

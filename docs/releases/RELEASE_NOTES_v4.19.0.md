@@ -200,6 +200,14 @@ Your own code still needs the model: the first `neuralmind build` downloads it
 once, as before. A new [`demo`](../wiki/CLI-Reference.md#demo) section in the
 CLI reference documents the command.
 
+> **Added note: offline only on Linux, Apple Silicon macOS and 64-bit Windows.**
+> The bundled index is a turbovec index, and turbovec, onnxruntime and
+> tokenizers are installed only on those platforms; Intel macOS and Windows ARM
+> get ChromaDB instead. There, v4.19.0's demo failed with `ModuleNotFoundError:
+> No module named 'turbovec'`. [v4.21.0](RELEASE_NOTES_v4.21.0.md) fixes it:
+> there the demo builds the sample with ChromaDB, downloading the embedding
+> model once, and exits 1 with a one-line message when it can't.
+
 ## What the agent actually sees
 
 Nothing changes for an agent. Forwarding runs after each audit record is

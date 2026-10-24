@@ -26,8 +26,10 @@
 | OS | Status | Notes |
 |----|--------|-------|
 | Linux | ✅ Full | CI-verified on every PR (Python 3.10–3.12) |
-| macOS | ✅ Full | CI-verified on every PR; x86 and Apple Silicon |
-| Windows | ✅ Full | CI-verified on every PR (`windows-latest`, Python 3.12) |
+| macOS, Apple Silicon | ✅ Full | CI-verified on every PR (`macos-latest`) |
+| macOS, Intel | ⚠️ Builds a dependency | Not in CI. Installing compiles `cryptography`, which has no Intel macOS wheel, so it needs a Rust toolchain. Uses ChromaDB, since turbovec has no wheel there ([v4.21.0 notes](releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs)) |
+| Windows x86_64 | ✅ Full | CI-verified on every PR (`windows-latest`, Python 3.12) |
+| Windows on ARM | ⚠️ Builds dependencies | Not in CI. Installing compiles `cryptography`, `chromadb` and `grpcio`, so it needs a Rust toolchain and Visual Studio's C++ build tools ([v4.21.0 notes](releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs)) |
 | Docker | ✅ Full | Included in releases; multi-platform (linux/amd64 + linux/arm64) |
 
 ---
@@ -49,7 +51,7 @@
 | Backend | `backend:` value | Status | Notes |
 |---------|------------------|--------|-------|
 | turbovec | `turbovec` (default; `auto` is an alias) | ✅ Default since v0.29.0 | ChromaDB-free, quantized vectors in local files. Installed with NeuralMind on Linux, macOS arm64 and Windows AMD64 |
-| ChromaDB | `chroma` or `graph` | ⚠️ Deprecated since v0.46.0 | Needs `pip install "neuralmind[chromadb]"`. Required on platforms without a turbovec wheel, such as Intel macOS: pip installs ChromaDB there but doesn't select it, so set `backend: chroma` |
+| ChromaDB | `chroma` or `graph` | ⚠️ Deprecated since v0.46.0 | Needs `pip install "neuralmind[chromadb]"`. On platforms without a turbovec wheel (Intel macOS, Windows ARM), pip installs ChromaDB instead and the default selects it *(v4.21.0+; from v0.46.0 to v4.20.0 you had to set `backend: chroma` there, or every command failed)* |
 | In-memory | `in_memory` | 🧪 Tests and offline use | The index lives in process memory and isn't saved |
 
 **Note:** Pick a backend with `backend:` in `neuralmind-backend.yaml`; there is no command-line flag or environment variable for it. Every backend keeps its index on the local machine. There is no server or database backend, and PostgreSQL/pgvector and LanceDB aren't supported. `neuralmind doctor` shows the resolved backend.
