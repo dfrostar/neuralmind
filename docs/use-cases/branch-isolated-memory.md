@@ -27,10 +27,10 @@ identical to pre-namespace behavior — nothing about your current setup changes
 until you branch.
 
 `structural` is the call graph, not memory: the call and import edges of the
-code checked out, which every build replaces (v4.21.1+). A call you add on
+code checked out, which every build replaces (v4.22.0+). A call you add on
 `feature-x` is in it while you build there and gone after the next build on
 `main` (the `post-checkout` hook from `neuralmind init-hook .` runs that build).
-Before v4.21.1 these edges were seeded into `shared`, so a branch's calls stayed
+Before v4.22.0 these edges were seeded into `shared`, so a branch's calls stayed
 in `main`'s recall until they decayed.
 
 Don't take the weighting on faith — trace it:

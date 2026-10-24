@@ -63,7 +63,7 @@ class TeamMemoryTests(unittest.TestCase):
         self.assertIn("provenance", bundle)
 
     def test_publish_leaves_out_the_call_graph(self) -> None:
-        # Call-graph seeds live in 'structural' (v4.21.1): each teammate's own
+        # Call-graph seeds live in 'structural' (v4.22.0): each teammate's own
         # build writes them, so the committed bundle carries only what was
         # learned from use.
         store = _store(self.project)

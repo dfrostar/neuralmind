@@ -114,7 +114,7 @@ import/export and new kinds stay trivial — there is no enum table.
 | `shared` | Imported team baseline — `seed_from_*`, bundles, `neuralmind memory import`. | 60 days |
 | `branch:<name>` | Per-git-branch working memory. | 30 days (active namespace weighting) |
 | `ephemeral` | Session-scoped scratch; decays fast, cleared at session boundaries. | 1 day |
-| `structural` | The checked-out code's call and import edges (v4.21.1+). Every build replaces it; never written by use, never published. | None (rebuilt) |
+| `structural` | The checked-out code's call and import edges (v4.22.0+). Every build replaces it; never written by use, never published. | None (rebuilt) |
 
 **Merged-read weighting.** Reads default to a *merged* view across the active
 namespace, `personal`, `shared` and `structural`, each scaled by a constant:
@@ -203,7 +203,7 @@ weight = clamp(BASE + LOG_SCALE · ln(call_count + 1), MAX)   # 0.25 → 0.70
 
 Hot call paths grow toward the cap; single-observation edges stay near the
 floor. Seeded edges land in the **`structural`** namespace, which each build
-replaces with the graph of the code checked out (v4.21.1+): a call that exists
+replaces with the graph of the code checked out (v4.22.0+): a call that exists
 only on a feature branch is gone after the next build on another branch, and a
 call deleted from the code is gone after the next build. Seeds keep
 `activation_count = 1`, so they are never LTP-protected, and they don't decay.

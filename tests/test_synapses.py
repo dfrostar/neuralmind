@@ -695,7 +695,7 @@ def test_seed_from_structural_uses_structural_namespace(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# Call-graph seeds follow the checkout (v4.21.1). They were upserted into
+# Call-graph seeds follow the checkout (v4.22.0). They were upserted into
 # 'shared', which every branch reads and nothing cleared, so a call that
 # existed only on a feature branch stayed in the default branch's recall
 # until it decayed (60-day half-life).

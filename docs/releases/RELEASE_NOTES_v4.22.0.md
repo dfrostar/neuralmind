@@ -1,6 +1,6 @@
-# NeuralMind v4.21.1 — a feature branch's calls stay on the branch
+# NeuralMind v4.22.0 — a feature branch's calls stay on the branch
 
-**Type:** Patch release | **Theme:** the call graph each build seeds follows the checkout, so a branch's calls no longer reach the default branch's recall
+**Type:** Minor release | **Theme:** the call graph each build seeds follows the checkout, so a branch's calls no longer reach the default branch's recall
 
 Every build seeds the call and import edges it finds into the synapse layer,
 so recall can follow the code's structure from the first query. Those seeds

@@ -199,8 +199,8 @@
     </section>
 
     <section>
-        <div class="container" id="whats-new-v4211">
-            <h2>What&rsquo;s New in v4.21.1 &mdash; a feature branch&rsquo;s calls stay on the branch</h2>
+        <div class="container" id="whats-new-v4220">
+            <h2>What&rsquo;s New in v4.22.0 &mdash; a feature branch&rsquo;s calls stay on the branch</h2>
             <p>Every build seeds the call and import edges it finds into the synapse layer. They went into the <code>shared</code> baseline every branch reads, and nothing cleared them, so a call added on a feature branch was still recalled on <code>main</code> until it decayed.</p>
             <ul>
                 <li><strong>A <code>structural</code> namespace each build replaces</strong> &mdash; it holds the call graph of the code checked out, so after the next build on <code>main</code> a branch&rsquo;s calls are gone from recall</li>
@@ -208,7 +208,7 @@
                 <li><strong>Not published, not decayed</strong> &mdash; the team bundle carries learned memory only, and each build replaces the call graph</li>
                 <li><strong>Still open</strong> &mdash; <code>SYNAPSE_MEMORY.md</code>, written for Claude Code at session start, lists associations from every namespace, other branches&rsquo; included</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.1.md">v4.21.1 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.22.0.md">v4.22.0 release notes</a></p>
         </div>
     </section>
 
