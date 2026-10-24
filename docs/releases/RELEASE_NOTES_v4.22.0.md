@@ -29,12 +29,16 @@ NeuralMind for the project:
 | **Daemon** | running on `host:port` (pid, version) · not running · alive but not answering · running an older version than the one installed · off under `NEURALMIND_NO_DAEMON=1` |
 | **Git hooks** | full / partial / none, for `init-hook`'s four rebuild hooks and the pre-commit drift guard. A hook without its executable bit doesn't count (git skips it), nor does a block serving another project in the same repository, nor any of them while `core.hooksPath` points git at another directory |
 | **Hermes plugin** | not installed · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` · enabled, pinned to this project or following `TERMINAL_CWD` · pinned to another project · plugin code older than the installed NeuralMind |
-| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json` and `claude mcp add`'s scopes in `~/.claude.json`, Cursor, Cline, Claude Desktop, VS Code, Hermes) or looks installed without it; one line when no known client has it |
+| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json` and `claude mcp add`'s scopes in `~/.claude.json`, Cursor's project or user-wide `mcp.json`, Cline, Claude Desktop, VS Code, Hermes) or looks installed without it; *can't tell* for a config doctor can't parse; one line when no known client has it |
 
 Every line is `ok` or `warn`, never `fail`, and a warning carries the command
-that fixes it. When no agent host is wired (no Claude Code hooks, no enabled
-Hermes plugin, no MCP registration), the closing line reads **"Installed but
-not wired"** instead of "Up and running".
+that fixes it, unless no single command can (a symlinked Hermes config, say,
+where the line says what to do instead). When no agent host is wired (no
+Claude Code hooks, no enabled Hermes plugin, no MCP registration), the closing
+line reads **"Installed but not wired"** instead of "Up and running". A host
+doctor couldn't read keeps it from saying so: the verdict is then `partial`.
+Each probe is guarded on its own, so a malformed file one of them reads costs
+that line, not the section.
 
 The exit code is unchanged: `0` with warnings, `1` only when a core check
 fails. `--json` adds a `wiring` object beside the `checks` list, which is
@@ -71,8 +75,9 @@ atomically and with its mode kept (Hermes keeps it `0600`). Otherwise it isn't
 touched, and the command prints the entry to paste: no `config.yaml` yet
 (writing one would make Hermes skip its first-run setup), a symlinked config,
 flow-style `mcp_servers: {...}`, a `neuralmind` entry that starts something
-else, or invalid YAML. An entry with `enabled: false` is reported, not
-switched back on.
+else, or invalid YAML. NeuralMind already registered under another key counts
+as present, so Hermes doesn't start a second server, and an entry with
+`enabled: false` is reported, not switched back on.
 
 `neuralmind install-hermes-plugin --mcp` does the same for the home it
 installs into: one implementation, two ways to reach it. The plugin alone
@@ -101,9 +106,10 @@ with Hermes set up on the machine, the plugin and its MCP entry. Without
 Hermes, and with no agent host wired, it's `neuralmind install-hooks <project>`
 when Claude Code is set up, `neuralmind install-mcp <project> --all` when
 another MCP client looks installed, else `neuralmind install-mcp --print`.
-Commands that take a project name the one just built. A pin to another
-project, a disabled MCP entry and a `core.hooksPath` setup are never offered
-for changing. With room left, the `watch --reindex` hint follows; once
+Commands that take a project name the one just built, quoted for the
+platform's shell. A pin to another project, Git hooks serving another project
+in the same repository, a disabled MCP entry and a `core.hooksPath` setup are
+never offered for changing. With room left, the `watch --reindex` hint follows; once
 everything is wired it's the only line. `NEURALMIND_NO_INIT_HINT` still turns
 them off.
 
