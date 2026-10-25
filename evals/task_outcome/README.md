@@ -53,8 +53,9 @@ gives the agent; the `neuralmind` profile is the pilot's, unchanged. For
 - **`--index-cache <dir>`:** builds each task's index once and restores a copy
   into every neuralmind-arm workspace, so each run still starts from a fresh,
   unused index. An entry is reused only for the same base commit and the same
-  NeuralMind version; anything else is rebuilt. On a large repository it saves the build per run: hermes-agent
-  (about a million lines) takes 22 minutes to index.
+  NeuralMind version; anything else is rebuilt. On a large repository it saves
+  the build per run: hermes-agent (about a million lines) takes 22 minutes to
+  index.
 - **Hermes-Agent:** its `hermes-agent` profile gives every test run and agent
   run a `HERMES_HOME` inside its workspace. Hermes's code re-publishes its
   launchers for the active `HERMES_HOME`, so also pass
