@@ -681,7 +681,9 @@ def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     mind = get_mind(project_path, auto_build=False)
     if mind.synapses is None:
         return {"enabled": False, "written": []}
-    paths = export_synapse_memory(project_path, embedder=mind.embedder)
+    paths = export_synapse_memory(
+        project_path, embedder=mind.embedder, namespace=mind.memory_namespace
+    )
     return {"enabled": True, "written": [str(p) for p in paths]}
 
 

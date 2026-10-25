@@ -727,8 +727,9 @@ batch to `reinforce()`. Started by the `neuralmind watch` CLI.
 ### Memory export
 
 `neuralmind/synapse_memory.py` renders the learned graph as markdown:
-strongest pairs (LTP-tagged), top hubs, summary stats. Writes to two
-locations:
+strongest pairs (LTP-tagged), top hubs, summary stats, over the namespaces
+recall reads on the checkout (v4.22.0+), so a feature branch's memory stays
+out of the file on `main`. Writes to two locations:
 
 - `<project>/.neuralmind/SYNAPSE_MEMORY.md` (always)
 - `~/.claude/projects/<slug>/memory/synapse-activations.md` (when Claude Code's auto-memory directory exists)

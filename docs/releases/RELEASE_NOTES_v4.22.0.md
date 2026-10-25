@@ -1,6 +1,6 @@
-# NeuralMind v4.22.0 — doctor says whether anything calls NeuralMind, `install-mcp --client hermes`, a build that ends with the commands that wire it in, and a feature branch's calls stay on the branch
+# NeuralMind v4.22.0 — doctor says whether anything calls NeuralMind, `install-mcp --client hermes`, a build that ends with the commands that wire it in, and a feature branch's calls and memory stay on the branch
 
-**Type:** Minor release | **Theme:** an installed index that no agent queries is visible, and each missing piece is one command away; and the call graph each build seeds follows the checkout, so a branch's calls no longer reach the default branch's recall
+**Type:** Minor release | **Theme:** an installed index that no agent queries is visible, and each missing piece is one command away; and the call graph each build seeds, and the memory file Claude Code loads, follow the checkout, so a feature branch no longer reaches the default branch's recall or the agent's memory file
 
 A Hermes Agent deployment sat installed but unused for 11 days, with 2 logged
 queries. The daemon wasn't running, no Git hooks were installed, and the
@@ -13,8 +13,9 @@ Four commands fixed it (`uv tool upgrade neuralmind`,
 
 That part changes no hook, MCP tool or prompt block: what changes is whether
 the pieces that put context in front of the agent are connected, and whether
-you can tell. The one change to what recall returns is
-[a feature branch's calls stay on the branch](#also-in-v4220-a-feature-branchs-calls-stay-on-the-branch),
+you can tell. The one change to what recall returns, and to the memory file
+Claude Code loads, is
+[a feature branch's calls and memory stay on the branch](#also-in-v4220-a-feature-branchs-calls-and-memory-stay-on-the-branch),
 below.
 
 ---
@@ -125,7 +126,7 @@ enabled, and `hermes mcp test neuralmind` connected over stdio in 2.2 s and
 discovered the six default tools. Doctor's Hermes MCP line then read `ok`.
 That is one machine; the YAML cases it didn't meet are covered by tests.
 
-### Also in v4.22.0: a feature branch's calls stay on the branch
+### Also in v4.22.0: a feature branch's calls and memory stay on the branch
 
 Every build seeds the call and import edges it finds into the synapse layer,
 so recall can follow the code's structure from the first query. Those seeds
@@ -135,8 +136,11 @@ and after you switched back to `main` it was still recalled, at half weight,
 until it decayed on the shared 60-day half-life. The same went for a call
 deleted from the code.
 
-Associations learned from use were never affected: they go into the branch's
-own `branch:<name>` namespace, as they have since v0.24.0.
+Recall of associations learned from use was never affected: they go into the
+branch's own `branch:<name>` namespace, as they have since v0.24.0. But
+`SYNAPSE_MEMORY.md`, the memory file Claude Code loads at session start,
+listed the strongest associations from every namespace, so on `main` the agent
+saw what it had learned on every other branch.
 
 #### Call-graph seeds live in a `structural` namespace each build replaces
 
@@ -168,11 +172,25 @@ on the 60-day shared half-life. Until then, a call still in the code is
 counted in both `shared` and `structural`, and a branch-only call already in
 `shared` is still recalled.
 
-#### Still open
+#### The memory file follows the checkout too
 
-The `SYNAPSE_MEMORY.md` file written for Claude Code at session start lists
-the strongest associations from every namespace, other branches' included.
-Recall doesn't read them; the agent does see the file.
+`SYNAPSE_MEMORY.md` (and its copy in Claude Code's auto-memory directory) now
+holds only what recall reads on the checkout: the active namespace (the
+branch's own on a feature branch), `personal`, `shared` and `structural`.
+
+- **Another branch's memory isn't in it**: not its pairs, its hub nodes or its
+  "what typically comes next" transitions, and not a stale `ephemeral`
+  session's either.
+- **The header counts the same namespaces and names them**, in a new
+  `- Namespaces:` line, so the edge, node and transition counts describe the
+  file instead of the whole store.
+- **Hub nodes count a pair once.** A pair held in two namespaces (learned
+  from use and also a call) was two connections; it is one, as recall's own
+  degree count has it. The list now shows up to eight hubs, the export's
+  `top_hubs` default; `stats()` had capped it at five.
+- The hooks write the file at session start, so it shows the branch checked
+  out then; the MCP `neuralmind_export_synapse_memory` tool writes the view of
+  the branch the server sees.
 
 ### Also in v4.22.0: an SBOM for each platform it installs on
 
@@ -209,6 +227,11 @@ Windows x86_64 SBOM). The Linux x86_64 SBOM keeps the unsuffixed name, and
 - `tests/test_synapse_namespaces.py`: a `structural` override falls through
   to branch detection.
 - `tests/test_team_memory.py`: a published bundle carries no call-graph seeds.
+- `tests/test_synapse_memory.py`: on `main` the memory file leaves out what
+  was learned on `feature-x` (pairs, hubs and transitions), and its header
+  counts only what it covers; on `feature-x` it includes that branch and
+  `personal` but not another branch; the export writes the view of the
+  namespace it is given; a pair in two namespaces is one hub connection.
 
 ---
 
@@ -224,12 +247,13 @@ likely it is that the agent gets anything at all:
 | **Cursor / Cline / Claude Desktop / VS Code** | `install-mcp` | Unchanged; doctor shows each one registered, or installed without the entry |
 | **Generic MCP client** | `install-mcp --print` | Unchanged; doctor's MCP line says when no known client has the entry, which is expected for a client registered by hand |
 
-The call-graph fix changes what recall returns on the default branch:
+The call-graph and memory-file fixes change what recall returns, and what
+the memory file lists, on the default branch:
 
 | Agent | Before (to v4.21.0) | After |
 |---|---|---|
-| Claude Code (hooks + MCP) | Prompt-time recall on `main` could name a file linked only by a call that exists on a feature branch, until it decayed | Recall follows the call graph of the code checked out |
-| Cursor / Cline / generic MCP | The same, in `neuralmind_query` and search results | The same fix |
+| Claude Code (hooks + MCP) | Prompt-time recall on `main` could name a file linked only by a call that exists on a feature branch, until it decayed; `SYNAPSE_MEMORY.md` listed associations learned on every branch | Recall follows the call graph of the code checked out, and `SYNAPSE_MEMORY.md` holds only what recall reads on it |
+| Cursor / Cline / generic MCP | The same, in `neuralmind_query` and search results, and in the file `neuralmind_export_synapse_memory` writes | The same fix |
 | Hermes-Agent plugin | The same, in the per-turn block | The same fix |
 
 ## Upgrading
@@ -243,8 +267,8 @@ The call-graph fix changes what recall returns on the default branch:
   The top-level `status` can now be `warn` where it was `ok`, from wiring
   warnings; the exit code doesn't change.
 - **Build once** (`neuralmind build .`, or let the Git hooks run it) to fill
-  the `structural` namespace that holds the call graph. Nothing else to
-  change.
+  the `structural` namespace that holds the call graph. The memory file is
+  rewritten at the next session start. Nothing else to change.
 
 ## Use cases
 
@@ -255,7 +279,8 @@ The call-graph fix changes what recall returns on the default branch:
   verifying, upgrading and the switches.
 - **Existing: [branch-isolated memory](../use-cases/branch-isolated-memory.md).**
   The call graph each build seeds now stays with the checkout too, so a
-  feature branch's calls are gone from `main`'s recall after the next build.
+  feature branch's calls are gone from `main`'s recall after the next build,
+  and the memory file Claude Code loads lists only what recall reads there.
 - **New: a wiring check for any setup.** `neuralmind doctor --json` and its
   `wiring.state` tell a provisioning script or a CI job whether a machine's
   agents are connected to the index, not only whether the index is healthy.
