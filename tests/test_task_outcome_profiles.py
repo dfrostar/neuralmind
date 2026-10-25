@@ -8,7 +8,6 @@ text. Stdlib-only.
 from __future__ import annotations
 
 import os
-import stat
 import subprocess
 from pathlib import Path
 
@@ -89,22 +88,28 @@ def test_use_repo_points_git_at_another_clone(tmp_path) -> None:
         harness.use_repo(original)
 
 
-def _fake_neuralmind(tmp_path: Path) -> tuple[str, Path]:
-    """A `neuralmind` that counts its builds and writes a marker index."""
+def _fake_neuralmind(tmp_path: Path, monkeypatch) -> tuple[str, Path]:
+    """`neuralmind build` replaced in-process: counts builds, writes a marker index.
+
+    Patched rather than a stand-in executable, which Windows can't run.
+    """
     counter = tmp_path / "builds"
     counter.write_text("0")
-    script = tmp_path / "neuralmind"
-    script.write_text(
-        "#!/bin/sh\n"
-        f'n=$(cat "{counter}"); echo $((n + 1)) > "{counter}"\n'
-        'mkdir -p "$2/.neuralmind" && echo built > "$2/.neuralmind/graph.json"\n'
-    )
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    return str(script), counter
+
+    def fake_run(cmd, **kwargs):
+        assert cmd[1] == "build", cmd
+        counter.write_text(str(int(counter.read_text()) + 1))
+        index = Path(cmd[2]) / ".neuralmind"
+        index.mkdir(parents=True, exist_ok=True)
+        (index / "graph.json").write_text("built\n")
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    monkeypatch.setattr(run.subprocess, "run", fake_run)
+    return "neuralmind", counter
 
 
-def test_the_index_cache_builds_once_and_restores_a_fresh_copy(tmp_path) -> None:
-    nm, counter = _fake_neuralmind(tmp_path)
+def test_the_index_cache_builds_once_and_restores_a_fresh_copy(tmp_path, monkeypatch) -> None:
+    nm, counter = _fake_neuralmind(tmp_path, monkeypatch)
     cache = tmp_path / "cache"
     cache.mkdir()
     task = {"id": "abc123"}
@@ -122,8 +127,8 @@ def test_the_index_cache_builds_once_and_restores_a_fresh_copy(tmp_path) -> None
     assert not (second / ".neuralmind" / "synapses.db").exists()
 
 
-def test_without_a_cache_every_run_builds(tmp_path) -> None:
-    nm, counter = _fake_neuralmind(tmp_path)
+def test_without_a_cache_every_run_builds(tmp_path, monkeypatch) -> None:
+    nm, counter = _fake_neuralmind(tmp_path, monkeypatch)
     for name in ("ws1", "ws2"):
         ws = tmp_path / name
         ws.mkdir()
@@ -131,8 +136,8 @@ def test_without_a_cache_every_run_builds(tmp_path) -> None:
     assert counter.read_text().strip() == "2"
 
 
-def test_a_cached_index_from_another_version_or_commit_is_rebuilt(tmp_path) -> None:
-    nm, counter = _fake_neuralmind(tmp_path)
+def test_a_cached_index_from_another_version_or_commit_is_rebuilt(tmp_path, monkeypatch) -> None:
+    nm, counter = _fake_neuralmind(tmp_path, monkeypatch)
     cache = tmp_path / "cache"
     cache.mkdir()
     task = {"id": "abc123", "base_commit": "aaa"}
