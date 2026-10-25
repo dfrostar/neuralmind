@@ -26,8 +26,10 @@
 | OS | Status | Notes |
 |----|--------|-------|
 | Linux | ✅ Full | CI-verified on every PR (Python 3.10–3.12) |
-| macOS | ✅ Full | CI-verified on every PR; x86 and Apple Silicon |
-| Windows | ✅ Full | CI-verified on every PR (`windows-latest`, Python 3.12) |
+| macOS, Apple Silicon | ✅ Full | CI-verified on every PR (`macos-latest`) |
+| macOS, Intel | ⚠️ Builds a dependency | Not in CI. Installing compiles `cryptography`, which has no Intel macOS wheel, so it needs a Rust toolchain and OpenSSL; it installed on GitHub's `macos-15-intel` runner. Uses ChromaDB, since turbovec has no wheel there ([v4.21.0 notes](releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs)) |
+| Windows x86_64 | ✅ Full | CI-verified on every PR (`windows-latest`, Python 3.12) |
+| Windows on ARM | ❌ Native install fails; use WSL 2 or Docker | Not in CI. A native `pip install` must compile `cryptography`, `chromadb` and `grpcio`, and failed on GitHub's `windows-11-arm` runner even with Rust and Visual Studio's C++ build tools. Under WSL 2 it is a Linux ARM64 install, which uses wheels only ([v4.21.0 notes](releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs)) |
 | Docker | ✅ Full | Included in releases; multi-platform (linux/amd64 + linux/arm64) |
 
 ---

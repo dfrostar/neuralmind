@@ -114,34 +114,44 @@ Scan the environment you actually installed.
 ## 4. What's inside: the SBOM
 
 Every release since v4.0.0 has a CycloneDX SBOM. Releases on this repository
-are immutable, so the SBOM can't be attached to them after they are published.
-It is served from the site instead:
+are immutable, so SBOMs can't be attached to them after they are published.
+They are served from the site instead.
+
+**From v4.21.0 there is one per platform**, because the dependencies differ by
+platform. On Linux, Apple Silicon macOS and Windows x86_64, a default install
+uses turbovec. On platforms turbovec has no wheel for, notably Intel macOS and
+Windows on ARM, it installs `chromadb` and its own dependency tree instead.
+Fetch the one for the machine you install on:
 
 ```bash
-curl -fsSLO https://neuralmind.uk/sbom/neuralmind-v$V.sbom.json
+# linux-x86_64, linux-aarch64, macos-arm64, macos-x86_64, windows-amd64, windows-arm64
+P=macos-x86_64
+curl -fsSLO https://neuralmind.uk/sbom/neuralmind-v$V-$P.sbom.json
 ```
 
-It lists `neuralmind` itself and every package a default install brought in,
-with versions and package URLs. Read it for what it is: **one install, on Linux,
-on release day.** The workflow runs `pip install .` at the tag on an Ubuntu
-runner and records the result. Two things can make your install differ:
+Each one is made by a real `pip install` of the release on that platform's own
+GitHub runner, on release day. Its metadata says where it was made
+(`neuralmind:platform`, `neuralmind:os`, `neuralmind:python`). It also lists
+any package pip had to compile there because no wheel existed
+(`neuralmind:built-from-source`). That package needs a compiler or toolchain on
+your machine too. If a platform's install failed in the release run, that
+platform has no SBOM, and the run's summary says why.
 
-- **Your platform.** The vector backend depends on the platform. On Linux,
-  Apple Silicon macOS and Windows x86_64, a default install uses turbovec. On
-  platforms turbovec has no wheel for, notably Intel macOS and Windows on ARM,
-  it installs `chromadb` instead. The SBOM doesn't list ChromaDB or its
-  dependencies, so it doesn't describe those installs.
-- **The date.** Most requirements set a minimum version, not an exact one. An
-  install a week later can resolve newer dependency versions, with different
-  advisories.
+`neuralmind-v$V.sbom.json`, without a platform, is the Linux x86_64 one. It is
+the only SBOM for releases before v4.21.0, and it doesn't describe an Intel
+macOS or Windows on ARM install.
+
+One thing still makes your install differ from any of them: **the date.** Most
+requirements set a minimum version, not an exact one. An install a week later
+can resolve newer dependency versions, with different advisories.
 
 The SBOM is still the record of what NeuralMind shipped against. Load it into the
 tool you already use (Dependency-Track, Grype, Trivy), or scan it directly:
 
 ```bash
-grype sbom:neuralmind-v$V.sbom.json
+grype sbom:neuralmind-v$V-$P.sbom.json
 # or
-trivy sbom neuralmind-v$V.sbom.json
+trivy sbom neuralmind-v$V-$P.sbom.json
 ```
 
 **What it doesn't prove:** an SBOM says what one install of a release contained.
@@ -189,7 +199,7 @@ For a vendor review or a System Security Plan, keep:
 |---|---|
 | `cosign verify` output (JSON) for the image digest you deployed | Step 1 |
 | The provenance statement (`gh attestation verify … --format json`) | Steps 2 and 3 |
-| The SBOM for that version | Step 4 |
+| The SBOM for that version and platform | Step 4 |
 | The VEX as of the date you assessed | Step 5 |
 | The [SSDF mapping](../compliance/SSDF.md): every NIST SP 800-218 practice, mapped to the workflow, file or check that is its evidence | The repository |
 

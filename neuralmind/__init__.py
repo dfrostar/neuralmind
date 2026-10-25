@@ -100,6 +100,7 @@ from .synapses import (
     DEFAULT_NAMESPACE,
     EPHEMERAL_NAMESPACE,
     SHARED_NAMESPACE,
+    STRUCTURAL_NAMESPACE,
     SynapseStore,
     default_db_path,
 )
@@ -165,6 +166,7 @@ __all__ = [
     "DEFAULT_NAMESPACE",
     "SHARED_NAMESPACE",
     "EPHEMERAL_NAMESPACE",
+    "STRUCTURAL_NAMESPACE",
     "resolve_namespace",
     "SYNAPSE_BUNDLE_VERSION",
     "export_synapse_bundle",

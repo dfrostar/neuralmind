@@ -380,6 +380,27 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 `neuralmind watch .`, which learns from edits but doesn't re-index them, so
 the index went on drifting.
 
+*(v4.22.0+)* After a successful build, at most three lines name the commands
+for whatever isn't wired yet, read the way `neuralmind doctor`'s Wiring
+section reads them: the daemon and the Git hooks first, then the agent. With
+Hermes set up on the machine that's the plugin and its MCP entry. Without it,
+and with no agent host wired, it's `neuralmind install-hooks <project>` when
+Claude Code is set up (`~/.claude`), else `neuralmind install-mcp <project> --all`
+when an MCP client looks installed, else `neuralmind install-mcp --print`, the
+entry to paste into your client. Commands that take a project name the one just
+built, so they work pasted from the directory the build ran in, quoted for the
+platform's shell. A pin to another project, Git hooks serving another project
+in the same repository, and a fix doctor can't print as one command are never
+offered. When there's room, the `watch --reindex` hint follows. Once
+everything is wired, only that hint prints. `NEURALMIND_NO_INIT_HINT=1` still
+turns the closing lines off.
+
+```
+  Next, wire it in (`neuralmind doctor` shows what's wired):
+    neuralmind daemon start && neuralmind init-hook .
+    neuralmind install-hermes-plugin && neuralmind install-mcp --client hermes
+```
+
 #### Graph source *(v4.4.0+)*
 
 `graph_source` in `.neuralmind.yaml` picks which graph the index is built from:
@@ -1676,6 +1697,30 @@ neuralmind doctor [project_path] [--json] [--stale-after DURATION]
 | `--json`, `-j` | No | `false` | Emit machine-readable JSON |
 | `--stale-after` | No | `stale_after` in `.neuralmind.yaml`, else none | *(v4.13.0+)* Fail the Code graph check, so doctor exits `1`, once the index has been behind the files for longer than this (`30m`, `2h`, `1d`). See [`stale_after`](#how-long-the-index-may-lag-stale_after-v4130) |
 
+**Wiring** *(v4.22.0+)* comes first: whether anything calls NeuralMind for
+this project. A built index that no agent queries passes every check below,
+so doctor used to read "Up and running" on an install that was doing nothing.
+Each line is `ok` or `warn`, never `fail`, so wiring never changes the exit
+code; a warning carries the command that fixes it.
+
+| Line | States |
+|------|--------|
+| **Daemon** | running on `host:port` (pid, version) · not running → `neuralmind daemon start` · alive but not answering, or running an older version than the one installed → `neuralmind daemon restart` · off under `NEURALMIND_NO_DAEMON=1` (`ok`) |
+| **Git hooks** | full (the four rebuild hooks and the pre-commit drift guard) · partial (names the missing ones; a `--no-drift` install is partial) · none → `neuralmind init-hook <project>` · not a Git repository (`ok`). A hook whose managed block serves another project in the same repository doesn't count, nor does one without its executable bit (git skips it; `init-hook` sets the bit again), and with `core.hooksPath` set (husky, a shared hooks directory) none do, since git never runs the `.git/hooks` that `init-hook` writes: that line has no command of ours to suggest |
+| **Hermes plugin** | enabled, pinned to this project or following `TERMINAL_CWD` · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` → `hermes plugins enable neuralmind` · not installed in a set-up Hermes home → `neuralmind install-hermes-plugin` · pinned to another project → `neuralmind install-hermes-plugin --unpin` · plugin code older than the installed NeuralMind → re-run `neuralmind install-hermes-plugin` (`hermes plugins update neuralmind` for one Hermes installed) · no Hermes home (`ok`) |
+| **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json`, and `claude mcp add`'s user and local scopes in `~/.claude.json`; Cursor's `.cursor/mcp.json` or user-wide `~/.cursor/mcp.json`), or looks installed without it → `neuralmind install-mcp --client <client>`. A config doctor can't parse (VS Code allows comments) reads *can't tell*, as `ok`. Hermes's entry with `enabled: false` warns too, with `hermes config set mcp_servers.<key>.enabled true` for the key it found; a Hermes `config.yaml` that is a symlink gets the entry to paste (`--client hermes --print`). When no known client has it, one line says so → `neuralmind install-mcp --print`, which is expected if you registered it by hand in another client |
+
+When no agent host is wired (no Claude Code hooks in the project's
+`settings.json` or `settings.local.json` or the global one, no enabled Hermes
+plugin, no MCP registration), the closing line reads *Installed but not
+wired* instead of *Up and running*. A host doctor couldn't read (a *can't
+tell* line, or a probe that failed) keeps it from saying so: the verdict is
+then *partial*. Each probe is guarded on its own, so a malformed file one of
+them reads leaves the other lines standing. `--json` adds a `wiring` object beside `checks`:
+`{"state": "inert" | "partial" | "wired", "checks": [...]}`, and the
+top-level `status` counts its warnings; `checks` holds the same core checks
+as before.
+
 **Checks:** code graph, semantic index, **backend** *(v0.22.0+)*, synapse
 memory, MCP server, Claude Code hooks, and query-memory consent. Each reports
 `ok`, `warn` (optional/learned-over-time), or `fail` (setup incomplete). The
@@ -1775,6 +1820,16 @@ neuralmind doctor .
 ```
 NeuralMind doctor — /path/to/project
 ============================================================
+Wiring
+  [warn] Daemon: not running: CLI queries load the index from cold on every call
+         -> neuralmind daemon start
+  [warn] Git hooks: none: the index goes stale after commits, pulls and branch switches until the next manual build
+         -> neuralmind init-hook .
+  [warn] Hermes plugin: Hermes is set up at /home/you/.hermes, but the NeuralMind plugin isn't installed
+         -> neuralmind install-hermes-plugin
+  [warn] MCP registration (hermes): hermes looks installed (/home/you/.hermes/config.yaml), but NeuralMind isn't registered
+         -> neuralmind install-mcp --client hermes
+Checks
   [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
   [ ok ] Semantic index: 1240 nodes embedded (turbovec backend)
   [ ok ] Query freshness: queries carry no staleness notice
@@ -1786,6 +1841,7 @@ NeuralMind doctor — /path/to/project
          -> Install them: neuralmind install-hooks
   [ ok ] Query memory: enabled (logging queries for learning)
 ===========================================================
+Installed but not wired: no Claude Code hooks, Hermes plugin or MCP entry doctor can see calls NeuralMind for this project. Run a Wiring fix above (registered by hand in a client doctor doesn't know? then ignore this).
 ```
 
 **Code graph freshness (v4.4.0+).** The *Code graph* check compares the graph
@@ -2414,14 +2470,18 @@ Recall, `next`, and stats default to a merged view with explicit,
 published constants (`neuralmind/synapses.py`):
 
 ```
-merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared
-                (W_BRANCH)       (W_PERSONAL)        (W_SHARED)
+merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared  +  0.5 × structural
+                (W_BRANCH)       (W_PERSONAL)        (W_SHARED)      (W_STRUCTURAL)
 ```
 
 On the default branch the active namespace *is* `personal` (read at
-1.0×), so behavior is identical to pre-namespace releases. Per-namespace
-decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
-rates, `ephemeral` fades fast with no LTP floor. Traced queries
+1.0×), so behavior is identical to pre-namespace releases. `structural`
+holds the checked-out code's call and import edges and is replaced by
+every build (v4.22.0+), so a feature branch's calls don't reach the
+default branch's recall. Per-namespace decay: `shared` is sticky,
+`personal`/`branch:*` decay at the standard rates, `ephemeral` fades fast
+with no LTP floor, and `structural` doesn't decay. `NEURALMIND_NAMESPACE`
+or `memory_namespace` naming `structural` is ignored. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
 `namespace_contribution`.
 
@@ -2877,7 +2937,7 @@ It registers two Hermes hooks:
 | `post_tool_call` on `write_file` and `patch` | Edited-path record, on a background thread (V4A patches included) | Note the edited file, by the absolute path Hermes reports (`files_modified`), for the next session's recap and the synapse layer. Only an edit that landed (Hermes's status `ok`) is recorded: a cancelled, timed-out, blocked or failed one isn't, and neither is a file changed through the terminal. A file a V4A patch deletes or moves away isn't listed as edited |
 
 ```bash
-neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-enable] [--hermes-home HERMES_HOME]
+neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-enable] [--hermes-home HERMES_HOME] [--mcp]
 ```
 
 #### Arguments
@@ -2893,6 +2953,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 | `--unpin` | False | Forget the pinned project, so the plugin follows the directory Hermes works in |
 | `--uninstall` | False | *(v4.10.0+; v4.9.0 disabled the plugin, so a reinstall stayed off)* Remove the plugin with `hermes plugins remove neuralmind`, which also drops its entries from Hermes's `config.yaml`, so a later install starts enabled. A symlinked `plugins/neuralmind`, which Hermes won't remove, is disabled with `hermes plugins disable neuralmind` and unlinked, never its target |
 | `--no-enable` | False | Install without running `hermes plugins enable neuralmind` |
+| `--mcp` | False | *(v4.22.0+)* Also register NeuralMind's MCP server in that Hermes home's `config.yaml`: an alias for [`install-mcp --client hermes`](#install-mcp-v0190), so Hermes gets the query and search tools as well as the per-turn context. Without it, an install into a home with a `config.yaml` and no entry ends with the command that adds it: `install-mcp --client hermes`, or with `--hermes-home`, this command with `--mcp` against the same home |
 | `--hermes-home` | `$HERMES_HOME`, else the active Hermes profile's home (`<root>/profiles/<name>`), else `~/.hermes`, or `%LOCALAPPDATA%\hermes` on Windows | Hermes home directory to install into; a Hermes profile has its own home |
 
 #### Examples
@@ -3064,6 +3125,37 @@ neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 | `claude-desktop` | user | platform `claude_desktop_config.json` |
 | `cline` | user | VS Code `cline_mcp_settings.json` |
 | `vscode` | user | VS Code `settings.json` (`mcp.servers` key, requires VS Code 1.99+) |
+| `hermes` *(v4.22.0+)* | user | Hermes-Agent's `config.yaml` (`mcp_servers:` key) in the Hermes home plain `hermes` uses: the active profile's, else `$HERMES_HOME`, else `~/.hermes` |
+
+*(v4.22.0+)* **Hermes.** `--client hermes` adds
+
+```yaml
+mcp_servers:
+  neuralmind:
+    command: neuralmind-mcp
+    args: []
+```
+
+to Hermes's `config.yaml`, the launch spec the other clients get. Hermes keeps
+comments in that file, so the entry is added as text: under an existing
+block-style `mcp_servers:` (at its indentation) or as a new section at the
+end. The file is written only when the result parses to the old config plus
+that entry, and keeps its file mode (Hermes keeps it `0600`). Otherwise it
+isn't touched, and the command prints the entry to paste: `skipped-no-hermes-config`
+(no `config.yaml`: run `hermes` first; writing one would make Hermes skip its
+first-run setup), `skipped-symlink` (a declaratively managed config),
+`skipped-unmergeable` (a flow-style `mcp_servers: {...}`), `skipped-conflict`
+(a `neuralmind` entry that starts something else), `skipped-invalid-yaml`, or
+`skipped-not-object`. NeuralMind registered under another key (say `nm`) counts as `already-present`, so Hermes doesn't start a second server; an entry with `enabled: false` is left off and named. The file is replaced through a unique temporary file and keeps its owner when run as root.
+`--all` includes Hermes once its `config.yaml` exists. A running Hermes reloads its
+MCP servers when `config.yaml` changes (run `/reload-mcp` if
+`mcp.auto_reload_on_config_change` is off); restart the gateway if one is
+running. Check with `hermes mcp test neuralmind`.
+`neuralmind install-hermes-plugin --mcp` does the same as `--client hermes`
+for the home it installs into: one implementation, two ways to reach it. The
+plugin alone adds NeuralMind's context to each turn with no tool call; the MCP
+entry also gives the agent the tools to query and search on its own.
+`--client hermes --print` prints the YAML entry.
 
 #### Options
 
@@ -3084,6 +3176,9 @@ neuralmind install-mcp --all
 
 # A specific client
 neuralmind install-mcp --client cursor
+
+# Hermes-Agent (YAML config.yaml in the active Hermes home)
+neuralmind install-mcp --client hermes
 
 # Just show me the snippet
 neuralmind install-mcp --print
@@ -4539,7 +4634,8 @@ emits, and runs the documented cases.
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
 | `NEURALMIND_ORT_THREADS` | unset | Pin the ONNX Runtime intra-op thread pool for the bundled MiniLM embedder to N threads (inter-op is set to 1 alongside it). Unset keeps ORT's default (sized to the host's core count). ORT's parallel summation order moves the last bits of the embedding floats with the thread count, so near-tie rankings can differ between machines with different core counts; `1` removes that dependence at some indexing-throughput cost. It does not make output identical on every machine: with `1` set, public-benchmark CI runs still split into two states with slightly different token counts depending on the runner, while on an Apple M3 the public benchmark gave byte-identical output with and without it ([details](../benchmarks/public.md#how-exactly-a-re-run-reproduces)). The self-benchmark harness sets `1` automatically, and the public-benchmark CI job runs with it. |
-| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
+| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). *(v4.22.0+)* `doctor`'s Wiring section then reports the daemon as off, not missing |
+| `NEURALMIND_NO_INIT_HINT` | unset | Set to any value to skip the lines `neuralmind build` prints after a successful build: *(v4.22.0+)* the commands for whatever isn't wired yet (daemon, Git hooks, agent host), and the `watch --reindex` hint. See [build](#build) |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 | `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. `0` also turns off the v4.6.0 keyword indexes below. |

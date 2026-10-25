@@ -372,3 +372,112 @@ def test_query_without_graph_raises_friendly_error(empty_project):
     msg = str(exc.value)
     assert "graphify update" in msg
     assert "neuralmind build" in msg
+
+
+# --------------------------------------------------------------------------- #
+# Wiring section
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def bare_machine(tmp_path, monkeypatch):
+    """A HOME with no agent host, Hermes or daemon on it."""
+    home = tmp_path / "bare-home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    # Windows keeps Hermes's default home under %LOCALAPPDATA% and Claude
+    # Desktop's and VS Code's settings under %APPDATA%: point all three into
+    # the fake home, so the runner's own apps stay out of the test.
+    monkeypatch.setenv("HERMES_HOME", str(home / ".hermes"))
+    monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
+    monkeypatch.delenv("NEURALMIND_NO_DAEMON", raising=False)
+    monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path / "bare-daemon"))
+    return home
+
+
+def _healthy_core(monkeypatch):
+    from neuralmind import cli
+
+    monkeypatch.setattr(
+        doctor, "run_diagnostics", lambda _p, **_kw: [doctor.Check("Code graph", doctor.OK, "")]
+    )
+    monkeypatch.setattr(cli, "_tier2_doctor_checks", lambda _a: [])
+
+
+def test_run_wiring_only_ever_warns(empty_project, bare_machine):
+    checks, state = doctor.run_wiring(str(empty_project))
+    names = [c.name for c in checks]
+    assert names[:3] == ["Daemon", "Git hooks", "Hermes plugin"]
+    assert any(n.startswith("MCP registration") for n in names)
+    assert {c.status for c in checks} <= {doctor.OK, doctor.WARN}
+    assert state == "inert"
+    # Every warning carries the command that fixes it.
+    assert all(c.fix for c in checks if c.status == doctor.WARN)
+
+
+def test_inert_install_never_prints_up_and_running(
+    empty_project, bare_machine, monkeypatch, capsys
+):
+    # The field failure: every core check healthy, nothing calling NeuralMind.
+    from neuralmind import cli
+
+    _healthy_core(monkeypatch)
+    cli.cmd_doctor(_doctor_args(empty_project))  # no SystemExit: exit status 0
+    out = capsys.readouterr().out
+    assert "Up and running" not in out and "All checks passed" not in out
+    assert "Installed but not wired" in out
+    assert out.index("Wiring") < out.index("Checks") < out.index("Code graph")
+    assert "-> neuralmind daemon start" in out
+
+
+def test_wired_install_reads_up_and_running(empty_project, bare_machine, monkeypatch, capsys):
+    from neuralmind import cli
+
+    _healthy_core(monkeypatch)
+    (empty_project / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"neuralmind": {"command": "neuralmind-mcp"}}})
+    )
+    cli.cmd_doctor(_doctor_args(empty_project))
+    out = capsys.readouterr().out
+    assert "Installed but not wired" not in out
+    assert "Up and running" in out  # the daemon and Git hooks still warn
+
+
+def test_doctor_json_reports_wiring_beside_the_core_checks(
+    empty_project, bare_machine, monkeypatch, capsys
+):
+    from neuralmind import cli
+
+    _healthy_core(monkeypatch)
+    cli.cmd_doctor(_doctor_args(empty_project, json_out=True))
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == doctor.WARN
+    assert payload["wiring"]["state"] == "inert"
+    assert payload["wiring"]["checks"][0]["name"] == "Daemon"
+    # The core list is what it was: the wiring checks aren't mixed into it.
+    assert [c["name"] for c in payload["checks"]] == ["Code graph"]
+
+
+def test_a_failing_core_check_still_exits_1_with_wiring_warnings(
+    empty_project, bare_machine, capsys
+):
+    from neuralmind import cli
+
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_doctor(_doctor_args(empty_project))
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "Setup incomplete" in out and "Installed but not wired" not in out
+
+
+def test_wiring_probe_errors_fail_open(empty_project, monkeypatch, capsys):
+    from neuralmind import cli
+
+    _healthy_core(monkeypatch)
+
+    def boom(_p):
+        raise RuntimeError("probe broke")
+
+    monkeypatch.setattr(doctor, "run_wiring", boom)
+    cli.cmd_doctor(_doctor_args(empty_project))
+    assert "Wiring: could not check (probe broke)" in capsys.readouterr().out
