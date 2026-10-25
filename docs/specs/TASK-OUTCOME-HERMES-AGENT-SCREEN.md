@@ -1,6 +1,6 @@
 # Task-outcome screen on hermes-agent — pre-registration
 
-**Status:** pre-registered, tasks drawn; not yet run · **Harness:** `evals/task_outcome/` (profile `hermes-agent`) · **Study files:** `evals/task_outcome/studies/hermes-agent-screen/`
+**Status:** run 2026-10-25; decision: stop ([results](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-screen/README.md)) · **Harness:** `evals/task_outcome/` (profile `hermes-agent`) · **Study files:** `evals/task_outcome/studies/hermes-agent-screen/`
 
 ## Why a screen, and why here
 
@@ -151,3 +151,13 @@ out of git.
   - One prompt (`0968fa2631`) quotes the provider's error message, which
     contains the string the fix matches on. A real report would quote it, so
     it stays; that task is easier to locate than the others.
+- 2026-10-25 — screen run, all 30 runs, none timed out or failed; the
+  launcher guard found the Hermes launchers unchanged throughout:
+  - Median cost change per task with NeuralMind +1.5% (95% CI −28.1% to
+    +5.2%), Wilcoxon p = 0.41; tasks solved 4 (baseline) and 5 (NeuralMind),
+    McNemar p = 1.0. **Decision: stop.** The cost condition failed.
+  - The agent called no NeuralMind tool in any run. Not pre-registered: an
+    offline replay of the prompt hook on the same indexes
+    (`hook_replay.py`) found it named a fixed file on 2 of 5 tasks, and 18 of
+    the 32 files it listed were tests. Results in
+    `bench/task_outcome/hermes-agent-screen/`.
