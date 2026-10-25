@@ -1,6 +1,6 @@
-# NeuralMind v4.22.0 — a feature branch's calls stay on the branch
+# NeuralMind v4.22.0 — a feature branch's calls and memory stay on the branch
 
-**Type:** Minor release | **Theme:** the call graph each build seeds follows the checkout, so a branch's calls no longer reach the default branch's recall
+**Type:** Minor release | **Theme:** the call graph each build seeds, and the memory file Claude Code loads, follow the checkout, so a feature branch no longer reaches the default branch's recall or the agent's memory file
 
 Every build seeds the call and import edges it finds into the synapse layer,
 so recall can follow the code's structure from the first query. Those seeds
@@ -10,8 +10,11 @@ and after you switched back to `main` it was still recalled, at half weight,
 until it decayed on the shared 60-day half-life. The same went for a call
 deleted from the code.
 
-Associations learned from use were never affected: they go into the branch's
-own `branch:<name>` namespace, as they have since v0.24.0.
+Recall of associations learned from use was never affected: they go into the
+branch's own `branch:<name>` namespace, as they have since v0.24.0. But
+`SYNAPSE_MEMORY.md`, the memory file Claude Code loads at session start,
+listed the strongest associations from every namespace, so on `main` the agent
+saw what it had learned on every other branch.
 
 ---
 
@@ -47,11 +50,25 @@ on the 60-day shared half-life. Until then, a call still in the code is
 counted in both `shared` and `structural`, and a branch-only call already in
 `shared` is still recalled.
 
-### Still open
+### The memory file follows the checkout too
 
-The `SYNAPSE_MEMORY.md` file written for Claude Code at session start lists
-the strongest associations from every namespace, other branches' included.
-Recall doesn't read them; the agent does see the file.
+`SYNAPSE_MEMORY.md` (and its copy in Claude Code's auto-memory directory) now
+holds only what recall reads on the checkout: the active namespace (the
+branch's own on a feature branch), `personal`, `shared` and `structural`.
+
+- **Another branch's memory isn't in it**: not its pairs, its hub nodes or its
+  "what typically comes next" transitions, and not a stale `ephemeral`
+  session's either.
+- **The header counts the same namespaces and names them**, in a new
+  `- Namespaces:` line, so the edge, node and transition counts describe the
+  file instead of the whole store.
+- **Hub nodes count a pair once.** A pair held in two namespaces (learned
+  from use and also a call) was two connections; it is one, as recall's own
+  degree count has it. The list now shows up to eight hubs, the export's
+  `top_hubs` default; `stats()` had capped it at five.
+- The hooks write the file at session start, so it shows the branch checked
+  out then; the MCP `neuralmind_export_synapse_memory` tool writes the view of
+  the branch the server sees.
 
 ---
 
@@ -59,8 +76,8 @@ Recall doesn't read them; the agent does see the file.
 
 | Agent | Before (to v4.21.0) | After |
 |---|---|---|
-| Claude Code (hooks + MCP) | Prompt-time recall on `main` could name a file linked only by a call that exists on a feature branch, until it decayed | Recall follows the call graph of the code checked out |
-| Cursor / Cline / generic MCP | The same, in `neuralmind_query` and search results | The same fix |
+| Claude Code (hooks + MCP) | Prompt-time recall on `main` could name a file linked only by a call that exists on a feature branch, until it decayed; `SYNAPSE_MEMORY.md` listed associations learned on every branch | Recall follows the call graph of the code checked out, and `SYNAPSE_MEMORY.md` holds only what recall reads on it |
+| Cursor / Cline / generic MCP | The same, in `neuralmind_query` and search results, and in the file `neuralmind_export_synapse_memory` writes | The same fix |
 | Hermes-Agent plugin | The same, in the per-turn block | The same fix |
 
 ---
@@ -68,7 +85,8 @@ Recall doesn't read them; the agent does see the file.
 ## Upgrading
 
 `pip install -U neuralmind`, then build once (`neuralmind build .`) to fill
-the `structural` namespace. Nothing else to change.
+the `structural` namespace. The memory file is rewritten at the next session
+start. Nothing else to change.
 
 ## Tests
 
@@ -80,3 +98,8 @@ the `structural` namespace. Nothing else to change.
 - `tests/test_synapse_namespaces.py`: a `structural` override falls through
   to branch detection.
 - `tests/test_team_memory.py`: a published bundle carries no call-graph seeds.
+- `tests/test_synapse_memory.py`: on `main` the memory file leaves out what
+  was learned on `feature-x` (pairs, hubs and transitions), and its header
+  counts only what it covers; on `feature-x` it includes that branch and
+  `personal` but not another branch; the export writes the view of the
+  namespace it is given; a pair in two namespaces is one hub connection.
