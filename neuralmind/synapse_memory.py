@@ -87,6 +87,12 @@ def _format_id(node_id: str, labels: dict[str, str]) -> str:
 
 
 def _marks(namespaces: list[str]) -> str:
+    """One ``?`` per namespace, for an ``IN (...)`` list.
+
+    The export's queries format only this and the constant ``LTP_ROW_SQL``
+    into their SQL; every value, the namespace names included, is bound.
+    That is why they carry ``# nosec B608``.
+    """
     return ",".join("?" for _ in namespaces)
 
 
@@ -123,7 +129,7 @@ def _top_pairs(
                 HAVING MAX(weight) >= ?
                 ORDER BY weight DESC, activation_count DESC
                 LIMIT ?
-                """,
+                """,  # nosec B608  # placeholders only, see _marks
                 (*LTP_ROW_PARAMS, *namespaces, min_weight, limit),
             )
             return [(a, b, float(w), int(c), bool(lt)) for a, b, w, c, lt in cur.fetchall()]
@@ -163,7 +169,7 @@ def _top_transition_groups(
                 GROUP BY from_node
                 ORDER BY MAX(weight) DESC, SUM(weight) DESC
                 LIMIT ?
-                """,
+                """,  # nosec B608  # placeholders only, see _marks
                 (*namespaces, limit),
             )
             from_nodes = [row[0] for row in cur.fetchall()]
@@ -180,7 +186,7 @@ def _top_transition_groups(
                     WHERE from_node = ? AND namespace IN ({marks})
                     GROUP BY to_node
                     ORDER BY weight DESC
-                    """,
+                    """,  # nosec B608  # placeholders only, see _marks
                     (from_node, *namespaces),
                 )
                 rows = cur.fetchall()
@@ -225,7 +231,7 @@ def _top_hubs(db_path: Path, limit: int, namespaces: list[str]) -> list[tuple[st
                 GROUP BY node_id
                 ORDER BY degree DESC, node_id
                 LIMIT ?
-                """,
+                """,  # nosec B608  # placeholders only, see _marks
                 (*namespaces, *namespaces, limit),
             )
             return [(nid, int(degree)) for nid, degree in cur.fetchall()]
@@ -257,16 +263,17 @@ def _header_stats(db_path: Path, namespaces: list[str]) -> dict[str, float]:
                        COALESCE(SUM(CASE WHEN {LTP_ROW_SQL} THEN 1 ELSE 0 END), 0),
                        COALESCE(SUM(weight), 0.0)
                 FROM synapses WHERE namespace IN ({marks})
-                """,
+                """,  # nosec B608  # placeholders only, see _marks
                 (*LTP_ROW_PARAMS, *namespaces),
             ).fetchone()
             nodes = conn.execute(
                 f"SELECT COUNT(DISTINCT node_id) FROM node_activations "
-                f"WHERE namespace IN ({marks})",
+                f"WHERE namespace IN ({marks})",  # nosec B608  # placeholders only, see _marks
                 namespaces,
             ).fetchone()[0]
             transitions = conn.execute(
-                f"SELECT COUNT(*) FROM synapse_transitions WHERE namespace IN ({marks})",
+                f"SELECT COUNT(*) FROM synapse_transitions "
+                f"WHERE namespace IN ({marks})",  # nosec B608  # placeholders only, see _marks
                 namespaces,
             ).fetchone()[0]
         finally:
