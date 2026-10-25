@@ -28,13 +28,16 @@ REPO = Path.home() / "nm-bench" / "hermes-agent"
 STUDY = Path.home() / "nm-bench" / "study"
 PYTHON = str(Path.home() / "nm-bench" / "test-venv" / "bin" / "python")
 SEED = 20261025
+# The pre-registered revision: the walk reads this commit's history, never
+# origin/main, so a later fetch can't change the population or the order.
+PIN = "710fa8a073f9a8136e10749b083a16779341faef"
 TEST_RE = re.compile(r"^tests/(.+/)?test_[^/]*\.py$")
 
 
 def eligible_by_metadata(profile: profiles.Profile) -> list[str]:
     log = harness.git(
         "log",
-        "origin/main",
+        PIN,
         "--no-merges",
         f"--since={profile.cutoff}T00:00:00Z",
         "--format=@@%H%x09%cI%x09%s",
