@@ -129,3 +129,75 @@ def test_without_a_cache_every_run_builds(tmp_path) -> None:
         ws.mkdir()
         run._build_index({"id": "abc123"}, ws, nm, dict(os.environ), None)
     assert counter.read_text().strip() == "2"
+
+
+def test_a_cached_index_from_another_version_or_commit_is_rebuilt(tmp_path) -> None:
+    nm, counter = _fake_neuralmind(tmp_path)
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    task = {"id": "abc123", "base_commit": "aaa"}
+    env = dict(os.environ)
+    for i, (t, builder, expect_cached) in enumerate(
+        [
+            (task, "neuralmind 4.20.0", False),
+            (task, "neuralmind 4.20.0", True),
+            (task, "neuralmind 4.21.0", False),  # another release: rebuild
+            ({**task, "base_commit": "bbb"}, "neuralmind 4.21.0", False),  # another commit
+        ]
+    ):
+        ws = tmp_path / f"ws{i}"
+        ws.mkdir()
+        _, cached = run._build_index(t, ws, nm, env, cache, builder)
+        assert cached is expect_cached, (i, builder)
+    assert counter.read_text().strip() == "3"
+
+
+def test_the_guard_stops_a_failed_session_before_any_cleanup(tmp_path, monkeypatch) -> None:
+    """A session that damages a launcher and then dies with an API error still trips the guard."""
+    import argparse
+    import json
+
+    import pytest
+
+    launchers = tmp_path / "bin"
+    launchers.mkdir()
+    (launchers / "hermes").write_text("exec /real/python3\n")
+    work = tmp_path / "work"
+    work.mkdir()
+
+    def fake_prepare(task, arm, ws, *a, **k):
+        ws.mkdir(parents=True)
+        return {"mcp_file": ws / ".bench-mcp.json", "build_seconds": 0.0, "index_cached": False}
+
+    class Proc:
+        returncode = 1
+        stderr = ""
+        stdout = json.dumps(
+            {"type": "result", "subtype": "success", "terminal_reason": "api_error"}
+        )
+
+    def fake_session(*a, **k):
+        (launchers / "hermes").write_text("exec /tmp/deleted/python3\n")
+        return Proc()
+
+    monkeypatch.setattr(run, "_arm_env", lambda *a: {})
+    monkeypatch.setattr(run, "_prepare", fake_prepare)
+    monkeypatch.setattr(run.subprocess, "run", fake_session)
+    args = argparse.Namespace(
+        work_dir=work,
+        tool_venv=tmp_path,
+        test_python="python",
+        profile=profiles.get("hermes-agent"),
+        index_cache=None,
+        versions={"neuralmind_version": "neuralmind 4.21.0"},
+        guard=[launchers],
+        claude_bin="claude",
+        model="m",
+        budget=1.0,
+        out=tmp_path / "out",
+        timeout=10,
+        keep_workspaces=False,
+    )
+    with pytest.raises(run.GuardTrippedError, match="agent session"):
+        run.run_one({"id": "abc123", "prompt": "Symptom."}, "baseline", 0, args)
+    assert [p.name.startswith("abc123-baseline-s0") for p in work.iterdir()] == [True]

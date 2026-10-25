@@ -85,6 +85,19 @@ class GuardTrippedError(RuntimeError):
     """A run changed a guarded file: stop everything and let a person look."""
 
 
+def check_guard(guard: list[Path], before: dict[str, str], where: str, ws: Path) -> None:
+    """Raise :class:`GuardTrippedError` if a guarded file changed since ``before``.
+
+    Called before any cleanup on every path out of a run, the failed ones
+    included: a session that damaged a launcher and then died with an API
+    error must stop the benchmark too, with its workspace kept.
+    """
+    if harness.launcher_digest(guard) != before:
+        raise GuardTrippedError(
+            f"{where} changed a file under {', '.join(map(str, guard))}; workspace kept at {ws}"
+        )
+
+
 def render_prompt(symptom: str, profile: profiles.Profile) -> str:
     return PROMPT.format(symptom=symptom.strip(), repo=profile.name)
 
@@ -122,7 +135,7 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
 
 
 def _build_index(
-    task: dict, ws: Path, nm: str, env: dict, cache: Path | None
+    task: dict, ws: Path, nm: str, env: dict, cache: Path | None, builder: str = ""
 ) -> tuple[float, bool]:
     """Give ``ws`` a freshly built index: built here, or restored from ``cache``.
 
@@ -130,12 +143,19 @@ def _build_index(
     index is the one ``neuralmind build`` wrote for the same commit, copied
     before any session ran, so a restored workspace starts as cold as a built
     one. The index stores no absolute paths (checked on hermes-agent,
-    2026-10-25), so it can be restored into any workspace.
+    2026-10-25), so it can be restored into any workspace. An entry is reused
+    only when it records the same base commit and the same ``builder`` (the
+    NeuralMind version measured); otherwise it is rebuilt, so a cache shared
+    across releases can't hand one release another's index.
     """
     entry = cache / task["id"] if cache else None
+    key = {"base_commit": task.get("base_commit", ""), "builder": builder}
     if entry and (entry / ".neuralmind").is_dir():
-        shutil.copytree(entry / ".neuralmind", ws / ".neuralmind")
-        return float((entry / "build_seconds").read_text()), True
+        meta = entry / "meta.json"
+        if meta.is_file() and json.loads(meta.read_text()) == key:
+            shutil.copytree(entry / ".neuralmind", ws / ".neuralmind")
+            return float((entry / "build_seconds").read_text()), True
+        shutil.rmtree(entry)  # built from another commit or by another version
     t0 = time.monotonic()
     subprocess.run([nm, "build", str(ws)], cwd=ws, env=env, capture_output=True, check=True)
     seconds = round(time.monotonic() - t0, 1)
@@ -144,12 +164,19 @@ def _build_index(
         shutil.rmtree(staging, ignore_errors=True)
         shutil.copytree(ws / ".neuralmind", staging / ".neuralmind")
         (staging / "build_seconds").write_text(str(seconds))
+        (staging / "meta.json").write_text(json.dumps(key))
         staging.rename(entry)  # a stop mid-copy leaves no half-cached index
     return seconds, False
 
 
 def _prepare(
-    task: dict, arm: str, ws: Path, tool_venv: Path, env: dict, cache: Path | None = None
+    task: dict,
+    arm: str,
+    ws: Path,
+    tool_venv: Path,
+    env: dict,
+    cache: Path | None = None,
+    builder: str = "",
 ) -> dict:
     """Snapshot the base commit; for the neuralmind arm, build and wire it up."""
     harness.snapshot(task["base_commit"], ws)
@@ -160,7 +187,7 @@ def _prepare(
     index_cached = False
     if arm == "neuralmind":
         nm = str(tool_venv / "bin" / "neuralmind")
-        build_seconds, index_cached = _build_index(task, ws, nm, env, cache)
+        build_seconds, index_cached = _build_index(task, ws, nm, env, cache, builder)
         subprocess.run(
             [nm, "install-hooks", str(ws)], cwd=ws, env=env, capture_output=True, check=True
         )
@@ -291,9 +318,13 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     # isolated home first (the index build runs with it), create it after.
     ws_env = harness.workspace_env(ws, args.profile.isolated_hermes_home, create=False)
     env.update(ws_env)
-    prep = _prepare(task, arm, ws, args.tool_venv, env, args.index_cache)
-    harness.workspace_env(ws, args.profile.isolated_hermes_home)
+    where = f"{task['id']} {arm} s{seed}"
     guarded = harness.launcher_digest(args.guard)
+    prep = _prepare(
+        task, arm, ws, args.tool_venv, env, args.index_cache, args.versions["neuralmind_version"]
+    )
+    harness.workspace_env(ws, args.profile.isolated_hermes_home)
+    check_guard(args.guard, guarded, f"{where} (setup)", ws)
     cmd = claude_command(
         args.claude_bin,
         render_prompt(task["prompt"], args.profile),
@@ -316,6 +347,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     transcript.write_text(stdout)
     transcript_sha256 = hashlib.sha256(stdout.encode()).hexdigest()
     agent = parse_stream(stdout.splitlines())
+    check_guard(args.guard, guarded, f"{where} (agent session)", ws)
     if harness_failure(agent, timed_out):
         # Authentication, model or CLI failure. That is the harness failing,
         # not the agent, so it must not become an outcome.
@@ -343,11 +375,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     )
     hooks = hook_activity(ws) if arm == "neuralmind" else {}
     verdict = judge(task, ws, args.test_python, ws_env)
-    if harness.launcher_digest(args.guard) != guarded:
-        raise GuardTrippedError(
-            f"{task['id']} {arm} s{seed} changed a file under {', '.join(map(str, args.guard))}; "
-            f"workspace kept at {ws}"
-        )
+    check_guard(args.guard, guarded, f"{where} (tests)", ws)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
     return {
