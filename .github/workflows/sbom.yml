@@ -133,7 +133,10 @@ jobs:
           # A dependency pip installed from anything but a wheel was built
           # here from source: say so, since a user on this platform needs
           # the same compiler or toolchain.
-          report = json.loads(pathlib.Path("pip-report.json").read_text())
+          # pip writes its report as UTF-8; read it as UTF-8, since the
+          # default on Windows is the ANSI code page (cp1252), which can't
+          # decode it.
+          report = json.loads(pathlib.Path("pip-report.json").read_text(encoding="utf-8"))
           built = sorted(
               item["metadata"]["name"]
               for item in report.get("install", [])
@@ -146,7 +149,7 @@ jobs:
               "python": platform.python_version(),
               "built_from_source": built,
           }
-          (out / "platform.json").write_text(json.dumps(info, indent=2))
+          (out / "platform.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
           print(json.dumps(info, indent=2))
           EOF
 
