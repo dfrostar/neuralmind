@@ -13,6 +13,10 @@ This module is purely an export: it reads the synapse store and writes
 markdown. It never blocks reads/writes on the live store, and it fails
 open (returns the empty list of paths written) on any error so callers
 in hooks don't have to handle exceptions.
+
+The file holds only the namespaces recall reads on this checkout (the active
+one, ``personal``, ``shared`` and ``structural``): another branch's memory,
+or a stale ``ephemeral`` session's, never reaches the agent through it.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .namespaces import resolve_namespace
 from .synapses import (
     LTP_ROW_PARAMS,
     LTP_ROW_SQL,
@@ -81,10 +86,14 @@ def _format_id(node_id: str, labels: dict[str, str]) -> str:
     return f"`{node_id}`"
 
 
+def _marks(namespaces: list[str]) -> str:
+    return ",".join("?" for _ in namespaces)
+
+
 def _top_pairs(
-    db_path: Path, limit: int, min_weight: float
+    db_path: Path, limit: int, min_weight: float, namespaces: list[str]
 ) -> list[tuple[str, str, float, int, bool]]:
-    """Read the top N strongest synapse pairs directly from the DB.
+    """Read the top N strongest synapse pairs in ``namespaces`` from the DB.
 
     Returns ``(node_a, node_b, weight, activation_count, long_term)``. We
     bypass SynapseStore's query helpers so we can grab everything in one
@@ -109,12 +118,13 @@ def _top_pairs(
                        MAX(activation_count) AS activation_count,
                        MAX(CASE WHEN {LTP_ROW_SQL} THEN 1 ELSE 0 END) AS long_term
                 FROM synapses
+                WHERE namespace IN ({_marks(namespaces)})
                 GROUP BY node_a, node_b
                 HAVING MAX(weight) >= ?
                 ORDER BY weight DESC, activation_count DESC
                 LIMIT ?
                 """,
-                (*LTP_ROW_PARAMS, min_weight, limit),
+                (*LTP_ROW_PARAMS, *namespaces, min_weight, limit),
             )
             return [(a, b, float(w), int(c), bool(lt)) for a, b, w, c, lt in cur.fetchall()]
         finally:
@@ -124,9 +134,10 @@ def _top_pairs(
 
 
 def _top_transition_groups(
-    db_path: Path, limit: int, min_prob: float
+    db_path: Path, limit: int, min_prob: float, namespaces: list[str]
 ) -> list[tuple[str, list[tuple[str, float, int]]]]:
-    """Read the strongest directional transitions, grouped by ``from_node``.
+    """Read the strongest directional transitions in ``namespaces``, grouped
+    by ``from_node``.
 
     Returns ``[(from_node, [(to_node, probability, count), ...]), ...]``
     where each from_node has its top successors. ``limit`` caps the
@@ -144,14 +155,16 @@ def _top_transition_groups(
     try:
         conn = sqlite3.connect(db_path, timeout=2.0)
         try:
+            marks = _marks(namespaces)
             cur = conn.execute(
-                """
+                f"""
                 SELECT from_node FROM synapse_transitions
+                WHERE namespace IN ({marks})
                 GROUP BY from_node
                 ORDER BY MAX(weight) DESC, SUM(weight) DESC
                 LIMIT ?
                 """,
-                (limit,),
+                (*namespaces, limit),
             )
             from_nodes = [row[0] for row in cur.fetchall()]
             if not from_nodes:
@@ -161,14 +174,14 @@ def _top_transition_groups(
                 # Aggregate across memory namespaces (PRD 4) so one
                 # successor never renders twice for a from_node.
                 cur = conn.execute(
-                    """
+                    f"""
                     SELECT to_node, SUM(weight) AS weight, SUM(count) AS count
                     FROM synapse_transitions
-                    WHERE from_node = ?
+                    WHERE from_node = ? AND namespace IN ({marks})
                     GROUP BY to_node
                     ORDER BY weight DESC
                     """,
-                    (from_node,),
+                    (from_node, *namespaces),
                 )
                 rows = cur.fetchall()
                 total = sum(float(w) for _, w, _ in rows)
@@ -186,6 +199,88 @@ def _top_transition_groups(
             conn.close()
     except sqlite3.Error:
         return []
+
+
+def _top_hubs(db_path: Path, limit: int, namespaces: list[str]) -> list[tuple[str, int]]:
+    """The ``limit`` nodes with the most distinct neighbors in ``namespaces``.
+
+    A pair held in two namespaces is one connection, as in
+    ``SynapseStore.degrees``.
+    """
+    if not db_path.exists():
+        return []
+    try:
+        conn = sqlite3.connect(db_path, timeout=2.0)
+        try:
+            marks = _marks(namespaces)
+            cur = conn.execute(
+                f"""
+                SELECT node_id, COUNT(DISTINCT other) AS degree FROM (
+                    SELECT node_a AS node_id, node_b AS other FROM synapses
+                    WHERE namespace IN ({marks})
+                    UNION ALL
+                    SELECT node_b AS node_id, node_a AS other FROM synapses
+                    WHERE namespace IN ({marks})
+                )
+                GROUP BY node_id
+                ORDER BY degree DESC, node_id
+                LIMIT ?
+                """,
+                (*namespaces, *namespaces, limit),
+            )
+            return [(nid, int(degree)) for nid, degree in cur.fetchall()]
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return []
+
+
+def _header_stats(db_path: Path, namespaces: list[str]) -> dict[str, float]:
+    """The header's counts, over ``namespaces`` only. Zeros when the DB
+    can't be read."""
+    stats: dict[str, float] = {
+        "edges": 0,
+        "ltp_edges": 0,
+        "total_weight": 0.0,
+        "nodes": 0,
+        "transitions": 0,
+    }
+    if not db_path.exists():
+        return stats
+    try:
+        conn = sqlite3.connect(db_path, timeout=2.0)
+        try:
+            marks = _marks(namespaces)
+            edges, ltp_edges, total_weight = conn.execute(
+                f"""
+                SELECT COUNT(*),
+                       COALESCE(SUM(CASE WHEN {LTP_ROW_SQL} THEN 1 ELSE 0 END), 0),
+                       COALESCE(SUM(weight), 0.0)
+                FROM synapses WHERE namespace IN ({marks})
+                """,
+                (*LTP_ROW_PARAMS, *namespaces),
+            ).fetchone()
+            nodes = conn.execute(
+                f"SELECT COUNT(DISTINCT node_id) FROM node_activations "
+                f"WHERE namespace IN ({marks})",
+                namespaces,
+            ).fetchone()[0]
+            transitions = conn.execute(
+                f"SELECT COUNT(*) FROM synapse_transitions WHERE namespace IN ({marks})",
+                namespaces,
+            ).fetchone()[0]
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return stats
+    stats.update(
+        edges=int(edges),
+        ltp_edges=int(ltp_edges),
+        total_weight=float(total_weight),
+        nodes=int(nodes),
+        transitions=int(transitions),
+    )
+    return stats
 
 
 def _resolve_labels(node_ids: list[str], embedder) -> dict[str, str]:
@@ -220,24 +315,32 @@ def render_synapse_memory(
     min_weight: float = DEFAULT_MIN_WEIGHT,
     top_transitions: int = DEFAULT_TOP_TRANSITIONS,
     transition_min_prob: float = DEFAULT_TRANSITION_MIN_PROB,
+    namespace: str | None = None,
 ) -> str:
     """Render the synapse memory file as a markdown string.
+
+    Covers the namespaces a merged recall read covers when ``namespace`` is
+    the active one (default: :func:`resolve_namespace` for the project), so
+    the file shows the agent what recall uses on this checkout and nothing
+    from other branches.
 
     Empty store still produces a valid (mostly empty) document so
     downstream readers can rely on the file existing.
     """
     project_path = Path(project_path)
     db_path = default_db_path(project_path)
-    store = SynapseStore(db_path)
-    stats = store.stats()
+    # Opening the store also brings an older database's schema up to date.
+    store = SynapseStore(db_path, namespace=namespace or resolve_namespace(project_path))
+    read = store.merged_namespaces()
+    stats = _header_stats(db_path, read)
 
-    pairs = _top_pairs(db_path, top_pairs, min_weight)
+    pairs = _top_pairs(db_path, top_pairs, min_weight, read)
     pair_node_ids: list[str] = []
     for a, b, *_ in pairs:
         pair_node_ids.extend((a, b))
-    hubs = stats.get("top_hubs", [])[:top_hubs]
+    hubs = _top_hubs(db_path, top_hubs, read)
     hub_ids = [nid for nid, _ in hubs]
-    transitions = _top_transition_groups(db_path, top_transitions, transition_min_prob)
+    transitions = _top_transition_groups(db_path, top_transitions, transition_min_prob, read)
     transition_node_ids: list[str] = []
     for from_node, successors in transitions:
         transition_node_ids.append(from_node)
@@ -255,7 +358,8 @@ def render_synapse_memory(
         f"- Edges learned: {stats['edges']} ({stats['ltp_edges']} long-term)",
         f"- Total synapse weight: {stats['total_weight']:.2f}",
         f"- Active nodes: {stats['nodes']}",
-        f"- Directional transitions: {stats.get('transitions', 0)}",
+        f"- Directional transitions: {stats['transitions']}",
+        f"- Namespaces: {', '.join(f'`{ns}`' for ns in read)} (what recall reads here)",
         "",
         "These associations were learned by NeuralMind from how the agent and",
         "the codebase have actually been used together. Treat them as a hint",
@@ -317,13 +421,15 @@ def export_synapse_memory(
     top_transitions: int = DEFAULT_TOP_TRANSITIONS,
     transition_min_prob: float = DEFAULT_TRANSITION_MIN_PROB,
     write_claude_auto_memory: bool = True,
+    namespace: str | None = None,
 ) -> list[Path]:
     """Render the synapse memory and write it to disk.
 
     Always writes ``<project>/.neuralmind/SYNAPSE_MEMORY.md``. When
     Claude Code's auto-memory directory exists for this project, also
     writes ``<auto>/synapse-activations.md`` so the model picks it up
-    on session start. Returns the list of paths written.
+    on session start. Returns the list of paths written. ``namespace`` is
+    the active namespace, as for :func:`render_synapse_memory`.
 
     Failures are swallowed (returns whichever paths did succeed) so
     hooks can call this safely.
@@ -338,6 +444,7 @@ def export_synapse_memory(
             min_weight=min_weight,
             top_transitions=top_transitions,
             transition_min_prob=transition_min_prob,
+            namespace=namespace,
         )
     except Exception:
         return written

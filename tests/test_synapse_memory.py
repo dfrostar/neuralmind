@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
+from neuralmind import namespaces
 from neuralmind.synapse_memory import (
     CLAUDE_AUTO_FILENAME,
     PROJECT_MEMORY_FILENAME,
@@ -85,7 +87,7 @@ def test_render_does_not_add_pair_weights_across_namespaces(tmp_path):
         personal.reinforce(["a", "b"])
         branch.reinforce(["a", "b"])
 
-    line = _pair_line(render_synapse_memory(tmp_path), "a", "b")
+    line = _pair_line(render_synapse_memory(tmp_path, namespace="branch:feature"), "a", "b")
     assert "weight 1.00" in line
     assert f"fired {LTP_THRESHOLD - 1}×" in line
     assert "long-term" not in line
@@ -101,7 +103,8 @@ def test_render_long_term_tag_follows_the_ltp_criterion(tmp_path):
         ephemeral.reinforce(["eph_a", "eph_b"])  # ephemeral has no LTP exemption
     personal.penalize(["low_a", "low_b"], penalty=0.9)  # 1.0 -> 0.1 < LTP_FLOOR
 
-    out = render_synapse_memory(tmp_path)
+    # Ephemeral rows are read only while ephemeral is the active namespace.
+    out = render_synapse_memory(tmp_path, namespace="ephemeral")
     assert "long-term" in _pair_line(out, "ltp_a", "ltp_b")
     assert "long-term" not in _pair_line(out, "low_a", "low_b")
     assert "long-term" not in _pair_line(out, "eph_a", "eph_b")
@@ -117,9 +120,88 @@ def test_render_tags_pair_long_term_when_any_namespace_holds_it(tmp_path):
         personal.reinforce(["a", "b"])
     branch.reinforce(["a", "b"])
 
-    line = _pair_line(render_synapse_memory(tmp_path), "a", "b")
+    line = _pair_line(render_synapse_memory(tmp_path, namespace="branch:feature"), "a", "b")
     assert f"fired {LTP_THRESHOLD}×" in line
     assert "long-term" in line
+
+
+def _on_branch(monkeypatch, branch):
+    """Stub the git calls resolve_namespace makes: checked out on ``branch``,
+    with ``main`` as the default branch."""
+
+    def fake_check_output(cmd, **kwargs):
+        if "rev-parse" in cmd:
+            return f"{branch}\n".encode()
+        if "symbolic-ref" in cmd:
+            return b"origin/main\n"
+        raise subprocess.CalledProcessError(128, cmd)
+
+    monkeypatch.delenv("NEURALMIND_NAMESPACE", raising=False)
+    monkeypatch.setattr(namespaces.subprocess, "check_output", fake_check_output)
+
+
+def _learn_on_two_branches(db):
+    personal = SynapseStore(db)
+    feature = SynapseStore(db, namespace="branch:feature-x")
+    personal.reinforce(["main_a", "main_b"])
+    personal.record_sequence(["main_a", "main_b"])
+    for i in range(4):
+        feature.reinforce(["FEATURE_HUB", f"feature_{i}"])
+    feature.record_sequence(["feature_0", "feature_1"])
+
+
+def test_render_on_main_leaves_out_another_branchs_memory(tmp_path, monkeypatch):
+    # Until v4.21.0 the file listed every namespace, so on main the agent saw
+    # pairs, hubs and transitions learned only on feature-x, which recall on
+    # main never reads.
+    _on_branch(monkeypatch, "main")
+    _learn_on_two_branches(default_db_path(tmp_path))
+
+    out = render_synapse_memory(tmp_path)
+    assert "`main_a` ↔ `main_b`" in out
+    assert "feature" not in out.lower()
+    assert "FEATURE_HUB" not in out
+    # The header counts what the file covers, and says what that is.
+    assert "Edges learned: 1 (0 long-term)" in out
+    assert "Directional transitions: 1" in out
+    assert "Namespaces: `personal`, `shared`, `structural`" in out
+
+
+def test_render_on_a_feature_branch_includes_it_and_personal(tmp_path, monkeypatch):
+    _on_branch(monkeypatch, "feature-x")
+    _learn_on_two_branches(default_db_path(tmp_path))
+    SynapseStore(default_db_path(tmp_path), namespace="branch:other").reinforce(["o_a", "o_b"])
+
+    out = render_synapse_memory(tmp_path)
+    assert "`main_a` ↔ `main_b`" in out
+    assert "`FEATURE_HUB` ↔ `feature_0`" in out
+    assert "`FEATURE_HUB` — 4 connections" in out
+    assert "After `feature_0`:" in out
+    assert "o_a" not in out
+    assert "Namespaces: `branch:feature-x`, `personal`, `shared`, `structural`" in out
+
+
+def test_export_writes_the_checked_out_branchs_view(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    _on_branch(monkeypatch, "main")
+    _learn_on_two_branches(default_db_path(tmp_path))
+
+    export_synapse_memory(tmp_path, write_claude_auto_memory=False)
+    assert "FEATURE_HUB" not in project_memory_file(tmp_path).read_text(encoding="utf-8")
+    export_synapse_memory(tmp_path, write_claude_auto_memory=False, namespace="branch:feature-x")
+    assert "FEATURE_HUB" in project_memory_file(tmp_path).read_text(encoding="utf-8")
+
+
+def test_render_hub_degree_counts_a_pair_once_across_namespaces(tmp_path):
+    db = default_db_path(tmp_path)
+    personal = SynapseStore(db)
+    shared = SynapseStore(db, namespace="shared")
+    for i in range(3):
+        personal.reinforce(["HUB", f"spoke_{i}"])
+        shared.reinforce(["HUB", f"spoke_{i}"])
+
+    out = render_synapse_memory(tmp_path, namespace="personal")
+    assert "`HUB` — 3 connections" in out
 
 
 def test_render_uses_labels_when_embedder_provided(tmp_path):
