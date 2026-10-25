@@ -164,6 +164,7 @@ same factor in SQL for personal, branch and shared memory
 (`TestDecayAppliesTheBlend`, which fails on v4.20.0);
 `TestForgettingInPractice` replays the schedules above.
 
+
 ---
 
 ## NeuralMind builds again on Intel macOS and Windows ARM
