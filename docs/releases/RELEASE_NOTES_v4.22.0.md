@@ -174,14 +174,19 @@ The `SYNAPSE_MEMORY.md` file written for Claude Code at session start lists
 the strongest associations from every namespace, other branches' included.
 Recall doesn't read them; the agent does see the file.
 
-### Also in v4.22.0: one SBOM per platform
+### Also in v4.22.0: an SBOM for each platform it installs on
 
-The release's SBOM workflow installs each release natively on six runners
-(Linux x86_64 and arm64, macOS arm64 and Intel, Windows x86_64 and ARM64) and
-publishes one CycloneDX SBOM per platform, each recording any dependency pip
-built from source there ([#709](https://github.com/dfrostar/neuralmind/pull/709)).
-The Linux x86_64 SBOM keeps the unsuffixed name, and `/security` links the
-others.
+The release's SBOM workflow tries a native install of each release on six
+runners (Linux x86_64 and arm64, macOS arm64 and Intel, Windows x86_64 and
+ARM64) and publishes a CycloneDX SBOM for each install that succeeds, recording
+any dependency pip built from source there
+([#709](https://github.com/dfrostar/neuralmind/pull/709)). Run for v4.21.0,
+five succeeded. On Windows ARM64 the install fails, building `cryptography`,
+`chromadb` and `grpcio`, so there is no SBOM for it; use WSL 2 or the
+`linux/arm64` container there
+([#715](https://github.com/dfrostar/neuralmind/pull/715), which also fixed the
+Windows x86_64 SBOM). The Linux x86_64 SBOM keeps the unsuffixed name, and
+`/security` links the others.
 
 ### Tests
 
