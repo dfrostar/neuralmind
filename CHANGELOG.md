@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.22.1](https://github.com/dfrostar/neuralmind/compare/v4.22.0...v4.22.1) (2026-10-26)
+
+
+### Documentation
+
+* **social:** tick the Show HN draft's offline demo check ([#721](https://github.com/dfrostar/neuralmind/issues/721)) ([8b81354](https://github.com/dfrostar/neuralmind/commit/8b813547d98359e01a7f2ce3d4615aae70ea0d90))
+
 ## [4.22.0](https://github.com/dfrostar/neuralmind/compare/v4.21.0...v4.22.0) (2026-10-25)
 
 
