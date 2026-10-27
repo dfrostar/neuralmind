@@ -84,9 +84,11 @@ const guards: { name: string; since: string; body: string; cmd: string; href: st
 const releases: { version: string; title: string; points: string[] }[] = [
     {
         version: '4.22.0',
-        title: 'A feature branch’s calls stay on the branch',
+        title: 'Doctor says whether anything calls NeuralMind',
         points: [
-            'The call and import edges a build finds now follow the checkout. A call added on a feature branch no longer shows up in recall on `main`.',
+            '`neuralmind doctor` opens with a Wiring section (daemon, Git hooks, Hermes plugin, MCP registration per client), and each warning carries the command that fixes it.',
+            '`neuralmind install-mcp --client hermes` registers the MCP server with Hermes-Agent, and a build ends with the commands for whatever isn’t wired yet.',
+            'The call and import edges a build finds, and the memory file Claude Code loads, now follow the checkout. A feature branch’s calls no longer show up in recall on `main`.',
         ],
     },
     {
