@@ -435,8 +435,103 @@ def test_tests_follow_the_code_unless_the_prompt_is_about_tests():
     mind = _Mind(None, hits=hits, nodes=nodes)
     paths = [f.path for f in recall(mind, "how are options parsed").matches]
     assert paths == ["src/click/parser.py", "tests/test_parser.py"]
-    paths = [f.path for f in recall(mind, "why does the parser test fail").matches]
+    paths = [f.path for f in recall(mind, "why does test_parse fail").matches]
     assert paths == ["tests/test_parser.py", "src/click/parser.py"]
+
+
+# The task-outcome benchmark's instruction, which every prompt it ran ended with.
+BENCH_TAIL = (
+    "Find the cause and fix it in the source code. Don't add or change tests: the fix is "
+    "judged by tests you can't see. You can run the existing tests with "
+    "`python -m pytest <path>`. Stop when the fix is done."
+)
+
+
+@pytest.mark.parametrize(
+    ("prompt", "expected"),
+    [
+        ("why does test_parse_option fail", True),
+        ("parse_test.go panics on an empty flag", True),
+        ("UserServiceTest is flaky", True),
+        ("tests/test_parser.py fails on Windows", True),
+        ("the assertion in web/src/cart.test.ts is wrong", True),
+        ("look under tests/ for the fixture", True),
+        ("options are parsed twice. " + BENCH_TAIL, False),
+        ("fix the parser, then run the tests", False),
+        ("is pytest or unittest used for testing?", False),
+        ("the latest release broke src/contest.py", False),
+        ("is_test_path misses a folder", False),
+    ],
+)
+def test_a_prompt_names_a_test(prompt, expected):
+    assert prompt_recall._names_a_test(prompt) is expected
+
+
+def _crowded(tests=4, sources=2):
+    """Each test file matches twice at 0.6; each source file once, at 0.5 and down."""
+    nodes, hits = [], []
+    for t in range(tests):
+        for f in range(2):
+            nid = f"tests_test_m{t}_py__test_{f}_fn"
+            nodes.append(_node(nid, f"tests/test_m{t}.py", f"test_{f}()", 10 * f + 1))
+            hits.append((nid, 0.6))
+    for s in range(sources):
+        nid = f"pkg_m{s}_py__run_fn"
+        nodes.append(_node(nid, f"pkg/m{s}.py", "run()", 1))
+        hits.append((nid, 0.5 - s / 100))
+    return nodes, hits
+
+
+def test_telling_the_agent_how_to_run_the_tests_keeps_the_tests_last():
+    # Summed over their matches, four test files outrank both source files, and
+    # used to fill the list: the benchmark's instruction switched the order off.
+    nodes, hits = _crowded()
+    result = recall(_Mind(None, hits=hits, nodes=nodes), "options are parsed twice. " + BENCH_TAIL)
+    assert [f.path for f in result.matches] == [
+        "pkg/m0.py",
+        "pkg/m1.py",
+        "tests/test_m0.py",
+        "tests/test_m1.py",
+    ]
+
+
+def test_a_prompt_mentioning_tests_keeps_a_slot_for_its_best_test():
+    # Five source files fill the list; one test file matched below them.
+    nodes, hits = _crowded(tests=0, sources=5)
+    nodes.append(_node("tests_test_claims_py__test_fn", "tests/test_claims.py", "test()", 1))
+    hits.append(("tests_test_claims_py__test_fn", 0.3))
+    mind = _Mind(None, hits=hits, nodes=nodes)
+    paths = [f.path for f in recall(mind, "fix the claims guard test").matches]
+    assert paths == ["pkg/m0.py", "pkg/m1.py", "pkg/m2.py", "tests/test_claims.py"]
+    paths = [f.path for f in recall(mind, "fix the claims guard").matches]
+    assert paths == [f"pkg/m{s}.py" for s in range(4)]
+
+
+def test_a_prompt_naming_a_test_ranks_the_tests_by_score():
+    nodes, hits = _crowded()
+    mind = _Mind(None, hits=hits, nodes=nodes)
+    paths = [f.path for f in recall(mind, "why does test_0 fail").matches]
+    assert paths == [f"tests/test_m{t}.py" for t in range(4)]
+
+
+def test_linked_test_files_come_after_the_code_too():
+    # Three test files outrank the source file on activation.
+    linked = [f"tests_test_l{i}_py__test_fn" for i in range(3)]
+    nodes = [n for n in NODES if n["id"] in (PARSER, RESOLVE)]
+    nodes += [_node(nid, f"tests/test_l{i}.py", "test()", 1) for i, nid in enumerate(linked)]
+    spread = [(nid, 0.4) for nid in linked] + [(RESOLVE, 0.3)]
+    mind = _Mind(_StubStore(spread, {}), hits=[(PARSER, 0.6)], nodes=nodes)
+    result = recall(mind, "options are parsed twice. " + BENCH_TAIL)
+    assert [f.path for f in result.linked] == [
+        "src/click/shell_completion.py",
+        "tests/test_l0.py",
+        "tests/test_l1.py",
+    ]
+    assert [f.path for f in recall(mind, "why does test_l0 fail").linked] == [
+        "tests/test_l0.py",
+        "tests/test_l1.py",
+        "tests/test_l2.py",
+    ]
 
 
 def test_a_prompt_matching_no_code_lists_its_document_matches(tmp_path):
@@ -642,3 +737,64 @@ def test_no_excerpt_when_the_file_cant_be_read_or_its_turned_off(tmp_path, monke
     (tmp_path / "pkg" / "m.py").write_text(SOURCE)
     monkeypatch.setenv("NEURALMIND_RECALL_EXCERPT", "0")
     assert recall(mind, "q").excerpt is None
+
+
+TEST_SOURCE = "\n".join(
+    [
+        "def test_parse():",  # L1
+        "    assert parse([]) == {}",
+        "",
+        "",
+        "def test_other():",  # L5
+        "    assert other() == 1",
+    ]
+)
+TEST_NODES = (
+    _node("tests_test_m_py__test_parse_fn", "tests/test_m.py", "test_parse()", 1),
+    _node("tests_test_m_py__test_other_fn", "tests/test_m.py", "test_other()", 5),
+)
+
+
+def test_a_test_file_doesnt_compete_for_the_excerpt(tmp_path):
+    # The test file outscores pkg/m.py and comes after it; only code competes.
+    hits = [
+        ("tests_test_m_py__test_parse_fn", 0.9),
+        ("tests_test_m_py__test_other_fn", 0.9),
+        ("pkg_m_py__parse_fn", 0.7),
+    ]
+    result = recall(_excerpt_mind(tmp_path, hits, extra_nodes=TEST_NODES), "q")
+    assert [f.path for f in result.matches] == ["pkg/m.py", "tests/test_m.py"]
+    assert (result.excerpt.path, result.excerpt.start) == ("pkg/m.py", 3)
+    assert "Most matches are in pkg/m.py. Its best match, L3-L7" in format_block(result)
+
+
+def test_code_is_quoted_even_when_a_test_leads_the_list(tmp_path):
+    hits = [
+        ("tests_test_m_py__test_parse_fn", 0.9),
+        ("tests_test_m_py__test_other_fn", 0.8),
+        ("pkg_m_py__parse_fn", 0.7),
+        ("pkg_n_py__n_fn", 0.3),
+    ]
+    mind = _excerpt_mind(tmp_path, hits, extra_nodes=TEST_NODES)
+    result = recall(mind, "why does test_parse fail")
+    assert [f.path for f in result.matches][0] == "tests/test_m.py"
+    assert result.excerpt.path == "pkg/m.py"
+    block = format_block(result)
+    assert "Most matches outside the tests are in pkg/m.py. Its best match, L3-L7" in block
+    # Among the code files, pkg/m.py needs its 2:1 lead all the same.
+    mind.embedder._hits[3]["score"] = 0.6
+    assert recall(mind, "why does test_parse fail").excerpt is None
+
+
+def test_a_test_is_quoted_only_when_no_code_is_listed(tmp_path):
+    hits = [("tests_test_m_py__test_parse_fn", 0.9), ("tests_test_m_py__test_other_fn", 0.4)]
+    mind = _excerpt_mind(tmp_path, hits, extra_nodes=TEST_NODES)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_m.py").write_text(TEST_SOURCE)
+    result = recall(mind, "q")
+    assert (result.excerpt.path, result.excerpt.start, result.excerpt.end) == (
+        "tests/test_m.py",
+        1,
+        2,
+    )
+    assert "Most matches are in tests/test_m.py." in format_block(result)
