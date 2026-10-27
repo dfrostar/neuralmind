@@ -638,6 +638,10 @@ class SynapseStore:
             return [(ns, merge_weight_for(ns, self.namespace)) for ns in merged]
         return [(ns, 1.0) for ns in dict.fromkeys(namespaces) if ns]
 
+    def merged_namespaces(self) -> list[str]:
+        """The namespaces a merged read (``namespaces=None``) covers, active first."""
+        return [ns for ns, _ in self._read_namespaces(None)]
+
     # ----------------------------------------------------------------- #
     # Writes
     # ----------------------------------------------------------------- #

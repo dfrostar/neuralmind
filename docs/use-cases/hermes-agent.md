@@ -71,6 +71,15 @@ The build matters: the plugin serves only a project where `neuralmind build`
 has run. If the path you pass isn't built, the install says so, and the plugin
 does nothing until it is.
 
+*(v4.22.0+)* Check what's connected with `neuralmind doctor /path/to/project`.
+Its Wiring section comes first: whether the plugin is enabled (and which
+project it serves), the daemon, the Git hooks that keep the index fresh
+(`neuralmind init-hook`), and the MCP registration in each client, Hermes's
+included, each with the command that fixes it. An index nothing calls passes
+every other check, so this is the section that shows it. The
+[Hermes pairing tips](../wiki/Tips-and-Tricks-Hermes-Pairing.md) cover
+verifying, upgrading and the switches.
+
 ## 2. Start a session: the first turn
 
 Hermes runs the plugin's `pre_llm_call` hook once per turn, before the model.
@@ -242,6 +251,13 @@ of node names and decisions: where to look, not the code. When the agent needs
 the code itself, `neuralmind_query`, `neuralmind_skeleton` and the other MCP
 tools (or the skill's CLI calls) are still how it gets it. With the plugin, it
 starts each turn knowing where to look, whether or not it calls them.
+
+*(v4.22.0+)* `neuralmind install-mcp --client hermes` registers the MCP server
+under `mcp_servers:` in the Hermes home's `config.yaml`, keeping the file's
+comments; `neuralmind install-hermes-plugin --mcp` does the same while
+installing the plugin. A running Hermes reloads its MCP servers when
+`config.yaml` changes (or on `/reload-mcp`); restart the gateway if one is
+running, then check with `hermes mcp test neuralmind`.
 
 **A Hermes memory provider.** Hermes's memory providers (Hindsight, Honcho,
 mem0 and others) remember conversations and the person: what was said,

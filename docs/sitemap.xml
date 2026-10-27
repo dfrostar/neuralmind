@@ -200,7 +200,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/releases/RELEASE_NOTES_v4.22.0.html</loc>
-    <lastmod>2026-10-24</lastmod>
+    <lastmod>2026-10-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -459,6 +459,12 @@
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Usage-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/wiki/Tips-and-Tricks-Hermes-Pairing.html</loc>
+    <lastmod>2026-10-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

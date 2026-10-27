@@ -1,5 +1,33 @@
 # Changelog
 
+## [4.22.1](https://github.com/dfrostar/neuralmind/compare/v4.22.0...v4.22.1) (2026-10-26)
+
+
+### Documentation
+
+* **social:** tick the Show HN draft's offline demo check ([#721](https://github.com/dfrostar/neuralmind/issues/721)) ([8b81354](https://github.com/dfrostar/neuralmind/commit/8b813547d98359e01a7f2ce3d4615aae70ea0d90))
+
+## [4.22.0](https://github.com/dfrostar/neuralmind/compare/v4.21.0...v4.22.0) (2026-10-25)
+
+
+### Features
+
+* doctor shows what's wired, install-mcp --client hermes, and a build prints the pairing steps ([#700](https://github.com/dfrostar/neuralmind/issues/700)) ([78d55c7](https://github.com/dfrostar/neuralmind/commit/78d55c773a00b5376a9fd5a3a21dcf03fc023b83))
+* **sbom:** one SBOM per platform from native installs; docs say what Intel macOS and Windows ARM installs compile ([#709](https://github.com/dfrostar/neuralmind/issues/709)) ([d3b58ed](https://github.com/dfrostar/neuralmind/commit/d3b58ed176c502f519b4f387835bd47a484b0cd7))
+
+
+### Bug Fixes
+
+* **sbom:** read pip's report as UTF-8 so Windows installs get an SBOM; docs: Windows on ARM can't install natively, use WSL 2 ([#715](https://github.com/dfrostar/neuralmind/issues/715)) ([961deaf](https://github.com/dfrostar/neuralmind/commit/961deaf650cacaab311642d72eb7c8ff0780a3c5))
+* **synapses:** keep a feature branch's call graph out of the default branch's recall ([#710](https://github.com/dfrostar/neuralmind/issues/710)) ([c04ca80](https://github.com/dfrostar/neuralmind/commit/c04ca8080ee6ca3c5f6956b28be8d197946d1be7))
+* **synapses:** write only the checked-out branch's memory to SYNAPSE_MEMORY.md ([#717](https://github.com/dfrostar/neuralmind/issues/717)) ([8b4e61f](https://github.com/dfrostar/neuralmind/commit/8b4e61fe83c95e8802916d099eb3df74c5d2ff6d))
+
+
+### Documentation
+
+* **hermes:** a Hermes pairing quickstart in the README, and a wiki page of pairing tips ([#701](https://github.com/dfrostar/neuralmind/issues/701)) ([ff889d9](https://github.com/dfrostar/neuralmind/commit/ff889d95605ac1d1cccb2bc394c9d0562072c303))
+* **social:** mark the offline-demo Show HN draft ready now that v4.21.0 is on PyPI ([#712](https://github.com/dfrostar/neuralmind/issues/712)) ([e45d316](https://github.com/dfrostar/neuralmind/commit/e45d316a2a0faef9857831cbd94cdc20f35ad06b))
+
 ## [4.21.0](https://github.com/dfrostar/neuralmind/compare/v4.20.0...v4.21.0) (2026-10-22)
 
 

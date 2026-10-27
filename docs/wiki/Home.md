@@ -690,6 +690,7 @@ sections.
 | **[Comparisons](Comparisons)** | Honest "NeuralMind vs X" pages: Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
 || **[Tier2-Operator-Guide](Tier2-Operator-Guide.md)** | Team tier commands, honest scope, troubleshooting |
 || **[Multi-Project-Scoping](Multi-Project-Scoping.md)** | Working across multiple codebases — isolation rules for NeuralMind, memU, and agent memory |
+|| **[Tips & Tricks: Hermes pairing](Tips-and-Tricks-Hermes-Pairing.md)** | Running NeuralMind with Hermes Agent: verifying the wiring, which project a turn belongs to, upgrading, the switches |
 || **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
 || **[Billing-Runbook](Billing-Runbook.md)** | Operator: quote → invoice → issue → renew, the manual Team sales path |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |

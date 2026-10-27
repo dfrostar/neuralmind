@@ -2483,7 +2483,9 @@ default branch's recall. Per-namespace decay: `shared` is sticky,
 with no LTP floor, and `structural` doesn't decay. `NEURALMIND_NAMESPACE`
 or `memory_namespace` naming `structural` is ignored. Traced queries
 (`query --trace`) attribute each synapse boost to its namespace via
-`namespace_contribution`.
+`namespace_contribution`. The session-start memory file
+(`SYNAPSE_MEMORY.md`) covers the same namespaces as this merged read
+(v4.22.0+), never another branch's.
 
 ---
 
