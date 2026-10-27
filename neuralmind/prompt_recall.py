@@ -23,7 +23,13 @@ up to three parts:
   of their matching symbols, so a file with several matches outranks a single
   stray one. Test files come after the code they test unless the prompt is
   about tests: they repeat the code's vocabulary, so they often match as well
-  as the code does.
+  as the code does. A prompt is about tests only when it names one (a
+  ``test_*`` or ``Test*`` symbol, or a test file's path); mentioning tests
+  ("the tests fail", "a flaky test") isn't enough, since a bug report nearly
+  always does. A matched test file also credits the code file it tests, found
+  by name (``test_x.py`` tests ``x.py``), with ``TESTED_CODE_CREDIT`` of its
+  best score, so the code under test is listed even when its test matched and
+  it didn't.
 - **Connected to it in the synapse graph.** Other files that the synapse
   graph links directly to the listed code, mostly code, though a doc that is
   edited with it (a runbook, say) can appear: structural edges (calls,
@@ -89,6 +95,11 @@ LINKED_SYMBOLS = 2
 # 0.044) doesn't, nor does an edge that has decayed to a third of its weight.
 LINK_FLOOR = 0.05
 LABEL_MAX = 60
+# A matched test file gives the code file it tests (by name: test_x.py tests
+# x.py) this much of its best score. At 1.0 the code under test ranks with its
+# test. On the hermes-agent screen's 5 prompts it named the file to fix on one
+# more (3 of 5), and moved no other file the fix changed out of the block.
+TESTED_CODE_CREDIT = 1.0
 # The excerpt's confidence gate: the top file's summed match score against the
 # next file's. Several strong matches in one file is what a 2:1 lead takes.
 EXCERPT_MARGIN = 2.0
@@ -112,7 +123,15 @@ _PROSE_TYPES = frozenset(
 _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _TEST_STEM = re.compile(r"^tests?$|^test_|_tests?$|Tests?$")
 _TEST_NAME = re.compile(r"\.(test|spec)\.")
-_TEST_PROMPT = re.compile(r"\b(tests?|testing|specs?|pytest|unittest)\b", re.IGNORECASE)
+# What a test file's name adds to the name of the code it tests.
+_TEST_AFFIX = re.compile(r"^tests?_|_tests?$|(?<=[a-z0-9])Tests?$")
+# A prompt is about tests when it names one: a test function or class, or a
+# test file. Saying "tests" isn't enough. "Don't change the tests", "the tests
+# you can't see", even "this made a test flaky" are about the code under test,
+# and the task-outcome benchmark's prompt says the first two on every task.
+_TEST_SYMBOL = re.compile(r"\b(?:test_\w+|Test[A-Z]\w*)")
+# Path-like words: one with a slash, or a file name with a suffix.
+_PATH_WORD = re.compile(r"[\w.\\/-]*[\\/][\w.\\/-]*|[\w-]+(?:\.[\w-]+)*\.[A-Za-z]\w*")
 
 
 @dataclass
@@ -193,12 +212,14 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         bucket = code if is_code_node(node) else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
 
+    tests_last = not about_tests(prompt)
+    if tests_last and TESTED_CODE_CREDIT > 0:
+        _credit_tested_code(code, info, nodes)
     result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
     primary, secondary = (code, other) if code else (other, {})
-    tests_last = not _TEST_PROMPT.search(prompt)
     result.matches = _by_file(primary, info, MATCH_FILES, tests_last=tests_last)
     if result.code and os.environ.get("NEURALMIND_RECALL_EXCERPT") != "0":
-        result.excerpt = _excerpt(mind, result.matches, nodes, info)
+        result.excerpt = _excerpt(mind, result.matches, nodes, info, tests_last=tests_last)
     # Only the files the block lists: a match past MATCH_FILES can still be linked.
     matched = {entry.path for entry in result.matches}
 
@@ -277,6 +298,79 @@ def is_test_path(path: str) -> bool:
         return True
     name = parts[-1]
     return bool(_TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name))
+
+
+def _credit_tested_code(
+    code: dict[str, float], info: dict[str, dict], nodes: dict[str, dict]
+) -> None:
+    """Give the code a matched test file tests its file node, at the test's best score.
+
+    A prompt about a bug often matches the test file of the module to fix
+    better than the module itself: the test spells out the behaviour in the
+    prompt's words. On hermes-agent, a prompt about an NVIDIA error matched
+    ``tests/agent/test_error_classifier.py`` and never the fix's
+    ``agent/error_classifier.py``. The code under test is found by name only
+    (see :func:`_tested_paths`), so a test with no counterpart credits nothing.
+    """
+    tests: dict[str, float] = {}
+    for node_id, score in code.items():
+        path = _path(info.get(node_id))
+        if path and is_test_path(path):
+            tests[path] = max(score, tests.get(path, score))
+    wanted = {test: _tested_name(test) for test in tests}
+    names = {name for name in wanted.values() if name}
+    if not names:
+        return
+    # One pass, a set lookup per node: a large repository's graph holds
+    # hundreds of thousands of nodes. A file's own node is labelled with its
+    # file name.
+    found: dict[str, dict[str, str]] = {}
+    for node_id, node in nodes.items():
+        label = node.get("label")
+        if label not in names:
+            continue
+        path = _path(node)
+        if os.path.basename(path) == label and not is_test_path(path) and is_code_node(node):
+            found.setdefault(label, {}).setdefault(path, node_id)
+    for test, name in wanted.items():
+        target = _tested_paths(test, found.get(name, {}))
+        if target:
+            node_id = found[name][target]
+            info.setdefault(node_id, nodes[node_id])
+            credit = TESTED_CODE_CREDIT * max(tests[test], 0.0)
+            code[node_id] = max(credit, code.get(node_id, credit))
+
+
+def _tested_name(test: str) -> str:
+    """The file name a test file's code would have: ``test_cli.py`` -> ``cli.py``."""
+    name = test.replace("\\", "/").rsplit("/", 1)[-1]
+    stem, dot, suffix = name.partition(".")
+    suffix = _TEST_NAME.sub(".", "." + suffix)[1:] if dot else ""
+    code_stem = _TEST_AFFIX.sub("", stem)
+    if not suffix or not code_stem or (code_stem == stem and not _TEST_NAME.search(name)):
+        return ""
+    return f"{code_stem}.{suffix}"
+
+
+def _tested_paths(test: str, candidates: dict[str, str]) -> str:
+    """Which of the code files named like ``test``'s counterpart it tests, or ''.
+
+    The one at the test's own path with the test folders taken out
+    (``tests/agent/test_x.py`` -> ``agent/x.py``), else the only one there is.
+    """
+    parts = test.replace("\\", "/").split("/")
+    mirror = "/".join(p for p in parts[:-1] if p.lower() not in _TEST_DIRS)
+    same = [path for path in candidates if os.path.dirname(path) == mirror]
+    if len(same) == 1:
+        return same[0]
+    return next(iter(candidates)) if len(candidates) == 1 else ""
+
+
+def about_tests(prompt: str) -> bool:
+    """Whether a prompt names a test: a ``test_*`` function, a ``Test*`` class, a test file."""
+    if _TEST_SYMBOL.search(prompt):
+        return True
+    return any(is_test_path(word) for word in _PATH_WORD.findall(prompt))
 
 
 def _seeds(
@@ -372,19 +466,28 @@ def _one_per_symbol(
 
 
 def _excerpt(
-    mind: Any, files: list[FileRecall], nodes: dict[str, dict], info: dict[str, dict]
+    mind: Any,
+    files: list[FileRecall],
+    nodes: dict[str, dict],
+    info: dict[str, dict],
+    *,
+    tests_last: bool = False,
 ) -> Excerpt | None:
     """The leading file's best symbol, when that file leads by ``EXCERPT_MARGIN``.
 
-    The symbol runs from its own line to the line before the next symbol the
-    graph records in the file, at most ``EXCERPT_LINES``. Read from the working
-    tree, so it's what the agent would read; None when the file can't be read
-    or the node has no line. Fails open.
+    With ``tests_last`` the leading file is the first that isn't a test, and it
+    must lead every other listed file, tests included: a test that matches as
+    well as the code may be testing other code. The symbol runs from its own
+    line to the line before the next symbol the graph records in the file, at
+    most ``EXCERPT_LINES``. Read from the working tree, so it's what the agent
+    would read; None when the file can't be read or the node has no line.
+    Fails open.
     """
-    if not files or not files[0].top:
+    candidates = [f for f in files if not (tests_last and is_test_path(f.path))]
+    if not candidates or not candidates[0].top:
         return None
-    lead = files[0]
-    runner_up = files[1].score if len(files) > 1 else 0.0
+    lead = candidates[0]
+    runner_up = max((f.score for f in files if f is not lead), default=0.0)
     if runner_up > 0 and lead.score < EXCERPT_MARGIN * runner_up:
         return None
     start = _line_of(info.get(lead.top) or nodes.get(lead.top))

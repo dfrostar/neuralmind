@@ -199,6 +199,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4230">
+            <h2>What&rsquo;s New in v4.23.0 &mdash; the per-prompt block lists the code before its tests</h2>
+            <p>The block NeuralMind adds to each prompt (Claude Code&rsquo;s <code>UserPromptSubmit</code> hook, the Hermes plugin&rsquo;s <code>pre_llm_call</code>) was meant to put test files after the code they test unless the prompt is about tests. But any mention of a test counted, and nearly every bug report has one, so tests often led the list.</p>
+            <ul>
+                <li><strong>A prompt is about tests when it names one</strong> &mdash; a <code>test_*</code> function, a <code>Test*</code> class or a test file&rsquo;s path. &ldquo;The tests fail&rdquo; or &ldquo;a flaky test&rdquo; no longer moves tests to the front.</li>
+                <li><strong>A matched test file brings the code it tests</strong> &mdash; found by name (<code>tests/agent/test_x.py</code> &rarr; <code>agent/x.py</code>, <code>x.test.ts</code> &rarr; <code>x.ts</code>), so that file is listed even when only its test matched the prompt.</li>
+                <li><strong>The code excerpt skips a leading test</strong> &mdash; and a test that matches as well as its code holds the quote back.</li>
+                <li><strong>Measured offline only</strong> &mdash; by replaying the hook on held-out hermes-agent bug fixes the change wasn&rsquo;t tuned on; the held-out record has the numbers and their limits. Whether an agent works differently with the new block is not measured.</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.0.md">v4.23.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md">held-out record</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4220">
             <h2>What&rsquo;s New in v4.22.0 &mdash; doctor says whether anything calls NeuralMind, and a feature branch&rsquo;s calls stay on the branch</h2>
             <p>A Hermes Agent deployment sat installed but unused for 11 days, with 2 logged queries, while <code>neuralmind doctor</code> printed &ldquo;Up and running&rdquo;: every check it ran was about the index, and the index was fine. This release makes that state visible, with the command for each missing piece; that part changes no hook, tool or prompt block.</p>
