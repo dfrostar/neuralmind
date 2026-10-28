@@ -1,0 +1,72 @@
+[
+ {
+  "run": "69316aa66f-baseline-r9",
+  "arm": "baseline",
+  "tool_seq_len": 7,
+  "explore_old_broken": 0,
+  "explore_fixed": 7
+ },
+ {
+  "run": "69316aa66f-treatment-r10",
+  "arm": "treatment",
+  "tool_seq_len": 10,
+  "explore_old_broken": 0,
+  "explore_fixed": 10
+ },
+ {
+  "run": "9701123540-baseline-r8",
+  "arm": "baseline",
+  "tool_seq_len": 9,
+  "explore_old_broken": 0,
+  "explore_fixed": 9
+ },
+ {
+  "run": "9701123540-treatment-r1",
+  "arm": "treatment",
+  "tool_seq_len": 9,
+  "explore_old_broken": 0,
+  "explore_fixed": 9
+ },
+ {
+  "run": "b86be0c098-baseline-r4",
+  "arm": "baseline",
+  "tool_seq_len": 6,
+  "explore_old_broken": 0,
+  "explore_fixed": 6
+ },
+ {
+  "run": "b86be0c098-treatment-r5",
+  "arm": "treatment",
+  "tool_seq_len": 8,
+  "explore_old_broken": 0,
+  "explore_fixed": 8
+ },
+ {
+  "run": "e113c1b3af-baseline-r3",
+  "arm": "baseline",
+  "tool_seq_len": 6,
+  "explore_old_broken": 0,
+  "explore_fixed": 6
+ },
+ {
+  "run": "e113c1b3af-treatment-r2",
+  "arm": "treatment",
+  "tool_seq_len": 7,
+  "explore_old_broken": 0,
+  "explore_fixed": 6
+ },
+ {
+  "run": "ef8222b932-baseline-r7",
+  "arm": "baseline",
+  "tool_seq_len": 17,
+  "explore_old_broken": 0,
+  "explore_fixed": 11
+ },
+ {
+  "run": "ef8222b932-treatment-r6",
+  "arm": "treatment",
+  "tool_seq_len": 18,
+  "explore_old_broken": 0,
+  "explore_fixed": 11
+ }
+]

@@ -1,0 +1,21 @@
+{
+ "planned": 30,
+ "completed": 30,
+ "stopped_by": null,
+ "per_arm": {
+  "baseline": {
+   "runs": 15,
+   "total_mcp_calls": 0,
+   "median_explore": 5,
+   "median_turns": 10,
+   "solved_runs": 12
+  },
+  "neuralmind": {
+   "runs": 15,
+   "total_mcp_calls": 0,
+   "median_explore": 4,
+   "median_turns": 10,
+   "solved_runs": 12
+  }
+ }
+}
