@@ -199,6 +199,26 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4231">
+            <h2>What&rsquo;s New in v4.23.1 &mdash; the Hermes plugin serves each session&rsquo;s own project under Hermes 0.22&rsquo;s gateway, and a first turn&rsquo;s recap arrives within the timeout</h2>
+            <p>Since Hermes 0.22.2, every CLI, TUI and Desktop session&rsquo;s hooks run in one Hermes gateway process, whose own working directory and environment belong to no session. The plugin read <code>TERMINAL_CWD</code> and the current directory from that process, so unpinned it served nothing there: on Hermes 0.22.5 a <code>hermes chat</code> turn in a built checkout started no NeuralMind hook at all, and <code>NEURALMIND_PROJECT</code> set on the <code>hermes</code> command stayed in the client.</p>
+            <ul>
+                <li><strong>The plugin follows the session</strong> &mdash; it asks Hermes for the session&rsquo;s working directory (<code>ctx.session_cwd()</code>, Hermes 0.22.2+); a session without one gets nothing, never the gateway&rsquo;s directory. Older Hermes keeps <code>TERMINAL_CWD</code>, else the current directory</li>
+                <li><strong>Checked live, on one machine</strong> &mdash; Hermes 0.22.5 and a local <code>gpt-oss:20b-64k</code>: before, no NeuralMind block in what the model received; after a plugin reload, it was there. Only <code>hermes chat</code> was run; the TUI and Desktop take the same gateway path, per Hermes&rsquo;s plugin docs</li>
+                <li><strong>Re-run the installer, then reload</strong> &mdash; the plugin is a copy: <code>neuralmind install-hermes-plugin</code>, then <code>hermes plugins disable neuralmind &amp;&amp; hermes plugins enable neuralmind</code> for a gateway that&rsquo;s already running</li>
+            </ul>
+            <p>On a session&rsquo;s first turn the Hermes plugin runs <code>neuralmind _hook session-start</code> for the previous session&rsquo;s recap and stops it after 8&nbsp;s, dropping everything it wrote. The hook wrote the recap first, then ran a synapse decay tick and the <code>SYNAPSE_MEMORY.md</code> export over the whole store: on a 1,272,023-edge hermes-agent store that took 6.3&ndash;7.7&nbsp;s on one loaded Linux machine, so the recap was lost unless the export was turned off.</p>
+            <ul>
+                <li><strong>Large stores are maintained after the hook returns</strong> &mdash; from a 64&nbsp;MB <code>synapses.db</code> up, a detached process runs the decay tick, the team-memory import, the opt-in selector tuner and the export, in the same order and under the same switches; below that the hook runs them itself, as before</li>
+                <li><strong>The same result</strong> &mdash; with the clock pinned, the old hook, the in-hook path and the detached path leave byte-identical databases and memory files; the session-boundary resets still happen before the first tool call</li>
+                <li><strong>Measured on an M3</strong> &mdash; on a 1,272,023-edge store the hook took 0.20&nbsp;s against 4.34&nbsp;s, and 0.33&nbsp;s against 7.00&nbsp;s with six busy loops running, where v4.23.0 overran 8&nbsp;s once in 5; the store work itself takes as long as before (<code>tests/benchmark/session_start_latency.py</code>)</li>
+                <li><strong>And on the Linux machine</strong> &mdash; through the installed plugin at its default 8&nbsp;s, a first turn took 2.0&ndash;2.1&nbsp;s idle and 2.4&ndash;3.6&nbsp;s with eight busy loops, the recap delivered every time, and the background work still advanced the decay tick and rewrote the export</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.1.md">v4.23.1 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4230">
             <h2>What&rsquo;s New in v4.23.0 &mdash; the prompt block lists the code before its tests, and quotes code, not a test</h2>
             <p>The block the <code>UserPromptSubmit</code> hook (and the Hermes plugin&rsquo;s <code>pre_llm_call</code>) adds to each prompt ranked test files after the code they test, unless the prompt was about tests, and counted any test word as being about tests. A task prompt often ends with how to check the work (&ldquo;run the existing tests with pytest&rdquo;), so on <a href="https://github.com/NousResearch/hermes-agent">NousResearch/hermes-agent</a> 18 of the 32 files the block listed over 5 bug fixes were tests, and 2 of its 3 code excerpts quoted one.</p>
