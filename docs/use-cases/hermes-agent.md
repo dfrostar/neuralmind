@@ -336,7 +336,11 @@ from, or the gateway's service environment.
   team-memory import, clearing the session-scoped (ephemeral) associations,
   and the `SYNAPSE_MEMORY.md` export (copied into Claude Code's auto-memory
   directory when that exists; `NEURALMIND_SYNAPSE_EXPORT=0` turns the export
-  off).
+  off). On a store of 64 MB or more *(v4.23.1+)*, the decay tick, the import
+  and the export run in a detached process after the call returns the recap:
+  on a 1,272,023-edge store they took 4–8 s, which could outlast the 8 s
+  timeout and lose the recap, and the call now returns in 0.2–0.6 s there on
+  an M3, idle or under load.
 - **Unpinned, it follows only the terminal CLI and a standalone gateway.** It
   reads `TERMINAL_CWD` from the Hermes process's environment. Hermes Desktop,
   ACP editor sessions and per-session workspaces keep each session's directory
