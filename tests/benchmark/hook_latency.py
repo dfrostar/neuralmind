@@ -46,6 +46,7 @@ import platform
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -57,26 +58,57 @@ DEFAULT_PROMPT = (
 STATES = ("uncached", "miss", "cached")
 # The Hermes plugin's default timeout (neuralmind/hermes_plugin DEFAULT_TIMEOUT).
 PLUGIN_TIMEOUT = 8.0
-# How long a sample may run before it is recorded as stopped.
+# How long a sample may run before the benchmark gives up (TimeoutExpired).
 SAMPLE_TIMEOUT = 120.0
+# Whether each interpreter takes -P (3.11+), probed once.
+_SAFE_PATH: dict[str, bool] = {}
 
 
-def _child(python: str, *args: str, env: dict[str, str], stdin: str = "") -> str:
-    done = subprocess.run(
-        [python, "-P", *args],
-        input=stdin,
-        capture_output=True,
-        text=True,
-        timeout=SAMPLE_TIMEOUT,
-        env=env,
-        check=False,
-    )
-    return done.stdout
+def _safe_path(python: str, cwd: str) -> list[str]:
+    """``-P`` when ``python`` accepts it; Python 3.10 exits with "Unknown option: -P"."""
+    if python not in _SAFE_PATH:
+        probe = subprocess.run(
+            [python, "-P", "-c", "pass"], capture_output=True, cwd=cwd, check=False
+        )
+        _SAFE_PATH[python] = probe.returncode == 0
+    return ["-P"] if _SAFE_PATH[python] else []
+
+
+def _child(python: str, *args: str, env: dict[str, str], stdin: str = "") -> tuple[str, float]:
+    """Run ``python`` with ``args``: its stdout, and the seconds it took. Raises when it fails.
+
+    Run from an empty directory, so the caller's working directory (a
+    checkout, say) can't shadow the package where ``-P`` isn't available
+    (neuralmind/child_python.py). The hook exits 0 whatever happens inside
+    it, so any other status means NeuralMind didn't run, and timing it would
+    record a failed start as a fast call.
+    """
+    with tempfile.TemporaryDirectory(prefix="hook-latency-") as empty:
+        argv = [python, *_safe_path(python, empty), *args]
+        start = time.perf_counter()
+        done = subprocess.run(
+            argv,
+            input=stdin,
+            capture_output=True,
+            text=True,
+            timeout=SAMPLE_TIMEOUT,
+            env=env,
+            cwd=empty,
+            check=False,
+        )
+        seconds = time.perf_counter() - start
+    if done.returncode != 0:
+        detail = (done.stderr or "").strip().splitlines()
+        raise RuntimeError(
+            f"{' '.join(argv)} exited with status {done.returncode}: "
+            f"{detail[-1] if detail else 'no output'}"
+        )
+    return done.stdout, seconds
 
 
 def _identity(python: str, env: dict[str, str]) -> dict[str, Any]:
     """The NeuralMind the hook runs: its version, and its checkout's commit if it is one."""
-    out = _child(
+    out, _ = _child(
         python,
         "-c",
         "import json, neuralmind; print(json.dumps({'version': neuralmind.__version__, "
@@ -133,9 +165,9 @@ def _wait_for_warmer(project: Path, deadline: float = SAMPLE_TIMEOUT) -> None:
 
 def _sample(python: str, payload: str, env: dict[str, str]) -> tuple[float, str]:
     """One hook call: seconds, and the SHA-256 of the context it returned."""
-    start = time.perf_counter()
-    out = _child(python, "-m", "neuralmind", "_hook", "prompt-submit", env=env, stdin=payload)
-    seconds = time.perf_counter() - start
+    out, seconds = _child(
+        python, "-m", "neuralmind", "_hook", "prompt-submit", env=env, stdin=payload
+    )
     try:
         context = json.loads(out)["hookSpecificOutput"]["additionalContext"]
     except (ValueError, KeyError, TypeError):
