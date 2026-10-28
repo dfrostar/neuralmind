@@ -109,12 +109,15 @@ When a new document is authored, file it in the right repo:
 | Release notes | `dfrostar/neuralmind/docs/releases/RELEASE_NOTES_v*.md` (here — see the shipping checklist) |
 | CLI reference / wiki | `dfrostar/neuralmind/docs/wiki/` (here) |
 | Use-case walkthrough | `dfrostar/neuralmind/docs/use-cases/` (here) |
-| Marketing site page | `dfrostar/neuralmind/site/` (here) or `…-marketing/src/app/` |
+| Marketing site page | `dfrostar/neuralmind/site/` (here — see "Marketing site" above) |
+| Social post draft | `dfrostar/neuralmind/docs/social/` (here), or `…-marketing/posts/` if it names a private client or draws on internal or consulting material |
 | Consulting deck / private material | `dfrostar/neuralmind-marketing/consulting/` |
 
-**Do NOT** move private business material (`consulting/`, `internal/`) into
-this public repo. Both repos deploy to `neuralmind.uk`; only this one
-(`neuralmind`) publishes to PyPI and GHCR.
+**Do NOT** move private business material (`consulting/`, `internal/`,
+`posts/`) into this public repo. Only this repo deploys `neuralmind.uk` and
+publishes to PyPI and GHCR. The marketing repo's `src/` is the site as it was
+before the move here (2026-07-14), with no deploy workflow: a page added
+there never goes live.
 
 ## `docs/` is a public website
 
