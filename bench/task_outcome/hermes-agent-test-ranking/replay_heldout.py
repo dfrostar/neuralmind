@@ -26,7 +26,6 @@ import contextlib
 import io
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -45,10 +44,9 @@ HERE = Path(__file__).resolve().parent
 OUT = BENCH / "heldout"
 PROFILE = profiles.get("hermes-agent")
 
-# The rule v4.22.1 used: any mention of tests.
-OLD_TEST_PROMPT = re.compile(r"\b(tests?|testing|specs?|pytest|unittest)\b", re.IGNORECASE)
-# name -> (v4.22.1's about-tests rule, TESTED_CODE_CREDIT)
-VARIANTS = {"main": (True, 0.0), "A_tests_last": (False, 0.0), "A+C1.0": (False, 1.0)}
+# name -> TESTED_CODE_CREDIT: the ranking on main since #731, without and with
+# this change's credit for the code a matched test file tests.
+VARIANTS = {"credit_off": 0.0, "credit_on": 1.0}
 
 
 def tasks(which: str) -> list[dict]:
@@ -162,15 +160,12 @@ def capture(which: str) -> None:
 
 @contextlib.contextmanager
 def _variant(name: str):
-    old_rule, credit = VARIANTS[name]
-    saved = (prompt_recall.about_tests, prompt_recall.TESTED_CODE_CREDIT)
-    if old_rule:
-        prompt_recall.about_tests = lambda p: bool(OLD_TEST_PROMPT.search(p))
-    prompt_recall.TESTED_CODE_CREDIT = credit
+    saved = prompt_recall.TESTED_CODE_CREDIT
+    prompt_recall.TESTED_CODE_CREDIT = VARIANTS[name]
     try:
         yield
     finally:
-        prompt_recall.about_tests, prompt_recall.TESTED_CODE_CREDIT = saved
+        prompt_recall.TESTED_CODE_CREDIT = saved
 
 
 def variants(which: str) -> None:
