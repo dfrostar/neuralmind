@@ -21,6 +21,7 @@ left them, a few seconds later. Only one runs per project at a time
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess  # nosec B404 - starts this interpreter with a fixed argument list, no shell
 import sys
@@ -33,6 +34,8 @@ LOCK_FILENAME = "session_maintenance.lock"
 # 0.1 s, a 79 MB one holding 115,639 edges 0.44 s, and a 1.07 GB one holding
 # 1,272,023 (hermes-agent's count) 3.9 s.
 INLINE_MAX_BYTES = 64 * 1024 * 1024
+
+logger = logging.getLogger(__name__)
 
 
 def _export_enabled() -> bool:
@@ -61,7 +64,7 @@ def run(project_path: str | Path) -> None:
         try:
             store.decay()
         except Exception:
-            pass
+            logger.debug("decay tick failed for %s", project_path, exc_info=True)
         # Team memory: inherit the committed team bundle once into `shared`, so a
         # fresh clone's agent starts with the team's learned associations. Gated
         # by NEURALMIND_TEAM_MEMORY=0; idempotent (content-hash) and fail-open.
@@ -70,7 +73,7 @@ def run(project_path: str | Path) -> None:
 
             maybe_import_team_memory(project_path, store)
         except Exception:
-            pass
+            logger.debug("team-memory import failed for %s", project_path, exc_info=True)
         # Self-improvement engine: tune the selector from logged usage. Opt-in
         # (not the != "0" pattern) because it is net behavior change. Runs at
         # most once per session, here at the boundary; tune_selector fails open.
@@ -80,14 +83,14 @@ def run(project_path: str | Path) -> None:
 
                 tune_selector(project_path)
             except Exception:
-                pass
+                logger.debug("selector autotune failed for %s", project_path, exc_info=True)
     if _export_enabled():
         try:
             from .synapse_memory import export_synapse_memory
 
             export_synapse_memory(project_path)
         except Exception:
-            pass
+            logger.debug("synapse memory export failed for %s", project_path, exc_info=True)
 
 
 def run_or_start(project_path: str | Path) -> bool:
