@@ -593,6 +593,12 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         )
         if recap:
             _emit_for_event("SessionStart", recap)
+        # The first prompt's recall loads the graph: start writing its cache
+        # now if it needs it (graph_cache). Fails open.
+        if os.environ.get("NEURALMIND_SYNAPSE_INJECT") != "0":
+            from .graph_cache import warm_in_background
+
+            warm_in_background(cwd)
         if _learning_disabled():
             # NEURALMIND_NO_LEARN=1: no decay, no imports, no namespace
             # clears — only the read-only memory export.
@@ -788,13 +794,20 @@ def _spread_for_prompt(project_path: str, prompt: str) -> str:
 
     try:
         from .core import NeuralMind
+        from .graph_cache import warm_in_background
         from .prompt_recall import PromptRecall, format_block, recall
 
+        # A large graph with no current cache loads slowly, and a hook stopped
+        # by its caller's timeout mid-load would never write the cache: a
+        # detached process writes it for the next prompt (graph_cache).
+        warm_in_background(project_path)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             mind = NeuralMind(project_path)
             # Recall reads an existing index; it never builds one. Without
             # this, the search below falls through to a first-run build.
-            if not mind._load_existing_index():
+            # Recall never reads the structural index, which took 1-4 s to
+            # build on hermes-agent's graph.
+            if not mind._load_existing_index(structural=False):
                 return ""
             result = recall(mind, prompt)
     except Exception:
