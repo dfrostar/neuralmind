@@ -316,7 +316,17 @@ from, or the gateway's service environment.
   and waits at most `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds), so a
   first turn can wait up to twice that; one that times out or fails is left
   out, and the turn goes ahead with whatever context the others returned. We
-  haven't measured how much time it adds to a Hermes turn.
+  haven't measured how much time it adds to a Hermes turn as a whole; the
+  recall call itself took 1.3 s a turn on hermes-agent's own index on an
+  M3 (v4.23.0, `tests/benchmark/hook_latency.py`).
+- **A large index loads from a cache** *(v4.23.0+)*. Each call is a new
+  process that loads the project's graph. On a large one (hermes-agent's took
+  9–15 s a call on one Linux machine) that is slower than the 8 s timeout, so
+  the graph is kept in `.neuralmind/graph_cache.marshal`, which `neuralmind
+  build` writes and the plugin's calls write in the background when it's
+  missing. The first turn after upgrading or after a graph change outside
+  `build` can still go without recall; the next ones don't.
+  `NEURALMIND_GRAPH_CACHE=0` turns the cache off.
 - **Hermes's own hook timeout is a hard limit.** If the plugin takes longer
   than Hermes's `plugins.hook_callback_timeout` (default 30 seconds), Hermes
   drops the whole block and skips the plugin's per-turn hook for the next 60 seconds. Keep

@@ -1,6 +1,6 @@
 # NeuralMind v4.23.0 — the prompt block lists the code before its tests when a prompt only says how to run them, and quotes code, not a test
 
-**Type:** Minor release | **Theme:** the per-prompt block points at the source file to change on a repository with a large test tree
+**Type:** Minor release | **Theme:** the per-prompt block points at the source file to change on a repository with a large test tree, and arrives within the Hermes plugin's timeout on a large index
 
 The [hermes-agent screen](https://github.com/dfrostar/neuralmind/pull/720)
 ran the same agent on 5 bug fixes in
@@ -79,6 +79,51 @@ listed even when only its test matched.
 `evals/task_outcome/replay.py` reads *Most matches outside the tests are in*
 as an excerpt too, so a block whose first file is a test still has its
 excerpt scored.
+
+### The prompt hook answers in about a second on a large index
+
+The block above only helps if it arrives. The Hermes plugin runs
+`neuralmind _hook prompt-submit` as a new process on every turn and stops it
+after 8 s (`NEURALMIND_HERMES_TIMEOUT`); when it is stopped, the model gets no
+block and Hermes's log says the call *took longer than 8.0s and was stopped*.
+On hermes-agent's index each call took 9–15 s on a 32-core Linux machine
+serving a local model, so the block reached the model there only with
+`NEURALMIND_HERMES_TIMEOUT=30`, and every turn waited for it. A hook process
+reloaded the whole index from cold each time: under a profiler, most of the
+call was reading `.neuralmind/index_ir.json` and converting it back into the
+graph (about 815k node and 312k edge records on that index), then building the structural edge index,
+which recall never reads.
+
+- **A graph cache.** The first load of a large graph also writes it to
+  `.neuralmind/graph_cache.marshal` in Python's `marshal` format, and later
+  loads read that instead of converting the graph again. It is the graph the sources give, value for value, keyed by both
+  source files' size, modification time and inode and by the NeuralMind and
+  Python versions, so a regenerated graph or a new release reads its source
+  again, and a damaged file is ignored. Only a source of 16 MB or more is
+  cached. Every command that loads an index uses it, not only the hook.
+- **Written where a hook can't be stopped before it.** `neuralmind build`
+  writes it as its last step. An index built before v4.23.0 has none, and on a
+  slower machine the load that would write it outlasts the plugin's 8 s, so the
+  hook would be stopped before writing it, every turn. The `UserPromptSubmit`
+  and `SessionStart` hooks (and so the plugin's `pre_llm_call`) start a
+  detached process that writes it when it is missing, one per project at a
+  time; its output goes nowhere, so the plugin isn't kept waiting for it.
+- **The hook skips the structural index.** Recall reads the graph, the vector
+  index and the synapse store; `neuralmind query`, the structural tools and
+  every other caller still build it.
+- **`NEURALMIND_GRAPH_CACHE=0`** turns the cache off, reading and writing.
+  The file takes about as much disk as `graph.json` (269 MB beside a 398 MB
+  one, for hermes-agent).
+
+What the hook returns is unchanged: the same blocks, byte for byte, on six
+hermes-agent prompts before and after.
+
+The daemon (`neuralmind daemon`) already keeps an index warm for
+`neuralmind query`, but the hooks don't use it, and this release doesn't
+change that. A hook answering from a daemon would also need the hook's
+environment (`NEURALMIND_RECALL_EXCERPT`, `NEURALMIND_RECALL_MIN_SIMILARITY` …)
+to reach the daemon, and to notice a rebuilt graph, or it could return a
+different block; and it helps only someone who runs a daemon.
 
 ---
 
@@ -175,6 +220,37 @@ every change to the hook's recall path); the hermes screen's
 `python -m tests.benchmark.prompt_recall <built project> --prompts
 tests/benchmark/prompt_recall_<set>.json` for the benchmark.
 
+**The prompt hook's latency on a large index (`tests/benchmark/hook_latency.py`).**
+One fresh `neuralmind _hook prompt-submit` process per call, timed from start
+to exit, as the agent waits for it: on the index of held-out task
+`0cb3760383` (hermes-agent, 269,151 nodes, 634,765 edges, a 424 MB
+`index_ir.json`; built by v4.22.1), with that task's prompt, on an M3 MacBook
+(8 cores), 5 calls each.
+
+| | Mean | Range | Under 8 s |
+|---|---|---|---|
+| v4.22.1 (main at 50e410b0) | 6.46 s | 6.14–6.80 s | 5 of 5 |
+| v4.23.0, `NEURALMIND_GRAPH_CACHE=0` | 6.89 s | 5.73–8.47 s | 4 of 5 |
+| v4.23.0, no cache yet (writes it) | 6.92 s | 6.61–7.32 s | 5 of 5 |
+| v4.23.0, cache written | 1.28 s | 1.21–1.45 s | 5 of 5 |
+
+Every call returned the same block (one SHA-256 for all 20). The no-cache
+row is what one call costs after an upgrade, or after the graph changes
+outside `build`: the call also writes the cache, and the background writer
+runs beside it. Other sessions were loading the machine (load average 3 to
+5), the likely cause of the cache-off row's spread, so this run can't separate
+the structural index's share from the noise. On this machine the old call fit
+in 8 s, with under 2 s to spare; on the Linux machine above, where it took
+9–15 s, it didn't, and this release hasn't been timed there yet. One index, one prompt, one machine: the numbers say how
+much of the call the load was, not how long it takes elsewhere. Raw results:
+`bench/hook_latency/hermes-agent-0cb3760383-m3.json`.
+
+Reproduce, from a source checkout, on any built project:
+`python -m tests.benchmark.hook_latency <project> --runs 5`, and add
+`--tasks bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json --task 0cb3760383`
+for this task's prompt; for an older NeuralMind, put its checkout on
+`PYTHONPATH` and pass `--states uncached`.
+
 ### Tests
 
 - `tests/test_prompt_recall.py`: which prompts name a test (functions, classes,
@@ -190,6 +266,15 @@ tests/benchmark/prompt_recall_<set>.json` for the benchmark.
   nothing.
 - `tests/test_task_outcome_replay.py`: an excerpt after a listed test file is
   scored.
+- `tests/test_graph_cache.py`: the cached graph is the graph the sources give,
+  for `graph.json` and the IR, in the same order; a rewritten source, another
+  NeuralMind version, a damaged file or one that isn't a graph is read from
+  the sources; a small graph, a project without `.neuralmind/` and
+  `NEURALMIND_GRAPH_CACHE=0` write nothing; the backends load through it; the
+  background writer is detached with its output discarded, writes the cache as
+  a real process, and leaves it to one already running; the prompt hook's block
+  is the same uncached, on a miss and from the cache; the hook loads no
+  structural index.
 
 ---
 
@@ -198,7 +283,7 @@ tests/benchmark/prompt_recall_<set>.json` for the benchmark.
 | Agent | Before v4.23.0 | From v4.23.0 |
 |---|---|---|
 | **Claude Code** (`UserPromptSubmit` hook) | A prompt with any test word ("run the tests") listed test files with the code; on hermes-agent, 18 of 32 files listed were tests, and the excerpt could quote a test | Test files after the code unless the prompt names a test; one slot for the best test when it mentions tests; the code a matched test file tests, listed with it; the excerpt from a source file whenever one is listed |
-| **Hermes-Agent plugin** (`pre_llm_call`) | The same block | The same change: the plugin runs the installed `neuralmind _hook prompt-submit` |
+| **Hermes-Agent plugin** (`pre_llm_call`) | The same block; on a large index such as hermes-agent's, a call could take longer than the plugin's 8 s and be stopped, so no block, unless `NEURALMIND_HERMES_TIMEOUT` was raised and every turn waited | The same change: the plugin runs the installed `neuralmind _hook prompt-submit`, which loads the graph from its cache: 1.3 s a turn on hermes-agent's index on an M3, after the first |
 | **Cursor / Cline / generic MCP** | No per-prompt block; `neuralmind_query` ranks test hits below the code unless the question mentions tests | Unchanged |
 
 ## Upgrading
@@ -206,6 +291,13 @@ tests/benchmark/prompt_recall_<set>.json` for the benchmark.
 Nothing to do. The block is computed per prompt from the existing index, so
 no rebuild is needed; the Hermes plugin calls the installed `neuralmind`, so
 upgrading the package is enough.
+
+On a large index the first prompt after upgrading writes the graph cache, and
+on a slow machine the plugin may stop that call (one turn without the block);
+the prompts after it are fast. To write the cache before then, run
+`neuralmind build` or any command that loads the index, such as
+`neuralmind query . "where is the entry point?"`. If you raised `NEURALMIND_HERMES_TIMEOUT` for a large
+repository, you can lower it again.
 
 ## Use cases
 
