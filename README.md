@@ -722,7 +722,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (switch off every NeuralMind hook action
 `NEURALMIND_SESSION_RECAP=0` (don't record prompts and edited files, and show no session recap),
 `NEURALMIND_DECISION_SCAN=0` (skip the post-commit decision scan),
 `NEURALMIND_DECISION_SEARCH=keyword` (rank decisions by shared words only, as in v4.6),
-`NEURALMIND_PROJECT=<path>` (the project the Hermes plugin serves, ahead of the one given at install; Hermes Desktop, ACP editor sessions and per-session workspaces need it or a pin, since they don't keep each session's directory in `TERMINAL_CWD`),
+`NEURALMIND_PROJECT=<path>` (the project the Hermes plugin serves, ahead of the one given at install and the session's own directory; on Hermes 0.22.2 and later it counts only in the gateway's environment, where the hooks run, and covers every session),
 `NEURALMIND_HERMES_TIMEOUT=<seconds>` (how long the Hermes plugin waits on each NeuralMind call, two on a session's first turn, before the turn goes ahead without that call's context; default 8; keep twice this below Hermes's `plugins.hook_callback_timeout`, default 30 s, because a plugin that runs past that loses its whole block and is skipped for the next 60 seconds).
 The Hermes plugin runs the same hook actions, so the switches for those actions
 (`NEURALMIND_BYPASS`, `NEURALMIND_SYNAPSE_INJECT`, `NEURALMIND_SESSION_RECAP` …) apply to it too. All fail-open.
