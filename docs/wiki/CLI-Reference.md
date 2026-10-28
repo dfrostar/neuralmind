@@ -1707,7 +1707,7 @@ code; a warning carries the command that fixes it.
 |------|--------|
 | **Daemon** | running on `host:port` (pid, version) · not running → `neuralmind daemon start` · alive but not answering, or running an older version than the one installed → `neuralmind daemon restart` · off under `NEURALMIND_NO_DAEMON=1` (`ok`) |
 | **Git hooks** | full (the four rebuild hooks and the pre-commit drift guard) · partial (names the missing ones; a `--no-drift` install is partial) · none → `neuralmind init-hook <project>` · not a Git repository (`ok`). A hook whose managed block serves another project in the same repository doesn't count, nor does one without its executable bit (git skips it; `init-hook` sets the bit again), and with `core.hooksPath` set (husky, a shared hooks directory) none do, since git never runs the `.git/hooks` that `init-hook` writes: that line has no command of ours to suggest |
-| **Hermes plugin** | enabled, pinned to this project or following `TERMINAL_CWD` · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` → `hermes plugins enable neuralmind` · not installed in a set-up Hermes home → `neuralmind install-hermes-plugin` · pinned to another project → `neuralmind install-hermes-plugin --unpin` · plugin code older than the installed NeuralMind → re-run `neuralmind install-hermes-plugin` (`hermes plugins update neuralmind` for one Hermes installed) · no Hermes home (`ok`) |
+| **Hermes plugin** | enabled, pinned to this project or following the directory Hermes works in for each session · installed but not on Hermes's `plugins.enabled` list, or on `plugins.disabled` → `hermes plugins enable neuralmind` · not installed in a set-up Hermes home → `neuralmind install-hermes-plugin` · pinned to another project → `neuralmind install-hermes-plugin --unpin` · plugin code older than the installed NeuralMind → re-run `neuralmind install-hermes-plugin` (`hermes plugins update neuralmind` for one Hermes installed) · no Hermes home (`ok`) |
 | **MCP registration (*client*)** | one line per client that has NeuralMind registered (Claude Code's `.mcp.json`, and `claude mcp add`'s user and local scopes in `~/.claude.json`; Cursor's `.cursor/mcp.json` or user-wide `~/.cursor/mcp.json`), or looks installed without it → `neuralmind install-mcp --client <client>`. A config doctor can't parse (VS Code allows comments) reads *can't tell*, as `ok`. Hermes's entry with `enabled: false` warns too, with `hermes config set mcp_servers.<key>.enabled true` for the key it found; a Hermes `config.yaml` that is a symlink gets the entry to paste (`--client hermes --print`). When no known client has it, one line says so → `neuralmind install-mcp --print`, which is expected if you registered it by hand in another client |
 
 When no agent host is wired (no Claude Code hooks in the project's
@@ -2946,7 +2946,7 @@ neuralmind install-hermes-plugin [project_path] [--unpin] [--uninstall] [--no-en
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `project_path` | No | Project the plugin serves (default: the one pinned by an earlier install, else the directory Hermes works in: `TERMINAL_CWD`, or its current directory when that's unset). Pin one for a gateway session (Telegram, Discord …), which otherwise uses the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory), and for Hermes Desktop, ACP editor sessions and per-session workspaces, which keep each session's directory where the plugin doesn't read it |
+| `project_path` | No | Project the plugin serves (default: the one pinned by an earlier install, else the directory Hermes works in for each session: on Hermes 0.22.2 and later the session's own working directory, on older Hermes `TERMINAL_CWD`, or its current directory when that's unset). Pin one for a gateway session (Telegram, Discord …), which otherwise uses the profile's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory) |
 
 #### Options
 
@@ -2979,7 +2979,7 @@ neuralmind install-hermes-plugin
 
 # Serve whichever built project Hermes runs in (Hermes across several projects)
 neuralmind install-hermes-plugin --unpin
-# →   Project: the directory Hermes works in (TERMINAL_CWD, else its current directory), if it's built. Pass a path to pin one; a pin applies to every Hermes session in this Hermes home.
+# →   Project: the directory Hermes works in for each session, if it's built. Pass a path to pin one; a pin applies to every Hermes session in this Hermes home.
 
 # Write the files only, and enable the plugin yourself
 neuralmind install-hermes-plugin /path/to/project --no-enable
@@ -3018,18 +3018,22 @@ and exits `1`. `--uninstall` removes such a link, never its target.
 
 #### Which project a session uses
 
-1. `NEURALMIND_PROJECT`, if set;
+1. `NEURALMIND_PROJECT`, if set where the plugin runs;
 2. else the `project_path` given at install;
-3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
+3. else the directory Hermes works in for the session: on Hermes 0.22.2 and
+   later, the session's own working directory (`ctx.session_cwd()`); on older
+   Hermes, `TERMINAL_CWD`, else, only when that isn't set, the directory Hermes
+   runs in.
 
 The first of these that has been built (it has the
 `.neuralmind/build_status.json` a build leaves) wins; if none has, the plugin
-does nothing. The plugin reads `TERMINAL_CWD` from the Hermes process's
-environment, which matches where the terminal CLI and a standalone gateway
-work. Hermes Desktop, ACP editor sessions and per-session workspaces keep each
-session's directory elsewhere, so there, pin a project or set
-`NEURALMIND_PROJECT`.
+does nothing. *(v4.23.1+)* On Hermes 0.22.2 and later, every CLI, TUI and
+Desktop session's hooks run in one Hermes gateway process, whose own working
+directory and `TERMINAL_CWD` belong to no session; `ctx.session_cwd()` is where
+the session was started. A variable set on the `hermes` command you run stays
+in that client, so `NEURALMIND_PROJECT` counts only in the gateway's own
+environment, where it covers every session. Earlier NeuralMind versions read
+the gateway's `TERMINAL_CWD`, so unpinned they usually served nothing there.
 
 A gateway session (Telegram, Discord …) uses the gateway's terminal working
 directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory),
@@ -4616,7 +4620,7 @@ emits, and runs the documented cases.
 | `NEURALMIND_READ_DEDUP` | `1` | *(v4.6.0+)* Set to `0` to stop the `Read` PostToolUse hook from replacing a repeat read of unchanged content with a stub. Inactive anyway without a session id, in a project without `.neuralmind/`, and under `NEURALMIND_BYPASS=1` or `NEURALMIND_NO_LEARN=1`. See [`install-hooks`](#install-hooks). |
 | `NEURALMIND_SESSION_RECAP` | `1` | *(v4.8.0+)* Set to `0` to stop recording prompts and edited files under `.neuralmind/recaps/` and stop the `SessionStart` recap. `NEURALMIND_NO_LEARN=1` stops the recording only; an existing recap is still shown. See [`recap`](#recap-v480). |
 | `NEURALMIND_SESSION_RECAP_MAX_AGE_DAYS` | `14` | *(v4.8.0+)* A recap whose session was last active longer ago than this many days isn't shown, at `SessionStart` or by `neuralmind recap`. |
-| `NEURALMIND_PROJECT` | unset | *(v4.9.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin`, Hermes's `TERMINAL_CWD` and the directory Hermes runs in. A project that hasn't been built is skipped. Without it or a pinned project, a gateway session uses the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory). Set it, or pin a project, for Hermes Desktop, ACP editor sessions and per-session workspaces, which keep each session's directory where the plugin doesn't read it. See [`install-hermes-plugin`](#install-hermes-plugin-v490). |
+| `NEURALMIND_PROJECT` | unset | *(v4.9.0+)* Hermes plugin: the project to serve, ahead of the one given to `install-hermes-plugin` and the directory Hermes works in for the session. A project that hasn't been built is skipped. It counts only in the environment of the process running the plugin's hooks: on Hermes 0.22.2 and later that is the gateway, so set on the `hermes` command you run it doesn't reach them, and in the gateway's own environment it covers every session, like a pin. Without it or a pinned project, a messaging session (Telegram, Discord …) uses the profile's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory). See [`install-hermes-plugin`](#install-hermes-plugin-v490). |
 | `NEURALMIND_HERMES_TIMEOUT` | `8` | *(v4.9.0+)* Hermes plugin: seconds each call to NeuralMind may wait before the turn goes ahead without that call's context. A session's first turn makes two (the recap, then recall), so it can wait up to twice this; each recorded edit gets the same limit. Keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30 s): past that, Hermes drops the whole block and skips the plugin's per-turn hook for the next 60 seconds. See [`install-hermes-plugin`](#install-hermes-plugin-v490). *(v4.23.0+)* On a large index the first recall after a build or an upgrade can still take longer than 8 s; it starts writing the graph cache (`NEURALMIND_GRAPH_CACHE`) in the background, and the prompts after it answer in 1.3 s on hermes-agent's index on an M3, so raising this for a large repository is no longer needed. *(v4.23.1+)* The first turn's recap call returns in 0.2–0.6 s on a 1.27M-edge synapse store on an M3, idle or under load: its decay tick and memory export run after it returns. |
 | `NEURALMIND_DECISION_SCAN` | `1` | *(v4.6.0+)* Set to `0` to make `neuralmind decisions scan` (and so the `init-hook` post-commit hook) skip marking decisions STALE. |
 | `NEURALMIND_DECISION_SEARCH` | `hybrid` | *(v4.8.0+)* Default decision-search mode for the CLI, the MCP tools and the Python API when a call names none: `hybrid` (shared words and meaning, fused), `semantic` (meaning only) or `keyword` (shared words only, the v4.6 behavior). Case-insensitive; an unknown value is logged and ignored. A call's own `--mode` / `mode` wins. See [`decisions`](#decisions-v410). |
