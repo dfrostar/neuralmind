@@ -53,6 +53,27 @@ source file is listed. On a prompt that names a test, where a test file can
 come first, the excerpt line says so: *Most matches outside the tests are in
 `<file>`*.
 
+### A matched test file brings the code it tests
+
+A symptom often matches the test of the module to fix better than the module
+itself: the test spells out the behaviour in the prompt's words. On
+hermes-agent, a prompt about an NVIDIA error matched
+`tests/agent/test_error_classifier.py` and never `agent/error_classifier.py`,
+the file the fix changed. Now, unless the prompt names a test, a matched test
+file credits the code file it tests with its best score, so that file is
+listed even when only its test matched.
+
+- **Found by name only:** `test_x.py` and `x_test.py` test `x.py`,
+  `x.test.ts` and `x.spec.ts` test `x.ts`, and `ParserTest.java` tests
+  `Parser.java`. When several files share the name, the one at the test's own
+  path with the test folders taken out (`tests/agent/test_x.py` →
+  `agent/x.py`) wins; if none is there and there are several, nothing is
+  credited. All-caps stems (`HTTPTest.java`) aren't mapped.
+- **A file listed only through the credit has no symbol to quote,** so it
+  holds the excerpt back rather than giving it one.
+- **`TESTED_CODE_CREDIT`** (`neuralmind/prompt_recall.py`, default 1.0) is the
+  share of the test's score the code gets; 0 turns the credit off.
+
 ### The replay scores the new line
 
 `evals/task_outcome/replay.py` reads *Most matches outside the tests are in*
@@ -72,17 +93,17 @@ This release doesn't measure what the agent does with the block.
 **The pilot's 20 tasks, NeuralMind's own repository: the check.** The change
 had to keep the fixed file named on at least 17.
 
-| Of 20 tasks | v4.22.1 | v4.23.0 |
-|---|---|---|
-| The block names a file the fix changed | 17 | 17 |
-| …and names it first | 10 | 10 |
-| The block quotes code | 9 | 9 |
-| …from a file the fix changed | 7 of 9 | 7 of 9 |
-| …covering lines the fix changed | 2 of 9 | 2 of 9 |
-| Test files among the files listed | 7 of 121 | 6 of 123 |
-| Excerpts that quote a test file | 0 | 0 |
+| Of 20 tasks | v4.22.1 | test rule, slot, excerpt only | v4.23.0 (also the credit) |
+|---|---|---|---|
+| The block names a file the fix changed | 17 | 17 | 17 |
+| …and names it first | 10 | 10 | 11 |
+| The block quotes code | 9 | 9 | 8 |
+| …from a file the fix changed | 7 of 9 | 7 of 9 | 7 of 8 |
+| …covering lines the fix changed | 2 of 9 | 2 of 9 | 2 of 8 |
+| Test files among the files listed | 7 of 121 | 6 of 123 | 7 of 123 |
+| Excerpts that quote a test file | 0 | 0 | 0 |
 
-Three of the 20 blocks changed, none in what they score. Test files were 7 of
+Without the credit, three of the 20 blocks changed, none in what they score. Test files were 7 of
 the 121 files these blocks listed before the change, so here the pilot checks
 for a regression; it can't show the fix working.
 
@@ -109,6 +130,35 @@ nodes: it ranks 138th on one, and outside the first 200 on two. The hook reads
 crowding. On the task whose block now names both changed files, one of them
 first, it used to list a test file first.
 
+**12 held-out hermes-agent tasks: the new tasks.** These are bug fixes neither
+change was made for: 3 screen candidates the screen didn't select, and 9 from
+continuing the screen's seeded walk to its 24th candidate, with prompts written
+by a separate agent from each fix's tests and diff, and 3 tasks excluded
+because their tests check names the fix introduces. Each task's index was
+built once (v4.22.1) and every version ran on a fresh copy of it
+([held-out record](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md)).
+
+| Of 12 held-out tasks | v4.22.1 | test rule, slot, excerpt only | v4.23.0 (also the credit) |
+|---|---|---|---|
+| The block names a file the fix changed | 4 | 4 | 4 |
+| …and names it first | 1 | 3 | 3 |
+| The block quotes code | 2 | 4 | 3 |
+| …from a file the fix changed | 0 of 2 | 1 of 4 | 1 of 3 |
+| Test files among the files listed | 33 of 82 (40%) | 16 of 83 (19%) | 14 of 84 (17%) |
+
+- **What the screen showed holds on new tasks:** tests move behind the code,
+  and the fixed file comes first on 3 tasks instead of 1.
+- **The file to fix is named no more often.** Where it was missing, other code
+  matched the prompt, not tests sitting in its place.
+- **The credit adds little here.** It changed 3 of the 12 blocks, named no
+  new changed file, and on one task its listed file left no file 2:1 ahead, so
+  an excerpt from the wrong file is no longer shown. On the screen's 5 tasks,
+  which it was tuned on, it named the fixed file on one more (3 of 5, first on
+  3); on the pilot it put the fixed file first on one more (11 of 20) and
+  quoted code on 8 tasks instead of 9, 7 of them from a changed file.
+- **12 tasks from one repository** is enough to see the order change, not to
+  estimate how much it helps an agent.
+
 **The prompt-recall benchmark (`tests/benchmark/prompt_recall.py`).** 14 Click
 prompts and 15 about NeuralMind's code, two of them about tests ("how can I
 test a click command and capture its output?", "fix the claims guard test for
@@ -134,6 +184,10 @@ tests/benchmark/prompt_recall_<set>.json` for the benchmark.
   one slot for it; one that names a test ranks the tests by score; linked test
   files follow the code; a test file neither competes for the excerpt nor is
   quoted while a source file is listed, and is quoted when only tests are.
+- `tests/test_prompt_recall.py`, the credit: a matched test file names the code
+  it tests, for each naming convention above; the tested code keeps its own
+  matches, and the credit can be turned off; a prompt naming a test credits
+  nothing.
 - `tests/test_task_outcome_replay.py`: an excerpt after a listed test file is
   scored.
 
@@ -143,7 +197,7 @@ tests/benchmark/prompt_recall_<set>.json` for the benchmark.
 
 | Agent | Before v4.23.0 | From v4.23.0 |
 |---|---|---|
-| **Claude Code** (`UserPromptSubmit` hook) | A prompt with any test word ("run the tests") listed test files with the code; on hermes-agent, 18 of 32 files listed were tests, and the excerpt could quote a test | Test files after the code unless the prompt names a test; one slot for the best test when it mentions tests; the excerpt from a source file whenever one is listed |
+| **Claude Code** (`UserPromptSubmit` hook) | A prompt with any test word ("run the tests") listed test files with the code; on hermes-agent, 18 of 32 files listed were tests, and the excerpt could quote a test | Test files after the code unless the prompt names a test; one slot for the best test when it mentions tests; the code a matched test file tests, listed with it; the excerpt from a source file whenever one is listed |
 | **Hermes-Agent plugin** (`pre_llm_call`) | The same block | The same change: the plugin runs the installed `neuralmind _hook prompt-submit` |
 | **Cursor / Cline / generic MCP** | No per-prompt block; `neuralmind_query` ranks test hits below the code unless the question mentions tests | Unchanged |
 
@@ -164,3 +218,6 @@ upgrading the package is enough.
 - **New: point the block at the code, then measure it on a large test tree.**
   The hermes-agent screen's tasks can't judge this change; a study on new tasks
   in a repository with a large test tree can.
+  The [held-out record](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md) is that study's
+  offline half: 12 new hermes-agent tasks, replayed before and after on the
+  same indexes, with the tasks, prompts, exclusions and script committed.

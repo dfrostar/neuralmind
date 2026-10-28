@@ -206,8 +206,10 @@
                 <li><strong>Test files after the code unless the prompt names a test</strong> &mdash; a test function or class (<code>test_parse</code>, <code>ParserTest</code>) or a test file&rsquo;s path (<code>tests/test_parser.py</code>) ranks the tests with the code by score, as any test word did before; a prompt that only mentions tests (&ldquo;run the tests&rdquo;, &ldquo;fix the claims guard test&rdquo;) lists the code first and keeps the last of its four slots for the best test file</li>
                 <li><strong>The excerpt is from a source file whenever one is listed</strong> &mdash; a test file neither competes for it nor is quoted while a source file is listed</li>
                 <li><strong>Measured offline, with no agent</strong> &mdash; on the hermes-agent screen&rsquo;s 5 tasks, the ones that motivated the change and so not evidence for it, test files fell from 18 of 32 files listed to 6 of 35 and no excerpt quotes a test, while the fixed file is still named on 2 of 5 (on the other 3 it isn&rsquo;t among the 16 nearest index nodes the hook reads); on the pilot&rsquo;s 20 tasks the block names it on 17, first on 10, as before</li>
+                <li><strong>A matched test file brings the code it tests</strong> &mdash; found by name (<code>tests/agent/test_x.py</code> &rarr; <code>agent/x.py</code>, <code>x.test.ts</code> &rarr; <code>x.ts</code>), so that file is listed even when only its test matched the prompt</li>
+                <li><strong>Replayed on held-out tasks</strong> &mdash; 12 hermes-agent bug fixes the change wasn&rsquo;t made for, offline, with no agent; the held-out record has the numbers and their limits</li>
             </ul>
-            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.0.md">v4.23.0 release notes</a></p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.0.md">v4.23.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md">held-out record</a></p>
         </div>
     </section>
 

@@ -26,6 +26,9 @@ up to three parts:
   vocabulary, and a test file holds many functions that each match it, so they
   often outscore the code. A prompt that only mentions tests keeps one slot
   for its best test file.
+  A matched test file also credits the code file it tests, found by name
+  (``test_x.py`` tests ``x.py``), with ``TESTED_CODE_CREDIT`` of its best
+  score, so the code under test is listed even when only its test matched.
 - **Connected to it in the synapse graph.** Other files that the synapse
   graph links directly to the listed code, mostly code, though a doc that is
   edited with it (a runbook, say) can appear: structural edges (calls,
@@ -93,6 +96,13 @@ LINKED_SYMBOLS = 2
 # 0.044) doesn't, nor does an edge that has decayed to a third of its weight.
 LINK_FLOOR = 0.05
 LABEL_MAX = 60
+# A matched test file gives the code file it tests (by name: test_x.py tests
+# x.py) this much of its best score. At 1.0 the code under test ranks with its
+# test. On the hermes-agent screen's 5 prompts, which it was tuned on, it named
+# the file to fix on one more (3 of 5); on 12 held-out ones it named no more,
+# and one fewer block quoted the wrong file (bench/task_outcome/
+# hermes-agent-test-ranking).
+TESTED_CODE_CREDIT = 1.0
 # The excerpt's confidence gate: the top file's summed match score against the
 # next file's. Several strong matches in one file is what a 2:1 lead takes.
 EXCERPT_MARGIN = 2.0
@@ -121,6 +131,8 @@ _TEST_PROMPT = re.compile(r"\b(tests?|testing|specs?|pytest|unittest)\b", re.IGN
 # ParserTest) or a test file's path.
 _TEST_IDENT = re.compile(r"\btest_\w|\w_tests?\b|\b[A-Za-z]\w*[a-z0-9]Tests?\b")
 _PATH_TOKEN = re.compile(r"[\w.-]*[/\\][\w./\\-]*|[\w-]+\.[A-Za-z]\w*")
+# What a test file's name adds to the name of the code it tests.
+_TEST_AFFIX = re.compile(r"^tests?_|_tests?$|(?<=[a-z0-9])Tests?$")
 
 
 @dataclass
@@ -201,8 +213,6 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
         bucket = code if is_code_node(node) else other
         bucket[node_id] = max(score, bucket.get(node_id, score))
 
-    result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
-    primary, secondary = (code, other) if code else (other, {})
     # Test words alone don't put the tests among the code, unlike in a query
     # (context_selector._asks_about_tests): a task prompt often says how to
     # check the work ("run the existing tests with pytest", "don't change the
@@ -213,6 +223,10 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     # about one too.
     tests_last = not _names_a_test(prompt)
     test_slot = tests_last and bool(_TEST_PROMPT.search(prompt))
+    if tests_last and TESTED_CODE_CREDIT > 0:
+        _credit_tested_code(code, info, nodes)
+    result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
+    primary, secondary = (code, other) if code else (other, {})
     result.matches = _by_file(
         primary, info, MATCH_FILES, tests_last=tests_last, test_slot=test_slot
     )
@@ -298,6 +312,72 @@ def is_test_path(path: str) -> bool:
         return True
     name = parts[-1]
     return bool(_TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name))
+
+
+def _credit_tested_code(
+    code: dict[str, float], info: dict[str, dict], nodes: dict[str, dict]
+) -> None:
+    """Give the code a matched test file tests its file node, at the test's best score.
+
+    A prompt about a bug often matches the test file of the module to fix
+    better than the module itself: the test spells out the behaviour in the
+    prompt's words. On hermes-agent, a prompt about an NVIDIA error matched
+    ``tests/agent/test_error_classifier.py`` and never the fix's
+    ``agent/error_classifier.py``. The code under test is found by name only
+    (see :func:`_tested_paths`), so a test with no counterpart credits nothing.
+    """
+    tests: dict[str, float] = {}
+    for node_id, score in code.items():
+        path = _path(info.get(node_id))
+        if path and is_test_path(path):
+            tests[path] = max(score, tests.get(path, score))
+    wanted = {test: _tested_name(test) for test in tests}
+    names = {name for name in wanted.values() if name}
+    if not names:
+        return
+    # One pass, a set lookup per node: a large repository's graph holds
+    # hundreds of thousands of nodes. A file's own node is labelled with its
+    # file name.
+    found: dict[str, dict[str, str]] = {}
+    for node_id, node in nodes.items():
+        label = node.get("label")
+        if label not in names:
+            continue
+        path = _path(node)
+        if os.path.basename(path) == label and not is_test_path(path) and is_code_node(node):
+            found.setdefault(label, {}).setdefault(path, node_id)
+    for test, name in wanted.items():
+        target = _tested_paths(test, found.get(name, {}))
+        if target:
+            node_id = found[name][target]
+            info.setdefault(node_id, nodes[node_id])
+            credit = TESTED_CODE_CREDIT * max(tests[test], 0.0)
+            code[node_id] = max(credit, code.get(node_id, credit))
+
+
+def _tested_name(test: str) -> str:
+    """The file name a test file's code would have: ``test_cli.py`` -> ``cli.py``."""
+    name = test.replace("\\", "/").rsplit("/", 1)[-1]
+    stem, dot, suffix = name.partition(".")
+    suffix = _TEST_NAME.sub(".", "." + suffix)[1:] if dot else ""
+    code_stem = _TEST_AFFIX.sub("", stem)
+    if not suffix or not code_stem or (code_stem == stem and not _TEST_NAME.search(name)):
+        return ""
+    return f"{code_stem}.{suffix}"
+
+
+def _tested_paths(test: str, candidates: dict[str, str]) -> str:
+    """Which of the code files named like ``test``'s counterpart it tests, or ''.
+
+    The one at the test's own path with the test folders taken out
+    (``tests/agent/test_x.py`` -> ``agent/x.py``), else the only one there is.
+    """
+    parts = test.replace("\\", "/").split("/")
+    mirror = "/".join(p for p in parts[:-1] if p.lower() not in _TEST_DIRS)
+    same = [path for path in candidates if os.path.dirname(path) == mirror]
+    if len(same) == 1:
+        return same[0]
+    return next(iter(candidates)) if len(candidates) == 1 else ""
 
 
 def _names_a_test(prompt: str) -> bool:

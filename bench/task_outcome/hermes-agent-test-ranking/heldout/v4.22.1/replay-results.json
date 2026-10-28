@@ -1,0 +1,290 @@
+{
+  "summary": {
+    "neuralmind_version": "neuralmind 4.22.1",
+    "tasks": 12,
+    "named": 4,
+    "first": 1,
+    "excerpt_shown": 2,
+    "excerpt_on_gold": 0,
+    "excerpt_on_fix": 0,
+    "excerpt_on_gold_share": 0.0,
+    "median_chars": 923,
+    "tests_listed": 33,
+    "files_listed": 82
+  },
+  "tasks": [
+    {
+      "task": "e9eba2188a",
+      "gold": [
+        "hermes_cli/web_server_sessions.py"
+      ],
+      "listed": [
+        "tests/hermes_cli/test_gateway_service.py",
+        "apps/desktop/electron/local-gateway.ts",
+        "hermes_cli/gateway_status_notes.py",
+        "hermes_cli/dashboard_auth/request_utils.py",
+        "apps/desktop/electron/main.ts",
+        "apps/desktop/electron/windows-child-options.ts",
+        "hermes_cli/dashboard_auth/middleware.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 804,
+      "tests_listed": 1
+    },
+    {
+      "task": "24b4f90e97",
+      "gold": [
+        "hermes_cli/update_custody.py"
+      ],
+      "listed": [
+        "tests/hermes_cli/test_update_lock_windows_live.py",
+        "tests/hermes_cli/conftest.py",
+        "tests/hermes_cli/test_update_zip_fallback_guards.py",
+        "hermes_cli/update_cmd_commit.py",
+        "hermes_cli/main_install_repair.py",
+        "hermes_cli/_subprocess_compat.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 982,
+      "excerpt": [
+        "tests/hermes_cli/test_update_lock_windows_live.py",
+        324,
+        327
+      ],
+      "tests_listed": 3
+    },
+    {
+      "task": "3c53adbc1e",
+      "gold": [
+        "tools/bot_desktop/rfb_filter.py"
+      ],
+      "listed": [
+        "hermes_cli/web_routers/display.py",
+        "tests/hermes_cli/test_display_ws_drop_keeps_lease.py",
+        "tests/hermes_cli/test_web_server_console_ws.py",
+        "apps/desktop/e2e/at-rest-connection-token.spec.ts",
+        "tools/bot_desktop/lease.py",
+        "tests/gateway/test_irc_adapter.py",
+        "agent/monitoring/emitter.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 731,
+      "tests_listed": 4
+    },
+    {
+      "task": "1c39127d37",
+      "gold": [
+        "agent/display.py"
+      ],
+      "listed": [
+        "agent/memory_manager.py",
+        "agent/inline_tool_executors.py",
+        "tools/memory_tool.py",
+        "tests/agent/test_background_review_list_shapes.py",
+        "tests/tools/test_memory_tool.py",
+        "tests/tools/test_write_approval.py",
+        "tests/agent/test_memory_write_bridge.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 923,
+      "tests_listed": 4
+    },
+    {
+      "task": "0cb3760383",
+      "gold": [
+        "hermes_cli/model_switch.py"
+      ],
+      "listed": [
+        "tests/hermes_cli/test_model_switch_custom_providers.py",
+        "tests/hermes_cli/test_runtime_provider_resolution.py",
+        "hermes_cli/model_switch.py",
+        "gateway/run.py",
+        "hermes_cli/models_local.py",
+        "hermes_cli/config_providers.py",
+        "hermes_cli/providers.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1021,
+      "tests_listed": 2
+    },
+    {
+      "task": "44cf71f231",
+      "gold": [
+        "agent/conversation_compression.py",
+        "hermes_state_messages.py"
+      ],
+      "listed": [
+        "hermes_cli/observability/shared_metrics_efficiency.py",
+        "hermes_state_messages.py",
+        "hermes_state_search.py",
+        "plugins/memory/openviking/__init__.py",
+        "tests/hermes_state/test_stale_tool_call_marker_session_repair.py",
+        "tests/hermes_cli/test_shared_metrics_efficiency.py",
+        "hermes_state.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 963,
+      "tests_listed": 2
+    },
+    {
+      "task": "a3537b6f04",
+      "gold": [
+        "hermes_cli/cli_modern_layout.py"
+      ],
+      "listed": [
+        "hermes_cli/cli_modern_layout.py",
+        "tests/hermes_cli/test_reasoning_command.py",
+        "tests/hermes_cli/test_stream_delta_think_tag.py",
+        "agent/reasoning_summaries.py",
+        "tests/agent/test_reasoning_summaries.py",
+        "agent/chat_completion_helpers.py",
+        "tests/hermes_cli/test_cli_approval_ui.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 759,
+      "tests_listed": 4
+    },
+    {
+      "task": "cd69be6909",
+      "gold": [
+        "tui_gateway/methods_config.py"
+      ],
+      "listed": [
+        "hermes_cli/cron.py",
+        "hermes_cli/gateway.py",
+        "tests/hermes_cli/test_ensure_gateway_service.py",
+        "hermes_cli/gateway_windows.py",
+        "tests/cron/test_cronjob_gateway_liveness.py",
+        "hermes_cli/update_cmd_windows.py",
+        "tests/hermes_cli/test_gateway_start_attestation.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 888,
+      "tests_listed": 3
+    },
+    {
+      "task": "4a78de2805",
+      "gold": [
+        "tools/terminal_tool_backends.py"
+      ],
+      "listed": [
+        "hermes_cli/setup_terminal.py",
+        "tests/hermes_cli/test_doctor_terminal_backends.py",
+        "tools/environments/__init__.py",
+        "hermes_cli/doctor_tools.py",
+        "tools/tool_backend_helpers.py",
+        "tools/environments/base.py",
+        "hermes_cli/config.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1226,
+      "excerpt": [
+        "hermes_cli/setup_terminal.py",
+        167,
+        172
+      ],
+      "tests_listed": 1
+    },
+    {
+      "task": "e3fbd32d26",
+      "gold": [
+        "hermes_cli/gateway_setting_commands.py"
+      ],
+      "listed": [
+        "hermes_cli/gateway_agent.py",
+        "hermes_cli/gateway_plugin_commands.py",
+        "hermes_cli/gateway_tools.py",
+        "hermes_cli/cli_init_mixin.py",
+        "tests/hermes_cli/test_gateway_plugin_commands.py",
+        "tests/tools/test_connector_wire_identity.py",
+        "tools/connectors/portal/tools_cache.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 728,
+      "tests_listed": 2
+    },
+    {
+      "task": "d4fa373017",
+      "gold": [
+        "hermes_cli/profile_distribution.py"
+      ],
+      "listed": [
+        "tests/hermes_cli/test_backup.py",
+        "hermes_cli/profile_distribution.py",
+        "tests/hermes_cli/test_profile_distribution.py",
+        "tests/hermes_cli/test_profiles.py",
+        "hermes_cli/profiles.py",
+        "hermes_cli/backup.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 816,
+      "tests_listed": 3
+    },
+    {
+      "task": "696f6e9ff9",
+      "gold": [
+        "agent/agent_runtime_helpers.py"
+      ],
+      "listed": [
+        "tests/tui_gateway/test_tui_gateway_server.py",
+        "hermes_state_sessions.py",
+        "tui_gateway/agent_callbacks.py",
+        "tui_gateway/methods_session.py",
+        "tests/hermes_cli/test_resume_model_restore.py",
+        "tests/hermes_cli/test_oneshot_resume.py",
+        "tests/agent/test_insights.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1079,
+      "tests_listed": 4
+    }
+  ]
+}
