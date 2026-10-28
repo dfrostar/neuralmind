@@ -29,7 +29,7 @@ Eleven NeuralMind releases in two weeks, v4.16 to v4.22. Here's what changed for
 
 For teams putting AI coding agents on CUI or federal code:
 • One setting, security.profile: cui, turns on NeuralMind's hardened configuration and refuses changes that would weaken it
-• Signed audit checkpoints, so the audit log can't be shortened or rewritten without "neuralmind audit verify" failing
+• Signed audit checkpoints, so records a checkpoint covers can't be removed or rewritten without "neuralmind audit verify" failing
 • Live audit forwarding to syslog, with an alert when a record can't be written
 • An OSCAL component definition for SP 800-53, and "neuralmind hardening", which checks a 17-rule baseline and exits non-zero on any failure
 • "neuralmind data-locations", which lists every place NeuralMind keeps a project's data
@@ -53,7 +53,7 @@ Every release, with notes: https://neuralmind.uk/whats-new/
 |---|---|
 | Eleven releases, v4.16.0 (2026-10-17) to v4.22.1 (2026-10-27) | `gh release list`; v4.20.0 is site-only and v4.22.1 docs-only, both still releases |
 | `security.profile: cui` turns on the hardened settings and refuses what would weaken them | `docs/releases/RELEASE_NOTES_v4.16.0.md` |
-| Signed checkpoints: newest records can't be removed, or the chain recomputed, without `audit verify` failing | `docs/releases/RELEASE_NOTES_v4.16.0.md` |
+| Signed checkpoints: records a checkpoint covers can't be removed from the end, or the chain recomputed, without `audit verify` failing. Records written after the newest checkpoint are covered only by the hash chain until the next one, and the anchored copy (`security.audit_anchor_dir`) is what makes deleting checkpoints visible | `neuralmind/audit_checkpoint.py` (module docstring), `docs/releases/RELEASE_NOTES_v4.16.0.md` |
 | Every record to syslog as written; alert when a record can't be written | `docs/releases/RELEASE_NOTES_v4.19.0.md` (`security.audit_syslog`, the AU.L2-3.3.4 alert) |
 | OSCAL component definition for SP 800-53 | `security/neuralmind.oscal-component-definition.json` |
 | `hardening` checks 17 rules, exits 1 on a failure | `docs/compliance/SP800-53-HARDENING.md` (NMH-1 to NMH-17), `tests/test_cli_exit_codes.py` (`hardening-baseline-not-met`) |
