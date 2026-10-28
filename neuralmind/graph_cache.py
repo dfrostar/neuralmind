@@ -37,10 +37,11 @@ like ``synapses.db`` beside it.
 from __future__ import annotations
 
 import json
+import logging
 import marshal
 import os
 import secrets
-import subprocess
+import subprocess  # nosec B404 - starts this interpreter with a fixed argument list, no shell
 import sys
 from pathlib import Path
 from typing import Any
@@ -57,6 +58,8 @@ except ImportError:
 CACHE_ENV = "NEURALMIND_GRAPH_CACHE"
 CACHE_FILENAME = "graph_cache.marshal"
 LOCK_FILENAME = "graph_cache.lock"
+
+logger = logging.getLogger(__name__)
 # Smaller sources aren't cached: a 16 MB IR converts in about 0.2 s.
 CACHE_MIN_BYTES = 16 * 1024 * 1024
 _MAGIC = b"NMGRAPH1 "
@@ -110,7 +113,7 @@ def warm(ir_path: Path, graph_path: Path) -> None:
         if _needs_writing(ir_path, graph_path):
             load(ir_path, graph_path)
     except Exception:
-        pass
+        logger.debug("graph cache not written for %s", ir_path, exc_info=True)
 
 
 def warm_in_background(project_path: str | Path) -> bool:
@@ -129,7 +132,8 @@ def warm_in_background(project_path: str | Path) -> bool:
         ir_path = root / ".neuralmind" / "index_ir.json"
         if not _needs_writing(ir_path, graph_json_path(root)):
             return False
-        subprocess.Popen(
+        # This interpreter, a fixed module, and the resolved project path as one argument.
+        subprocess.Popen(  # nosec B603 - fixed argument list, no shell
             python_argv("-m", "neuralmind.graph_cache", str(root)),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -255,7 +259,10 @@ def _read(path: Path, key: bytes) -> dict[str, Any] | None:
         with path.open("rb") as fh:
             if fh.readline(_HEADER_MAX) != key:
                 return None
-            graph = marshal.loads(fh.read())
+            # NeuralMind's own file in the self-ignoring state directory, behind a
+            # header that must match; marshal builds plain values and runs no code,
+            # and the result is type-checked below (see the module docstring).
+            graph = marshal.loads(fh.read())  # nosec B302
     except (OSError, EOFError, ValueError, TypeError):
         return None
     if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list):
