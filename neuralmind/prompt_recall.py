@@ -21,9 +21,11 @@ up to three parts:
 - **Code matching this prompt.** A docstring (rationale) node counts as the
   symbol its ``rationale_for`` edge describes. Files rank by the summed scores
   of their matching symbols, so a file with several matches outranks a single
-  stray one. Test files come after the code they test unless the prompt is
-  about tests: they repeat the code's vocabulary, so they often match as well
-  as the code does.
+  stray one. Test files come after the code they test unless the prompt names
+  a test, and are ranked so before the list is cut: they repeat the code's
+  vocabulary, and a test file holds many functions that each match it, so they
+  often outscore the code. A prompt that only mentions tests keeps one slot
+  for its best test file.
 - **Connected to it in the synapse graph.** Other files that the synapse
   graph links directly to the listed code, mostly code, though a doc that is
   edited with it (a runbook, say) can appear: structural edges (calls,
@@ -36,11 +38,13 @@ up to three parts:
 When one file clearly leads (its matches' summed score is at least
 ``EXCERPT_MARGIN`` times the next file's), the block also shows the code of its
 best-matching symbol, from the working tree, at most ``EXCERPT_LINES`` lines,
-secrets redacted. A list of names alone didn't change what the agent did: in
-the task-outcome pilot (``bench/task_outcome/pilot``) the hook named the file
-to fix in 17 of 20 tasks, and the agent searched before its first edit as much
-as it did without NeuralMind. The margin is the confidence gate: on those 20
-tasks' prompts, a leading file was the one to fix in 7 of the 9 where it held,
+secrets redacted. When a source file is listed, only source files compete for
+it: the excerpt shows the agent what to edit, not the test that checks it. A
+list of names alone didn't change what the agent did: in the task-outcome
+pilot (``bench/task_outcome/pilot``) the hook named the file to fix in 17 of
+20 tasks, and the agent searched before its first edit as much as it did
+without NeuralMind. The margin is the confidence gate: on those 20 tasks'
+prompts, a leading file was the one to fix in 7 of the 9 where it held,
 against 10 of 20 for the top file overall. ``NEURALMIND_RECALL_EXCERPT=0``
 turns the excerpt off.
 
@@ -113,6 +117,10 @@ _TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 _TEST_STEM = re.compile(r"^tests?$|^test_|_tests?$|Tests?$")
 _TEST_NAME = re.compile(r"\.(test|spec)\.")
 _TEST_PROMPT = re.compile(r"\b(tests?|testing|specs?|pytest|unittest)\b", re.IGNORECASE)
+# A prompt names a test with a test function or class (test_parse, parse_test,
+# ParserTest) or a test file's path.
+_TEST_IDENT = re.compile(r"\btest_\w|\w_tests?\b|\b[A-Za-z]\w*[a-z0-9]Tests?\b")
+_PATH_TOKEN = re.compile(r"[\w.-]*[/\\][\w./\\-]*|[\w-]+\.[A-Za-z]\w*")
 
 
 @dataclass
@@ -195,8 +203,19 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
 
     result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
     primary, secondary = (code, other) if code else (other, {})
-    tests_last = not _TEST_PROMPT.search(prompt)
-    result.matches = _by_file(primary, info, MATCH_FILES, tests_last=tests_last)
+    # Test words alone don't put the tests among the code, unlike in a query
+    # (context_selector._asks_about_tests): a task prompt often says how to
+    # check the work ("run the existing tests with pytest", "don't change the
+    # tests"), and on the task-outcome benchmark that sentence put test files
+    # among the code on every prompt. On hermes-agent (2026-10-25), 18 of the
+    # 32 files the hook listed over 5 tasks were under tests/. Such a prompt
+    # keeps one slot for its best test file: "fix the claims guard test" is
+    # about one too.
+    tests_last = not _names_a_test(prompt)
+    test_slot = tests_last and bool(_TEST_PROMPT.search(prompt))
+    result.matches = _by_file(
+        primary, info, MATCH_FILES, tests_last=tests_last, test_slot=test_slot
+    )
     if result.code and os.environ.get("NEURALMIND_RECALL_EXCERPT") != "0":
         result.excerpt = _excerpt(mind, result.matches, nodes, info)
     # Only the files the block lists: a match past MATCH_FILES can still be linked.
@@ -242,8 +261,10 @@ def format_block(result: PromptRecall) -> str:
     if result.excerpt:
         ex = result.excerpt
         fence = "`" * max(3, _longest_backtick_run(ex.text) + 1)
+        # On a prompt about tests a test file can come first; it isn't quoted.
+        where = "outside the tests " if ex.path != result.matches[0].path else ""
         lines.append(
-            f"Most matches are in {ex.path}. Its best match, L{ex.start}-L{ex.end} "
+            f"Most matches {where}are in {ex.path}. Its best match, L{ex.start}-L{ex.end} "
             "(read the file before you edit it):"
         )
         lines.extend([fence, ex.text, fence])
@@ -277,6 +298,13 @@ def is_test_path(path: str) -> bool:
         return True
     name = parts[-1]
     return bool(_TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name))
+
+
+def _names_a_test(prompt: str) -> bool:
+    """Whether ``prompt`` names a test: a test function, class or file."""
+    if _TEST_IDENT.search(prompt):
+        return True
+    return any(is_test_path(token) for token in _PATH_TOKEN.findall(prompt))
 
 
 def _seeds(
@@ -374,17 +402,19 @@ def _one_per_symbol(
 def _excerpt(
     mind: Any, files: list[FileRecall], nodes: dict[str, dict], info: dict[str, dict]
 ) -> Excerpt | None:
-    """The leading file's best symbol, when that file leads by ``EXCERPT_MARGIN``.
+    """The leading source file's best symbol, when it leads by ``EXCERPT_MARGIN``.
 
     The symbol runs from its own line to the line before the next symbol the
     graph records in the file, at most ``EXCERPT_LINES``. Read from the working
     tree, so it's what the agent would read; None when the file can't be read
     or the node has no line. Fails open.
     """
-    if not files or not files[0].top:
+    # The listed source files compete for it; a test file only when none is listed.
+    pool = [entry for entry in files if not is_test_path(entry.path)] or files
+    if not pool or not pool[0].top:
         return None
-    lead = files[0]
-    runner_up = files[1].score if len(files) > 1 else 0.0
+    lead = pool[0]
+    runner_up = pool[1].score if len(pool) > 1 else 0.0
     if runner_up > 0 and lead.score < EXCERPT_MARGIN * runner_up:
         return None
     start = _line_of(info.get(lead.top) or nodes.get(lead.top))
@@ -438,10 +468,15 @@ def _by_file(
     exclude: set[str] | None = None,
     *,
     tests_last: bool = False,
+    test_slot: bool = False,
     rank_by_best: bool = False,
     symbols: int = SYMBOLS_PER_FILE,
 ) -> list[FileRecall]:
-    """Group scored nodes by source file, best files first, up to ``limit``."""
+    """Group scored nodes by source file, best files first, up to ``limit``.
+
+    ``tests_last`` ranks test files after the others before the cut;
+    ``test_slot`` then gives the best test file the last slot if code filled them.
+    """
     files: dict[str, FileRecall] = {}
     for node_id, score in sorted(scored.items(), key=lambda kv: kv[1], reverse=True):
         node = info.get(node_id) or {}
@@ -463,7 +498,13 @@ def _by_file(
         rank = entry.best if rank_by_best else entry.score
         return (not (tests_last and is_test_path(entry.path)), rank)
 
-    return sorted(files.values(), key=key, reverse=True)[:limit]
+    ranked = sorted(files.values(), key=key, reverse=True)
+    listed = ranked[:limit]
+    if test_slot and listed and not any(is_test_path(entry.path) for entry in listed):
+        best_test = next((entry for entry in ranked[limit:] if is_test_path(entry.path)), None)
+        if best_test is not None:
+            listed[-1] = best_test
+    return listed
 
 
 def _path(node: dict | None) -> str:
