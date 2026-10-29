@@ -376,3 +376,93 @@ def test_find_function_file_cross_language(tmp_project):
         result is not None
     ), f"Expected to find helper in {ts_file}, got None. Files: {list(tmp_project.iterdir())}"
     assert result.suffix == ".ts"
+
+
+def test_a_name_defined_twice_gets_the_first_in_breadth_first_order(tmp_path):
+    """Each file is read once into a name -> type map; a name keeps the
+    function the old per-lookup ``ast.walk`` search found first, which is
+    breadth-first: a module-level def beats an earlier nested one."""
+    (tmp_path / "m.py").write_text(textwrap.dedent("""
+            class Box:
+                def get(self) -> int:
+                    return 1
+
+            def get() -> str | None:
+                return None
+        """))
+    info = TypeVerifier(tmp_path).infer_return_type("m.py::get")
+    assert info is not None
+    assert info.return_type == "str | None"
+    assert info.is_optional is True
+
+
+def test_tree_sitter_names_keep_the_first_in_depth_first_order(tmp_path):
+    """The tree-sitter search walked depth-first, pre-order: an outer
+    function's nested function comes before a later top-level one."""
+    pytest.importorskip("tree_sitter_typescript")
+    (tmp_path / "m.ts").write_text(
+        "function outer(): number {\n"
+        "  function inner(): string { return 'a'; }\n"
+        "  return 1;\n"
+        "}\n"
+        "function inner(): boolean { return true; }\n"
+    )
+    info = TypeVerifier(tmp_path).infer_return_type("m.ts::inner")
+    assert info is not None
+    assert info.return_type == "string"
+
+
+def test_each_file_is_walked_once_however_many_lookups(tmp_project, monkeypatch):
+    # The old search parsed a file once (it cached the tree) but walked the
+    # whole tree again for every distinct name looked up in it.
+    import ast
+
+    walks = []
+    real_walk = ast.walk
+    monkeypatch.setattr(ast, "walk", lambda node: walks.append(1) or real_walk(node))
+    tv = TypeVerifier(tmp_project)
+    for name in ("get_user", "fetch_all", "no_annotation", "returns_none", "missing"):
+        tv.infer_return_type(f"module_a.py::{name}")
+    assert len(walks) == 1
+    assert tv.infer_return_type("module_a.py::missing") is None
+
+
+def test_a_file_that_does_not_parse_gives_no_types(tmp_path):
+    (tmp_path / "bad.py").write_text("def broken(:\n")
+    assert TypeVerifier(tmp_path).infer_return_type("bad.py::broken") is None
+
+
+def test_augment_graph_runs_in_one_thread(tmp_project, monkeypatch):
+    """The work is pure Python: a thread pool only added GIL contention."""
+    import threading
+
+    threads = set()
+    real = TypeVerifier.infer_return_type
+
+    def record(self, node_id):
+        threads.add(threading.get_ident())
+        return real(self, node_id)
+
+    monkeypatch.setattr(TypeVerifier, "infer_return_type", record)
+    graph = {
+        "nodes": [{"id": "module_a.py::get_user", "label": "get_user()"}],
+        "edges": [
+            {
+                "source": "module_b.py::process",
+                "target": "module_a.py::get_user",
+                "relation": "calls",
+            },
+            {
+                "source": "module_b.py::process",
+                "target": "module_a.py::fetch_all",
+                "relation": "calls",
+            },
+        ],
+    }
+    assert TypeVerifier(tmp_project).augment_graph(graph) == 2
+    assert threads == {threading.get_ident()}
+    # In edge order, so the persisted rows come out in the same order every build.
+    assert [callee for _, callee, _ in graph["type_edges"]] == [
+        "module_a.py::get_user",
+        "module_a.py::fetch_all",
+    ]

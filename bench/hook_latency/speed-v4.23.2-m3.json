@@ -1,0 +1,221 @@
+{
+  "_comment": "v4.23.2 speed changes on an M3 MacBook (4P+4E, 16 GB), Python 3.11.16, onnxruntime 1.31.1, turbovec 1.1.2. 'before' is main at a2f6ecd2 on PYTHONPATH, 'after' this release. Hook: tests/benchmark/hook_latency.py --states cached --runs 5, the two versions alternated over 3 rounds (load average about 3). Type verifier: TypeVerifier.augment_graph on each project's .neuralmind/graph.json, timed alone; the edge set compared as a sorted SHA-256 of (caller, callee, return_type, is_optional, confidence, inferred_by), and the risks from detect_type_risks the same way. Projects: requests at public-benchmark commit 0e322af8 (1,112 nodes), NeuralMind at 17a98fa4 with its learned synapses (~8,000 nodes), hermes-agent from held-out task 0cb3760383's workspace (269,151 nodes). Prompts: requests and NeuralMind from the speed profile's payloads, hermes-agent task 0cb3760383's.",
+  "hook": {
+    "requests": {
+      "before": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 0.45,
+            "min_s": 0.44,
+            "max_s": 0.45,
+            "block_sha256_12": "d6eb06c94968"
+          },
+          {
+            "round": 2,
+            "mean_s": 0.44,
+            "min_s": 0.44,
+            "max_s": 0.45,
+            "block_sha256_12": "d6eb06c94968"
+          },
+          {
+            "round": 3,
+            "mean_s": 0.45,
+            "min_s": 0.45,
+            "max_s": 0.45,
+            "block_sha256_12": "d6eb06c94968"
+          }
+        ],
+        "mean_of_round_means_s": 0.447,
+        "min_s": 0.44,
+        "max_s": 0.45
+      },
+      "after": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 0.42,
+            "min_s": 0.42,
+            "max_s": 0.42,
+            "block_sha256_12": "d6eb06c94968"
+          },
+          {
+            "round": 2,
+            "mean_s": 0.42,
+            "min_s": 0.42,
+            "max_s": 0.42,
+            "block_sha256_12": "d6eb06c94968"
+          },
+          {
+            "round": 3,
+            "mean_s": 0.43,
+            "min_s": 0.42,
+            "max_s": 0.43,
+            "block_sha256_12": "d6eb06c94968"
+          }
+        ],
+        "mean_of_round_means_s": 0.423,
+        "min_s": 0.42,
+        "max_s": 0.43
+      }
+    },
+    "neuralmind": {
+      "before": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 0.56,
+            "min_s": 0.54,
+            "max_s": 0.57,
+            "block_sha256_12": "5bab6e83301b"
+          },
+          {
+            "round": 2,
+            "mean_s": 0.54,
+            "min_s": 0.54,
+            "max_s": 0.56,
+            "block_sha256_12": "5bab6e83301b"
+          },
+          {
+            "round": 3,
+            "mean_s": 0.55,
+            "min_s": 0.55,
+            "max_s": 0.57,
+            "block_sha256_12": "5bab6e83301b"
+          }
+        ],
+        "mean_of_round_means_s": 0.55,
+        "min_s": 0.54,
+        "max_s": 0.57
+      },
+      "after": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 0.52,
+            "min_s": 0.52,
+            "max_s": 0.54,
+            "block_sha256_12": "5bab6e83301b"
+          },
+          {
+            "round": 2,
+            "mean_s": 0.52,
+            "min_s": 0.51,
+            "max_s": 0.53,
+            "block_sha256_12": "5bab6e83301b"
+          },
+          {
+            "round": 3,
+            "mean_s": 0.52,
+            "min_s": 0.52,
+            "max_s": 0.53,
+            "block_sha256_12": "5bab6e83301b"
+          }
+        ],
+        "mean_of_round_means_s": 0.52,
+        "min_s": 0.51,
+        "max_s": 0.54
+      }
+    },
+    "hermes-agent": {
+      "before": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 1.44,
+            "min_s": 1.32,
+            "max_s": 1.88,
+            "block_sha256_12": "cf55ceb9a220"
+          },
+          {
+            "round": 2,
+            "mean_s": 1.38,
+            "min_s": 1.31,
+            "max_s": 1.53,
+            "block_sha256_12": "cf55ceb9a220"
+          },
+          {
+            "round": 3,
+            "mean_s": 1.37,
+            "min_s": 1.31,
+            "max_s": 1.5,
+            "block_sha256_12": "cf55ceb9a220"
+          }
+        ],
+        "mean_of_round_means_s": 1.397,
+        "min_s": 1.31,
+        "max_s": 1.88
+      },
+      "after": {
+        "rounds": [
+          {
+            "round": 1,
+            "mean_s": 1.13,
+            "min_s": 1.08,
+            "max_s": 1.29,
+            "block_sha256_12": "cf55ceb9a220"
+          },
+          {
+            "round": 2,
+            "mean_s": 1.17,
+            "min_s": 1.08,
+            "max_s": 1.41,
+            "block_sha256_12": "cf55ceb9a220"
+          },
+          {
+            "round": 3,
+            "mean_s": 1.18,
+            "min_s": 1.11,
+            "max_s": 1.25,
+            "block_sha256_12": "cf55ceb9a220"
+          }
+        ],
+        "mean_of_round_means_s": 1.16,
+        "min_s": 1.08,
+        "max_s": 1.41
+      }
+    }
+  },
+  "type_verifier": {
+    "requests": {
+      "type_edges": 1041,
+      "before_s": [
+        0.07
+      ],
+      "after_s": 0.04,
+      "edges_sha256": "5b2498d643569d71390ffa3244aac8e4cc9d02cd65ba71b7e6f94d800434a3f8",
+      "same_edges": true,
+      "same_risks": true
+    },
+    "neuralmind": {
+      "type_edges": 9281,
+      "before_s": [
+        1.73
+      ],
+      "after_s": 0.56,
+      "edges_sha256": "4e21567ebc78b30788ba861531b42499f260f258bfbf699b40fdcd226ac89e05",
+      "same_edges": true,
+      "same_risks": true
+    },
+    "hermes-agent": {
+      "type_edges": 347376,
+      "before_s": [
+        120.74,
+        123.34
+      ],
+      "after_s": 17.04,
+      "edges_sha256": "4954e0ac109631c6b9622345d8f63e00462d39fd00b117620f32ed5abbd5a212",
+      "same_edges": true,
+      "same_risks": true
+    }
+  },
+  "neuralmind_full_build": {
+    "before_s": 29,
+    "after_s": 27,
+    "runs": 1,
+    "same_graph_json": true,
+    "same_type_edges_rows": 6010,
+    "same_structural_edges": 11579,
+    "same_block": true
+  }
+}
