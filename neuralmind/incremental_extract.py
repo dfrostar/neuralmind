@@ -77,9 +77,15 @@ def _first_pass(root: Path, rels: list[str], parsers: dict[str, Any]) -> Any:
 
 
 def _symbols(b: Any) -> dict[tuple[str, str], list[str]]:
-    """A builder's function and class name tables, as one map."""
+    """A builder's name tables as one map: functions, classes and module keys.
+
+    Module keys too, because Java, C#, PHP and Ruby take them from a file's
+    package or namespace line: a package rename moves every import of it.
+    """
     tables = {("func", k): list(v) for k, v in b.func_by_name.items()}
     tables.update({("class", k): list(v) for k, v in b.class_by_name.items()})
+    tables.update({("module", k): [v] for k, v in b.file_by_module.items()})
+    tables.update({("package", k): list(v) for k, v in b.go_pkg_files.items()})
     return tables
 
 

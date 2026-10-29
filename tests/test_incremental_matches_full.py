@@ -3,9 +3,11 @@
 Calls resolve by name, to the first project function of that name in build
 order, so which files an incremental build re-extracts, and in what order it
 registers the rest, decides where a call points. Each test edits a small
-project, then compares the incremental graph with a fresh full build of the
-same tree. Community numbers aside: an incremental build keeps each unchanged
-file's number by design.
+project. An incremental build must then write the same ``graph.json``, byte
+for byte, as a full re-extraction of the same tree that keeps the previous
+graph (community numbers carry over the same way in both). ``update_files``
+must give the same nodes and edges, community numbers aside: it never kept a
+build's order.
 """
 
 from __future__ import annotations
@@ -35,6 +37,18 @@ def _full(root: Path, tmp_path: Path) -> dict:
     shutil.copytree(root, fresh)
     shutil.rmtree(fresh / ".neuralmind", ignore_errors=True)
     return json.loads(graphgen.write_graph(fresh).read_text())
+
+
+def _rebuild(root: Path, tmp_path: Path) -> tuple[dict, bytes, bytes]:
+    """An incremental build's graph, its bytes, and a full re-extraction's bytes."""
+    previous = (root / ".neuralmind" / "graph.json").read_bytes()
+    incremental = graphgen.write_graph(root).read_bytes()
+    reference = tmp_path / "reference"
+    shutil.copytree(root, reference)
+    for state in ("extraction_cache.json", "importer_index.json"):
+        (reference / ".neuralmind" / state).unlink(missing_ok=True)
+    (reference / ".neuralmind" / "graph.json").write_bytes(previous)
+    return json.loads(incremental), incremental, graphgen.write_graph(reference).read_bytes()
 
 
 def _calls(graph: dict) -> list[tuple[str, str]]:
@@ -75,42 +89,107 @@ class TestBuild:
         # Editing a.py re-extracts it. Registering the unchanged b.py's `load`
         # first, as incremental builds did, pointed c.run at b.load.
         _edit(project, "a.py", 'def load():\n    return "a2"\n')
-        graph = json.loads(graphgen.write_graph(project).read_text())
+        graph, incremental, full = _rebuild(project, tmp_path)
         assert ("c_py__run_fn", "a_py__load_fn") in _calls(graph)
-        assert _content(graph) == _content(_full(project, tmp_path))
+        assert incremental == full
 
     def test_a_new_same_named_function_takes_over_calls_in_unedited_files(self, project, tmp_path):
         # m.py's helper() serves n.use. A `helper` added to a file that sorts
         # first takes that call over in a full build, though n.py is unedited.
         _edit(project, "b.py", 'def load():\n    return "b"\n\n\ndef helper():\n    return 2\n')
-        graph = json.loads(graphgen.write_graph(project).read_text())
+        graph, incremental, full = _rebuild(project, tmp_path)
         assert ("n_py__use_fn", "b_py__helper_fn") in _calls(graph)
-        assert _content(graph) == _content(_full(project, tmp_path))
+        assert incremental == full
 
     def test_removing_the_function_a_call_used_hands_it_to_the_next(self, project, tmp_path):
         _edit(project, "a.py", "def other():\n    return 0\n")
-        graph = json.loads(graphgen.write_graph(project).read_text())
+        graph, incremental, full = _rebuild(project, tmp_path)
         assert ("c_py__run_fn", "b_py__load_fn") in _calls(graph)
-        assert _content(graph) == _content(_full(project, tmp_path))
+        assert incremental == full
 
     def test_an_edit_inside_a_function_keeps_the_calls_into_it(self, project, tmp_path):
         _edit(project, "m.py", "def helper():\n    return 42\n")
-        graph = json.loads(graphgen.write_graph(project).read_text())
+        graph, incremental, full = _rebuild(project, tmp_path)
         assert ("n_py__use_fn", "m_py__helper_fn") in _calls(graph)
-        assert _content(graph) == _content(_full(project, tmp_path))
+        assert incremental == full
 
-    def test_file_nodes_come_in_a_full_build_s_order(self, project, tmp_path):
-        # The doc-code coupling takes the first 50 pairs in node order.
-        _edit(project, "a.py", 'def load():\n    return "a3"\n')
-        graph = json.loads(graphgen.write_graph(project).read_text())
-        full = _full(project, tmp_path)
 
-        def files(g: dict) -> list[str]:
-            return [
-                n["source_file"] for n in g["nodes"] if n["id"] == graphgen._slug(n["source_file"])
-            ]
+# Cases an independent review found (start, edit). ext__ nodes stand in for a
+# base class from a package; the first file in build order that uses one owns
+# it. Java registers its package from the file's text, which no node records.
+SCENARIOS = {
+    "an ext node's owner stops using it": (
+        {
+            "a.ts": "export class A extends EventEmitter {}\n",
+            "b.ts": "export class B extends EventEmitter {}\n",
+        },
+        {"a.ts": "export class A {}\n"},
+    ),
+    "an earlier file starts using an ext node": (
+        {"a.ts": "export class A {}\n", "b.ts": "export class B extends EventEmitter {}\n"},
+        {"a.ts": "export class A extends EventEmitter {}\n"},
+    ),
+    "a java package is renamed": (
+        {
+            "src/db/Connection.java": "package com.example.db;\npublic class Connection {\n"
+            "  public void execute() {}\n}\n",
+            "src/api/Routes.java": "package com.example.api;\nimport com.example.db.Connection;\n"
+            "public class Routes {\n  void go(Connection c) { c.execute(); }\n}\n",
+        },
+        {
+            "src/db/Connection.java": "package com.example.store;\npublic class Connection {\n"
+            "  public void execute() {}\n}\n"
+        },
+    ),
+    "a java file importing an unchanged one is edited": (
+        {
+            "src/db/Connection.java": "package com.example.db;\npublic class Connection {\n"
+            "  public void execute() {}\n}\n",
+            "src/api/Routes.java": "package com.example.api;\nimport com.example.db.Connection;\n"
+            "public class Routes {\n  void go(Connection c) { c.execute(); }\n}\n",
+        },
+        {
+            "src/api/Routes.java": "package com.example.api;\nimport com.example.db.Connection;\n"
+            "public class Routes {\n  void go(Connection c) { c.execute(); }\n}\n// edited\n"
+        },
+    ),
+    "a python constant another file imports is removed": (
+        {
+            "a.py": "LIMIT = 3\n\ndef f():\n    return LIMIT\n",
+            "m.py": "from a import LIMIT\n\ndef g():\n    return LIMIT\n",
+        },
+        {"a.py": "def f():\n    return 3\n"},
+    ),
+}
 
-        assert files(graph) == files(full)
+
+def _scenario(tmp_path: Path, start: dict[str, str]) -> Path:
+    root = tmp_path / "scenario"
+    root.mkdir()
+    _write(root, start)
+    graphgen.write_graph(root)
+    return root
+
+
+@pytest.mark.parametrize("name", list(SCENARIOS))
+def test_a_build_matches_a_full_build_byte_for_byte(name, tmp_path):
+    start, edit = SCENARIOS[name]
+    root = _scenario(tmp_path, start)
+    time.sleep(0.01)
+    _write(root, edit)
+    _, incremental, full = _rebuild(root, tmp_path)
+    assert incremental == full
+
+
+@pytest.mark.parametrize("name", list(SCENARIOS))
+def test_update_files_matches_a_full_build(name, tmp_path):
+    start, edit = SCENARIOS[name]
+    root = _scenario(tmp_path, start)
+    time.sleep(0.01)
+    _write(root, edit)
+    path = root / ".neuralmind" / "graph.json"
+    graph, _ = graphgen.update_files(root, json.loads(path.read_text()), sorted(edit))
+    assert _content(graph) == _content(_full(root, tmp_path))
 
 
 class TestUpdateFiles:
