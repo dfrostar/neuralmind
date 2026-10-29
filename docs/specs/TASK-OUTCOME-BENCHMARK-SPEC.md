@@ -303,3 +303,28 @@ drawn by the same rule, that the pilot didn't use.
     `tokens=0` with 3.71M tokens used.
   - The one-sided McNemar p-value is the binomial tail of NeuralMind-only
     tasks among the discordant ones. A timed-out run never counts as solved.
+- 2026-10-29 — the Hermes variant's tokens and minutes are the whole
+  session's, fixed while stage 1 was running (after 24 of its 40 runs) and
+  before any stage 2 run. Checking the records against Hermes's `state.db`
+  found they mix two scales:
+  - A run's tokens come from the Hermes client's `result` event, which counts
+    every prompt token, cache reads included, for the client's own turn. When
+    a background command the agent started finishes, Hermes wakes the session
+    for more turns, and the tests judge the workspace after those. Stage 1's
+    run 22 made 95 more model calls that way; its record holds about half of
+    its session's 7.2M tokens.
+  - A run cut off by the timeout has no `result` event. The runner took the
+    session's `input_tokens`, which leave cache reads out: run 18's record
+    says 171k tokens where its session used 2.5M. It has no duration either.
+  - `evals/task_outcome/hermes_sessions.py` reads each run's session row,
+    read-only, into `sessions.json` beside `runs.jsonl`: prompt tokens
+    (uncached input plus cache reads and writes), output tokens, API calls,
+    and minutes from the session's start to its last activity. `analyze`
+    takes tokens and minutes from it, and the report counts any run without
+    one. On stage 1's first 24 runs it equals the record on 21. The other
+    three are runs 15 (one call after its client returned), 18 and 22.
+  - The harness is unchanged, so stage 2 runs exactly as stage 1 did. Turns
+    were already the session's (`api_call_count`). Tool counts, and calls
+    before the first edit, still come from the client's turn.
+  - `--max-turns 120` caps one Hermes turn, not a run: a wake-up starts
+    another, so run 22 made 215 model calls.

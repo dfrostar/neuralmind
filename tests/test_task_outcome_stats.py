@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from evals.task_outcome import analyze, run
+from evals.task_outcome import analyze, hermes_sessions, run
 
 
 def test_wilcoxon_all_negative_is_one_over_two_to_the_n() -> None:
@@ -401,6 +401,80 @@ def test_analyze_main_picks_the_hermes_endpoints(tmp_path, capsys) -> None:
     out = capsys.readouterr().out
     assert "Agent: Hermes" in out
     assert "Stage 1 (seed 0, both arms): 1 of 8 runs solved" in out
+
+
+def _usage_db(path, sessions):
+    """Hermes's sessions table, cut down to the usage columns."""
+    import sqlite3
+
+    db = sqlite3.connect(path)
+    db.execute(
+        "CREATE TABLE sessions (id TEXT, api_call_count INT, input_tokens INT,"
+        " cache_read_tokens INT, cache_write_tokens INT, output_tokens INT,"
+        " started_at REAL, last_activity_at REAL)"
+    )
+    db.executemany("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)", sessions)
+    db.commit()
+    db.close()
+    return path
+
+
+def test_session_usage_counts_cache_reads_as_prompt_tokens(tmp_path) -> None:
+    # A timed-out run's record took input_tokens alone; the session row keeps
+    # the cached part of every prompt apart.
+    db = _usage_db(tmp_path / "state.db", [("s1", 74, 128_193, 2_339_645, 0, 43_138, 0.0, 4650.0)])
+    assert hermes_sessions.session_usage(["s1", "gone"], db) == {
+        "s1": {
+            "api_calls": 74,
+            "prompt_tokens": 2_467_838,
+            "output_tokens": 43_138,
+            "minutes": 77.5,
+        }
+    }
+
+
+def test_hermes_sessions_writes_beside_the_runs_and_flags_missing_sessions(tmp_path) -> None:
+    db = _usage_db(tmp_path / "state.db", [("s1", 3, 10, 90, 0, 5, 0.0, 60.0)])
+    out = tmp_path / "out"
+    out.mkdir()
+    runs = [{"agent": "hermes", "session_id": "s1"}, {"agent": "hermes", "session_id": "s2"}]
+    (out / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert hermes_sessions.main([str(out), "--state-db", str(db)]) == 1
+    assert json.loads((out / "sessions.json").read_text()) == {
+        "s1": {"api_calls": 3, "prompt_tokens": 100, "output_tokens": 5, "minutes": 1.0}
+    }
+
+
+def test_hermes_tokens_and_minutes_come_from_the_whole_session() -> None:
+    record = {"input_tokens": 3_583_267, "output_tokens": 30_977, "duration_ms": 1_518_000}
+    session = {"api_calls": 215, "prompt_tokens": 7_145_464, "output_tokens": 55_441}
+    (run_with,) = analyze.with_sessions(
+        [{**record, "session_id": "s"}], {"s": {**session, "minutes": 42.4}}
+    )
+    assert analyze.run_tokens(run_with) == 7_200_905
+    assert analyze.run_minutes(run_with) == 42.4
+    assert analyze.run_tokens(record) == 3_614_244
+    assert analyze.run_minutes(record) == 25.3
+    # A timed-out run has no duration: unknown, not zero minutes.
+    assert analyze.run_minutes({"timed_out": True}) is None
+
+
+def test_analyze_main_uses_sessions_json_and_says_when_it_is_missing(tmp_path, capsys) -> None:
+    runs = _hermes_runs({})
+    for i, r in enumerate(runs):
+        r["session_id"] = f"s{i}"
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 0
+    assert "8 of 8 runs have no session usage" in capsys.readouterr().out
+    sessions = {
+        f"s{i}": {"api_calls": 1, "prompt_tokens": 2000, "output_tokens": 0, "minutes": 1.0}
+        for i in range(len(runs))
+    }
+    (tmp_path / "sessions.json").write_text(json.dumps(sessions))
+    assert analyze.main([str(tmp_path), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["runs_without_session"] == 0
+    assert result["tokens"]["median_per_task"] == {"baseline": 2000, "neuralmind": 2000}
 
 
 def test_harvest_enforces_the_pre_registered_gates() -> None:

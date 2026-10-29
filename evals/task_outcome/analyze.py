@@ -38,6 +38,9 @@ fixed in the spec's change log before its first run) has no cost to compare:
   per-task relative change with its bootstrap interval), wall-clock minutes,
   turns, tool calls before the first edit, runs that edited a gold file, and
   solved runs per arm. A timed-out run is unsolved, with the tokens it used.
+  Tokens and minutes cover the whole Hermes session, from the
+  ``sessions.json`` that ``hermes_sessions`` writes beside ``runs.jsonl``;
+  the report says how many runs lack one and fell back to their record.
 * **Stage 1's stopping rule.** Over seed 0's runs, pooled across both arms:
   fewer than 5 solved means the tasks are too hard for this model to tell the
   arms apart, and stage 2 doesn't run.
@@ -145,13 +148,36 @@ def run_cost(run: dict) -> float:
 def run_tokens(run: dict) -> int | None:
     """A Hermes run's tokens: input plus output, None when it recorded neither.
 
-    Not ``total_tokens``: Hermes reports 0 there for a session that ends in an
-    error, though it records that session's input and output.
+    The whole session's, when ``with_sessions`` attached them; else the
+    record's, which cover the client's own turn (see ``hermes_sessions``).
+    Never ``total_tokens``: Hermes reports 0 there for a session that ends in
+    an error, though it records that session's input and output.
     """
+    session = run.get("session")
+    if session:
+        return int(session["prompt_tokens"]) + int(session["output_tokens"])
     parts = [run.get("input_tokens"), run.get("output_tokens")]
     if all(x is None for x in parts):
         return None
     return sum(x or 0 for x in parts)
+
+
+def run_minutes(run: dict) -> float | None:
+    """The session's span when known, else the client's; None for neither."""
+    session = run.get("session")
+    if session and session.get("minutes") is not None:
+        return float(session["minutes"])
+    if run.get("duration_ms") is None:
+        return None
+    return float(run["duration_ms"]) / 60000
+
+
+def with_sessions(runs: list[dict], sessions: dict[str, dict]) -> list[dict]:
+    """Copies of ``runs`` with each one's whole-session usage under ``session``."""
+    return [
+        {**r, "session": sessions[r["session_id"]]} if r.get("session_id") in sessions else r
+        for r in runs
+    ]
 
 
 def run_solved(run: dict) -> bool:
@@ -363,13 +389,9 @@ def analyze_hermes(runs: list[dict], base: str = "baseline", treat: str = "neura
                 f"{r['task']} {r['arm']} s{r.get('seed')}" for r in runs if run_tokens(r) is None
             ),
         },
+        "runs_without_session": sum(not r.get("session") for r in runs),
         "minutes_per_task_median": {
-            arm: median(
-                [
-                    mean([(r.get("duration_ms") or 0) / 60000 for r in a[arm]])
-                    for a in tasks.values()
-                ]
-            )
+            arm: median([mean([run_minutes(r) for r in a[arm]]) for a in tasks.values()])
             for arm in (base, treat)
         },
         "turns_per_task_median": {
@@ -430,6 +452,12 @@ def report_hermes(result: dict) -> str:
         "  Runs that edited a gold file: " + pair(result["gold_file_edited_runs"], "{}"),
         "  Runs that hit the timeout (unsolved): " + pair(result["timed_out_runs"], "{}"),
     ]
+    if result["runs_without_session"]:
+        lines.append(
+            f"  {result['runs_without_session']} of {result['runs']} runs have no session"
+            " usage (no sessions.json, or not in it): their tokens and minutes cover the"
+            " client's own turn only"
+        )
     if t["runs_without_tokens"]:
         lines.append("  Runs with no tokens recorded: " + ", ".join(t["runs_without_tokens"]))
     lines.append(
@@ -500,6 +528,10 @@ def main(argv: list[str] | None = None) -> int:
     ]
     try:
         hermes = agent_of(runs) == "hermes"
+        if hermes:
+            sessions_file = args.out_dir / "sessions.json"
+            if sessions_file.is_file():
+                runs = with_sessions(runs, json.loads(sessions_file.read_text()))
         result = analyze_hermes(runs) if hermes else analyze(runs)
     except IncompleteRunsError as exc:
         print(f"no verdict: {exc}", file=sys.stderr)

@@ -22,6 +22,17 @@ python -m evals.task_outcome.run --tasks evals/task_outcome/tasks.json \
 python -m evals.task_outcome.analyze bench/task_outcome/pilot
 ```
 
+**Hermes-Agent on a local model** (`run --agent hermes`, the spec's Hermes
+variant) has no cost per call, so solve rate is its primary endpoint. Before
+analysing, collect each run's whole-session tokens and minutes from Hermes's
+`state.db` on the machine that ran it. A run's record covers only the Hermes
+client's own turn, and has no tokens on the same scale for a run that timed
+out:
+
+```bash
+python -m evals.task_outcome.hermes_sessions <out_dir>   # writes <out_dir>/sessions.json
+```
+
 **Two environments**, so the agent's tool and the code under test can't mix:
 
 - **Tool venv:** the NeuralMind release being measured (`pip install
