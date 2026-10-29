@@ -1,0 +1,116 @@
+{
+  "_comment": "tests/benchmark/hook_latency.py on held-out task 0cb3760383's index (hermes-agent, built by v4.22.1) and prompt (bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json). 'before' is main at 50e410b0 on PYTHONPATH with --states uncached; 'after' is this release. Reproduce: python -m tests.benchmark.hook_latency <index> --tasks bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json --task 0cb3760383 --label hermes-agent-0cb3760383 --runs 5",
+  "before": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 3.4
+    },
+    "neuralmind": {
+      "version": "4.22.1",
+      "commit": "50e410b0"
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "uncached",
+        "runs": 5,
+        "mean_s": 6.46,
+        "min_s": 6.14,
+        "max_s": 6.8,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          6.73,
+          6.21,
+          6.14,
+          6.43,
+          6.8
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "after": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 4.2
+    },
+    "neuralmind": {
+      "version": "4.22.1",
+      "commit": "75217f6e"
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "uncached",
+        "runs": 5,
+        "mean_s": 6.89,
+        "min_s": 5.73,
+        "max_s": 8.47,
+        "within_plugin_timeout": 4,
+        "samples_s": [
+          6.08,
+          6.94,
+          8.47,
+          7.26,
+          5.73
+        ]
+      },
+      {
+        "state": "miss",
+        "runs": 5,
+        "mean_s": 6.92,
+        "min_s": 6.61,
+        "max_s": 7.32,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          7.32,
+          6.74,
+          7.23,
+          6.69,
+          6.61
+        ]
+      },
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 1.28,
+        "min_s": 1.21,
+        "max_s": 1.45,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          1.21,
+          1.21,
+          1.31,
+          1.21,
+          1.45
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  }
+}
