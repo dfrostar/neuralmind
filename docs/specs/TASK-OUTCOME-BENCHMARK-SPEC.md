@@ -222,3 +222,31 @@ drawn by the same rule, that the pilot didn't use.
     change +0.0% (95% CI −5.2% to +8.6%), Wilcoxon p = 0.66, 18 of 20 tasks
     solved in each arm. The interval excludes the 15% reduction the
     confirmatory run was to be powered for.
+- 2026-10-29 — a second agent, before any of its runs: Hermes-Agent on a local
+  model. A separate, exploratory study on the same 20 tasks; its runs are never
+  pooled with the Claude Code pilot's.
+  - `run.py --agent hermes` runs `hermes chat -Q --format stream-json` in each
+    workspace. Pinned: Hermes Agent v0.22.5, model `gpt-oss:20b-64k` (Ollama
+    digest `ffdda7cf7e79`) on a 16 GB RTX 5000 Ada, NeuralMind 4.23.1. A run
+    whose Hermes session records any other model is a harness failure: Hermes
+    falls back to another provider when its own model fails.
+  - Isolation, for both arms: the session gets only Hermes's `file` and
+    `terminal` toolsets and no MCP server (`-t file,terminal,no_mcp`), and no
+    memory provider, context files or preloaded skills (`--ignore-rules`), so
+    one run can't recall another through mem0 or session search.
+  - What NeuralMind contributes changes. With no MCP server in either arm, the
+    `neuralmind` arm gets NeuralMind only through the Hermes plugin (a block
+    on every prompt, the session recap, edit learning), which serves a
+    session's directory once it has an index. The `baseline` arm's workspace
+    has no index, so the plugin does nothing there. `neuralmind
+    install-hooks` isn't run: those are Claude Code's hooks. The manipulation
+    check is unchanged.
+  - The primary endpoint can't be dollars: a local model costs nothing per
+    call. These runs record Hermes's reported tokens (`total_tokens`, input
+    plus output) and wall-clock time. Hermes has no budget cap, so runs are
+    bounded by `--max-turns` and the harness timeout instead.
+  - A smoke test of 4 runs comes first, as for the pilot: the first two tasks
+    in `tasks.json`, one seed per arm, in `bench/task_outcome/hermes-smoke/`.
+    It checks the harness and measures how long a run takes. The full run's
+    endpoint (tokens or time), its timeout, and how a timed-out run is scored
+    are fixed in this log after the smoke and before the full run.

@@ -133,6 +133,70 @@ def test_a_logged_out_cli_is_a_harness_failure_not_an_outcome() -> None:
     assert not run.harness_failure(run.parse_stream([capped]), timed_out=False)
 
 
+def _hermes_event(kind: str, **fields) -> str:
+    return json.dumps({"type": kind, **fields, "timestamp": 1793240324820})
+
+
+def test_hermes_stream_counts_tools_and_reads_tokens() -> None:
+    # The event shapes Hermes Agent v0.22.5 prints with `chat -Q --format stream-json`.
+    lines = [
+        _hermes_event("system", subtype="init", model="", session_id=""),
+        _hermes_event("tool_use", name="search_files", tool_call_id="c1", input={}),
+        _hermes_event("tool_result", name="search_files", tool_call_id="c1", output="{}"),
+        _hermes_event("tool_use", name="read_file", tool_call_id="c2", input={}),
+        _hermes_event("text", text="Fixing"),
+        _hermes_event("tool_use", name="patch", tool_call_id="c3", input={}),
+        _hermes_event("tool_use", name="terminal", tool_call_id="c4", input={}),
+        _hermes_event(
+            "result",
+            session_id="local-abc",
+            exit_code=0,
+            text="Done",
+            tokens={"input": 900, "output": 100, "total": 1000, "cache_read": 800},
+            duration_ms=5000,
+        ),
+    ]
+    parsed = run.parse_hermes_stream(lines)
+    assert parsed["explore_calls_before_first_edit"] == 2
+    assert parsed["edited"] is True
+    assert parsed["tool_counts"] == {"search_files": 1, "read_file": 1, "patch": 1, "terminal": 1}
+    assert parsed["total_tokens"] == 1000
+    assert parsed["cost_usd"] is None
+    assert parsed["session_id"] == "local-abc"
+    assert not run.harness_failure(parsed, timed_out=False)
+    # No result event: Hermes never got as far as the agent.
+    assert run.harness_failure(run.parse_hermes_stream(lines[:-1]), timed_out=False)
+
+
+def test_hermes_runs_get_no_mcp_and_no_memory(tmp_path) -> None:
+    cmd = run.hermes_command("/bin/hermes", tmp_path / "p.txt", 40)
+    assert cmd[cmd.index("-t") + 1] == "file,terminal,no_mcp"
+    assert "--ignore-rules" in cmd
+    assert cmd[cmd.index("--query-file") + 1] == str(tmp_path / "p.txt")
+
+
+def test_hermes_session_reads_the_model_the_run_used(tmp_path) -> None:
+    import sqlite3
+
+    db_path = tmp_path / "state.db"
+    db = sqlite3.connect(db_path)
+    db.execute(
+        "CREATE TABLE sessions (id TEXT, model TEXT, api_call_count INT, billing_base_url TEXT)"
+    )
+    db.execute(
+        "INSERT INTO sessions VALUES ('s1', 'gpt-oss:20b-64k', 7, 'http://127.0.0.1:11434/v1')"
+    )
+    db.commit()
+    db.close()
+    assert run.hermes_session("s1", db_path) == {
+        "model": "gpt-oss:20b-64k",
+        "api_calls": 7,
+        "base_url": "http://127.0.0.1:11434/v1",
+    }
+    assert run.hermes_session("missing", db_path) == {}
+    assert run.hermes_session(None, db_path) == {}
+
+
 def test_plan_is_deterministic_and_complete() -> None:
     tasks = [{"id": "a"}, {"id": "b"}]
     first = run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)

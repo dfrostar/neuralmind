@@ -20,6 +20,17 @@ the MCP servers this script passes (``--strict-mcp-config``), so the user's own
 settings, hooks and connectors stay out. The index build happens before the
 agent's clock starts; its time is recorded separately.
 
+``--agent hermes`` runs the same tasks with Hermes-Agent instead (``hermes chat
+-Q --format stream-json``), on whatever model Hermes's own config selects;
+``--model`` names the model every run must have used, and a run on any other
+is a harness failure. Each session gets only Hermes's file and terminal tools,
+no MCP servers (``no_mcp``), and no memory provider, context files or
+preloaded skills (``--ignore-rules``), so one run can't recall another. In the
+``neuralmind`` arm, NeuralMind reaches the agent only through the Hermes
+plugin, which serves a session's directory once it has an index; the
+``baseline`` arm's workspace has none. A local model has no dollar cost, so
+these runs record tokens instead.
+
 After the agent stops, the fix's own tests are laid over the workspace and run:
 a task is solved when every FAIL_TO_PASS test and every PASS_TO_PASS test
 passes. Each run appends one JSON line to ``<out>/runs.jsonl``; a rerun skips
@@ -55,8 +66,13 @@ BASE_TOOLS = [
     "Bash(git status:*)",
     "Bash(ls:*)",
 ]
-EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-EXPLORE_TOOLS = {"Read", "Grep", "Glob", "Bash"}
+AGENTS = ("claude", "hermes")
+HERMES_TOOLSETS = "file,terminal,no_mcp"
+HERMES_STATE_DB = Path.home() / ".hermes" / "state.db"
+HERMES_PLUGIN_CONFIG = Path.home() / ".hermes" / "plugins" / "neuralmind" / "config.json"
+# Claude Code's tool names, then Hermes's.
+EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit", "write_file", "patch"}
+EXPLORE_TOOLS = {"Read", "Grep", "Glob", "Bash", "read_file", "search_files", "terminal"}
 
 PROMPT = """{symptom}
 
@@ -102,8 +118,14 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
     return env
 
 
-def _prepare(task: dict, arm: str, ws: Path, tool_venv: Path, env: dict) -> dict:
-    """Snapshot the base commit; for the neuralmind arm, build and wire it up."""
+def _prepare(
+    task: dict, arm: str, ws: Path, tool_venv: Path, env: dict, agent: str = "claude"
+) -> dict:
+    """Snapshot the base commit; for the neuralmind arm, build and wire it up.
+
+    Hermes needs only the index: its NeuralMind plugin serves any session
+    directory that has one.
+    """
     harness.snapshot(task["base_commit"], ws)
     exclude = ws / ".git" / "info" / "exclude"
     exclude.write_text(exclude.read_text() + "\n.claude/\n.neuralmind/\n.bench-*\n")
@@ -114,6 +136,8 @@ def _prepare(task: dict, arm: str, ws: Path, tool_venv: Path, env: dict) -> dict
         t0 = time.monotonic()
         subprocess.run([nm, "build", str(ws)], cwd=ws, env=env, capture_output=True, check=True)
         build_seconds = round(time.monotonic() - t0, 1)
+    if arm == "neuralmind" and agent == "claude":
+        nm = str(tool_venv / "bin" / "neuralmind")
         subprocess.run(
             [nm, "install-hooks", str(ws)], cwd=ws, env=env, capture_output=True, check=True
         )
@@ -195,6 +219,86 @@ def parse_stream(lines: list[str]) -> dict:
     }
 
 
+def hermes_command(hermes_bin: str, prompt_file: Path, max_turns: int) -> list[str]:
+    return [
+        hermes_bin,
+        "chat",
+        "-Q",
+        "--format",
+        "stream-json",
+        "--ignore-rules",
+        "--source",
+        "tool",
+        "-t",
+        HERMES_TOOLSETS,
+        "--max-turns",
+        str(max_turns),
+        "--query-file",
+        str(prompt_file),
+    ]
+
+
+def parse_hermes_stream(lines: list[str]) -> dict:
+    """Usage from Hermes's final ``result`` event, tool use from its ``tool_use`` events."""
+    result: dict = {}
+    tool_counts: dict[str, int] = {}
+    explore_before_edit = 0
+    edited = False
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "result":
+            result = event
+        if event.get("type") != "tool_use":
+            continue
+        name = event.get("name", "")
+        tool_counts[name] = tool_counts.get(name, 0) + 1
+        if name in EDIT_TOOLS:
+            edited = True
+        elif not edited and name in EXPLORE_TOOLS:
+            explore_before_edit += 1
+    tokens = result.get("tokens", {}) or {}
+    exit_code = result.get("exit_code")
+    return {
+        "cost_usd": None,
+        "input_tokens": tokens.get("input"),
+        "output_tokens": tokens.get("output"),
+        "total_tokens": tokens.get("total"),
+        "cache_creation_input_tokens": tokens.get("cache_write"),
+        "cache_read_input_tokens": tokens.get("cache_read"),
+        "num_turns": None,
+        "duration_ms": result.get("duration_ms"),
+        "is_error": None if not result else exit_code != 0,
+        "subtype": None if not result else ("success" if exit_code == 0 else "error"),
+        "terminal_reason": None,
+        "session_id": result.get("session_id"),
+        "tool_counts": tool_counts,
+        "explore_calls_before_first_edit": explore_before_edit,
+        "edited": edited,
+    }
+
+
+def hermes_session(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> dict:
+    """The model and API-call count Hermes recorded for a session, read-only."""
+    if not session_id or not state_db.is_file():
+        return {}
+    import sqlite3
+
+    db = sqlite3.connect(f"file:{state_db}?mode=ro", uri=True)
+    try:
+        row = db.execute(
+            "SELECT model, api_call_count, billing_base_url FROM sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+    finally:
+        db.close()
+    if not row:
+        return {}
+    return {"model": row[0], "api_calls": row[1], "base_url": row[2]}
+
+
 def harness_failure(agent: dict, timed_out: bool) -> bool:
     """Did Claude Code fail before or instead of the agent, rather than the agent fail?
 
@@ -240,38 +344,53 @@ def judge(task: dict, ws: Path, test_python: str) -> dict:
 def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     ws = args.work_dir / f"{task['id']}-{arm}-s{seed}-{int(time.time())}"
     env = _arm_env(arm, args.tool_venv, args.test_python)
-    prep = _prepare(task, arm, ws, args.tool_venv, env)
-    cmd = claude_command(
-        args.claude_bin,
-        PROMPT.format(symptom=task["prompt"].strip()),
-        arm,
-        args.model,
-        prep["mcp_file"],
-        args.budget,
-    )
+    prep = _prepare(task, arm, ws, args.tool_venv, env, args.agent)
+    prompt = PROMPT.format(symptom=task["prompt"].strip())
+    if args.agent == "hermes":
+        # Outside the workspace, so the agent's file tools don't list it.
+        prompt_file = ws.parent / f"{ws.name}.prompt.txt"
+        prompt_file.write_text(prompt)
+        cmd = hermes_command(args.agent_bin, prompt_file, args.max_turns)
+    else:
+        cmd = claude_command(args.agent_bin, prompt, arm, args.model, prep["mcp_file"], args.budget)
     started = datetime.now(timezone.utc).isoformat(timespec="seconds")
     transcript = args.out / "transcripts" / f"{task['id']}-{arm}-s{seed}.jsonl"
     transcript.parent.mkdir(parents=True, exist_ok=True)
+    stderr = ""
     try:
         proc = subprocess.run(
             cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=args.timeout
         )
-        stdout, exit_code, timed_out = proc.stdout, proc.returncode, False
+        stdout, stderr, exit_code, timed_out = proc.stdout, proc.stderr, proc.returncode, False
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
         exit_code, timed_out = None, True
     transcript.write_text(stdout)
     transcript_sha256 = hashlib.sha256(stdout.encode()).hexdigest()
-    agent = parse_stream(stdout.splitlines())
-    if harness_failure(agent, timed_out):
+    failure = ""
+    if args.agent == "hermes":
+        prompt_file.unlink(missing_ok=True)
+        agent = parse_hermes_stream(stdout.splitlines())
+        session = hermes_session(agent["session_id"])
+        agent["num_turns"] = session.get("api_calls")
+        agent["hermes_model"] = session.get("model")
+        agent["hermes_base_url"] = session.get("base_url")
+        if session and session.get("model") != args.model:
+            # Hermes falls back to another provider when its own model fails:
+            # that run measured some other model.
+            failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
+    else:
+        agent = parse_stream(stdout.splitlines())
+    if harness_failure(agent, timed_out) or failure:
         # Authentication, model or CLI failure. That is the harness failing,
         # not the agent, so it must not become an outcome.
         shutil.rmtree(ws, ignore_errors=True)
         transcript.unlink(missing_ok=True)
         raise RunAbortedError(
-            f"{task['id']} {arm} s{seed}: claude exited {exit_code} without an agent result "
+            f"{task['id']} {arm} s{seed}: {args.agent} exited {exit_code} without an agent "
+            f"result{': ' + failure if failure else ''} "
             f"(terminal_reason={agent.get('terminal_reason')}); "
-            f"stderr: {proc.stderr.strip()[-500:]}"
+            f"stderr: {stderr.strip()[-500:]}"
         )
     changed = sorted(
         set(
@@ -296,10 +415,12 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         "task": task["id"],
         "arm": arm,
         "seed": seed,
+        "agent": args.agent,
         "model": args.model,
         **args.versions,
         "harness_version": HARNESS_VERSION,
-        "budget_usd": args.budget,
+        "budget_usd": args.budget if args.agent == "claude" else None,
+        "max_turns": args.max_turns if args.agent == "hermes" else None,
         "started_at": started,
         "timed_out": timed_out,
         "exit_code": exit_code,
@@ -313,16 +434,28 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     }
 
 
-def probe_versions(claude_bin: str, tool_venv: Path) -> dict[str, str]:
-    """The pinned binaries, recorded on every run so one file can't mix them."""
+def probe_versions(agent_bin: str, tool_venv: Path, agent: str = "claude") -> dict[str, str]:
+    """The pinned binaries, recorded on every run so one file can't mix them.
+
+    Under Hermes the hooks run with the plugin's own interpreter, not the tool
+    venv, so its NeuralMind is recorded too.
+    """
 
     def version(cmd: list[str]) -> str:
         return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
 
-    return {
-        "claude_code_version": version([claude_bin, "--version"]),
+    versions = {
         "neuralmind_version": version([str(tool_venv / "bin" / "neuralmind"), "--version"]),
     }
+    if agent == "hermes":
+        versions["hermes_version"] = version([agent_bin, "--version"]).splitlines()[0]
+        plugin_python = json.loads(HERMES_PLUGIN_CONFIG.read_text()).get("python") or "python3"
+        versions["hermes_plugin_neuralmind_version"] = version(
+            [plugin_python, "-P", "-m", "neuralmind", "--version"]
+        )
+    else:
+        versions["claude_code_version"] = version([agent_bin, "--version"])
+    return versions
 
 
 def plan(tasks: list[dict], arms: tuple[str, ...], seeds: int, order_seed: int) -> list[tuple]:
@@ -346,6 +479,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--budget", type=float, default=2.0, help="max USD per run (claude --max-budget-usd)"
     )
+    ap.add_argument("--agent", choices=AGENTS, default="claude")
+    ap.add_argument(
+        "--max-turns", type=int, default=60, help="tool-calling iterations per run (hermes)"
+    )
     ap.add_argument("--timeout", type=int, default=1800, help="seconds per run")
     ap.add_argument("--order-seed", type=int, default=20261014)
     ap.add_argument("--keep-workspaces", action="store_true")
@@ -363,11 +500,20 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     arms = tuple(a for a in args.arms.split(",") if a)
     by_id = {t["id"]: t for t in tasks}
-    args.claude_bin = shutil.which("claude")
-    if not args.claude_bin:
-        print("error: `claude` is not on PATH", file=sys.stderr)
+    # Resolved here, by full path: the arms' cleaned PATH can drop its directory.
+    args.agent_bin = shutil.which(args.agent)
+    if not args.agent_bin:
+        print(f"error: `{args.agent}` is not on PATH", file=sys.stderr)
         return 2
-    args.versions = probe_versions(args.claude_bin, args.tool_venv)
+    args.versions = probe_versions(args.agent_bin, args.tool_venv, args.agent)
+    plugin_nm = args.versions.get("hermes_plugin_neuralmind_version")
+    if plugin_nm and plugin_nm != args.versions["neuralmind_version"]:
+        print(
+            f"error: the Hermes plugin runs {plugin_nm}, the tool venv "
+            f"{args.versions['neuralmind_version']}: the index and the hooks would differ",
+            file=sys.stderr,
+        )
+        return 2
     triples = plan(tasks, arms, args.seeds, args.order_seed)
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -390,15 +536,19 @@ def main(argv: list[str] | None = None) -> int:
         if todo:
             tid, arm, _ = todo[0]
             print(f"versions: {args.versions}")
-            cmd = claude_command(
-                args.claude_bin,
-                PROMPT.format(symptom=by_id[tid]["prompt"].strip()),
-                arm,
-                args.model,
-                Path("<ws>/.bench-mcp.json"),
-                args.budget,
-            )
-            print(" ".join(cmd[:2] + ["<prompt>"] + cmd[3:]))
+            if args.agent == "hermes":
+                cmd = hermes_command(args.agent_bin, Path("<ws>.prompt.txt"), args.max_turns)
+                print(" ".join(cmd))
+            else:
+                cmd = claude_command(
+                    args.agent_bin,
+                    PROMPT.format(symptom=by_id[tid]["prompt"].strip()),
+                    arm,
+                    args.model,
+                    Path("<ws>/.bench-mcp.json"),
+                    args.budget,
+                )
+                print(" ".join(cmd[:2] + ["<prompt>"] + cmd[3:]))
             for a in arms:
                 _arm_env(a, args.tool_venv, args.test_python)  # raises if PATH leaks
             print("PATH isolation: ok for every arm")
@@ -413,9 +563,14 @@ def main(argv: list[str] | None = None) -> int:
             return 3
         with runs_file.open("a") as fh:
             fh.write(json.dumps(record) + "\n")
+        usage = (
+            f"tokens={record['total_tokens']}"
+            if args.agent == "hermes"
+            else f"cost=${record['cost_usd']}"
+        )
         print(
             f"[{i}/{len(todo)}] {tid} {arm} s{seed}: solved={record['solved']} "
-            f"cost=${record['cost_usd']} turns={record['num_turns']}",
+            f"{usage} turns={record['num_turns']}",
             flush=True,
         )
     return 0
