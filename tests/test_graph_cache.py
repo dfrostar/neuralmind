@@ -310,3 +310,22 @@ def test_an_unwritable_state_directory_starts_no_writer(project, monkeypatch):
     finally:
         state.chmod(0o700)
     assert not started
+
+
+def test_loading_an_index_asks_only_whether_it_has_rows(temp_project, monkeypatch):
+    # get_stats() also counts every community: ~65 ms of the prompt hook on a
+    # large index, to learn only that the store isn't empty.
+    from neuralmind import NeuralMind
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+
+    def no_stats():
+        raise AssertionError("_load_existing_index called get_stats()")
+
+    monkeypatch.setattr(mind.embedder, "get_stats", no_stats)
+    assert mind._load_existing_index()
+
+    empty = NeuralMind(str(temp_project))
+    monkeypatch.setattr(empty.embedder, "has_rows", lambda: False)
+    assert not empty._load_existing_index()

@@ -2180,15 +2180,16 @@ class NeuralMind:
         import sys
 
         try:
-            total = int((self.embedder.get_stats() or {}).get("total_nodes", 0) or 0)
+            # Not get_stats(): on a large index its per-community count cost
+            # the prompt hook ~65 ms, only to learn the store isn't empty.
+            if not self.embedder.has_rows():
+                return False
         except Exception:
-            return False
-        if total <= 0:
             return False
 
         def _slow_notice() -> None:
             try:
-                print(f"Loading index ({total:,} nodes)...", file=sys.stderr)
+                print("Loading index...", file=sys.stderr)
             except Exception:
                 pass
 
