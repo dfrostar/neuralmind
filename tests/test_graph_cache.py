@@ -3,7 +3,8 @@
 A hook is a new process per prompt, so it loaded the whole graph every time;
 on hermes-agent that was 6 of the prompt-submit hook's 8.5 s. These tests pin
 the cache's contract: the graph it returns is the graph the sources give, any
-change to a source or any damage to the file falls back to the sources, small
+change to a source or to the conversion, or any damage to the file, falls back
+to the sources, an upgrade that leaves the conversion alone keeps it, small
 graphs aren't cached, and a hook stopped mid-load still leaves the cache to a
 background writer.
 """
@@ -124,10 +125,7 @@ def test_a_rewritten_source_is_read_again(project):
     assert len(graph_cache.load(ir_path, graph_path)["nodes"]) == 4
 
 
-def test_a_cache_from_another_neuralmind_is_not_read(project, monkeypatch):
-    ir_path, graph_path = _paths(project)
-    graph_cache.load(ir_path, graph_path)
-    monkeypatch.setattr("neuralmind.__version__", "0.0.0-other")
+def _count_source_reads(monkeypatch) -> list:
     calls = []
     real = graph_cache._read_sources
 
@@ -136,8 +134,102 @@ def test_a_cache_from_another_neuralmind_is_not_read(project, monkeypatch):
         return real(*args)
 
     monkeypatch.setattr(graph_cache, "_read_sources", counted)
+    return calls
+
+
+def test_an_upgrade_keeps_the_cache(project, monkeypatch):
+    # Keyed on the release, every upgrade made a large index miss once, and on
+    # hermes-agent that first prompt outlasted the Hermes plugin's 8 s.
+    ir_path, graph_path = _paths(project)
+    first = graph_cache.load(ir_path, graph_path)
+    monkeypatch.setattr("neuralmind.__version__", "99.0.0")
+    _no_sources(monkeypatch)
+    assert graph_cache.load(ir_path, graph_path) == first
+    assert graph_cache.warm_in_background(project) is False
+
+
+def test_a_cache_of_another_format_is_not_read(project, monkeypatch):
+    ir_path, graph_path = _paths(project)
+    graph_cache.load(ir_path, graph_path)
+    monkeypatch.setattr(graph_cache, "FORMAT", graph_cache.FORMAT + 1)
+    calls = _count_source_reads(monkeypatch)
     graph_cache.load(ir_path, graph_path)
     assert len(calls) == 1
+    graph_cache.load(ir_path, graph_path)  # rewritten in the new format
+    assert len(calls) == 1
+
+
+def _header_4_23(project: Path, version: str) -> bytes:
+    """The header graph_cache wrote in 4.23.0 and 4.23.1: their version, no format."""
+    import marshal
+
+    ir_path, graph_path = _paths(project)
+    key = {
+        "graph": graph_cache._stat(graph_path),
+        "ir": graph_cache._stat(ir_path),
+        "marshal": marshal.version,
+        "neuralmind": version,
+        "python": list(sys.version_info[:2]),
+    }
+    return b"NMGRAPH1 " + json.dumps(key, sort_keys=True).encode("utf-8") + b"\n"
+
+
+@pytest.mark.parametrize("version", ["4.23.0", "4.23.1"])
+def test_a_cache_from_4_23_is_read_while_the_format_is_1(project, monkeypatch, version):
+    import marshal
+
+    ir_path, graph_path = _paths(project)
+    graph = json.loads(graph_path.read_text())
+    _cache(project).write_bytes(_header_4_23(project, version) + marshal.dumps(graph))
+    _no_sources(monkeypatch)
+    assert graph_cache.load(ir_path, graph_path) == graph
+    assert graph_cache.warm_in_background(project) is False  # current: nothing to write
+    monkeypatch.setattr(graph_cache, "FORMAT", 2)
+    with pytest.raises(AssertionError, match="read the sources"):
+        graph_cache.load(ir_path, graph_path)
+
+
+def test_a_cache_from_another_version_keyed_release_is_not_read(project, monkeypatch):
+    import marshal
+
+    ir_path, graph_path = _paths(project)
+    graph = json.loads(graph_path.read_text())
+    _cache(project).write_bytes(_header_4_23(project, "4.22.9") + marshal.dumps(graph))
+    calls = _count_source_reads(monkeypatch)
+    graph_cache.load(ir_path, graph_path)
+    assert len(calls) == 1
+
+
+# The code FORMAT names (see graph_cache.FORMAT), as source text.
+_CONVERSION = (
+    graph_cache.prefer_ir,
+    graph_cache._read_sources,
+    ir_mod.IndexIR.from_dict,
+    ir_mod.IRNode.from_dict,
+    ir_mod.IREdge.from_dict,
+    ir_mod.IRCluster.from_dict,
+    ir_mod.IRSynapse.from_dict,
+    ir_mod.migrate_payload,
+    ir_mod.to_graph_json,
+    ir_mod._coarse_file_type,
+)
+_CONVERSION_SHA256 = "d3f00aa16a215b6a96d8143f7026e21fde64caa3d540358aba300358f467d3b6"
+
+
+def test_the_format_changes_with_the_conversion():
+    import hashlib
+    import inspect
+
+    digest = hashlib.sha256()
+    for fn in _CONVERSION:
+        digest.update(inspect.getsource(fn).encode("utf-8"))
+    digest.update(repr((ir_mod.IR_VERSION, sorted(ir_mod.SUPPORTED_IR_VERSIONS))).encode())
+    assert digest.hexdigest() == _CONVERSION_SHA256, (
+        "The code that turns index_ir.json or graph.json into the cached graph changed. "
+        "If the same files can now load as a different graph, bump graph_cache.FORMAT, "
+        "so a cache written before is read from its sources again. Either way, set "
+        f"_CONVERSION_SHA256 to {digest.hexdigest()!r}."
+    )
 
 
 @pytest.mark.parametrize(
@@ -310,3 +402,57 @@ def test_an_unwritable_state_directory_starts_no_writer(project, monkeypatch):
     finally:
         state.chmod(0o700)
     assert not started
+
+
+def test_loading_an_index_asks_only_whether_it_has_rows(temp_project, monkeypatch):
+    # get_stats() also counts every community: ~65 ms of the prompt hook on a
+    # large index, to learn only that the store isn't empty.
+    from neuralmind import NeuralMind
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+
+    def no_stats():
+        raise AssertionError("_load_existing_index called get_stats()")
+
+    monkeypatch.setattr(mind.embedder, "get_stats", no_stats)
+    assert mind._load_existing_index()
+
+    empty = NeuralMind(str(temp_project))
+    monkeypatch.setattr(empty.embedder, "has_rows", lambda: False)
+    assert not empty._load_existing_index()
+
+
+def test_a_slow_load_still_names_the_node_count(temp_project, monkeypatch, capsys):
+    # The v4.4.0 notice, `Loading index (N nodes)...`: counted only once a
+    # load has taken two seconds, so a fast load never pays for it.
+    from neuralmind import NeuralMind
+    from neuralmind import core as core_mod
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+    total = mind.embedder.get_stats()["total_nodes"]
+
+    class FiresNow:
+        def __init__(self, _interval, fn):
+            self.fn, self.daemon = fn, False
+
+        def start(self):
+            self.fn()
+
+        def cancel(self):
+            pass
+
+    monkeypatch.setattr(core_mod.threading, "Timer", FiresNow)
+    assert mind._load_existing_index()
+    assert f"Loading index ({total:,} nodes)..." in capsys.readouterr().err
+
+
+def test_the_in_memory_backend_has_rows_once_it_holds_a_node(project):
+    from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+
+    backend = InMemoryEmbeddingBackend(str(project))
+    assert backend.has_rows() is False
+    backend._index["n1"] = {"metadata": {"community": 0}}
+    assert backend.has_rows() is True
+    assert backend.has_rows() is (backend.get_stats()["total_nodes"] > 0)

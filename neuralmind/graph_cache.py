@@ -11,11 +11,18 @@ stops a hook after 8 s.
 
 ``graph_cache.marshal`` next to the IR holds that converted graph in
 :mod:`marshal` format, which reads back in about 0.4 s there. Its header is the
-size, mtime and inode of both source files, the NeuralMind version (the IR
-conversion can change between versions) and the Python version (marshal's
-format belongs to the interpreter). A header that doesn't match, an unreadable
-file or anything that isn't a graph dict means the sources are read as before:
-the cache changes how fast the graph loads, never what loads.
+size, mtime and inode of both source files, :data:`FORMAT` (the conversion's
+version) and the Python version (marshal's format belongs to the interpreter).
+A header that doesn't match, an unreadable file or anything that isn't a graph
+dict means the sources are read as before: the cache changes how fast the graph
+loads, never what loads.
+
+The header names the conversion, not the NeuralMind release: keyed on the
+release, every upgrade made every large index miss once, and on hermes-agent
+that first prompt took 6.4–8.2 s, past the Hermes plugin's timeout, though no
+release since the cache began had changed the conversion. 4.23.0 and 4.23.1
+wrote their version in the header; they converted as format 1 does, so their
+files are read too (:data:`_VERSION_KEYED`).
 
 A load that missed writes the cache, when the file it read is at least
 ``CACHE_MIN_BYTES``: below that, JSON is fast enough and the copy isn't worth
@@ -65,6 +72,14 @@ CACHE_MIN_BYTES = 16 * 1024 * 1024
 _MAGIC = b"NMGRAPH1 "
 # Longer than any header the key makes; bounds the read of a corrupt file.
 _HEADER_MAX = 64 * 1024
+# The conversion from the source files to the cached graph: which source wins
+# (prefer_ir), _read_sources, and ir.py's IndexIR.from_dict, migrate_payload and
+# to_graph_json. Bump it with any change that can load the same files as a
+# different graph; tests/test_graph_cache.py fails when that code changes.
+FORMAT = 1
+# Releases that put their own version in the header instead, by the format they
+# converted as. Their files are current while that is still FORMAT.
+_VERSION_KEYED = {1: ("4.23.0", "4.23.1")}
 
 
 def enabled() -> bool:
@@ -95,14 +110,14 @@ def load(ir_path: Path, graph_path: Path) -> dict[str, Any] | None:
     ir_path, graph_path = Path(ir_path), Path(graph_path)
     if not enabled():
         return _read_sources(ir_path, graph_path)[0]
-    key = _key(ir_path, graph_path)
-    cached = _read(cache_path(ir_path), key)
+    keys = _keys(ir_path, graph_path)
+    cached = _read(cache_path(ir_path), keys)
     if cached is not None:
         return cached
     graph, size = _read_sources(ir_path, graph_path)
     # A source rewritten while it was read: its graph doesn't belong to either stat.
-    if graph is not None and size >= CACHE_MIN_BYTES and _key(ir_path, graph_path) == key:
-        _write(cache_path(ir_path), key, graph)
+    if graph is not None and size >= CACHE_MIN_BYTES and _keys(ir_path, graph_path) == keys:
+        _write(cache_path(ir_path), keys[0], graph)
     return graph
 
 
@@ -160,7 +175,7 @@ def _needs_writing(ir_path: Path, graph_path: Path) -> bool:
     source = ir_path if prefer_ir(ir_path, graph_path) else graph_path
     if _size(source) < CACHE_MIN_BYTES:
         return False
-    return not _header_matches(cache_path(ir_path), _key(ir_path, graph_path))
+    return not _header_matches(cache_path(ir_path), _keys(ir_path, graph_path))
 
 
 def _main(argv: list[str]) -> int:
@@ -233,31 +248,31 @@ def _stat(path: Path) -> list[int] | None:
     return [st.st_size, st.st_mtime_ns, st.st_ino]
 
 
-def _key(ir_path: Path, graph_path: Path) -> bytes:
-    from . import __version__
-
-    key = {
+def _keys(ir_path: Path, graph_path: Path) -> tuple[bytes, ...]:
+    """The headers a current cache can have: the one a write gives first, then the older ones."""
+    stats: dict[str, Any] = {
         "graph": _stat(graph_path),
         "ir": _stat(ir_path),
         "marshal": marshal.version,
-        "neuralmind": __version__,
         "python": list(sys.version_info[:2]),
     }
-    return _MAGIC + json.dumps(key, sort_keys=True).encode("utf-8") + b"\n"
+    keys = [{**stats, "format": FORMAT}]
+    keys += [{**stats, "neuralmind": version} for version in _VERSION_KEYED.get(FORMAT, ())]
+    return tuple(_MAGIC + json.dumps(k, sort_keys=True).encode("utf-8") + b"\n" for k in keys)
 
 
-def _header_matches(path: Path, key: bytes) -> bool:
+def _header_matches(path: Path, keys: tuple[bytes, ...]) -> bool:
     try:
         with path.open("rb") as fh:
-            return fh.readline(_HEADER_MAX) == key
+            return fh.readline(_HEADER_MAX) in keys
     except OSError:
         return False
 
 
-def _read(path: Path, key: bytes) -> dict[str, Any] | None:
+def _read(path: Path, keys: tuple[bytes, ...]) -> dict[str, Any] | None:
     try:
         with path.open("rb") as fh:
-            if fh.readline(_HEADER_MAX) != key:
+            if fh.readline(_HEADER_MAX) not in keys:
                 return None
             # NeuralMind's own file in the self-ignoring state directory, behind a
             # header that must match; marshal builds plain values and runs no code,

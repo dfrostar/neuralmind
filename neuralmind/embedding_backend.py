@@ -109,6 +109,14 @@ class EmbeddingBackend(ABC):
     def get_stats(self) -> dict[str, Any]:
         """Get index statistics (total nodes, communities, etc.)."""
 
+    def has_rows(self) -> bool:
+        """Whether the index holds any node.
+
+        Loading an index only needs this, and :meth:`get_stats` also counts
+        every community. Backends override it with a cheaper check.
+        """
+        return int((self.get_stats() or {}).get("total_nodes", 0) or 0) > 0
+
     @abstractmethod
     def clear(self) -> None:
         """Clear all embeddings."""

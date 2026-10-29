@@ -73,6 +73,8 @@ neuralmind build .              # default: incremental
 
 Only re-embeds nodes whose source changed. Run time scales with the churn, not the repo size.
 
+Since v4.23.3 the build's type pass keeps each file's return types in `.neuralmind/type_cache.json`, keyed by a hash of the file's text, and parses only files whose text changed: on hermes-agent (347,376 type edges) it took 1.0–1.2 s on a rebuild against 15.9 s from scratch ([release notes](../releases/RELEASE_NOTES_v4.23.3.md)). Deleting that file costs one build at first-build speed and changes nothing in the result.
+
 **Force full rebuild (rare — after graphify upgrades, schema changes):**
 
 ```bash
