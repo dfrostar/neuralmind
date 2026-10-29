@@ -9,9 +9,10 @@ re-extraction when a dependency changes.
 Part of Wave 5 — wired into build_graph() so `neuralmind build` skips
 unchanged files.
 
-Skip-path: if no cache exists (first run, corrupted), does a full
-extraction. A file whose mtime and size match the cache is skipped; any
-difference (older mtimes included) is confirmed with the content hash.
+Skip-path: if no cache exists (first run, corrupted, or written by an older
+CACHE_VERSION), does a full extraction. A file whose mtime and size match
+the cache is skipped; any difference (older mtimes included) is confirmed
+with the content hash.
 """
 
 from __future__ import annotations
@@ -29,30 +30,52 @@ from neuralmind.graphgen import _DEFAULT_IGNORES as _GG_IGNORES
 CACHE_FILE = ".neuralmind/extraction_cache.json"
 IMPORTER_INDEX_FILE = ".neuralmind/importer_index.json"
 
+# Bumped when a cache can't vouch for the graph written beside it. 2: before
+# it, an incremental build could resolve a call to another same-named
+# function than a full build, and graph.json kept that edge. An incremental
+# build carries an unchanged file's edges over, so it would keep it for as
+# long as the file stays unchanged; a cache from an older version is dropped
+# instead, and the next build extracts everything once.
+CACHE_VERSION = 2
+
 # A package's entry file is imported by its directory's name.
 _ENTRY_STEMS = frozenset({"__init__", "index", "mod"})
 
 
-def _names_defined_by(root: Path, rels: list[str]) -> set[str]:
-    """Names another file would use to reach ``rels``: module names and symbols.
-
-    Module names come from the path (``pkg/d.py`` -> ``d``; a package entry
-    such as ``pkg/__init__.py``, or any Go file, also by its directory).
-    Symbols are what the build's first pass registers for call and
-    inheritance resolution, so a reference by bare name counts too.
-    """
+def _module_names(rels: list[str]) -> set[str]:
+    """Names an import uses for ``rels``: ``pkg/d.py`` -> ``d``; a package entry
+    such as ``pkg/__init__.py``, or any Go file, also by its directory."""
     names: set[str] = set()
     for rel in rels:
         path = PurePosixPath(rel)
         names.add(path.stem)
         if (path.stem in _ENTRY_STEMS or path.suffix == ".go") and path.parent.name:
             names.add(path.parent.name)
+    return names
+
+
+def _referable(names: set[str]) -> set[str]:
+    """``names`` as code writes them: ``Ns::Foo`` and ``a.Foo`` also as ``Foo``; no dunders."""
+    out = set(names)
+    out.update(re.split(r"::|\.", n)[-1] for n in names)
+    return {n for n in out if n and not (n.startswith("__") and n.endswith("__"))}
+
+
+def _first_pass(
+    root: Path, rels: list[str], parsers: dict[str, Any], cpp_project: bool = False
+) -> Any:
+    """A builder holding what the build's first pass registers for ``rels`` as they are now.
+
+    Each file is parsed as the build parses it: a ``.h`` as C++ in a project
+    with C++ sources (``cpp_project``) or when it uses C++-only syntax. Parsed
+    as C, a C++ header's classes and methods were invisible here, so a method
+    it gained never re-extracted the files that call it.
+    """
     from neuralmind import graphgen as gg
 
     b = gg._GraphBuilder()
-    parsers: dict[str, Any] = {}
     for rel in rels:
-        lang = gg._SUFFIX_LANG.get(PurePosixPath(rel).suffix, "")
+        lang = gg._parse_language(root / rel, cpp_project) or ""
         spec = gg._EXTRACTORS.get(lang)
         if spec is None:
             continue
@@ -67,10 +90,102 @@ def _names_defined_by(root: Path, rels: list[str]) -> set[str]:
             spec[0](b, parsers[lang].parse(src).root_node, src, rel, file_id)
         except Exception:
             continue  # fail-open: its module name still catches imports
-    for name in (*b.func_by_name, *b.class_by_name):
-        names.add(name)
-        names.add(re.split(r"::|\.", name)[-1])  # Ns::Foo is written Foo too
-    return {n for n in names if n and not (n.startswith("__") and n.endswith("__"))}
+    return b
+
+
+def _symbols(b: Any) -> dict[tuple[str, str], list[str]]:
+    """A builder's name tables as one map: functions, classes and module keys.
+
+    Module keys too, because Java, C#, PHP and Ruby take them from a file's
+    package or namespace line: a package rename moves every import of it.
+
+    Each function id once: a file that defines a name twice (a property and
+    its setter) lists the id twice when parsed but once when replayed from
+    its nodes, so every edit to it looked like a change to that name and
+    re-extracted every file naming it. A call takes the first candidate
+    that isn't the caller, so a repeat never moves one. Class ids keep their
+    repeats: ``inherits`` links every candidate.
+    """
+    tables = {("func", k): list(dict.fromkeys(v)) for k, v in b.func_by_name.items()}
+    tables.update({("class", k): list(v) for k, v in b.class_by_name.items()})
+    tables.update({("module", k): [v] for k, v in b.file_by_module.items()})
+    tables.update({("package", k): list(v) for k, v in b.go_pkg_files.items()})
+    return tables
+
+
+def _names_defined_by(root: Path, rels: list[str], cpp_project: bool = False) -> set[str]:
+    """Names another file would use to reach ``rels``: module names and symbols.
+
+    Symbols are what the build's first pass registers for call and
+    inheritance resolution, so a reference by bare name counts too.
+    """
+    b = _first_pass(root, rels, {}, cpp_project)
+    return _referable(_module_names(rels) | set(b.func_by_name) | set(b.class_by_name))
+
+
+def _previous_symbols(nodes: list[dict[str, Any]]) -> dict[tuple[str, str], list[str]]:
+    """What an incremental build registers for a kept file's ``nodes``."""
+    from neuralmind import graphgen as gg
+
+    b = gg._GraphBuilder()
+    for node in nodes:
+        gg._register_node_symbol(b, node)
+    return _symbols(b)
+
+
+def names_changed(
+    root: Path,
+    rels: list[str],
+    previous: dict[str, list[dict[str, Any]]],
+    cpp_project: bool = False,
+) -> set[str]:
+    """Names whose definitions an edit to ``rels`` added, removed or reordered.
+
+    A call resolves to the first project function of its name in build order,
+    so a file that gains a function another file already defines can take
+    over calls in files nobody edited (and losing one hands them back). A
+    full build re-resolves those calls; an incremental build must re-extract
+    the files that name them. ``previous`` holds each file's nodes from the
+    last graph. Compared as registered, so a mismatch only re-extracts more.
+    ``cpp_project``: whether the build parses a ``.h`` as C++.
+    """
+    names: set[str] = set()
+    parsers: dict[str, Any] = {}
+    for rel in rels:
+        old = _previous_symbols(previous.get(rel, []))
+        new = _symbols(_first_pass(root, [rel], parsers, cpp_project))
+        names.update(key[1] for key in old.keys() | new.keys() if old.get(key) != new.get(key))
+    return _referable(names)
+
+
+def names_removed(rels: list[str], previous: dict[str, list[dict[str, Any]]]) -> set[str]:
+    """Names other files used to reach the deleted ``rels``."""
+    names = _module_names(rels)
+    for rel in rels:
+        names.update(key[1] for key in _previous_symbols(previous.get(rel, [])))
+    return _referable(names)
+
+
+def files_naming(root: Path, rels: Any, names: set[str]) -> set[str]:
+    """The files in ``rels`` whose text contains one of ``names``.
+
+    A plain text match over-approximates (a comment counts), which only
+    costs a re-extraction; it never misses a file that refers to a name.
+    """
+    if not names:
+        return set()
+    alternation = b"|".join(
+        re.escape(n.encode("utf-8")) for n in sorted(names, key=len, reverse=True)
+    )
+    pattern = re.compile(rb"(?<![A-Za-z0-9_])(?:" + alternation + rb")(?![A-Za-z0-9_])")
+    hits: set[str] = set()
+    for rel in rels:
+        try:
+            if pattern.search((root / rel).read_bytes()):
+                hits.add(rel)
+        except OSError:
+            continue
+    return hits
 
 
 @dataclass
@@ -122,10 +237,12 @@ class IncrementalExtractor:
         self._load_cache()
 
     def _load_cache(self) -> None:
-        """Load cache from disk."""
+        """Load cache from disk; a cache from another CACHE_VERSION loads empty."""
         try:
             if self.cache_path.exists():
                 data = json.loads(self.cache_path.read_text(encoding="utf-8"))
+                if data.get("version") != CACHE_VERSION:
+                    return
                 for d in data.get("files", []):
                     fc = FileCache.from_dict(d)
                     self._cache[fc.path] = fc
@@ -137,6 +254,7 @@ class IncrementalExtractor:
         try:
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
             data = {
+                "version": CACHE_VERSION,
                 "files": [fc.to_dict() for fc in self._cache.values()],
                 "saved_at": time.time(),
             }
@@ -153,37 +271,57 @@ class IncrementalExtractor:
         except Exception:
             return ""
 
+    @staticmethod
+    def _walk(root: Path, suffixes: frozenset[str]) -> list[Path]:
+        """Files under ``root`` with a suffix in ``suffixes``, without the build's ignore files."""
+        found = []
+        for f in sorted(root.rglob("*")):
+            if not (f.is_file() and f.suffix in suffixes):
+                continue
+            try:
+                parts = Path(f.relative_to(root).as_posix()).parts
+            except ValueError:
+                continue
+            # The graph walker's rule: skip dot-directories and the
+            # canonical ignores. Not every dunder name: that hid each
+            # __init__.py from change detection, so its edits never
+            # reached the graph.
+            if any(p.startswith(".") for p in parts[:-1]) or any(p in _GG_IGNORES for p in parts):
+                continue
+            found.append(f)
+        return found
+
     def scan_files(
         self,
         root: Path,
         suffixes: frozenset[str],
+        files: list[Path] | None = None,
     ) -> tuple[list[str], list[str], list[str]]:
         """
         Compare current files against cache to find changes.
 
+        ``files`` is the list the build extracts from. Pass it: only those
+        files are ever cached, so any other file the scan saw would count as
+        added on every build. Without it, the scan walks ``root`` itself, which
+        doesn't apply ``.gitignore``, ``.neuralmindignore`` or the config's
+        globs. On NeuralMind's own repository that made 372 ignored files
+        (``tests/``, ``docs/``, ``*.config.js``) "added" on every incremental
+        build, and every build then searched the whole cache for their names.
+
         Returns: (added, modified, deleted) file path lists
         """
+        if files is None:
+            files = self._walk(root, suffixes)
         current_files: dict[str, tuple[float, int]] = {}
-        for f in sorted(root.rglob("*")):
-            if f.is_file() and f.suffix in suffixes:
-                try:
-                    # POSIX, like the cache keys and the graph's paths: on
-                    # Windows str() gave backslashes, so no file in a
-                    # subdirectory ever matched its cache entry.
-                    rel = f.relative_to(root).as_posix()
-                    parts = Path(rel).parts
-                    # The graph walker's rule: skip dot-directories and the
-                    # canonical ignores. Not every dunder name: that hid each
-                    # __init__.py from change detection, so its edits never
-                    # reached the graph.
-                    if any(p.startswith(".") for p in parts[:-1]) or any(
-                        p in _GG_IGNORES for p in parts
-                    ):
-                        continue
-                    stat = f.stat()
-                    current_files[rel] = (stat.st_mtime, stat.st_size)
-                except (OSError, ValueError):
-                    continue
+        for f in files:
+            try:
+                # POSIX, like the cache keys and the graph's paths: on
+                # Windows str() gave backslashes, so no file in a
+                # subdirectory ever matched its cache entry.
+                stat = f.stat()
+                current_files[f.relative_to(root).as_posix()] = (stat.st_mtime, stat.st_size)
+            except (OSError, ValueError):
+                continue
 
         cached_paths = set(self._cache.keys())
         current_paths = set(current_files.keys())
@@ -216,25 +354,46 @@ class IncrementalExtractor:
         root: Path,
         suffixes: frozenset[str],
         importer_index: dict[str, list[str]],
+        files: list[Path] | None = None,
+        previous: dict[str, list[dict[str, Any]]] | None = None,
+        cpp_project: bool = False,
     ) -> list[str]:
         """
         Get changed files plus files that import them (reverse edges).
 
-        importer_index: maps file -> list of files that import it.
+        importer_index: maps file -> list of files that import it; used only
+        without ``previous``.
+        files: the build's file list, as :meth:`scan_files` takes it.
+        previous: each file's nodes in the last graph. With it, files that
+        name a function or class an edited or deleted file gained, lost or
+        reordered are re-extracted too (see :func:`names_changed`), and
+        importers aren't (see below).
+        cpp_project: whether the build parses a ``.h`` as C++.
         """
-        added, modified, deleted = self.scan_files(root, suffixes)
+        added, modified, deleted = self.scan_files(root, suffixes, files)
         changed = set(added + modified + deleted)
 
         # An added file can satisfy an import or call an unchanged file
         # couldn't resolve at the last build (`from d import newfn` before d.py
         # existed). No edge records an unresolved reference, so the importer
         # index can't name those files: re-extract the ones that mention the
-        # new file's module name or a symbol it defines.
-        if added:
-            changed |= self._files_naming(root, _names_defined_by(root, added), skip=changed)
+        # new file's module name or a symbol it defines. An edit or a deletion
+        # that changes which functions a name can mean does the same.
+        names = _names_defined_by(root, added, cpp_project) if added else set()
+        if previous is not None:
+            names |= names_changed(root, modified, previous, cpp_project)
+            names |= names_removed(deleted, previous)
+        named = self._files_naming(root, names, skip=changed) if names else set()
 
-        # Add importers of changed files
-        to_check = list(changed)
+        # Importers of changed files, transitively. A build that passes
+        # ``previous`` needs none of them: it keeps the edges unchanged files
+        # have into re-extracted ones, and re-extracts every file whose calls
+        # a change could move (above). On hermes-agent the closure was most of
+        # the repository for an edit to a widely imported file (42 s against
+        # 12 s, for the same graph). Without ``previous`` it stands in for
+        # both. Never from the files that only name a changed symbol:
+        # re-extracting one changes its calls, not its own symbols.
+        to_check = list(changed) if previous is None else []
         checked: set[str] = set()
         while to_check:
             filepath = to_check.pop(0)
@@ -246,6 +405,8 @@ class IncrementalExtractor:
                     changed.add(importer)
                     to_check.append(importer)
 
+        changed |= named
+
         added_list = list(added)
         modified_list = [f for f in modified if f not in added]
         # Importers get added to modified for re-extraction
@@ -256,27 +417,8 @@ class IncrementalExtractor:
         return added_list + modified_list + importer_list
 
     def _files_naming(self, root: Path, names: set[str], skip: set[str]) -> set[str]:
-        """Cached files, other than ``skip``, whose text contains one of ``names``.
-
-        A plain text match over-approximates (a comment counts), which only
-        costs a re-extraction; it never misses a file that refers to a name.
-        """
-        if not names:
-            return set()
-        alternation = b"|".join(
-            re.escape(n.encode("utf-8")) for n in sorted(names, key=len, reverse=True)
-        )
-        pattern = re.compile(rb"(?<![A-Za-z0-9_])(?:" + alternation + rb")(?![A-Za-z0-9_])")
-        hits: set[str] = set()
-        for rel in self._cache:
-            if rel in skip:
-                continue
-            try:
-                if pattern.search((root / rel).read_bytes()):
-                    hits.add(rel)
-            except OSError:
-                continue
-        return hits
+        """Cached files, other than ``skip``, whose text contains one of ``names``."""
+        return files_naming(root, [rel for rel in self._cache if rel not in skip], names)
 
     def update_cache(self, file_paths: list[str], root: Path) -> None:
         """Update cache entries for extracted files."""
