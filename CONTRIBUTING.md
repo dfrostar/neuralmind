@@ -345,6 +345,10 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 
 1. **Commit to `main` using [Conventional Commits](https://www.conventionalcommits.org/)**
    — `feat:` bumps the minor version, `fix:` bumps the patch version, `feat!:` or `BREAKING CHANGE:` bumps major.
+   `docs:`, `chore:`, `ci:`, `test:`, `style:`, `refactor:` and `build:` commits never start a release
+   and stay out of `CHANGELOG.md` (`changelog-sections` in `release-please-config.json`). A docs change
+   that must reach PyPI, such as a `README.md` fix (it is the package's long description), ships as
+   `fix(docs):`.
 2. **release-please opens a Release PR automatically.**
    The PR bumps the version in `pyproject.toml`, updates `CHANGELOG.md`, and proposes a new git tag.
 3. **Merge the Release PR** when you're ready to ship.

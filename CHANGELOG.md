@@ -1,5 +1,55 @@
 # Changelog
 
+## [4.23.1](https://github.com/dfrostar/neuralmind/compare/v4.23.0...v4.23.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **hermes:** the plugin serves each session's own project under Hermes 0.22's gateway ([#742](https://github.com/dfrostar/neuralmind/issues/742)) ([0f1577f](https://github.com/dfrostar/neuralmind/commit/0f1577f226ffbb9427b7a06cabe04b54e5a310ed))
+* **hooks:** session-start returns its recap within the Hermes plugin's timeout on a large synapse store ([#741](https://github.com/dfrostar/neuralmind/issues/741)) ([289f52c](https://github.com/dfrostar/neuralmind/commit/289f52cc1efb249cf1d117fff60925990f1fa1b1))
+
+## [4.23.0](https://github.com/dfrostar/neuralmind/compare/v4.22.1...v4.23.0) (2026-10-28)
+
+
+### Features
+
+* **site:** add a What's New page that links recent releases and the drift guards ([#718](https://github.com/dfrostar/neuralmind/issues/718)) ([486b597](https://github.com/dfrostar/neuralmind/commit/486b5974b448ff9f72236913dfe6405f17634a3c))
+
+
+### Bug Fixes
+
+* **hooks:** a matched test file brings the code it tests into the prompt block ([#732](https://github.com/dfrostar/neuralmind/issues/732)) ([95845e6](https://github.com/dfrostar/neuralmind/commit/95845e69817576947aaf13adc580aa63652e9886))
+* **hooks:** the prompt hook answers within the Hermes plugin's timeout on a large index ([#739](https://github.com/dfrostar/neuralmind/issues/739)) ([3dcabaf](https://github.com/dfrostar/neuralmind/commit/3dcabaf5a9ee6da922d171be9d0bc3cb75f553a0))
+* **recall:** list the code before its tests when a prompt only says how to run them ([#731](https://github.com/dfrostar/neuralmind/issues/731)) ([9637ce0](https://github.com/dfrostar/neuralmind/commit/9637ce083955ee6d727c8d383b8c30fbc03b180f))
+
+## [4.22.1](https://github.com/dfrostar/neuralmind/compare/v4.22.0...v4.22.1) (2026-10-26)
+
+
+### Documentation
+
+* **social:** tick the Show HN draft's offline demo check ([#721](https://github.com/dfrostar/neuralmind/issues/721)) ([8b81354](https://github.com/dfrostar/neuralmind/commit/8b813547d98359e01a7f2ce3d4615aae70ea0d90))
+
+## [4.22.0](https://github.com/dfrostar/neuralmind/compare/v4.21.0...v4.22.0) (2026-10-25)
+
+
+### Features
+
+* doctor shows what's wired, install-mcp --client hermes, and a build prints the pairing steps ([#700](https://github.com/dfrostar/neuralmind/issues/700)) ([78d55c7](https://github.com/dfrostar/neuralmind/commit/78d55c773a00b5376a9fd5a3a21dcf03fc023b83))
+* **sbom:** one SBOM per platform from native installs; docs say what Intel macOS and Windows ARM installs compile ([#709](https://github.com/dfrostar/neuralmind/issues/709)) ([d3b58ed](https://github.com/dfrostar/neuralmind/commit/d3b58ed176c502f519b4f387835bd47a484b0cd7))
+
+
+### Bug Fixes
+
+* **sbom:** read pip's report as UTF-8 so Windows installs get an SBOM; docs: Windows on ARM can't install natively, use WSL 2 ([#715](https://github.com/dfrostar/neuralmind/issues/715)) ([961deaf](https://github.com/dfrostar/neuralmind/commit/961deaf650cacaab311642d72eb7c8ff0780a3c5))
+* **synapses:** keep a feature branch's call graph out of the default branch's recall ([#710](https://github.com/dfrostar/neuralmind/issues/710)) ([c04ca80](https://github.com/dfrostar/neuralmind/commit/c04ca8080ee6ca3c5f6956b28be8d197946d1be7))
+* **synapses:** write only the checked-out branch's memory to SYNAPSE_MEMORY.md ([#717](https://github.com/dfrostar/neuralmind/issues/717)) ([8b4e61f](https://github.com/dfrostar/neuralmind/commit/8b4e61fe83c95e8802916d099eb3df74c5d2ff6d))
+
+
+### Documentation
+
+* **hermes:** a Hermes pairing quickstart in the README, and a wiki page of pairing tips ([#701](https://github.com/dfrostar/neuralmind/issues/701)) ([ff889d9](https://github.com/dfrostar/neuralmind/commit/ff889d95605ac1d1cccb2bc394c9d0562072c303))
+* **social:** mark the offline-demo Show HN draft ready now that v4.21.0 is on PyPI ([#712](https://github.com/dfrostar/neuralmind/issues/712)) ([e45d316](https://github.com/dfrostar/neuralmind/commit/e45d316a2a0faef9857831cbd94cdc20f35ad06b))
+
 ## [4.21.0](https://github.com/dfrostar/neuralmind/compare/v4.20.0...v4.21.0) (2026-10-22)
 
 

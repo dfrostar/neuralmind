@@ -17,10 +17,16 @@ posted. Hacker News readers check numbers, so every figure is from
       to build its dependencies (#715); under WSL 2 it is a Linux ARM64
       install, with turbovec and the offline demo.
 - [x] Post only once v4.21.0 or later is on PyPI (it is, as of 2026-10-22).
-- [ ] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
+- [x] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
       `pip install neuralmind && neuralmind demo` with the network off after
       the install. It should finish without downloading the model. Paste its
       real output into the first comment, not this draft.
+      Done 2026-10-25 on v4.21.0 (Linux, Python 3.13, empty `HOME`, no network
+      namespace): it used the bundled index and question vectors, downloaded
+      nothing, and reported 6.9×, 7.0× and 7.6× (7.2× average). Offline,
+      tiktoken can't fetch its vocabulary either, so the demo says it
+      estimates tokens at about 4 characters each; say so beside the pasted
+      output, since a run with network access counts slightly differently.
 - [ ] Post on a weekday morning US time; reply to every question in the first
       two hours.
 - [ ] Don't lead with cost savings: the task-outcome pilot found none (see
