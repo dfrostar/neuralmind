@@ -78,16 +78,20 @@ Start a new Hermes session, or restart the gateway, to load the plugin.
 
 ## Which project
 
-1. `NEURALMIND_PROJECT`, if set;
+1. `NEURALMIND_PROJECT`, if set where the plugin runs;
 2. else the project pinned at install;
-3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
+3. else the directory Hermes works in for the session: on Hermes 0.22.2 and
+   later, the session's own working directory (`ctx.session_cwd()`); on older
+   Hermes, `TERMINAL_CWD`, else, only when that isn't set, the directory Hermes
+   runs in.
 
 The first of these that has been built wins. If none has, the plugin does
-nothing. `TERMINAL_CWD` matches the terminal CLI and a standalone gateway.
-Hermes Desktop, ACP editor sessions and per-session workspaces keep each
-session's directory elsewhere, so with those, pin a project or set
-`NEURALMIND_PROJECT`.
+nothing. On Hermes 0.22.2 and later every CLI, TUI and Desktop session's hooks
+run in one Hermes gateway process. `ctx.session_cwd()` is where that session
+was started, or the profile's terminal working directory for a messaging chat,
+so one unpinned install follows each session. A variable set on the `hermes`
+command you run stays in that client: `NEURALMIND_PROJECT` counts only in the
+gateway's own environment, where it covers every session.
 
 A pin applies to every Hermes session that uses that Hermes home, in any
 directory. Each one gets the pinned project's context, has its prompts

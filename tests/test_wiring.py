@@ -242,7 +242,7 @@ def test_hermes_plugin_enabled(home, tmp_path):
     _plugin(hermes)
     item = wiring.hermes_plugin_item(tmp_path)
     assert item.wired is True and item.host and not item.needs_fix
-    assert "TERMINAL_CWD" in item.detail
+    assert "serves the directory Hermes works in for each session" in item.detail
 
 
 def test_hermes_plugin_pinned_here_or_elsewhere(home, tmp_path):

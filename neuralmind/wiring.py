@@ -417,7 +417,7 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
             )
         serves = "pinned to this project"
     else:
-        serves = "serves the directory Hermes works in (TERMINAL_CWD)"
+        serves = "serves the directory Hermes works in for each session"
     problems: list[str] = []
     if isinstance(python, str) and python and not Path(python).exists():
         problems.append(f"the interpreter it records, {python}, no longer exists")

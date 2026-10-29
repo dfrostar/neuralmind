@@ -50,18 +50,20 @@ neuralmind savings . --cost    # what the logged queries saved, priced for your 
 The plugin serves the first of these that has been built
 (`.neuralmind/build_status.json` exists), and does nothing if none has:
 
-1. `NEURALMIND_PROJECT`, in the Hermes process's environment;
+1. `NEURALMIND_PROJECT`, in the environment of the Hermes process that runs
+   the plugin;
 2. the project saved at install: `neuralmind install-hermes-plugin <path>`
    pins one, and a re-run without a path keeps it (`--unpin` clears it);
-3. Hermes's terminal working directory, `TERMINAL_CWD`;
-4. only when `TERMINAL_CWD` isn't set, the directory the Hermes process runs in.
+3. the directory Hermes works in for the session: on Hermes 0.22.2 and later,
+   the session's own working directory (`ctx.session_cwd()`); on older Hermes,
+   `TERMINAL_CWD`, else, only when that isn't set, the directory Hermes runs in.
 
 A pin applies to every Hermes session that uses that Hermes home, in any
 directory: each one is served and recorded as the pinned project. For several
-projects, install without a path. `TERMINAL_CWD` matches the terminal CLI and
-a standalone gateway; Hermes Desktop, ACP editor sessions and per-session
-workspaces keep each session's directory where the plugin can't read it, so
-with those, pin a project or set `NEURALMIND_PROJECT`. `doctor` warns when the
+projects, install without a path. On Hermes 0.22.2 and later, every CLI, TUI
+and Desktop session's hooks run in one Hermes gateway process, so an unpinned
+plugin follows each session, and `NEURALMIND_PROJECT` set on the `hermes`
+command you run doesn't reach it (only the gateway's own environment counts). `doctor` warns when the
 plugin is pinned to a different project from the one you're checking. More in
 [Multi-Project Scoping](Multi-Project-Scoping.md).
 

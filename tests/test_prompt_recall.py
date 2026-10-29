@@ -534,6 +534,80 @@ def test_linked_test_files_come_after_the_code_too():
     ]
 
 
+# On hermes-agent a prompt about an NVIDIA error matched four test files and
+# never agent/error_classifier.py, the file the fix changed; one of the four
+# was tests/agent/test_error_classifier.py.
+CLASSIFIER = [
+    _node("agent_error_classifier_py", "agent/error_classifier.py", "error_classifier.py"),
+    _node("agent_error_classifier_py__classify_fn", "agent/error_classifier.py", "classify()", 40),
+    _node(
+        "tests_agent_test_error_classifier_py",
+        "tests/agent/test_error_classifier.py",
+        "test_error_classifier.py",
+    ),
+    _node(
+        "tests_agent_test_error_classifier_py__test_nim_fn",
+        "tests/agent/test_error_classifier.py",
+        "test_nim()",
+        12,
+    ),
+    _node("agent_sanitize_py__strip_fn", "agent/sanitize.py", "strip()", 3),
+]
+
+
+def test_a_matched_test_file_names_the_code_it_tests():
+    hits = [
+        ("tests_agent_test_error_classifier_py__test_nim_fn", 0.6),
+        ("agent_sanitize_py__strip_fn", 0.4),
+    ]
+    result = recall(_Mind(None, hits=hits, nodes=CLASSIFIER), "NIM's 400 isn't recovered")
+    assert [(f.path, f.symbols) for f in result.matches] == [
+        ("agent/error_classifier.py", []),
+        ("agent/sanitize.py", ["strip() L3"]),
+        ("tests/agent/test_error_classifier.py", ["test_nim() L12"]),
+    ]
+    # A file named only through its test has no symbol to quote.
+    assert result.excerpt is None
+
+
+def test_the_tested_code_keeps_its_own_matches_and_can_be_turned_off(monkeypatch):
+    hits = [
+        ("tests_agent_test_error_classifier_py__test_nim_fn", 0.6),
+        ("agent_error_classifier_py__classify_fn", 0.3),
+    ]
+    mind = _Mind(None, hits=hits, nodes=CLASSIFIER)
+    first = recall(mind, "q").matches[0]
+    assert (first.path, first.symbols) == ("agent/error_classifier.py", ["classify() L40"])
+    assert first.score == pytest.approx(0.9)
+    monkeypatch.setattr(prompt_recall, "TESTED_CODE_CREDIT", 0.0)
+    assert recall(mind, "q").matches[0].score == pytest.approx(0.3)
+
+
+def test_a_prompt_naming_a_test_credits_no_code():
+    hits = [("tests_agent_test_error_classifier_py__test_nim_fn", 0.6)]
+    result = recall(_Mind(None, hits=hits, nodes=CLASSIFIER), "why does test_nim fail")
+    assert [f.path for f in result.matches] == ["tests/agent/test_error_classifier.py"]
+
+
+@pytest.mark.parametrize(
+    "test, candidates, expected",
+    [
+        ("tests/agent/test_x.py", ["agent/x.py", "tools/x.py"], "agent/x.py"),
+        ("tests/test_cli.py", ["neuralmind/cli.py"], "neuralmind/cli.py"),
+        ("tests/test_cli.py", ["a/cli.py", "b/cli.py"], ""),
+        ("pkg/core_test.go", ["pkg/core.go"], "pkg/core.go"),
+        ("web/src/app.test.ts", ["web/src/app.ts"], "web/src/app.ts"),
+        ("src/test/java/AppTest.java", ["src/java/App.java"], "src/java/App.java"),
+        ("tests/helpers.py", ["pkg/helpers.py"], ""),
+        ("tests/conftest.py", ["pkg/conftest.py"], ""),
+    ],
+)
+def test_the_code_a_test_file_tests_is_found_by_name(test, candidates, expected):
+    name = prompt_recall._tested_name(test)
+    found = {c: c for c in candidates if c.rsplit("/", 1)[-1] == name}
+    assert prompt_recall._tested_paths(test, found) == expected
+
+
 def test_a_prompt_matching_no_code_lists_its_document_matches(tmp_path):
     mind = _Mind(_store(tmp_path), hits=[(OPTIONS_H, 0.6), (ESCAPES_H, 0.5)])
     block = format_block(recall(mind, "q"))
@@ -786,11 +860,17 @@ def test_code_is_quoted_even_when_a_test_leads_the_list(tmp_path):
     assert recall(mind, "why does test_parse fail").excerpt is None
 
 
-def test_a_test_is_quoted_only_when_no_code_is_listed(tmp_path):
+def test_a_test_is_quoted_only_when_no_code_is_listed(tmp_path, monkeypatch):
     hits = [("tests_test_m_py__test_parse_fn", 0.9), ("tests_test_m_py__test_other_fn", 0.4)]
     mind = _excerpt_mind(tmp_path, hits, extra_nodes=TEST_NODES)
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "test_m.py").write_text(TEST_SOURCE)
+    # tests/test_m.py brings the code it tests, pkg/m.py, into the list, with
+    # no symbol of its own to quote; without that credit no code is listed.
+    result = recall(mind, "q")
+    assert [f.path for f in result.matches] == ["pkg/m.py", "tests/test_m.py"]
+    assert result.excerpt is None
+    monkeypatch.setattr(prompt_recall, "TESTED_CODE_CREDIT", 0.0)
     result = recall(mind, "q")
     assert (result.excerpt.path, result.excerpt.start, result.excerpt.end) == (
         "tests/test_m.py",
