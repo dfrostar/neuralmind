@@ -233,6 +233,48 @@ class TestCacheCorrupted:
         assert "b.py" in source_files
 
 
+class TestCacheFromAnOlderVersion:
+    """A cache from before CACHE_VERSION 2 → one full extraction."""
+
+    def test_a_cache_without_the_version_loads_empty(self, project_with_output: Path) -> None:
+        from neuralmind.incremental_extract import CACHE_VERSION, IncrementalExtractor
+
+        cache_path = project_with_output / ".neuralmind" / "extraction_cache.json"
+        data = json.loads(cache_path.read_text())
+        assert data["version"] == CACHE_VERSION
+        assert IncrementalExtractor(project_with_output)._cache
+        del data["version"]
+        cache_path.write_text(json.dumps(data))
+        assert IncrementalExtractor(project_with_output)._cache == {}
+
+    def test_an_edge_an_older_incremental_build_kept_is_rebuilt(self, tmp_path: Path) -> None:
+        # Before 4.23.2 an incremental build could point m.run's call at
+        # z.search, the unchanged file's function, instead of a.search. An
+        # incremental build now carries an unchanged file's edges over, so
+        # the first build after upgrading must extract everything.
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / "a.py").write_text("def search():\n    return 1\n")
+        (root / "m.py").write_text("def run():\n    return search()\n")
+        (root / "z.py").write_text("def search():\n    return 2\n")
+        graphgen.write_graph(root)
+        graph_path = root / ".neuralmind" / "graph.json"
+        graph = json.loads(graph_path.read_text())
+        for edge in graph["links"]:
+            if edge["relation"] == "calls":
+                edge["target"] = "z_py__search_fn"
+        graph_path.write_text(json.dumps(graph, indent=2))
+        cache_path = root / ".neuralmind" / "extraction_cache.json"
+        cache = json.loads(cache_path.read_text())
+        del cache["version"]
+        cache_path.write_text(json.dumps(cache))
+
+        graph = json.loads(graphgen.write_graph(root).read_text())
+
+        calls = {(e["source"], e["target"]) for e in graph["links"] if e["relation"] == "calls"}
+        assert calls == {("m_py__run_fn", "a_py__search_fn")}
+
+
 class TestImporterIndexPersistence:
     """Importer index survives across builds."""
 

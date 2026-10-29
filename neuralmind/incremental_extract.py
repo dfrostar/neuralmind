@@ -9,9 +9,10 @@ re-extraction when a dependency changes.
 Part of Wave 5 — wired into build_graph() so `neuralmind build` skips
 unchanged files.
 
-Skip-path: if no cache exists (first run, corrupted), does a full
-extraction. A file whose mtime and size match the cache is skipped; any
-difference (older mtimes included) is confirmed with the content hash.
+Skip-path: if no cache exists (first run, corrupted, or written by an older
+CACHE_VERSION), does a full extraction. A file whose mtime and size match
+the cache is skipped; any difference (older mtimes included) is confirmed
+with the content hash.
 """
 
 from __future__ import annotations
@@ -28,6 +29,14 @@ from neuralmind.graphgen import _DEFAULT_IGNORES as _GG_IGNORES
 
 CACHE_FILE = ".neuralmind/extraction_cache.json"
 IMPORTER_INDEX_FILE = ".neuralmind/importer_index.json"
+
+# Bumped when a cache can't vouch for the graph written beside it. 2: before
+# it, an incremental build could resolve a call to another same-named
+# function than a full build, and graph.json kept that edge. An incremental
+# build carries an unchanged file's edges over, so it would keep it for as
+# long as the file stays unchanged; a cache from an older version is dropped
+# instead, and the next build extracts everything once.
+CACHE_VERSION = 2
 
 # A package's entry file is imported by its directory's name.
 _ENTRY_STEMS = frozenset({"__init__", "index", "mod"})
@@ -228,10 +237,12 @@ class IncrementalExtractor:
         self._load_cache()
 
     def _load_cache(self) -> None:
-        """Load cache from disk."""
+        """Load cache from disk; a cache from another CACHE_VERSION loads empty."""
         try:
             if self.cache_path.exists():
                 data = json.loads(self.cache_path.read_text(encoding="utf-8"))
+                if data.get("version") != CACHE_VERSION:
+                    return
                 for d in data.get("files", []):
                     fc = FileCache.from_dict(d)
                     self._cache[fc.path] = fc
@@ -243,6 +254,7 @@ class IncrementalExtractor:
         try:
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
             data = {
+                "version": CACHE_VERSION,
                 "files": [fc.to_dict() for fc in self._cache.values()],
                 "saved_at": time.time(),
             }
