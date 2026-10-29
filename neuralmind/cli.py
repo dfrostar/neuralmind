@@ -6039,9 +6039,9 @@ def cmd_install_hermes_plugin(args):
             )
     else:
         print(
-            "  Project: the directory Hermes works in (TERMINAL_CWD, else its current "
-            "directory), if it's built. Pass a path to pin one; a pin applies to every "
-            "Hermes session in this Hermes home."
+            "  Project: the directory Hermes works in for each session, if it's built. "
+            "Pass a path to pin one; a pin applies to every Hermes session in this "
+            "Hermes home."
         )
     if not result["initialised"]:
         print(
@@ -8974,7 +8974,8 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default=None,
         help="Project the plugin serves (default: the one pinned by an earlier install, "
-        "else the directory Hermes works in: TERMINAL_CWD, else its current directory)",
+        "else the directory Hermes works in for each session: on Hermes 0.22.2+ the "
+        "session's own directory, on older Hermes TERMINAL_CWD, else its current directory)",
     )
     hermes_p.add_argument(
         "--unpin",

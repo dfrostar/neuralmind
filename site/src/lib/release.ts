@@ -13,7 +13,7 @@ export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 // There is no fallback date to go stale beside it: the date comes from the
 // tag's CHANGELOG.md heading, which release-please writes in the same release
 // PR (see releaseDateFromChangelog).
-const FALLBACK = { tag: 'v4.22.1' }; // x-release-please-version
+const FALLBACK = { tag: 'v4.23.0' }; // x-release-please-version
 
 // "## [4.18.1](…compare/v4.18.0...v4.18.1) (2026-10-19)" → "2026-10-19".
 // Returns '' when the heading isn't there (a build outside the repo, or a tag

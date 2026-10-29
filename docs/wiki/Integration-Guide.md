@@ -415,20 +415,24 @@ What it does:
 
 ##### Which project a Hermes session belongs to
 
-1. `NEURALMIND_PROJECT` in Hermes's environment, if set (only this plugin
-   reads it);
+1. `NEURALMIND_PROJECT` in the environment of the Hermes process that runs the
+   plugin, if set (only this plugin reads it);
 2. else the path given to `install-hermes-plugin`;
-3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
+3. else the directory Hermes works in for the session: on Hermes 0.22.2 and
+   later, the session's own working directory (`ctx.session_cwd()`); on older
+   Hermes, `TERMINAL_CWD`, else, only when that isn't set, the directory Hermes
+   runs in.
 
 The first of these where `neuralmind build` has run wins; if none has, the
 plugin does nothing. Install with a path and the command warns if that project
 isn't built yet.
 
-The plugin reads `TERMINAL_CWD` from the Hermes process's environment, which
-matches where the terminal CLI and a standalone gateway work. Hermes Desktop,
-ACP editor sessions and per-session workspaces keep each session's directory
-elsewhere, so there, pin a project or set `NEURALMIND_PROJECT`.
+On Hermes 0.22.2 and later, every CLI, TUI and Desktop session's hooks run in
+one Hermes gateway process, so the plugin follows each session through
+`ctx.session_cwd()`, and `NEURALMIND_PROJECT` set on the `hermes` command you
+run doesn't reach it: only the gateway's own environment counts. Before
+NeuralMind v4.23.1 the plugin read the gateway's `TERMINAL_CWD`, so unpinned it
+usually served nothing there.
 
 A pin applies to every Hermes session that uses that Hermes home, whatever
 directory it runs in: each one gets the pinned project's context, and its
