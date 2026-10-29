@@ -1439,9 +1439,12 @@ def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None 
     # Carry over community ids from the previous build
     comm_of_file: dict[str, int] = {}
     if existing_graph:
+        # One set, not one per node: building it inside the loop cost 38 s of
+        # an incremental hermes-agent build (270K nodes x 10K files).
+        current = set(source_files)
         for n in existing_graph.get("nodes", []):
             sf = n.get("source_file", "")
-            if sf and sf in set(source_files) and sf not in comm_of_file:
+            if sf and sf in current and sf not in comm_of_file:
                 comm_of_file[sf] = n.get("community", 0)
 
     # Build per-file adjacency from structural edges
