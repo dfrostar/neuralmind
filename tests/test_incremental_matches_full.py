@@ -264,3 +264,35 @@ def test_an_edit_inside_a_function_re_extracts_only_that_file(project, monkeypat
     graph = json.loads(graphgen.write_graph(project).read_text())
     assert seen == [["m.py"]]
     assert ("n_py__use_fn", "m_py__helper_fn") in _calls(graph)
+
+
+def test_a_comment_edit_to_a_property_with_a_setter_re_extracts_only_that_file(
+    tmp_path, monkeypatch
+):
+    # A property and its setter register the same function id twice when the
+    # file is parsed, once when its nodes are replayed. Compared as lists,
+    # every edit to the file looked like a change to `value`, and re-extracted
+    # every file naming it (90 files for a comment in NeuralMind's embedder.py).
+    from neuralmind.incremental_extract import IncrementalExtractor
+
+    root = _scenario(
+        tmp_path,
+        {
+            "p.py": "class C:\n    @property\n    def value(self):\n        return 1\n\n"
+            "    @value.setter\n    def value(self, v):\n        pass\n",
+            "q.py": "def use(c):\n    return c.value\n",
+        },
+    )
+    seen: list[list[str]] = []
+    real = IncrementalExtractor.get_changed_with_dependents
+
+    def spy(self, *args, **kwargs):
+        seen.append(real(self, *args, **kwargs))
+        return seen[-1]
+
+    monkeypatch.setattr(IncrementalExtractor, "get_changed_with_dependents", spy)
+    time.sleep(0.01)
+    (root / "p.py").write_text((root / "p.py").read_text() + "# a comment\n")
+    _, incremental, full = _rebuild(root, tmp_path)
+    assert seen == [["p.py"]]
+    assert incremental == full

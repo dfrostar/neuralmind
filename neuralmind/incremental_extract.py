@@ -89,8 +89,15 @@ def _symbols(b: Any) -> dict[tuple[str, str], list[str]]:
 
     Module keys too, because Java, C#, PHP and Ruby take them from a file's
     package or namespace line: a package rename moves every import of it.
+
+    Each function id once: a file that defines a name twice (a property and
+    its setter) lists the id twice when parsed but once when replayed from
+    its nodes, so every edit to it looked like a change to that name and
+    re-extracted every file naming it. A call takes the first candidate
+    that isn't the caller, so a repeat never moves one. Class ids keep their
+    repeats: ``inherits`` links every candidate.
     """
-    tables = {("func", k): list(v) for k, v in b.func_by_name.items()}
+    tables = {("func", k): list(dict.fromkeys(v)) for k, v in b.func_by_name.items()}
     tables.update({("class", k): list(v) for k, v in b.class_by_name.items()})
     tables.update({("module", k): [v] for k, v in b.file_by_module.items()})
     tables.update({("package", k): list(v) for k, v in b.go_pkg_files.items()})
