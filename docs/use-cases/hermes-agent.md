@@ -331,8 +331,9 @@ from, or the gateway's service environment.
   9–15 s a call on one Linux machine) that is slower than the 8 s timeout, so
   the graph is kept in `.neuralmind/graph_cache.marshal`, which `neuralmind
   build` writes and the plugin's calls write in the background when it's
-  missing. The first turn after upgrading or after a graph change outside
-  `build` can still go without recall; the next ones don't.
+  missing. An upgrade keeps it *(v4.23.2+)*; the first turn after a graph
+  change outside `build`, or after a Python upgrade, can still go without
+  recall, and the next ones don't.
   `NEURALMIND_GRAPH_CACHE=0` turns the cache off.
 - **Hermes's own hook timeout is a hard limit.** If the plugin takes longer
   than Hermes's `plugins.hook_callback_timeout` (default 30 seconds), Hermes
