@@ -250,3 +250,16 @@ drawn by the same rule, that the pilot didn't use.
     It checks the harness and measures how long a run takes. The full run's
     endpoint (tokens or time), its timeout, and how a timed-out run is scored
     are fixed in this log after the smoke and before the full run.
+- 2026-10-29 — Hermes smoke test, 4 runs in `bench/task_outcome/hermes-smoke/`,
+  `--max-turns 60`, timeout 1800 s. Not analysed, not pooled:
+  - The harness worked end to end: every session ran on `gpt-oss:20b-64k`,
+    every `neuralmind`-arm run recorded the plugin's prompt hook, and the
+    judge ran the hidden tests.
+  - The turn cap decided most runs. All 4 used 59–60 model calls, 1.6–2.1M
+    tokens and 3–20 minutes; three ended "out of steps" or with an answer
+    and no edit. One run solved its task: `1015eb8b95`, baseline arm.
+  - On `1015eb8b95` the block named no file the fix changed (as the offline
+    replay records) and quoted another file's code; the `neuralmind`-arm
+    agent never edited. On `fa72224183` the block named both fixed files
+    first; neither arm solved it, as neither Claude Code arm did in the
+    pilot. One run per cell: no inference is drawn from either.
