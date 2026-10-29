@@ -1,0 +1,348 @@
+{
+ "main": [
+  {
+   "task": "28e6496a5e",
+   "gold": [
+    "hermes_cli/web_routers/sessions.py",
+    "hermes_state_sessions.py"
+   ],
+   "listed": [
+    "tests/hermes_state/test_hermes_state.py",
+    "hermes_state_sessions.py",
+    "hermes_cli/session_recovery.py",
+    "tests/hermes_state/test_session_lifecycle_status.py",
+    "tests/hermes_state/test_empty_sweep_archived_transcript.py",
+    "hermes_state.py",
+    "tests/hermes_cli/test_session_system_prompt_dedup.py"
+   ],
+   "named": true,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 955
+  },
+  {
+   "task": "167a2d00ed",
+   "gold": [
+    "hermes_cli/curator.py"
+   ],
+   "listed": [
+    "hermes_cli/curator.py",
+    "agent/curator_backup.py",
+    "tests/hermes_cli/test_curator_archive_prune.py",
+    "hermes_cli/skills_hub.py",
+    "tests/agent/test_curator_backup.py",
+    "tools/skill_usage.py",
+    "tools/skill_ledger.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": true,
+   "excerpt_on_gold": true,
+   "excerpt_on_fix": true,
+   "chars": 2815,
+   "excerpt": [
+    "hermes_cli/curator.py",
+    419,
+    458
+   ]
+  },
+  {
+   "task": "0968fa2631",
+   "gold": [
+    "agent/error_classifier.py"
+   ],
+   "listed": [
+    "tests/agent/test_413_image_payload_recovery.py",
+    "tests/agent/test_image_corrupt_recovery.py",
+    "tests/agent/test_error_classifier.py",
+    "tests/agent/test_image_rejection_fallback.py",
+    "agent/message_sanitization.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": true,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 990,
+   "excerpt": [
+    "tests/agent/test_413_image_payload_recovery.py",
+    77,
+    82
+   ]
+  },
+  {
+   "task": "652e4b9194",
+   "gold": [
+    "tui_gateway/session_registry.py"
+   ],
+   "listed": [
+    "hermes_cli/heartbeat.py",
+    "hermes_cli/cli_loops_mixin.py",
+    "tests/hermes_cli/test_proxy_off_loop.py",
+    "hermes_cli/cli_commands_session_tools.py",
+    "hermes_cli/gateway_tools.py",
+    "hermes_cli/cli_commands_mixin.py",
+    "tests/gateway/test_heartbeat_acceptance.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 671
+  },
+  {
+   "task": "859b999db5",
+   "gold": [
+    "run_agent.py"
+   ],
+   "listed": [
+    "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+    "tests/tui_gateway/test_serve_exit_flush.py",
+    "tests/hermes_cli/test_gateway_host_verbs.py",
+    "tests/gateway/test_agent_cache_memory_lifecycle.py",
+    "tests/gateway/test_host_attach_lifecycle.py",
+    "tests/gateway/test_agent_cache.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": true,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 1546,
+   "excerpt": [
+    "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+    82,
+    103
+   ]
+  }
+ ],
+ "A_tests_last": [
+  {
+   "task": "28e6496a5e",
+   "gold": [
+    "hermes_cli/web_routers/sessions.py",
+    "hermes_state_sessions.py"
+   ],
+   "listed": [
+    "hermes_state_sessions.py",
+    "hermes_cli/session_recovery.py",
+    "hermes_cli/sessions_repair_profiles.py",
+    "hermes_cli/web_routers/sessions.py",
+    "hermes_state.py",
+    "hermes_state_common.py",
+    "hermes_cli/web_routers/_common.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 658
+  },
+  {
+   "task": "167a2d00ed",
+   "gold": [
+    "hermes_cli/curator.py"
+   ],
+   "listed": [
+    "hermes_cli/curator.py",
+    "agent/curator_backup.py",
+    "hermes_cli/skills_hub.py",
+    "tests/hermes_cli/test_curator_archive_prune.py",
+    "tools/skill_usage.py",
+    "tools/skill_ledger.py",
+    "agent/curator.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": true,
+   "excerpt_on_gold": true,
+   "excerpt_on_fix": true,
+   "chars": 2752,
+   "excerpt": [
+    "hermes_cli/curator.py",
+    419,
+    458
+   ]
+  },
+  {
+   "task": "0968fa2631",
+   "gold": [
+    "agent/error_classifier.py"
+   ],
+   "listed": [
+    "agent/context_compressor.py",
+    "plugins/model-providers/nvidia/__init__.py",
+    "tools/vision_tools.py",
+    "agent/message_sanitization.py",
+    "providers/__init__.py",
+    "agent/turn_recovery.py",
+    "providers/base.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 619
+  },
+  {
+   "task": "652e4b9194",
+   "gold": [
+    "tui_gateway/session_registry.py"
+   ],
+   "listed": [
+    "hermes_cli/heartbeat.py",
+    "hermes_cli/cli_loops_mixin.py",
+    "hermes_cli/cli_commands_session_tools.py",
+    "hermes_cli/pty_session.py",
+    "hermes_cli/gateway_tools.py",
+    "hermes_cli/cli_commands_mixin.py",
+    "hermes_cli/web_server_app.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 692
+  },
+  {
+   "task": "859b999db5",
+   "gold": [
+    "run_agent.py"
+   ],
+   "listed": [
+    "hermes_cli/gateway_host_record.py",
+    "hermes_cli/cli_shutdown.py",
+    "hermes_cli/debug.py",
+    "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+    "hermes_cli/gateway.py",
+    "hermes_cli/gateway_agent.py",
+    "gateway/host_attach.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 686
+  }
+ ],
+ "A+C1.0": [
+  {
+   "task": "28e6496a5e",
+   "gold": [
+    "hermes_cli/web_routers/sessions.py",
+    "hermes_state_sessions.py"
+   ],
+   "listed": [
+    "hermes_state_sessions.py",
+    "hermes_cli/session_recovery.py",
+    "hermes_state.py",
+    "hermes_cli/sessions_repair_profiles.py",
+    "hermes_cli/web_routers/sessions.py",
+    "hermes_state_common.py",
+    "utils.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 565
+  },
+  {
+   "task": "167a2d00ed",
+   "gold": [
+    "hermes_cli/curator.py"
+   ],
+   "listed": [
+    "hermes_cli/curator.py",
+    "agent/curator_backup.py",
+    "hermes_cli/skills_hub.py",
+    "tests/hermes_cli/test_curator_archive_prune.py",
+    "tools/skill_usage.py",
+    "tools/skill_ledger.py",
+    "agent/curator.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": true,
+   "excerpt_on_gold": true,
+   "excerpt_on_fix": true,
+   "chars": 2752,
+   "excerpt": [
+    "hermes_cli/curator.py",
+    419,
+    458
+   ]
+  },
+  {
+   "task": "0968fa2631",
+   "gold": [
+    "agent/error_classifier.py"
+   ],
+   "listed": [
+    "agent/error_classifier.py",
+    "agent/context_compressor.py",
+    "plugins/model-providers/nvidia/__init__.py",
+    "tools/vision_tools.py",
+    "providers/__init__.py",
+    "providers/base.py",
+    "agent/fallback_cooldown.py"
+   ],
+   "named": true,
+   "first": true,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 537
+  },
+  {
+   "task": "652e4b9194",
+   "gold": [
+    "tui_gateway/session_registry.py"
+   ],
+   "listed": [
+    "hermes_cli/heartbeat.py",
+    "hermes_cli/cli_loops_mixin.py",
+    "hermes_cli/cli_commands_session_tools.py",
+    "hermes_cli/pty_session.py",
+    "hermes_cli/gateway_tools.py",
+    "hermes_cli/cli_commands_mixin.py",
+    "hermes_cli/web_server_app.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 692
+  },
+  {
+   "task": "859b999db5",
+   "gold": [
+    "run_agent.py"
+   ],
+   "listed": [
+    "hermes_cli/gateway_host_record.py",
+    "hermes_cli/debug.py",
+    "hermes_cli/cli_shutdown.py",
+    "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+    "hermes_cli/gateway.py",
+    "hermes_cli/gateway_agent.py",
+    "gateway/host_attach.py"
+   ],
+   "named": false,
+   "first": false,
+   "excerpt_shown": false,
+   "excerpt_on_gold": false,
+   "excerpt_on_fix": false,
+   "chars": 686
+  }
+ ]
+}

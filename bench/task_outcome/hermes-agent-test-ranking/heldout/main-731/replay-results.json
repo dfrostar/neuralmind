@@ -1,0 +1,301 @@
+{
+  "summary": {
+    "neuralmind_version": "neuralmind 4.22.1",
+    "tasks": 12,
+    "named": 4,
+    "first": 3,
+    "excerpt_shown": 4,
+    "excerpt_on_gold": 1,
+    "excerpt_on_fix": 0,
+    "excerpt_on_gold_share": 0.25,
+    "median_chars": 826,
+    "tests_listed": 16,
+    "files_listed": 83
+  },
+  "tasks": [
+    {
+      "task": "e9eba2188a",
+      "gold": [
+        "hermes_cli/web_server_sessions.py"
+      ],
+      "listed": [
+        "apps/desktop/electron/local-gateway.ts",
+        "hermes_cli/gateway_status_notes.py",
+        "hermes_cli/dashboard_auth/request_utils.py",
+        "tests/hermes_cli/test_gateway_service.py",
+        "apps/desktop/electron/main.ts",
+        "apps/desktop/electron/windows-child-options.ts",
+        "hermes_cli/dashboard_auth/middleware.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 804,
+      "tests_listed": 1
+    },
+    {
+      "task": "24b4f90e97",
+      "gold": [
+        "hermes_cli/update_custody.py"
+      ],
+      "listed": [
+        "hermes_cli/update_cmd_commit.py",
+        "tests/hermes_cli/test_update_lock_windows_live.py",
+        "tests/hermes_cli/conftest.py",
+        "tests/hermes_cli/test_update_zip_fallback_guards.py",
+        "hermes_cli/main_install_repair.py",
+        "hermes_cli/_subprocess_compat.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1294,
+      "excerpt": [
+        "hermes_cli/update_cmd_commit.py",
+        422,
+        431
+      ],
+      "tests_listed": 3
+    },
+    {
+      "task": "3c53adbc1e",
+      "gold": [
+        "tools/bot_desktop/rfb_filter.py"
+      ],
+      "listed": [
+        "hermes_cli/web_routers/display.py",
+        "tests/hermes_cli/test_display_ws_drop_keeps_lease.py",
+        "tests/hermes_cli/test_web_server_console_ws.py",
+        "apps/desktop/e2e/at-rest-connection-token.spec.ts",
+        "tools/bot_desktop/lease.py",
+        "agent/monitoring/emitter.py",
+        "cron/bot_chat_delivery.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 2783,
+      "excerpt": [
+        "hermes_cli/web_routers/display.py",
+        92,
+        131
+      ],
+      "tests_listed": 3
+    },
+    {
+      "task": "1c39127d37",
+      "gold": [
+        "agent/display.py"
+      ],
+      "listed": [
+        "agent/memory_manager.py",
+        "agent/inline_tool_executors.py",
+        "tools/memory_tool.py",
+        "tests/agent/test_background_review_list_shapes.py",
+        "hermes_cli/observability/shared_metrics_loop.py",
+        "tools/registry.py",
+        "tests/tools/test_memory_tool.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 741,
+      "tests_listed": 2
+    },
+    {
+      "task": "0cb3760383",
+      "gold": [
+        "hermes_cli/model_switch.py"
+      ],
+      "listed": [
+        "hermes_cli/model_switch.py",
+        "gateway/run.py",
+        "hermes_cli/runtime_provider.py",
+        "tests/hermes_cli/test_model_switch_custom_providers.py",
+        "hermes_cli/models_local.py",
+        "hermes_cli/config_providers.py",
+        "utils.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 883,
+      "tests_listed": 1
+    },
+    {
+      "task": "44cf71f231",
+      "gold": [
+        "agent/conversation_compression.py",
+        "hermes_state_messages.py"
+      ],
+      "listed": [
+        "hermes_cli/observability/shared_metrics_efficiency.py",
+        "hermes_state_messages.py",
+        "hermes_state_search.py",
+        "plugins/memory/openviking/__init__.py",
+        "hermes_state.py",
+        "agent/conversation_compression.py",
+        "hermes_cli/sessions_cmd.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 728,
+      "tests_listed": 0
+    },
+    {
+      "task": "a3537b6f04",
+      "gold": [
+        "hermes_cli/cli_modern_layout.py"
+      ],
+      "listed": [
+        "hermes_cli/cli_modern_layout.py",
+        "agent/reasoning_summaries.py",
+        "hermes_cli/cli_stream_mixin.py",
+        "tests/hermes_cli/test_reasoning_command.py",
+        "agent/chat_completion_helpers.py",
+        "agent/message_content.py",
+        "cli.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 1237,
+      "excerpt": [
+        "hermes_cli/cli_modern_layout.py",
+        115,
+        121
+      ],
+      "tests_listed": 1
+    },
+    {
+      "task": "cd69be6909",
+      "gold": [
+        "tui_gateway/methods_config.py"
+      ],
+      "listed": [
+        "hermes_cli/cron.py",
+        "hermes_cli/gateway.py",
+        "hermes_cli/gateway_windows.py",
+        "tests/hermes_cli/test_ensure_gateway_service.py",
+        "hermes_cli/update_cmd_windows.py",
+        "tools/cronjob_job_args.py",
+        "gateway/status.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 709,
+      "tests_listed": 1
+    },
+    {
+      "task": "4a78de2805",
+      "gold": [
+        "tools/terminal_tool_backends.py"
+      ],
+      "listed": [
+        "hermes_cli/setup_terminal.py",
+        "tools/environments/__init__.py",
+        "hermes_cli/doctor_tools.py",
+        "tests/hermes_cli/test_doctor_terminal_backends.py",
+        "tools/tool_backend_helpers.py",
+        "tools/environments/base.py",
+        "hermes_cli/config.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1226,
+      "excerpt": [
+        "hermes_cli/setup_terminal.py",
+        167,
+        172
+      ],
+      "tests_listed": 1
+    },
+    {
+      "task": "e3fbd32d26",
+      "gold": [
+        "hermes_cli/gateway_setting_commands.py"
+      ],
+      "listed": [
+        "hermes_cli/gateway_agent.py",
+        "hermes_cli/gateway_plugin_commands.py",
+        "hermes_cli/gateway_tools.py",
+        "tests/hermes_cli/test_gateway_tools.py",
+        "tools/connectors/portal/tools_cache.py",
+        "hermes_cli/gateway_side.py",
+        "hermes_cli/cli_init_mixin.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 662,
+      "tests_listed": 1
+    },
+    {
+      "task": "d4fa373017",
+      "gold": [
+        "hermes_cli/profile_distribution.py"
+      ],
+      "listed": [
+        "hermes_cli/profile_distribution.py",
+        "hermes_cli/profiles.py",
+        "hermes_cli/update_cmd.py",
+        "tests/hermes_cli/test_backup.py",
+        "hermes_cli/backup.py",
+        "hermes_constants.py",
+        "evals/botmode-dm-delivery/exception-tick.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 777,
+      "tests_listed": 1
+    },
+    {
+      "task": "696f6e9ff9",
+      "gold": [
+        "agent/agent_runtime_helpers.py"
+      ],
+      "listed": [
+        "hermes_state_sessions.py",
+        "tui_gateway/agent_callbacks.py",
+        "tui_gateway/methods_session.py",
+        "tests/tui_gateway/test_tui_gateway_server.py",
+        "hermes_state_usage.py",
+        "tui_gateway/server.py",
+        "gateway/slash_commands_model.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 826,
+      "tests_listed": 1
+    }
+  ]
+}

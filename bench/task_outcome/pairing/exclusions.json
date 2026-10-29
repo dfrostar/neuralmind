@@ -1,0 +1,26 @@
+[
+ {
+  "id": "fc15ec8fe3",
+  "reason": "prompt leaks identifiers: ['cron']"
+ },
+ {
+  "id": "6c9420706e",
+  "reason": "fix adds test files ['tests/tools/test_bot_mode_dm_entry.py']"
+ },
+ {
+  "id": "f5a3cd6bd8",
+  "reason": "prompt leaks identifiers: ['adapter']"
+ },
+ {
+  "id": "33f3d96b99",
+  "reason": "prompt leaks identifiers: ['SKIPPED', '_is_protected_dir', 'DIRECTORY', 'HERMES_HOME']"
+ },
+ {
+  "id": "c55cd732c8",
+  "reason": "fix adds test files ['tests/gateway/test_inactivity_timeout_receipt.py']"
+ },
+ {
+  "id": "01a7efaed5",
+  "reason": "fix adds test files ['tests/test_atomic_write_fsync_dir_target.py']"
+ }
+]
