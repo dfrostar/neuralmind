@@ -207,6 +207,7 @@
                 <li><strong>Loading an index asks only whether it has rows</strong> &mdash; not a count of every row by community, which cost ~65&nbsp;ms on hermes-agent</li>
                 <li><strong>Measured on an M3</strong> &mdash; alternating versions over three rounds, the hook took 1.16&nbsp;s against 1.40&nbsp;s per prompt on hermes-agent (269,151 nodes), 0.52&nbsp;s against 0.55&nbsp;s on NeuralMind&rsquo;s own repository, and 0.42&nbsp;s against 0.45&nbsp;s on requests, with the same block on every call</li>
                 <li><strong>The build&rsquo;s type pass reads each file once, in one thread</strong> &mdash; it searched a file again for every function it looked up there, in a thread pool that only contended for Python&rsquo;s lock: 17&nbsp;s against 121&ndash;123&nbsp;s on hermes-agent, 0.56&nbsp;s against 1.73&nbsp;s on NeuralMind, with identical type edges</li>
+                <li><strong>A rebuild parses only the files that changed</strong> &mdash; each file&rsquo;s types are kept in <code>.neuralmind/type_cache.json</code>, keyed by a hash of its text: on hermes-agent the pass took 15.9&nbsp;s on a first build and 1.0&ndash;1.2&nbsp;s on a rebuild, with identical type edges</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.2.md">v4.23.2 release notes</a></p>
         </div>

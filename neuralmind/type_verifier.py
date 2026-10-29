@@ -12,10 +12,11 @@ type" — type inference is observability, never a gate on the build.
 Speed: each file is parsed and walked once, into a ``{function name:
 TypeInfo}`` map, and the maps are kept in ``.neuralmind/type_cache.json``
 between builds, keyed by the file's content hash, so a rebuild parses only
-the files that changed. On hermes-agent (359,225 calls edges, 4,030 files)
-the pass took 130 s when it walked a file's whole AST once per distinct
-callee. The maps give the same answers: a lookup returns the first matching
-function in the order the old per-lookup walk visited them.
+the files that changed. On hermes-agent (359,225 calls edges, 5,240 files)
+the pass took 122 s when it walked a file's whole AST once per distinct
+callee, 16 s on a first build with the maps, and ~1 s on a rebuild. The maps
+give the same answers: a lookup returns the first matching function in the
+order the old per-lookup walk visited them.
 """
 
 from __future__ import annotations
