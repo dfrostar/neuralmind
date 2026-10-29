@@ -329,3 +329,38 @@ def test_loading_an_index_asks_only_whether_it_has_rows(temp_project, monkeypatc
     empty = NeuralMind(str(temp_project))
     monkeypatch.setattr(empty.embedder, "has_rows", lambda: False)
     assert not empty._load_existing_index()
+
+
+def test_a_slow_load_still_names_the_node_count(temp_project, monkeypatch, capsys):
+    # The v4.4.0 notice, `Loading index (N nodes)...`: counted only once a
+    # load has taken two seconds, so a fast load never pays for it.
+    from neuralmind import NeuralMind
+    from neuralmind import core as core_mod
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+    total = mind.embedder.get_stats()["total_nodes"]
+
+    class FiresNow:
+        def __init__(self, _interval, fn):
+            self.fn, self.daemon = fn, False
+
+        def start(self):
+            self.fn()
+
+        def cancel(self):
+            pass
+
+    monkeypatch.setattr(core_mod.threading, "Timer", FiresNow)
+    assert mind._load_existing_index()
+    assert f"Loading index ({total:,} nodes)..." in capsys.readouterr().err
+
+
+def test_the_in_memory_backend_has_rows_once_it_holds_a_node(project):
+    from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+
+    backend = InMemoryEmbeddingBackend(str(project))
+    assert backend.has_rows() is False
+    backend._index["n1"] = {"metadata": {"community": 0}}
+    assert backend.has_rows() is True
+    assert backend.has_rows() is (backend.get_stats()["total_nodes"] > 0)

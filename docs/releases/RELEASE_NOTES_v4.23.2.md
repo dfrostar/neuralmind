@@ -32,16 +32,19 @@ stored type edges come out identical, checked byte for byte.
 
 `neuralmind _hook` flushes its output and ends the process with `os._exit`.
 The exit code and everything the hook printed are unchanged. Nothing in a
-hook relies on cleanup at exit: there are no exit handlers, files are written
-in `with` blocks, and background work (the graph-cache warmer, session
-maintenance) runs in detached processes of its own.
+hook relies on cleanup at exit: NeuralMind registers no exit handler
+(logging's has nothing left to flush), files are written in `with` blocks,
+and background work (the graph-cache warmer, session maintenance) runs in
+detached processes of its own. An independent review ran all eleven hook
+actions and found nothing left for the interpreter's exit to do.
 
 ### Loading an index asks only whether it has rows
 
 Each vector backend has a cheap `has_rows()` check (`SELECT 1 … LIMIT 1` on
 turbovec, a row count on ChromaDB), and loading an index uses it instead of
-the full statistics. The notice printed when a load takes over two seconds
-now reads `Loading index...`, without the node count it no longer has.
+the full statistics. The notice printed when a load takes over two seconds,
+`Loading index (8,936 nodes)...`, still names the count: it is counted only
+then, so a fast load never pays for it.
 
 ### The type verifier reads each file once, in one thread
 
@@ -53,13 +56,22 @@ for the TypeScript, Go and Rust trees, as their search did. The pass runs in
 one thread, and its edges come out in call-edge order, the same order every
 build. Before, they came out in whatever order the threads finished.
 
+One thread also ends a race. When a call's target has no source file, the
+verifier looks the name up in a project-wide function index it builds on
+first use, and with eight threads some lookups read that index while another
+thread was still filling it: v4.23.1 dropped some type edges at random on
+such a project. An independent review measured 21–23 edges across 12 runs on
+one; v4.23.2 gives all 23 every time. hermes-agent, NeuralMind, requests and
+the test fixtures never build that index, so their results below are the
+same as before.
+
 ## What the agent sees post-install
 
 | Agent | Before | After |
 |---|---|---|
 | Claude Code (`UserPromptSubmit`) | The block, after the hook freed its graph and counted the index | The same block, 0.24 s sooner per prompt on hermes-agent, ~0.03 s on typical repositories (M3) |
 | Hermes-Agent (plugin) | As above, through the plugin's `pre_llm_call` | As above |
-| Cursor, Cline, generic MCP | The MCP server checks the index once when it loads | The same check without the count; no per-prompt hook |
+| Cursor, Cline, generic MCP | The MCP server checks the index once when it loads | The same check, cheaper; no per-prompt hook |
 | Anyone who builds | The type pass took 121–123 s of a hermes-agent build | 17 s, with the same type edges |
 
 ---

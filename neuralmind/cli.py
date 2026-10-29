@@ -6200,8 +6200,9 @@ def _exit_without_teardown(code: int) -> None:
     On a large index the hook holds its graph in a reference cycle (the
     selector keeps a bound method of the NeuralMind instance), so a normal
     exit spent ~0.16 s freeing it on every prompt. Nothing in a hook needs
-    exit-time cleanup: there are no atexit handlers, files are written in
-    ``with`` blocks, and background work runs in detached processes.
+    exit-time cleanup: NeuralMind registers no exit handler (logging's own
+    has nothing left to flush, as its handlers flush every record), files are
+    written in ``with`` blocks, and background work runs in detached processes.
     """
     import contextlib
 
