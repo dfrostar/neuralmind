@@ -45,6 +45,7 @@ import json
 import os
 import random
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -280,23 +281,118 @@ def parse_hermes_stream(lines: list[str]) -> dict:
     }
 
 
-def hermes_session(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> dict:
-    """The model and API-call count Hermes recorded for a session, read-only."""
-    if not session_id or not state_db.is_file():
-        return {}
+def _state_db_rows(state_db: Path, sql: str, params: tuple) -> list[tuple]:
+    if not state_db.is_file():
+        return []
     import sqlite3
 
     db = sqlite3.connect(f"file:{state_db}?mode=ro", uri=True)
     try:
-        row = db.execute(
-            "SELECT model, api_call_count, billing_base_url FROM sessions WHERE id = ?",
-            (session_id,),
-        ).fetchone()
+        return db.execute(sql, params).fetchall()
     finally:
         db.close()
-    if not row:
+
+
+def hermes_session(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> dict:
+    """The model, API calls and tokens Hermes recorded for a session, read-only."""
+    if not session_id:
         return {}
-    return {"model": row[0], "api_calls": row[1], "base_url": row[2]}
+    rows = _state_db_rows(
+        state_db,
+        "SELECT model, api_call_count, billing_base_url, input_tokens, output_tokens "
+        "FROM sessions WHERE id = ?",
+        (session_id,),
+    )
+    if not rows:
+        return {}
+    model, calls, base_url, tokens_in, tokens_out = rows[0]
+    return {
+        "model": model,
+        "api_calls": calls,
+        "base_url": base_url,
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+    }
+
+
+def hermes_session_in(ws: Path, state_db: Path = HERMES_STATE_DB) -> str | None:
+    """The newest Hermes session started in ``ws``.
+
+    A run cut off by the timeout prints no ``result`` event, so its session id
+    comes from here. Hermes records the resolved directory.
+    """
+    rows = _state_db_rows(
+        state_db,
+        "SELECT id FROM sessions WHERE cwd = ? ORDER BY started_at DESC LIMIT 1",
+        (os.path.realpath(ws),),
+    )
+    return rows[0][0] if rows else None
+
+
+def stop_workspace_processes(ws: Path) -> int:
+    """Terminate every process whose working directory is inside ``ws`` (Linux).
+
+    The agent's commands run in the Hermes gateway, not under this script, and
+    a command it left in the background would go on changing the workspace
+    while the tests judge it. When one finishes, Hermes also wakes the session
+    for another turn. Returns how many were stopped.
+    """
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return 0
+    root = os.path.realpath(ws)
+    stopped = 0
+    for entry in proc.iterdir():
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            cwd = os.readlink(entry / "cwd")
+        except OSError:
+            continue
+        if cwd == root or cwd.startswith(root + os.sep):
+            try:
+                os.kill(int(entry.name), signal.SIGTERM)
+                stopped += 1
+            except OSError:
+                pass
+    return stopped
+
+
+def wait_hermes_idle(
+    session_id: str | None,
+    state_db: Path = HERMES_STATE_DB,
+    quiet: float = 30.0,
+    limit: float = 3600.0,
+    poll: float = 2.0,
+) -> float | None:
+    """Wait until Hermes has no work left for the session; seconds waited, None at ``limit``.
+
+    The Hermes client returns, or is killed at the timeout, while the gateway
+    may still be running the session: a killed client leaves its turn going,
+    and a finished background command queues a new one. Idle means no queued
+    or running turn (every admission ``terminal``) and no activity for
+    ``quiet`` seconds.
+    """
+    if not session_id:
+        return 0.0
+    start = time.monotonic()
+    while True:
+        pending = _state_db_rows(
+            state_db,
+            "SELECT count(*) FROM session_admissions "
+            "WHERE target_session_id = ? AND status != 'terminal'",
+            (session_id,),
+        )
+        last = _state_db_rows(
+            state_db, "SELECT last_activity_at FROM sessions WHERE id = ?", (session_id,)
+        )
+        busy = bool(pending and pending[0][0])
+        recent = bool(last and last[0][0] and time.time() - last[0][0] < quiet)
+        if not busy and not recent:
+            return round(time.monotonic() - start, 1)
+        if time.monotonic() - start > limit:
+            return None
+        time.sleep(poll)
 
 
 def harness_failure(agent: dict, timed_out: bool) -> bool:
@@ -371,10 +467,31 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     if args.agent == "hermes":
         prompt_file.unlink(missing_ok=True)
         agent = parse_hermes_stream(stdout.splitlines())
-        session = hermes_session(agent["session_id"])
+        session_id = agent["session_id"] or hermes_session_in(ws)
+        agent["session_id"] = session_id
+        # Nothing may still be working in the workspace when the tests judge it:
+        # stop what the agent left running, then wait out any turn that wakes.
+        stopped, waited = 0, 0.0
+        for _ in range(3):
+            n = stop_workspace_processes(ws)
+            stopped += n
+            more = wait_hermes_idle(session_id)
+            waited = None if more is None else waited + more
+            if waited is None or not n:
+                break
+        agent["background_processes_stopped"] = stopped
+        agent["hermes_idle_wait_s"] = waited
+        if waited is None:
+            failure = "the session was still running in the Hermes gateway an hour later"
+        session = hermes_session(session_id)
         agent["num_turns"] = session.get("api_calls")
         agent["hermes_model"] = session.get("model")
         agent["hermes_base_url"] = session.get("base_url")
+        if agent["total_tokens"] is None and session.get("input_tokens") is not None:
+            # Cut off before its result event: the session's own count so far.
+            agent["input_tokens"] = session["input_tokens"]
+            agent["output_tokens"] = session["output_tokens"]
+            agent["total_tokens"] = session["input_tokens"] + (session["output_tokens"] or 0)
         if session and session.get("model") != args.model:
             # Hermes falls back to another provider when its own model fails:
             # that run measured some other model.
@@ -387,10 +504,13 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         shutil.rmtree(ws, ignore_errors=True)
         transcript.unlink(missing_ok=True)
         raise RunAbortedError(
-            f"{task['id']} {arm} s{seed}: {args.agent} exited {exit_code} without an agent "
-            f"result{': ' + failure if failure else ''} "
-            f"(terminal_reason={agent.get('terminal_reason')}); "
-            f"stderr: {stderr.strip()[-500:]}"
+            f"{task['id']} {arm} s{seed}: "
+            + (
+                failure
+                or f"{args.agent} exited {exit_code} without an agent result "
+                f"(terminal_reason={agent.get('terminal_reason')})"
+            )
+            + f"; stderr: {stderr.strip()[-500:]}"
         )
     changed = sorted(
         set(

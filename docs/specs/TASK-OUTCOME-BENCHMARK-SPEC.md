@@ -263,3 +263,31 @@ drawn by the same rule, that the pilot didn't use.
     agent never edited. On `fa72224183` the block named both fixed files
     first; neither arm solved it, as neither Claude Code arm did in the
     pilot. One run per cell: no inference is drawn from either.
+- 2026-10-29 — the Hermes run's design, fixed after the smoke test and before
+  any of its runs:
+  - **Bounds.** `--max-turns 120` (the smoke's 60 decided most runs) and a
+    3600 s timeout per run. A run that hits the timeout counts as unsolved,
+    with the tokens its Hermes session had used.
+  - **Nothing runs on while the tests judge.** The agent's commands run in
+    the Hermes gateway, which keeps a turn going when its client exits and
+    starts a new one when a background command the agent left finishes (the
+    smoke saw three, all before its run ended). After every run the harness
+    stops any process working in the workspace and waits until Hermes has no
+    turn queued or running for the session; a session still busy an hour
+    later stops the benchmark as a harness failure.
+  - **Primary endpoint: solve rate.** A small model's tokens mostly record how
+    long it searched. A task is solved by an arm when most of its seeds solve
+    it; exact one-sided McNemar test on the tasks only one arm solves. "With
+    NeuralMind, gpt-oss solves more of these tasks" is supported only if
+    p < 0.05. Secondary, reported but not tested: tokens (per-task relative
+    change with its bootstrap interval), wall-clock time, turns, tool calls
+    before the first edit, whether a gold file was edited, and solved runs per
+    arm.
+  - **Two stages.** Stage 1 is seed 0 for both arms, 40 runs. Then one number
+    decides, pooled over both arms so it can't favour either: if fewer than 5
+    of the 40 runs solve their task, the run stops there and is published as
+    "these tasks are too hard for this model to tell the arms apart". Otherwise
+    stage 2 runs seeds 1 and 2 (80 runs) with the same pinned versions, and the
+    analysis code for this variant is committed before stage 2's results are
+    read. The preflight against ai-9970's frozen environment passes before
+    each stage. The result is labelled "pilot" and published whatever it shows.

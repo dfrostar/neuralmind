@@ -7,6 +7,10 @@ to a case small enough to work out on paper. Stdlib-only.
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+
+import pytest
 
 from evals.task_outcome import analyze, run
 
@@ -175,26 +179,97 @@ def test_hermes_runs_get_no_mcp_and_no_memory(tmp_path) -> None:
     assert cmd[cmd.index("--query-file") + 1] == str(tmp_path / "p.txt")
 
 
-def test_hermes_session_reads_the_model_the_run_used(tmp_path) -> None:
+def _state_db(path, sessions=(), admissions=()):
+    """A Hermes state.db cut down to the columns the runner reads."""
     import sqlite3
 
-    db_path = tmp_path / "state.db"
-    db = sqlite3.connect(db_path)
+    db = sqlite3.connect(path)
     db.execute(
-        "CREATE TABLE sessions (id TEXT, model TEXT, api_call_count INT, billing_base_url TEXT)"
+        "CREATE TABLE sessions (id TEXT, model TEXT, api_call_count INT, billing_base_url TEXT,"
+        " input_tokens INT, output_tokens INT, cwd TEXT, started_at REAL, last_activity_at REAL)"
     )
-    db.execute(
-        "INSERT INTO sessions VALUES ('s1', 'gpt-oss:20b-64k', 7, 'http://127.0.0.1:11434/v1')"
-    )
+    db.execute("CREATE TABLE session_admissions (target_session_id TEXT, status TEXT)")
+    db.executemany("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", sessions)
+    db.executemany("INSERT INTO session_admissions VALUES (?, ?)", admissions)
     db.commit()
     db.close()
+    return path
+
+
+def test_hermes_session_reads_the_model_the_run_used(tmp_path) -> None:
+    db_path = _state_db(
+        tmp_path / "state.db",
+        sessions=[("s1", "gpt-oss:20b-64k", 7, "http://127.0.0.1:11434/v1", 900, 100, "/w", 1, 1)],
+    )
     assert run.hermes_session("s1", db_path) == {
         "model": "gpt-oss:20b-64k",
         "api_calls": 7,
         "base_url": "http://127.0.0.1:11434/v1",
+        "input_tokens": 900,
+        "output_tokens": 100,
     }
     assert run.hermes_session("missing", db_path) == {}
     assert run.hermes_session(None, db_path) == {}
+
+
+def test_a_timed_out_run_finds_its_session_by_the_resolved_workspace(tmp_path) -> None:
+    ws = tmp_path / "real" / "ws"
+    ws.mkdir(parents=True)
+    link = tmp_path / "link"
+    link.symlink_to(tmp_path / "real")
+    real = os.path.realpath(ws)
+    db_path = _state_db(
+        tmp_path / "state.db",
+        sessions=[
+            ("old", "m", 1, "", 0, 0, real, 1.0, 1.0),
+            ("new", "m", 1, "", 0, 0, real, 2.0, 2.0),
+        ],
+    )
+    # Hermes records the resolved directory; the runner may hold a symlinked path.
+    assert run.hermes_session_in(link / "ws", db_path) == "new"
+    assert run.hermes_session_in(tmp_path / "elsewhere", db_path) is None
+
+
+def test_hermes_is_idle_only_with_no_queued_turn_and_no_recent_activity(tmp_path) -> None:
+    import time
+
+    quiet = _state_db(
+        tmp_path / "quiet.db",
+        sessions=[("s", "m", 1, "", 0, 0, "/w", 1.0, time.time() - 120)],
+        admissions=[("s", "terminal")],
+    )
+    assert run.wait_hermes_idle("s", quiet, quiet=30, limit=1, poll=0.01) is not None
+    queued = _state_db(
+        tmp_path / "queued.db",
+        sessions=[("s", "m", 1, "", 0, 0, "/w", 1.0, time.time() - 120)],
+        admissions=[("s", "terminal"), ("s", "running")],
+    )
+    assert run.wait_hermes_idle("s", queued, quiet=30, limit=0.05, poll=0.01) is None
+    recent = _state_db(
+        tmp_path / "recent.db",
+        sessions=[("s", "m", 1, "", 0, 0, "/w", 1.0, time.time())],
+    )
+    assert run.wait_hermes_idle("s", recent, quiet=30, limit=0.05, poll=0.01) is None
+    assert run.wait_hermes_idle(None, quiet) == 0.0
+
+
+@pytest.mark.skipif(not Path("/proc/self/cwd").exists(), reason="reads /proc (Linux)")
+def test_processes_left_running_in_the_workspace_are_stopped(tmp_path) -> None:
+    import subprocess
+    import sys
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    inside = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], cwd=ws)
+    outside = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], cwd=tmp_path)
+    try:
+        assert run.stop_workspace_processes(ws) == 1
+        assert inside.wait(timeout=10) != 0
+        assert outside.poll() is None
+    finally:
+        for p in (inside, outside):
+            p.kill()
+            p.wait()
 
 
 def test_plan_is_deterministic_and_complete() -> None:
