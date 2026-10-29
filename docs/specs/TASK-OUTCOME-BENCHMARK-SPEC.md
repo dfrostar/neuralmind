@@ -328,3 +328,84 @@ drawn by the same rule, that the pilot didn't use.
     before the first edit, still come from the client's turn.
   - `--max-turns 120` caps one Hermes turn, not a run: a wake-up starts
     another, so run 22 made 215 model calls.
+- 2026-10-29 — the memory track, pre-registered before any of its runs (the
+  Hermes run's stage 1 was at 27 of its 40). Exploratory, labelled "pilot",
+  published whatever it shows, and never pooled with another run:
+  - **Question.** Does what NeuralMind learns from use in one repository
+    (its synapse store and session recaps), carried from one task to the
+    next, let the same agent solve more of the later tasks than it does from
+    a fresh index?
+  - **Fresh arm: the Hermes run's `neuralmind` arm,** 3 seeds per task, with
+    no new runs. Every task's base commit holds a team-memory bundle
+    (`.neuralmind-team-memory.json`) and all 20 are empty, so those runs start
+    with nothing learned. The memory track runs on the same frozen ai-9970,
+    with the same pins (NeuralMind 4.23.1, Hermes v0.22.5, `gpt-oss:20b-64k`),
+    isolation, `--max-turns 120` and 3600 s timeout, and a timed-out run is
+    unsolved. ai-9970 isn't upgraded until the track ends. The runner gains
+    an option to carry state; a run without it is unchanged.
+  - **Carried arm: 3 chains, 60 new runs.** Each chain runs the 20 tasks
+    once, starting from an empty store, in order of the fix commit's author
+    date. On these 20 that order also puts every fix commit after its
+    ancestors (checked), so no task learns from a later commit. Commit dates
+    would tie four of them. The order: `0db7d2c97d 8592aa7ab7 366858e431
+    b06a3ee6af e6fa9e4b80 1015eb8b95 4325e063e1 4e01f40e6a e303c7a287
+    21bd34dfc4 108b1ee013 2a6448552b 404ccad4a9 24ee2924b9 53b9813363
+    b4c9886021 8c0411129c 454904f4bb 7a1c90dcab fa72224183`.
+    - Before each task after the first, the runner copies the previous
+      task's `.neuralmind/synapses.db` (with its `-wal` and `-shm` files) and
+      `.neuralmind/recaps/` into the new workspace, then builds its index.
+      Everything else is rebuilt.
+    - The chains run interleaved by position (chain A's first task, B's, C's,
+      then A's second), so a position's three runs are close in time.
+    - A chain's first task starts with nothing learned, as in the fresh arm.
+  - **Primary endpoint: solve rate,** as in the Hermes run. A task counts as
+    solved by an arm when most of its 3 runs solve it (seeds for the fresh
+    arm, chains for the carried arm); exact one-sided McNemar test on the
+    tasks only one arm solves. "Carrying NeuralMind's learned state lets the
+    model solve more of these tasks" is supported only if p < 0.05. The
+    smallest result that clears it is 5 tasks only the carried arm solves and
+    none only the fresh arm solves, so a null result is likely even if the
+    effect is real but modest.
+  - **The mechanism, reported but not tested.** Hermes keeps the block
+    NeuralMind adds to the prompt in the session's first user message
+    (`api_content` in `state.db`), so both arms' blocks are read back
+    afterwards, read-only. Per task, carried against fresh: does the block
+    name a gold file, and is the first file it names one? This shows whether
+    carried state reaches the agent at all, apart from what the model does
+    with it.
+  - **A prediction, falsifiable.** Help shows on the 12 tasks with a gold file
+    that a task earlier in the order also changed ("repeats"), and there's no
+    harm on the other 8. Held if the carried arm solves at least as many of
+    the 12 as the fresh arm, and no more than one fewer of the 8; reported as
+    held or not held, not tested. The repeats: `8592aa7ab7 4325e063e1
+    4e01f40e6a e303c7a287 21bd34dfc4 108b1ee013 2a6448552b 24ee2924b9
+    b4c9886021 8c0411129c 454904f4bb fa72224183`. The store learns from what
+    the agent read and edited, not from the gold files, so an earlier task
+    the agent didn't solve can teach the chain a wrong file.
+  - **Also reported:** whole-session tokens and minutes (`hermes_sessions`),
+    turns, tool calls before the first edit, runs that edited a gold file,
+    solved runs per arm, and the carried arm's solve share minus the fresh
+    arm's at each position in the order.
+  - **Carry-over check, per carried run:** how many learned edges the run
+    starts with, and how many of them have both ends in its new graph. Node
+    ids are file paths plus symbol names, so an edge should survive a rebuild
+    while both names do.
+  - **Order of work.**
+    1. The Hermes run finishes. The memory track runs only if all 120 of
+       its runs complete, as its `neuralmind` arm is the fresh arm.
+    2. A smoke test, not analysed or pooled: one 2-task chain, `4e01f40e6a`
+       then `e303c7a287`, which both fix `secret_scan.py`. It checks that the
+       second run starts with learned edges and that its block differs from
+       the first run's.
+    3. The 60 runs. Their analysis code is committed before their results
+       are read.
+  - **Threats, stated up front.**
+    - Historical control: the fresh runs are days older than the carried
+      ones. The frozen machine is what makes them comparable, and the
+      preflight stops the track on any change.
+    - Compressed time: a chain's runs are about 25 minutes apart, where real
+      use spans days, and the store's decay runs on the wall clock. Reported;
+      the clock isn't faked.
+    - Path dependence: one early run can teach a chain the wrong files. The
+      3 chains show the spread.
+    - One repository, 20 tasks, 3 chains: exploratory.
