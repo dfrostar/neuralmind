@@ -1,5 +1,6 @@
 import './globals.css';
 import { getLatestRelease } from '@/lib/release';
+import LiquidBackground from '@/components/ui/LiquidBackground';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
@@ -174,7 +175,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            <body className="bg-carbon text-ink font-sans antialiased">{children}</body>
+            {/* `isolate` makes the body its own stacking context, so layers behind the
+                content (-z-10, -z-20) paint over the body's background instead of
+                under it. Without it the hero's grid never showed. */}
+            <body className="isolate bg-carbon text-ink font-sans antialiased">
+                <LiquidBackground />
+                {children}
+            </body>
         </html>
     );
 }
