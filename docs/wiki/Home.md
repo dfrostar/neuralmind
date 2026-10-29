@@ -241,11 +241,13 @@ recorded in that project, and a session in another repository also puts its
 edited files' paths into the pinned project's synapse store, from where
 `neuralmind memory publish` can carry them into the committed team-memory
 bundle), so if you use Hermes across several projects, install without a path.
-Unpinned, the plugin follows the directory Hermes works in, which it reads from
-`TERMINAL_CWD` in the Hermes process's environment: that matches the terminal
-CLI and a standalone gateway, but Hermes Desktop, ACP editor sessions and
-per-session workspaces keep each session's directory elsewhere, so there, pin a
-project or set `NEURALMIND_PROJECT`. Each call the plugin makes to NeuralMind
+Unpinned, the plugin follows the directory Hermes works in for each session:
+on Hermes 0.22.2 and later, where every CLI, TUI and Desktop session's hooks
+run in one gateway process, the session's own working directory, which Hermes
+hands it (`ctx.session_cwd()`); on older Hermes, `TERMINAL_CWD` in the Hermes
+process's environment. `NEURALMIND_PROJECT` counts only in the environment of
+the process running the hooks: under the gateway, the gateway's, not the
+`hermes` command you run. Each call the plugin makes to NeuralMind
 waits at most `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds; a session's first
 turn makes two), and one that times out or fails is left out while the turn
 goes ahead. If the plugin runs past Hermes's `plugins.hook_callback_timeout`
@@ -307,11 +309,13 @@ recorded in that project, and a session in another repository also puts its
 edited files' paths into the pinned project's synapse store, from where
 `neuralmind memory publish` can carry them into the committed team-memory
 bundle), so if you use Hermes across several projects, install without a path.
-Unpinned, the plugin follows the directory Hermes works in, which it reads from
-`TERMINAL_CWD` in the Hermes process's environment: that matches the terminal
-CLI and a standalone gateway, but Hermes Desktop, ACP editor sessions and
-per-session workspaces keep each session's directory elsewhere, so there, pin a
-project or set `NEURALMIND_PROJECT`. Each call the plugin makes to NeuralMind
+Unpinned, the plugin follows the directory Hermes works in for each session:
+on Hermes 0.22.2 and later, where every CLI, TUI and Desktop session's hooks
+run in one gateway process, the session's own working directory, which Hermes
+hands it (`ctx.session_cwd()`); on older Hermes, `TERMINAL_CWD` in the Hermes
+process's environment. `NEURALMIND_PROJECT` counts only in the environment of
+the process running the hooks: under the gateway, the gateway's, not the
+`hermes` command you run. Each call the plugin makes to NeuralMind
 waits at most `NEURALMIND_HERMES_TIMEOUT` (default 8 seconds; a session's first
 turn makes two), and one that times out or fails is left out while the turn
 goes ahead. If the plugin runs past Hermes's `plugins.hook_callback_timeout`

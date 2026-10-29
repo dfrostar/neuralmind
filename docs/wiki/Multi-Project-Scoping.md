@@ -53,9 +53,9 @@ neuralmind install-hermes-plugin --unpin   # already pinned: a re-run without a 
 neuralmind install-hermes-plugin /path/to/neuralmind
 ```
 
-The plugin follows the directory by reading `TERMINAL_CWD` from the Hermes process's environment. That matches where Hermes works in the terminal CLI and a standalone gateway (Telegram, Discord …), but the gateway's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory) is rarely the project you mean. Hermes Desktop, ACP editor sessions and per-session workspaces keep each session's directory elsewhere, so the plugin can't follow it there. Unpinned there, every session uses the Hermes process's own `TERMINAL_CWD` (or its working directory), so if that is a built project, all those sessions are served and recorded as that project.
+On Hermes 0.22.2 and later, every CLI, TUI and Desktop session's hooks run in one Hermes gateway process, and the plugin follows each session through the working directory Hermes hands it (`ctx.session_cwd()`): where the session was started, or, for a messaging chat (Telegram, Discord …), the profile's terminal working directory (`terminal.cwd`, else `MESSAGING_CWD`, else your home directory), which is rarely the project you mean. `NEURALMIND_PROJECT` set on the `hermes` command you run stays in that client; only the gateway's own environment counts, where it covers every session, so treat it like a pin. Before NeuralMind v4.23.1 the plugin read the gateway's `TERMINAL_CWD` instead, so unpinned it served whatever project that was, usually none. On older Hermes, which runs hooks in the client process, the plugin reads `TERMINAL_CWD` from that process's environment: that matches the terminal CLI and a standalone gateway only.
 
-Pin only for a single-project setup or for the gateway. In Hermes Desktop, ACP editor sessions and per-session workspaces, pin a project or set `NEURALMIND_PROJECT`, and everything above about a pin applies.
+Pin only for a single-project setup or for the gateway, and everything above about a pin applies.
 
 ### memU queries
 

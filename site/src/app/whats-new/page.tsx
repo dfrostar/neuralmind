@@ -2,7 +2,8 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import Callout from '@/components/ui/Callout';
 import EvidenceBadge from '@/components/ui/EvidenceBadge';
-import { publicBenchmark, ratioRange, retrievalEval, taskOutcomePilot } from '@/lib/evidence';
+import Icon, { type IconName } from '@/components/ui/Icon';
+import { headline, publicBenchmark, ratioRange, retrievalEval, taskOutcomePilot } from '@/lib/evidence';
 import { getLatestRelease, tagAtLeast } from '@/lib/release';
 import { pageMetadata } from '@/lib/seo';
 import { withCode } from '@/lib/ticks';
@@ -78,10 +79,66 @@ const guards: { name: string; since: string; body: string; cmd: string; href: st
     },
 ];
 
+// v4.16 to v4.23 on one screen, the same releases as the list below grouped
+// by who they're for, the newest group first and full width. The evidence
+// panel under these renders its numbers from lib/evidence, so a re-run
+// benchmark changes them here too.
+const glance: {
+    title: string;
+    icon: IconName;
+    items: { text: string; version: string }[];
+    note?: string;
+    wide?: boolean;
+}[] = [
+    {
+        title: 'The prompt block points at the code',
+        icon: 'recall',
+        items: [
+            { text: 'The code comes before its tests, unless the prompt names a test', version: '4.23.0' },
+            { text: 'A test that matches the prompt brings the code it tests', version: '4.23.0' },
+            { text: 'The prompt hook answers within the Hermes plugin’s time limit on a large index', version: '4.23.0' },
+        ],
+        note: 'Measured offline, not in agent runs. The release notes give the numbers.',
+        wide: true,
+    },
+    {
+        title: 'AI agents on CUI code',
+        icon: 'shield-check',
+        items: [
+            { text: 'One setting for the hardened configuration: `security.profile: cui`', version: '4.16.0' },
+            { text: 'Signed audit checkpoints', version: '4.16.0' },
+            { text: 'Audit records to syslog as they are written', version: '4.19.0' },
+            { text: '`neuralmind hardening` checks a 17-rule baseline', version: '4.19.0' },
+            { text: '`neuralmind data-locations` lists where the data is', version: '4.18.0' },
+        ],
+        note: 'These support controls in your system. Your assessor decides compliance.',
+    },
+    {
+        title: 'Context you can trust',
+        icon: 'index',
+        items: [
+            { text: 'An answer from a stale index says so', version: '4.17.0' },
+            { text: 'A feature branch’s calls and memory stay on its branch', version: '4.22.0' },
+            { text: '`neuralmind doctor` shows whether anything calls NeuralMind', version: '4.22.0' },
+            { text: '`neuralmind demo` runs offline, straight after install', version: '4.19.0' },
+        ],
+    },
+];
+
 // Newest first. `version` decides the label: a release the build can't find
 // yet shows as the next release, judged against the latest tag (no version is
 // hardcoded on the page).
 const releases: { version: string; title: string; points: string[] }[] = [
+    {
+        version: '4.23.0',
+        title: 'The prompt block points at the code, not its tests',
+        points: [
+            'The block an agent gets with each prompt lists the code before its tests, unless the prompt names a test, and its excerpt quotes code. A prompt that only says how to run the tests no longer puts test files first.',
+            'A test file that matches the prompt brings the code it tests into the block, found by name: `test_x.py` tests `x.py`.',
+            'On a large index the prompt hook now answers within the Hermes plugin’s time limit. The loaded graph is cached, so a turn no longer reloads it from scratch.',
+            'Measured offline, not in agent runs: the block by replaying it on held-out tasks, the hook by timing it. The release notes give the numbers, including where the change didn’t help.',
+        ],
+    },
     {
         version: '4.22.0',
         title: 'Doctor says whether anything calls NeuralMind',
@@ -158,6 +215,10 @@ export default async function WhatsNewPage() {
     const released = (v: string) => tagAtLeast(rel.tag, v);
     const vsGrep = ratioRange(31, 67);
     const pilot = taskOutcomePilot;
+    const vsGrepFound = headline('ripgrep (query keywords');
+    // The pilot's NeuralMind arm: every task once per seed.
+    const pilotRuns = pilot.figures.tasks * pilot.figures.seeds;
+    const evalHits = retrievalEval.questions - retrievalEval.misses;
 
     return (
         <>
@@ -223,7 +284,90 @@ export default async function WhatsNewPage() {
 
                 <section id="releases" className="mb-16 scroll-mt-28">
                     <h2 className="font-display text-2xl font-bold text-white mb-2 tracking-tight">Recent releases</h2>
-                    <p className="text-muted leading-relaxed mb-6">Newest first. Each links its full release notes.</p>
+                    <p className="text-muted leading-relaxed mb-6">
+                        v4.16 to v4.23 at a glance, then every release, newest first, with its full notes.
+                    </p>
+                    <div id="at-a-glance" className="mb-12 scroll-mt-28">
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            {glance.map((g) => (
+                                <article
+                                    key={g.title}
+                                    className={`panel rounded-card p-5 md:p-6 flex flex-col${g.wide ? ' md:col-span-2' : ''}`}
+                                >
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4">
+                                        <Icon name={g.icon} className="w-6 h-6 text-electric shrink-0" />
+                                        <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">
+                                            {g.title}
+                                        </h3>
+                                        {g.items.some((it) => !released(it.version)) && (
+                                            <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
+                                                in the next release, on main now
+                                            </span>
+                                        )}
+                                    </div>
+                                    <ul className="space-y-3 flex-1">
+                                        {g.items.map((it) => (
+                                            <li key={it.text} className="flex items-baseline justify-between gap-4 text-sm leading-relaxed">
+                                                <span className="text-body">{withCode(it.text)}</span>
+                                                <a href={notes(it.version)} className={`font-mono text-eyebrow shrink-0 ${link}`}>
+                                                    v{it.version}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {g.note && (
+                                        <p className="text-faint text-caption mt-5 pt-4 border-t border-carbon-border">{g.note}</p>
+                                    )}
+                                </article>
+                            ))}
+                        </div>
+                        <article className="panel rounded-card p-5 md:p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Icon name="dashboard" className="w-6 h-6 text-electric shrink-0" />
+                                <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">
+                                    Evidence, not adjectives
+                                </h3>
+                            </div>
+                            <div className="grid sm:grid-cols-2 gap-8 mb-6">
+                                <div>
+                                    <p className="metric text-4xl md:text-5xl font-bold text-proton mb-3">
+                                        {publicBenchmark.found('neuralmind')}
+                                    </p>
+                                    <p className="text-body text-sm leading-relaxed mb-3">
+                                        public-benchmark queries where NeuralMind found the file the fix changed.
+                                        Keyword search with ripgrep:{' '}
+                                        <span className="whitespace-nowrap">{publicBenchmark.found('ripgrep')}</span>.
+                                    </p>
+                                    <EvidenceBadge level={vsGrepFound.evidence} />
+                                </div>
+                                <div>
+                                    <p className="metric text-4xl md:text-5xl font-bold text-proton mb-3">
+                                        {pilot.figures.mcp_tool_calls} of {pilotRuns}
+                                    </p>
+                                    <p className="text-body text-sm leading-relaxed mb-3">
+                                        pilot runs in which the agent called a NeuralMind tool. Cost per task showed no
+                                        measurable difference: {pilot.figures.median_cost_change} (95% CI{' '}
+                                        {pilot.figures.cost_change_ci95}).
+                                    </p>
+                                    <EvidenceBadge level={pilot.evidence} />
+                                </div>
+                            </div>
+                            <p className="text-muted text-sm leading-relaxed pt-4 border-t border-carbon-border">
+                                On a larger eval the right file is in the top five on{' '}
+                                <span className="metric text-proton">
+                                    {evalHits} of {retrievalEval.questions}
+                                </span>{' '}
+                                questions, and all {retrievalEval.misses} misses are published. Getting agents to use what
+                                NeuralMind finds is the work now.
+                            </p>
+                        </article>
+                        {/* A dated snapshot: its numbers are as of October 2026, unlike the panel above. */}
+                        <p className="text-sm mt-4">
+                            <a href="/slides/neuralmind-v4.16-v4.22.pdf" className={link}>
+                                v4.16 to v4.22 as 20 slides, October 2026 (PDF) →
+                            </a>
+                        </p>
+                    </div>
                     <ol className="space-y-8">
                         {releases.map((r) => (
                             <li key={r.version} className="pl-5 border-l border-carbon-border">
