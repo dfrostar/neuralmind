@@ -33,6 +33,13 @@ code checked out, which every build replaces (v4.22.0+). A call you add on
 Before v4.22.0 these edges were seeded into `shared`, so a branch's calls stayed
 in `main`'s recall until they decayed.
 
+The memory file Claude Code loads at session start
+(`.neuralmind/SYNAPSE_MEMORY.md`) is written from the same namespaces
+(v4.22.0+), and its `Namespaces:` line names them: on `main` it lists nothing
+learned on `feature-x`. Through v4.21.0 it read every namespace, so the spike's
+associations reached the agent through that file even though recall on `main`
+didn't read them.
+
 Don't take the weighting on faith — trace it:
 
 ```bash

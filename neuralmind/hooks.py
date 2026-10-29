@@ -579,9 +579,10 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         return 0
 
     if action == "session-start":
-        # Warm the synapse store, run one decay tick, then export the
-        # learned associations as a markdown memory file so Claude Code's
-        # auto-memory system picks it up on this very session.
+        # Close the previous session's scratch state, run one decay tick, then
+        # export the learned associations as a markdown memory file for Claude
+        # Code's auto-memory. On a large store the tick and the export run in
+        # a detached process after this returns (session_maintenance).
         cwd = payload.get("cwd") or os.getcwd()
         # Session recap: on a fresh or cleared session, say where the
         # previous one left off; after a compaction, give this session its
@@ -593,16 +594,18 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         )
         if recap:
             _emit_for_event("SessionStart", recap)
+        # The first prompt's recall loads the graph: start writing its cache
+        # now if it needs it (graph_cache). Fails open.
+        if os.environ.get("NEURALMIND_SYNAPSE_INJECT") != "0":
+            from .graph_cache import warm_in_background
+
+            warm_in_background(cwd)
+        from .session_maintenance import run_or_start
+
         if _learning_disabled():
             # NEURALMIND_NO_LEARN=1: no decay, no imports, no namespace
             # clears — only the read-only memory export.
-            if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
-                try:
-                    from .synapse_memory import export_synapse_memory
-
-                    export_synapse_memory(cwd)
-                except Exception:
-                    pass
+            run_or_start(cwd)
             return 0
         # A new, resumed, cleared or compacted session holds none of the
         # earlier reads read-dedup recorded for it.
@@ -610,31 +613,8 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
         store = _open_synapses(cwd)
         if store is None:
             return 0
-        try:
-            store.decay()
-        except Exception:
-            pass
-        # Team memory: inherit the committed team bundle once into `shared`, so a
-        # fresh clone's agent starts with the team's learned associations. Gated
-        # by NEURALMIND_TEAM_MEMORY=0; idempotent (content-hash) and fail-open.
-        try:
-            from .team_memory import maybe_import_team_memory
-
-            maybe_import_team_memory(cwd, store)
-        except Exception:
-            pass
-        # Self-improvement engine: tune the selector from logged usage. Opt-in
-        # (not the != "0" pattern) because it is net behavior change. One JSONL
-        # read plus at most one meta write — stays fast — and tuner failures
-        # are swallowed (tune_selector itself fails open) so the hook always
-        # returns 0. Runs at most once per session, here at the boundary.
-        if os.environ.get("NEURALMIND_SELECTOR_AUTOTUNE") == "1":
-            try:
-                from .self_improve import tune_selector
-
-                tune_selector(cwd)
-            except Exception:
-                pass
+        # The two resets below stay in the hook, ahead of the session's first
+        # tool call; they used to follow the decay tick, and commute with it.
         # Ephemeral memory is session-scoped. Claude Code has no SessionEnd
         # lifecycle event, so the next session's start is the boundary where
         # the previous session's scratch associations are dropped (PRD 4).
@@ -652,13 +632,9 @@ def _run_action(action: str, payload: dict, tool_input: dict, tool_response: dic
             store.delete_meta("_last_touched_file")
         except Exception:
             pass
-        if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
-            try:
-                from .synapse_memory import export_synapse_memory
-
-                export_synapse_memory(cwd)
-            except Exception:
-                pass
+        # Decay, team-memory import, selector autotune (opt-in), then the
+        # export (NEURALMIND_SYNAPSE_EXPORT=0 skips it).
+        run_or_start(cwd)
         return 0
 
     if action == "prompt-submit":
@@ -788,13 +764,20 @@ def _spread_for_prompt(project_path: str, prompt: str) -> str:
 
     try:
         from .core import NeuralMind
+        from .graph_cache import warm_in_background
         from .prompt_recall import PromptRecall, format_block, recall
 
+        # A large graph with no current cache loads slowly, and a hook stopped
+        # by its caller's timeout mid-load would never write the cache: a
+        # detached process writes it for the next prompt (graph_cache).
+        warm_in_background(project_path)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             mind = NeuralMind(project_path)
             # Recall reads an existing index; it never builds one. Without
             # this, the search below falls through to a first-run build.
-            if not mind._load_existing_index():
+            # Recall never reads the structural index, which took 1-4 s to
+            # build on hermes-agent's graph.
+            if not mind._load_existing_index(structural=False):
                 return ""
             result = recall(mind, prompt)
     except Exception:

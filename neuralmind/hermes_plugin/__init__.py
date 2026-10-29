@@ -25,9 +25,14 @@ Python interpreter ``install-hermes-plugin`` recorded, else the ``neuralmind``
 command on PATH, else Hermes's own Python.
 
 Which project: ``NEURALMIND_PROJECT``, else the ``project`` saved at install,
-else Hermes's ``TERMINAL_CWD`` (or, only when that's unset, the current
-directory) — and only one where ``neuralmind build`` has run. Anything else,
-and the plugin does nothing.
+else the directory Hermes works in for the session — and only one where
+``neuralmind build`` has run. Anything else, and the plugin does nothing. Since
+Hermes 0.22.2 every local session's hooks run in one gateway process, whose own
+working directory and environment belong to no session, so that directory is
+``ctx.session_cwd()``; on older Hermes, which runs hooks in the client process,
+it is ``TERMINAL_CWD``, or the current directory when that's unset. Either way
+``NEURALMIND_PROJECT`` must be in the environment of the process running the
+hooks: under the gateway, the gateway's, not the client's you launched.
 Everything fails open: an error or a timeout (``NEURALMIND_HERMES_TIMEOUT``,
 default 8 seconds) means no context, never a broken turn. When NeuralMind can't
 be run, is too old or times out, the plugin says so once per process in
@@ -61,6 +66,9 @@ _V4A_PATH = re.compile(r"^\*\*\* (?:Update|Add) File: (.+)$", re.MULTILINE)
 _V4A_GONE = re.compile(r"^\*\*\* (?:Delete File: (.+)|Move File: (.+?) ->)", re.MULTILINE)
 
 _HERE = Path(__file__).resolve().parent
+
+# The plugin context Hermes passed to register(): it knows the session a hook runs for.
+_HERMES = None
 
 # Turns that aren't the user's work: a subagent's (its "user message" is written by
 # the parent agent) and a cron job's. Hermes's post_tool_call carries neither
@@ -175,16 +183,31 @@ def _check_version(prefix: list[str]) -> None:
         pass
 
 
+def _work_dir() -> str | None:
+    """The directory Hermes works in for the session this hook runs for, if any.
+
+    Hermes 0.22.2+ gives plugins ``ctx.session_cwd()``: the session's workspace (the
+    profile's terminal cwd for a chat), ``""`` when it has none. The gateway's own
+    cwd and TERMINAL_CWD are shared by every session, so they never stand in for it.
+    Older Hermes runs hooks in the client process: TERMINAL_CWD when it's set (an
+    unbuilt one means no project), else the directory the process started in.
+    """
+    session_cwd = getattr(_HERMES, "session_cwd", None)
+    if callable(session_cwd):
+        try:
+            cwd = session_cwd()
+        except Exception:
+            return None
+        return cwd.strip() if isinstance(cwd, str) and cwd.strip() else None
+    return os.environ.get("TERMINAL_CWD") or os.getcwd()
+
+
 def _project() -> Path | None:
-    """The NeuralMind project for this Hermes process, if it has been built."""
-    terminal_cwd = os.environ.get("TERMINAL_CWD")
+    """The NeuralMind project for the session this hook runs for, if it has been built."""
     candidates = (
         os.environ.get("NEURALMIND_PROJECT"),
         _config().get("project"),
-        terminal_cwd,
-        # Hermes works in TERMINAL_CWD when it's set, so an unbuilt TERMINAL_CWD
-        # means no project — not the directory the process happened to start in.
-        None if terminal_cwd else os.getcwd(),
+        _work_dir(),
     )
     for candidate in candidates:
         if not candidate or not isinstance(candidate, str):
@@ -419,7 +442,7 @@ def _record_read(project: Path, session_id: str, args: dict) -> None:
         return
     file_path = Path(path).expanduser()
     if not file_path.is_absolute():
-        file_path = Path(os.environ.get("TERMINAL_CWD") or os.getcwd()) / file_path
+        file_path = Path(_work_dir() or os.getcwd()) / file_path
     # The path is the transition's key: ``src/a.py`` and ``sub/../src/a.py``
     # must be one file, not two with a false step between them. normpath folds
     # the ``..`` without following symlinks, so the key stays spelled the way
@@ -470,8 +493,8 @@ def on_post_tool_call(
         per_file = _v4a_added(patch_text) if isinstance(patch_text, str) else None
         code = args.get("content") or args.get("new_string") or ""
         # Hermes reports the absolute paths it wrote (files_modified). Without
-        # them, resolve as Hermes does: against TERMINAL_CWD, else its own
-        # working directory — not against a pinned project.
+        # them, resolve as Hermes does: against the directory it works in for
+        # the session — not against a pinned project.
         reported = _result_dict(result)
         written = reported.get("files_modified")
         if isinstance(written, list) and written and all(isinstance(p, str) for p in written):
@@ -485,7 +508,7 @@ def on_post_tool_call(
             paths = [p for p in written if not _matches_any(p, suffixes)]
         else:
             paths = _edited_paths(tool_name, args)
-        base = Path(os.environ.get("TERMINAL_CWD") or os.getcwd())
+        base = Path(_work_dir() or os.getcwd())
         payloads = []
         for path in paths:
             file_path = Path(path).expanduser()
@@ -514,5 +537,7 @@ def on_post_tool_call(
 
 def register(ctx) -> None:
     """Hermes plugin entry point."""
+    global _HERMES
+    _HERMES = ctx
     ctx.register_hook("pre_llm_call", on_pre_llm_call)
     ctx.register_hook("post_tool_call", on_post_tool_call)
