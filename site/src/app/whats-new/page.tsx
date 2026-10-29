@@ -361,6 +361,12 @@ export default async function WhatsNewPage() {
                                 NeuralMind finds is the work now.
                             </p>
                         </article>
+                        {/* A dated snapshot: its numbers are as of October 2026, unlike the panel above. */}
+                        <p className="text-sm mt-4">
+                            <a href="/slides/neuralmind-v4.16-v4.22.pdf" className={link}>
+                                v4.16 to v4.22 as 20 slides, October 2026 (PDF) →
+                            </a>
+                        </p>
                     </div>
                     <ol className="space-y-8">
                         {releases.map((r) => (
