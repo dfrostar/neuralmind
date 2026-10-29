@@ -1,7 +1,7 @@
 ---
 name: neuralmind
 description: Answer questions about a code repository from a few hundred tokens of ranked context instead of loading whole source files. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
-version: 4.22.1 # x-release-please-version
+version: 4.23.1 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:

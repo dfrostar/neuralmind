@@ -27,6 +27,7 @@ Key facts, each backed by a runnable eval with its data committed:
 - [What it remembers](https://neuralmind.uk/what-it-remembers/): preferences, feature branches, other models and decay, answered from the code
 - [Team memory](https://neuralmind.uk/team/): sharing learned memory through git, governance, audit, seats
 - [Pricing](https://neuralmind.uk/pricing/): free at 1 seat; Team $29/user/mo
+- [What's new](https://neuralmind.uk/whats-new/): recent releases, and the guards that keep an agent's changes consistent with the code (pattern drift before commit, stale decisions, blast radius, review, index freshness)
 - [Security](https://neuralmind.uk/security/): verifying a release (cosign, build-provenance attestations, SBOM, VEX, SSDF), what goes over the network, air-gapped install, the controls a regulated deployment turns on, disclosure
 
 ## Docs

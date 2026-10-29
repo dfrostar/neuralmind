@@ -1,0 +1,5 @@
+{
+  "7cc1353633": "(c) The test asserts the scratch-prune log contains \"kept '<entry>' — live Hermes process pid=\", an audit line the fix introduces (base logs only removals, TERM/KILL and re-scan rescues), so a correct fix written from the symptom would word or omit that record differently and still fail.",
+  "e1ab557716": "(c) Most FAIL_TO_PASS tests import hermes_cli.ssh_workspace_fs (SshWorkspaceFs, SshWorkspaceFsError), a module the fix creates, and test_ssh_environment_can_skip_agent_file_sync passes SSHEnvironment(sync_files=False), a parameter the fix introduces.",
+  "bda0df67d6": "(c) test_batch_reports_the_entry_each_patch_produced asserts a patched_entries_after field in the batch result, a key the fix introduces (base batch results only carry patched_entries), so a symptom-derived fix to the span rules would not produce it."
+}
