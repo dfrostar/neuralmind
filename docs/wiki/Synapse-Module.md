@@ -278,9 +278,13 @@ the model references associations even without calling the MCP tools:
   exists.
 
 Content: top strongest pairs (with LTP tags), hub nodes, and directional
-"what typically comes next" transitions (v0.11.0+). Keys off `stats()`; an
-empty store still yields a valid document. Purely an export — never blocks the
-live store, fails open (returns the paths that succeeded).
+"what typically comes next" transitions (v0.11.0+). It reads the namespaces a
+merged recall read covers on the checkout (v4.22.0+): the active one, then
+`personal`, `shared` and `structural`, so another branch's memory, or a stale
+`ephemeral` session's, never reaches the file; the header counts those
+namespaces and names them. Through v4.21.0 it read every namespace. An empty
+store still yields a valid document. Purely an export — never blocks the live
+store, fails open (returns the paths that succeeded).
 
 ---
 

@@ -95,6 +95,30 @@ these same 20 prompts, so 7 of 9 is a ceiling, not an estimate. The floors
 guard against a regression on prompts the pilot ran; they don't predict new
 tasks.
 
+Then count the test files among the files each block lists: no score does.
+On a 5-task screen in
+[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent), the
+block named a changed file on 2 tasks, and 18 of the 32 files it listed were
+under `tests/`: the prompt's "run the existing tests" sentence had switched off
+the ordering that puts tests after the code. v4.23.0 fixed that ordering
+([release notes](../releases/RELEASE_NOTES_v4.23.0.md)); on the same 5 tasks
+tests fell to 6 of 35 files listed. Those are the tasks that found the
+problem, so they can't also show the fix works.
+
+### Changing the ranking? Hold tasks out
+
+The floors are set on the prompts that tuned the ranking, so passing them
+says a change broke nothing there, not that it helps elsewhere. For a ranking
+change of your own, tune on one set of tasks, settle the change, then replay
+tasks it never saw, before and after, on the same index for each task, so
+only the ranking differs. v4.23.0's test-file ordering was checked this way
+*(v4.23.0+)*: made on the 5-task screen, then replayed on 12 held-out
+hermes-agent bug fixes. Test files fell from 33 of 82 listed to 14 of 84, and
+the file to fix was listed first on 3 tasks instead of 1, but it was named on
+4 either way: the change reordered the block more than it found new files.
+The tasks, prompts, exclusions, results and script are in
+[`bench/task_outcome/hermes-agent-test-ranking/`](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md).
+
 ## 4. Then measure the outcome
 
 A better block is a reason to run the agent, not a result. The harness that
