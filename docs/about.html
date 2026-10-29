@@ -199,6 +199,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4233">
+            <h2>What&rsquo;s New in v4.23.3 &mdash; a rebuild&rsquo;s type pass parses only the files that changed</h2>
+            <p>v4.23.2 made the build&rsquo;s type pass read each file once. It still parsed every file on every build, incremental ones included, so a rebuild after a one-line commit cost as much as a build from scratch. This release keeps each file&rsquo;s results between builds; the type edges, the stored rows and the block the agent gets come out identical, checked byte for byte.</p>
+            <ul>
+                <li><strong>Each file&rsquo;s return types are kept in <code>.neuralmind/type_cache.json</code></strong> &mdash; keyed by a hash of the file&rsquo;s text, so a rebuild parses only the files whose text changed; a file is read again only when its size, modification time, inode change time or inode moved</li>
+                <li><strong>Measured on an M3</strong> &mdash; on hermes-agent (347,376 type edges) the pass took 1.0&ndash;1.2&nbsp;s on a rebuild against 17.2&nbsp;s in v4.23.2, 1.1&nbsp;s after a one-file edit, and 15.9&nbsp;s on a first build, with identical type edges, stored rows and risks</li>
+                <li><strong>The same prompt block</strong> &mdash; the sample fixture built with the previous type pass and with this one, then rebuilt on the warm cache, gave the same <code>graph.json</code>, the same stored type edges and the same block SHA-256</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.3.md">v4.23.3 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4232">
             <h2>What&rsquo;s New in v4.23.2 &mdash; the same block, sooner, a type pass that no longer slows every build, and an upgrade that keeps the graph cache</h2>
             <p>A phase-by-phase profile of the prompt hook and the build found time spent on work that changes nothing in the result. This release skips it; the block, the graph and the stored type edges come out identical, checked byte for byte.</p>
