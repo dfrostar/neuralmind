@@ -16,7 +16,6 @@ import ast
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -89,17 +88,20 @@ class TypeVerifier:
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
         self._cache: dict[str, TypeInfo | None] = {}
-        self._ast_cache: dict[str, ast.AST] = {}  # file_path -> parsed AST
+        # file_path -> {function name: its TypeInfo}, built in one pass per file
+        self._file_types: dict[str, dict[str, TypeInfo | None]] = {}
         self._ts_langs: dict[str, Language] = {}
         self._use_mypy = os.environ.get("NEURALMIND_TYPE_CHECK") == "1"
         self._module_map: dict[str, str] = {}  # module_name -> file_path
         self._last_graph: dict | None = None
         self._func_index: dict[str, Path] = {}  # func_name -> file_path (lazy-built)
+        self._func_index_built = False
 
     def _build_func_index(self) -> None:
         """Build a function→file index for fast lookup. Called lazily."""
-        if self._func_index:
+        if self._func_index_built:
             return
+        self._func_index_built = True
         for root, _dirs, files in os.walk(self.project_path):
             parts = Path(root).parts
             if any(
@@ -160,18 +162,98 @@ class TypeVerifier:
         self._cache[node_id] = info
         return info
 
-    def _get_ast(self, source_file: Path) -> ast.AST | None:
-        """Get parsed AST for a file, using cache."""
+    def _types_in(self, source_file: Path) -> dict[str, TypeInfo | None]:
+        """Every function's return type in ``source_file``, keyed by name.
+
+        Built once per file. Lookups used to search the file again for each
+        distinct callee (~55 s of a hermes-agent build). Each name keeps the
+        first function of that name in the order that search visited the file,
+        so every lookup gets the answer it got before. A file that can't be
+        read or parsed gives no types, as it did.
+        """
         key = str(source_file)
-        if key in self._ast_cache:
-            return self._ast_cache[key]
-        try:
-            source = source_file.read_text(encoding="utf-8", errors="replace")
-            tree = ast.parse(source)
-            self._ast_cache[key] = tree
-            return tree
-        except (OSError, SyntaxError):
-            return None
+        types = self._file_types.get(key)
+        if types is None:
+            try:
+                types = self._scan_types(source_file)
+            except Exception:
+                types = {}
+            self._file_types[key] = types
+        return types
+
+    def _scan_types(self, source_file: Path) -> dict[str, TypeInfo | None]:
+        ext = source_file.suffix.lower()
+        if ext in (".ts", ".tsx"):
+            return self._scan_ts_like(
+                source_file,
+                "typescript",
+                ("function_declaration", "method_definition", "arrow_function"),
+                self._infer_ts_return,
+            )
+        if ext == ".go":
+            return self._scan_ts_like(
+                source_file, "go", ("function_declaration",), self._infer_go_return
+            )
+        if ext == ".rs":
+            return self._scan_ts_like(
+                source_file, "rust", ("function_item",), self._infer_rust_return
+            )
+
+        # Python via stdlib ast. ast.walk is breadth-first, as the search was.
+        source = source_file.read_text(encoding="utf-8", errors="replace")
+        types: dict[str, TypeInfo | None] = {}
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if node.name in types:
+                continue
+            try:
+                if node.returns:
+                    return_type_str = ast.unparse(node.returns)
+                    types[node.name] = TypeInfo(
+                        return_type=return_type_str,
+                        is_optional=_is_optional_type(return_type_str),
+                        confidence=1.0,
+                        inferred_by="stdlib",
+                    )
+                else:
+                    types[node.name] = TypeInfo(
+                        return_type=None,
+                        is_optional=False,
+                        confidence=0.0,
+                        inferred_by="stdlib",
+                    )
+            except Exception:
+                types[node.name] = None  # the search failed on it too: no type
+        return types
+
+    def _scan_ts_like(self, source_file: Path, lang_name: str, kinds: tuple, infer) -> dict:
+        """One depth-first, pre-order pass over a tree-sitter tree, as the search walked it.
+
+        A function node counts for every ``identifier`` child it has, as the
+        search matched any of them.
+        """
+        lang = self._ts_language(lang_name)
+        if lang is None:
+            return {}
+        source = source_file.read_text(encoding="utf-8", errors="replace")
+        tree = self._ts_parse(source, lang)
+        types: dict[str, TypeInfo | None] = {}
+        stack = [tree.root_node]
+        while stack:
+            node = stack.pop()
+            if node.type in kinds:
+                for child in node.children:
+                    if child.type != "identifier":
+                        continue
+                    name = child.text.decode("utf8")
+                    if name not in types:
+                        try:
+                            types[name] = infer(node)
+                        except Exception:
+                            types[name] = None
+            stack.extend(reversed(node.children))
+        return types
 
     def _ts_language(self, name: str) -> Language | None:
         """Load a tree-sitter language grammar on demand (fail-open)."""
@@ -312,110 +394,7 @@ class TypeVerifier:
         if source_file is None or not source_file.exists():
             return None
 
-        ext = source_file.suffix.lower()
-        if ext in (".ts", ".tsx"):
-            return self._do_ts_infer(func_name, source_file)
-        if ext == ".go":
-            return self._do_go_infer(func_name, source_file)
-        if ext == ".rs":
-            return self._do_rust_infer(func_name, source_file)
-
-        # Default: Python via stdlib ast
-        tree = self._get_ast(source_file)
-        if tree is None:
-            return None
-
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.name == func_name:
-                    if node.returns:
-                        return_type_str = ast.unparse(node.returns)
-                        is_opt = _is_optional_type(return_type_str)
-                        return TypeInfo(
-                            return_type=return_type_str,
-                            is_optional=is_opt,
-                            confidence=1.0,
-                            inferred_by="stdlib",
-                        )
-                    return TypeInfo(
-                        return_type=None,
-                        is_optional=False,
-                        confidence=0.0,
-                        inferred_by="stdlib",
-                    )
-        return None
-
-    def _do_ts_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
-        """TypeScript type inference via tree-sitter."""
-        lang = self._ts_language("typescript")
-        if lang is None:
-            return None
-        try:
-            source = source_file.read_text(encoding="utf-8", errors="replace")
-            tree = self._ts_parse(source, lang)
-        except (OSError, Exception):
-            return None
-
-        def walk(node):
-            if node.type in ("function_declaration", "method_definition", "arrow_function"):
-                for child in node.children:
-                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
-                        return self._infer_ts_return(node)
-            for child in node.children:
-                result = walk(child)
-                if result:
-                    return result
-            return None
-
-        return walk(tree.root_node)
-
-    def _do_go_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
-        """Go type inference via tree-sitter."""
-        lang = self._ts_language("go")
-        if lang is None:
-            return None
-        try:
-            source = source_file.read_text(encoding="utf-8", errors="replace")
-            tree = self._ts_parse(source, lang)
-        except (OSError, Exception):
-            return None
-
-        def walk(node):
-            if node.type == "function_declaration":
-                for child in node.children:
-                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
-                        return self._infer_go_return(node)
-            for child in node.children:
-                result = walk(child)
-                if result:
-                    return result
-            return None
-
-        return walk(tree.root_node)
-
-    def _do_rust_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
-        """Rust type inference via tree-sitter."""
-        lang = self._ts_language("rust")
-        if lang is None:
-            return None
-        try:
-            source = source_file.read_text(encoding="utf-8", errors="replace")
-            tree = self._ts_parse(source, lang)
-        except (OSError, Exception):
-            return None
-
-        def walk(node):
-            if node.type == "function_item":
-                for child in node.children:
-                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
-                        return self._infer_rust_return(node)
-            for child in node.children:
-                result = walk(child)
-                if result:
-                    return result
-            return None
-
-        return walk(tree.root_node)
+        return self._types_in(source_file).get(func_name)
 
     def _find_function_file(self, func_name: str) -> Path | None:
         """Search project for a file defining ``func_name`` (any supported language).
@@ -429,7 +408,9 @@ class TypeVerifier:
     def augment_graph(self, graph: dict) -> int:
         """Walk calls edges in ``graph`` and annotate with type metadata.
 
-        Uses thread pool for parallel type inference on large graphs.
+        Runs in one thread. The work is pure Python, so the thread pool this
+        used to run in only added contention: on hermes-agent, 8 workers took
+        124 s where one took 78 s.
         """
         if not graph:
             return 0
@@ -450,7 +431,7 @@ class TypeVerifier:
             graph["type_edges"] = []
             return 0
 
-        # Build lookup list for parallel processing
+        # One lookup per calls edge
         lookups = []
         for edge in calls_edges:
             callee = edge.get("target", edge.get("_tgt", ""))
@@ -472,23 +453,11 @@ class TypeVerifier:
 
             lookups.append((caller, callee, lookup))
 
-        # Parallel type inference
         type_edges: list[tuple[str, str, TypeInfo]] = []
-        max_workers = min(8, len(lookups))
-
-        def process_item(item):
-            caller, callee, lookup = item
+        for caller, callee, lookup in lookups:
             info = self.infer_return_type(lookup)
             if info is not None:
-                return (caller, callee, info)
-            return None
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_item, item): item for item in lookups}
-            for future in as_completed(futures):
-                result = future.result()
-                if result is not None:
-                    type_edges.append(result)
+                type_edges.append((caller, callee, info))
 
         graph["type_edges"] = type_edges
         self._last_graph = graph
