@@ -32,9 +32,11 @@ stored type edges come out identical, checked byte for byte.
 
 `neuralmind _hook` flushes its output and ends the process with `os._exit`.
 The exit code and everything the hook printed are unchanged. Nothing in a
-hook relies on cleanup at exit: there are no exit handlers, files are written
-in `with` blocks, and background work (the graph-cache warmer, session
-maintenance) runs in detached processes of its own.
+hook relies on cleanup at exit: NeuralMind registers no exit handler
+(logging's has nothing left to flush), files are written in `with` blocks,
+and background work (the graph-cache warmer, session maintenance) runs in
+detached processes of its own. An independent review ran all eleven hook
+actions and found nothing left for the interpreter's exit to do.
 
 ### Loading an index asks only whether it has rows
 

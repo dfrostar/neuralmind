@@ -354,3 +354,13 @@ def test_a_slow_load_still_names_the_node_count(temp_project, monkeypatch, capsy
     monkeypatch.setattr(core_mod.threading, "Timer", FiresNow)
     assert mind._load_existing_index()
     assert f"Loading index ({total:,} nodes)..." in capsys.readouterr().err
+
+
+def test_the_in_memory_backend_has_rows_once_it_holds_a_node(project):
+    from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+
+    backend = InMemoryEmbeddingBackend(str(project))
+    assert backend.has_rows() is False
+    backend._index["n1"] = {"metadata": {"community": 0}}
+    assert backend.has_rows() is True
+    assert backend.has_rows() is (backend.get_stats()["total_nodes"] > 0)

@@ -88,6 +88,16 @@ class TestGraphEmbedder:
         assert "updated" in stats
         assert "skipped" in stats
 
+    def test_has_rows_follows_the_collection(self, temp_project):
+        """Loading an index gates on has_rows(): it must agree with the count."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        assert embedder.has_rows() is (embedder.get_stats()["total_nodes"] > 0)
+        embedder.embed_nodes()
+        assert embedder.has_rows() is True
+
     def test_embed_nodes_adds_nodes(self, temp_project):
         """Test that embed_nodes adds nodes on first run."""
         from neuralmind.embedder import GraphEmbedder

@@ -1338,9 +1338,9 @@ class TestCLIHook:
             mock_run.assert_called_once_with("compress-bash")
 
     def test_a_hook_process_keeps_its_output_and_exit_code(self):
-        """The hook ends with os._exit, so its output must be flushed first.
-
-        200 KB is more than a pipe holds, so an unflushed buffer would be lost.
+        """The hook ends with os._exit, so its output must be flushed first:
+        os._exit drops whatever is still buffered, at any size. 200 KB, more
+        than a pipe holds, also checks a write the reader has to drain.
         """
         import subprocess
 
