@@ -409,3 +409,31 @@ drawn by the same rule, that the pilot didn't use.
     - Path dependence: one early run can teach a chain the wrong files. The
       3 chains show the spread.
     - One repository, 20 tasks, 3 chains: exploratory.
+- 2026-10-29 — the Hermes run's stage 1 is complete (40 runs, seed 0, from
+  03:08 to 17:28 UTC), and stage 2 has started. Only the pooled count below
+  was read to decide; the arms aren't compared until stage 2 ends:
+  - **21 of the 40 runs solved their task, pooled over both arms.** That is
+    at least 5, so stage 2 runs. A chained script counted it with the
+    analysis's own rule and started stage 2 at 17:28 UTC, after the preflight
+    matched ai-9970's frozen environment.
+  - **One run counts as unsolved though the judge passed it.** Run 18
+    (`7a1c90dcab`) hit the 3600 s timeout, and its workspace then passed the
+    hidden tests, so its record says `solved: true`. As fixed above, a
+    timed-out run is unsolved; `analyze` scores it that way, which is why the
+    records hold 22 solves.
+  - **The turn cap ended 19 runs,** at 101–121 model calls in the session.
+    Hermes reports these as an error, and 7 of them still solved their task
+    from the edits they made before it. Two sessions (runs 15 and 22) went
+    past 120 calls because of wake-up turns, as described above.
+  - **Every run is accounted for.** All 40 sessions ran on `gpt-oss:20b-64k`
+    with Hermes v0.22.5 and NeuralMind 4.23.1 (tool and plugin), and all 40
+    are in `state.db`, so `sessions.json` covers every run. Its tokens match
+    the record on 37; the other three are runs 15, 18 and 22, as expected.
+    No run left a background process for the harness to stop; the longest
+    wait for Hermes to go idle was 1,113 s.
+  - The agent's `pytest` runs can change directory into pytest's temporary
+    directories under `~/.hermes/cache/scratch/`, where the harness's cleanup,
+    which looks for processes working in the workspace, doesn't see them.
+    Checks every 10–20 minutes found none still running into a later run.
+    The harness is left as it is until stage 2 ends, so every run is measured
+    the same way.
