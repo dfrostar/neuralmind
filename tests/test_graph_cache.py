@@ -402,3 +402,57 @@ def test_an_unwritable_state_directory_starts_no_writer(project, monkeypatch):
     finally:
         state.chmod(0o700)
     assert not started
+
+
+def test_loading_an_index_asks_only_whether_it_has_rows(temp_project, monkeypatch):
+    # get_stats() also counts every community: ~65 ms of the prompt hook on a
+    # large index, to learn only that the store isn't empty.
+    from neuralmind import NeuralMind
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+
+    def no_stats():
+        raise AssertionError("_load_existing_index called get_stats()")
+
+    monkeypatch.setattr(mind.embedder, "get_stats", no_stats)
+    assert mind._load_existing_index()
+
+    empty = NeuralMind(str(temp_project))
+    monkeypatch.setattr(empty.embedder, "has_rows", lambda: False)
+    assert not empty._load_existing_index()
+
+
+def test_a_slow_load_still_names_the_node_count(temp_project, monkeypatch, capsys):
+    # The v4.4.0 notice, `Loading index (N nodes)...`: counted only once a
+    # load has taken two seconds, so a fast load never pays for it.
+    from neuralmind import NeuralMind
+    from neuralmind import core as core_mod
+
+    assert NeuralMind(str(temp_project)).build()["success"]
+    mind = NeuralMind(str(temp_project))
+    total = mind.embedder.get_stats()["total_nodes"]
+
+    class FiresNow:
+        def __init__(self, _interval, fn):
+            self.fn, self.daemon = fn, False
+
+        def start(self):
+            self.fn()
+
+        def cancel(self):
+            pass
+
+    monkeypatch.setattr(core_mod.threading, "Timer", FiresNow)
+    assert mind._load_existing_index()
+    assert f"Loading index ({total:,} nodes)..." in capsys.readouterr().err
+
+
+def test_the_in_memory_backend_has_rows_once_it_holds_a_node(project):
+    from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+
+    backend = InMemoryEmbeddingBackend(str(project))
+    assert backend.has_rows() is False
+    backend._index["n1"] = {"metadata": {"community": 0}}
+    assert backend.has_rows() is True
+    assert backend.has_rows() is (backend.get_stats()["total_nodes"] > 0)
