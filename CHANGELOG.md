@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.23.1](https://github.com/dfrostar/neuralmind/compare/v4.23.0...v4.23.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **hermes:** the plugin serves each session's own project under Hermes 0.22's gateway ([#742](https://github.com/dfrostar/neuralmind/issues/742)) ([0f1577f](https://github.com/dfrostar/neuralmind/commit/0f1577f226ffbb9427b7a06cabe04b54e5a310ed))
+* **hooks:** session-start returns its recap within the Hermes plugin's timeout on a large synapse store ([#741](https://github.com/dfrostar/neuralmind/issues/741)) ([289f52c](https://github.com/dfrostar/neuralmind/commit/289f52cc1efb249cf1d117fff60925990f1fa1b1))
+
 ## [4.23.0](https://github.com/dfrostar/neuralmind/compare/v4.22.1...v4.23.0) (2026-10-28)
 
 
