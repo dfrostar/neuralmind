@@ -56,6 +56,15 @@ for the TypeScript, Go and Rust trees, as their search did. The pass runs in
 one thread, and its edges come out in call-edge order, the same order every
 build. Before, they came out in whatever order the threads finished.
 
+One thread also ends a race. When a call's target has no source file, the
+verifier looks the name up in a project-wide function index it builds on
+first use, and with eight threads some lookups read that index while another
+thread was still filling it: v4.23.1 dropped some type edges at random on
+such a project. An independent review measured 21–23 edges across 12 runs on
+one; v4.23.2 gives all 23 every time. hermes-agent, NeuralMind, requests and
+the test fixtures never build that index, so their results below are the
+same as before.
+
 ## What the agent sees post-install
 
 | Agent | Before | After |
