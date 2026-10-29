@@ -323,11 +323,13 @@ class IncrementalExtractor:
         """
         Get changed files plus files that import them (reverse edges).
 
-        importer_index: maps file -> list of files that import it.
+        importer_index: maps file -> list of files that import it; used only
+        without ``previous``.
         files: the build's file list, as :meth:`scan_files` takes it.
         previous: each file's nodes in the last graph. With it, files that
         name a function or class an edited or deleted file gained, lost or
-        reordered are re-extracted too (see :func:`names_changed`).
+        reordered are re-extracted too (see :func:`names_changed`), and
+        importers aren't (see below).
         """
         added, modified, deleted = self.scan_files(root, suffixes, files)
         changed = set(added + modified + deleted)
@@ -344,11 +346,15 @@ class IncrementalExtractor:
             names |= names_removed(deleted, previous)
         named = self._files_naming(root, names, skip=changed) if names else set()
 
-        # Add importers of changed files. Not of the files that only name a
-        # changed symbol: re-extracting one changes its calls, not its own
-        # symbols, and on hermes-agent one such file's importers were 9,400
-        # of its 10,270 files.
-        to_check = list(changed)
+        # Importers of changed files, transitively. A build that passes
+        # ``previous`` needs none of them: it keeps the edges unchanged files
+        # have into re-extracted ones, and re-extracts every file whose calls
+        # a change could move (above). On hermes-agent the closure was most of
+        # the repository for an edit to a widely imported file (42 s against
+        # 12 s, for the same graph). Without ``previous`` it stands in for
+        # both. Never from the files that only name a changed symbol:
+        # re-extracting one changes its calls, not its own symbols.
+        to_check = list(changed) if previous is None else []
         checked: set[str] = set()
         while to_check:
             filepath = to_check.pop(0)

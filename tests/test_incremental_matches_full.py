@@ -154,3 +154,23 @@ def test_a_synthetic_external_class_is_not_registered_by_name():
         },
     )
     assert b.class_by_name == {}
+
+
+def test_an_edit_inside_a_function_re_extracts_only_that_file(project, monkeypatch):
+    # n.py imports m.py. The build keeps n.py's edge into m.helper, which
+    # comes back under the same id, so n.py isn't re-extracted: the
+    # transitive importer closure that did it was most of a large repository.
+    from neuralmind.incremental_extract import IncrementalExtractor
+
+    seen: list[list[str]] = []
+    real = IncrementalExtractor.get_changed_with_dependents
+
+    def spy(self, *args, **kwargs):
+        seen.append(real(self, *args, **kwargs))
+        return seen[-1]
+
+    monkeypatch.setattr(IncrementalExtractor, "get_changed_with_dependents", spy)
+    _edit(project, "m.py", "def helper():\n    return 43\n")
+    graph = json.loads(graphgen.write_graph(project).read_text())
+    assert seen == [["m.py"]]
+    assert ("n_py__use_fn", "m_py__helper_fn") in _calls(graph)
