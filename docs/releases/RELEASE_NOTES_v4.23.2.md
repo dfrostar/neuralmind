@@ -1,6 +1,6 @@
 # NeuralMind v4.23.2 — a faster prompt hook on large repositories, a type pass that no longer slows every build, and an upgrade that keeps the graph cache
 
-**Type:** Patch release | **Theme:** the same output, sooner: the prompt hook stops paying for work it doesn't need, the build's type pass reads each file once (and on a rebuild only the files that changed), and an upgrade no longer throws away a large repository's graph cache, so the Hermes plugin's first turn after it gets its block
+**Type:** Patch release | **Theme:** the same output, sooner: the prompt hook stops paying for work it doesn't need, the build's type pass reads each file once, and an upgrade no longer throws away a large repository's graph cache, so the Hermes plugin's first turn after it gets its block
 
 A profile of NeuralMind 4.23.1 on an M3 split the prompt hook and the build
 into phases. On a typical repository the hook already takes under half a
@@ -19,8 +19,7 @@ went to work that changes nothing in the result:
   verifier, which annotates call edges with return types, read a file's whole
   syntax tree again for every distinct function it looked up there, in a pool
   of eight threads that only contended for Python's global lock: 121–123 s of
-  every hermes-agent build. And every build, incremental ones included,
-  parsed every file again, whether it had changed or not.
+  every hermes-agent build.
 
 All three now skip that work. The block the agent gets, the graph and the
 stored type edges come out identical, checked byte for byte.
@@ -82,29 +81,6 @@ one; v4.23.2 gives all 23 every time. hermes-agent, NeuralMind, requests and
 the test fixtures never build that index, so their results below are the
 same as before.
 
-A first build walks less, too: the Python pass visits only the statements a
-function can be defined in, which meets functions in the same breadth-first
-order as `ast.walk` over every node, and the tree-sitter trees are walked
-with a cursor.
-
-### A rebuild parses only the files that changed
-
-Each file's map is kept in `.neuralmind/type_cache.json`, keyed by a hash of
-the file's text, so the next build reuses it while the text is the same. A
-build reads a file again only when its size, modification time, inode change
-time or inode differ from the last build's, and parses it again only when its
-hash differs too. A file changed in the last 10 seconds is always hashed: a
-second edit inside the filesystem's timestamp resolution can leave its size
-and modification time as they were. On Windows, where `st_ctime` is the
-creation time rather than the inode change time, every file is hashed.
-
-The function index that resolves a call with no source file is kept the same
-way, with its own rules for which directories it skips. A file the build no
-longer reaches drops out of the cache, and a cache written by another Python
-or tree-sitter version is ignored. Like the rest of `.neuralmind/`, the file
-isn't committed: the directory ignores itself. Deleting it costs one build at
-first-build speed and changes nothing in the result.
-
 ### An upgrade keeps the graph cache
 
 - **The header names the conversion, not the release.** It holds a format
@@ -140,7 +116,7 @@ from the sources, as before.
 | Hermes-Agent (plugin), large repository, first turn after an upgrade | The turn's recall read the whole graph again. On hermes-agent that call took 8.3–10.5 s here, so the turn could go without its block | The upgrade keeps the cache: that first call took 1.4–1.9 s, the same block |
 | Cursor, Cline, generic MCP | The MCP server checks the index once when it loads | The same check, cheaper; no per-prompt hook |
 | Every command that loads an index (`query`, MCP tools) | Read the graph again once after each upgrade | Use the cache across upgrades |
-| Anyone who builds | The type pass took 121–123 s of every hermes-agent build | 16 s on a first build and ~1 s on a rebuild, with the same type edges |
+| Anyone who builds | The type pass took 121–123 s of a hermes-agent build | 17 s, with the same type edges |
 | A repository whose graph file is under 16 MB | Never cached; unaffected by the upgrade change | Unchanged |
 
 ---
@@ -168,34 +144,23 @@ to the two changes (~0.16 s teardown, ~0.07 s row count). On the small
 repositories it is the teardown alone.
 
 **The type verifier** (`TypeVerifier.augment_graph` on each project's
-`graph.json`, timed by itself; one run each on hermes-agent and requests, two
-on NeuralMind, while other sessions' jobs shared the machine). A first build
-starts with no `.neuralmind/type_cache.json`; a rebuild runs on the same
-files with the cache the first build wrote:
+`graph.json`, timed by itself):
 
-| Repository | Type edges | v4.23.1 | v4.23.2, first build | v4.23.2, rebuild | Edges, rows and risks |
-|---|---|---|---|---|---|
-| requests | 1,041 | 0.08 s | 0.05 s | 0.01 s | identical |
-| NeuralMind | 9,364 | 1.9–2.2 s | 0.43–0.45 s | 0.02 s | identical |
-| hermes-agent | 347,376 | 122.2 s (120.7 s, 123.3 s in earlier runs) | 15.9 s | 1.0–1.2 s | identical |
+| Repository | Type edges | v4.23.1 | v4.23.2 | Edges and risks |
+|---|---|---|---|---|
+| requests | 1,041 | 0.07 s | 0.04 s | identical |
+| NeuralMind | 9,281 | 1.73 s | 0.56 s | identical |
+| hermes-agent | 347,376 | 120.7 s, 123.3 s | 17.0 s | identical |
 
-On hermes-agent a rebuild after editing one file took 1.1 s, and the cache
-file is 9.9 MB. Hashing every file instead of trusting the stat, as on
-Windows, took 1.0 s. A first build still reads and parses each of the 5,240
-files once; reading each file once without the cache, the pass took 17.2 s
-there, 0.55–0.59 s on NeuralMind and 0.04 s on requests. The profile timed
-a full hermes-agent build at 1,180 s, with 129.6 s of it in this pass; that
-build wasn't rerun end to end here, so this release doesn't quote a new
-total for it.
+The remaining 17 s on hermes-agent is reading and parsing each of its 5,240
+files once. The profile timed a full hermes-agent build at 1,180 s, with
+129.6 s of it in this pass; that build wasn't rerun end to end here, so this
+release doesn't quote a new total for it.
 
 **A full build, end to end.** NeuralMind's own repository built from scratch
 by each version (one build each: 29 s and 27 s) gave a byte-identical
 `graph.json`, the same 6,010 stored type-edge rows (timestamps aside), the same
-11,579 structural edges and synapse count, and the same prompt block. The
-sample fixture (`tests/fixtures/sample_project`) built with v4.23.1's type
-pass and with the cached one, then rebuilt on the warm cache, gave the same
-`graph.json`, the same 49 stored type-edge rows and the same prompt block
-SHA-256.
+11,579 structural edges and synapse count, and the same prompt block.
 
 Reproduce, from a source checkout, on a **copy** of a built project (the hook
 writes to it):
@@ -270,21 +235,8 @@ hash the v4.23.1 smoke test recorded.
 - `tests/test_type_verifier.py`: a name defined twice keeps the first in
   breadth-first order (Python) and depth-first order (TypeScript), as the
   previous version's search found them (both tests pass on it too); each file
-  is walked once however many lookups it gets (this one fails on the previous
-  version); a file that doesn't parse gives no types; the pass runs in one
-  thread and keeps edge order.
-- `tests/test_type_verifier.py`, against a copy of v4.23.1's per-lookup
-  search kept in the test: every language fixture under `tests/fixtures/`,
-  with the graph the build extracts and with its committed graph, gives the
-  same type edges and stored rows on a first build and on a rebuild. So does
-  a project of edge cases: a name defined at several depths, a file that
-  doesn't parse, a file that's gone, calls resolved through the function
-  index (and the directories it skips), TypeScript, Go and Rust.
-- `tests/test_type_verifier.py`, the cache: a rebuild parses no file, and
-  reads none when their stat matches; an edit that keeps the file's size and
-  restores its modification time is still seen; a deleted file leaves the
-  cache; a corrupt cache, or one from another version, is ignored and
-  rewritten; a project without `.neuralmind/` gets no cache file.
+  is parsed once however many lookups it gets; a file that doesn't parse
+  gives no types; the pass runs in one thread and keeps edge order.
 
 `tests/test_graph_cache.py` checks that:
 
