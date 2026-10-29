@@ -1677,6 +1677,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
                 del extractor._cache[rel]
 
     suffixes = frozenset(_SUFFIX_LANG.keys())
+    cpp_project = _has_cpp_sources(f.name for f in files)
     if extractor._cache:
         previous: dict[str, list[dict[str, Any]]] = {}
         for node in (existing_graph or {}).get("nodes", []):
@@ -1687,6 +1688,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             importer_index,
             files=[f for f in files if f.suffix in suffixes],
             previous=previous if existing_graph else None,
+            cpp_project=cpp_project,
         )
         re_extract_set: set[str] = set(changed_files)
     else:
@@ -1701,7 +1703,6 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # A .h parses as C++ in a project with C++ sources. If that flipped since
     # the last build (the first C++ file arrived, or the last one left), every
     # header must be re-parsed: re-extract everything.
-    cpp_project = _has_cpp_sources(f.name for f in files)
     if reuse and any(f.suffix == ".h" for f in files):
         old_nodes = (existing_graph or {}).get("nodes", [])
         was_cpp = _has_cpp_sources(n.get("source_file", "") for n in old_nodes)
@@ -4713,8 +4714,13 @@ def update_files(
     for n in graph.get("nodes", []):
         previous.setdefault(n.get("source_file", ""), []).append(n)
     code = [rel for rel in changed_set if Path(rel).suffix in _SUFFIX_LANG]
-    names = names_changed(root, [rel for rel in code if (root / rel).exists()], previous)
     gone = [rel for rel in (*removed, *code) if not (root / rel).exists()]
+    # Parse a .h the way this update will: C++ if the files the graph will
+    # hold include a C++ source.
+    cpp_after = _has_cpp_sources(
+        (set(previous) - set(gone)) | {rel for rel in changed_set if (root / rel).exists()}
+    )
+    names = names_changed(root, [rel for rel in code if (root / rel).exists()], previous, cpp_after)
     names |= names_removed(gone, previous)
     if names:
         others = [

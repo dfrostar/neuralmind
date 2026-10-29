@@ -153,6 +153,17 @@ SCENARIOS = {
             "public class Routes {\n  void go(Connection c) { c.execute(); }\n}\n// edited\n"
         },
     ),
+    # x.cpp makes every .h parse as C++. shapes.h gains perimeter(), which
+    # main.cpp calls and which resolved to zz.cpp's; shapes.h sorts first.
+    "a c++ header gains a method a kept file calls": (
+        {
+            "x.cpp": "int helper() { return 1; }\n",
+            "shapes.h": "class Shape {\n public:\n  int area();\n};\n",
+            "main.cpp": '#include "shapes.h"\nint run() { return perimeter(); }\n',
+            "zz.cpp": "int perimeter() { return 3; }\n",
+        },
+        {"shapes.h": "class Shape {\n public:\n  int area();\n  int perimeter();\n};\n"},
+    ),
     "a python constant another file imports is removed": (
         {
             "a.py": "LIMIT = 3\n\ndef f():\n    return LIMIT\n",

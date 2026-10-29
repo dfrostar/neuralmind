@@ -52,13 +52,21 @@ def _referable(names: set[str]) -> set[str]:
     return {n for n in out if n and not (n.startswith("__") and n.endswith("__"))}
 
 
-def _first_pass(root: Path, rels: list[str], parsers: dict[str, Any]) -> Any:
-    """A builder holding what the build's first pass registers for ``rels`` as they are now."""
+def _first_pass(
+    root: Path, rels: list[str], parsers: dict[str, Any], cpp_project: bool = False
+) -> Any:
+    """A builder holding what the build's first pass registers for ``rels`` as they are now.
+
+    Each file is parsed as the build parses it: a ``.h`` as C++ in a project
+    with C++ sources (``cpp_project``) or when it uses C++-only syntax. Parsed
+    as C, a C++ header's classes and methods were invisible here, so a method
+    it gained never re-extracted the files that call it.
+    """
     from neuralmind import graphgen as gg
 
     b = gg._GraphBuilder()
     for rel in rels:
-        lang = gg._SUFFIX_LANG.get(PurePosixPath(rel).suffix, "")
+        lang = gg._parse_language(root / rel, cpp_project) or ""
         spec = gg._EXTRACTORS.get(lang)
         if spec is None:
             continue
@@ -89,13 +97,13 @@ def _symbols(b: Any) -> dict[tuple[str, str], list[str]]:
     return tables
 
 
-def _names_defined_by(root: Path, rels: list[str]) -> set[str]:
+def _names_defined_by(root: Path, rels: list[str], cpp_project: bool = False) -> set[str]:
     """Names another file would use to reach ``rels``: module names and symbols.
 
     Symbols are what the build's first pass registers for call and
     inheritance resolution, so a reference by bare name counts too.
     """
-    b = _first_pass(root, rels, {})
+    b = _first_pass(root, rels, {}, cpp_project)
     return _referable(_module_names(rels) | set(b.func_by_name) | set(b.class_by_name))
 
 
@@ -110,7 +118,10 @@ def _previous_symbols(nodes: list[dict[str, Any]]) -> dict[tuple[str, str], list
 
 
 def names_changed(
-    root: Path, rels: list[str], previous: dict[str, list[dict[str, Any]]]
+    root: Path,
+    rels: list[str],
+    previous: dict[str, list[dict[str, Any]]],
+    cpp_project: bool = False,
 ) -> set[str]:
     """Names whose definitions an edit to ``rels`` added, removed or reordered.
 
@@ -120,12 +131,13 @@ def names_changed(
     full build re-resolves those calls; an incremental build must re-extract
     the files that name them. ``previous`` holds each file's nodes from the
     last graph. Compared as registered, so a mismatch only re-extracts more.
+    ``cpp_project``: whether the build parses a ``.h`` as C++.
     """
     names: set[str] = set()
     parsers: dict[str, Any] = {}
     for rel in rels:
         old = _previous_symbols(previous.get(rel, []))
-        new = _symbols(_first_pass(root, [rel], parsers))
+        new = _symbols(_first_pass(root, [rel], parsers, cpp_project))
         names.update(key[1] for key in old.keys() | new.keys() if old.get(key) != new.get(key))
     return _referable(names)
 
@@ -325,6 +337,7 @@ class IncrementalExtractor:
         importer_index: dict[str, list[str]],
         files: list[Path] | None = None,
         previous: dict[str, list[dict[str, Any]]] | None = None,
+        cpp_project: bool = False,
     ) -> list[str]:
         """
         Get changed files plus files that import them (reverse edges).
@@ -336,6 +349,7 @@ class IncrementalExtractor:
         name a function or class an edited or deleted file gained, lost or
         reordered are re-extracted too (see :func:`names_changed`), and
         importers aren't (see below).
+        cpp_project: whether the build parses a ``.h`` as C++.
         """
         added, modified, deleted = self.scan_files(root, suffixes, files)
         changed = set(added + modified + deleted)
@@ -346,9 +360,9 @@ class IncrementalExtractor:
         # index can't name those files: re-extract the ones that mention the
         # new file's module name or a symbol it defines. An edit or a deletion
         # that changes which functions a name can mean does the same.
-        names = _names_defined_by(root, added) if added else set()
+        names = _names_defined_by(root, added, cpp_project) if added else set()
         if previous is not None:
-            names |= names_changed(root, modified, previous)
+            names |= names_changed(root, modified, previous, cpp_project)
             names |= names_removed(deleted, previous)
         named = self._files_naming(root, names, skip=changed) if names else set()
 
