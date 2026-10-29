@@ -857,17 +857,39 @@ def cmd_build(args):
     # Save build stats to ir_meta.json for build-status / status commands
     _save_build_stats(project_path, result)
 
-    # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
-        print()
-        print(
-            "  💡 Keep the index fresh: neuralmind init-hook .  (rebuilds after commits, pulls and branch switches)"
-        )
+        _print_next_steps(project_path)
+
+
+def _print_next_steps(project_path: str) -> None:
+    """After a build: the commands for whatever isn't wired yet, three lines at most.
+
+    A built index nothing calls is inert, so the commands that wire it in come
+    first: the daemon and the Git hooks, then the agent (the Hermes plugin and
+    its MCP entry when Hermes is set up here). With room left, the hint for
+    files that change without a commit follows. Fail-open: a probe that
+    can't run leaves the hint out, never the build's result.
+    """
+    try:
+        from neuralmind.wiring import next_steps, shell_arg
+    except Exception:  # the hint is optional; the build has already succeeded
+        return
+    try:
+        steps = next_steps(Path(project_path), project_arg=project_path)
+    except Exception:
+        steps = []
+    lines = []
+    if steps:
+        lines.append("  Next, wire it in (`neuralmind doctor` shows what's wired):")
+        lines += [f"    {step}" for step in steps]
+    if len(lines) < 3:
         # Plain `watch` only learns from edits; --reindex is what re-indexes them.
-        print(
-            "     Files that change without a commit: neuralmind watch . --reindex  "
-            "(re-indexes edited files as they change)"
+        lines.append(
+            f"  Files that change without a commit: neuralmind watch {shell_arg(project_path)} "
+            "--reindex"
         )
+    print()
+    print("\n".join(lines))
 
 
 # What a learned transition ("after A, you edit B") comes from, for anyone
@@ -2666,12 +2688,26 @@ def cmd_doctor(args):
     except Exception:
         pass  # fail-open — don't break doctor if tier2 import fails
     checks = base_checks + extra
-    status = doctor.overall_status(checks)
+    # Wiring: is anything calling NeuralMind? Only ever WARN, so the exit
+    # status below still depends on the core checks alone.
+    try:
+        wiring_checks, wiring_state = doctor.run_wiring(args.project_path)
+    except Exception as exc:  # fail-open — the core checks still print
+        wiring_checks = [doctor.Check("Wiring", doctor.WARN, f"could not check ({exc})")]
+        wiring_state = None
+    status = doctor.overall_status(wiring_checks + checks)
 
     if args.json:
         print(
             json.dumps(
-                {"status": status, "checks": [c.to_dict() for c in checks]},
+                {
+                    "status": status,
+                    "wiring": {
+                        "state": wiring_state,
+                        "checks": [c.to_dict() for c in wiring_checks],
+                    },
+                    "checks": [c.to_dict() for c in checks],
+                },
                 indent=2,
             )
         )
@@ -2679,17 +2715,28 @@ def cmd_doctor(args):
         markers = {doctor.OK: "[ ok ]", doctor.WARN: "[warn]", doctor.FAIL: "[FAIL]"}
         print(f"NeuralMind doctor — {Path(args.project_path).resolve()}")
         print("=" * 60)
-        for c in checks:
-            print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
-            if c.fix and c.status != doctor.OK:
-                print(f"         -> {c.fix}")
+        for title, section in (("Wiring", wiring_checks), ("Checks", checks)):
+            print(title)
+            for c in section:
+                print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
+                if c.fix and c.status != doctor.OK:
+                    print(f"         -> {c.fix}")
         print("=" * 60)
         summary = {
             doctor.OK: "All checks passed.",
             doctor.WARN: "Up and running; optional pieces are missing (see above).",
             doctor.FAIL: "Setup incomplete — run the fixes above, then re-check.",
         }
-        print(summary.get(status, ""))
+        if status != doctor.FAIL and wiring_state == "inert":
+            # Installed but inert: every core check can pass while no agent
+            # ever queries the index, so "Up and running" would be false.
+            print(
+                "Installed but not wired: no Claude Code hooks, Hermes plugin or MCP entry "
+                "doctor can see calls NeuralMind for this project. Run a Wiring fix above "
+                "(registered by hand in a client doctor doesn't know? then ignore this)."
+            )
+        else:
+            print(summary.get(status, ""))
 
     # Exit 1 on a failed check (warnings don't count) so a script or CI step
     # can gate on `neuralmind doctor`. Same for --json: the payload is printed
@@ -5992,9 +6039,9 @@ def cmd_install_hermes_plugin(args):
             )
     else:
         print(
-            "  Project: the directory Hermes works in (TERMINAL_CWD, else its current "
-            "directory), if it's built. Pass a path to pin one; a pin applies to every "
-            "Hermes session in this Hermes home."
+            "  Project: the directory Hermes works in for each session, if it's built. "
+            "Pass a path to pin one; a pin applies to every Hermes session in this "
+            "Hermes home."
         )
     if not result["initialised"]:
         print(
@@ -6023,6 +6070,26 @@ def cmd_install_hermes_plugin(args):
         )
     else:
         print(f"  Once it's enabled, each Hermes turn gets {what}.")
+    from . import mcp_install
+
+    project_dir = Path(args.project_path or ".").resolve()
+    if getattr(args, "mcp", False) is True:
+        if _report_mcp_install(mcp_install, "hermes", project_dir, hermes_home=home):
+            print(f"  {HERMES_MCP_RELOAD}")
+        return
+    # Offered only where `install-mcp --client hermes` can write: a config.yaml.
+    mcp_state = mcp_install.registration("hermes", project_dir, hermes_home=home)
+    if mcp_state.detected and not mcp_state.registered:
+        # install-mcp writes the default Hermes home; for another one, the
+        # alias run against the same --hermes-home.
+        from .wiring import shell_arg
+
+        offer = (
+            f"neuralmind install-hermes-plugin --hermes-home {shell_arg(str(home))} --mcp"
+            if args.hermes_home
+            else "neuralmind install-mcp --client hermes"
+        )
+        print(f"  NeuralMind's MCP tools (query, search, …) are a separate opt-in: {offer}")
 
 
 def cmd_install_hooks(args):
@@ -6065,11 +6132,19 @@ def cmd_install_mcp(args):
     project_dir = Path(args.project_path or ".").resolve()
 
     if getattr(args, "print_only", False):
+        if args.client == "hermes" and not getattr(args, "all", False):
+            print(mcp_install.hermes_snippet(), end="")
+            print(
+                f"\nPaste the above into {mcp_install.config_path('hermes', project_dir)} "
+                "(merge it into an existing mcp_servers: section)."
+            )
+            return
         print(mcp_install.snippet())
         print(
             "\nPaste the above into your client's MCP config "
             "(Claude Code: .mcp.json · Cursor: .cursor/mcp.json · "
-            "Claude Desktop / Cline: the app's settings file)."
+            "Claude Desktop / Cline: the app's settings file). "
+            "Hermes reads YAML: use --client hermes --print."
         )
         return
 
@@ -6082,25 +6157,41 @@ def cmd_install_mcp(args):
     else:
         clients = [args.client]
 
-    any_change = False
-    for client in clients:
-        try:
-            result = mcp_install.install(client, project_dir)
-        except ValueError as exc:
-            print(f"Error: {exc}")
-            sys.exit(1)
-        if result.action.startswith("skipped"):
-            print(f"✗ {client}: {result.action} → {result.detail}")
-            continue
-        symbol = "✓" if result.action != "already-present" else "•"
-        print(f"{symbol} {client}: {result.action} → {result.path}")
-        any_change = any_change or result.action != "already-present"
-
-    if any_change:
+    changed = [c for c in clients if _report_mcp_install(mcp_install, c, project_dir)]
+    if any(c != "hermes" for c in changed):
         print(
             "\nThe agent exposes NeuralMind's tools (wakeup, query, search, "
             "skeleton, …). Restart the client to pick up the new server."
         )
+    if "hermes" in changed:
+        print(f"\n{HERMES_MCP_RELOAD}")
+
+
+# What a Hermes user does after the MCP entry lands in config.yaml.
+HERMES_MCP_RELOAD = (
+    "A running Hermes reloads its MCP servers when config.yaml changes (run /reload-mcp "
+    "if mcp.auto_reload_on_config_change is off); restart the gateway if one is running. "
+    "Check it with `hermes mcp test neuralmind`."
+)
+
+
+def _report_mcp_install(
+    mcp_install, client: str, project_dir: Path, hermes_home: Path | None = None
+) -> bool:
+    """Register NeuralMind with one client and print the outcome; True if the file changed."""
+    try:
+        result = mcp_install.install(client, project_dir, hermes_home=hermes_home)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        sys.exit(1)
+    if result.action.startswith("skipped"):
+        print(f"✗ {client}: {result.action} → {result.detail}")
+        return False
+    symbol = "✓" if result.action != "already-present" else "•"
+    print(f"{symbol} {client}: {result.action} → {result.path}")
+    if result.detail:
+        print(f"  ⚠ {result.detail}")
+    return bool(result.action != "already-present")
 
 
 def cmd_hook(args):
@@ -8883,7 +8974,8 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default=None,
         help="Project the plugin serves (default: the one pinned by an earlier install, "
-        "else the directory Hermes works in: TERMINAL_CWD, else its current directory)",
+        "else the directory Hermes works in for each session: on Hermes 0.22.2+ the "
+        "session's own directory, on older Hermes TERMINAL_CWD, else its current directory)",
     )
     hermes_p.add_argument(
         "--unpin",
@@ -8906,12 +8998,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Hermes home directory (default: the active Hermes profile, else $HERMES_HOME, "
         "else ~/.hermes, or %%LOCALAPPDATA%%\\hermes on Windows)",
     )
+    hermes_p.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Also register NeuralMind's MCP server in that Hermes home's config.yaml "
+        "(an alias for `install-mcp --client hermes`), so Hermes gets its query and "
+        "search tools as well as the per-turn context",
+    )
     hermes_p.set_defaults(func=cmd_install_hermes_plugin)
 
     # install-mcp command — register the MCP server with AI coding agents
     mcp_p = subparsers.add_parser(
         "install-mcp",
-        help="Register the NeuralMind MCP server with Claude Code / Cursor / Cline / Claude Desktop",
+        help="Register the NeuralMind MCP server with Claude Code / Cursor / Cline / "
+        "Claude Desktop / VS Code / Hermes-Agent",
     )
     mcp_p.add_argument(
         "project_path",
@@ -8921,9 +9021,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     mcp_p.add_argument(
         "--client",
-        choices=("claude-code", "cursor", "cline", "claude-desktop", "vscode"),
+        choices=("claude-code", "cursor", "cline", "claude-desktop", "vscode", "hermes"),
         default="claude-code",
-        help="Which client to register with (default: claude-code)",
+        help="Which client to register with (default: claude-code). hermes adds the "
+        "server under mcp_servers: in the active Hermes home's config.yaml; "
+        "`install-hermes-plugin --mcp` does the same",
     )
     mcp_p.add_argument(
         "--all",

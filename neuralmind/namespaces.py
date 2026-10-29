@@ -30,7 +30,12 @@ import re
 import subprocess
 from pathlib import Path
 
-from .synapses import BRANCH_NAMESPACE_PREFIX, DEFAULT_NAMESPACE, normalize_namespace
+from .synapses import (
+    BRANCH_NAMESPACE_PREFIX,
+    DEFAULT_NAMESPACE,
+    STRUCTURAL_NAMESPACE,
+    normalize_namespace,
+)
 
 ENV_NAMESPACE = "NEURALMIND_NAMESPACE"
 CONFIG_KEY = "memory_namespace"
@@ -40,6 +45,11 @@ GIT_TIMEOUT_SECONDS = 3
 # default branch (no remote, fresh clone): branches with these names map to
 # ``personal`` rather than ``branch:<name>``.
 DEFAULT_BRANCH_FALLBACKS = frozenset({"main", "master"})
+
+# Never the active namespace: every build replaces ``structural`` with the
+# code's call graph (``SynapseStore.seed_from_structural``), so memory written
+# there would be lost at the next build. An override naming it is ignored.
+RESERVED_NAMESPACES = frozenset({STRUCTURAL_NAMESPACE})
 
 _CONFIG_FILENAMES = (
     "neuralmind-backend.yaml",
@@ -175,23 +185,27 @@ def resolve_namespace(
     """Resolve the active memory namespace for a project.
 
     Priority: env override → pinned config → ``branch:<name>`` on a
-    non-default git branch → ``personal``. Never raises: an invalid
-    override is ignored and resolution falls through to the next source
-    (ultimately ``personal``) rather than blocking a write.
+    non-default git branch → ``personal``. Never raises: an invalid or
+    reserved override is ignored and resolution falls through to the next
+    source (ultimately ``personal``) rather than blocking a write.
     """
     environ = os.environ if env is None else env
     override = (environ.get(ENV_NAMESPACE) or "").strip()
     if override:
         try:
-            return normalize_namespace(override)
+            ns = normalize_namespace(override)
         except ValueError:
-            pass
+            ns = ""
+        if ns and ns not in RESERVED_NAMESPACES:
+            return ns
     pinned = config_namespace(project_path, config)
     if pinned:
         try:
-            return normalize_namespace(pinned)
+            ns = normalize_namespace(pinned)
         except ValueError:
-            pass
+            ns = ""
+        if ns and ns not in RESERVED_NAMESPACES:
+            return ns
     branch = detect_git_branch(project_path)
     if branch:
         default = detect_default_branch(project_path)

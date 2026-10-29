@@ -50,7 +50,12 @@ FLOORS = {
 }
 
 _LISTED = re.compile(r"^- ([^:\n]+?)(?::|$)", re.MULTILINE)
-_EXCERPT = re.compile(r"^Most matches are in (.+?)\. Its best match, L(\d+)-L(\d+)", re.MULTILINE)
+# "outside the tests": a prompt naming a test can list a test file first, and
+# the excerpt is then from the first source file listed.
+_EXCERPT = re.compile(
+    r"^Most matches (?:outside the tests )?are in (.+?)\. Its best match, L(\d+)-L(\d+)",
+    re.MULTILINE,
+)
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? ", re.MULTILINE)
 
 

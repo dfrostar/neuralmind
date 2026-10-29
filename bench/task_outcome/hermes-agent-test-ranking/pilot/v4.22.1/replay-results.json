@@ -1,0 +1,477 @@
+{
+  "summary": {
+    "neuralmind_version": "neuralmind 4.22.1",
+    "tasks": 20,
+    "named": 17,
+    "first": 10,
+    "excerpt_shown": 9,
+    "excerpt_on_gold": 7,
+    "excerpt_on_fix": 2,
+    "excerpt_on_gold_share": 0.778,
+    "median_chars": 628
+  },
+  "tasks": [
+    {
+      "task": "1015eb8b95",
+      "gold": [
+        "neuralmind/cli.py"
+      ],
+      "listed": [
+        "neuralmind/incremental_extract.py",
+        "neuralmind/mcp_server.py",
+        "evals/swe_bench/__init__.py",
+        "neuralmind/probe.py",
+        "neuralmind/graphgen.py",
+        "neuralmind/synapse_client.py",
+        "neuralmind/sparse.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1222,
+      "excerpt": [
+        "neuralmind/incremental_extract.py",
+        286,
+        302
+      ]
+    },
+    {
+      "task": "fa72224183",
+      "gold": [
+        "neuralmind/cli.py",
+        "neuralmind/doctor.py"
+      ],
+      "listed": [
+        "neuralmind/cli.py",
+        "neuralmind/turbovec_backend.py",
+        "neuralmind/doctor.py",
+        "neuralmind/core.py",
+        "neuralmind/backend_manager.py",
+        "neuralmind/paths.py",
+        "neuralmind/synapse_feedback.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 628
+    },
+    {
+      "task": "0db7d2c97d",
+      "gold": [
+        "neuralmind/config.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/server.py"
+      ],
+      "listed": [
+        "neuralmind/mcp_security.py",
+        "neuralmind/mcp_install.py",
+        "tests/test_mcp_server.py",
+        "tests/test_mcp_install.py",
+        "tests/test_mcp_security.py",
+        "neuralmind/mcp_server.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 840,
+      "excerpt": [
+        "neuralmind/mcp_security.py",
+        42,
+        48
+      ]
+    },
+    {
+      "task": "4e01f40e6a",
+      "gold": [
+        "neuralmind/in_memory_backend.py",
+        "neuralmind/secret_scan.py",
+        "neuralmind/turbovec_backend.py"
+      ],
+      "listed": [
+        "neuralmind/secret_scan.py",
+        "neuralmind/cli.py",
+        "neuralmind/trace.py",
+        "neuralmind/output_cache.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 1208,
+      "excerpt": [
+        "neuralmind/secret_scan.py",
+        479,
+        497
+      ]
+    },
+    {
+      "task": "53b9813363",
+      "gold": [
+        "neuralmind/mcp_security.py"
+      ],
+      "listed": [
+        "neuralmind/memory/cli.py",
+        "neuralmind/memory/__init__.py",
+        "neuralmind/memory/mcp_tools.py",
+        "neuralmind/cli.py",
+        "neuralmind/progress.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 461
+    },
+    {
+      "task": "108b1ee013",
+      "gold": [
+        "neuralmind/output_cache.py",
+        "neuralmind/secret_scan.py"
+      ],
+      "listed": [
+        "neuralmind/secret_scan.py",
+        "neuralmind/gaps.py",
+        "neuralmind/probe.py",
+        "neuralmind/doctor.py",
+        "neuralmind/event_log.py",
+        "neuralmind/daemon.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": true,
+      "chars": 1602,
+      "excerpt": [
+        "neuralmind/secret_scan.py",
+        348,
+        377
+      ]
+    },
+    {
+      "task": "21bd34dfc4",
+      "gold": [
+        "neuralmind/cli.py",
+        "neuralmind/secret_scan.py"
+      ],
+      "listed": [
+        "neuralmind/secret_scan.py",
+        "neuralmind/demo_data/sample_project/auth/handlers.py",
+        "neuralmind/cli.py",
+        "neuralmind/demo_data/sample_project/users/crud.py",
+        "neuralmind/output_cache.py",
+        "neuralmind/_demo_report.py",
+        "evals/faithfulness/harness.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 1395,
+      "excerpt": [
+        "neuralmind/secret_scan.py",
+        542,
+        560
+      ]
+    },
+    {
+      "task": "e303c7a287",
+      "gold": [
+        "neuralmind/secret_scan.py"
+      ],
+      "listed": [
+        "neuralmind/secret_scan.py",
+        "neuralmind/cli.py",
+        "neuralmind/demo_data/sample_project/auth/handlers.py",
+        "neuralmind/_demo_report.py",
+        "evals/faithfulness/harness.py",
+        "neuralmind/entity_resolution.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 583,
+      "excerpt": [
+        "neuralmind/secret_scan.py",
+        138,
+        138
+      ]
+    },
+    {
+      "task": "7a1c90dcab",
+      "gold": [
+        "neuralmind/session_recap.py"
+      ],
+      "listed": [
+        "neuralmind/session_recap.py",
+        "neuralmind/memory/invalidate.py",
+        "neuralmind/core.py",
+        "neuralmind/cli.py",
+        "neuralmind/event_log.py",
+        "neuralmind/event_bus.py",
+        "neuralmind/synapses.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 579
+    },
+    {
+      "task": "404ccad4a9",
+      "gold": [
+        "neuralmind/__init__.py",
+        "neuralmind/document_ingestion.py"
+      ],
+      "listed": [
+        "neuralmind/secret_scan.py",
+        "neuralmind/document_ingestion.py",
+        "neuralmind/state_dir.py",
+        "neuralmind/graphgen.py",
+        "neuralmind/entity_resolution.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 429
+    },
+    {
+      "task": "366858e431",
+      "gold": [
+        "neuralmind/judge_transcripts.py"
+      ],
+      "listed": [
+        "tests/conftest.py",
+        "tests/test_public_benchmark.py",
+        "neuralmind/cli.py",
+        "evals/swe_bench/__init__.py",
+        "tests/test_tier1.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 453
+    },
+    {
+      "task": "8592aa7ab7",
+      "gold": [
+        "neuralmind/mcp_server.py",
+        "neuralmind/synapses.py"
+      ],
+      "listed": [
+        "neuralmind/mcp_server.py",
+        "neuralmind/hooks.py",
+        "neuralmind/cli.py",
+        "neuralmind/daemon.py",
+        "neuralmind/daemon_client.py",
+        "neuralmind/embedder.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 522
+    },
+    {
+      "task": "24ee2924b9",
+      "gold": [
+        "neuralmind/synapse_client.py",
+        "neuralmind/synapses.py"
+      ],
+      "listed": [
+        "neuralmind/sleep.py",
+        "neuralmind/synapses.py",
+        "neuralmind/graph_traversal.py",
+        "neuralmind/team_staleness.py",
+        "neuralmind/memory/store.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/synapse_feedback.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 612
+    },
+    {
+      "task": "2a6448552b",
+      "gold": [
+        "neuralmind/tier2/operations.py"
+      ],
+      "listed": [
+        "neuralmind/tier2/license.py",
+        "neuralmind/contracts.py",
+        "neuralmind/synapses.py",
+        "neuralmind/cli.py",
+        "neuralmind/tier2/operations.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 545
+    },
+    {
+      "task": "8c0411129c",
+      "gold": [
+        "neuralmind/doctor.py",
+        "neuralmind/mcp_security.py",
+        "neuralmind/security_config.py"
+      ],
+      "listed": [
+        "neuralmind/mcp_security.py",
+        "neuralmind/security_config.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/doctor.py",
+        "neuralmind/backend_manager.py",
+        "neuralmind/storage_guard.py",
+        "neuralmind/identity.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": true,
+      "chars": 2388,
+      "excerpt": [
+        "neuralmind/mcp_security.py",
+        331,
+        370
+      ]
+    },
+    {
+      "task": "454904f4bb",
+      "gold": [
+        "neuralmind/audit.py",
+        "neuralmind/cli.py"
+      ],
+      "listed": [
+        "neuralmind/tier2/audit.py",
+        "neuralmind/audit.py",
+        "neuralmind/content_manifest.py",
+        "neuralmind/event_log.py",
+        "neuralmind/config.py",
+        "neuralmind/cli.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 467
+    },
+    {
+      "task": "b4c9886021",
+      "gold": [
+        "neuralmind/mcp_security.py",
+        "neuralmind/mcp_server.py"
+      ],
+      "listed": [
+        "neuralmind/mcp_security.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/audit.py",
+        "neuralmind/backend_manager.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 686,
+      "excerpt": [
+        "neuralmind/mcp_security.py",
+        92,
+        97
+      ]
+    },
+    {
+      "task": "4325e063e1",
+      "gold": [
+        "neuralmind/cli.py",
+        "neuralmind/compliance_matcher.py",
+        "neuralmind/content_node.py"
+      ],
+      "listed": [
+        "neuralmind/judge_transcripts.py",
+        "neuralmind/mcp_server.py",
+        "neuralmind/provenance.py",
+        "neuralmind/core.py",
+        "neuralmind/compliance_matcher.py",
+        "neuralmind/synapses.py",
+        "neuralmind/config.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 563
+    },
+    {
+      "task": "b06a3ee6af",
+      "gold": [
+        "neuralmind/tier2/operations.py"
+      ],
+      "listed": [
+        "neuralmind/cli.py",
+        "neuralmind/tier2/operations.py",
+        "neuralmind/tier2/license.py",
+        "neuralmind/doctor.py",
+        "tests/test_operations.py",
+        "evals/public/backends.py",
+        "neuralmind/entity_resolution.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 685
+    },
+    {
+      "task": "e6fa9e4b80",
+      "gold": [
+        "neuralmind/turbovec_backend.py"
+      ],
+      "listed": [
+        "neuralmind/turbovec_backend.py",
+        "neuralmind/incremental_extract.py",
+        "neuralmind/daemon.py",
+        "neuralmind/server.py",
+        "neuralmind/audit.py",
+        "neuralmind/embedder.py",
+        "neuralmind/graphgen.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": false,
+      "chars": 1498,
+      "excerpt": [
+        "neuralmind/turbovec_backend.py",
+        766,
+        791
+      ]
+    }
+  ]
+}

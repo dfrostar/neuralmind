@@ -39,6 +39,15 @@ def test_a_gold_file_only_linked_is_named_not_first() -> None:
     assert not record["excerpt_on_gold"]
 
 
+def test_an_excerpt_from_after_a_listed_test_file_is_scored() -> None:
+    block = BLOCK.replace(
+        "- pkg/cli.py:", "- tests/test_cli.py: test_run() L5\n- pkg/cli.py:"
+    ).replace("Most matches are in", "Most matches outside the tests are in")
+    record = replay.score(block, TASK, FIX)
+    assert record["named"] and not record["first"]
+    assert record["excerpt"] == ["pkg/cli.py", 30, 45] and record["excerpt_on_fix"]
+
+
 def test_an_empty_block_names_nothing() -> None:
     record = replay.score("", TASK, FIX)
     assert record["listed"] == [] and not record["named"] and not record["excerpt_shown"]

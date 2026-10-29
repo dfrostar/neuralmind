@@ -15,9 +15,12 @@ Covers all 45 tests from docs/specs/G5-TEST-PLAN.md:
 
 from __future__ import annotations
 
+import heapq
 import json
 import os
 import time
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -566,18 +569,60 @@ def test_end_to_end_real_project() -> None:
 
 
 def test_performance_1k_nodes() -> None:
-    """Performance: 1K nodes under 500ms."""
+    """Performance: 1K nodes cost a small multiple of one Dijkstra per node.
+
+    A fixed wall-clock budget failed on a slow Windows runner (8.7s against
+    5s) with the algorithm unchanged, so the budget is relative: time the
+    reference workload in this process and require betweenness within
+    ``max_ratio`` of it. Runner speed cancels out. The measured ratio is about
+    2.3; a regression to per-pair recomputation or all-pairs Floyd-Warshall
+    is hundreds of times slower and still fails.
+    """
     graph = _load("large_synthetic")
-    start = time.time()
-    cb = compute_betweenness(graph)
-    elapsed = time.time() - start
-    assert elapsed < 5.0, f"1K nodes took {elapsed:.2f}s"
+    reference = min(_timed(_shortest_paths_from_every_node, graph)[0] for _ in range(2))
+    elapsed, cb = _timed(compute_betweenness, graph)
+    max_ratio = 10.0
+    assert elapsed < max_ratio * reference, (
+        f"1K nodes took {elapsed:.2f}s, {elapsed / reference:.1f}x the {reference:.2f}s "
+        f"reference (limit {max_ratio:.0f}x)"
+    )
     assert len(cb) == 1000
 
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
+
+def _shortest_paths_from_every_node(graph: dict) -> None:
+    """Reference workload: plain Dijkstra from every node, unit weights.
+
+    Brandes' algorithm is this forward pass plus a backward accumulation per
+    source, so compute_betweenness should cost a small multiple of it on any
+    machine.
+    """
+    adj: dict[str, list[str]] = {n["id"]: [] for n in graph["nodes"]}
+    for link in graph["links"]:
+        adj[link["source"]].append(link["target"])
+        adj[link["target"]].append(link["source"])
+    for s in adj:
+        dist = {s: 0.0}
+        pq = [(0.0, s)]
+        while pq:
+            d, v = heapq.heappop(pq)
+            if d > dist[v]:
+                continue
+            for w in adj[v]:
+                if d + 1.0 < dist.get(w, float("inf")):
+                    dist[w] = d + 1.0
+                    heapq.heappush(pq, (d + 1.0, w))
+
+
+def _timed(fn: Callable[[dict], Any], graph: dict) -> tuple[float, Any]:
+    """Wall-clock seconds for ``fn(graph)``, and what it returned."""
+    start = time.perf_counter()
+    result = fn(graph)
+    return time.perf_counter() - start, result
 
 
 def _communities(graph: dict) -> dict[str, int]:

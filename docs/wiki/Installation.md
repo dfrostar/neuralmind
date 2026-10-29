@@ -293,6 +293,13 @@ source neuralmind-env/bin/activate
 pip install neuralmind
 ```
 
+**On an Intel Mac,** `pip install` compiles `cryptography`, which publishes no
+Intel macOS wheel, so install a Rust toolchain first
+([rustup](https://rustup.rs/)); the
+[`cryptography` installation guide](https://cryptography.io/en/latest/installation/)
+covers the OpenSSL it links against. NeuralMind uses ChromaDB there, since
+turbovec has no Intel macOS wheel.
+
 ### Windows
 
 ```powershell
@@ -306,6 +313,15 @@ python -m venv neuralmind-env
 # Install NeuralMind
 pip install neuralmind
 ```
+
+**On Windows on ARM, install inside WSL 2 or use the container image.** A
+native `pip install` has to compile `cryptography`, `chromadb` and `grpcio`,
+which publish no Windows ARM64 wheel, and it failed on GitHub's
+`windows-11-arm` runner even with Rust and Visual Studio's C++ build tools
+installed (`cryptography` also needs an OpenSSL to link against). Inside WSL 2
+the machine runs Linux on ARM64, where every dependency has a wheel and the
+default install uses turbovec. The Docker image is published for
+`linux/arm64` too.
 
 ### Docker
 
