@@ -200,13 +200,16 @@
 
     <section>
         <div class="container" id="whats-new-v4232">
-            <h2>What&rsquo;s New in v4.23.2 &mdash; the same block, sooner, and a type pass that no longer slows every build</h2>
+            <h2>What&rsquo;s New in v4.23.2 &mdash; the same block, sooner, a type pass that no longer slows every build, and an upgrade that keeps the graph cache</h2>
             <p>A phase-by-phase profile of the prompt hook and the build found time spent on work that changes nothing in the result. This release skips it; the block, the graph and the stored type edges come out identical, checked byte for byte.</p>
             <ul>
                 <li><strong>The prompt hook exits without tearing down its graph</strong> &mdash; it flushes its output and ends the process, instead of spending ~0.16&nbsp;s freeing a large graph it was about to drop</li>
                 <li><strong>Loading an index asks only whether it has rows</strong> &mdash; not a count of every row by community, which cost ~65&nbsp;ms on hermes-agent</li>
                 <li><strong>Measured on an M3</strong> &mdash; alternating versions over three rounds, the hook took 1.16&nbsp;s against 1.40&nbsp;s per prompt on hermes-agent (269,151 nodes), 0.52&nbsp;s against 0.55&nbsp;s on NeuralMind&rsquo;s own repository, and 0.42&nbsp;s against 0.45&nbsp;s on requests, with the same block on every call</li>
                 <li><strong>The build&rsquo;s type pass reads each file once, in one thread</strong> &mdash; it searched a file again for every function it looked up there, in a thread pool that only contended for Python&rsquo;s lock: 17&nbsp;s against 121&ndash;123&nbsp;s on hermes-agent, 0.56&nbsp;s against 1.73&nbsp;s on NeuralMind, with identical type edges</li>
+                <li><strong>An upgrade keeps a large repository&rsquo;s graph cache</strong> &mdash; the cache&rsquo;s header named the release that wrote it, so every upgrade made a large index read its graph again on the next prompt: on hermes-agent that took 8.8&nbsp;s and 10.5&nbsp;s on a loaded M3, past the Hermes plugin&rsquo;s 8&nbsp;s timeout. It now names a format number, bumped only when the same files can load as a different graph; a test fingerprints that code and fails when it changes, so a bump can&rsquo;t be forgotten</li>
+                <li><strong>Caches from v4.23.0 and v4.23.1 are kept</strong> &mdash; their conversion code is byte for byte the same, so even this upgrade&rsquo;s first prompt is fast</li>
+                <li><strong>Measured after a simulated upgrade</strong> &mdash; the first call after a simulated upgrade took 1.4&ndash;1.9&nbsp;s against 8.8&ndash;10.5&nbsp;s, and all 51 timed calls returned the same block, byte for byte (<code>tests/benchmark/hook_latency.py</code>)</li>
             </ul>
             <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.2.md">v4.23.2 release notes</a></p>
         </div>
