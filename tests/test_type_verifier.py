@@ -422,17 +422,24 @@ def test_tree_sitter_names_keep_the_first_in_depth_first_order(tmp_path):
 
 def test_each_file_is_walked_once_however_many_lookups(tmp_project, monkeypatch):
     # The old search parsed a file once (it cached the tree) but walked the
-    # whole tree again for every distinct name looked up in it.
-    import ast
+    # whole tree again for every distinct name looked up in it. Count node
+    # visits (``ast.walk`` makes them through ``iter_child_nodes`` too): five
+    # lookups in a file visit no more nodes than one.
+    visits = []
+    real = ast.iter_child_nodes
+    monkeypatch.setattr(ast, "iter_child_nodes", lambda node: visits.append(1) or real(node))
 
-    walks = []
-    real_walk = ast.walk
-    monkeypatch.setattr(ast, "walk", lambda node: walks.append(1) or real_walk(node))
-    tv = TypeVerifier(tmp_project)
-    for name in ("get_user", "fetch_all", "no_annotation", "returns_none", "missing"):
-        tv.infer_return_type(f"module_a.py::{name}")
-    assert len(walks) == 1
-    assert tv.infer_return_type("module_a.py::missing") is None
+    def visits_for(names):
+        visits.clear()
+        tv = TypeVerifier(tmp_project)
+        for name in names:
+            tv.infer_return_type(f"module_a.py::{name}")
+        return len(visits)
+
+    one = visits_for(["get_user"])
+    assert one > 0
+    assert visits_for(["get_user", "fetch_all", "no_annotation", "returns_none", "missing"]) == one
+    assert TypeVerifier(tmp_project).infer_return_type("module_a.py::missing") is None
 
 
 def test_a_file_that_does_not_parse_gives_no_types(tmp_path):
