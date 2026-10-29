@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.23.1](https://github.com/dfrostar/neuralmind/compare/v4.23.0...v4.23.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **hermes:** the plugin serves each session's own project under Hermes 0.22's gateway ([#742](https://github.com/dfrostar/neuralmind/issues/742)) ([0f1577f](https://github.com/dfrostar/neuralmind/commit/0f1577f226ffbb9427b7a06cabe04b54e5a310ed))
+* **hooks:** session-start returns its recap within the Hermes plugin's timeout on a large synapse store ([#741](https://github.com/dfrostar/neuralmind/issues/741)) ([289f52c](https://github.com/dfrostar/neuralmind/commit/289f52cc1efb249cf1d117fff60925990f1fa1b1))
+
+## [4.23.0](https://github.com/dfrostar/neuralmind/compare/v4.22.1...v4.23.0) (2026-10-28)
+
+
+### Features
+
+* **site:** add a What's New page that links recent releases and the drift guards ([#718](https://github.com/dfrostar/neuralmind/issues/718)) ([486b597](https://github.com/dfrostar/neuralmind/commit/486b5974b448ff9f72236913dfe6405f17634a3c))
+
+
+### Bug Fixes
+
+* **hooks:** a matched test file brings the code it tests into the prompt block ([#732](https://github.com/dfrostar/neuralmind/issues/732)) ([95845e6](https://github.com/dfrostar/neuralmind/commit/95845e69817576947aaf13adc580aa63652e9886))
+* **hooks:** the prompt hook answers within the Hermes plugin's timeout on a large index ([#739](https://github.com/dfrostar/neuralmind/issues/739)) ([3dcabaf](https://github.com/dfrostar/neuralmind/commit/3dcabaf5a9ee6da922d171be9d0bc3cb75f553a0))
+* **recall:** list the code before its tests when a prompt only says how to run them ([#731](https://github.com/dfrostar/neuralmind/issues/731)) ([9637ce0](https://github.com/dfrostar/neuralmind/commit/9637ce083955ee6d727c8d383b8c30fbc03b180f))
+
 ## [4.22.1](https://github.com/dfrostar/neuralmind/compare/v4.22.0...v4.22.1) (2026-10-26)
 
 

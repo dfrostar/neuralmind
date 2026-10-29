@@ -43,6 +43,8 @@ def _isolate(monkeypatch, tmp_path):
     monkeypatch.setattr(plugin, "_SUBAGENT_SESSIONS", {})
     monkeypatch.setattr(plugin, "_SUBAGENT_TASKS", {})
     monkeypatch.setattr(plugin, "_WARNED", set())
+    # Hermes before 0.22.2 unless a test hands the plugin a gateway context.
+    monkeypatch.setattr(plugin, "_HERMES", None)
     # The once-per-process version check runs its own subprocess; tested below.
     monkeypatch.setattr(plugin, "_version_checked", True)
     monkeypatch.chdir(tmp_path)
@@ -112,6 +114,72 @@ def test_an_unbuilt_candidate_falls_through(tmp_path, monkeypatch):
     built = _built(tmp_path / "built")
     monkeypatch.chdir(built)
     assert plugin._project() == built
+
+
+class GatewayCtx:
+    """Hermes 0.22.2+'s plugin context: hooks run in a gateway shared by every session."""
+
+    def __init__(self, session_cwd):
+        self._session_cwd = session_cwd
+
+    def register_hook(self, name, callback):
+        pass
+
+    def session_cwd(self):
+        if isinstance(self._session_cwd, Exception):
+            raise self._session_cwd
+        return self._session_cwd
+
+
+def test_register_keeps_the_context_for_the_session_cwd():
+    ctx = GatewayCtx("")
+    plugin.register(ctx)
+    assert plugin._HERMES is ctx
+
+
+def test_under_the_gateway_the_session_cwd_is_the_project(tmp_path, monkeypatch, calls):
+    # The gateway's own cwd and TERMINAL_CWD (here both built) belong to no session.
+    session, gateway, terminal = (_built(tmp_path / n) for n in ("session", "gateway", "term"))
+    monkeypatch.chdir(gateway)
+    monkeypatch.setenv("TERMINAL_CWD", str(terminal))
+    plugin.register(GatewayCtx(str(session)))
+    assert plugin._project() == session
+    assert plugin.on_pre_llm_call(session_id="s", user_message="how?") == {"context": "RECALL"}
+    assert calls == [("prompt-submit", {"cwd": str(session), "session_id": "s", "prompt": "how?"})]
+
+
+@pytest.mark.parametrize("session_cwd", ["", "   ", None, RuntimeError("no session")])
+def test_a_gateway_session_without_a_workspace_has_no_project(
+    tmp_path, monkeypatch, calls, session_cwd
+):
+    gateway, terminal = (_built(tmp_path / n) for n in ("gateway", "term"))
+    monkeypatch.chdir(gateway)
+    monkeypatch.setenv("TERMINAL_CWD", str(terminal))
+    plugin.register(GatewayCtx(session_cwd))
+    assert plugin._project() is None
+    assert plugin.on_pre_llm_call(session_id="s", user_message="x", is_first_turn=True) is None
+    assert calls == []
+
+
+def test_env_and_pin_still_come_before_the_session_cwd(tmp_path, monkeypatch):
+    env, config, session = (_built(tmp_path / n) for n in ("env", "cfg", "session"))
+    plugin.register(GatewayCtx(str(session)))
+    monkeypatch.setattr(plugin, "_config", lambda: {"project": str(config)})
+    assert plugin._project() == config
+    monkeypatch.setenv("NEURALMIND_PROJECT", str(env))
+    assert plugin._project() == env
+
+
+def test_relative_paths_resolve_against_the_session_cwd(tmp_path, monkeypatch, calls, sync_threads):
+    session = _built(tmp_path / "session")
+    monkeypatch.setenv("TERMINAL_CWD", str(tmp_path / "elsewhere"))
+    plugin.register(GatewayCtx(str(session)))
+    plugin.on_post_tool_call(tool_name="write_file", args={"path": "a.py"}, session_id="s1")
+    plugin.on_post_tool_call(tool_name="read_file", args={"path": "b.py"}, session_id="s1")
+    assert [(a, p["tool_input"]["file_path"]) for a, p in calls] == [
+        ("edit-activity", str(session / "a.py")),
+        ("read-activity", str(session / "b.py")),
+    ]
 
 
 def test_first_turn_gets_recap_then_recall(tmp_path, calls):
