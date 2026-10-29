@@ -291,3 +291,15 @@ drawn by the same rule, that the pilot didn't use.
     analysis code for this variant is committed before stage 2's results are
     read. The preflight against ai-9970's frozen environment passes before
     each stage. The result is labelled "pilot" and published whatever it shows.
+- 2026-10-29 — the Hermes variant's analysis code (`analyze_hermes` and
+  `stage_one` in `evals/task_outcome/analyze.py`), committed while stage 1
+  was running, after 17 of its 40 runs and before any stage 2 run. It
+  implements the endpoints above as written, and `analyze` picks them for any
+  run set whose `agent` is `hermes`, refusing a mix of agents:
+  - **Tokens are `input_tokens + output_tokens`.** Not the record's
+    `total_tokens`: Hermes reports 0 there for a session that ends in an
+    error, though it records that session's input and output. Stage 1's run
+    13 (`404ccad4a9`, `neuralmind` arm) ended that way and logged
+    `tokens=0` with 3.71M tokens used.
+  - The one-sided McNemar p-value is the binomial tail of NeuralMind-only
+    tasks among the discordant ones. A timed-out run never counts as solved.

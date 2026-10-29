@@ -302,6 +302,107 @@ def test_a_run_without_a_cost_is_scored_at_its_budget_cap_and_unsolved() -> None
     assert analyze.run_cost(timed_out) == 2.0
 
 
+def _hermes_runs(solved: dict[tuple[str, str, int], bool], seeds=(0,)) -> list[dict]:
+    """Four tasks, both arms; ``solved`` marks which (task, arm, seed) runs solved."""
+    runs = []
+    for i in range(4):
+        for arm in ("baseline", "neuralmind"):
+            for seed in seeds:
+                runs.append(
+                    {
+                        "task": f"t{i}",
+                        "arm": arm,
+                        "seed": seed,
+                        "agent": "hermes",
+                        "solved": solved.get((f"t{i}", arm, seed), False),
+                        "input_tokens": 1000 if arm == "baseline" else 800,
+                        "output_tokens": 100,
+                        "total_tokens": 1100 if arm == "baseline" else 900,
+                        "duration_ms": 600_000,
+                        "num_turns": 50,
+                        "explore_calls_before_first_edit": 20,
+                        "gold_touched": True,
+                        "timed_out": False,
+                        "cost_usd": None,
+                        "budget_usd": None,
+                    }
+                )
+    return runs
+
+
+def test_mcnemar_one_sided_counts_only_neuralmind_wins() -> None:
+    assert analyze.mcnemar_exact_greater(0, 5) == 1 / 32
+    assert analyze.mcnemar_exact_greater(5, 0) == 1.0
+    assert analyze.mcnemar_exact_greater(1, 4) == 6 / 32
+    assert analyze.mcnemar_exact_greater(0, 0) == 1.0
+
+
+def test_hermes_tokens_are_input_plus_output_even_when_total_reads_zero() -> None:
+    # Hermes reports total_tokens 0 for a session that ends in an error.
+    run = {"input_tokens": 3_618_022, "output_tokens": 93_495, "total_tokens": 0}
+    assert analyze.run_tokens(run) == 3_711_517
+    assert analyze.run_tokens({"total_tokens": 5}) is None
+
+
+def test_hermes_runs_are_judged_on_solve_rate_not_cost() -> None:
+    runs = _hermes_runs({("t0", "neuralmind", 0): True, ("t1", "baseline", 0): True})
+    # analyze() is cost-primary and has no cost for a local model.
+    with pytest.raises(analyze.IncompleteRunsError):
+        analyze.analyze(runs)
+    result = analyze.analyze_hermes(runs)
+    assert result["solve"]["only_neuralmind"] == 1
+    assert result["solve"]["only_baseline"] == 1
+    assert result["solve"]["mcnemar_p_greater"] == 0.75
+    assert result["decision"]["claim_supported"] is False
+    assert result["tokens"]["median_relative_change"] == -200 / 1100
+    assert "Claim supported: NO" in analyze.report_hermes(result)
+
+
+def test_hermes_majority_of_seeds_decides_a_task_and_a_timeout_never_solves() -> None:
+    solved = {("t0", "neuralmind", 0): True, ("t0", "neuralmind", 1): True}
+    solved.update({("t1", "neuralmind", 0): True})
+    runs = _hermes_runs(solved, seeds=(0, 1, 2))
+    result = analyze.analyze_hermes(runs)
+    assert result["solve"]["neuralmind_tasks_solved"] == 1  # t1 solved 1 of 3 seeds
+    assert result["solve"]["solved_runs"] == {"baseline": 0, "neuralmind": 3}
+    timed_out = next(r for r in runs if (r["task"], r["arm"], r["seed"]) == ("t0", "neuralmind", 1))
+    timed_out.update(timed_out=True)
+    assert analyze.analyze_hermes(runs)["solve"]["neuralmind_tasks_solved"] == 0
+
+
+def test_hermes_stage_one_pools_both_arms_over_seed_zero() -> None:
+    four = {("t0", "baseline", 0), ("t1", "baseline", 0), ("t2", "neuralmind", 0)}
+    four.add(("t3", "neuralmind", 1))  # seed 1 isn't stage 1
+    runs = _hermes_runs(dict.fromkeys(four, True), seeds=(0, 1))
+    assert analyze.stage_one(runs) == {
+        "runs": 8,
+        "solved_runs": 3,
+        "min_solved_runs": 5,
+        "run_stage_two": False,
+    }
+    five = {(f"t{i}", "baseline", 0) for i in range(4)} | {("t0", "neuralmind", 0)}
+    assert analyze.stage_one(_hermes_runs(dict.fromkeys(five, True)))["run_stage_two"] is True
+
+
+def test_runs_from_two_agents_are_never_pooled(tmp_path) -> None:
+    runs = _hermes_runs({})
+    runs[0]["agent"] = "claude"
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 1
+    del runs[0]["agent"]  # records before the field are Claude Code's
+    with pytest.raises(analyze.IncompleteRunsError, match="more than one agent"):
+        analyze.agent_of(runs)
+
+
+def test_analyze_main_picks_the_hermes_endpoints(tmp_path, capsys) -> None:
+    runs = _hermes_runs({("t0", "neuralmind", 0): True})
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "Agent: Hermes" in out
+    assert "Stage 1 (seed 0, both arms): 1 of 8 runs solved" in out
+
+
 def test_harvest_enforces_the_pre_registered_gates() -> None:
     from evals.task_outcome import harvest
 
