@@ -6203,11 +6203,12 @@ def _exit_without_teardown(code: int) -> None:
     exit-time cleanup: there are no atexit handlers, files are written in
     ``with`` blocks, and background work runs in detached processes.
     """
+    import contextlib
+
     for stream in (sys.stdout, sys.stderr):
-        try:
+        # A closed stream or a reader that went away: nothing left to deliver.
+        with contextlib.suppress(OSError, ValueError):
             stream.flush()
-        except Exception:
-            pass
     os._exit(code)
 
 
