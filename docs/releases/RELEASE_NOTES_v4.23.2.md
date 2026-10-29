@@ -40,8 +40,9 @@ maintenance) runs in detached processes of its own.
 
 Each vector backend has a cheap `has_rows()` check (`SELECT 1 … LIMIT 1` on
 turbovec, a row count on ChromaDB), and loading an index uses it instead of
-the full statistics. The notice printed when a load takes over two seconds
-now reads `Loading index...`, without the node count it no longer has.
+the full statistics. The notice printed when a load takes over two seconds,
+`Loading index (8,936 nodes)...`, still names the count: it is counted only
+then, so a fast load never pays for it.
 
 ### The type verifier reads each file once, in one thread
 
@@ -59,7 +60,7 @@ build. Before, they came out in whatever order the threads finished.
 |---|---|---|
 | Claude Code (`UserPromptSubmit`) | The block, after the hook freed its graph and counted the index | The same block, 0.24 s sooner per prompt on hermes-agent, ~0.03 s on typical repositories (M3) |
 | Hermes-Agent (plugin) | As above, through the plugin's `pre_llm_call` | As above |
-| Cursor, Cline, generic MCP | The MCP server checks the index once when it loads | The same check without the count; no per-prompt hook |
+| Cursor, Cline, generic MCP | The MCP server checks the index once when it loads | The same check, cheaper; no per-prompt hook |
 | Anyone who builds | The type pass took 121–123 s of a hermes-agent build | 17 s, with the same type edges |
 
 ---
