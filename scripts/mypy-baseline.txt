@@ -1,7 +1,7 @@
 # Known mypy errors: CI fails on any error not listed here, and on any
 # listed error mypy no longer reports. Regenerate after fixing errors with
 #   python scripts/check_mypy_baseline.py --update
-# 228 errors
+# 225 errors
 neuralmind/bge_embedder.py: Returning Any from function declared to return "list[list[float]]"  [no-any-return]
 neuralmind/bm25.py: Function "builtins.callable" is not valid as a type  [valid-type]
 neuralmind/chapter_indexer.py: Item "None" of "Any | None" has no attribute "embed"  [union-attr]
@@ -224,9 +224,6 @@ neuralmind/type_verifier.py: Module has no attribute "language"; maybe "language
 neuralmind/type_verifier.py: Module has no attribute "language"; maybe "language_tsx"?  [attr-defined]
 neuralmind/type_verifier.py: Name "ts" already defined (by an import)  [no-redef]
 neuralmind/type_verifier.py: Name "ts" already defined (by an import)  [no-redef]
-neuralmind/type_verifier.py: Returning Any from function declared to return "TypeInfo | None"  [no-any-return]
-neuralmind/type_verifier.py: Returning Any from function declared to return "TypeInfo | None"  [no-any-return]
-neuralmind/type_verifier.py: Returning Any from function declared to return "TypeInfo | None"  [no-any-return]
 neuralmind/type_verifier.py: Returning Any from function declared to return "int"  [no-any-return]
 neuralmind/watcher.py: "None" has no attribute "schedule"  [attr-defined]
 neuralmind/watcher.py: "None" has no attribute "start"  [attr-defined]

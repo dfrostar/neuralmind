@@ -1157,6 +1157,9 @@ class TurboVecEmbedder(EmbeddingBackend):
             or e.get("target") in node_ids
         ]
 
+    def has_rows(self) -> bool:
+        return self._conn.execute("SELECT 1 FROM nodes LIMIT 1").fetchone() is not None
+
     def get_stats(self) -> dict[str, Any]:
         total = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()["c"]
         rows = self._conn.execute(

@@ -222,3 +222,310 @@ drawn by the same rule, that the pilot didn't use.
     change +0.0% (95% CI −5.2% to +8.6%), Wilcoxon p = 0.66, 18 of 20 tasks
     solved in each arm. The interval excludes the 15% reduction the
     confirmatory run was to be powered for.
+- 2026-10-29 — a second agent, before any of its runs: Hermes-Agent on a local
+  model. A separate, exploratory study on the same 20 tasks; its runs are never
+  pooled with the Claude Code pilot's.
+  - `run.py --agent hermes` runs `hermes chat -Q --format stream-json` in each
+    workspace. Pinned: Hermes Agent v0.22.5, model `gpt-oss:20b-64k` (Ollama
+    digest `ffdda7cf7e79`) on a 16 GB RTX 5000 Ada, NeuralMind 4.23.1. A run
+    whose Hermes session records any other model is a harness failure: Hermes
+    falls back to another provider when its own model fails.
+  - Isolation, for both arms: the session gets only Hermes's `file` and
+    `terminal` toolsets and no MCP server (`-t file,terminal,no_mcp`), and no
+    memory provider, context files or preloaded skills (`--ignore-rules`), so
+    one run can't recall another through mem0 or session search.
+  - What NeuralMind contributes changes. With no MCP server in either arm, the
+    `neuralmind` arm gets NeuralMind only through the Hermes plugin (a block
+    on every prompt, the session recap, edit learning), which serves a
+    session's directory once it has an index. The `baseline` arm's workspace
+    has no index, so the plugin does nothing there. `neuralmind
+    install-hooks` isn't run: those are Claude Code's hooks. The manipulation
+    check is unchanged.
+  - The primary endpoint can't be dollars: a local model costs nothing per
+    call. These runs record Hermes's reported tokens (`total_tokens`, input
+    plus output) and wall-clock time. Hermes has no budget cap, so runs are
+    bounded by `--max-turns` and the harness timeout instead.
+  - A smoke test of 4 runs comes first, as for the pilot: the first two tasks
+    in `tasks.json`, one seed per arm, in `bench/task_outcome/hermes-smoke/`.
+    It checks the harness and measures how long a run takes. The full run's
+    endpoint (tokens or time), its timeout, and how a timed-out run is scored
+    are fixed in this log after the smoke and before the full run.
+- 2026-10-29 — Hermes smoke test, 4 runs in `bench/task_outcome/hermes-smoke/`,
+  `--max-turns 60`, timeout 1800 s. Not analysed, not pooled:
+  - The harness worked end to end: every session ran on `gpt-oss:20b-64k`,
+    every `neuralmind`-arm run recorded the plugin's prompt hook, and the
+    judge ran the hidden tests.
+  - The turn cap decided most runs. All 4 used 59–60 model calls, 1.6–2.1M
+    tokens and 3–20 minutes; three ended "out of steps" or with an answer
+    and no edit. One run solved its task: `1015eb8b95`, baseline arm.
+  - On `1015eb8b95` the block named no file the fix changed (as the offline
+    replay records) and quoted another file's code; the `neuralmind`-arm
+    agent never edited. On `fa72224183` the block named both fixed files
+    first; neither arm solved it, as neither Claude Code arm did in the
+    pilot. One run per cell: no inference is drawn from either.
+- 2026-10-29 — the Hermes run's design, fixed after the smoke test and before
+  any of its runs:
+  - **Bounds.** `--max-turns 120` (the smoke's 60 decided most runs) and a
+    3600 s timeout per run. A run that hits the timeout counts as unsolved,
+    with the tokens its Hermes session had used.
+  - **Nothing runs on while the tests judge.** The agent's commands run in
+    the Hermes gateway, which keeps a turn going when its client exits and
+    starts a new one when a background command the agent left finishes (the
+    smoke saw three, all before its run ended). After every run the harness
+    stops any process working in the workspace and waits until Hermes has no
+    turn queued or running for the session; a session still busy an hour
+    later stops the benchmark as a harness failure.
+  - **Primary endpoint: solve rate.** A small model's tokens mostly record how
+    long it searched. A task is solved by an arm when most of its seeds solve
+    it; exact one-sided McNemar test on the tasks only one arm solves. "With
+    NeuralMind, gpt-oss solves more of these tasks" is supported only if
+    p < 0.05. Secondary, reported but not tested: tokens (per-task relative
+    change with its bootstrap interval), wall-clock time, turns, tool calls
+    before the first edit, whether a gold file was edited, and solved runs per
+    arm.
+  - **Two stages.** Stage 1 is seed 0 for both arms, 40 runs. Then one number
+    decides, pooled over both arms so it can't favour either: if fewer than 5
+    of the 40 runs solve their task, the run stops there and is published as
+    "these tasks are too hard for this model to tell the arms apart". Otherwise
+    stage 2 runs seeds 1 and 2 (80 runs) with the same pinned versions, and the
+    analysis code for this variant is committed before stage 2's results are
+    read. The preflight against ai-9970's frozen environment passes before
+    each stage. The result is labelled "pilot" and published whatever it shows.
+- 2026-10-29 — the Hermes variant's analysis code (`analyze_hermes` and
+  `stage_one` in `evals/task_outcome/analyze.py`), committed while stage 1
+  was running, after 17 of its 40 runs and before any stage 2 run. It
+  implements the endpoints above as written, and `analyze` picks them for any
+  run set whose `agent` is `hermes`, refusing a mix of agents:
+  - **Tokens are `input_tokens + output_tokens`.** Not the record's
+    `total_tokens`: Hermes reports 0 there for a session that ends in an
+    error, though it records that session's input and output. Stage 1's run
+    13 (`404ccad4a9`, `neuralmind` arm) ended that way and logged
+    `tokens=0` with 3.71M tokens used.
+  - The one-sided McNemar p-value is the binomial tail of NeuralMind-only
+    tasks among the discordant ones. A timed-out run never counts as solved.
+- 2026-10-29 — the Hermes variant's tokens and minutes are the whole
+  session's, fixed while stage 1 was running (after 24 of its 40 runs) and
+  before any stage 2 run. Checking the records against Hermes's `state.db`
+  found they mix two scales:
+  - A run's tokens come from the Hermes client's `result` event, which counts
+    every prompt token, cache reads included, for the client's own turn. When
+    a background command the agent started finishes, Hermes wakes the session
+    for more turns, and the tests judge the workspace after those. Stage 1's
+    run 22 made 95 more model calls that way; its record holds about half of
+    its session's 7.2M tokens.
+  - A run cut off by the timeout has no `result` event. The runner took the
+    session's `input_tokens`, which leave cache reads out: run 18's record
+    says 171k tokens where its session used 2.5M. It has no duration either.
+  - `evals/task_outcome/hermes_sessions.py` reads each run's session row,
+    read-only, into `sessions.json` beside `runs.jsonl`: prompt tokens
+    (uncached input plus cache reads and writes), output tokens, API calls,
+    and minutes from the session's start to its last activity. `analyze`
+    takes tokens and minutes from it, and the report counts any run without
+    one. On stage 1's first 24 runs it equals the record on 21. The other
+    three are runs 15 (one call after its client returned), 18 and 22.
+  - The harness is unchanged, so stage 2 runs exactly as stage 1 did. Turns
+    were already the session's (`api_call_count`). Tool counts, and calls
+    before the first edit, still come from the client's turn.
+  - `--max-turns 120` caps one Hermes turn, not a run: a wake-up starts
+    another, so run 22 made 215 model calls.
+- 2026-10-29 — the memory track, pre-registered before any of its runs (the
+  Hermes run's stage 1 was at 27 of its 40). Exploratory, labelled "pilot",
+  published whatever it shows, and never pooled with another run:
+  - **Question.** Does what NeuralMind learns from use in one repository
+    (its synapse store and session recaps), carried from one task to the
+    next, let the same agent solve more of the later tasks than it does from
+    a fresh index?
+  - **Fresh arm: the Hermes run's `neuralmind` arm,** 3 seeds per task, with
+    no new runs. Every task's base commit holds a team-memory bundle
+    (`.neuralmind-team-memory.json`) and all 20 are empty, so those runs start
+    with nothing learned. The memory track runs on the same frozen ai-9970,
+    with the same pins (NeuralMind 4.23.1, Hermes v0.22.5, `gpt-oss:20b-64k`),
+    isolation, `--max-turns 120` and 3600 s timeout, and a timed-out run is
+    unsolved. ai-9970 isn't upgraded until the track ends. The runner gains
+    an option to carry state; a run without it is unchanged.
+  - **Carried arm: 3 chains, 60 new runs.** Each chain runs the 20 tasks
+    once, starting from an empty store, in order of the fix commit's author
+    date. On these 20 that order also puts every fix commit after its
+    ancestors (checked), so no task learns from a later commit. Commit dates
+    would tie four of them. The order: `0db7d2c97d 8592aa7ab7 366858e431
+    b06a3ee6af e6fa9e4b80 1015eb8b95 4325e063e1 4e01f40e6a e303c7a287
+    21bd34dfc4 108b1ee013 2a6448552b 404ccad4a9 24ee2924b9 53b9813363
+    b4c9886021 8c0411129c 454904f4bb 7a1c90dcab fa72224183`.
+    - Before each task after the first, the runner copies the previous
+      task's `.neuralmind/synapses.db` (with its `-wal` and `-shm` files) and
+      `.neuralmind/recaps/` into the new workspace, then builds its index.
+      Everything else is rebuilt.
+    - The chains run interleaved by position (chain A's first task, B's, C's,
+      then A's second), so a position's three runs are close in time.
+    - A chain's first task starts with nothing learned, as in the fresh arm.
+  - **Primary endpoint: solve rate,** as in the Hermes run. A task counts as
+    solved by an arm when most of its 3 runs solve it (seeds for the fresh
+    arm, chains for the carried arm); exact one-sided McNemar test on the
+    tasks only one arm solves. "Carrying NeuralMind's learned state lets the
+    model solve more of these tasks" is supported only if p < 0.05. The
+    smallest result that clears it is 5 tasks only the carried arm solves and
+    none only the fresh arm solves, so a null result is likely even if the
+    effect is real but modest.
+  - **The mechanism, reported but not tested.** Hermes keeps the block
+    NeuralMind adds to the prompt in the session's first user message
+    (`api_content` in `state.db`), so both arms' blocks are read back
+    afterwards, read-only. Per task, carried against fresh: does the block
+    name a gold file, and is the first file it names one? This shows whether
+    carried state reaches the agent at all, apart from what the model does
+    with it.
+  - **A prediction, falsifiable.** Help shows on the 12 tasks with a gold file
+    that a task earlier in the order also changed ("repeats"), and there's no
+    harm on the other 8. Held if the carried arm solves at least as many of
+    the 12 as the fresh arm, and no more than one fewer of the 8; reported as
+    held or not held, not tested. The repeats: `8592aa7ab7 4325e063e1
+    4e01f40e6a e303c7a287 21bd34dfc4 108b1ee013 2a6448552b 24ee2924b9
+    b4c9886021 8c0411129c 454904f4bb fa72224183`. The store learns from what
+    the agent read and edited, not from the gold files, so an earlier task
+    the agent didn't solve can teach the chain a wrong file.
+  - **Also reported:** whole-session tokens and minutes (`hermes_sessions`),
+    turns, tool calls before the first edit, runs that edited a gold file,
+    solved runs per arm, and the carried arm's solve share minus the fresh
+    arm's at each position in the order.
+  - **Carry-over check, per carried run:** how many learned edges the run
+    starts with, and how many of them have both ends in its new graph. Node
+    ids are file paths plus symbol names, so an edge should survive a rebuild
+    while both names do.
+  - **Order of work.**
+    1. The Hermes run finishes. The memory track runs only if all 120 of
+       its runs complete, as its `neuralmind` arm is the fresh arm.
+    2. A smoke test, not analysed or pooled: one 2-task chain, `4e01f40e6a`
+       then `e303c7a287`, which both fix `secret_scan.py`. It checks that the
+       second run starts with learned edges and that its block differs from
+       the first run's.
+    3. The 60 runs. Their analysis code is committed before their results
+       are read.
+  - **Threats, stated up front.**
+    - Historical control: the fresh runs are days older than the carried
+      ones. The frozen machine is what makes them comparable, and the
+      preflight stops the track on any change.
+    - Compressed time: a chain's runs are about 25 minutes apart, where real
+      use spans days, and the store's decay runs on the wall clock. Reported;
+      the clock isn't faked.
+    - Path dependence: one early run can teach a chain the wrong files. The
+      3 chains show the spread.
+    - One repository, 20 tasks, 3 chains: exploratory.
+- 2026-10-29 — the Hermes run's stage 1 is complete (40 runs, seed 0, from
+  03:08 to 17:28 UTC), and stage 2 has started. Only the pooled count below
+  was read to decide; the arms aren't compared until stage 2 ends:
+  - **21 of the 40 runs solved their task, pooled over both arms.** That is
+    at least 5, so stage 2 runs. A chained script counted it with the
+    analysis's own rule and started stage 2 at 17:28 UTC, after the preflight
+    matched ai-9970's frozen environment.
+  - **One run counts as unsolved though the judge passed it.** Run 18
+    (`7a1c90dcab`) hit the 3600 s timeout, and its workspace then passed the
+    hidden tests, so its record says `solved: true`. As fixed above, a
+    timed-out run is unsolved; `analyze` scores it that way, which is why the
+    records hold 22 solves.
+  - **The turn cap ended 19 runs,** at 101–121 model calls in the session.
+    Hermes reports these as an error, and 7 of them still solved their task
+    from the edits they made before it. Two sessions (runs 15 and 22) went
+    past 120 calls because of wake-up turns, as described above.
+  - **Every run is accounted for.** All 40 sessions ran on `gpt-oss:20b-64k`
+    with Hermes v0.22.5 and NeuralMind 4.23.1 (tool and plugin), and all 40
+    are in `state.db`, so `sessions.json` covers every run. Its tokens match
+    the record on 37; the other three are runs 15, 18 and 22, as expected.
+    No run left a background process for the harness to stop; the longest
+    wait for Hermes to go idle was 1,113 s.
+  - The agent's `pytest` runs can change directory into pytest's temporary
+    directories under `~/.hermes/cache/scratch/`, where the harness's cleanup,
+    which looks for processes working in the workspace, doesn't see them.
+    Checks every 10–20 minutes found none still running into a later run.
+    The harness is left as it is until stage 2 ends, so every run is measured
+    the same way.
+- 2026-10-30 — the Hermes run is complete, all 120 runs recorded in
+  `bench/task_outcome/hermes-pilot/` (stage 2's 80 ran from 2026-10-29 17:28
+  to 2026-10-30 18:48 UTC). `report.txt` there is `analyze`'s output:
+  - **Result, labelled "pilot": claim not supported.** With NeuralMind,
+    gpt-oss solved 10 of the 20 tasks (most of a task's 3 seeds), and 8
+    without. The two tasks only one arm solved both went to NeuralMind:
+    `e303c7a287`, solved by 3 of 3 seeds with it and 0 without, and
+    `53b9813363`, 3 and 1. One-sided McNemar p = 0.25. That is the lowest p
+    two discordant tasks can give; p < 0.05 needs at least 5, all one way.
+  - **Solved runs: 29 of 60 with NeuralMind, 26 of 60 without.** Four tasks
+    were solved by one `baseline` seed and no `neuralmind` seed
+    (`4325e063e1`, `4e01f40e6a`, `24ee2924b9`, `366858e431`), so by neither
+    arm under the majority rule.
+  - **Secondary endpoints, reported, not tested, show no difference.**
+    Median whole-session tokens per task 3.02M without NeuralMind and 3.06M
+    with; the per-task change is −2.3% (95% CI −20.0% to +19.4%). Median
+    minutes per task 18.4 and 17.9, turns 91.3 and 88.3, tool calls before
+    the first edit 31.2 and 30.2; runs that edited a gold file 50 and 49.
+    All three runs that hit the timeout were in the `baseline` arm, stage 1's
+    run 18 among them.
+  - **No run was a harness failure.** All 120 sessions in `state.db` ran on
+    `gpt-oss:20b-64k` at the local Ollama endpoint, with Hermes's fallback
+    never active, on Hermes v0.22.5 and NeuralMind 4.23.1. Every
+    `neuralmind`-arm run recorded the plugin's prompt hook (60 of 60) and no
+    `baseline` run did, so the manipulation check drops nothing.
+  - **How the runs ended,** both stages, arms pooled: 57 with an answer (37
+    solved), 54 at the turn cap (15 solved by the edits they made first), 5
+    with the model's output truncated on every retry (2 solved), 1 on an
+    invalid tool call (solved), and 3 at the timeout. Hermes reports all but
+    the answers and the timeouts as errors; they are the model's outcomes,
+    not the harness's. Stage 1's entry counted run 13 among 19 runs the turn
+    cap ended; it ended on a truncated output at 101 calls, so the cap ended
+    18 there.
+  - **Whole-session accounting.** `sessions.json` covers all 120 runs, and
+    its tokens match the record on 112. The other eight are the three
+    timeouts and five runs Hermes woke up after their client returned
+    (stage 1's runs 15 and 22 among them). Five sessions went past 120 calls
+    through wake-ups, the most 237. The harness stopped 22 background
+    processes over the 120 runs.
+  - **ai-9970 changed once during stage 2.** Its Hermes had 12 cron jobs
+    active, some calling the same model, one of them every 30 minutes. They
+    ran through stage 1 and stage 2's first 22 runs, were paused at the
+    user's request at 02:56 UTC on 2026-10-30, during run 23, and were
+    resumed after the last run. The preflight doesn't check them. Both arms
+    ran on both sides of the pause (63 runs before it, 33 `baseline` and 30
+    `neuralmind`; 57 after, 27 and 30), and the client's median time per run
+    fell from 17.6 to 14.2 minutes after it. Minutes are the endpoint that
+    can move; reported, not corrected.
+  - All 120 runs completed, so the memory track can start, with its smoke
+    test first, as its order of work says.
+- 2026-10-30 — two harness fixes, from review of the Hermes run's results and
+  before any memory-track run. Runs now record `harness_version` 2:
+  - **Cleanup before judging.** The harness scanned for leftover processes
+    once, before it waited for Hermes to go idle, and only by working
+    directory. A turn running during that wait could start a command the scan
+    never saw, and a test run that had changed into pytest's temporary
+    directories escaped it too. Now it repeats scan and wait until a scan finds
+    nothing and the session is already idle, at most five rounds, else the run
+    is a harness failure. It also stops a process whose `PWD`, exported by the
+    shell that started it and inherited by its children, is in the workspace.
+  - **What that changed in the Hermes run,** checked against `state.db`, where
+    Hermes notes each background command's end in the session: in 36 of the
+    120 runs a command the agent started was still running when judging began,
+    in 33 of them `pytest` over the whole suite. 30 outlived the judging and 6
+    ended during it. The agent made no tool call while any run was judged. The
+    36 are 19 `neuralmind` and 17 `baseline` runs, 18 solved and 18 not, and
+    none of the 18 failed only on pass-to-pass tests, the likeliest trace of a
+    second test run in the same workspace: each failed tests the fix had to
+    make pass. The workspaces were deleted after judging, so they can't be
+    judged again; the verdicts stand as recorded, with this caveat.
+  - **The manipulation check stops the run.** A `neuralmind`-arm run whose
+    workspace records no NeuralMind prompt is now a harness failure, as this
+    spec says, where before it was recorded with zero counts. And the runner
+    refuses a Hermes plugin pinned to a project, which would serve that project
+    to every run instead of the run's workspace. Neither affected the Hermes
+    run: the plugin wasn't pinned (`project` is null) and all 60 `neuralmind`
+    runs recorded prompts.
+  - **What it means for the memory track.** Its fresh arm is the Hermes run's
+    `neuralmind` arm, run on harness 1; its carried runs will run on harness 2.
+    Harness 2 stops commands harness 1 left running, and a stopped command
+    wakes the session, so a carried run can get a turn before judging that a
+    fresh run got only after. That is added to the track's threats, and
+    whether to rerun its fresh arm on harness 2 is decided before any of its
+    runs.
+- 2026-10-30 — harness 3, a merge and nothing else. The other-repository
+  harness (`--repo`/`--profile`, `--index-cache`, `--guard`, written for the
+  hermes-agent screen) had also numbered itself 2, so the runner that has both
+  records 3. For this study's runs it does what harness 2 above does: the
+  `neuralmind` profile, no index cache and no guard change nothing. The memory
+  track's carried runs will record 3, and "harness 2" in its threats means
+  them. The runner refuses `--agent hermes` with a profile that gives each
+  process its own `HERMES_HOME`, since that home would reach `hermes chat`.

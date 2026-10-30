@@ -73,6 +73,10 @@ neuralmind build .              # default: incremental
 
 Only re-embeds nodes whose source changed. Run time scales with the churn, not the repo size.
 
+Since v4.23.3 graph extraction re-extracts only the files a change can affect, and writes the same `graph.json` a full build would, byte for byte. Files your `.gitignore` and `.neuralmindignore` exclude never count as changes. On hermes-agent a one-file rebuild of the graph took 9.8–10.7 s against 34.5–36.0 s for a full extraction. The first build after upgrading to v4.23.3 extracts the whole graph once.
+
+Since v4.23.3 the build's type pass keeps each file's return types in `.neuralmind/type_cache.json`, keyed by a hash of the file's text, and parses only files whose text changed: on hermes-agent (347,376 type edges) it took 1.0–1.2 s on a rebuild against 15.9 s from scratch ([release notes](../releases/RELEASE_NOTES_v4.23.3.md)). Deleting that file costs one build at first-build speed and changes nothing in the result.
+
 **Force full rebuild (rare — after graphify upgrades, schema changes):**
 
 ```bash
