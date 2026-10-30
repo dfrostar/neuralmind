@@ -303,6 +303,62 @@ code, pre, kbd {
     -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 20%, transparent 75%);
 }
 
+/* Liquid: components/ui/LiquidBackground.tsx, under the grid at the top of
+   every page. The pools are radial gradients, soft by construction, so no
+   blur filter; they move on transforms only. Both they and the ASCII canvas
+   fade out well before the first screen ends. */
+
+.liquid-bg {
+    height: min(110vh, 1000px);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+}
+
+.liquid-ascii {
+    /* Half strength across the middle, where the page's text runs, so the
+       graph shows mostly in the margins. */
+    mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0.5) 75%, #000 100%);
+    -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0.5) 75%, #000 100%);
+}
+
+.liquid-pool {
+    position: absolute;
+    width: max(60vw, 520px);
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    will-change: transform;
+}
+
+.liquid-pool-a {
+    top: -35%;
+    left: -15%;
+    background: radial-gradient(closest-side, rgba(91, 140, 255, 0.11), transparent);
+    animation: liquidDriftA 38s ease-in-out infinite alternate;
+}
+
+.liquid-pool-b {
+    top: -10%;
+    right: -20%;
+    background: radial-gradient(closest-side, rgba(79, 209, 165, 0.07), transparent);
+    animation: liquidDriftB 46s ease-in-out infinite alternate;
+}
+
+@keyframes liquidDriftA {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(14vw, 10vh, 0) scale(1.15); }
+}
+
+@keyframes liquidDriftB {
+    from { transform: translate3d(0, 0, 0) scale(1.1); }
+    to { transform: translate3d(-16vw, 8vh, 0) scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .liquid-pool {
+        animation: none;
+    }
+}
+
 .section-reveal {
     opacity: 0;
     transform: translateY(12px);
