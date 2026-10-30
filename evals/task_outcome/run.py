@@ -54,7 +54,7 @@ from pathlib import Path
 
 from evals.task_outcome import harness
 
-HARNESS_VERSION = 1
+HARNESS_VERSION = 2
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -329,8 +329,28 @@ def hermes_session_in(ws: Path, state_db: Path = HERMES_STATE_DB) -> str | None:
     return rows[0][0] if rows else None
 
 
+def _works_in(pid_dir: Path, root: str) -> bool:
+    """Is the process working in ``root``, or was it started there?
+
+    The agent's test runs change into pytest's temporary directories, outside
+    the workspace, so the working directory alone misses them. The ``PWD`` the
+    shell that started a command exported, which its children inherit, still
+    names the workspace.
+    """
+    try:
+        dirs = [os.readlink(pid_dir / "cwd")]
+    except OSError:
+        return False
+    try:
+        env = (pid_dir / "environ").read_bytes().split(b"\0")
+    except OSError:
+        env = []
+    dirs += [v[4:].decode(errors="replace") for v in env if v.startswith(b"PWD=")]
+    return any(d == root or d.startswith(root + os.sep) for d in dirs)
+
+
 def stop_workspace_processes(ws: Path) -> int:
-    """Terminate every process whose working directory is inside ``ws`` (Linux).
+    """Terminate every process working in ``ws``, or started there (Linux).
 
     The agent's commands run in the Hermes gateway, not under this script, and
     a command it left in the background would go on changing the workspace
@@ -345,11 +365,7 @@ def stop_workspace_processes(ws: Path) -> int:
     for entry in proc.iterdir():
         if not entry.name.isdigit() or int(entry.name) == os.getpid():
             continue
-        try:
-            cwd = os.readlink(entry / "cwd")
-        except OSError:
-            continue
-        if cwd == root or cwd.startswith(root + os.sep):
+        if _works_in(entry, root):
             try:
                 os.kill(int(entry.name), signal.SIGTERM)
                 stopped += 1
@@ -395,6 +411,33 @@ def wait_hermes_idle(
         time.sleep(poll)
 
 
+def settle_workspace(
+    ws: Path, session_id: str | None, rounds: int = 5, settle: float = 10.0
+) -> tuple[int, float | None, bool]:
+    """Stop what the agent left running and wait out the turns that wake, until nothing is left.
+
+    Returns the processes stopped, the seconds waited for Hermes (None at the
+    hour limit), and whether the workspace settled: a scan found nothing and
+    the session was already idle, so no turn ran since the scan before it. A
+    turn that runs during a wait can start another command, so one wait is
+    never the last step. Hermes notices a stopped process a moment later and
+    wakes the session, so a scan that stopped any waits ``settle`` seconds first.
+    """
+    stopped, waited = 0, 0.0
+    for _ in range(rounds):
+        n = stop_workspace_processes(ws)
+        stopped += n
+        if n:
+            time.sleep(settle)
+        more = wait_hermes_idle(session_id)
+        if more is None:
+            return stopped, None, False
+        waited += more
+        if not n and not more:
+            return stopped, waited, True
+    return stopped, waited, False
+
+
 def harness_failure(agent: dict, timed_out: bool) -> bool:
     """Did Claude Code fail before or instead of the agent, rather than the agent fail?
 
@@ -422,6 +465,16 @@ def hook_activity(ws: Path) -> dict:
             prompts += kind == "prompt"
             edits += kind == "edit"
     return {"hook_prompts_recorded": prompts, "hook_edits_recorded": edits}
+
+
+def neuralmind_missing(arm: str, hooks: dict) -> bool:
+    """The manipulation check: did a ``neuralmind``-arm run go without NeuralMind?
+
+    No prompt recorded in the workspace means NeuralMind never reached the
+    session (a plugin pinned to another project, say), so the run would measure
+    the baseline under the other arm's name. That's a harness failure.
+    """
+    return arm == "neuralmind" and not hooks.get("hook_prompts_recorded")
 
 
 def judge(task: dict, ws: Path, test_python: str) -> dict:
@@ -469,20 +522,14 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         agent = parse_hermes_stream(stdout.splitlines())
         session_id = agent["session_id"] or hermes_session_in(ws)
         agent["session_id"] = session_id
-        # Nothing may still be working in the workspace when the tests judge it:
-        # stop what the agent left running, then wait out any turn that wakes.
-        stopped, waited = 0, 0.0
-        for _ in range(3):
-            n = stop_workspace_processes(ws)
-            stopped += n
-            more = wait_hermes_idle(session_id)
-            waited = None if more is None else waited + more
-            if waited is None or not n:
-                break
+        # Nothing may still be working in the workspace when the tests judge it.
+        stopped, waited, settled = settle_workspace(ws, session_id)
         agent["background_processes_stopped"] = stopped
         agent["hermes_idle_wait_s"] = waited
         if waited is None:
             failure = "the session was still running in the Hermes gateway an hour later"
+        elif not settled:
+            failure = "commands kept starting in the workspace after five rounds of stopping them"
         session = hermes_session(session_id)
         agent["num_turns"] = session.get("api_calls")
         agent["hermes_model"] = session.get("model")
@@ -498,6 +545,9 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
     else:
         agent = parse_stream(stdout.splitlines())
+    hooks = hook_activity(ws) if arm == "neuralmind" else {}
+    if not failure and not harness_failure(agent, timed_out) and neuralmind_missing(arm, hooks):
+        failure = "NeuralMind's prompt hook recorded nothing in the workspace"
     if harness_failure(agent, timed_out) or failure:
         # Authentication, model or CLI failure. That is the harness failing,
         # not the agent, so it must not become an outcome.
@@ -527,7 +577,6 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             ).stdout.split()
         )
     )
-    hooks = hook_activity(ws) if arm == "neuralmind" else {}
     verdict = judge(task, ws, args.test_python)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
@@ -576,6 +625,15 @@ def probe_versions(agent_bin: str, tool_venv: Path, agent: str = "claude") -> di
     else:
         versions["claude_code_version"] = version([agent_bin, "--version"])
     return versions
+
+
+def hermes_plugin_pin(config: Path = HERMES_PLUGIN_CONFIG) -> str | None:
+    """The project the Hermes plugin was pinned to at install, if any.
+
+    The plugin serves a pinned project ahead of the session's directory, so a
+    pinned plugin would hand every run another checkout's context.
+    """
+    return json.loads(config.read_text()).get("project") or None
 
 
 def plan(tasks: list[dict], arms: tuple[str, ...], seeds: int, order_seed: int) -> list[tuple]:
@@ -631,6 +689,15 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"error: the Hermes plugin runs {plugin_nm}, the tool venv "
             f"{args.versions['neuralmind_version']}: the index and the hooks would differ",
+            file=sys.stderr,
+        )
+        return 2
+    pin = hermes_plugin_pin() if args.agent == "hermes" else None
+    if pin:
+        print(
+            f"error: the Hermes plugin is pinned to {pin}, so every run would "
+            "get that project's context, not its workspace's: reinstall it with "
+            "`neuralmind install-hermes-plugin --unpin`",
             file=sys.stderr,
         )
         return 2

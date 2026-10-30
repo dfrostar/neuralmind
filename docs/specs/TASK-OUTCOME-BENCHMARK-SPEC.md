@@ -487,3 +487,37 @@ drawn by the same rule, that the pilot didn't use.
     can move; reported, not corrected.
   - All 120 runs completed, so the memory track can start, with its smoke
     test first, as its order of work says.
+- 2026-10-30 — two harness fixes, from review of the Hermes run's results and
+  before any memory-track run. Runs now record `harness_version` 2:
+  - **Cleanup before judging.** The harness scanned for leftover processes
+    once, before it waited for Hermes to go idle, and only by working
+    directory. A turn running during that wait could start a command the scan
+    never saw, and a test run that had changed into pytest's temporary
+    directories escaped it too. Now it repeats scan and wait until a scan finds
+    nothing and the session is already idle, at most five rounds, else the run
+    is a harness failure. It also stops a process whose `PWD`, exported by the
+    shell that started it and inherited by its children, is in the workspace.
+  - **What that changed in the Hermes run,** checked against `state.db`, where
+    Hermes notes each background command's end in the session: in 36 of the
+    120 runs a command the agent started was still running when judging began,
+    in 33 of them `pytest` over the whole suite. 30 outlived the judging and 6
+    ended during it. The agent made no tool call while any run was judged. The
+    36 are 19 `neuralmind` and 17 `baseline` runs, 18 solved and 18 not, and
+    none of the 18 failed only on pass-to-pass tests, the likeliest trace of a
+    second test run in the same workspace: each failed tests the fix had to
+    make pass. The workspaces were deleted after judging, so they can't be
+    judged again; the verdicts stand as recorded, with this caveat.
+  - **The manipulation check stops the run.** A `neuralmind`-arm run whose
+    workspace records no NeuralMind prompt is now a harness failure, as this
+    spec says, where before it was recorded with zero counts. And the runner
+    refuses a Hermes plugin pinned to a project, which would serve that project
+    to every run instead of the run's workspace. Neither affected the Hermes
+    run: the plugin wasn't pinned (`project` is null) and all 60 `neuralmind`
+    runs recorded prompts.
+  - **What it means for the memory track.** Its fresh arm is the Hermes run's
+    `neuralmind` arm, run on harness 1; its carried runs will run on harness 2.
+    Harness 2 stops commands harness 1 left running, and a stopped command
+    wakes the session, so a carried run can get a turn before judging that a
+    fresh run got only after. That is added to the track's threats, and
+    whether to rerun its fresh arm on harness 2 is decided before any of its
+    runs.

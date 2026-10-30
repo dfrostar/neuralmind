@@ -272,6 +272,71 @@ def test_processes_left_running_in_the_workspace_are_stopped(tmp_path) -> None:
             p.wait()
 
 
+@pytest.mark.skipif(not Path("/proc/self/cwd").exists(), reason="reads /proc (Linux)")
+def test_a_process_started_in_the_workspace_is_stopped_after_it_moves_out(tmp_path) -> None:
+    import subprocess
+
+    # The agent's test runs change into pytest's temporary directories; the
+    # shell that started them exported the workspace as PWD.
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    env = {**os.environ, "PWD": str(ws)}
+    moved = subprocess.Popen(["sleep", "60"], cwd=tmp_path, env=env)
+    elsewhere = subprocess.Popen(["sleep", "60"], cwd=tmp_path, env={**env, "PWD": str(tmp_path)})
+    try:
+        assert run.stop_workspace_processes(ws) == 1
+        assert moved.wait(timeout=10) != 0
+        assert elsewhere.poll() is None
+    finally:
+        for p in (moved, elsewhere):
+            p.kill()
+            p.wait()
+
+
+def _settle(monkeypatch, scans: list[int], waits: list[float | None]):
+    calls = {"scans": 0}
+
+    def stop(ws):
+        calls["scans"] += 1
+        return scans.pop(0)
+
+    monkeypatch.setattr(run, "stop_workspace_processes", stop)
+    monkeypatch.setattr(run, "wait_hermes_idle", lambda session_id: waits.pop(0))
+    return run.settle_workspace(Path("ws"), "s", settle=0), calls["scans"]
+
+
+def test_a_command_started_while_waiting_for_hermes_is_stopped_before_judging(monkeypatch) -> None:
+    # Nothing left running when the client returns, but a turn still running in
+    # the gateway starts a command: the scan after the wait must find it.
+    assert _settle(monkeypatch, scans=[0, 1, 0], waits=[40.0, 12.0, 0.0]) == ((1, 52.0, True), 3)
+
+
+def test_the_workspace_settles_only_when_a_scan_and_the_session_are_both_quiet(monkeypatch) -> None:
+    assert _settle(monkeypatch, scans=[0, 0], waits=[30.0, 0.0]) == ((0, 30.0, True), 2)
+    assert _settle(monkeypatch, scans=[0], waits=[0.0]) == ((0, 0.0, True), 1)
+    # Still busy after five rounds, or still running an hour later: a harness failure.
+    assert _settle(monkeypatch, scans=[1] * 5, waits=[5.0] * 5) == ((5, 25.0, False), 5)
+    assert _settle(monkeypatch, scans=[0], waits=[None]) == ((0, None, False), 1)
+
+
+def test_a_pinned_hermes_plugin_is_refused(tmp_path) -> None:
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({"python": "/venv/bin/python", "project": None}))
+    assert run.hermes_plugin_pin(config) is None
+    config.write_text(json.dumps({"python": "/venv/bin/python", "project": "/home/u/other"}))
+    assert run.hermes_plugin_pin(config) == "/home/u/other"
+
+
+def test_a_neuralmind_run_without_a_recorded_prompt_is_a_harness_failure(tmp_path) -> None:
+    ws = tmp_path / "ws"
+    assert run.neuralmind_missing("neuralmind", run.hook_activity(ws))
+    recaps = ws / ".neuralmind" / "recaps"
+    recaps.mkdir(parents=True)
+    (recaps / "s.jsonl").write_text(json.dumps({"kind": "prompt"}) + "\n")
+    assert not run.neuralmind_missing("neuralmind", run.hook_activity(ws))
+    assert not run.neuralmind_missing("baseline", {})
+
+
 def test_plan_is_deterministic_and_complete() -> None:
     tasks = [{"id": "a"}, {"id": "b"}]
     first = run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)
