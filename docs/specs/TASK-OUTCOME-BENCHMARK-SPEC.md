@@ -563,3 +563,22 @@ drawn by the same rule, that the pilot didn't use.
     were for stage 2 from its run 23.
   - The analysis code is committed before the runs' results are read. Until
     then `analyze` refuses memory-track runs.
+- 2026-10-30 — the memory track's analysis code (`analyze_memory` in
+  `evals/task_outcome/analyze.py`), committed while its smoke test ran and
+  before any of its 120 runs. `analyze` picks it for runs whose `track` is
+  `memory` and refuses a mix of tracks. Its operational choices:
+  - **Primary:** the Hermes variant's code, with `fresh` in the baseline's
+    place and `carried` in NeuralMind's, so a task counts for a condition when
+    at least 2 of its 3 runs solve it, a timed-out run never solves, and the
+    one-sided McNemar test counts carried-only tasks.
+  - **Mechanism:** per condition, the tasks where at least 2 of 3 runs' blocks
+    name a gold file, and where at least 2 of 3 put one first; and the runs
+    with no block read back.
+  - **Prediction:** held when the carried arm solves at least as many of the
+    12 repeat tasks as the fresh arm, and at least as many of the other 8
+    minus one.
+  - **Carry-over check,** over carried runs after position 1: the median
+    learned edges copied in and left after the build, the share of those left
+    with both ends in the new graph (summed over runs), and how many runs
+    started with nothing learned.
+  - **By position:** carried solve share minus fresh solve share, 3 runs each.

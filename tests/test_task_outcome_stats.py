@@ -762,7 +762,69 @@ def test_the_memory_track_hands_each_chain_its_own_state_once_a_run_is_recorded(
     assert run.main(argv) == 0 and seen == []
 
 
-def test_the_task_analysis_refuses_memory_track_runs(tmp_path, capsys) -> None:
-    (tmp_path / "runs.jsonl").write_text(json.dumps({"agent": "hermes", "track": "memory"}) + "\n")
+def _memory_run(task, condition, seed, position, solved, **extra):
+    return {
+        "task": task,
+        "arm": "neuralmind",
+        "condition": condition,
+        "seed": seed,
+        "position": position,
+        "track": "memory",
+        "agent": "hermes",
+        "solved": solved,
+        "input_tokens": 100,
+        "output_tokens": 10,
+        **extra,
+    }
+
+
+def test_memory_track_compares_carried_with_fresh_on_solve_rate(tmp_path, capsys) -> None:
+    # Five tasks only the carried chains solve: the smallest result that clears p < 0.05.
+    tasks = sorted(analyze.MEMORY_REPEATS)[:5] + ["0db7d2c97d"]
+    runs = []
+    for pos, t in enumerate(tasks, 1):
+        for s in range(3):
+            first = pos == 1
+            runs.append(
+                _memory_run(
+                    t,
+                    "carried",
+                    s,
+                    pos,
+                    t != "0db7d2c97d",
+                    block_sha256="b",
+                    block_names_gold=True,
+                    block_first_is_gold=not first,
+                    carry_edges_in=0 if first else 40,
+                    carry_edges_after_build=0 if first else 40,
+                    carry_edges_in_graph=0 if first else 30,
+                )
+            )
+            runs.append(_memory_run(t, "fresh", s, pos, False, block_sha256="b"))
+    result = analyze.analyze_memory(runs)
+    assert result["solve"]["only_neuralmind"] == 5 and result["solve"]["only_baseline"] == 0
+    assert result["solve"]["mcnemar_p_greater"] == pytest.approx(1 / 32)
+    assert result["decision"]["claim_supported"]
+    assert result["mechanism"]["carried"]["tasks_block_names_gold"] == 6
+    assert result["mechanism"]["carried"]["tasks_block_first_is_gold"] == 5
+    assert result["mechanism"]["fresh"]["tasks_block_names_gold"] == 0
+    assert result["prediction"]["repeats"] == {"fresh": 0, "carried": 5}
+    assert result["prediction"]["held"]
+    assert result["carry_over"]["edges_in_median"] == 40
+    assert result["carry_over"]["share_with_both_ends_in_graph"] == pytest.approx(0.75)
+    assert result["solve_share_by_position"][1] == (1.0, 0.0)
+
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "memory track" in out and "only carried 5" in out and "Claim supported: YES" in out
+
+
+def test_memory_and_task_runs_are_never_pooled(tmp_path, capsys) -> None:
+    runs = [
+        _memory_run("t", "fresh", 0, 1, True),
+        {"task": "t", "arm": "baseline", "agent": "hermes"},
+    ]
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
     assert analyze.main([str(tmp_path)]) == 1
-    assert "memory-track runs" in capsys.readouterr().err
+    assert "more than one track" in capsys.readouterr().err
