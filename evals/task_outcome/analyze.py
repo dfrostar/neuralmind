@@ -526,6 +526,13 @@ def main(argv: list[str] | None = None) -> int:
     runs = [
         json.loads(line) for line in (args.out_dir / "runs.jsonl").read_text().splitlines() if line
     ]
+    if any(r.get("track") == "memory" for r in runs):
+        # Its endpoints differ, and its analysis is committed before its results are read.
+        print(
+            "no verdict: these are memory-track runs, which this analysis doesn't cover",
+            file=sys.stderr,
+        )
+        return 1
     try:
         hermes = agent_of(runs) == "hermes"
         if hermes:

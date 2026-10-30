@@ -33,6 +33,20 @@ out:
 python -m evals.task_outcome.hermes_sessions <out_dir>   # writes <out_dir>/sessions.json
 ```
 
+**The memory track** (`run --agent hermes --track memory`, in the spec's
+change log) asks whether what NeuralMind learns from one task helps on the
+next. Three chains carry NeuralMind's synapse store and session recaps from
+each task's workspace into the next one's, beside fresh runs that start with
+nothing learned. Chain state lives in `<out_dir>/carry/`, so a stopped run
+resumes where it was:
+
+```bash
+python -m evals.task_outcome.run --agent hermes --track memory --chains 3 --fresh 3 \
+    --tasks evals/task_outcome/tasks.json --out <out_dir> --model <model> \
+    --max-turns 120 --timeout 3600 --tool-venv <venv> --test-python <venv>/bin/python \
+    --work-dir <scratch>
+```
+
 **Two environments**, so the agent's tool and the code under test can't mix:
 
 - **Tool venv:** the NeuralMind release being measured (`pip install

@@ -521,3 +521,45 @@ drawn by the same rule, that the pilot didn't use.
     fresh run got only after. That is added to the track's threats, and
     whether to rerun its fresh arm on harness 2 is decided before any of its
     runs.
+- 2026-10-30 — the memory track's fresh arm, changed at the user's decision
+  before any of the track's runs: it runs again, beside the carried arm,
+  instead of reusing the Hermes run's `neuralmind` arm.
+  - **Fresh arm: 60 new runs,** 3 per task, on harness 2, with the carried
+    arm's pins, isolation, bounds and scoring. A fresh run builds its index in
+    an empty workspace, as the Hermes run's `neuralmind` arm did, so the arms
+    differ only in what is carried. The Hermes run's `neuralmind` arm isn't
+    part of the comparison.
+  - **Side by side.** At each position in the order, the three chains' runs
+    of that task and its three fresh runs go in a seeded shuffle, so a
+    position's six runs are close in time and each chain still runs in order.
+    120 runs, about 32 hours at stage 2's pace after its cron pause.
+  - **Threats.** Both arms now run on the same machine, harness and days, so
+    the historical control is gone, and with it the harness difference from
+    the entry above. The others stand.
+  - **Unchanged:** the question, the chains and what they carry, the primary
+    endpoint and its test (a task counts for an arm when most of its 3 runs
+    solve it; exact one-sided McNemar, supported only if p < 0.05, so at
+    least 5 tasks to none), the mechanism report, the prediction, the
+    secondary endpoints, the carry-over check, and the smoke test first.
+  - **The harness** (`run.py --track memory`). Records hold `condition`
+    (`carried` or `fresh`), `position`, and the replicate in `seed` (a
+    carried run's chain).
+    - Every Hermes run now records the block NeuralMind added to its first
+      prompt, read back from `state.db`: the files it names, in order, those
+      under its synapse section, whether it names a gold file and whether the
+      first is one, and the block's SHA-256. The text stays out of git with
+      the transcript.
+    - A carried run records the carry-over check: learned edges when its
+      store is copied in, after its build, and with both ends in its new
+      graph. The `structural` and `shared` namespaces are left out of that
+      count, as NeuralMind seeds them rather than learning them. Its hook
+      counts leave out the carried recaps' entries, so the manipulation check
+      sees only its own session.
+    - A chain's state is saved after its run is judged, once NeuralMind's
+      session maintenance has released its lock, and the chain moves on only
+      once the run is recorded, so a resumed chain starts from its last
+      recorded run.
+  - Hermes's cron jobs on ai-9970 stay paused for the whole track, as they
+    were for stage 2 from its run 23.
+  - The analysis code is committed before the runs' results are read. Until
+    then `analyze` refuses memory-track runs.
