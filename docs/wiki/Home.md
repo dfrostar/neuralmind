@@ -39,6 +39,83 @@ ranking*, not their LLM-agent loop. Full numbers and reproduction commands on th
 
 ## What's New
 
+### v4.23.3 — A rebuild gives the graph a full build gives, and its type pass parses only the files that changed (October 2026)
+
+An incremental build now writes the same `graph.json` a full build would,
+byte for byte. It used to scan files `.gitignore` and `.neuralmindignore`
+exclude, so they counted as new on every build, and it could link a call to
+a different function of the same name than a full build. It now re-extracts
+only what a change can affect, and `neuralmind watch --reindex` follows the
+same rules: on an M3 a one-file graph rebuild of hermes-agent took
+9.8–10.7 s against 80.5–82.6 s. The build's type pass keeps each file's
+return types in `.neuralmind/type_cache.json`, keyed by a hash of its text,
+so a rebuild parses only the files that changed: 1.0–1.2 s against 17.2 s on
+hermes-agent, with identical type edges. The first build after upgrading
+extracts the whole graph once. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.3.md).
+
+### v4.23.2 — The same block, sooner, and an upgrade that keeps the graph cache (October 2026)
+
+The prompt hook no longer frees its graph at exit or counts every row of the
+index before loading it: on hermes-agent it took 1.16 s against 1.40 s per
+prompt on an M3, with the same block on every call. The build's type pass
+reads each file once, in one thread: 17 s against 121–123 s on hermes-agent,
+with identical type edges. And an upgrade no longer throws away a large
+repository's graph cache, so the first prompt after it keeps its recall
+within the Hermes plugin's 8 s time limit. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.2.md).
+
+### v4.23.1 — The Hermes plugin serves each session's own project under Hermes 0.22's gateway (October 2026)
+
+Since Hermes 0.22.2, the hooks of every local session (CLI, TUI and Desktop)
+run in one gateway process whose working directory belongs to no session, so
+an unpinned plugin could give a session in a built checkout no NeuralMind
+context at all. The plugin now uses the calling session's directory
+(`ctx.session_cwd()`) when Hermes provides it, and older Hermes is unchanged.
+Under the gateway, `NEURALMIND_PROJECT` counts only in the gateway's own
+environment, where it applies to every session like a pin. On a large synapse
+store, a session's first turn now gets the previous session's recap within the
+plugin's time limit: the decay tick and the memory export run in a detached
+process after the hook returns. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.1.md).
+
+### v4.23.0 — The prompt block points at the code, not its tests (October 2026)
+
+The block the `UserPromptSubmit` hook and the Hermes plugin add to each prompt
+lists the code before its tests unless the prompt names a test, and its excerpt
+quotes code: a prompt that only says how to run the tests no longer puts test
+files first. A test file that matches the prompt brings the code it tests
+(`test_x.py` → `x.py`). On a large index the hook now answers within the
+Hermes plugin's time limit, because the loaded graph is cached
+(`NEURALMIND_GRAPH_CACHE=0` turns that off). Measured offline, by replaying the
+block and timing the hook, not in agent runs: on 12 held-out hermes-agent bug
+fixes the block named a file the fix changed on 4 of 12, as before, and named
+it first on 3 instead of 1. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.0.md).
+
+### v4.22.0 — Doctor says whether anything calls NeuralMind (October 2026)
+
+`neuralmind doctor` opens with a Wiring section (the daemon, Git hooks, the
+Hermes plugin, and MCP registration per client), and each warning carries the
+command that fixes it; a build ends with the commands for whatever isn't wired
+yet. `neuralmind install-mcp --client hermes` registers the MCP server with
+Hermes-Agent. The call and import edges a build seeds, and the memory file
+Claude Code loads, follow the checkout, so a feature branch's calls no longer
+show up in recall on `main`. v4.22.1 changed documentation only. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.22.0.md).
+
+### v4.21.0 — The MCP server says what it's for (October 2026)
+
+The 20-task pilot found no measurable difference in what an agent's tasks cost
+with NeuralMind, and the agent called none of its 28 MCP tools in 60 runs. This
+release puts NeuralMind in front of the agent: the server's `initialize` reply
+says when to call `neuralmind_search` before Grep, `tools/list` offers six
+tools by default instead of 28, and the prompt block includes the leading
+file's code when one file clearly leads. An exploratory rerun with this release
+found the agent's behaviour unchanged: it still called no NeuralMind tool.
+Where turbovec has no wheel, the default backend falls back to ChromaDB. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.21.0.md).
+
 ### v4.20.0 — The site shows its evidence; its security page starts with verifying the release (October 2026)
 
 No change to what your agent does: the package is the same as v4.19.0. The
