@@ -1,6 +1,7 @@
 """Workspace and test-oracle helpers shared by ``harvest`` and ``run``.
 
-Every task is a real bug fix from this repository's history. The agent works on
+Every task is a real bug fix from a repository's history: this one by
+default, another clone after ``use_repo`` (``--repo``). The agent works on
 a snapshot of the fix's *parent* commit and never sees the fix, its tests, or
 the later history: ``snapshot`` exports the tree with ``git archive`` into a
 fresh repository with a single commit, so ``git log`` shows nothing to copy.
@@ -22,9 +23,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 
-def git(*args: str, cwd: Path = REPO, input_bytes: bytes | None = None) -> bytes:
+def use_repo(path: Path) -> None:
+    """Draw tasks from another clone (``--repo``); the default is this repository."""
+    global REPO
+    REPO = Path(path).resolve()
+
+
+def git(*args: str, cwd: Path | None = None, input_bytes: bytes | None = None) -> bytes:
     return subprocess.run(
-        ["git", *args], cwd=cwd, input=input_bytes, capture_output=True, check=True
+        ["git", *args], cwd=cwd or REPO, input=input_bytes, capture_output=True, check=True
     ).stdout
 
 
@@ -109,7 +116,11 @@ def test_key(test_id: str) -> str:
 
 
 def run_tests(
-    workspace: Path, test_files: list[str], python: str, timeout: int = 900
+    workspace: Path,
+    test_files: list[str],
+    python: str,
+    timeout: int = 900,
+    extra_env: dict[str, str] | None = None,
 ) -> dict[str, str]:
     """Run ``test_files`` in ``workspace``; return ``{test_id: outcome}``.
 
@@ -123,6 +134,7 @@ def run_tests(
     env = {
         k: v for k, v in os.environ.items() if k != "PYTHONPATH" and not k.startswith("NEURALMIND_")
     }
+    env.update(extra_env or {})
     try:
         subprocess.run(
             [python, "-m", "pytest", "-p", "no:cacheprovider", f"--junitxml={report}", *test_files],
@@ -148,3 +160,36 @@ def run_tests(
             outcomes[test_id] = "passed"
     report.unlink(missing_ok=True)
     return outcomes
+
+
+def workspace_env(
+    workspace: Path, isolated_hermes_home: bool, create: bool = True
+) -> dict[str, str]:
+    """Variables every process in ``workspace`` gets: a HERMES_HOME of its own, if asked.
+
+    Hermes-Agent's code re-publishes its launchers for the active HERMES_HOME;
+    pointing it at a directory inside the workspace keeps a user's real Hermes
+    home out of the benchmark (see ``launcher_digest``).
+    """
+    if not isolated_hermes_home:
+        return {}
+    home = workspace / ".bench-hermes-home"
+    if create:
+        home.mkdir(parents=True, exist_ok=True)
+    return {"HERMES_HOME": str(home)}
+
+
+def launcher_digest(dirs: list[Path]) -> dict[str, str]:
+    """SHA-256 of every file under ``dirs``: compared before and after each run.
+
+    A run that changed one of them (a real Hermes install's launchers, say)
+    stops the benchmark before it is recorded.
+    """
+    digest: dict[str, str] = {}
+    for root in dirs:
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                digest[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return digest

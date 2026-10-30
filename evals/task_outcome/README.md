@@ -58,10 +58,41 @@ python -m evals.task_outcome.run --agent hermes --track memory --chains 3 --fres
 **What a run costs.** Each run is one headless Claude Code session, capped by
 `--budget` (default $2). The pilot is 20 tasks × 2 arms × 3 seeds = 120 runs.
 
+**Stopping and resuming.** `runs.jsonl` is the record: rerunning the same
+command skips every (task, arm, seed) already in it. A run that fails before
+the agent gives a result (a logged-out CLI, an API error) records nothing and
+exits 3; log in again and rerun. Start long runs detached so they don't depend
+on a terminal or an agent session staying open:
+
+```bash
+tmux new -d -s bench 'python -m evals.task_outcome.run … >> bench.log 2>&1'
+```
+
+**Another repository.** `--repo <clone> --profile <name>` on `harvest`,
+`select_tasks` and `run`. A profile ([`profiles.py`](profiles.py)) sets what
+counts as source, the earliest fix date, and the repository name the prompt
+gives the agent; the `neuralmind` profile is the pilot's, unchanged. For
+`select_tasks`, `--study-dir` holds the study's own `exclusions.json` and
+`prompts.json`, and `--seed` its pre-registered seed.
+
+- **`--index-cache <dir>`:** builds each task's index once and restores a copy
+  into every neuralmind-arm workspace, so each run still starts from a fresh,
+  unused index. An entry is reused only for the same base commit and the same
+  NeuralMind version; anything else is rebuilt. On a large repository it saves
+  the build per run: hermes-agent (about a million lines) takes 22 minutes to
+  index.
+- **Hermes-Agent:** its `hermes-agent` profile gives every test run and agent
+  run a `HERMES_HOME` inside its workspace. Hermes's code re-publishes its
+  launchers for the active `HERMES_HOME`, so also pass
+  `--guard ~/.hermes/hermes-agent/.hermes/bin` on a machine that has Hermes
+  installed: a run that changes any file there stops the benchmark (exit 4,
+  nothing recorded, workspace kept), checked after setup, after the session
+  (before a failed session is cleaned up) and after the tests.
+
 **What it doesn't measure.**
-- **Learning over time:** every run starts from a fresh index, so the synapse
-  layer has learned nothing.
-- **Other codebases:** the tasks come from this repository only.
+- **Learning over time,** in the task runs: each starts from a fresh index, so
+  the synapse layer has learned nothing. The memory track (above) measures it.
+- **Other codebases:** the pilot's tasks come from this repository only.
 
 The spec lists every threat to validity.
 
