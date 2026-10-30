@@ -172,8 +172,23 @@ in `card` radius.
 Head row in the eyebrow style over a `carbon-line` rule; cells in `muted`
 with `carbon-border` rules; row heads in mono `caption`. `.num` right-aligns
 on tabular figures; `.is-ours` tints the measured subject's row with
-`proton`. Give the table a `min-w-*` inside an `overflow-x-auto` box so a
-phone scrolls the table, not the page.
+`proton`; `.is-regressed` tints a run that fell from the one before it with
+`warn` and keeps it in place. Give the table a `min-w-*` inside an
+`overflow-x-auto` box so a phone scrolls the table, not the page.
+
+### Performance record — `@/components/performance/*`
+
+The `/performance` page's parts. Every rate and ratio goes through the gates
+in `src/lib/record.ts`, so the rules hold in the components, not in copy.
+
+| Component | Renders |
+|---|---|
+| `RateValue` | A rate over its gold-set size and misses ("8 of 12 · 4 missed"; MRR shows "n = 12"), with a `warn` "small sample" badge under 50 questions. Without a gold-set size: not shown, and why. |
+| `RatioValue` | A ratio over its measured baseline in tokens. Not shown unless the row's `baseline_src` is `measured` and its baseline is recorded. |
+| `Sparkline` | One metric over time: x by date, a fixed 0–1 axis for rates and a zero-based one for ratios, `proton` line broken at every null (a `faint` tick marks it), `warn` dot on a drop, dashed `carbon-line` rule at each version bump. |
+| `RecordTable` | Every published run, `.is-regressed` on a drop, a "new version" tag on a bump, and the count of withheld runs under it. |
+| `ProfileCard` | A `panel` with the project's facts and its latest run in a `StatGrid`. |
+| `Prose`, `WorkingOn` | A narrative's block A (Markdown subset, as React elements) and block C (`success` "moved", `warn` "stalled" tags). |
 
 ### Surfaces and text helpers
 

@@ -286,6 +286,16 @@ code, pre, kbd {
     color: #ffffff;
 }
 
+/* A run that fell from the one before it (/performance). Tinted with the
+   warning colour and kept in place: a drop is never hidden. */
+.data-table tr.is-regressed {
+    background: rgba(229, 181, 103, 0.07);
+}
+
+.data-table tr.is-regressed > th {
+    color: var(--warn);
+}
+
 /* ---------------------------------------------------------------------------
    Texture
 
