@@ -521,3 +521,11 @@ drawn by the same rule, that the pilot didn't use.
     fresh run got only after. That is added to the track's threats, and
     whether to rerun its fresh arm on harness 2 is decided before any of its
     runs.
+- 2026-10-30 — harness 3, a merge and nothing else. The other-repository
+  harness (`--repo`/`--profile`, `--index-cache`, `--guard`, written for the
+  hermes-agent screen) had also numbered itself 2, so the runner that has both
+  records 3. For this study's runs it does what harness 2 above does: the
+  `neuralmind` profile, no index cache and no guard change nothing. The memory
+  track's carried runs will record 3, and "harness 2" in its threats means
+  them. The runner refuses `--agent hermes` with a profile that gives each
+  process its own `HERMES_HOME`, since that home would reach `hermes chat`.

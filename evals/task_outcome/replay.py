@@ -34,8 +34,8 @@ import sys
 import time
 from pathlib import Path
 
-from evals.task_outcome import harness
-from evals.task_outcome.run import PROMPT
+from evals.task_outcome import harness, profiles
+from evals.task_outcome.run import render_prompt
 
 TASKS = Path(__file__).with_name("tasks.json")
 
@@ -169,7 +169,7 @@ def main(argv: list[str] | None = None) -> int:
                 ["neuralmind", "build", str(ws)], cwd=ws, env=env, capture_output=True, check=True
             )
             print(f"{task['id']}: built in {time.monotonic() - t0:.0f}s", flush=True)
-        block = hook_block(ws, PROMPT.format(symptom=task["prompt"].strip()), env)
+        block = hook_block(ws, render_prompt(task["prompt"], profiles.get(profiles.DEFAULT)), env)
         record = {"task": task["id"], "gold": task["gold_files"]}
         record.update(score(block, task, fix_lines(task)))
         records.append(record)

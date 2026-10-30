@@ -34,7 +34,16 @@ these runs record tokens instead.
 After the agent stops, the fix's own tests are laid over the workspace and run:
 a task is solved when every FAIL_TO_PASS test and every PASS_TO_PASS test
 passes. Each run appends one JSON line to ``<out>/runs.jsonl``; a rerun skips
-(task, arm, seed) triples already recorded.
+(task, arm, seed) triples already recorded, so the same command resumes after
+any stop.
+
+Another repository: ``--repo <clone> --profile <name>`` (``profiles.py``). For a
+large one, ``--index-cache <dir>`` builds each task's index once and restores
+it, unchanged, into every neuralmind-arm workspace, so each run still starts
+from a fresh index. ``--guard <dir>`` (repeatable) checksums the files under a
+directory before and after every run, and stops the benchmark (exit 4, nothing
+recorded) if a run changed one: point it at a real Hermes install's launchers
+when the repository is Hermes-Agent.
 """
 
 from __future__ import annotations
@@ -52,9 +61,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from evals.task_outcome import harness
+from evals.task_outcome import harness, profiles
 
-HARNESS_VERSION = 2
+# 2: profiles (--repo/--profile), --index-cache and --guard, or, separately,
+# --agent hermes: the two were written apart and each called itself 2.
+# 3: both. The neuralmind profile's Claude Code runs are what version 1 ran.
+HARNESS_VERSION = 3
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -77,7 +89,7 @@ EXPLORE_TOOLS = {"Read", "Grep", "Glob", "Bash", "read_file", "search_files", "t
 
 PROMPT = """{symptom}
 
-You are working in a checkout of the NeuralMind repository. Find the cause and \
+You are working in a checkout of the {repo} repository. Find the cause and \
 fix it in the source code. Don't add or change tests: the fix is judged by tests \
 you can't see. You can run the existing tests with `python -m pytest <path>`. \
 Stop when the fix is done."""
@@ -85,6 +97,27 @@ Stop when the fix is done."""
 
 class RunAbortedError(RuntimeError):
     """The harness, not the agent, failed: nothing is recorded, a rerun retries."""
+
+
+class GuardTrippedError(RuntimeError):
+    """A run changed a guarded file: stop everything and let a person look."""
+
+
+def check_guard(guard: list[Path], before: dict[str, str], where: str, ws: Path) -> None:
+    """Raise :class:`GuardTrippedError` if a guarded file changed since ``before``.
+
+    Called before any cleanup on every path out of a run, the failed ones
+    included: a session that damaged a launcher and then died with an API
+    error must stop the benchmark too, with its workspace kept.
+    """
+    if harness.launcher_digest(guard) != before:
+        raise GuardTrippedError(
+            f"{where} changed a file under {', '.join(map(str, guard))}; workspace kept at {ws}"
+        )
+
+
+def render_prompt(symptom: str, profile: profiles.Profile) -> str:
+    return PROMPT.format(symptom=symptom.strip(), repo=profile.name)
 
 
 def _clean_path(host_path: str) -> list[str]:
@@ -119,8 +152,50 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
     return env
 
 
+def _build_index(
+    task: dict, ws: Path, nm: str, env: dict, cache: Path | None, builder: str = ""
+) -> tuple[float, bool]:
+    """Give ``ws`` a freshly built index: built here, or restored from ``cache``.
+
+    Returns the build's seconds and whether it came from the cache. A cached
+    index is the one ``neuralmind build`` wrote for the same commit, copied
+    before any session ran, so a restored workspace starts as cold as a built
+    one. The index stores no absolute paths (checked on hermes-agent,
+    2026-10-25), so it can be restored into any workspace. An entry is reused
+    only when it records the same base commit and the same ``builder`` (the
+    NeuralMind version measured); otherwise it is rebuilt, so a cache shared
+    across releases can't hand one release another's index.
+    """
+    entry = cache / task["id"] if cache else None
+    key = {"base_commit": task.get("base_commit", ""), "builder": builder}
+    if entry and (entry / ".neuralmind").is_dir():
+        meta = entry / "meta.json"
+        if meta.is_file() and json.loads(meta.read_text()) == key:
+            shutil.copytree(entry / ".neuralmind", ws / ".neuralmind")
+            return float((entry / "build_seconds").read_text()), True
+        shutil.rmtree(entry)  # built from another commit or by another version
+    t0 = time.monotonic()
+    subprocess.run([nm, "build", str(ws)], cwd=ws, env=env, capture_output=True, check=True)
+    seconds = round(time.monotonic() - t0, 1)
+    if entry:
+        staging = entry.with_name(entry.name + ".partial")
+        shutil.rmtree(staging, ignore_errors=True)
+        shutil.copytree(ws / ".neuralmind", staging / ".neuralmind")
+        (staging / "build_seconds").write_text(str(seconds))
+        (staging / "meta.json").write_text(json.dumps(key))
+        staging.rename(entry)  # a stop mid-copy leaves no half-cached index
+    return seconds, False
+
+
 def _prepare(
-    task: dict, arm: str, ws: Path, tool_venv: Path, env: dict, agent: str = "claude"
+    task: dict,
+    arm: str,
+    ws: Path,
+    tool_venv: Path,
+    env: dict,
+    cache: Path | None = None,
+    builder: str = "",
+    agent: str = "claude",
 ) -> dict:
     """Snapshot the base commit; for the neuralmind arm, build and wire it up.
 
@@ -132,11 +207,10 @@ def _prepare(
     exclude.write_text(exclude.read_text() + "\n.claude/\n.neuralmind/\n.bench-*\n")
     mcp_servers: dict = {}
     build_seconds = 0.0
+    index_cached = False
     if arm == "neuralmind":
         nm = str(tool_venv / "bin" / "neuralmind")
-        t0 = time.monotonic()
-        subprocess.run([nm, "build", str(ws)], cwd=ws, env=env, capture_output=True, check=True)
-        build_seconds = round(time.monotonic() - t0, 1)
+        build_seconds, index_cached = _build_index(task, ws, nm, env, cache, builder)
     if arm == "neuralmind" and agent == "claude":
         nm = str(tool_venv / "bin" / "neuralmind")
         subprocess.run(
@@ -147,7 +221,7 @@ def _prepare(
         }
     mcp_file = ws / ".bench-mcp.json"
     mcp_file.write_text(json.dumps({"mcpServers": mcp_servers}))
-    return {"mcp_file": mcp_file, "build_seconds": build_seconds}
+    return {"mcp_file": mcp_file, "build_seconds": build_seconds, "index_cached": index_cached}
 
 
 def claude_command(
@@ -477,9 +551,9 @@ def neuralmind_missing(arm: str, hooks: dict) -> bool:
     return arm == "neuralmind" and not hooks.get("hook_prompts_recorded")
 
 
-def judge(task: dict, ws: Path, test_python: str) -> dict:
+def judge(task: dict, ws: Path, test_python: str, extra_env: dict | None = None) -> dict:
     harness.overlay(task["fix_commit"], task["test_files"], ws)
-    outcomes = harness.run_tests(ws, task["run_files"], test_python)
+    outcomes = harness.run_tests(ws, task["run_files"], test_python, extra_env=extra_env)
     f2p_ok = [t for t in task["fail_to_pass"] if outcomes.get(t) == "passed"]
     p2p_bad = [t for t in task["pass_to_pass"] if outcomes.get(t) != "passed"]
     return {
@@ -493,8 +567,25 @@ def judge(task: dict, ws: Path, test_python: str) -> dict:
 def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     ws = args.work_dir / f"{task['id']}-{arm}-s{seed}-{int(time.time())}"
     env = _arm_env(arm, args.tool_venv, args.test_python)
-    prep = _prepare(task, arm, ws, args.tool_venv, env, args.agent)
-    prompt = PROMPT.format(symptom=task["prompt"].strip())
+    # The workspace doesn't exist until _prepare() snapshots it: name the
+    # isolated home first (the index build runs with it), create it after.
+    ws_env = harness.workspace_env(ws, args.profile.isolated_hermes_home, create=False)
+    env.update(ws_env)
+    where = f"{task['id']} {arm} s{seed}"
+    guarded = harness.launcher_digest(args.guard)
+    prep = _prepare(
+        task,
+        arm,
+        ws,
+        args.tool_venv,
+        env,
+        args.index_cache,
+        args.versions["neuralmind_version"],
+        args.agent,
+    )
+    harness.workspace_env(ws, args.profile.isolated_hermes_home)
+    check_guard(args.guard, guarded, f"{where} (setup)", ws)
+    prompt = render_prompt(task["prompt"], args.profile)
     if args.agent == "hermes":
         # Outside the workspace, so the agent's file tools don't list it.
         prompt_file = ws.parent / f"{ws.name}.prompt.txt"
@@ -545,6 +636,8 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
     else:
         agent = parse_stream(stdout.splitlines())
+    # After the background commands are stopped, before anything is cleaned up.
+    check_guard(args.guard, guarded, f"{where} (agent session)", ws)
     hooks = hook_activity(ws) if arm == "neuralmind" else {}
     if not failure and not harness_failure(agent, timed_out) and neuralmind_missing(arm, hooks):
         failure = "NeuralMind's prompt hook recorded nothing in the workspace"
@@ -577,7 +670,8 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             ).stdout.split()
         )
     )
-    verdict = judge(task, ws, args.test_python)
+    verdict = judge(task, ws, args.test_python, ws_env)
+    check_guard(args.guard, guarded, f"{where} (tests)", ws)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
     return {
@@ -595,6 +689,8 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         "exit_code": exit_code,
         "transcript_sha256": transcript_sha256,
         "build_seconds": prep["build_seconds"],
+        "index_cached": prep["index_cached"],
+        "repo_profile": args.profile.name,
         "changed_files": changed,
         "gold_touched": bool(set(changed) & set(task["gold_files"])),
         **hooks,
@@ -664,10 +760,33 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--timeout", type=int, default=1800, help="seconds per run")
     ap.add_argument("--order-seed", type=int, default=20261014)
     ap.add_argument("--keep-workspaces", action="store_true")
+    ap.add_argument("--repo", type=Path, help="clone the tasks come from (default: this one)")
+    ap.add_argument("--profile", default=profiles.DEFAULT, choices=sorted(profiles.PROFILES))
+    ap.add_argument("--index-cache", type=Path, help="build each task's index once, here")
+    ap.add_argument(
+        "--guard",
+        type=Path,
+        action="append",
+        default=[],
+        help="stop if a run changes a file under this directory (repeatable)",
+    )
     ap.add_argument(
         "--dry-run", action="store_true", help="print the plan and one command, run nothing"
     )
     args = ap.parse_args(argv)
+    if args.repo:
+        harness.use_repo(args.repo)
+    args.profile = profiles.get(args.profile)
+    if args.agent == "hermes" and args.profile.isolated_hermes_home:
+        # The isolated home would reach `hermes chat` itself, and a Hermes run
+        # with a temporary HERMES_HOME rewrites the real install's launchers.
+        # The agent's commands run in the gateway, out of this env's reach anyway.
+        print(
+            f"error: --agent hermes can't run the {args.profile.name} profile, which "
+            "gives every process its own HERMES_HOME",
+            file=sys.stderr,
+        )
+        return 2
 
     tasks = json.loads(args.tasks.read_text())
     if args.task:
@@ -729,7 +848,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 cmd = claude_command(
                     args.agent_bin,
-                    PROMPT.format(symptom=by_id[tid]["prompt"].strip()),
+                    render_prompt(by_id[tid]["prompt"], args.profile),
                     arm,
                     args.model,
                     Path("<ws>/.bench-mcp.json"),
@@ -739,6 +858,9 @@ def main(argv: list[str] | None = None) -> int:
             for a in arms:
                 _arm_env(a, args.tool_venv, args.test_python)  # raises if PATH leaks
             print("PATH isolation: ok for every arm")
+            print(f"repo: {harness.REPO} (profile {args.profile.name})")
+            for d in args.guard:
+                print(f"guard: {d} ({len(harness.launcher_digest([d]))} file(s))")
         return 0
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -748,6 +870,9 @@ def main(argv: list[str] | None = None) -> int:
         except RunAbortedError as exc:
             print(f"aborted, nothing recorded: {exc}", file=sys.stderr)
             return 3
+        except GuardTrippedError as exc:
+            print(f"STOPPED, nothing recorded: {exc}", file=sys.stderr)
+            return 4
         with runs_file.open("a") as fh:
             fh.write(json.dumps(record) + "\n")
         usage = (
