@@ -121,6 +121,46 @@ export const taskOutcomePilot = (() => {
     };
 })();
 
+/**
+ * The exploratory rerun after the pilot: the neuralmind arm again, with
+ * v4.21.0's MCP server instructions and six-tool list, against the pilot's
+ * baseline. Not pre-registered. `figures` is recomputed from
+ * bench/task_outcome/exploratory-agent-uptake/ by tests/test_site_claims.py.
+ */
+export const taskOutcomeRerun = (() => {
+    const c = claims.non_ratio_headline_claims.find(
+        (e) => e.source === 'bench/task_outcome/exploratory-agent-uptake/report.txt',
+    );
+    if (!c || !('figures' in c)) {
+        throw new Error(
+            'site/claims.json has no exploratory-rerun entry (source bench/task_outcome/exploratory-agent-uptake/report.txt).',
+        );
+    }
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        reproduce: c.reproduce,
+        figures: c.figures as {
+            date: string;
+            tasks: number;
+            seeds: number;
+            runs: number;
+            neuralmind_reported: string;
+            neuralmind_commit: string;
+            released_in: string;
+            mcp_tools_listed: number;
+            mcp_tool_calls: number;
+            median_cost_change: string;
+            cost_change_ci95: string;
+            wilcoxon_p: number;
+            tasks_solved: { baseline: number; neuralmind: number };
+            median_explore_calls_before_first_edit: { baseline: number; neuralmind: number };
+            claim_supported: boolean;
+        },
+    };
+})();
+
 /** Every `disclosure` entry: what the site states is not measured. */
 export const disclosures = claims.non_ratio_headline_claims
     .filter((c) => c.evidence === 'disclosure')

@@ -10,7 +10,7 @@ import claims from '../../../claims.json';
  *
  * Strength reads in the styling: the two levels a reader can check for
  * themselves are `proton` (measured), a one-repo field report, a community
- * submission and an exploratory pilot are neutral, and a disclosure — something we say is NOT
+ * submission, an exploratory pilot and a not-pre-registered follow-up are neutral, and a disclosure — something we say is NOT
  * measured — is dashed, so it never passes for a result at a glance.
  */
 export type EvidenceLevel = keyof typeof claims._evidence_levels;
@@ -21,6 +21,7 @@ const LEVELS: Record<EvidenceLevel, { label: string; className: string }> = {
     'field-report': { label: 'Field report', className: 'text-body border-carbon-line' },
     community: { label: 'Community', className: 'text-muted border-carbon-line' },
     pilot: { label: 'Pilot', className: 'text-body border-carbon-line' },
+    exploratory: { label: 'Exploratory', className: 'text-muted border-carbon-line' },
     disclosure: { label: 'Not measured', className: 'text-faint border-carbon-line border-dashed' },
 };
 
