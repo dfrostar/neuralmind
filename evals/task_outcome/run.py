@@ -31,11 +31,19 @@ plugin, which serves a session's directory once it has an index; the
 ``baseline`` arm's workspace has none. A local model has no dollar cost, so
 these runs record tokens instead.
 
+``--track memory`` (Hermes only) runs the memory track instead. Every run is
+in the ``neuralmind`` arm: ``carried`` runs go along chains that copy what
+NeuralMind learned (``synapses.db`` and the session recaps) from each task's
+workspace into the next one's before its index is built, and ``fresh`` runs
+start with nothing learned. The tasks run in ``MEMORY_ORDER``, and at each
+position the chains' runs and the fresh runs of that task are shuffled
+together, so the two conditions run side by side.
+
 After the agent stops, the fix's own tests are laid over the workspace and run:
 a task is solved when every FAIL_TO_PASS test and every PASS_TO_PASS test
 passes. Each run appends one JSON line to ``<out>/runs.jsonl``; a rerun skips
-(task, arm, seed) triples already recorded, so the same command resumes after
-any stop.
+(task, arm, seed) triples already recorded, or (task, condition, replicate)
+in the memory track, so the same command resumes after any stop.
 
 Another repository: ``--repo <clone> --profile <name>`` (``profiles.py``). For a
 large one, ``--index-cache <dir>`` builds each task's index once and restores
@@ -53,6 +61,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import signal
 import subprocess
@@ -66,7 +75,10 @@ from evals.task_outcome import harness, profiles
 # 2: profiles (--repo/--profile), --index-cache and --guard, or, separately,
 # --agent hermes: the two were written apart and each called itself 2.
 # 3: both. The neuralmind profile's Claude Code runs are what version 1 ran.
-HARNESS_VERSION = 3
+# 4: 3 plus the memory track (--track memory) and the block read back on every
+# Hermes run. The memory track's runs recorded 2: they ran on the Hermes
+# harness before 3 was merged in, which is 4 without profiles and the guard.
+HARNESS_VERSION = 4
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -83,6 +95,36 @@ AGENTS = ("claude", "hermes")
 HERMES_TOOLSETS = "file,terminal,no_mcp"
 HERMES_STATE_DB = Path.home() / ".hermes" / "state.db"
 HERMES_PLUGIN_CONFIG = Path.home() / ".hermes" / "plugins" / "neuralmind" / "config.json"
+# The memory track's order, fixed in the spec before any of its runs: the fix
+# commits by author date, which also puts every fix after its ancestors.
+MEMORY_ORDER = (
+    "0db7d2c97d",
+    "8592aa7ab7",
+    "366858e431",
+    "b06a3ee6af",
+    "e6fa9e4b80",
+    "1015eb8b95",
+    "4325e063e1",
+    "4e01f40e6a",
+    "e303c7a287",
+    "21bd34dfc4",
+    "108b1ee013",
+    "2a6448552b",
+    "404ccad4a9",
+    "24ee2924b9",
+    "53b9813363",
+    "b4c9886021",
+    "8c0411129c",
+    "454904f4bb",
+    "7a1c90dcab",
+    "fa72224183",
+)
+# What a chain carries from one task's workspace to the next. Everything else
+# in ``.neuralmind/`` is rebuilt.
+CARRIED = ("synapses.db", "synapses.db-wal", "synapses.db-shm", "recaps")
+# A file the plugin's block names, at the start of one of its list lines.
+BLOCK_FILE = re.compile(r"^- ([\w./-]+\.\w+):", re.MULTILINE)
+SYNAPSE_SECTION = "Connected to it in the synapse graph:"
 # Claude Code's tool names, then Hermes's.
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit", "write_file", "patch"}
 EXPLORE_TOOLS = {"Read", "Grep", "Glob", "Bash", "read_file", "search_files", "terminal"}
@@ -97,6 +139,10 @@ Stop when the fix is done."""
 
 class RunAbortedError(RuntimeError):
     """The harness, not the agent, failed: nothing is recorded, a rerun retries."""
+
+
+class ChainError(RuntimeError):
+    """A memory-track chain's saved state isn't from its last recorded run: stop, don't guess."""
 
 
 class GuardTrippedError(RuntimeError):
@@ -196,21 +242,33 @@ def _prepare(
     cache: Path | None = None,
     builder: str = "",
     agent: str = "claude",
+    carry: Path | None = None,
 ) -> dict:
     """Snapshot the base commit; for the neuralmind arm, build and wire it up.
 
     Hermes needs only the index: its NeuralMind plugin serves any session
-    directory that has one.
+    directory that has one. A carried run (``carry``, the chain's saved state)
+    gets the chain's learned state before the build.
     """
     harness.snapshot(task["base_commit"], ws)
     exclude = ws / ".git" / "info" / "exclude"
     exclude.write_text(exclude.read_text() + "\n.claude/\n.neuralmind/\n.bench-*\n")
     mcp_servers: dict = {}
     build_seconds = 0.0
+    carried: dict = {}
+    hooks_carried: dict = {}
     index_cached = False
     if arm == "neuralmind":
         nm = str(tool_venv / "bin" / "neuralmind")
-        build_seconds, index_cached = _build_index(task, ws, nm, env, cache, builder)
+        if carry is not None:
+            carried = carry_in(carry, ws)
+            hooks_carried = hook_activity(ws)
+        # A carried run's index is built over its carried store, never restored.
+        build_seconds, index_cached = _build_index(
+            task, ws, nm, env, None if carry is not None else cache, builder
+        )
+        if carry is not None:
+            carried.update(carry_check(ws))
     if arm == "neuralmind" and agent == "claude":
         nm = str(tool_venv / "bin" / "neuralmind")
         subprocess.run(
@@ -221,7 +279,13 @@ def _prepare(
         }
     mcp_file = ws / ".bench-mcp.json"
     mcp_file.write_text(json.dumps({"mcpServers": mcp_servers}))
-    return {"mcp_file": mcp_file, "build_seconds": build_seconds, "index_cached": index_cached}
+    return {
+        "mcp_file": mcp_file,
+        "build_seconds": build_seconds,
+        "index_cached": index_cached,
+        "carried": carried,
+        "hooks_carried": hooks_carried,
+    }
 
 
 def claude_command(
@@ -551,6 +615,159 @@ def neuralmind_missing(arm: str, hooks: dict) -> bool:
     return arm == "neuralmind" and not hooks.get("hook_prompts_recorded")
 
 
+def learned_edges(ws: Path) -> list[tuple]:
+    """The synapses NeuralMind learned from use in the workspace's store.
+
+    The ``structural`` and ``shared`` namespaces hold what it seeds from the
+    call graph and from documentation or team-memory bundles, not what it
+    learned.
+    """
+    return _state_db_rows(
+        ws / ".neuralmind" / "synapses.db",
+        "SELECT node_a, node_b FROM synapses WHERE namespace NOT IN ('structural', 'shared')",
+        (),
+    )
+
+
+def _graph_nodes(ws: Path) -> set:
+    for rel in (".neuralmind/graph.json", "graphify-out/graph.json"):
+        if (ws / rel).is_file():
+            return {n.get("id") for n in json.loads((ws / rel).read_text()).get("nodes", [])}
+    return set()
+
+
+def carry_in(src: Path, ws: Path) -> dict:
+    """Copy a chain's learned state into a new workspace, before its index is built.
+
+    A chain's first task finds nothing to copy and starts with nothing learned.
+    """
+    state = ws / ".neuralmind"
+    state.mkdir(exist_ok=True)
+    for name in CARRIED:
+        if (src / name).is_dir():
+            shutil.copytree(src / name, state / name)
+        elif (src / name).is_file():
+            shutil.copy2(src / name, state / name)
+    return {
+        "carry_edges_in": len(learned_edges(ws)),
+        "carry_recaps_in": len(list((state / "recaps").glob("*.jsonl"))),
+    }
+
+
+def carry_check(ws: Path) -> dict:
+    """After the build: the learned edges left, and how many have both ends in the new graph.
+
+    Node ids are file paths plus symbol names, so an edge should survive a
+    rebuild while both of its names do.
+    """
+    edges = learned_edges(ws)
+    nodes = _graph_nodes(ws)
+    return {
+        "carry_edges_after_build": len(edges),
+        "carry_edges_in_graph": sum(a in nodes and b in nodes for a, b in edges),
+    }
+
+
+def _wait_unlocked(lock: Path, timeout: float) -> None:
+    if not lock.exists():
+        return
+    import fcntl
+
+    deadline = time.monotonic() + timeout
+    with open(lock, "a") as fh:
+        while True:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fh, fcntl.LOCK_UN)
+                return
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise RunAbortedError(f"{lock} still held after {timeout:.0f} s") from None
+                time.sleep(0.2)
+
+
+def carry_out(ws: Path, dest: Path, timeout: float = 300.0) -> None:
+    """Save the workspace's learned state for the chain's next task.
+
+    On a large store NeuralMind finishes a session's maintenance (decay, the
+    memory export) in a detached process; copying under it could catch a
+    half-written store, so wait for its lock first.
+    """
+    state = ws / ".neuralmind"
+    _wait_unlocked(state / "session_maintenance.lock", timeout)
+    dest.mkdir(parents=True)
+    for name in CARRIED:
+        if (state / name).is_dir():
+            shutil.copytree(state / name, dest / name)
+        elif (state / name).is_file():
+            shutil.copy2(state / name, dest / name)
+
+
+def _chain_mark(state: Path) -> dict | None:
+    mark = state / "run.json"
+    return json.loads(mark.read_text()) if mark.is_file() else None
+
+
+def settle_chain(chain: Path, last: dict | None) -> None:
+    """Make a chain's saved state the one its last recorded run left, or raise.
+
+    A run's state goes to ``next``, marked with the run it came from, and
+    replaces ``state`` only once that run is recorded. A stop between the two
+    leaves ``next`` behind: promoted here if its run was recorded, discarded if
+    not. ``last`` is the chain's last recorded run (task and position), None if
+    it has none; a ``state`` from any other run raises :class:`ChainError`.
+    """
+    state, pending = chain / "state", chain / "next"
+    if pending.is_dir():
+        if last is not None and _chain_mark(pending) == last:
+            shutil.rmtree(state, ignore_errors=True)
+            pending.rename(state)
+        else:
+            shutil.rmtree(pending)
+    if state.is_dir():
+        mark = _chain_mark(state)
+        if last is None or mark != last:
+            raise ChainError(
+                f"{chain.name}'s saved state is from {mark}, its last recorded run {last}"
+            )
+    elif last is not None:
+        raise ChainError(f"{chain.name} has recorded runs (the last {last}) but no saved state")
+
+
+def hermes_block(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> str:
+    """What NeuralMind's plugin added to the session's first prompt, read back from Hermes.
+
+    Hermes stores the prompt as it went to the model (``api_content``): the
+    user's text with the plugin's context appended.
+    """
+    rows = _state_db_rows(
+        state_db,
+        "SELECT content, api_content FROM messages "
+        "WHERE session_id = ? AND role = 'user' ORDER BY id LIMIT 1",
+        (session_id,),
+    )
+    if not rows or not rows[0][0] or not rows[0][1] or not rows[0][1].startswith(rows[0][0]):
+        return ""
+    return rows[0][1][len(rows[0][0]) :].strip()
+
+
+def block_files(block: str, gold: list[str]) -> dict:
+    """The files a block names, in order, and whether it names a gold file, and first.
+
+    The files under the synapse section are the ones the store connected to
+    the best match, where learned state shows.
+    """
+    named = list(dict.fromkeys(BLOCK_FILE.findall(block)))
+    after = block.split(SYNAPSE_SECTION, 1)[1] if SYNAPSE_SECTION in block else ""
+    return {
+        "block_sha256": hashlib.sha256(block.encode()).hexdigest() if block else None,
+        "block_files": named,
+        "block_synapse_files": list(dict.fromkeys(BLOCK_FILE.findall(after))),
+        "block_names_gold": bool(set(named) & set(gold)),
+        "block_first_is_gold": bool(named) and named[0] in gold,
+    }
+
+
 def judge(task: dict, ws: Path, test_python: str, extra_env: dict | None = None) -> dict:
     harness.overlay(task["fix_commit"], task["test_files"], ws)
     outcomes = harness.run_tests(ws, task["run_files"], test_python, extra_env=extra_env)
@@ -564,14 +781,27 @@ def judge(task: dict, ws: Path, test_python: str, extra_env: dict | None = None)
     }
 
 
-def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
-    ws = args.work_dir / f"{task['id']}-{arm}-s{seed}-{int(time.time())}"
+def run_one(
+    task: dict,
+    arm: str,
+    seed: int,
+    args: argparse.Namespace,
+    label: str | None = None,
+    carry: Path | None = None,
+    carry_to: Path | None = None,
+) -> dict:
+    """One run. ``label`` names its workspace and transcript (the arm, or the
+    memory track's condition); ``carry`` is the chain state it starts from and
+    ``carry_to`` where its own learned state is saved for the chain's next task.
+    """
+    label = label or arm
+    ws = args.work_dir / f"{task['id']}-{label}-s{seed}-{int(time.time())}"
     env = _arm_env(arm, args.tool_venv, args.test_python)
     # The workspace doesn't exist until _prepare() snapshots it: name the
     # isolated home first (the index build runs with it), create it after.
     ws_env = harness.workspace_env(ws, args.profile.isolated_hermes_home, create=False)
     env.update(ws_env)
-    where = f"{task['id']} {arm} s{seed}"
+    where = f"{task['id']} {label} s{seed}"
     guarded = harness.launcher_digest(args.guard)
     prep = _prepare(
         task,
@@ -582,6 +812,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         args.index_cache,
         args.versions["neuralmind_version"],
         args.agent,
+        carry,
     )
     harness.workspace_env(ws, args.profile.isolated_hermes_home)
     check_guard(args.guard, guarded, f"{where} (setup)", ws)
@@ -594,7 +825,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     else:
         cmd = claude_command(args.agent_bin, prompt, arm, args.model, prep["mcp_file"], args.budget)
     started = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    transcript = args.out / "transcripts" / f"{task['id']}-{arm}-s{seed}.jsonl"
+    transcript = args.out / "transcripts" / f"{task['id']}-{label}-s{seed}.jsonl"
     transcript.parent.mkdir(parents=True, exist_ok=True)
     stderr = ""
     try:
@@ -621,6 +852,11 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
             failure = "the session was still running in the Hermes gateway an hour later"
         elif not settled:
             failure = "commands kept starting in the workspace after five rounds of stopping them"
+        # The block stays out of git with the transcript: it quotes the repo's code.
+        block = hermes_block(session_id)
+        agent.update(block_files(block, task["gold_files"]))
+        if block:
+            transcript.with_suffix(".block.txt").write_text(block)
         session = hermes_session(session_id)
         agent["num_turns"] = session.get("api_calls")
         agent["hermes_model"] = session.get("model")
@@ -639,6 +875,8 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     # After the background commands are stopped, before anything is cleaned up.
     check_guard(args.guard, guarded, f"{where} (agent session)", ws)
     hooks = hook_activity(ws) if arm == "neuralmind" else {}
+    # A carried run's recaps hold the chain's earlier runs too: count only this one's.
+    hooks = {k: v - prep["hooks_carried"].get(k, 0) for k, v in hooks.items()}
     if not failure and not harness_failure(agent, timed_out) and neuralmind_missing(arm, hooks):
         failure = "NeuralMind's prompt hook recorded nothing in the workspace"
     if harness_failure(agent, timed_out) or failure:
@@ -646,6 +884,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         # not the agent, so it must not become an outcome.
         shutil.rmtree(ws, ignore_errors=True)
         transcript.unlink(missing_ok=True)
+        transcript.with_suffix(".block.txt").unlink(missing_ok=True)
         raise RunAbortedError(
             f"{task['id']} {arm} s{seed}: "
             + (
@@ -672,6 +911,8 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
     )
     verdict = judge(task, ws, args.test_python, ws_env)
     check_guard(args.guard, guarded, f"{where} (tests)", ws)
+    if carry_to is not None:
+        carry_out(ws, carry_to)
     if not args.keep_workspaces:
         shutil.rmtree(ws, ignore_errors=True)
     return {
@@ -691,6 +932,7 @@ def run_one(task: dict, arm: str, seed: int, args: argparse.Namespace) -> dict:
         "build_seconds": prep["build_seconds"],
         "index_cached": prep["index_cached"],
         "repo_profile": args.profile.name,
+        **prep["carried"],
         "changed_files": changed,
         "gold_touched": bool(set(changed) & set(task["gold_files"])),
         **hooks,
@@ -739,6 +981,23 @@ def plan(tasks: list[dict], arms: tuple[str, ...], seeds: int, order_seed: int) 
     return triples
 
 
+def memory_plan(task_ids: set, chains: int, fresh: int, order_seed: int) -> list[tuple]:
+    """The memory track's runs, as (task, condition, replicate, position).
+
+    At each position in ``MEMORY_ORDER``, every chain's run of that task and
+    its fresh runs, shuffled together, so the conditions run side by side and
+    each chain still runs in order. A carried run's replicate is its chain.
+    """
+    rng = random.Random(order_seed)
+    runs: list[tuple] = []
+    for position, tid in enumerate((t for t in MEMORY_ORDER if t in task_ids), 1):
+        group = [(tid, "carried", c, position) for c in range(chains)]
+        group += [(tid, "fresh", s, position) for s in range(fresh)]
+        rng.shuffle(group)
+        runs += group
+    return runs
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tasks", type=Path, required=True)
@@ -770,6 +1029,9 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="stop if a run changes a file under this directory (repeatable)",
     )
+    ap.add_argument("--track", choices=("task", "memory"), default="task")
+    ap.add_argument("--chains", type=int, default=3, help="carried chains (memory track)")
+    ap.add_argument("--fresh", type=int, default=3, help="fresh runs per task (memory track)")
     ap.add_argument(
         "--dry-run", action="store_true", help="print the plan and one command, run nothing"
     )
@@ -820,27 +1082,42 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
-    triples = plan(tasks, arms, args.seeds, args.order_seed)
+    if args.track == "memory":
+        if args.agent != "hermes":
+            print("error: the memory track runs on Hermes (--agent hermes)", file=sys.stderr)
+            return 2
+        if args.index_cache:
+            # A carried run never restores an index, so neither may a fresh one.
+            print("error: the memory track builds every index (no --index-cache)", file=sys.stderr)
+            return 2
+        arms = ("neuralmind",)
+        triples = memory_plan(set(by_id), args.chains, args.fresh, args.order_seed)
+    else:
+        triples = [(*t, None) for t in plan(tasks, arms, args.seeds, args.order_seed)]
 
     args.out.mkdir(parents=True, exist_ok=True)
     runs_file = args.out / "runs.jsonl"
     done = set()
+    chain_last: dict[int, dict] = {}  # each chain's last recorded run
     if runs_file.is_file():
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
-            done.add((r["task"], r["arm"], r["seed"]))
+            done.add((r["task"], r.get("condition", r["arm"]), r["seed"]))
+            last = chain_last.get(r["seed"])
+            if r.get("condition") == "carried" and (not last or r["position"] > last["position"]):
+                chain_last[r["seed"]] = {"task": r["task"], "position": r["position"]}
             mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
             if mixed:
                 print(
                     f"error: {runs_file} was recorded with other versions: {mixed}", file=sys.stderr
                 )
                 return 2
-    todo = [t for t in triples if t not in done]
+    todo = [t for t in triples if t[:3] not in done]
     print(f"{len(triples)} run(s) planned, {len(todo)} to do")
 
     if args.dry_run:
         if todo:
-            tid, arm, _ = todo[0]
+            tid, arm = todo[0][0], arms[0] if args.track == "memory" else todo[0][1]
             print(f"versions: {args.versions}")
             if args.agent == "hermes":
                 cmd = hermes_command(args.agent_bin, Path("<ws>.prompt.txt"), args.max_turns)
@@ -864,24 +1141,45 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
-    for i, (tid, arm, seed) in enumerate(todo, 1):
+    for i, (tid, key, seed, position) in enumerate(todo, 1):
+        arm = "neuralmind" if args.track == "memory" else key
+        carry = carry_to = None
+        if key == "carried":
+            chain = args.out / "carry" / f"chain{seed}"
+            try:
+                settle_chain(chain, chain_last.get(seed))
+            except ChainError as exc:
+                print(f"error: not resuming a broken chain: {exc}", file=sys.stderr)
+                return 2
+            carry, carry_to = chain / "state", chain / "next"
         try:
-            record = run_one(by_id[tid], arm, seed, args)
+            record = run_one(by_id[tid], arm, seed, args, key, carry, carry_to)
         except RunAbortedError as exc:
             print(f"aborted, nothing recorded: {exc}", file=sys.stderr)
             return 3
         except GuardTrippedError as exc:
             print(f"STOPPED, nothing recorded: {exc}", file=sys.stderr)
             return 4
+        if args.track == "memory":
+            record.update(track="memory", condition=key, position=position)
+        if carry_to is not None:
+            mark = {"task": tid, "position": position}
+            (carry_to / "run.json").write_text(json.dumps(mark))
         with runs_file.open("a") as fh:
             fh.write(json.dumps(record) + "\n")
+        if carry_to is not None:
+            # The chain moves on only once its run is recorded; settle_chain
+            # finishes this if a stop comes in between.
+            chain_last[seed] = mark
+            shutil.rmtree(carry, ignore_errors=True)
+            carry_to.rename(carry)
         usage = (
             f"tokens={record['total_tokens']}"
             if args.agent == "hermes"
             else f"cost=${record['cost_usd']}"
         )
         print(
-            f"[{i}/{len(todo)}] {tid} {arm} s{seed}: solved={record['solved']} "
+            f"[{i}/{len(todo)}] {tid} {key} s{seed}: solved={record['solved']} "
             f"{usage} turns={record['num_turns']}",
             flush=True,
         )

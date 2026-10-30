@@ -529,3 +529,124 @@ drawn by the same rule, that the pilot didn't use.
   track's carried runs will record 3, and "harness 2" in its threats means
   them. The runner refuses `--agent hermes` with a profile that gives each
   process its own `HERMES_HOME`, since that home would reach `hermes chat`.
+- 2026-10-30 — the memory track's fresh arm, changed at the user's decision
+  before any of the track's runs: it runs again, beside the carried arm,
+  instead of reusing the Hermes run's `neuralmind` arm.
+  - **Fresh arm: 60 new runs,** 3 per task, on harness 2, with the carried
+    arm's pins, isolation, bounds and scoring. A fresh run builds its index in
+    an empty workspace, as the Hermes run's `neuralmind` arm did, so the arms
+    differ only in what is carried. The Hermes run's `neuralmind` arm isn't
+    part of the comparison.
+  - **Side by side.** At each position in the order, the three chains' runs
+    of that task and its three fresh runs go in a seeded shuffle, so a
+    position's six runs are close in time and each chain still runs in order.
+    120 runs, about 32 hours at stage 2's pace after its cron pause.
+  - **Threats.** Both arms now run on the same machine, harness and days, so
+    the historical control is gone, and with it the harness difference from
+    the entry above. The others stand.
+  - **Unchanged:** the question, the chains and what they carry, the primary
+    endpoint and its test (a task counts for an arm when most of its 3 runs
+    solve it; exact one-sided McNemar, supported only if p < 0.05, so at
+    least 5 tasks to none), the mechanism report, the prediction, the
+    secondary endpoints, the carry-over check, and the smoke test first.
+  - **The harness** (`run.py --track memory`). Records hold `condition`
+    (`carried` or `fresh`), `position`, and the replicate in `seed` (a
+    carried run's chain).
+    - Every Hermes run now records the block NeuralMind added to its first
+      prompt, read back from `state.db`: the files it names, in order, those
+      under its synapse section, whether it names a gold file and whether the
+      first is one, and the block's SHA-256. The text stays out of git with
+      the transcript.
+    - A carried run records the carry-over check: learned edges when its
+      store is copied in, after its build, and with both ends in its new
+      graph. The `structural` and `shared` namespaces are left out of that
+      count, as NeuralMind seeds them rather than learning them. Its hook
+      counts leave out the carried recaps' entries, so the manipulation check
+      sees only its own session.
+    - A chain's state is saved after its run is judged, once NeuralMind's
+      session maintenance has released its lock, and the chain moves on only
+      once the run is recorded, so a resumed chain starts from its last
+      recorded run.
+  - Hermes's cron jobs on ai-9970 stay paused for the whole track, as they
+    were for stage 2 from its run 23.
+  - The analysis code is committed before the runs' results are read. Until
+    then `analyze` refuses memory-track runs.
+- 2026-10-30 — the memory track's analysis code (`analyze_memory` in
+  `evals/task_outcome/analyze.py`), committed while its smoke test ran and
+  before any of its 120 runs. `analyze` picks it for runs whose `track` is
+  `memory` and refuses a mix of tracks. Its operational choices:
+  - **Primary:** the Hermes variant's code, with `fresh` in the baseline's
+    place and `carried` in NeuralMind's, so a task counts for a condition when
+    at least 2 of its 3 runs solve it, a timed-out run never solves, and the
+    one-sided McNemar test counts carried-only tasks.
+  - **Mechanism:** per condition, the tasks where at least 2 of 3 runs' blocks
+    name a gold file, and where at least 2 of 3 put one first; and the runs
+    with no block read back.
+  - **Prediction:** held when the carried arm solves at least as many of the
+    12 repeat tasks as the fresh arm, and at least as many of the other 8
+    minus one.
+  - **Carry-over check,** over carried runs after position 1: the median
+    learned edges copied in and left after the build, the share of those left
+    with both ends in the new graph (summed over runs), and how many runs
+    started with nothing learned.
+  - **By position:** carried solve share minus fresh solve share, 3 runs each.
+- 2026-10-30 — the memory track's smoke test passed, 2 runs in
+  `bench/task_outcome/memory-smoke/`, not analysed or pooled: one chain,
+  `4e01f40e6a` then `e303c7a287`, on harness 2 and the frozen ai-9970.
+  - **Every pre-registered check passed.** The chain's first run started with
+    nothing learned. The second started with the 2,016 edges the first had
+    learned, all 2,016 still in the store after its build with both ends in
+    its graph, and with the first run's recap. Its block differs from the
+    first run's, and both runs recorded NeuralMind's prompt hook. A chained
+    script checked these and started the 120 runs at 22:58 UTC.
+  - **What the carried state changed in the block.** The second run's block is
+    the fresh block for the same task, as the Hermes run's three `neuralmind`
+    runs of `e303c7a287` got it, plus the session recap of the chain's
+    previous run. The recall section, its files and its synapse section are
+    identical. After one task, then, the learned edges didn't change what
+    recall shows, and the carried state reached the agent only through the
+    recap, which named the one file the previous run edited last
+    (`neuralmind/turbovec_backend.py`, not a gold file of either task).
+    Whether that holds as a chain learns more is what the mechanism report
+    measures.
+  - Neither run solved its task (84 and 117 model calls).
+  - **One harness failure, retried.** The second run's first attempt was
+    stopped at 22:30 UTC: gpt-oss emitted a truncated tool call (to
+    `process_manage`, which isn't one of its tools), Ollama answered HTTP 500
+    three times, and Hermes switched to its fallback model, OpenRouter's
+    `qwen/qwen3.8-flash`, for the rest of the session. The harness found the
+    other model in the session and recorded nothing, as the spec's rule says.
+    That run's workspace was deleted and the chain's saved state wasn't
+    advanced, so the retry started from the first run's state. The smoke and
+    the track's scripts now retry a harness failure from the next unrecorded
+    run after the preflight matches again (the track at most 5 times). None of
+    the Hermes run's 120 sessions fell back.
+  - For the whole track, ai-9970's Hermes cron jobs, its `neuralmind-maintain`
+    user timer (whose Sunday step runs `uv tool upgrade neuralmind`) and
+    Ubuntu's `apt-daily-upgrade` timer are stopped, the last by the user.
+- 2026-10-30 — which harness the memory track's runs record, correcting the
+  harness-3 entry above. That entry and the memory track's harness were
+  written apart. The track's 120 runs record `harness_version` 2: they run on
+  commit `e9d7ffec`, the Hermes harness 2 plus `--track memory`, as checked
+  out on ai-9970 before harness 3 was merged. "Harness 2" in the track's
+  entries means that runner. The runner with both, merged here, records 4.
+  For this study's runs, 2 and 4 do the same: the `neuralmind` profile, no
+  index cache and no guard change nothing, and the memory track refuses
+  `--index-cache`, as a carried run never restores an index.
+- 2026-10-30 — chain continuity, from review, while the track's first run was
+  under way and before any of its results were read:
+  - **The runner's gap.** A carried run's state is saved to the chain's
+    `next` and promoted only after the run is recorded. A stop between the two
+    would have left the recorded run's state unpromoted, and a resume would
+    have deleted it and run the chain's next task from the state before it,
+    silently. The runner merged here marks each saved state with its run and,
+    before every carried run, promotes a recorded run's pending state, discards
+    an unrecorded one, and stops (exit 2) if the chain's state isn't from its
+    last recorded run.
+  - **The track's runs don't have it:** they run on `e9d7ffec`, unchanged, so
+    every run is measured the same way. The gap needs the runner to stop in
+    the moment between writing a record and renaming a directory.
+  - **So the analysis checks every carried run afterwards.** Each run leaves
+    one session recap, so a continuous chain's run at position p starts with
+    p − 1 of them. `analyze_memory` reports the carried runs where that
+    doesn't hold, as runs off their chain.
