@@ -117,8 +117,11 @@ class TestNewFileReferences:
 
         changed = extractor.get_changed_with_dependents(tmp_path, PY, {"a.py": ["z.py"]})
 
-        # a.py names the new module; z.py imports a.py, whose nodes are rebuilt.
-        assert sorted(changed) == ["a.py", "d.py", "z.py"]
+        # a.py names the new module, so it is re-extracted. z.py, which imports
+        # a.py, isn't: a.py's nodes come back under the same ids and the build
+        # keeps z.py's edges into them (the graph is checked against a full
+        # build in test_build_links_unchanged_files_to_a_new_file).
+        assert sorted(changed) == ["a.py", "d.py"]
 
     def test_a_reference_to_a_symbol_the_new_file_defines(self, tmp_path, graphgen):
         extractor = self._project(tmp_path)

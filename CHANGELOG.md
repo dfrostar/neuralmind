@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.23.3](https://github.com/dfrostar/neuralmind/compare/v4.23.2...v4.23.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **graph:** incremental builds and the watcher give the graph a full build gives, and re-extract far less ([#747](https://github.com/dfrostar/neuralmind/issues/747)) ([fcb4d10](https://github.com/dfrostar/neuralmind/commit/fcb4d103762ca4abdf0adcb59d2d0891cb3f90db))
+
+
+### Performance Improvements
+
+* **build:** the type pass keeps each file's results between builds ([#749](https://github.com/dfrostar/neuralmind/issues/749)) ([ae1b5ad](https://github.com/dfrostar/neuralmind/commit/ae1b5adaffa239e1eb8ed18e9670466411389c08))
+
 ## [4.23.2](https://github.com/dfrostar/neuralmind/compare/v4.23.1...v4.23.2) (2026-10-29)
 
 

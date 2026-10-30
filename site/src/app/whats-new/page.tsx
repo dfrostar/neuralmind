@@ -91,6 +91,19 @@ const glance: {
     wide?: boolean;
 }[] = [
     {
+        title: 'Large repositories: the same context, sooner',
+        icon: 'layers',
+        items: [
+            { text: 'A Hermes session gets its own project’s context under Hermes 0.22’s gateway', version: '4.23.1' },
+            { text: 'A first turn’s recap arrives within the Hermes plugin’s time limit', version: '4.23.1' },
+            { text: 'An upgrade keeps a large repository’s graph cache', version: '4.23.2' },
+            { text: 'An incremental build writes the graph a full build writes', version: '4.23.3' },
+            { text: 'A rebuild’s type pass parses only the files that changed', version: '4.23.3' },
+        ],
+        note: 'Timed on one machine, with the output checked byte for byte. The release notes give the numbers.',
+        wide: true,
+    },
+    {
         title: 'The prompt block points at the code',
         icon: 'recall',
         items: [
@@ -129,6 +142,35 @@ const glance: {
 // yet shows as the next release, judged against the latest tag (no version is
 // hardcoded on the page).
 const releases: { version: string; title: string; points: string[] }[] = [
+    {
+        version: '4.23.3',
+        title: 'A rebuild gives the graph a full build gives, and redoes less',
+        points: [
+            'An incremental build now writes the same `graph.json` a full build writes, byte for byte. Before, a rebuild could link a call to a different function of the same name, and files `.gitignore` and `.neuralmindignore` exclude counted as new on every build.',
+            'A rebuild re-extracts only the files a change can affect, and `neuralmind watch --reindex` follows the same rules.',
+            'The build’s type pass keeps each file’s results in `.neuralmind/type_cache.json`, keyed by a hash of its text, so a rebuild parses only the files that changed, with the same type edges.',
+            'The first build after upgrading extracts the whole graph once. Timed on one machine; the release notes give the numbers.',
+        ],
+    },
+    {
+        version: '4.23.2',
+        title: 'The same block, sooner, and an upgrade that keeps the graph cache',
+        points: [
+            'The prompt hook no longer frees its graph at exit or counts every row of the index before loading it. The block it gives is the same, checked byte for byte.',
+            'The build’s type pass reads each file once, in one thread, with the same type edges.',
+            'An upgrade no longer throws away a large repository’s graph cache, so the first prompt after it keeps its recall within the Hermes plugin’s time limit.',
+            'Timed on one machine; the release notes give the numbers.',
+        ],
+    },
+    {
+        version: '4.23.1',
+        title: 'The Hermes plugin serves each session’s own project',
+        points: [
+            'Since Hermes 0.22.2 every local session’s hooks run in one gateway process. The plugin now asks Hermes for the session’s working directory (`ctx.session_cwd()`), so a session in a built checkout gets its context. Older Hermes is unchanged.',
+            'Under the gateway, `NEURALMIND_PROJECT` counts only in the gateway’s own environment, where it applies to every session like a pin.',
+            'On a large synapse store the session-start hook returns its recap at once and finishes its housekeeping in the background, so a first turn gets the previous session’s recap within the plugin’s time limit.',
+        ],
+    },
     {
         version: '4.23.0',
         title: 'The prompt block points at the code, not its tests',

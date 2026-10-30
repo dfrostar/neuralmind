@@ -196,7 +196,8 @@ def test_the_guard_stops_a_failed_session_before_any_cleanup(tmp_path, monkeypat
         index_cache=None,
         versions={"neuralmind_version": "neuralmind 4.21.0"},
         guard=[launchers],
-        claude_bin="claude",
+        agent="claude",
+        agent_bin="claude",
         model="m",
         budget=1.0,
         out=tmp_path / "out",
@@ -206,3 +207,15 @@ def test_the_guard_stops_a_failed_session_before_any_cleanup(tmp_path, monkeypat
     with pytest.raises(run.GuardTrippedError, match="agent session"):
         run.run_one({"id": "abc123", "prompt": "Symptom."}, "baseline", 0, args)
     assert [p.name.startswith("abc123-baseline-s0") for p in work.iterdir()] == [True]
+
+
+def test_hermes_agent_refuses_a_profile_with_its_own_hermes_home(tmp_path, capsys) -> None:
+    """That HERMES_HOME would reach `hermes chat`, and a temporary one rewrites the launchers."""
+    code = run.main(
+        ["--tasks", str(tmp_path / "tasks.json"), "--out", str(tmp_path / "out")]
+        + ["--model", "m", "--tool-venv", str(tmp_path), "--test-python", "python"]
+        + ["--work-dir", str(tmp_path / "work"), "--agent", "hermes", "--profile", "hermes-agent"]
+    )
+    assert code == 2
+    assert "HERMES_HOME" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()

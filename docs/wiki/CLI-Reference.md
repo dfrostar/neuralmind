@@ -360,6 +360,18 @@ Graph: .neuralmind/graph.json (built-in, incremental, 8,351 nodes)
 Graph: graphify-out/graph.json (graphify, read-only, 3,197 nodes)
 ```
 
+*(v4.23.3+)* An incremental build writes the same `graph.json` a full build
+would, byte for byte. It compares the extraction cache with the files the
+build indexes (after `.gitignore`, `.neuralmindignore` and the config's
+globs), and re-extracts only the files a change can affect: the changed
+files, and every file that names a function, class or module the change
+added, removed or reordered. The build's type pass keeps each file's return
+types in `.neuralmind/type_cache.json`, keyed by a hash of the file's text,
+and parses only files whose text changed; deleting that file costs one build
+at first-build speed. The first build after upgrading from an earlier
+version extracts the whole graph once. See the
+[v4.23.3 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.3.md).
+
 When the graph isn't in step with the files on disk, the freshness report
 follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 - Number of nodes processed
