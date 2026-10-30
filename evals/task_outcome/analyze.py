@@ -28,6 +28,25 @@ interval's upper bound is below zero, and NeuralMind solves no fewer tasks
 than the baseline minus the pre-registered margin. Anything else is reported
 as what it is: no effect shown, or a loss.
 
+**The Hermes variant** (runs whose ``agent`` is ``hermes``, on a local model;
+fixed in the spec's change log before its first run) has no cost to compare:
+
+* **Primary, solve rate.** Solved per task as above; exact one-sided McNemar
+  test on the discordant tasks. "With NeuralMind, the model solves more of
+  these tasks" is supported only if p < 0.05.
+* **Secondary, reported but not tested:** tokens (input plus output; median
+  per-task relative change with its bootstrap interval), wall-clock minutes,
+  turns, tool calls before the first edit, runs that edited a gold file, and
+  solved runs per arm. A timed-out run is unsolved, with the tokens it used.
+  Tokens and minutes cover the whole Hermes session, from the
+  ``sessions.json`` that ``hermes_sessions`` writes beside ``runs.jsonl``;
+  the report says how many runs lack one and fell back to their record.
+* **Stage 1's stopping rule.** Over seed 0's runs, pooled across both arms:
+  fewer than 5 solved means the tasks are too hard for this model to tell the
+  arms apart, and stage 2 doesn't run.
+
+Runs from different agents are never pooled: the analyzer refuses a mix.
+
 Stdlib only.
 """
 
@@ -43,6 +62,8 @@ from pathlib import Path
 
 ALPHA = 0.05
 NONINFERIORITY_TASKS = 1  # NeuralMind may solve at most this many fewer tasks
+STAGE1_SEED = 0
+STAGE1_MIN_SOLVED_RUNS = 5  # Hermes variant: of stage 1's runs, pooled over both arms
 BOOTSTRAP_SAMPLES = 10_000
 BOOTSTRAP_SEED = 20261014
 
@@ -90,6 +111,15 @@ def mcnemar_exact(only_baseline: int, only_neuralmind: int) -> float:
     return min(1.0, 2 * tail)
 
 
+def mcnemar_exact_greater(only_baseline: int, only_neuralmind: int) -> float:
+    """One-sided exact McNemar p-value that NeuralMind solves more tasks."""
+    n = only_baseline + only_neuralmind
+    if n == 0:
+        return 1.0
+    tail: float = sum(comb(n, i) for i in range(only_neuralmind, n + 1)) / 2**n
+    return tail
+
+
 def bootstrap_ci(values: list[float], stat=statistics.median, level: float = 0.95) -> tuple:
     if not values:
         return (None, None)
@@ -113,6 +143,53 @@ def run_cost(run: dict) -> float:
             f"{run['task']} {run['arm']} s{run.get('seed')}: no cost and no budget"
         )
     return run["budget_usd"]
+
+
+def run_tokens(run: dict) -> int | None:
+    """A Hermes run's tokens: input plus output, None when it recorded neither.
+
+    The whole session's, when ``with_sessions`` attached them; else the
+    record's, which cover the client's own turn (see ``hermes_sessions``).
+    Never ``total_tokens``: Hermes reports 0 there for a session that ends in
+    an error, though it records that session's input and output.
+    """
+    session = run.get("session")
+    if session:
+        return int(session["prompt_tokens"]) + int(session["output_tokens"])
+    parts = [run.get("input_tokens"), run.get("output_tokens")]
+    if all(x is None for x in parts):
+        return None
+    return sum(x or 0 for x in parts)
+
+
+def run_minutes(run: dict) -> float | None:
+    """The session's span when known, else the client's; None for neither."""
+    session = run.get("session")
+    if session and session.get("minutes") is not None:
+        return float(session["minutes"])
+    if run.get("duration_ms") is None:
+        return None
+    return float(run["duration_ms"]) / 60000
+
+
+def with_sessions(runs: list[dict], sessions: dict[str, dict]) -> list[dict]:
+    """Copies of ``runs`` with each one's whole-session usage under ``session``."""
+    return [
+        {**r, "session": sessions[r["session_id"]]} if r.get("session_id") in sessions else r
+        for r in runs
+    ]
+
+
+def run_solved(run: dict) -> bool:
+    return bool(run.get("solved")) and not run.get("timed_out")
+
+
+def agent_of(runs: list[dict]) -> str:
+    """The one agent these runs used (``claude`` for records that predate the field)."""
+    agents = {r.get("agent", "claude") for r in runs}
+    if len(agents) > 1:
+        raise IncompleteRunsError(f"runs from more than one agent, never pooled: {sorted(agents)}")
+    return agents.pop() if agents else "claude"
 
 
 def check_complete(runs: list[dict], arms: tuple[str, ...]) -> None:
@@ -242,6 +319,154 @@ def analyze(runs: list[dict], base: str = "baseline", treat: str = "neuralmind")
     }
 
 
+def stage_one(runs: list[dict]) -> dict:
+    """The Hermes variant's stopping rule over seed 0's runs, both arms pooled."""
+    first = [r for r in runs if r.get("seed") == STAGE1_SEED]
+    solved = sum(run_solved(r) for r in first)
+    return {
+        "runs": len(first),
+        "solved_runs": solved,
+        "min_solved_runs": STAGE1_MIN_SOLVED_RUNS,
+        "run_stage_two": solved >= STAGE1_MIN_SOLVED_RUNS,
+    }
+
+
+def analyze_hermes(runs: list[dict], base: str = "baseline", treat: str = "neuralmind") -> dict:
+    """The Hermes variant's endpoints: solve rate primary, the rest reported only."""
+    check_complete(runs, (base, treat))
+    grouped: dict[str, dict[str, list[dict]]] = {}
+    for r in runs:
+        grouped.setdefault(r["task"], {}).setdefault(r["arm"], []).append(r)
+
+    def majority(rs: list[dict]) -> bool:
+        return sum(run_solved(r) for r in rs) * 2 > len(rs)
+
+    def mean(values: list) -> float | None:
+        values = [v for v in values if v is not None]
+        return statistics.fmean(values) if values else None
+
+    def median(values: list) -> float | None:
+        values = [v for v in values if v is not None]
+        return statistics.median(values) if values else None
+
+    tasks = {t: a for t, a in grouped.items() if base in a and treat in a}
+    only_base = sum(majority(a[base]) and not majority(a[treat]) for a in tasks.values())
+    only_treat = sum(majority(a[treat]) and not majority(a[base]) for a in tasks.values())
+    p = mcnemar_exact_greater(only_base, only_treat)
+
+    per_task_tokens = {
+        t: {arm: mean([run_tokens(r) for r in a[arm]]) for arm in (base, treat)}
+        for t, a in tasks.items()
+    }
+    rel = []
+    for v in per_task_tokens.values():
+        b, n = v[base], v[treat]
+        if b and n is not None:
+            rel.append((n - b) / b)
+    arm_runs = {
+        arm: [r for r in runs if r["arm"] == arm and r["task"] in tasks] for arm in (base, treat)
+    }
+    return {
+        "agent": "hermes",
+        "tasks_paired": len(tasks),
+        "runs": len(runs),
+        "solve": {
+            "baseline_tasks_solved": sum(majority(a[base]) for a in tasks.values()),
+            "neuralmind_tasks_solved": sum(majority(a[treat]) for a in tasks.values()),
+            "only_baseline": only_base,
+            "only_neuralmind": only_treat,
+            "mcnemar_p_greater": p,
+            "solved_runs": {arm: sum(run_solved(r) for r in rs) for arm, rs in arm_runs.items()},
+        },
+        "tokens": {
+            "median_per_task": {
+                arm: median([v[arm] for v in per_task_tokens.values()]) for arm in (base, treat)
+            },
+            "median_relative_change": statistics.median(rel) if rel else None,
+            "median_relative_change_ci95": bootstrap_ci(rel),
+            "tasks_compared": len(rel),
+            "runs_without_tokens": sorted(
+                f"{r['task']} {r['arm']} s{r.get('seed')}" for r in runs if run_tokens(r) is None
+            ),
+        },
+        "runs_without_session": sum(not r.get("session") for r in runs),
+        "minutes_per_task_median": {
+            arm: median([mean([run_minutes(r) for r in a[arm]]) for a in tasks.values()])
+            for arm in (base, treat)
+        },
+        "turns_per_task_median": {
+            arm: median([mean([r.get("num_turns") for r in a[arm]]) for a in tasks.values()])
+            for arm in (base, treat)
+        },
+        "explore_calls_before_first_edit_median": {
+            arm: median(
+                [
+                    mean([r.get("explore_calls_before_first_edit") for r in a[arm]])
+                    for a in tasks.values()
+                ]
+            )
+            for arm in (base, treat)
+        },
+        "gold_file_edited_runs": {
+            arm: sum(bool(r.get("gold_touched")) for r in rs) for arm, rs in arm_runs.items()
+        },
+        "timed_out_runs": {
+            arm: sum(bool(r.get("timed_out")) for r in rs) for arm, rs in arm_runs.items()
+        },
+        "stage_one": stage_one(runs),
+        "decision": {"solves_more_p_lt_alpha": p < ALPHA, "claim_supported": p < ALPHA},
+    }
+
+
+def report_hermes(result: dict) -> str:
+    s, t, st = result["solve"], result["tokens"], result["stage_one"]
+    lo, hi = t["median_relative_change_ci95"]
+
+    def pair(d: dict, fmt: str = "{:.1f}") -> str:
+        return ", ".join(f"{k} {'n/a' if v is None else fmt.format(v)}" for k, v in d.items())
+
+    lines = [
+        f"Agent: Hermes. Tasks paired: {result['tasks_paired']} ({result['runs']} runs)",
+        (
+            f"Tasks solved: baseline {s['baseline_tasks_solved']},"
+            f" NeuralMind {s['neuralmind_tasks_solved']}; only baseline {s['only_baseline']},"
+            f" only NeuralMind {s['only_neuralmind']}"
+            f" (one-sided McNemar p = {s['mcnemar_p_greater']:.4f})"
+        ),
+        "Solved runs: " + pair(s["solved_runs"], "{}"),
+        (
+            f"Stage 1 (seed {STAGE1_SEED}, both arms): {st['solved_runs']} of {st['runs']} runs"
+            f" solved; stage 2 runs at {st['min_solved_runs']} or more:"
+            f" {'yes' if st['run_stage_two'] else 'no'}"
+        ),
+        "Secondary, not tested:",
+        (
+            f"  Median tokens per task: {pair(t['median_per_task'], '{:,.0f}')};"
+            f" median change with NeuralMind {_fmt_pct(t['median_relative_change'])}"
+            f" (95% CI {_fmt_pct(lo)} to {_fmt_pct(hi)}, {t['tasks_compared']} tasks)"
+        ),
+        "  Median minutes per task: " + pair(result["minutes_per_task_median"]),
+        "  Median turns per task: " + pair(result["turns_per_task_median"]),
+        "  Median tool calls before the first edit: "
+        + pair(result["explore_calls_before_first_edit_median"]),
+        "  Runs that edited a gold file: " + pair(result["gold_file_edited_runs"], "{}"),
+        "  Runs that hit the timeout (unsolved): " + pair(result["timed_out_runs"], "{}"),
+    ]
+    if result["runs_without_session"]:
+        lines.append(
+            f"  {result['runs_without_session']} of {result['runs']} runs have no session"
+            " usage (no sessions.json, or not in it): their tokens and minutes cover the"
+            " client's own turn only"
+        )
+    if t["runs_without_tokens"]:
+        lines.append("  Runs with no tokens recorded: " + ", ".join(t["runs_without_tokens"]))
+    lines.append(
+        f"Claim supported: {'YES' if result['decision']['claim_supported'] else 'NO'}"
+        f" (more tasks solved with NeuralMind, p<{ALPHA})"
+    )
+    return "\n".join(lines)
+
+
 def _fmt_pct(x: float | None) -> str:
     return "n/a" if x is None else f"{x * 100:+.1f}%"
 
@@ -302,11 +527,19 @@ def main(argv: list[str] | None = None) -> int:
         json.loads(line) for line in (args.out_dir / "runs.jsonl").read_text().splitlines() if line
     ]
     try:
-        result = analyze(runs)
+        hermes = agent_of(runs) == "hermes"
+        if hermes:
+            sessions_file = args.out_dir / "sessions.json"
+            if sessions_file.is_file():
+                runs = with_sessions(runs, json.loads(sessions_file.read_text()))
+        result = analyze_hermes(runs) if hermes else analyze(runs)
     except IncompleteRunsError as exc:
         print(f"no verdict: {exc}", file=sys.stderr)
         return 1
-    print(json.dumps(result, indent=2) if args.json else report(result))
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print(report_hermes(result) if hermes else report(result))
     return 0
 
 
