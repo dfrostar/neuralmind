@@ -633,3 +633,20 @@ drawn by the same rule, that the pilot didn't use.
   For this study's runs, 2 and 4 do the same: the `neuralmind` profile, no
   index cache and no guard change nothing, and the memory track refuses
   `--index-cache`, as a carried run never restores an index.
+- 2026-10-30 — chain continuity, from review, while the track's first run was
+  under way and before any of its results were read:
+  - **The runner's gap.** A carried run's state is saved to the chain's
+    `next` and promoted only after the run is recorded. A stop between the two
+    would have left the recorded run's state unpromoted, and a resume would
+    have deleted it and run the chain's next task from the state before it,
+    silently. The runner merged here marks each saved state with its run and,
+    before every carried run, promotes a recorded run's pending state, discards
+    an unrecorded one, and stops (exit 2) if the chain's state isn't from its
+    last recorded run.
+  - **The track's runs don't have it:** they run on `e9d7ffec`, unchanged, so
+    every run is measured the same way. The gap needs the runner to stop in
+    the moment between writing a record and renaming a directory.
+  - **So the analysis checks every carried run afterwards.** Each run leaves
+    one session recap, so a continuous chain's run at position p starts with
+    p − 1 of them. `analyze_memory` reports the carried runs where that
+    doesn't hold, as runs off their chain.

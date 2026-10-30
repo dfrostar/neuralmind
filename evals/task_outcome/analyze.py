@@ -503,6 +503,11 @@ def analyze_memory(runs: list[dict]) -> dict:
                 else None
             ),
             "runs_starting_with_nothing_learned": sum(not r.get("carry_edges_in") for r in later),
+            # Each run leaves one session recap, so a continuous chain's run at
+            # position p starts with p - 1 of them.
+            "runs_off_chain": sum(
+                r.get("carry_recaps_in") != (r.get("position") or 1) - 1 for r in carried
+            ),
         },
         "solve_share_by_position": {
             pos: (
@@ -562,7 +567,8 @@ def report_memory(result: dict) -> str:
             f" median learned edges in {c['edges_in_median']}, after the build"
             f" {c['edges_after_build_median']}; share with both ends in the graph"
             f" {in_graph};"
-            f" starting with nothing learned {c['runs_starting_with_nothing_learned']}"
+            f" starting with nothing learned {c['runs_starting_with_nothing_learned']};"
+            f" off their chain (recaps in other than position - 1) {c['runs_off_chain']}"
         ),
         "Carried minus fresh solve share by position: " + curve,
         "Secondary, not tested:",

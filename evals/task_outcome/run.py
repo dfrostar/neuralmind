@@ -141,6 +141,10 @@ class RunAbortedError(RuntimeError):
     """The harness, not the agent, failed: nothing is recorded, a rerun retries."""
 
 
+class ChainError(RuntimeError):
+    """A memory-track chain's saved state isn't from its last recorded run: stop, don't guess."""
+
+
 class GuardTrippedError(RuntimeError):
     """A run changed a guarded file: stop everything and let a person look."""
 
@@ -699,6 +703,37 @@ def carry_out(ws: Path, dest: Path, timeout: float = 300.0) -> None:
             shutil.copy2(state / name, dest / name)
 
 
+def _chain_mark(state: Path) -> dict | None:
+    mark = state / "run.json"
+    return json.loads(mark.read_text()) if mark.is_file() else None
+
+
+def settle_chain(chain: Path, last: dict | None) -> None:
+    """Make a chain's saved state the one its last recorded run left, or raise.
+
+    A run's state goes to ``next``, marked with the run it came from, and
+    replaces ``state`` only once that run is recorded. A stop between the two
+    leaves ``next`` behind: promoted here if its run was recorded, discarded if
+    not. ``last`` is the chain's last recorded run (task and position), None if
+    it has none; a ``state`` from any other run raises :class:`ChainError`.
+    """
+    state, pending = chain / "state", chain / "next"
+    if pending.is_dir():
+        if last is not None and _chain_mark(pending) == last:
+            shutil.rmtree(state, ignore_errors=True)
+            pending.rename(state)
+        else:
+            shutil.rmtree(pending)
+    if state.is_dir():
+        mark = _chain_mark(state)
+        if last is None or mark != last:
+            raise ChainError(
+                f"{chain.name}'s saved state is from {mark}, its last recorded run {last}"
+            )
+    elif last is not None:
+        raise ChainError(f"{chain.name} has recorded runs (the last {last}) but no saved state")
+
+
 def hermes_block(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> str:
     """What NeuralMind's plugin added to the session's first prompt, read back from Hermes.
 
@@ -1063,10 +1098,14 @@ def main(argv: list[str] | None = None) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     runs_file = args.out / "runs.jsonl"
     done = set()
+    chain_last: dict[int, dict] = {}  # each chain's last recorded run
     if runs_file.is_file():
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
             done.add((r["task"], r.get("condition", r["arm"]), r["seed"]))
+            last = chain_last.get(r["seed"])
+            if r.get("condition") == "carried" and (not last or r["position"] > last["position"]):
+                chain_last[r["seed"]] = {"task": r["task"], "position": r["position"]}
             mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
             if mixed:
                 print(
@@ -1107,8 +1146,12 @@ def main(argv: list[str] | None = None) -> int:
         carry = carry_to = None
         if key == "carried":
             chain = args.out / "carry" / f"chain{seed}"
+            try:
+                settle_chain(chain, chain_last.get(seed))
+            except ChainError as exc:
+                print(f"error: not resuming a broken chain: {exc}", file=sys.stderr)
+                return 2
             carry, carry_to = chain / "state", chain / "next"
-            shutil.rmtree(carry_to, ignore_errors=True)
         try:
             record = run_one(by_id[tid], arm, seed, args, key, carry, carry_to)
         except RunAbortedError as exc:
@@ -1119,10 +1162,15 @@ def main(argv: list[str] | None = None) -> int:
             return 4
         if args.track == "memory":
             record.update(track="memory", condition=key, position=position)
+        if carry_to is not None:
+            mark = {"task": tid, "position": position}
+            (carry_to / "run.json").write_text(json.dumps(mark))
         with runs_file.open("a") as fh:
             fh.write(json.dumps(record) + "\n")
         if carry_to is not None:
-            # The chain moves on only once its run is recorded.
+            # The chain moves on only once its run is recorded; settle_chain
+            # finishes this if a stop comes in between.
+            chain_last[seed] = mark
             shutil.rmtree(carry, ignore_errors=True)
             carry_to.rename(carry)
         usage = (

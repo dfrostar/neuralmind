@@ -795,6 +795,7 @@ def test_memory_track_compares_carried_with_fresh_on_solve_rate(tmp_path, capsys
                     block_sha256="b",
                     block_names_gold=True,
                     block_first_is_gold=not first,
+                    carry_recaps_in=pos - 1 if t != "0db7d2c97d" else 0,
                     carry_edges_in=0 if first else 40,
                     carry_edges_after_build=0 if first else 40,
                     carry_edges_in_graph=0 if first else 30,
@@ -812,6 +813,8 @@ def test_memory_track_compares_carried_with_fresh_on_solve_rate(tmp_path, capsys
     assert result["prediction"]["held"]
     assert result["carry_over"]["edges_in_median"] == 40
     assert result["carry_over"]["share_with_both_ends_in_graph"] == pytest.approx(0.75)
+    # The last position's chains claim no earlier recaps: off their chain.
+    assert result["carry_over"]["runs_off_chain"] == 3
     assert result["solve_share_by_position"][1] == (1.0, 0.0)
 
     (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
@@ -828,3 +831,35 @@ def test_memory_and_task_runs_are_never_pooled(tmp_path, capsys) -> None:
     (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
     assert analyze.main([str(tmp_path)]) == 1
     assert "more than one track" in capsys.readouterr().err
+
+
+def _mark(path, task, position):
+    path.mkdir(parents=True)
+    (path / "run.json").write_text(json.dumps({"task": task, "position": position}))
+
+
+def test_a_stop_between_recording_and_promoting_is_finished_on_resume(tmp_path) -> None:
+    chain = tmp_path / "chain0"
+    _mark(chain / "state", "a", 1)
+    _mark(chain / "next", "b", 2)
+    # b's run was recorded before the stop: its state is promoted.
+    run.settle_chain(chain, {"task": "b", "position": 2})
+    assert run._chain_mark(chain / "state") == {"task": "b", "position": 2}
+    assert not (chain / "next").exists()
+    # A run that wasn't recorded leaves its state discarded.
+    _mark(chain / "next", "c", 3)
+    run.settle_chain(chain, {"task": "b", "position": 2})
+    assert run._chain_mark(chain / "state") == {"task": "b", "position": 2}
+    assert not (chain / "next").exists()
+
+
+def test_a_chain_whose_state_is_not_from_its_last_recorded_run_is_refused(tmp_path) -> None:
+    chain = tmp_path / "chain0"
+    run.settle_chain(chain, None)  # not started: nothing saved, nothing recorded
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, {"task": "a", "position": 1})  # recorded, but no state
+    _mark(chain / "state", "a", 1)
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, {"task": "b", "position": 2})  # state lags the record
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, None)  # state with nothing recorded
