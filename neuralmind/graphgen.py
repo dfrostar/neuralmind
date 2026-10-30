@@ -1439,9 +1439,12 @@ def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None 
     # Carry over community ids from the previous build
     comm_of_file: dict[str, int] = {}
     if existing_graph:
+        # One set, not one per node: building it inside the loop cost 38 s of
+        # an incremental hermes-agent build (270K nodes x 10K files).
+        current = set(source_files)
         for n in existing_graph.get("nodes", []):
             sf = n.get("source_file", "")
-            if sf and sf in set(source_files) and sf not in comm_of_file:
+            if sf and sf in current and sf not in comm_of_file:
                 comm_of_file[sf] = n.get("community", 0)
 
     # Build per-file adjacency from structural edges
@@ -1674,8 +1677,19 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
                 del extractor._cache[rel]
 
     suffixes = frozenset(_SUFFIX_LANG.keys())
+    cpp_project = _has_cpp_sources(f.name for f in files)
     if extractor._cache:
-        changed_files = extractor.get_changed_with_dependents(root, suffixes, importer_index)
+        previous: dict[str, list[dict[str, Any]]] = {}
+        for node in (existing_graph or {}).get("nodes", []):
+            previous.setdefault(node.get("source_file", ""), []).append(node)
+        changed_files = extractor.get_changed_with_dependents(
+            root,
+            suffixes,
+            importer_index,
+            files=[f for f in files if f.suffix in suffixes],
+            previous=previous if existing_graph else None,
+            cpp_project=cpp_project,
+        )
         re_extract_set: set[str] = set(changed_files)
     else:
         # First build (no cache): all files need extraction
@@ -1689,7 +1703,6 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # A .h parses as C++ in a project with C++ sources. If that flipped since
     # the last build (the first C++ file arrived, or the last one left), every
     # header must be re-parsed: re-extract everything.
-    cpp_project = _has_cpp_sources(f.name for f in files)
     if reuse and any(f.suffix == ".h" for f in files):
         old_nodes = (existing_graph or {}).get("nodes", [])
         was_cpp = _has_cpp_sources(n.get("source_file", "") for n in old_nodes)
@@ -1700,6 +1713,22 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     unchanged_edges: list[dict] = []
     deleted_files: set[str] = set()
     if existing_graph and reuse:
+        # A changed or deleted file's ext__ nodes (stand-ins for an external
+        # base class) go with it. Every other file that used one resolves
+        # again, so the first of them in build order creates it, as in a full
+        # build.
+        owned = {
+            n["id"]
+            for n in existing_graph.get("nodes", [])
+            if n["id"].startswith("ext__")
+            and (n.get("source_file") in re_extract_set or n.get("source_file") not in indexed)
+        }
+        if owned:
+            re_extract_set |= {
+                e.get("source_file", "")
+                for e in existing_graph.get("links", [])
+                if e.get("target") in owned and e.get("source_file") in indexed
+            }
         # Doc/schema files aren't in the extraction cache: every build
         # re-extracts them below, so never carry their old nodes/edges forward
         # (add_node would keep a stale heading, add_edge append a duplicate).
@@ -1725,11 +1754,17 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             # Preserve edges from unchanged files; re-derive edges for changed files
             if src_file in changed_set:
                 continue
-            # Drop edges pointing into deleted nodes (dangling edge prune)
             if edge.get("source") not in surviving_ids:
                 continue
-            if edge.get("target") not in surviving_ids:
-                continue
+            if project_kind != "code" and edge.get("target") not in surviving_ids:
+                continue  # dangling-edge prune
+            # In a code project an edge into a re-extracted file is kept:
+            # extraction re-creates that file's nodes under the same ids, and
+            # _extract_code drops the edge at its slot if its target is gone.
+            # Dropping it here made every file with an edge into a
+            # re-extracted file need re-extracting too. A call whose target
+            # could change is in a file that names a changed symbol, which is
+            # re-extracted (see incremental_extract.names_changed).
             unchanged_edges.append(dict(edge))
     else:
         # No cache or no existing graph → full extraction, all files re-extracted
@@ -1743,45 +1778,21 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         # language whose grammar isn't installed is skipped (Python is the only
         # hard dependency), so a missing TS/Go grammar degrades gracefully rather
         # than failing the whole build.
+        # Every code file, grouped as a full build groups them, so an
+        # unchanged file's symbols are registered where a full build would
+        # have extracted it (see _extract_code).
         by_lang: dict[str, list[Path]] = {}
         for fpath in files:
-            rel = fpath.relative_to(root).as_posix()
-            if rel not in re_extract_set:
-                continue
             lang = _parse_language(fpath, cpp_project)
             if lang:
                 by_lang.setdefault(lang, []).append(fpath)
 
-        # Pre-seed the builder with unchanged nodes (so cross-file resolution
-        # against unchanged symbols still works) and register their symbols.
-        for node in unchanged_nodes:
-            b.nodes[node["id"]] = node
-            _register_node_symbol(b, node)
-        for edge in unchanged_edges:
-            b.edges.append(edge)
-
-        for batch in _lang_batches(by_lang):
-            parsed: list[tuple[Any, str, bytes, Any]] = []
-            for lang in batch:
-                extract_symbols, resolve_edges = _EXTRACTORS[lang]
-                parser = _make_parser(lang)
-                for fpath in by_lang[lang]:
-                    rel = fpath.relative_to(root).as_posix()
-                    try:
-                        src = fpath.read_bytes()
-                    except OSError:
-                        continue
-                    tree = parser.parse(src)
-                    file_id = b.file_id(rel)
-                    b.add_node(file_id, fpath.name, "code", rel, 1)
-                    parsed.append((resolve_edges, rel, src, tree))
-                    # pass 1: file-level + symbol nodes (+ module-key registration).
-                    extract_symbols(b, tree.root_node, src, rel, file_id)
-
-            # pass 2: cross-symbol edges (imports/inherits/calls), once every
-            # file's symbols + module keys are registered.
-            for resolve_edges, rel, src, tree in parsed:
-                resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
+        # Unchanged nodes and edges go in where a full build would add them,
+        # so the graph comes out in a full build's order: later passes that
+        # take nodes in order (the doc-code coupling's 50-edge cap) see it too.
+        _extract_code(
+            b, root, by_lang, re_extract_set, unchanged_nodes, unchanged_edges, insert=True
+        )
     else:
         # Prose project: no tree-sitter extraction, but still pre-seed
         # unchanged nodes if they exist.
@@ -4519,6 +4530,120 @@ class UpdateStats:
         }
 
 
+# Languages whose first-pass name tables _register_node_symbol rebuilds from
+# a file's nodes. Java, C#, PHP and Ruby register package and namespace keys
+# from file content no node records, so a kept file in one is re-parsed.
+_REPLAYABLE_LANGS: frozenset[str] = frozenset(
+    {"python", "typescript", "tsx", "go", "rust", "c", "cpp"}
+)
+
+# Edges a file's first pass adds; the rest (calls, imports_from, inherits)
+# come from its second pass, which is also the only one that creates ext__
+# nodes.
+_FIRST_PASS_RELATIONS: frozenset[str] = frozenset({"contains", "rationale_for"})
+
+
+def _extract_code(
+    b: _GraphBuilder,
+    root: Path,
+    by_lang: dict[str, list[Path]],
+    extract: set[str],
+    kept_nodes: list[dict[str, Any]],
+    kept_edges: list[dict[str, Any]],
+    *,
+    insert: bool = False,
+) -> list[str]:
+    """Both extraction passes over ``by_lang``, with every kept file where a full build puts it.
+
+    ``by_lang`` holds every code file the graph will have, grouped by language
+    as a full build groups them, each list in build order. The files in
+    ``extract`` are parsed and resolved. Every other file is kept: its symbols
+    go into the name tables, and its nodes and first-pass edges into the
+    builder, at its first-pass slot; its ext__ nodes and second-pass edges go
+    in at its second-pass slot. A call resolves to the first project function
+    of its name registered so far, so registering every kept file up front, as
+    incremental builds did, could resolve a call to another function of the
+    same name than a full build does (an edited ``a.py`` and an unchanged
+    ``b.py`` both defining ``load``), and the graph's node and edge order
+    differed from a full build's. A kept file in a language outside
+    _REPLAYABLE_LANGS is re-parsed for its first pass. A kept edge whose
+    source or target isn't there when its slot comes is dropped: the build
+    re-extracts every file whose lookups a change could move. With ``insert``
+    false, kept nodes are already in the builder. Returns the files parsed for
+    both passes.
+    """
+    nodes_of: dict[str, list[dict[str, Any]]] = {}
+    ext_of: dict[str, list[dict[str, Any]]] = {}
+    first_of: dict[str, list[dict[str, Any]]] = {}
+    second_of: dict[str, list[dict[str, Any]]] = {}
+    for node in kept_nodes:
+        table = ext_of if node["id"].startswith("ext__") else nodes_of
+        table.setdefault(node.get("source_file", ""), []).append(node)
+    for edge in kept_edges:
+        table = first_of if edge.get("relation") in _FIRST_PASS_RELATIONS else second_of
+        table.setdefault(edge.get("source_file", ""), []).append(edge)
+    placed = {f.relative_to(root).as_posix() for paths in by_lang.values() for f in paths}
+
+    # Files outside by_lang (no grammar for them): up front, as before.
+    for rel in dict.fromkeys([*nodes_of, *ext_of, *first_of, *second_of]):
+        if rel in placed:
+            continue
+        for node in [*nodes_of.get(rel, []), *ext_of.get(rel, [])]:
+            if insert:
+                b.nodes[node["id"]] = node
+            _register_node_symbol(b, node)
+        b.edges.extend([*first_of.get(rel, []), *second_of.get(rel, [])])
+
+    extracted: list[str] = []
+    for batch in _lang_batches(by_lang):
+        order: list[str] = []
+        parsed: dict[str, tuple[Any, bytes, Any]] = {}
+        for lang in batch:
+            extract_symbols, resolve_edges = _EXTRACTORS[lang]
+            parser = None
+            for fpath in by_lang[lang]:
+                rel = fpath.relative_to(root).as_posix()
+                if rel not in extract and lang in _REPLAYABLE_LANGS:
+                    for node in nodes_of.get(rel, ()):
+                        if insert:
+                            b.nodes[node["id"]] = node
+                        _register_node_symbol(b, node)
+                    b.edges.extend(first_of.get(rel, ()))
+                    order.append(rel)
+                    continue
+                try:
+                    src = fpath.read_bytes()
+                except OSError:
+                    continue
+                if parser is None:
+                    parser = _make_parser(lang)
+                tree = parser.parse(src)
+                file_id = b.file_id(rel)
+                b.add_node(file_id, fpath.name, "code", rel, 1)
+                # pass 1: file-level + symbol nodes (+ module-key registration).
+                extract_symbols(b, tree.root_node, src, rel, file_id)
+                order.append(rel)
+                if rel in extract:
+                    parsed[rel] = (resolve_edges, src, tree)
+
+        # pass 2: cross-symbol edges (imports/inherits/calls), once every
+        # file's symbols + module keys are registered.
+        for rel in order:
+            if rel in parsed:
+                resolve_edges, src, tree = parsed[rel]
+                resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
+                extracted.append(rel)
+                continue
+            for node in ext_of.get(rel, ()):
+                b.nodes.setdefault(node["id"], node)
+            b.edges.extend(
+                e
+                for e in second_of.get(rel, ())
+                if e["source"] in b.nodes and e["target"] in b.nodes
+            )
+    return extracted
+
+
 def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
     """Rebuild a builder's name tables from an already-emitted node, so a
     re-parsed file's edges can resolve against the unchanged files' symbols."""
@@ -4527,6 +4652,12 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
     import posixpath
 
     nid = node["id"]
+    if nid.startswith("ext__"):
+        # A synthetic stand-in for an external target (a base class from a
+        # package, say). Extraction only links to these, never registers them
+        # by name, so a re-parsed `class X extends EventEmitter` must not find
+        # one as a candidate either.
+        return
     label = str(node.get("label", ""))
     sf = str(node.get("source_file", ""))
     if nid == b.file_id(sf):  # the file node
@@ -4574,6 +4705,48 @@ def update_files(
     changed_set = set(changed)
     touched = changed_set | set(removed)
 
+    # A file that gained, lost or reordered a function or class can change
+    # what a same-named call resolves to in files nobody edited: re-parse the
+    # files that name one, as a build does (incremental_extract.names_changed).
+    from neuralmind.incremental_extract import files_naming, names_changed, names_removed
+
+    previous: dict[str, list[dict[str, Any]]] = {}
+    for n in graph.get("nodes", []):
+        previous.setdefault(n.get("source_file", ""), []).append(n)
+    code = [rel for rel in changed_set if Path(rel).suffix in _SUFFIX_LANG]
+    gone = [rel for rel in (*removed, *code) if not (root / rel).exists()]
+    # Parse a .h the way this update will: C++ if the files the graph will
+    # hold include a C++ source.
+    cpp_after = _has_cpp_sources(
+        (set(previous) - set(gone)) | {rel for rel in changed_set if (root / rel).exists()}
+    )
+    names = names_changed(root, [rel for rel in code if (root / rel).exists()], previous, cpp_after)
+    names |= names_removed(gone, previous)
+    if names:
+        others = [
+            rel
+            for rel in previous
+            if rel and rel not in touched and Path(rel).suffix in _SUFFIX_LANG
+        ]
+        named = files_naming(root, others, names)
+        changed_set |= named
+        touched |= named
+    # And every user of an ext__ node a touched file owned, as a build does.
+    owned = {
+        n["id"]
+        for n in graph.get("nodes", [])
+        if n["id"].startswith("ext__") and n.get("source_file") in touched
+    }
+    if owned:
+        users = {
+            e.get("source_file", "")
+            for e in graph.get("links", [])
+            if e.get("target") in owned and e.get("source_file") not in touched
+        }
+        users = {rel for rel in users if rel and (root / rel).exists()}
+        changed_set |= users
+        touched |= users
+
     stats = UpdateStats()
     original_nodes = graph.get("nodes", [])
     stats.nodes_before = len(original_nodes)
@@ -4617,19 +4790,24 @@ def update_files(
         changed_set |= reparse
         touched |= reparse
 
+    kept_nodes = []
     for n in original_nodes:
         if n["source_file"] in touched:
             continue
-        b.nodes[n["id"]] = dict(n)
-        _register_node_symbol(b, n)
-    for e in graph.get("links", []):
-        if e.get("source_file") in touched:
-            continue  # outgoing edges of touched files are re-derived below
-        b.edges.append(dict(e))
+        node = dict(n)
+        kept_nodes.append(node)
+        # An ext__ node goes in at its owner's second-pass slot (_extract_code),
+        # so a re-parsed file earlier in build order that now uses it owns it.
+        if not node["id"].startswith("ext__"):
+            b.nodes[node["id"]] = node
+    # Outgoing edges of touched files are re-derived below; the rest are kept.
+    kept_edges = [dict(e) for e in graph.get("links", []) if e.get("source_file") not in touched]
 
     # Re-parse changed files: code via the per-language extractor, markdown via
-    # the document extractor. Group code files by language for one parser each.
-    code_by_lang: dict[str, list[str]] = {}
+    # the document extractor. Code goes through _extract_code with every code
+    # file the graph keeps, in a build's order (it lists files by path
+    # components), so kept symbols are registered where a build would.
+    reparse_code: set[str] = set()
     for rel in sorted(changed_set):
         fpath = root / rel
         if not fpath.exists():
@@ -4642,28 +4820,15 @@ def update_files(
             _extract_schema_file(b, fpath, rel)
             stats.files_reparsed += 1
             continue
-        lang = _parse_language(fpath, cpp_project)
+        reparse_code.add(rel)
+    code_by_lang: dict[str, list[Path]] = {}
+    for rel in sorted(kept | reparse_code, key=lambda r: tuple(r.split("/"))):
+        lang = _parse_language(root / rel, cpp_project)
         if lang:
-            code_by_lang.setdefault(lang, []).append(rel)
-
-    for batch in _lang_batches(code_by_lang):
-        parsed: list[tuple[Any, str, bytes, Any]] = []
-        for lang in batch:
-            extract_symbols, resolve_edges = _EXTRACTORS[lang]
-            parser = _make_parser(lang)
-            for rel in code_by_lang[lang]:
-                try:
-                    src = (root / rel).read_bytes()
-                except OSError:
-                    continue
-                tree = parser.parse(src)
-                file_id = b.file_id(rel)
-                b.add_node(file_id, (root / rel).name, "code", rel, 1)
-                extract_symbols(b, tree.root_node, src, rel, file_id)
-                parsed.append((resolve_edges, rel, src, tree))
-                stats.files_reparsed += 1
-        for resolve_edges, rel, src, tree in parsed:
-            resolve_edges(b, tree.root_node, src, rel, b.file_id(rel))
+            code_by_lang.setdefault(lang, []).append(root / rel)
+    stats.files_reparsed += len(
+        _extract_code(b, root, code_by_lang, reparse_code, kept_nodes, kept_edges)
+    )
 
     stats.files_removed = len(removed)
 
