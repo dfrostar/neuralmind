@@ -131,6 +131,8 @@ keywords = [
     "security-hardening-baseline",
     "configuration-baseline-check",
     "offline-demo",
+    "incremental-graph-extraction",
+    "build-cache",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
