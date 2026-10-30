@@ -39,6 +39,32 @@ ranking*, not their LLM-agent loop. Full numbers and reproduction commands on th
 
 ## What's New
 
+### v4.23.3 — A rebuild gives the graph a full build gives, and its type pass parses only the files that changed (October 2026)
+
+An incremental build now writes the same `graph.json` a full build would,
+byte for byte. It used to scan files `.gitignore` and `.neuralmindignore`
+exclude, so they counted as new on every build, and it could link a call to
+a different function of the same name than a full build. It now re-extracts
+only what a change can affect, and `neuralmind watch --reindex` follows the
+same rules: on an M3 a one-file graph rebuild of hermes-agent took
+9.8–10.7 s against 80.5–82.6 s. The build's type pass keeps each file's
+return types in `.neuralmind/type_cache.json`, keyed by a hash of its text,
+so a rebuild parses only the files that changed: 1.0–1.2 s against 17.2 s on
+hermes-agent, with identical type edges. The first build after upgrading
+extracts the whole graph once. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.3.md).
+
+### v4.23.2 — The same block, sooner, and an upgrade that keeps the graph cache (October 2026)
+
+The prompt hook no longer frees its graph at exit or counts every row of the
+index before loading it: on hermes-agent it took 1.16 s against 1.40 s per
+prompt on an M3, with the same block on every call. The build's type pass
+reads each file once, in one thread: 17 s against 121–123 s on hermes-agent,
+with identical type edges. And an upgrade no longer throws away a large
+repository's graph cache, so the first prompt after it keeps its recall
+within the Hermes plugin's 8 s time limit. See the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.23.2.md).
+
 ### v4.23.1 — The Hermes plugin serves each session's own project under Hermes 0.22's gateway (October 2026)
 
 Since Hermes 0.22.2, the hooks of every local session (CLI, TUI and Desktop)
