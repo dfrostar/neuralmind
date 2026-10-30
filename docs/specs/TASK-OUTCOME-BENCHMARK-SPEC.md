@@ -582,3 +582,37 @@ drawn by the same rule, that the pilot didn't use.
     with both ends in the new graph (summed over runs), and how many runs
     started with nothing learned.
   - **By position:** carried solve share minus fresh solve share, 3 runs each.
+- 2026-10-30 — the memory track's smoke test passed, 2 runs in
+  `bench/task_outcome/memory-smoke/`, not analysed or pooled: one chain,
+  `4e01f40e6a` then `e303c7a287`, on harness 2 and the frozen ai-9970.
+  - **Every pre-registered check passed.** The chain's first run started with
+    nothing learned. The second started with the 2,016 edges the first had
+    learned, all 2,016 still in the store after its build with both ends in
+    its graph, and with the first run's recap. Its block differs from the
+    first run's, and both runs recorded NeuralMind's prompt hook. A chained
+    script checked these and started the 120 runs at 22:58 UTC.
+  - **What the carried state changed in the block.** The second run's block is
+    the fresh block for the same task, as the Hermes run's three `neuralmind`
+    runs of `e303c7a287` got it, plus the session recap of the chain's
+    previous run. The recall section, its files and its synapse section are
+    identical. After one task, then, the learned edges didn't change what
+    recall shows, and the carried state reached the agent only through the
+    recap, which named the one file the previous run edited last
+    (`neuralmind/turbovec_backend.py`, not a gold file of either task).
+    Whether that holds as a chain learns more is what the mechanism report
+    measures.
+  - Neither run solved its task (84 and 117 model calls).
+  - **One harness failure, retried.** The second run's first attempt was
+    stopped at 22:30 UTC: gpt-oss emitted a truncated tool call (to
+    `process_manage`, which isn't one of its tools), Ollama answered HTTP 500
+    three times, and Hermes switched to its fallback model, OpenRouter's
+    `qwen/qwen3.8-flash`, for the rest of the session. The harness found the
+    other model in the session and recorded nothing, as the spec's rule says.
+    That run's workspace was deleted and the chain's saved state wasn't
+    advanced, so the retry started from the first run's state. The smoke and
+    the track's scripts now retry a harness failure from the next unrecorded
+    run after the preflight matches again (the track at most 5 times). None of
+    the Hermes run's 120 sessions fell back.
+  - For the whole track, ai-9970's Hermes cron jobs, its `neuralmind-maintain`
+    user timer (whose Sunday step runs `uv tool upgrade neuralmind`) and
+    Ubuntu's `apt-daily-upgrade` timer are stopped, the last by the user.
