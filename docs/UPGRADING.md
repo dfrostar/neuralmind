@@ -40,6 +40,14 @@ neuralmind build .     # incremental: re-embeds only what changed
 neuralmind health .    # exit 0 healthy, 1 stale, 2 no index
 ```
 
+From v4.23.2 or earlier to v4.23.3 or later, that first `build` extracts the
+whole graph and runs the type pass over every file once, then writes caches
+the next builds reuse. Its extraction cache is dropped on purpose: an
+incremental build in those versions could leave a call pointing at the
+wrong function of the same name, and incremental builds now carry unchanged
+files' edges over. Embeddings are cached by content, so only nodes whose
+text or edges changed are embedded again.
+
 For the container image, pull the new release tag
 (`ghcr.io/dfrostar/neuralmind:vX.Y.Z`) from the releases page.
 
