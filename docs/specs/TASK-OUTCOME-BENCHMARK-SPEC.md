@@ -437,3 +437,53 @@ drawn by the same rule, that the pilot didn't use.
     Checks every 10–20 minutes found none still running into a later run.
     The harness is left as it is until stage 2 ends, so every run is measured
     the same way.
+- 2026-10-30 — the Hermes run is complete, all 120 runs recorded in
+  `bench/task_outcome/hermes-pilot/` (stage 2's 80 ran from 2026-10-29 17:28
+  to 2026-10-30 18:48 UTC). `report.txt` there is `analyze`'s output:
+  - **Result, labelled "pilot": claim not supported.** With NeuralMind,
+    gpt-oss solved 10 of the 20 tasks (most of a task's 3 seeds), and 8
+    without. The two tasks only one arm solved both went to NeuralMind:
+    `e303c7a287`, solved by 3 of 3 seeds with it and 0 without, and
+    `53b9813363`, 3 and 1. One-sided McNemar p = 0.25. That is the lowest p
+    two discordant tasks can give; p < 0.05 needs at least 5, all one way.
+  - **Solved runs: 29 of 60 with NeuralMind, 26 of 60 without.** Four tasks
+    were solved by one `baseline` seed and no `neuralmind` seed
+    (`4325e063e1`, `4e01f40e6a`, `24ee2924b9`, `366858e431`), so by neither
+    arm under the majority rule.
+  - **Secondary endpoints, reported, not tested, show no difference.**
+    Median whole-session tokens per task 3.02M without NeuralMind and 3.06M
+    with; the per-task change is −2.3% (95% CI −20.0% to +19.4%). Median
+    minutes per task 18.4 and 17.9, turns 91.3 and 88.3, tool calls before
+    the first edit 31.2 and 30.2; runs that edited a gold file 50 and 49.
+    All three runs that hit the timeout were in the `baseline` arm, stage 1's
+    run 18 among them.
+  - **No run was a harness failure.** All 120 sessions in `state.db` ran on
+    `gpt-oss:20b-64k` at the local Ollama endpoint, with Hermes's fallback
+    never active, on Hermes v0.22.5 and NeuralMind 4.23.1. Every
+    `neuralmind`-arm run recorded the plugin's prompt hook (60 of 60) and no
+    `baseline` run did, so the manipulation check drops nothing.
+  - **How the runs ended,** both stages, arms pooled: 57 with an answer (37
+    solved), 54 at the turn cap (15 solved by the edits they made first), 5
+    with the model's output truncated on every retry (2 solved), 1 on an
+    invalid tool call (solved), and 3 at the timeout. Hermes reports all but
+    the answers and the timeouts as errors; they are the model's outcomes,
+    not the harness's. Stage 1's entry counted run 13 among 19 runs the turn
+    cap ended; it ended on a truncated output at 101 calls, so the cap ended
+    18 there.
+  - **Whole-session accounting.** `sessions.json` covers all 120 runs, and
+    its tokens match the record on 112. The other eight are the three
+    timeouts and five runs Hermes woke up after their client returned
+    (stage 1's runs 15 and 22 among them). Five sessions went past 120 calls
+    through wake-ups, the most 237. The harness stopped 22 background
+    processes over the 120 runs.
+  - **ai-9970 changed once during stage 2.** Its Hermes had 12 cron jobs
+    active, some calling the same model, one of them every 30 minutes. They
+    ran through stage 1 and stage 2's first 22 runs, were paused at the
+    user's request at 02:56 UTC on 2026-10-30, during run 23, and were
+    resumed after the last run. The preflight doesn't check them. Both arms
+    ran on both sides of the pause (63 runs before it, 33 `baseline` and 30
+    `neuralmind`; 57 after, 27 and 30), and the client's median time per run
+    fell from 17.6 to 14.2 minutes after it. Minutes are the endpoint that
+    can move; reported, not corrected.
+  - All 120 runs completed, so the memory track can start, with its smoke
+    test first, as its order of work says.
