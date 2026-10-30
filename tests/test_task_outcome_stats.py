@@ -573,3 +573,293 @@ def test_test_keys_hide_parameters_but_keep_cases_distinct() -> None:
     b = test_key("tests.test_s::test_t[slack-xoxb-fake-2]")
     assert a != b and "xoxb" not in a + b
     assert a.startswith("tests.test_s::test_t[") and a.endswith("]")
+
+
+# The memory track: chains that carry NeuralMind's learned state, beside fresh runs.
+
+
+def test_memory_plan_runs_each_position_together_and_each_chain_in_order() -> None:
+    runs = run.memory_plan(set(run.MEMORY_ORDER), chains=3, fresh=3, order_seed=7)
+    assert len(runs) == 120 and runs == run.memory_plan(set(run.MEMORY_ORDER), 3, 3, 7)
+    for i, tid in enumerate(run.MEMORY_ORDER):
+        group = runs[i * 6 : (i + 1) * 6]
+        assert {(r[0], r[3]) for r in group} == {(tid, i + 1)}
+        assert sorted(r[1:3] for r in group) == [("carried", c) for c in range(3)] + [
+            ("fresh", s) for s in range(3)
+        ]
+    # Run on a subset, positions follow the order of what is left.
+    smoke = run.memory_plan({"e303c7a287", "4e01f40e6a"}, chains=1, fresh=0, order_seed=7)
+    assert smoke == [("4e01f40e6a", "carried", 0, 1), ("e303c7a287", "carried", 0, 2)]
+
+
+def _store(ws, edges):
+    import sqlite3
+
+    state = ws / ".neuralmind"
+    state.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(state / "synapses.db")
+    db.execute("CREATE TABLE synapses (node_a TEXT, node_b TEXT, namespace TEXT)")
+    db.executemany("INSERT INTO synapses VALUES (?, ?, ?)", edges)
+    db.commit()
+    db.close()
+
+
+def test_a_chain_carries_learned_edges_and_recaps_and_counts_what_survives(tmp_path) -> None:
+    first, chain, second = tmp_path / "first", tmp_path / "chain" / "state", tmp_path / "second"
+    _store(
+        first,
+        [
+            ("a", "b", "personal"),
+            ("a", "gone", "main"),
+            ("x", "y", "structural"),
+            ("d", "e", "shared"),
+        ],
+    )
+    (first / ".neuralmind" / "recaps").mkdir()
+    (first / ".neuralmind" / "recaps" / "s1.jsonl").write_text(
+        json.dumps({"kind": "prompt"}) + "\n"
+    )
+    (first / ".neuralmind" / "graph.json").write_text("{}")  # not carried: rebuilt
+    run.carry_out(first, chain)
+    assert sorted(p.name for p in chain.iterdir()) == ["recaps", "synapses.db"]
+
+    second.mkdir()
+    assert run.carry_in(chain, second) == {"carry_edges_in": 2, "carry_recaps_in": 1}
+    assert not (second / ".neuralmind" / "graph.json").exists()
+    graph = {"nodes": [{"id": n} for n in ("a", "b", "x", "y")]}
+    (second / ".neuralmind" / "graph.json").write_text(json.dumps(graph))
+    assert run.carry_check(second) == {"carry_edges_after_build": 2, "carry_edges_in_graph": 1}
+    # A chain's first task has nothing to carry.
+    third = tmp_path / "third"
+    third.mkdir()
+    assert run.carry_in(tmp_path / "chain" / "none", third) == {
+        "carry_edges_in": 0,
+        "carry_recaps_in": 0,
+    }
+
+
+BLOCK = """## NeuralMind associative recall
+
+Code matching this prompt:
+- neuralmind/secret_scan.py: line L138, _may_contain_secret() L424
+- neuralmind/cli.py: cmd_scan_for_secrets() L176
+Most matches are in neuralmind/secret_scan.py.
+Connected to it in the synapse graph:
+- neuralmind/_demo_report.py: encode() L66
+- neuralmind/cli.py: main() L9"""
+
+
+def test_the_block_names_files_in_order_and_says_whether_a_gold_one_comes_first() -> None:
+    got = run.block_files(BLOCK, ["neuralmind/secret_scan.py"])
+    assert got["block_files"] == [
+        "neuralmind/secret_scan.py",
+        "neuralmind/cli.py",
+        "neuralmind/_demo_report.py",
+    ]
+    assert got["block_synapse_files"] == ["neuralmind/_demo_report.py", "neuralmind/cli.py"]
+    assert got["block_names_gold"] and got["block_first_is_gold"]
+    other = run.block_files(BLOCK, ["neuralmind/cli.py"])
+    assert other["block_names_gold"] and not other["block_first_is_gold"]
+    assert run.block_files("", ["x.py"]) == {
+        "block_sha256": None,
+        "block_files": [],
+        "block_synapse_files": [],
+        "block_names_gold": False,
+        "block_first_is_gold": False,
+    }
+
+
+def test_the_block_is_what_the_plugin_appended_to_the_first_prompt(tmp_path) -> None:
+    import sqlite3
+
+    path = tmp_path / "state.db"
+    db = sqlite3.connect(path)
+    db.execute(
+        "CREATE TABLE messages (id INTEGER, session_id TEXT, role TEXT, content TEXT,"
+        " api_content TEXT)"
+    )
+    db.executemany(
+        "INSERT INTO messages VALUES (?, ?, ?, ?, ?)",
+        [
+            (1, "nm", "user", "Fix it.", "Fix it.\n\n" + BLOCK),
+            (2, "nm", "user", "later", "later\n\nanother block"),
+            (3, "base", "user", "Fix it.", None),
+        ],
+    )
+    db.commit()
+    db.close()
+    assert run.hermes_block("nm", path) == BLOCK
+    assert run.hermes_block("base", path) == ""
+    assert run.hermes_block("missing", path) == ""
+
+
+def test_the_memory_track_hands_each_chain_its_own_state_once_a_run_is_recorded(
+    tmp_path, monkeypatch
+) -> None:
+    tasks = tmp_path / "tasks.json"
+    tasks.write_text(json.dumps([{"id": t, "prompt": "p"} for t in ("4e01f40e6a", "e303c7a287")]))
+    out = tmp_path / "out"
+    seen = []
+
+    def fake_run(task, arm, seed, args, label=None, carry=None, carry_to=None):
+        seen.append((task["id"], arm, label, seed, carry and carry.exists()))
+        if carry_to is not None:
+            carry_to.mkdir(parents=True)
+            (carry_to / "from").write_text(task["id"])
+        return {
+            "task": task["id"],
+            "arm": arm,
+            "seed": seed,
+            "solved": False,
+            "total_tokens": 1,
+            "num_turns": 1,
+            **args.versions,
+        }
+
+    monkeypatch.setattr(run, "run_one", fake_run)
+    monkeypatch.setattr(run.shutil, "which", lambda name: f"/bin/{name}")
+    monkeypatch.setattr(run, "probe_versions", lambda *a: {"neuralmind_version": "nm"})
+    monkeypatch.setattr(run, "hermes_plugin_pin", lambda: None)
+    argv = [
+        "--tasks",
+        str(tasks),
+        "--out",
+        str(out),
+        "--model",
+        "m",
+        "--tool-venv",
+        "v",
+        "--test-python",
+        "p",
+        "--work-dir",
+        str(tmp_path / "w"),
+        "--agent",
+        "hermes",
+        "--track",
+        "memory",
+        "--chains",
+        "2",
+        "--fresh",
+        "1",
+    ]
+    assert run.main(argv) == 0
+    carried = [s for s in seen if s[2] == "carried"]
+    # Position 1 starts empty, position 2 from that chain's own position-1 state.
+    assert sorted(carried) == [
+        ("4e01f40e6a", "neuralmind", "carried", 0, False),
+        ("4e01f40e6a", "neuralmind", "carried", 1, False),
+        ("e303c7a287", "neuralmind", "carried", 0, True),
+        ("e303c7a287", "neuralmind", "carried", 1, True),
+    ]
+    assert all(s[4] in (None, False) for s in seen if s[2] == "fresh")
+    for c in (0, 1):
+        assert (out / "carry" / f"chain{c}" / "state" / "from").read_text() == "e303c7a287"
+    records = [json.loads(line) for line in (out / "runs.jsonl").read_text().splitlines()]
+    assert len(records) == 6 and {r["condition"] for r in records} == {"carried", "fresh"}
+    assert {(r["task"], r["position"]) for r in records} == {("4e01f40e6a", 1), ("e303c7a287", 2)}
+    # A rerun finds every (task, condition, replicate) done.
+    seen.clear()
+    assert run.main(argv) == 0 and seen == []
+
+
+def _memory_run(task, condition, seed, position, solved, **extra):
+    return {
+        "task": task,
+        "arm": "neuralmind",
+        "condition": condition,
+        "seed": seed,
+        "position": position,
+        "track": "memory",
+        "agent": "hermes",
+        "solved": solved,
+        "input_tokens": 100,
+        "output_tokens": 10,
+        **extra,
+    }
+
+
+def test_memory_track_compares_carried_with_fresh_on_solve_rate(tmp_path, capsys) -> None:
+    # Five tasks only the carried chains solve: the smallest result that clears p < 0.05.
+    tasks = sorted(analyze.MEMORY_REPEATS)[:5] + ["0db7d2c97d"]
+    runs = []
+    for pos, t in enumerate(tasks, 1):
+        for s in range(3):
+            first = pos == 1
+            runs.append(
+                _memory_run(
+                    t,
+                    "carried",
+                    s,
+                    pos,
+                    t != "0db7d2c97d",
+                    block_sha256="b",
+                    block_names_gold=True,
+                    block_first_is_gold=not first,
+                    carry_recaps_in=pos - 1 if t != "0db7d2c97d" else 0,
+                    carry_edges_in=0 if first else 40,
+                    carry_edges_after_build=0 if first else 40,
+                    carry_edges_in_graph=0 if first else 30,
+                )
+            )
+            runs.append(_memory_run(t, "fresh", s, pos, False, block_sha256="b"))
+    result = analyze.analyze_memory(runs)
+    assert result["solve"]["only_neuralmind"] == 5 and result["solve"]["only_baseline"] == 0
+    assert result["solve"]["mcnemar_p_greater"] == pytest.approx(1 / 32)
+    assert result["decision"]["claim_supported"]
+    assert result["mechanism"]["carried"]["tasks_block_names_gold"] == 6
+    assert result["mechanism"]["carried"]["tasks_block_first_is_gold"] == 5
+    assert result["mechanism"]["fresh"]["tasks_block_names_gold"] == 0
+    assert result["prediction"]["repeats"] == {"fresh": 0, "carried": 5}
+    assert result["prediction"]["held"]
+    assert result["carry_over"]["edges_in_median"] == 40
+    assert result["carry_over"]["share_with_both_ends_in_graph"] == pytest.approx(0.75)
+    # The last position's chains claim no earlier recaps: off their chain.
+    assert result["carry_over"]["runs_off_chain"] == 3
+    assert result["solve_share_by_position"][1] == (1.0, 0.0)
+
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "memory track" in out and "only carried 5" in out and "Claim supported: YES" in out
+
+
+def test_memory_and_task_runs_are_never_pooled(tmp_path, capsys) -> None:
+    runs = [
+        _memory_run("t", "fresh", 0, 1, True),
+        {"task": "t", "arm": "baseline", "agent": "hermes"},
+    ]
+    (tmp_path / "runs.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
+    assert analyze.main([str(tmp_path)]) == 1
+    assert "more than one track" in capsys.readouterr().err
+
+
+def _mark(path, task, position):
+    path.mkdir(parents=True)
+    (path / "run.json").write_text(json.dumps({"task": task, "position": position}))
+
+
+def test_a_stop_between_recording_and_promoting_is_finished_on_resume(tmp_path) -> None:
+    chain = tmp_path / "chain0"
+    _mark(chain / "state", "a", 1)
+    _mark(chain / "next", "b", 2)
+    # b's run was recorded before the stop: its state is promoted.
+    run.settle_chain(chain, {"task": "b", "position": 2})
+    assert run._chain_mark(chain / "state") == {"task": "b", "position": 2}
+    assert not (chain / "next").exists()
+    # A run that wasn't recorded leaves its state discarded.
+    _mark(chain / "next", "c", 3)
+    run.settle_chain(chain, {"task": "b", "position": 2})
+    assert run._chain_mark(chain / "state") == {"task": "b", "position": 2}
+    assert not (chain / "next").exists()
+
+
+def test_a_chain_whose_state_is_not_from_its_last_recorded_run_is_refused(tmp_path) -> None:
+    chain = tmp_path / "chain0"
+    run.settle_chain(chain, None)  # not started: nothing saved, nothing recorded
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, {"task": "a", "position": 1})  # recorded, but no state
+    _mark(chain / "state", "a", 1)
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, {"task": "b", "position": 2})  # state lags the record
+    with pytest.raises(run.ChainError):
+        run.settle_chain(chain, None)  # state with nothing recorded
