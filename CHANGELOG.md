@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.23.2](https://github.com/dfrostar/neuralmind/compare/v4.23.1...v4.23.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **graph_cache:** an upgrade keeps a large repository's graph cache ([#750](https://github.com/dfrostar/neuralmind/issues/750)) ([63aca20](https://github.com/dfrostar/neuralmind/commit/63aca20c775249d89c131f50baeb6dc5e6e4f83a))
+
+
+### Performance Improvements
+
+* a faster prompt hook on large repositories, and a type pass that reads each file once ([#744](https://github.com/dfrostar/neuralmind/issues/744)) ([e50f18a](https://github.com/dfrostar/neuralmind/commit/e50f18ae190ddab91360a1a5f2a32edf87bc8e97))
+
 ## [4.23.1](https://github.com/dfrostar/neuralmind/compare/v4.23.0...v4.23.1) (2026-10-28)
 
 

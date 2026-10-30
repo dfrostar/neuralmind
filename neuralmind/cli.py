@@ -6194,11 +6194,30 @@ def _report_mcp_install(
     return bool(result.action != "already-present")
 
 
+def _exit_without_teardown(code: int) -> None:
+    """Flush the hook's output and end the process without freeing anything.
+
+    On a large index the hook holds its graph in a reference cycle (the
+    selector keeps a bound method of the NeuralMind instance), so a normal
+    exit spent ~0.16 s freeing it on every prompt. Nothing in a hook needs
+    exit-time cleanup: NeuralMind registers no exit handler (logging's own
+    has nothing left to flush, as its handlers flush every record), files are
+    written in ``with`` blocks, and background work runs in detached processes.
+    """
+    import contextlib
+
+    for stream in (sys.stdout, sys.stderr):
+        # A closed stream or a reader that went away: nothing left to deliver.
+        with contextlib.suppress(OSError, ValueError):
+            stream.flush()
+    os._exit(code)
+
+
 def cmd_hook(args):
     """Internal: runtime entrypoint invoked by Claude Code hooks."""
     from .hooks import run_hook
 
-    sys.exit(run_hook(args.action))
+    _exit_without_teardown(run_hook(args.action))
 
 
 def cmd_risks(args):

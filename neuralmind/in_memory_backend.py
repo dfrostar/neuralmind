@@ -234,6 +234,9 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
             or edge.get("to") in ids
         ]
 
+    def has_rows(self) -> bool:
+        return bool(self._index)
+
     def get_stats(self) -> dict[str, Any]:
         communities = {
             int(entry["metadata"].get("community", -1))

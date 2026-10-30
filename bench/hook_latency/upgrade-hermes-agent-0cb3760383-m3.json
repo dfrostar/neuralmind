@@ -1,0 +1,353 @@
+{
+  "_comment": "tests/benchmark/hook_latency.py on held-out task 0cb3760383's hermes-agent index (built by v4.22.1; an APFS clone) and prompt (bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json), on an M3 with macOS's mediaanalysisd using ~1.3 cores throughout (load averages in each run). Each NeuralMind ran from a copy on PYTHONPATH: 'before' is main at 923068b1 (4.23.1); 'after' is this change; an 'upgraded' copy is the same code with __version__ set to 4.99.0. An upgrade is simulated by running the upgraded copy with --states cached on the cache the previous step left, so its first sample is the first prompt after the upgrade. Steps ran in this order, on one index: before_all_states; before_upgraded (cache written by 4.23.1); after_all_states; after_upgraded (cache written by this change); before_reads_after_cache (4.23.1 on that cache: a miss, which rewrites it with its own header); after_upgraded_from_4_23_1 (this change, upgraded, on the cache 4.23.1 wrote); before_upgraded_again. Reproduce a step: python -m tests.benchmark.hook_latency <index> --tasks bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json --task 0cb3760383 --label hermes-agent-0cb3760383 --runs 5 [--states cached]",
+  "before_all_states": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 6.6
+    },
+    "neuralmind": {
+      "version": "4.23.1",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "uncached",
+        "runs": 5,
+        "mean_s": 6.95,
+        "min_s": 6.5,
+        "max_s": 8.11,
+        "within_plugin_timeout": 4,
+        "samples_s": [
+          8.11,
+          6.54,
+          6.83,
+          6.5,
+          6.78
+        ]
+      },
+      {
+        "state": "miss",
+        "runs": 5,
+        "mean_s": 7.84,
+        "min_s": 7.54,
+        "max_s": 8.24,
+        "within_plugin_timeout": 3,
+        "samples_s": [
+          7.73,
+          7.7,
+          7.54,
+          8.24,
+          8.01
+        ]
+      },
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 1.44,
+        "min_s": 1.43,
+        "max_s": 1.45,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          1.45,
+          1.45,
+          1.44,
+          1.44,
+          1.43
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "before_upgraded": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 7.8
+    },
+    "neuralmind": {
+      "version": "4.99.0",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 3.0,
+        "min_s": 1.47,
+        "max_s": 8.75,
+        "within_plugin_timeout": 4,
+        "samples_s": [
+          8.75,
+          1.67,
+          1.54,
+          1.47,
+          1.57
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "after_all_states": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 6.3
+    },
+    "neuralmind": {
+      "version": "4.23.1",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "uncached",
+        "runs": 5,
+        "mean_s": 7.26,
+        "min_s": 6.57,
+        "max_s": 8.68,
+        "within_plugin_timeout": 4,
+        "samples_s": [
+          8.68,
+          7.55,
+          6.69,
+          6.79,
+          6.57
+        ]
+      },
+      {
+        "state": "miss",
+        "runs": 5,
+        "mean_s": 8.79,
+        "min_s": 7.83,
+        "max_s": 9.83,
+        "within_plugin_timeout": 1,
+        "samples_s": [
+          9.0,
+          8.61,
+          7.83,
+          8.66,
+          9.83
+        ]
+      },
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 1.59,
+        "min_s": 1.46,
+        "max_s": 1.68,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          1.68,
+          1.46,
+          1.65,
+          1.62,
+          1.56
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "after_upgraded": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 8.0
+    },
+    "neuralmind": {
+      "version": "4.99.0",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 1.69,
+        "min_s": 1.5,
+        "max_s": 1.99,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          1.85,
+          1.53,
+          1.5,
+          1.6,
+          1.99
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "before_reads_after_cache": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 8.0
+    },
+    "neuralmind": {
+      "version": "4.23.1",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "cached",
+        "runs": 1,
+        "mean_s": 8.34,
+        "min_s": 8.34,
+        "max_s": 8.34,
+        "within_plugin_timeout": 0,
+        "samples_s": [
+          8.34
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "after_upgraded_from_4_23_1": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 8.0
+    },
+    "neuralmind": {
+      "version": "4.99.0",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 1.65,
+        "min_s": 1.44,
+        "max_s": 1.91,
+        "within_plugin_timeout": 5,
+        "samples_s": [
+          1.44,
+          1.77,
+          1.91,
+          1.58,
+          1.55
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  },
+  "before_upgraded_again": {
+    "project": "hermes-agent-0cb3760383",
+    "machine": {
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "processor": "arm",
+      "cpus": 8,
+      "load_average": 7.7
+    },
+    "neuralmind": {
+      "version": "4.99.0",
+      "commit": null
+    },
+    "prompt": "My session is running on Anthropic (`https://api.anthropic.com` with my Anthropic key). My config has no `model.base_url`, but `OPENROUTER_API_KEY` is set in my environment. When I switch the session's model with provider `custom` (e.g. `/model m2 --provider custom`, or when the per-turn config sync picks up `provider: custom`), the switch succeeds but the session now points at OpenRouter's default endpoint with my OpenRouter key, a host I never chose. When a custom endpoint is configured in `model.base_url`, switching to `custom` from another provider correctly uses that endpoint. But when no custom endpoint is configured, the switch should keep the session's current endpoint and API key (here `https://api.anthropic.com` and my Anthropic key) instead of falling through to OpenRouter.",
+    "plugin_timeout_s": 8.0,
+    "states": [
+      {
+        "state": "cached",
+        "runs": 5,
+        "mean_s": 3.43,
+        "min_s": 1.52,
+        "max_s": 10.5,
+        "within_plugin_timeout": 4,
+        "samples_s": [
+          10.5,
+          1.52,
+          1.59,
+          1.8,
+          1.72
+        ]
+      }
+    ],
+    "block_sha256": [
+      "cf55ceb9a220a8072b351f0f0eab4eb12d2e4c5030f9a03e52d60e0eaa30270c"
+    ],
+    "index": {
+      "graph.json_mb": 398,
+      "index_ir.json_mb": 424,
+      "graph_cache.marshal_mb": 269,
+      "nodes": 269151,
+      "edges": 634765
+    }
+  }
+}

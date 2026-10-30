@@ -1327,11 +1327,41 @@ class TestCLIHook:
         args = MagicMock()
         args.action = "compress-bash"
 
+        def exit_(code):
+            raise SystemExit(code)
+
         with patch("neuralmind.hooks.run_hook", return_value=0) as mock_run:
-            with pytest.raises(SystemExit) as exc_info:
-                cmd_hook(args)
+            with patch("neuralmind.cli._exit_without_teardown", side_effect=exit_):
+                with pytest.raises(SystemExit) as exc_info:
+                    cmd_hook(args)
             assert exc_info.value.code == 0
             mock_run.assert_called_once_with("compress-bash")
+
+    def test_a_hook_process_keeps_its_output_and_exit_code(self):
+        """The hook ends with os._exit, so its output must be flushed first:
+        os._exit drops whatever is still buffered, at any size. 200 KB, more
+        than a pipe holds, also checks a write the reader has to drain.
+        """
+        import subprocess
+
+        script = (
+            "import sys\n"
+            "import neuralmind.hooks as hooks\n"
+            "from neuralmind.cli import main\n"
+            "def run_hook(action):\n"
+            "    sys.stdout.write('x' * 200_000)\n"
+            "    sys.stderr.write('done')\n"
+            "    return 3\n"
+            "hooks.run_hook = run_hook\n"
+            "sys.argv = ['neuralmind', '_hook', 'prompt-submit']\n"
+            "main()\n"
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, timeout=60
+        )
+        assert done.returncode == 3
+        assert done.stdout == "x" * 200_000
+        assert done.stderr.endswith("done")
 
 
 class TestCLIInitHook:

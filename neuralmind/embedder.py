@@ -549,6 +549,9 @@ class GraphEmbedder(EmbeddingBackend):
             "nodes": nodes,
         }
 
+    def has_rows(self) -> bool:
+        return int(self.collection.count()) > 0
+
     def get_stats(self) -> dict:
         """
         Get embedding statistics.
