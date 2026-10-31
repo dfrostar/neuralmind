@@ -926,6 +926,96 @@ def test_benchmark_page_renders_the_task_outcome_pilot() -> None:
     )
 
 
+# The Hermes pilot (2026-10-30): the same 20 tasks, Hermes-Agent on a local
+# model, NeuralMind through its Hermes plugin. Tasks solved is its primary
+# endpoint, and its figures are held to the committed run the same way.
+
+HERMES_DIR = REPO_ROOT / "bench" / "task_outcome" / "hermes-pilot"
+HERMES_SOURCE = "bench/task_outcome/hermes-pilot/report.txt"
+SPEC = REPO_ROOT / "docs" / "specs" / "TASK-OUTCOME-BENCHMARK-SPEC.md"
+
+
+def _hermes_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == HERMES_SOURCE]
+    assert (
+        len(entries) == 1
+    ), f"site/claims.json must carry exactly one Hermes pilot entry (source {HERMES_SOURCE})"
+    return entries[0]
+
+
+def test_hermes_pilot_figures_match_the_committed_run() -> None:
+    """Every figure the site renders for the Hermes pilot, recomputed from the run."""
+    entry = _hermes_entry()
+    assert entry["evidence"] == "pilot"
+    assert entry["spec"] == "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md"
+    f = entry["figures"]
+    report = (HERMES_DIR / "report.txt").read_text(encoding="utf-8")
+    runs = [
+        json.loads(line)
+        for line in (HERMES_DIR / "runs.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    def grab(pattern: str) -> tuple[str, ...]:
+        m = re.search(pattern, report)
+        assert m, f"report.txt has no line matching {pattern!r}"
+        return m.groups()
+
+    def pair(key: str) -> tuple[str, ...]:
+        return tuple(str(f[key][a]) for a in ("baseline", "neuralmind"))
+
+    *solved, p = grab(
+        r"Tasks solved: baseline (\d+), NeuralMind (\d+); only baseline (\d+), "
+        r"only NeuralMind (\d+) \(one-sided McNemar p = ([\d.]+)\)"
+    )
+    assert tuple(solved) == pair("tasks_solved") + pair("tasks_solved_by_one_arm_only")
+    assert abs(float(p) - f["mcnemar_p"]) < 0.00005
+    assert grab(r"Solved runs: baseline (\d+), neuralmind (\d+)") == pair("runs_solved")
+    ci = f["tokens_change_ci95"].replace("−", "-")
+    assert grab(r"median change with NeuralMind (\S+) \(95% CI (\S+) to (\S+), ") == (
+        f["median_tokens_change"].replace("−", "-"),
+        *ci.split(" to "),
+    )
+    assert grab(r"Median minutes per task: baseline ([\d.]+), neuralmind ([\d.]+)") == pair(
+        "median_minutes"
+    )
+    assert grab(r"Median turns per task: baseline ([\d.]+), neuralmind ([\d.]+)") == pair(
+        "median_turns"
+    )
+    assert grab(r"Runs that hit the timeout \(unsolved\): baseline (\d+), neuralmind (\d+)") == (
+        pair("runs_timed_out")
+    )
+    assert grab(r"Claim supported: (\w+)")[0] == ("YES" if f["claim_supported"] else "NO")
+
+    assert len(runs) == f["runs"]
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    assert len({r["seed"] for r in runs}) == f["seeds"]
+    assert {r["agent"] for r in runs} == {"hermes"}
+    assert {r["model"] for r in runs} == {f["model"]}
+    assert {r["hermes_version"].split()[2] for r in runs} == {f"v{f['hermes']}"}
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind"]}
+    for arm in ("baseline", "neuralmind"):
+        mine = [r for r in runs if r["arm"] == arm]
+        # The spec's rule: a run that hit the timeout never counts as solved,
+        # whatever the tests said of the edits it had made by then.
+        solved = [r for r in mine if r["solved"] and not r["timed_out"]]
+        assert len(solved) == f["runs_solved"][arm]
+        assert sum(bool(r["timed_out"]) for r in mine) == f["runs_timed_out"][arm]
+        by_task = {t: sum(r["task"] == t for r in solved) for t in {r["task"] for r in runs}}
+        assert sum(n * 2 > f["seeds"] for n in by_task.values()) == f["tasks_solved"][arm]
+
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert (
+        f"in {f['runs_judged_with_an_agent_command_running']} of the {f['runs']} runs "
+        "a command the agent started was still running when judging began"
+    ) in spec
+
+
+def test_benchmark_page_renders_the_hermes_pilot() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomeHermes" in page, "/benchmark no longer renders the Hermes pilot."
+
+
 def test_site_reports_the_task_outcome_pilot() -> None:
     violations = [
         f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"

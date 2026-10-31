@@ -242,6 +242,34 @@
       "note": "Replaces the disclosure 'Task outcomes are not measured' (removed 2026-10-21, when this pilot was published). A RESULT, not a disclosure, and a null one: quote it with the same prominence as the retrieval wins, labelled 'pilot', with its interval, and never as a product claim (the spec says so). Say 'a 20-task pilot found no cost difference', with a link; never write that task outcomes are 'not measured' again, and never that NeuralMind makes agents cheaper, faster or more accurate. The finding: in the 60 neuralmind-arm runs the agent called none of the 28 MCP tools the server listed; NeuralMind reached it only through its Claude Code hooks (install-hooks), which ran in all 60. Pinned: claude-sonnet-5-5, Claude Code 2.1.287, NeuralMind 4.15.1; one repository (NeuralMind's own), cold start, cost is Claude Code's estimate at API prices. The confirmatory run follows the spec on new tasks; nothing about it may be claimed before it is run. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
     },
     {
+      "claim": "Task outcomes, Hermes pilot: on the same 20 bug-fix tasks, Hermes-Agent on a local gpt-oss:20b model solved 10 with NeuralMind's plugin and 8 without, too few tasks apart to be significant (one-sided McNemar p = 0.25), with no measurable difference in tokens per task",
+      "source": "bench/task_outcome/hermes-pilot/report.txt",
+      "spec": "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md",
+      "reproduce": "python -m evals.task_outcome.run --agent hermes --tasks evals/task_outcome/tasks.json --out bench/task_outcome/hermes-pilot --model gpt-oss:20b-64k --seeds 1 --max-turns 120 --timeout 3600 --tool-venv <venv with neuralmind==4.23.1> --test-python <venv>/bin/python --work-dir <scratch>, then the same with --seeds 3 (stage 2 skips the recorded runs), then python -m evals.task_outcome.hermes_sessions bench/task_outcome/hermes-pilot && python -m evals.task_outcome.analyze bench/task_outcome/hermes-pilot",
+      "evidence": "pilot",
+      "figures": {
+        "date": "2026-10-30",
+        "tasks": 20,
+        "seeds": 3,
+        "runs": 120,
+        "hermes": "0.22.5",
+        "model": "gpt-oss:20b-64k",
+        "neuralmind": "4.23.1",
+        "tasks_solved": { "baseline": 8, "neuralmind": 10 },
+        "tasks_solved_by_one_arm_only": { "baseline": 0, "neuralmind": 2 },
+        "mcnemar_p": 0.25,
+        "runs_solved": { "baseline": 26, "neuralmind": 29 },
+        "median_tokens_change": "−2.3%",
+        "tokens_change_ci95": "−20.0% to +19.4%",
+        "median_minutes": { "baseline": 18.4, "neuralmind": 17.9 },
+        "median_turns": { "baseline": 91.3, "neuralmind": 88.3 },
+        "runs_timed_out": { "baseline": 3, "neuralmind": 0 },
+        "runs_judged_with_an_agent_command_running": 36,
+        "claim_supported": false
+      },
+      "note": "A separate exploratory study on the Claude Code pilot's 20 tasks, never pooled with it. Primary endpoint: tasks solved (most of a task's 3 seeds), one-sided McNemar on the tasks only one arm solved; supported only at p < 0.05, which needs at least 5 such tasks all one way. Two went to NeuralMind and none the other way, the lowest p two can give. Quote it as '10 vs 8 tasks, not significant', never as a percentage gain or a ratio of the two. NeuralMind reached the agent only through its Hermes plugin (a context block on every prompt, the session recap, edit learning); neither arm had an MCP server. Pinned: Hermes-Agent v0.22.5, gpt-oss:20b-64k on Ollama on one 16 GB GPU, NeuralMind 4.23.1; one repository (NeuralMind's own), a fresh index each run. Keep two caveats beside it: in 36 of the 120 runs a command the agent had started (33 of them pytest over the whole suite) was still running when judging began, and the verdicts stand as recorded (the spec, 2026-10-30; harness 2 now stops such commands first); and the machine's Hermes cron jobs were paused partway through, with both arms on both sides of the pause, which can move minutes. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
+    },
+    {
       "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "neuralmind eval . --synapse-ab",

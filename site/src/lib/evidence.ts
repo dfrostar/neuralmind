@@ -121,6 +121,48 @@ export const taskOutcomePilot = (() => {
     };
 })();
 
+type Arms = { baseline: number; neuralmind: number };
+
+/**
+ * The Hermes pilot: Hermes-Agent on a local model, the same 20 tasks, with and
+ * without NeuralMind's Hermes plugin. Tasks solved is its primary endpoint.
+ * `figures` is recomputed from bench/task_outcome/hermes-pilot/ by
+ * tests/test_site_claims.py.
+ */
+export const taskOutcomeHermes = (() => {
+    const c = claims.non_ratio_headline_claims.find((e) => e.source === 'bench/task_outcome/hermes-pilot/report.txt');
+    if (!c || !('figures' in c) || !('spec' in c)) {
+        throw new Error('site/claims.json has no Hermes pilot entry (source bench/task_outcome/hermes-pilot/report.txt).');
+    }
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        spec: c.spec as string,
+        reproduce: c.reproduce,
+        figures: c.figures as {
+            date: string;
+            tasks: number;
+            seeds: number;
+            runs: number;
+            hermes: string;
+            model: string;
+            neuralmind: string;
+            tasks_solved: Arms;
+            tasks_solved_by_one_arm_only: Arms;
+            mcnemar_p: number;
+            runs_solved: Arms;
+            median_tokens_change: string;
+            tokens_change_ci95: string;
+            median_minutes: Arms;
+            median_turns: Arms;
+            runs_timed_out: Arms;
+            runs_judged_with_an_agent_command_running: number;
+            claim_supported: boolean;
+        },
+    };
+})();
+
 /** Every `disclosure` entry: what the site states is not measured. */
 export const disclosures = claims.non_ratio_headline_claims
     .filter((c) => c.evidence === 'disclosure')

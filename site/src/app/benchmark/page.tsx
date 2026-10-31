@@ -14,6 +14,7 @@ import {
     ratio,
     ratioRange,
     retrievalEval,
+    taskOutcomeHermes,
     taskOutcomePilot,
     type Figure,
     type RepoResult,
@@ -183,6 +184,10 @@ export default function BenchmarkPage() {
     const grep = headline('ripgrep (query keywords');
     const pilot = taskOutcomePilot.figures;
     const usd = (v: number) => `$${v.toFixed(3)}`;
+    const hermes = taskOutcomeHermes.figures;
+    // The fewest one-sided tasks, all one way, that reach the pre-registered
+    // p < 0.05 in an exact one-sided McNemar test (0.5^n < 0.05).
+    const mcnemarFloor = Math.ceil(Math.log(0.05) / Math.log(0.5));
 
     // Where the bare vector baseline beats NeuralMind, read off the run.
     const row = (r: RepoResult, b: string) => r.rows.find((x) => x.backend === b)!;
@@ -433,6 +438,87 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             Pre-registered spec
                         </a>
                     </p>
+
+                    <div id="task-outcomes-hermes" className="mt-12 scroll-mt-24">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h3 className="font-display text-lg font-bold text-white">
+                                The same tasks on a local model: {hermes.tasks_solved.neuralmind} vs{' '}
+                                {hermes.tasks_solved.baseline}, not significant
+                            </h3>
+                            <EvidenceBadge level={taskOutcomeHermes.evidence} />
+                        </div>
+                        <p className="text-muted mb-5 leading-relaxed">
+                            A second, separate pilot ran the same {hermes.tasks} tasks with a different agent:
+                            Hermes-Agent v{hermes.hermes} driving {hermes.model} on one local GPU, {hermes.seeds}{' '}
+                            seeds per arm, {hermes.runs} runs, finished {hermes.date}. NeuralMind reached it only
+                            through its Hermes plugin (a context block on every prompt, the session recap, edit
+                            learning); neither arm had an MCP server. A local model costs nothing per call, so the
+                            primary endpoint is tasks solved. The claim it tested, that the model solves more of
+                            these tasks with NeuralMind, is not supported.
+                        </p>
+                        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mb-5">
+                            <table className="data-table min-w-[30rem]">
+                                <caption className="sr-only">Hermes pilot, baseline against NeuralMind</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Per arm</th>
+                                        <th scope="col" className="num">Without</th>
+                                        <th scope="col" className="num">With NeuralMind</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        [`Tasks solved (most of ${hermes.seeds} seeds)`, hermes.tasks_solved, (v: number) => `${v} of ${hermes.tasks}`],
+                                        ['Runs solved', hermes.runs_solved, (v: number) => `${v} of ${hermes.runs / 2}`],
+                                        ['Median minutes per task', hermes.median_minutes, String],
+                                        ['Median turns per task', hermes.median_turns, String],
+                                        ['Runs that hit the timeout', hermes.runs_timed_out, String],
+                                    ].map(([label, pair, fmt]) => {
+                                        const p = pair as { baseline: number; neuralmind: number };
+                                        const f = fmt as (v: number) => string;
+                                        return (
+                                            <tr key={label as string}>
+                                                <th scope="row">{label as string}</th>
+                                                <td className="num">{f(p.baseline)}</td>
+                                                <td className="num">{f(p.neuralmind)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="space-y-4">
+                            <Callout variant="note" title="Why two tasks aren’t enough">
+                                {hermes.tasks_solved_by_one_arm_only.neuralmind} tasks were solved with NeuralMind
+                                alone and {hermes.tasks_solved_by_one_arm_only.baseline} without it alone (one-sided
+                                McNemar p = {hermes.mcnemar_p}), the lowest p that many can give. The pre-registered
+                                test needs at least {mcnemarFloor}, all one way, to reach p &lt; 0.05. Tokens per task
+                                changed by a median {hermes.median_tokens_change} with NeuralMind (95% CI{' '}
+                                {hermes.tokens_change_ci95}): no measurable difference.
+                            </Callout>
+                            <Callout variant="caution" title="What it can and can’t show">
+                                It&rsquo;s a pilot: {hermes.tasks} tasks from one repository (NeuralMind&rsquo;s own),
+                                one model on one GPU, a fresh index each run (Hermes-Agent v{hermes.hermes},{' '}
+                                {hermes.model}, NeuralMind {hermes.neuralmind}). In{' '}
+                                {hermes.runs_judged_with_an_agent_command_running} of the {hermes.runs} runs, a
+                                command the agent had started, usually the whole test suite, was still running when the
+                                hidden tests judged the fix. The verdicts stand as recorded, and the harness now stops
+                                such commands first. The machine&rsquo;s scheduled Hermes jobs were paused partway
+                                through, with both arms run on both sides of the pause, which can move the minutes.
+                            </Callout>
+                        </div>
+                        <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
+                            <a href={blob(taskOutcomeHermes.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                Analyzer report →
+                            </a>
+                            <a href={blob('bench/task_outcome/hermes-pilot/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                All {hermes.runs} runs →
+                            </a>
+                            <a href={blob(taskOutcomeHermes.spec)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                Pre-registered spec →
+                            </a>
+                        </p>
+                    </div>
                 </section>
 
                 {/* Method */}
