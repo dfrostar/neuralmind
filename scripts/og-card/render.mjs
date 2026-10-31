@@ -47,7 +47,10 @@ for (const n of REQUIRED_CANON) {
 // (font sizes etc. live in <style>, which is stripped first).
 const visible = card
   .replace(/<style>[\s\S]*?<\/style>/, '')
-  .replace(/<script>[\s\S]*?<\/script>/g, '') // the liquid's shader setup, not text
+  // The liquid's shader setup, not text. Any case, any attributes, and a
+  // closing tag with whitespace or junk before its `>`, so no script slips
+  // past the sweep with its digits uncounted.
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, '')
   .replace(/<svg[\s\S]*?<\/svg>/g, '')
   .replace(/<!--[\s\S]*?-->/g, '')
   .replace(/<[^>]+>/g, ' ')
