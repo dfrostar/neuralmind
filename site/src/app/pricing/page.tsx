@@ -131,7 +131,7 @@ export default async function PricingPage() {
                             key={tier.name}
                             className={`rounded-card p-6 flex flex-col ${
                                 tier.highlight
-                                    ? 'bg-carbon-card border-2 border-electric shadow-electric/10 shadow-2xl'
+                                    ? 'bg-carbon-card border border-carbon-line'
                                     : 'bg-carbon-card border border-carbon-border'
                             }`}
                         >

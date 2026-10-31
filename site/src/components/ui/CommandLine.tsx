@@ -49,7 +49,7 @@ export default function CommandLine({ command, className = '' }: { command: stri
                 type="button"
                 onClick={copy}
                 aria-label={copied ? 'Copied to clipboard' : `Copy "${command}" to clipboard`}
-                className="flex items-center justify-center w-11 border-l border-carbon-border text-faint hover:text-white hover:bg-white/[0.04] transition-colors"
+                className="flex items-center justify-center w-11 border-l border-carbon-border text-faint hover:text-white hover:bg-carbon-card transition-colors"
             >
                 {copied ? (
                     <Icon name="check" className="w-4 h-4 text-proton" strokeWidth={2} />

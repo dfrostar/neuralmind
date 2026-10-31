@@ -68,7 +68,7 @@ export default function FAQ() {
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
             />
             <div className="max-w-3xl mx-auto">
-                <SectionHeader eyebrow="FAQ" title="Common questions" />
+                <SectionHeader title="Common questions" />
 
                 <div className="space-y-3">
                     {faqs.map((faq, i) => (

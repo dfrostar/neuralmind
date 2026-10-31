@@ -104,7 +104,7 @@ export default function PublicationPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">Research Report</span>
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">Research Report</span>
                         <span className="text-faint text-sm">July 26, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -123,9 +123,9 @@ export default function PublicationPage() {
                             href={`${GITHUB_URL}/blob/${SOURCE_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            View source →
+                            View source
                         </a>
                     </div>
                 </header>
@@ -159,7 +159,7 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">1. One-Time Setup (per repo)</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>pip install neuralmind</p>
                             <p>cd /path/to/your-project</p>
                             <p>neuralmind build .             # builds knowledge graph + vector index (1-3 min)</p>
@@ -174,26 +174,26 @@ export default function PublicationPage() {
                         <p className="text-body mb-3">
                             <strong className="text-white">To publish</strong> (any team member, after the watcher has learned):
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>neuralmind memory publish .    # writes .neuralmind-team-memory.json at repo root</p>
                             <p>git add .neuralmind-team-memory.json && git commit -m "nm: publish team memory"</p>
                         </div>
                         <p className="text-body mb-3">
-                            This exports the union of <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">personal</code> + <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">shared</code> namespaces (MAX-merged per-field) into a provenance-stamped bundle at the repo root. Capped at 5,000 strongest associations.
+                            This exports the union of <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">personal</code> + <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">shared</code> namespaces (MAX-merged per-field) into a provenance-stamped bundle at the repo root. Capped at 5,000 strongest associations.
                         </p>
                         <p className="text-body mb-3">
                             <strong className="text-white">To inherit</strong> (automatically, zero manual steps):
                         </p>
                         <ul className="list-disc list-inside space-y-2 text-body ml-4 mb-4">
-                            <li><strong className="text-white">Claude Code:</strong> SessionStart hook fires <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">maybe_import_team_memory()</code> — merges committed bundle into <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">shared</code> once per content hash.</li>
-                            <li><strong className="text-white">Generic agents:</strong> <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind build</code> triggers the same import seam.</li>
-                            <li><strong className="text-white">Safety:</strong> Import only ever writes <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">shared</code>; MAX-merge can only raise weights; per-namespace decay erodes stale edges.</li>
+                            <li><strong className="text-white">Claude Code:</strong> SessionStart hook fires <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">maybe_import_team_memory()</code> — merges committed bundle into <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">shared</code> once per content hash.</li>
+                            <li><strong className="text-white">Generic agents:</strong> <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind build</code> triggers the same import seam.</li>
+                            <li><strong className="text-white">Safety:</strong> Import only ever writes <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">shared</code>; MAX-merge can only raise weights; per-namespace decay erodes stale edges.</li>
                         </ul>
                     </div>
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">3. Daily Claude Code Workflow</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>claude&gt; neuralmind_wakeup(project_path=".")                # compact project overview, once per session</p>
                             <p>claude&gt; neuralmind_query(project_path=".", question="...")  # 670–961 mean tokens per question (public benchmark, v4.12.0)</p>
                             <p>claude&gt; neuralmind_skeleton(project_path=".", file_path="...") # outline only: ~87% fewer tokens than a whole-file Read, no source lines (compression benchmark)</p>
@@ -220,22 +220,22 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-body">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L0 Identity</td>
+                                        <td className="py-2 font-mono text-ink">L0 Identity</td>
                                         <td className="py-2">Project name, description, key facts</td>
                                         <td className="py-2 font-mono">~150 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L1 Summary</td>
+                                        <td className="py-2 font-mono text-ink">L1 Summary</td>
                                         <td className="py-2">High-level architecture, main components</td>
                                         <td className="py-2 font-mono">~600 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L2 On-Demand</td>
+                                        <td className="py-2 font-mono text-ink">L2 On-Demand</td>
                                         <td className="py-2">Specific communities/modules as needed</td>
                                         <td className="py-2 font-mono">~800 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L3 Search</td>
+                                        <td className="py-2 font-mono text-ink">L3 Search</td>
                                         <td className="py-2">Semantic search hits</td>
                                         <td className="py-2 font-mono">~1000 tok</td>
                                     </tr>
@@ -249,7 +249,7 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">Benchmark Commands</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>neuralmind benchmark . --json          # wakeup, avg query, avg reduction</p>
                             <p>neuralmind benchmark . --quality       # MRR, answerability, recall@k</p>
                             <p>neuralmind probe . --sample-size 100   # self-probe on YOUR code</p>
@@ -261,9 +261,9 @@ export default function PublicationPage() {
                         <h3 className="text-lg font-semibold text-white mb-3">Tool-output compression (correction)</h3>
                         <p className="text-body text-sm">
                             Earlier versions of this report described consumption-side compression by PostToolUse hooks, with reductions of up to ~88% (Read) and ~91% (Bash) that were never measured. When the hooks were finally benchmarked against Claude Code’s documented hook protocol, they turned out not to shrink anything: Claude Code adds a hook’s output next to the tool result instead of replacing it, so they added tokens, and the Read hook never received Claude Code’s payload. The hooks no longer inject anything; the{' '}
-                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="text-electric hover:text-electric-bright">compression benchmark</a>{' '}
+                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="link">compression benchmark</a>{' '}
                             has the measurements. The token reduction comes from retrieval; a 20-task pilot found it{' '}
-                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
+                            <a href="/benchmark/#task-outcomes" className="link">
                                 made no difference to cost per task
                             </a>
                             .
@@ -278,7 +278,7 @@ export default function PublicationPage() {
                     <div className="space-y-6 text-body leading-relaxed">
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">1. Persistent Synapse Store (synapses.py, SQLite)</h3>
-                            <p>Learns weighted associations from how an agent actually uses the codebase. Time-based half-life decay: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">weight × exp(−λ × age_days)</code>. Per-namespace half-lives: personal=30d, shared=60d, ephemeral=1d. Structural synapse seeding (v0.46.0) converts 1,903 code graph edges into synapse edges on every build.</p>
+                            <p>Learns weighted associations from how an agent actually uses the codebase. Time-based half-life decay: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">weight × exp(−λ × age_days)</code>. Per-namespace half-lives: personal=30d, shared=60d, ephemeral=1d. Structural synapse seeding (v0.46.0) converts 1,903 code graph edges into synapse edges on every build.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">2. SessionStart Auto-Import (hooks.py:313-362)</h3>
@@ -286,11 +286,11 @@ export default function PublicationPage() {
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">3. Committed Team Memory Bundle</h3>
-                            <p><code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">.neuralmind-team-memory.json</code> at repo root travels with <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">git clone</code>. New hire's agent inherits on first session — zero manual steps. MAX-merge only raises weights; per-namespace decay erodes stale edges.</p>
+                            <p><code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">.neuralmind-team-memory.json</code> at repo root travels with <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">git clone</code>. New hire's agent inherits on first session — zero manual steps. MAX-merge only raises weights; per-namespace decay erodes stale edges.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">4. Synapse Memory Export (synapse_memory.py)</h3>
-                            <p>Renders top pairs, hub nodes, and directional transitions as markdown. Written to both project-local <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">.neuralmind/SYNAPSE_MEMORY.md</code> and Claude Code's auto-memory directory.</p>
+                            <p>Renders top pairs, hub nodes, and directional transitions as markdown. Written to both project-local <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">.neuralmind/SYNAPSE_MEMORY.md</code> and Claude Code's auto-memory directory.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">5. Spreading Activation Injection (hooks.py:364-385)</h3>
@@ -382,8 +382,8 @@ export default function PublicationPage() {
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <ul className="space-y-3 text-sm text-body">
                             <li><strong className="text-white">Language:</strong> Python 3.10+ (stdlib-only)</li>
-                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">{GITHUB_URL}</a></li>
-                            <li><strong className="text-white">Commit:</strong> <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-26)</li>
+                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="link">{GITHUB_URL}</a></li>
+                            <li><strong className="text-white">Commit:</strong> <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-26)</li>
                             <li>
                                 <strong className="text-white">Key files:</strong>
                                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1 font-mono text-xs">
@@ -411,9 +411,9 @@ export default function PublicationPage() {
                         href={`${GITHUB_URL}/blob/${SOURCE_COMMIT}/docs/research/neuralmind-claude-teams-deep-dive-corrected.md`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-electric hover:text-electric-bright text-sm transition-colors"
+                        className="link text-sm transition-colors"
                     >
-                        View on GitHub →
+                        View on GitHub
                     </a>
                 </footer>
             </main>

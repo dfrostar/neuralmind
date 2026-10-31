@@ -145,7 +145,7 @@ function Section({ id, title, lede, children }: { id: string; title: string; led
 
 function Commands({ lines }: { lines: { comment?: string; cmd: string }[] }) {
     return (
-        <div className="bg-carbon rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto">
+        <div className="bg-carbon-raised rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto">
             {lines.map((l, i) => (
                 <div key={i} className={i > 0 ? 'mt-3' : undefined}>
                     {l.comment && <p className="text-faint"># {l.comment}</p>}
@@ -162,7 +162,7 @@ function Commands({ lines }: { lines: { comment?: string; cmd: string }[] }) {
     );
 }
 
-const link = 'text-electric hover:text-electric-bright';
+const link = 'link';
 
 export default async function SecurityPage() {
     const rel = await getLatestRelease();
@@ -185,7 +185,6 @@ export default async function SecurityPage() {
             <Navbar />
             <main className="max-w-4xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <header className="mb-12 pb-8 border-b border-carbon-border">
-                    <p className="eyebrow mb-4">For security and compliance teams</p>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         Security, verification and compliance evidence
                     </h1>
@@ -210,16 +209,16 @@ export default async function SecurityPage() {
                 {/* Latest release */}
                 <div className="panel rounded-card p-5 md:p-6 mb-14 flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <p className="eyebrow mb-1">Latest release</p>
-                        <span className="text-electric-bright font-mono font-bold text-xl">{version}</span>
+                        <p className="label mb-1">Latest release</p>
+                        <span className="text-ink font-mono font-bold text-xl">{version}</span>
                         {rel.date && <span className="text-muted ml-3">Released {rel.date}</span>}
                     </div>
                     <div className="flex gap-4">
                         <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                            Release notes →
+                            Release notes
                         </a>
                         <a href={rel.pypiUrl} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                            PyPI →
+                            PyPI
                         </a>
                     </div>
                 </div>
@@ -263,11 +262,11 @@ export default async function SecurityPage() {
                             </p>
                             {rel.sbomUrl ? (
                                 <a href={rel.sbomUrl} target="_blank" rel="noopener noreferrer" className={`text-sm font-mono ${link}`}>
-                                    SBOM for {version} →
+                                    SBOM for {version}
                                 </a>
                             ) : (
                                 <a href={`${GITHUB_URL}/actions/workflows/sbom.yml`} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                                    Still generating — SBOM workflow →
+                                    Still generating — SBOM workflow
                                 </a>
                             )}
                             {rel.platformSboms.length > 0 && (
@@ -275,7 +274,7 @@ export default async function SecurityPage() {
                                     {rel.platformSboms.map((p) => (
                                         <li key={p.url}>
                                             <a href={p.url} target="_blank" rel="noopener noreferrer" className={link}>
-                                                {p.label} →
+                                                {p.label}
                                             </a>
                                         </li>
                                     ))}
@@ -289,7 +288,7 @@ export default async function SecurityPage() {
                                 reason. Pass it to Grype or Trivy with <code className="font-mono text-code-inline">--vex</code>.
                             </p>
                             <a href={VEX_URL} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                                OpenVEX document →
+                                OpenVEX document
                             </a>
                         </div>
                         <div className="panel rounded-card p-5">
@@ -298,7 +297,7 @@ export default async function SecurityPage() {
                                 Every NIST SP 800-218 practice, mapped to the workflow, file or check that is its evidence.
                             </p>
                             <a href={SSDF_DOC} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                                SSDF mapping →
+                                SSDF mapping
                             </a>
                         </div>
                     </div>
@@ -344,7 +343,7 @@ export default async function SecurityPage() {
                     <p className="text-muted text-sm mt-3">
                         The full procedure, platform pinning and verifying the bundle before it crosses:{' '}
                         <a href={AIR_GAPPED} target="_blank" rel="noopener noreferrer" className={link}>
-                            running air-gapped →
+                            running air-gapped
                         </a>
                     </p>
                 </Section>
@@ -360,16 +359,16 @@ export default async function SecurityPage() {
                                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-2">
                                     <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">{c.name}</h3>
                                     {c.since && (
-                                        <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
+                                        <span className="font-mono text-xs text-faint">
                                             v{c.since}
-                                            {released(c.since) ? '+' : ' · in the next release, on main now'}
+                                            {released(c.since) ? '+' : ', in the next release, on main now'}
                                         </span>
                                     )}
                                 </div>
                                 <p className="text-muted text-sm leading-relaxed mb-4">{withCode(c.body)}</p>
                                 <Commands lines={c.cmd.map((cmd) => ({ cmd }))} />
                                 <a href={c.href} target="_blank" rel="noopener noreferrer" className={`inline-block mt-3 text-sm ${link}`}>
-                                    {c.link} →
+                                    {c.link}
                                 </a>
                             </article>
                         ))}
@@ -385,7 +384,7 @@ export default async function SecurityPage() {
                         <div className="panel rounded-card p-5">
                             <p className="text-white font-semibold text-sm mb-1.5">
                                 SP 800-53 OSCAL component definition
-                                {!released('4.19.0') && <span className="ml-2 font-mono text-eyebrow uppercase tracking-eyebrow text-faint">on main</span>}
+                                {!released('4.19.0') && <span className="ml-2 text-xs text-faint">on main</span>}
                             </p>
                             <p className="text-muted text-sm leading-relaxed mb-3">
                                 The 21 SP 800-53 Rev. 5 controls NeuralMind touches, what it implements for each and what
@@ -393,10 +392,10 @@ export default async function SecurityPage() {
                             </p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                                 <a href={OSCAL_URL} target="_blank" rel="noopener noreferrer" className={link}>
-                                    OSCAL JSON →
+                                    OSCAL JSON
                                 </a>
                                 <a href={SP800_53_DOC} target="_blank" rel="noopener noreferrer" className={link}>
-                                    Readable version →
+                                    Readable version
                                 </a>
                             </div>
                         </div>
@@ -408,7 +407,7 @@ export default async function SecurityPage() {
                                 stands on each.
                             </p>
                             <a href={NIST_DOC} target="_blank" rel="noopener noreferrer" className={`text-sm ${link}`}>
-                                NIST overview →
+                                NIST overview
                             </a>
                         </div>
                     </div>
@@ -424,8 +423,7 @@ export default async function SecurityPage() {
 
                 <Section id="disclosure" title="Vulnerability reports">
                     <div className="panel rounded-card p-6">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-3 rounded-pill text-xs font-medium bg-success/10 text-success border border-success/20">
-                            <span className="w-1.5 h-1.5 rounded-pill bg-success"></span>
+                        <span className="inline-flex items-center px-2.5 py-1 mb-3 rounded-control text-xs font-medium bg-success/10 text-success border border-success/20">
                             No open vulnerability reports
                         </span>
                         <p className="text-muted text-sm leading-relaxed mb-2">

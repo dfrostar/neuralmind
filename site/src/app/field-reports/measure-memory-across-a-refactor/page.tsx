@@ -164,9 +164,9 @@ export default function FieldReportPage() {
                             href={WALKTHROUGH_URL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            Full walkthrough on GitHub →
+                            Full walkthrough on GitHub
                         </a>
                     </div>
                 </header>
@@ -175,17 +175,17 @@ export default function FieldReportPage() {
                 <section className="mb-10">
                     <div className="grid sm:grid-cols-3 gap-4">
                         <div className="card rounded-card p-6">
-                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
+                            <p className="label mb-2">Avg token reduction</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">48.8×</p>
                             <p className="text-muted text-sm">~1,033 tokens/query vs the pre-v4.5.0 fixed 50K-token estimate</p>
                         </div>
                         <div className="card rounded-card p-6">
-                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
+                            <p className="label mb-2">Personal synapse edges</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">36 → 135</p>
                             <p className="text-muted text-sm">the learning layer tracked the new code</p>
                         </div>
                         <div className="card rounded-card p-6">
-                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Full rebuild</p>
+                            <p className="label mb-2">Full rebuild</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">326 s</p>
                             <p className="text-muted text-sm">then back to ~30 s incremental</p>
                         </div>
@@ -228,7 +228,7 @@ export default function FieldReportPage() {
                                     <tr key={row.metric} className="border-b border-carbon-border/50 last:border-0">
                                         <td className="py-2 pr-4">{row.metric}</td>
                                         <td className="py-2 text-right font-mono">{row.before}</td>
-                                        <td className={`py-2 text-right font-mono ${row.highlight ? 'text-electric-bright font-bold' : ''}`}>{row.after}</td>
+                                        <td className={`py-2 text-right font-mono ${row.highlight ? 'text-proton' : ''}`}>{row.after}</td>
                                         <td className={`py-2 pl-4 ${row.highlight ? 'text-white' : 'text-muted'}`}>{row.change}</td>
                                     </tr>
                                 ))}
@@ -245,8 +245,8 @@ export default function FieldReportPage() {
                             <strong className="text-white">48.8× token reduction.</strong> After the rebuild, an average
                             code question cost ~1,033 tokens of context, against the 50,000-token estimate the CLI
                             then used for what a naive &quot;load the relevant files&quot; approach spends. That is one repo&apos;s ratio from{' '}
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark .</code>,
-                            consistent with the 12–50× field-report range, measured the same way (by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0, against its fixed 50K-token estimate) — not a prediction for your repo.
+                            <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark .</code>,
+                            consistent with the 12–50× field-report range, measured the same way (by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0, against its fixed 50K-token estimate) — not a prediction for your repo.
                         </p>
                         <p>
                             <strong className="text-white">Personal synapse edges tripled (36 → 135).</strong> The Hebbian
@@ -262,7 +262,7 @@ export default function FieldReportPage() {
                         </p>
                         <p>
                             <strong className="text-white">Rebuild cost stayed flat.</strong> One full{' '}
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">--force</code>{' '}
+                            <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">--force</code>{' '}
                             rebuild at 326 s to pick up the new structure, then incremental rebuilds back to ~30 s.
                             Re-indexing is not a tax you pay per edit.
                         </p>
@@ -275,7 +275,7 @@ export default function FieldReportPage() {
                     <p className="text-body mb-4 leading-relaxed">
                         Honesty first: the before/after table is <strong className="text-white">hand-assembled from the
                         output of several commands</strong> — there is no single{' '}
-                        <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind compare-phases</code>{' '}
+                        <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind compare-phases</code>{' '}
                         command.
                     </p>
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-4 overflow-x-auto">
@@ -290,7 +290,7 @@ export default function FieldReportPage() {
                                 {provenance.map((row) => (
                                     <tr key={row.metric} className="border-b border-carbon-border/50 last:border-0">
                                         <td className="py-2 pr-4">{row.metric}</td>
-                                        <td className="py-2 font-mono text-xs text-electric-bright">{row.command}</td>
+                                        <td className="py-2 font-mono text-xs text-ink">{row.command}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -304,7 +304,7 @@ export default function FieldReportPage() {
                     <div className="space-y-6">
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">1. Snapshot before you start</h3>
-                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
+                            <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind stats . --json &gt; .neuralmind-before.json</p>
                                 <p>neuralmind benchmark .      <span className="text-faint"># baseline reduction number</span></p>
                             </div>
@@ -314,21 +314,21 @@ export default function FieldReportPage() {
                             <p className="text-body mb-2 text-sm">
                                 The synapse layer only learns from what it observes — install hooks <em>before</em> the work starts.
                             </p>
-                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
+                            <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind install-hooks .</p>
                                 <p>neuralmind watch &amp;   <span className="text-faint"># optional: always-on learning from edits</span></p>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">3. Rebuild and snapshot after</h3>
-                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
+                            <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>time neuralmind build . --force</p>
                                 <p>neuralmind stats . --json &gt; .neuralmind-after.json</p>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">4. Re-benchmark and price it</h3>
-                            <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
+                            <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body overflow-x-auto">
                                 <p>neuralmind benchmark .   <span className="text-faint"># reduction on the post-refactor graph</span></p>
                                 <p>neuralmind savings .     <span className="text-faint"># what your logged queries cost vs naive</span></p>
                             </div>
@@ -337,7 +337,7 @@ export default function FieldReportPage() {
                             Diff the two JSON files. The interesting deltas: node count (did the graph track the new
                             code?), personal edges (did the memory learn the new co-activations?), shared edge weight
                             (did the graph get denser or just bigger?). The{' '}
-                            <a href={WALKTHROUGH_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            <a href={WALKTHROUGH_URL} target="_blank" rel="noopener noreferrer" className="link">
                                 full step-by-step walkthrough
                             </a>{' '}
                             lives in the docs.
@@ -359,7 +359,7 @@ export default function FieldReportPage() {
                             <strong className="text-white">48.8× is a reduction in retrieval input tokens</strong>, not your
                             total LLM bill. Whether fewer retrieval tokens lower what a task costs was measured
                             later, by a pre-registered 20-task pilot on a different repo:{' '}
-                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
+                            <a href="/benchmark/#task-outcomes" className="link">
                                 it found no difference
                             </a>.
                         </p>
@@ -372,7 +372,7 @@ export default function FieldReportPage() {
                             tokens per question. Since v4.5.0 the CLI divides the measured size of the code the index
                             covers instead; this repo has not been re-run with it, so 48.8× stays the pre-v4.5.0
                             figure. The{' '}
-                            <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
+                            <a href="/benchmark/" className="link">public benchmark</a>{' '}
                             measures against every source file too.
                         </p>
                         <p>
@@ -387,11 +387,11 @@ export default function FieldReportPage() {
                         </p>
                         <p>
                             <strong className="text-white">The CI-gated, reproducible numbers</strong> live in{' '}
-                            <a href={`${GITHUB_URL}/blob/main/docs/wiki/Benchmarks.md`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            <a href={`${GITHUB_URL}/blob/main/docs/wiki/Benchmarks.md`} target="_blank" rel="noopener noreferrer" className="link">
                                 Benchmarks &amp; Results
                             </a>{' '}
                             and on{' '}
-                            <a href="/benchmark/" className="text-electric hover:text-electric-bright">
+                            <a href="/benchmark/" className="link">
                                 the benchmark page
                             </a>
                             ; this page is deliberately labeled a field report.
@@ -417,9 +417,9 @@ export default function FieldReportPage() {
                             href={WALKTHROUGH_URL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright text-sm transition-colors"
+                            className="link text-sm transition-colors"
                         >
-                            Read the full walkthrough →
+                            Read the full walkthrough
                         </a>
                     </div>
                 </footer>

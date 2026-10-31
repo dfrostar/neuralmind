@@ -103,7 +103,7 @@ export default function PublicationPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">Defensive Publication</span>
                         <span className="text-faint text-sm">August 6, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -119,9 +119,9 @@ export default function PublicationPage() {
                             href={`${GITHUB_URL}/blob/main/docs/publications/defensive-synapse-learning-loop.md`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            View source →
+                            View source
                         </a>
                     </div>
                 </header>
@@ -161,7 +161,7 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="font-display text-lg font-semibold text-white mb-3">1. Co-Activation Capture</h3>
                         <p className="text-body leading-relaxed mb-3">
-                            A file-activity watcher coalesces filesystem edits into batches. Edits arriving within a debounce window (default <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.75 s</code>) of one another are grouped; a batch is flushed when the window goes quiet and delivered as a single co-activation event. Generated artifacts are excluded to prevent phantom edges. File deletions bypass the debounce and trigger <em>targeted accelerated decay</em> on the dead file&apos;s edges — stale memory pointing at refactored-away code is worse than no memory.
+                            A file-activity watcher coalesces filesystem edits into batches. Edits arriving within a debounce window (default <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.75 s</code>) of one another are grouped; a batch is flushed when the window goes quiet and delivered as a single co-activation event. Generated artifacts are excluded to prevent phantom edges. File deletions bypass the debounce and trigger <em>targeted accelerated decay</em> on the dead file&apos;s edges — stale memory pointing at refactored-away code is worse than no memory.
                         </p>
                     </div>
 
@@ -170,7 +170,7 @@ export default function PublicationPage() {
                         <p className="text-body leading-relaxed mb-3">
                             For a co-activation batch, every unordered pair of nodes receives a weight bump:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
                             Δw = LEARNING_RATE × clamp(strength, 0, 2)&nbsp;&nbsp;&nbsp;# LEARNING_RATE = 0.30<br />
                             w&nbsp;&nbsp;← min(WEIGHT_CAP, w + Δw)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# WEIGHT_CAP = 1.0
                         </div>
@@ -181,24 +181,24 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="font-display text-lg font-semibold text-white mb-3">3. Wall-Clock Half-Life Decay</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
                             w(t) = w₀ · exp(−λ · age_days),&nbsp;&nbsp;&nbsp;λ = ln 2 / H
                         </div>
                         <p className="text-body leading-relaxed">
-                            The half-life <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">H</code> resolves per namespace — <strong className="text-white">30 d</strong> personal/branch, <strong className="text-white">60 d</strong> shared team baseline, <strong className="text-white">1 d</strong> ephemeral scratch — with per-edge <em>learned</em> overrides adapted from reinforcement history. Weights below <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.01</code> are pruned. Age derives from the stored last-activation timestamp, so decay is a pure function of wall-clock time, not pass frequency.
+                            The half-life <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">H</code> resolves per namespace — <strong className="text-white">30 d</strong> personal/branch, <strong className="text-white">60 d</strong> shared team baseline, <strong className="text-white">1 d</strong> ephemeral scratch — with per-edge <em>learned</em> overrides adapted from reinforcement history. Weights below <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.01</code> are pruned. Age derives from the stored last-activation timestamp, so decay is a pure function of wall-clock time, not pass frequency.
                         </p>
                     </div>
 
                     <div className="mb-8">
                         <h3 className="font-display text-lg font-semibold text-white mb-3">4. Long-Term Potentiation</h3>
                         <p className="text-body leading-relaxed">
-                            Edges reinforced at least <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">5</code> times acquire durability: decay is floored at <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.20</code> and pruning skips them. One-off coincidences fade completely; habitual associations survive vacations. The ephemeral namespace is exempt — session scratch must die.
+                            Edges reinforced at least <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">5</code> times acquire durability: decay is floored at <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.20</code> and pruning skips them. One-off coincidences fade completely; habitual associations survive vacations. The ephemeral namespace is exempt — session scratch must die.
                         </p>
                     </div>
 
                     <div className="mb-8">
                         <h3 className="font-display text-lg font-semibold text-white mb-3">5. Namespaced Storage with Merged Read</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
                             merged_weight = 1.0·w_active + 0.8·w_personal + 0.5·w_shared
                         </div>
                         <p className="text-body leading-relaxed">
@@ -208,12 +208,12 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="font-display text-lg font-semibold text-white mb-3">6. Hub-Normalized Spreading Activation</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 overflow-x-auto">
                             hub_factor = sqrt(HUB_DEGREE / degree) if degree &gt; 50 else 1.0<br />
                             propagated = energy × merged_weight × SPREAD_DECAY × hub_factor&nbsp;&nbsp;&nbsp;# SPREAD_DECAY = 0.6
                         </div>
                         <p className="text-body leading-relaxed">
-                            Recall seeds the graph with query-relevant nodes and propagates energy outward for 2 hops by default; energies accumulate additively across paths; the top-K nodes (default 12, seeds excluded) become recall output. The <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">√(50/degree)</code> term suppresses runaway central nodes — a utility module touched by everything would otherwise dominate every recall. An attribution variant tracks per-namespace energy shares, explaining exactly which namespace produced each recalled node.
+                            Recall seeds the graph with query-relevant nodes and propagates energy outward for 2 hops by default; energies accumulate additively across paths; the top-K nodes (default 12, seeds excluded) become recall output. The <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">√(50/degree)</code> term suppresses runaway central nodes — a utility module touched by everything would otherwise dominate every recall. An attribution variant tracks per-namespace energy shares, explaining exactly which namespace produced each recalled node.
                         </p>
                     </div>
                 </section>
@@ -241,12 +241,12 @@ export default function PublicationPage() {
                 <section className="mb-10">
                     <h2 className="font-display text-xl font-bold text-white mb-4">Reference Implementation</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6 text-body text-sm leading-relaxed">
-                        <p className="mb-3">Python 3.10+ (stdlib-only for the synapse layer). Commit <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-xs">{IMPL_COMMIT}</code> (2026-08-06).</p>
+                        <p className="mb-3">Python 3.10+ (stdlib-only for the synapse layer). Commit <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-xs">{IMPL_COMMIT}</code> (2026-08-06).</p>
                         <ul className="list-disc list-inside space-y-1">
-                            <li><code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">neuralmind/synapses.py</code> — reinforce(), decay(), _spread(), record_sequence(), namespace merge weighting</li>
-                            <li><code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">neuralmind/watcher.py</code> — debounced co-activation batching, deletion-triggered targeted decay</li>
-                            <li><code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">neuralmind/learned_decay.py</code> — per-edge learned half-life adaptation</li>
-                            <li><code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">tests/test_synapses.py</code>, <code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">test_synapse_namespaces.py</code>, <code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">test_watcher.py</code>, <code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">test_learned_decay.py</code></li>
+                            <li><code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">neuralmind/synapses.py</code> — reinforce(), decay(), _spread(), record_sequence(), namespace merge weighting</li>
+                            <li><code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">neuralmind/watcher.py</code> — debounced co-activation batching, deletion-triggered targeted decay</li>
+                            <li><code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">neuralmind/learned_decay.py</code> — per-edge learned half-life adaptation</li>
+                            <li><code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">tests/test_synapses.py</code>, <code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">test_synapse_namespaces.py</code>, <code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">test_watcher.py</code>, <code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">test_learned_decay.py</code></li>
                         </ul>
                     </div>
                 </section>

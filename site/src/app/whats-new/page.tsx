@@ -31,7 +31,7 @@ export const metadata: Metadata = pageMetadata({
 
 const DOCS = 'https://docs.neuralmind.uk';
 const notes = (v: string) => `${DOCS}/releases/RELEASE_NOTES_v${v}.html`;
-const link = 'text-electric hover:text-electric-bright transition-colors';
+const link = 'link';
 
 // What each guard does, said as what the code does. None of these carries a
 // measured outcome: the one study of agent outcomes (the task-outcome pilot)
@@ -267,7 +267,6 @@ export default async function WhatsNewPage() {
             <Navbar />
             <main className="max-w-4xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <header className="mb-12 pb-8 border-b border-carbon-border">
-                    <span className="eyebrow block mb-4">What&rsquo;s new</span>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         Keep what your agent changes consistent with the code you have
                     </h1>
@@ -280,16 +279,16 @@ export default async function WhatsNewPage() {
                     </p>
                     <div className="panel rounded-card p-5 flex items-center justify-between flex-wrap gap-4">
                         <div>
-                            <p className="eyebrow mb-1">Latest release</p>
-                            <span className="text-electric-bright font-mono font-bold text-xl">{rel.tag}</span>
+                            <p className="label mb-1">Latest release</p>
+                            <span className="text-ink font-mono font-bold text-xl">{rel.tag}</span>
                             {rel.date && <span className="text-muted ml-3">Released {rel.date}</span>}
                         </div>
                         <div className="flex gap-4 text-sm">
                             <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer" className={link}>
-                                Release notes →
+                                Release notes
                             </a>
                             <a href={rel.pypiUrl} target="_blank" rel="noopener noreferrer" className={link}>
-                                PyPI →
+                                PyPI
                             </a>
                         </div>
                     </div>
@@ -307,17 +306,17 @@ export default async function WhatsNewPage() {
                             <article key={g.name} className="panel rounded-card p-5 md:p-6">
                                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-2">
                                     <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">{g.name}</h3>
-                                    <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">v{g.since}+</span>
+                                    <span className="font-mono text-xs text-faint">v{g.since}+</span>
                                 </div>
                                 <p className="text-muted text-sm leading-relaxed mb-4">{withCode(g.body)}</p>
-                                <div className="bg-carbon rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto">
+                                <div className="bg-carbon-raised rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto">
                                     <p className="whitespace-nowrap">
                                         <span className="text-faint select-none">$ </span>
                                         {g.cmd}
                                     </p>
                                 </div>
                                 <a href={g.href} className={`inline-block mt-3 text-sm ${link}`}>
-                                    {g.doc} →
+                                    {g.doc}
                                 </a>
                             </article>
                         ))}
@@ -337,12 +336,12 @@ export default async function WhatsNewPage() {
                                     className={`panel rounded-card p-5 md:p-6 flex flex-col${g.wide ? ' md:col-span-2' : ''}`}
                                 >
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4">
-                                        <Icon name={g.icon} className="w-6 h-6 text-electric shrink-0" />
+                                        <Icon name={g.icon} className="w-6 h-6 text-muted shrink-0" />
                                         <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">
                                             {g.title}
                                         </h3>
                                         {g.items.some((it) => !released(it.version)) && (
-                                            <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
+                                            <span className="text-xs text-faint">
                                                 in the next release, on main now
                                             </span>
                                         )}
@@ -351,7 +350,7 @@ export default async function WhatsNewPage() {
                                         {g.items.map((it) => (
                                             <li key={it.text} className="flex items-baseline justify-between gap-4 text-sm leading-relaxed">
                                                 <span className="text-body">{withCode(it.text)}</span>
-                                                <a href={notes(it.version)} className={`font-mono text-eyebrow shrink-0 ${link}`}>
+                                                <a href={notes(it.version)} className={`font-mono text-xs shrink-0 ${link}`}>
                                                     v{it.version}
                                                 </a>
                                             </li>
@@ -365,7 +364,7 @@ export default async function WhatsNewPage() {
                         </div>
                         <article className="panel rounded-card p-5 md:p-6">
                             <div className="flex items-center gap-3 mb-6">
-                                <Icon name="dashboard" className="w-6 h-6 text-electric shrink-0" />
+                                <Icon name="dashboard" className="w-6 h-6 text-muted shrink-0" />
                                 <h3 className="font-display text-title-sm font-semibold text-white tracking-tight">
                                     Evidence, not adjectives
                                 </h3>
@@ -406,7 +405,7 @@ export default async function WhatsNewPage() {
                         {/* A dated snapshot: its numbers are as of October 2026, unlike the panel above. */}
                         <p className="text-sm mt-4">
                             <a href="/slides/neuralmind-v4.16-v4.22.pdf" className={link}>
-                                v4.16 to v4.22 as 20 slides, October 2026 (PDF) →
+                                v4.16 to v4.22 as 20 slides, October 2026 (PDF)
                             </a>
                         </p>
                     </div>
@@ -414,9 +413,9 @@ export default async function WhatsNewPage() {
                         {releases.map((r) => (
                             <li key={r.version} className="pl-5 border-l border-carbon-border">
                                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-                                    <span className="font-mono font-bold text-electric-bright">v{r.version}</span>
+                                    <span className="font-mono font-bold text-ink">v{r.version}</span>
                                     {!released(r.version) && (
-                                        <span className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
+                                        <span className="text-xs text-faint">
                                             in the next release, on main now
                                         </span>
                                     )}
@@ -430,7 +429,7 @@ export default async function WhatsNewPage() {
                                     ))}
                                 </ul>
                                 <a href={notes(r.version)} className={`text-sm ${link}`}>
-                                    v{r.version} release notes →
+                                    v{r.version} release notes
                                 </a>
                             </li>
                         ))}
@@ -475,7 +474,7 @@ export default async function WhatsNewPage() {
                     </div>
                     <p className="text-sm mt-4">
                         <a href="/benchmark/" className={link}>
-                            Every number, with its source and the command that reproduces it →
+                            Every number, with its source and the command that reproduces it
                         </a>
                     </p>
                 </section>
@@ -486,7 +485,7 @@ export default async function WhatsNewPage() {
                         Free at one seat, local, and no account. Build the index, wire the hooks, and the guards above
                         run on your next commit.
                     </p>
-                    <div className="bg-carbon rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto mb-4">
+                    <div className="bg-carbon-raised rounded-control border border-carbon-border p-4 font-mono text-xs text-body overflow-x-auto mb-4">
                         {['pip install neuralmind', 'neuralmind build .', 'neuralmind init-hook .'].map((c) => (
                             <p key={c} className="whitespace-nowrap">
                                 <span className="text-faint select-none">$ </span>
@@ -496,10 +495,10 @@ export default async function WhatsNewPage() {
                     </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                         <a href="/measure-your-own/" className={link}>
-                            Measure it on your own code →
+                            Measure it on your own code
                         </a>
                         <a href="/team/" className={link}>
-                            For teams →
+                            For teams
                         </a>
                     </div>
                 </section>

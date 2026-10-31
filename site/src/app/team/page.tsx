@@ -107,7 +107,6 @@ export default async function TeamPage() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 {/* Hero */}
                 <section className="max-w-4xl mx-auto text-center mb-20">
-                    <span className="eyebrow block mb-4">NeuralMind for teams</span>
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-5 tracking-tight">
                         Team memory for AI coding agents
                     </h1>
@@ -120,8 +119,8 @@ export default async function TeamPage() {
                         Every feature on this page runs free at 1 seat, so you can evaluate it
                         before you buy. The Team license ($29/user/mo, 5–50 seats, annual) adds
                         seats and priority support.{' '}
-                        <a href="/pricing" className="text-electric hover:text-electric-bright transition-colors underline">
-                            See pricing →
+                        <a href="/pricing" className="link">
+                            See pricing
                         </a>
                     </p>
                 </section>
@@ -139,7 +138,7 @@ export default async function TeamPage() {
                     <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {steps.map((step) => (
                             <li key={step.n} className="bg-carbon-card border border-carbon-border rounded-card p-6">
-                                <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums mb-4">
+                                <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-body tabular-nums mb-4">
                                     {step.n}
                                 </span>
                                 <h3 className="text-white font-semibold mb-2">{step.title}</h3>
@@ -162,12 +161,12 @@ export default async function TeamPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {governance.map((g) => (
                             <div key={g.title} className="bg-carbon-card border border-carbon-border rounded-card p-6 flex flex-col min-w-0">
-                                <span className={`font-mono text-eyebrow uppercase tracking-eyebrow mb-3 ${g.status === 'Live' ? 'text-proton' : 'text-faint'}`}>
+                                <span className={`text-caption font-medium mb-3 ${g.status === 'Live' ? 'text-success' : 'text-faint'}`}>
                                     {g.status}
                                 </span>
                                 <h3 className="text-white font-semibold mb-2">{g.title}</h3>
                                 <p className="text-muted text-sm leading-relaxed mb-4">{g.body}</p>
-                                <div className="mt-auto bg-carbon rounded-control px-4 py-3 font-mono text-xs text-body overflow-x-auto">
+                                <div className="mt-auto bg-carbon-raised rounded-control px-4 py-3 font-mono text-xs text-body overflow-x-auto">
                                     <span className="text-faint select-none">$ </span>
                                     {g.cmd}
                                 </div>
@@ -194,7 +193,7 @@ export default async function TeamPage() {
                                 <code className="font-mono text-code-inline text-body">neuralmind audit export</code>.
                             </p>
                         </div>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto self-start">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-xs text-body overflow-x-auto self-start">
                             <p className="text-faint"># Walk the hash chain</p>
                             <p><span className="text-faint select-none">$ </span>neuralmind team audit verify</p>
                             <p className="text-faint mt-3"># Hand it to your auditors</p>

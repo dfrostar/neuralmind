@@ -33,16 +33,21 @@ its job — add the measured claim to `claims.json` before shipping it.
 
 ## Design constraints
 
-- Palette and type are the site's design tokens (`site/tailwind.config.js`):
-  carbon neutrals, `electric` #5B8CFF as the single interactive accent,
-  `proton` #4FD1A5 reserved for measured numbers, Inter Tight for display,
-  JetBrains Mono for figures. Blue means "clickable", green means "measured" —
-  don't add colors with no job.
+- Palette, type and mark are the site's (`site/DESIGN.md`): graphite in three
+  steps, the engram mark, Host Grotesk for words, Atkinson Hyperlegible Mono
+  for the measured figures. Amber means a person, blue means measured; don't
+  add colours with no job.
+- The background is a still frame of the site's liquid. `render.mjs` lifts
+  the fragment shader out of `site/src/components/ui/LiquidBackground.tsx`
+  and injects it, so the card and the site can't drift; it renders through
+  SwiftShader, so no GPU is needed. Opened by hand, the card shows the plain
+  ground.
 - Absolute privacy claims are forbidden here exactly as in the docs guard:
-  "local-first · no telemetry", never "code never leaves your machine".
+  "local-first, no telemetry by default", never "code never leaves your
+  machine".
 
 ## Fonts
 
-`fonts/` vendors the latin woff2 subsets of Inter, Inter Tight and JetBrains
-Mono (all SIL Open Font License 1.1) so renders are hermetic — no network at
-render time, identical output everywhere.
+`fonts/` vendors the latin woff2 subsets of Host Grotesk (variable, 300 to
+800) and Atkinson Hyperlegible Mono 400, both SIL Open Font License 1.1, so
+renders are hermetic: no network at render time, identical output everywhere.
