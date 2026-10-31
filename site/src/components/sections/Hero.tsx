@@ -1,4 +1,5 @@
 import CommandLine from '@/components/ui/CommandLine';
+import MascotSlot from '@/components/ui/MascotSlot';
 import Stat, { StatGrid } from '@/components/ui/Stat';
 import { QUERY_ID, QUERY_REPO, QUERY_TEXT } from '@/lib/capturedQuery';
 import { headline, publicBenchmark, publicQuery, ratioRange, retrievalEval } from '@/lib/evidence';
@@ -76,71 +77,79 @@ export default function Hero() {
                         it) and its diff (the gold file on the ok or bad tint),
                         drawn from the committed benchmark row, not retyped. No
                         per-query ratio: claims.json lists none. */}
-                    <figure className="panel rounded-card overflow-hidden min-w-0">
-                        <div className="flex items-baseline justify-between gap-3 px-5 py-3 border-b border-carbon-border">
-                            <p className="label">Same question, two retrievers</p>
-                            <p className="font-mono text-xs text-proton whitespace-nowrap">
-                                {side.repo}@{side.sha}
-                            </p>
-                        </div>
+                    <div className="min-w-0">
+                        {/* The Pair, peeking over the record from behind it: the panel
+                            sits above the mascot's box and covers it from the chest
+                            down. Renders nothing until site/public/mascot/pair.vrm
+                            exists; hidden below lg, where it would push the record
+                            a screen further down. */}
+                        <MascotSlot className="hidden lg:block h-56 -mb-12 mx-auto w-64 z-0 pointer-events-none" />
+                        <figure className="panel rounded-card overflow-hidden min-w-0 relative z-10">
+                            <div className="flex items-baseline justify-between gap-3 px-5 py-3 border-b border-carbon-border">
+                                <p className="label">Same question, two retrievers</p>
+                                <p className="font-mono text-xs text-proton whitespace-nowrap">
+                                    {side.repo}@{side.sha}
+                                </p>
+                            </div>
 
-                        <div className="px-5 py-4 border-b border-carbon-border">
-                            <p className="text-white text-body-sm font-medium">&ldquo;{QUERY_TEXT}&rdquo;</p>
-                            <p className="text-faint text-caption mt-1">
-                                Gold file: <span className="font-mono text-body">{side.gold.join(', ')}</span>
-                            </p>
-                        </div>
+                            <div className="px-5 py-4 border-b border-carbon-border">
+                                <p className="text-white text-body-sm font-medium">&ldquo;{QUERY_TEXT}&rdquo;</p>
+                                <p className="text-faint text-caption mt-1">
+                                    Gold file: <span className="font-mono text-body">{side.gold.join(', ')}</span>
+                                </p>
+                            </div>
 
-                        <div className="px-5 py-5 border-b border-carbon-border">
-                            <p className="label mb-4">Tokens into the agent&rsquo;s window</p>
-                            <p className="flex items-baseline justify-between gap-3 mb-1">
-                                <s className="metric text-lg text-faint decoration-danger">{side.ripgrep.tokens}</s>
-                                <span className="text-faint text-caption text-right">ripgrep, top five files opened whole</span>
-                            </p>
-                            <p className="flex items-end justify-between gap-3">
-                                <span className="reading text-6xl text-white">{side.neuralmind.tokens}</span>
-                                <span className="text-muted text-caption text-right pb-1">neuralmind query</span>
-                            </p>
-                        </div>
+                            <div className="px-5 py-5 border-b border-carbon-border">
+                                <p className="label mb-4">Tokens into the agent&rsquo;s window</p>
+                                <p className="flex items-baseline justify-between gap-3 mb-1">
+                                    <s className="metric text-lg text-faint decoration-danger">{side.ripgrep.tokens}</s>
+                                    <span className="text-faint text-caption text-right">ripgrep, top five files opened whole</span>
+                                </p>
+                                <p className="flex items-end justify-between gap-3">
+                                    <span className="reading text-6xl text-white">{side.neuralmind.tokens}</span>
+                                    <span className="text-muted text-caption text-right pb-1">neuralmind query</span>
+                                </p>
+                            </div>
 
-                        {[
-                            { name: 'ripgrep', r: side.ripgrep },
-                            { name: 'neuralmind', r: side.neuralmind },
-                        ].map(({ name, r }) => {
-                            const rest = r.files.filter((f) => !side.gold.includes(f));
-                            return (
-                                <div key={name} className="border-b border-carbon-border last:border-b-0">
-                                    <p
-                                        className={`flex items-baseline gap-3 px-5 py-2 font-mono text-caption ${
-                                            r.found ? 'bg-success/10' : 'bg-danger/10'
-                                        }`}
-                                    >
-                                        <span className={`w-3 shrink-0 ${r.found ? 'text-success' : 'text-danger'}`} aria-hidden="true">
-                                            {r.found ? '+' : '\u2212'}
-                                        </span>
-                                        <span className="text-ink">{side.gold.join(', ')}</span>
-                                        <span className={`ml-auto font-sans text-right ${r.found ? 'text-success' : 'text-danger'}`}>
-                                            {r.found
-                                                ? `ranked ${r.rank === 1 ? 'first' : `#${r.rank}`} by ${name}`
-                                                : `not in ${name}\u2019s context`}
-                                        </span>
-                                    </p>
-                                    <ul className="flex flex-wrap gap-x-3 gap-y-1 px-5 py-2.5 pl-11" aria-label={`Other files ${name} put in the context`}>
-                                        {rest.map((f) => (
-                                            <li key={f} className="font-mono text-xs text-faint">
-                                                {f}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            );
-                        })}
+                            {[
+                                { name: 'ripgrep', r: side.ripgrep },
+                                { name: 'neuralmind', r: side.neuralmind },
+                            ].map(({ name, r }) => {
+                                const rest = r.files.filter((f) => !side.gold.includes(f));
+                                return (
+                                    <div key={name} className="border-b border-carbon-border last:border-b-0">
+                                        <p
+                                            className={`flex items-baseline gap-3 px-5 py-2 font-mono text-caption ${
+                                                r.found ? 'bg-success/10' : 'bg-danger/10'
+                                            }`}
+                                        >
+                                            <span className={`w-3 shrink-0 ${r.found ? 'text-success' : 'text-danger'}`} aria-hidden="true">
+                                                {r.found ? '+' : '\u2212'}
+                                            </span>
+                                            <span className="text-ink">{side.gold.join(', ')}</span>
+                                            <span className={`ml-auto font-sans text-right ${r.found ? 'text-success' : 'text-danger'}`}>
+                                                {r.found
+                                                    ? `ranked ${r.rank === 1 ? 'first' : `#${r.rank}`} by ${name}`
+                                                    : `not in ${name}\u2019s context`}
+                                            </span>
+                                        </p>
+                                        <ul className="flex flex-wrap gap-x-3 gap-y-1 px-5 py-2.5 pl-11" aria-label={`Other files ${name} put in the context`}>
+                                            {rest.map((f) => (
+                                                <li key={f} className="font-mono text-xs text-faint">
+                                                    {f}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                );
+                            })}
 
-                        <figcaption className="px-5 py-3 border-t border-carbon-border bg-carbon-raised text-faint text-caption leading-relaxed">
-                            One of the 40 queries, from the committed run (bench/public/results.json). The real{' '}
-                            <a href="#real-output" className="link">query output</a> is below.
-                        </figcaption>
-                    </figure>
+                            <figcaption className="px-5 py-3 border-t border-carbon-border bg-carbon-raised text-faint text-caption leading-relaxed">
+                                One of the 40 queries, from the committed run (bench/public/results.json). The real{' '}
+                                <a href="#real-output" className="link">query output</a> is below.
+                            </figcaption>
+                        </figure>
+                    </div>
                 </div>
 
                 {/* ── Stats ──────────────────────────────────────────────── */}

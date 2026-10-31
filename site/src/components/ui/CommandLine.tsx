@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
+import { COPIED_EVENT } from '@/lib/events';
 
 /**
  * A copy-to-clipboard install line.
@@ -28,6 +29,8 @@ export default function CommandLine({ command, className = '' }: { command: stri
         try {
             await navigator.clipboard.writeText(command);
             setCopied(true);
+            // The mascot, when there is one, smiles at this.
+            window.dispatchEvent(new Event(COPIED_EVENT));
             // Cancel the previous reset first. Without this, two clicks 800ms
             // apart leave the first timer running, and it clears the tick
             // 800ms into the second click's window instead of 1600ms.

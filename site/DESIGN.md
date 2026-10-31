@@ -181,6 +181,36 @@ carries the rule's reasons as constraints:
   on top.
 - **Colour.** Read from the `:root` tokens at run time, never repeated.
 
+## The mascot — The Pair
+
+The pair programmer who sits in the corner of your editor: short, an
+oversized `carbon-line` hoodie with the engram patch on the hood, silver-white
+`ink` hair, `electric` amber eyes and drawstrings, headphones whose small LEDs
+are the only `proton` blue on it. Its line is "Want me to remember that?".
+It is built in VRoid Studio from [`mascot/SPEC.md`](mascot/SPEC.md), which
+holds the palette, the build steps, the export settings and how to run the
+build with a computer-use agent; the decals to import are in
+`mascot/textures/`.
+
+On the site it is `MascotSlot` (`@/components/ui/MascotSlot`), placed in the
+hero so The Pair peeks over the record from behind it, at `lg:` and up:
+
+- **It appears when the model does.** The slot checks at build time for
+  `public/mascot/pair.vrm` and renders nothing without it; dropping the file
+  in and rebuilding is the whole integration. An optional `pair.png` beside
+  it is shown while the model loads.
+- **`Mascot` draws it** with three.js and `@pixiv/three-vrm`, both fetched
+  as their own chunk only once the box is on screen and the page has loaded.
+  A box hidden by CSS never loads the model, so phones don't download it.
+- **It behaves like a colleague:** blinks, breathes, its eyes and head follow
+  the pointer (amber means a person, and the person is what it watches), and
+  it smiles when a command is copied (`COPIED_EVENT` in `@/lib/events`, fired
+  by `CommandLine`).
+- **Under reduced motion it holds one still pose.** With no WebGL, or a model
+  that fails to load, the box collapses and the page is as it was.
+- **Budget:** the `.vrm` under 8 MB (Cloudflare Pages refuses files over
+  25 MiB). The export settings in the spec get it there.
+
 ## Components
 
 ### Controls — `.btn-primary`, `.btn-secondary`, `.link`
@@ -319,4 +349,6 @@ A copyable shell command on the deepest step. `className` sizes the box
   claims.json).
 - `docs/_layouts/default.html` and `docs/about.html` keep their own palettes;
   the docs site is restyled separately from neuralmind.uk.
-- The mascot. The mark leaves room for one beside it.
+- The Pair's model itself: until `public/mascot/pair.vrm` is committed, the
+  hero renders without it. The slot was tested with pixiv's public VRM
+  sample, which is not in the repo.
