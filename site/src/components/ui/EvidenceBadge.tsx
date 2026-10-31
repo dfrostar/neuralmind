@@ -38,7 +38,7 @@ export default function EvidenceBadge({
     return (
         <span
             title={claims._evidence_levels[level]}
-            className={`inline-flex items-center px-2 py-0.5 rounded-control border font-mono text-eyebrow uppercase tracking-eyebrow whitespace-nowrap ${tone} ${className}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-control border text-xs font-medium whitespace-nowrap ${tone} ${className}`}
         >
             {children ?? label}
         </span>

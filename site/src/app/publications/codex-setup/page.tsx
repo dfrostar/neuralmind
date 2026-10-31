@@ -104,7 +104,7 @@ export default function PublicationPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">How-To Guide</span>
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">How-To Guide</span>
                         <span className="text-faint text-sm">July 26, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -126,7 +126,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Abstract</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <p className="text-body leading-relaxed">
-                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that cuts the tokens a code question costs at the retrieval stage: 51–242× fewer than pasting every source file on the public benchmark (v4.12.0), and 12–50× in field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
+                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that cuts the tokens a code question costs at the retrieval stage: 51–242× fewer than pasting every source file on the public benchmark (v4.12.0), and 12–50× in field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
                         </p>
                     </div>
                 </section>
@@ -142,7 +142,7 @@ export default function PublicationPage() {
                             <strong className="text-white">Communication channels:</strong> MCP tools (19 tools, any agent), lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse), and the file activity watcher (always-on, per-project).
                         </p>
                         <p>
-                            <strong className="text-white">The Codex relationship:</strong> Codex is MCP-compatible. NeuralMind ships an MCP server that exposes <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind_wakeup</code>, <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind_query</code>, and 17 other tools. Codex gains NeuralMind&apos;s retrieval and synapse capabilities by registering that MCP server — no Codex-specific code required.
+                            <strong className="text-white">The Codex relationship:</strong> Codex is MCP-compatible. NeuralMind ships an MCP server that exposes <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind_wakeup</code>, <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind_query</code>, and 17 other tools. Codex gains NeuralMind&apos;s retrieval and synapse capabilities by registering that MCP server — no Codex-specific code required.
                         </p>
                     </div>
                 </section>
@@ -153,14 +153,14 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">1. One-Time Setup (per repo)</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>pip install neuralmind</p>
                             <p>cd /path/to/your-project</p>
                             <p>neuralmind build .                    # builds knowledge graph + vector index</p>
                             <p>neuralmind install-mcp --print       # print the MCP config snippet for Codex (or any MCP client)</p>
                         </div>
                         <p className="text-body text-sm mb-3">
-                            <strong className="text-white">For Codex specifically:</strong> Codex isn&apos;t in the auto-detect list (Claude Code, Cursor, Cline, Claude Desktop, VS Code). Use <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind install-mcp --print</code> to emit the JSON snippet, then paste it into Codex&apos;s MCP server config. Any MCP-compatible client works the same way — the server is the same, only the config file differs.
+                            <strong className="text-white">For Codex specifically:</strong> Codex isn&apos;t in the auto-detect list (Claude Code, Cursor, Cline, Claude Desktop, VS Code). Use <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind install-mcp --print</code> to emit the JSON snippet, then paste it into Codex&apos;s MCP server config. Any MCP-compatible client works the same way — the server is the same, only the config file differs.
                         </p>
                     </div>
 
@@ -169,7 +169,7 @@ export default function PublicationPage() {
                         <p className="text-body mb-3">
                             Once the MCP server is registered, Codex gains NeuralMind&apos;s tools. Start every session with a wakeup, then query as needed:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>codex&gt; neuralmind_wakeup(project_path=&quot;.&quot;)                # compact project overview, once per session</p>
                             <p>codex&gt; neuralmind_query(project_path=&quot;.&quot;, question=&quot;...&quot;)  # 670–961 mean tokens per question (public benchmark, v4.12.0)</p>
                             <p>codex&gt; neuralmind_skeleton(project_path=&quot;.&quot;, file_path=&quot;...&quot;) # file → skeleton (functions + rationales)</p>
@@ -183,13 +183,13 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">3. Registering with Any MCP Client</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>neuralmind install-mcp --all            # auto-detect Claude Code / Cursor / Cline / Claude Desktop / VS Code</p>
                             <p>neuralmind install-mcp --client cursor # target a specific client</p>
                             <p>neuralmind install-mcp --print          # emit JSON for any MCP client (Codex, Windsurf, custom)</p>
                         </div>
                         <p className="text-body text-sm">
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">--all</code> non-destructively merges a NeuralMind entry into each detected client&apos;s config. <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">--print</code> is the escape hatch: it outputs the <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">{MCP_SNIPPET}</code> snippet to paste into any MCP-compatible tool&apos;s config file.
+                            <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">--all</code> non-destructively merges a NeuralMind entry into each detected client&apos;s config. <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">--print</code> is the escape hatch: it outputs the <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">{MCP_SNIPPET}</code> snippet to paste into any MCP-compatible tool&apos;s config file.
                         </p>
                     </div>
                 </section>
@@ -211,22 +211,22 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-body">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L0 Identity</td>
+                                        <td className="py-2 font-mono text-ink">L0 Identity</td>
                                         <td className="py-2">Project name, description, key facts</td>
                                         <td className="py-2 font-mono">~150 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L1 Summary</td>
+                                        <td className="py-2 font-mono text-ink">L1 Summary</td>
                                         <td className="py-2">High-level architecture, main components</td>
                                         <td className="py-2 font-mono">~600 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L2 On-Demand</td>
+                                        <td className="py-2 font-mono text-ink">L2 On-Demand</td>
                                         <td className="py-2">Specific communities/modules as needed</td>
                                         <td className="py-2 font-mono">~800 tok</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">L3 Search</td>
+                                        <td className="py-2 font-mono text-ink">L3 Search</td>
                                         <td className="py-2">Semantic search hits</td>
                                         <td className="py-2 font-mono">~1000 tok</td>
                                     </tr>
@@ -242,7 +242,7 @@ export default function PublicationPage() {
                         <h3 className="text-lg font-semibold text-white mb-3">Tool-output compression (correction)</h3>
                         <p className="text-body mb-3">
                             Earlier versions of this guide described PostToolUse hooks that compress Read, Bash and Grep output, with reductions of up to ~88% and ~91% that were never measured. When the hooks were finally benchmarked against Claude Code’s documented hook protocol, they turned out not to shrink anything: Claude Code adds a hook’s output next to the tool result instead of replacing it, so they added tokens, and the Read hook never received Claude Code’s payload. The hooks no longer inject anything; the{' '}
-                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="text-electric hover:text-electric-bright">compression benchmark</a>{' '}
+                            <a href="https://docs.neuralmind.uk/benchmarks/compression.html" className="link">compression benchmark</a>{' '}
                             has the measurements.
                         </p>
                         <p className="text-body text-sm">
@@ -252,14 +252,14 @@ export default function PublicationPage() {
 
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">Benchmark + Savings Commands</h3>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>neuralmind benchmark . --json          # wakeup, avg query, avg reduction</p>
                             <p>neuralmind benchmark . --quality       # MRR, answerability, recall@k</p>
                             <p>neuralmind probe . --sample-size 100   # self-probe on YOUR code</p>
                             <p>neuralmind savings . --cost --model claude-opus-4-8 --queries-per-day 100</p>
                         </div>
                         <p className="text-body text-sm">
-                            <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind savings --cost</code> reads your local query event log and prints estimated dollar savings. The &quot;without NeuralMind&quot; cost is modeled from a fixed 50,000-token-per-query baseline; the &quot;with NeuralMind&quot; cost is measured from logged tokens.
+                            <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind savings --cost</code> reads your local query event log and prints estimated dollar savings. The &quot;without NeuralMind&quot; cost is modeled from a fixed 50,000-token-per-query baseline; the &quot;with NeuralMind&quot; cost is measured from logged tokens.
                         </p>
                     </div>
                 </section>
@@ -274,7 +274,7 @@ export default function PublicationPage() {
                             <li><strong className="text-white">Synapse learning (always-on):</strong> The file activity watcher records co-activations between code nodes. Hebbian reinforcement strengthens edges the agent actually traverses; half-life decay erodes unused edges (personal=30d, shared=60d, ephemeral=1d).</li>
                             <li><strong className="text-white">Fitness function:</strong> Multi-objective (MRR, answerability, recall@k) fitness scoring gated by a threshold. Auto-promote fires when fitness exceeds the threshold.</li>
                             <li><strong className="text-white">Tuner:</strong> Single-variable in trace fallback mode; live eval is multi-objective. Auto-tune is opt-in and capped at ±1 step per session.</li>
-                            <li><strong className="text-white">Learned decay:</strong> Wired into <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">reinforce()</code> — adjusts reinforcement magnitude based on how recently an edge was last traversed.</li>
+                            <li><strong className="text-white">Learned decay:</strong> Wired into <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">reinforce()</code> — adjusts reinforcement magnitude based on how recently an edge was last traversed.</li>
                         </ul>
                         <p><strong className="text-white">The gap:</strong> The fitness function is effectively single-variable in trace fallback mode. Live eval is multi-objective but unmeasured in production. The &quot;self-evolving product&quot; is aspirational — the infrastructure is built, the tuning signal is weak in production.</p>
                     </div>
@@ -333,7 +333,7 @@ export default function PublicationPage() {
                                         <td className="py-2">End-to-end cost per task</td>
                                         <td className="py-2">
                                             A pre-registered 20-task pilot, Claude Code with and without NeuralMind:{' '}
-                                            <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">no difference</a>
+                                            <a href="/benchmark/#task-outcomes" className="link">no difference</a>
                                         </td>
                                         <td className="py-2 text-danger">Not supported</td>
                                     </tr>
@@ -346,7 +346,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage reduction: the Claude Code hooks add no compression on top (see the correction above). Whether it lowers what a task costs was measured once: a 20-task pilot found <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">no difference</a>.
+                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage reduction: the Claude Code hooks add no compression on top (see the correction above). Whether it lowers what a task costs was measured once: a 20-task pilot found <a href="/benchmark/#task-outcomes" className="link">no difference</a>.
                         </p>
                     </div>
                 </section>
@@ -368,7 +368,7 @@ export default function PublicationPage() {
                                     <tr className="border-b border-carbon-border/50">
                                         <td className="py-2 font-semibold text-white">Free</td>
                                         <td className="py-2">$0</td>
-                                        <td className="py-2">Auto-provisioned on first <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind wakeup .</code> (v1.7.0) — wakeup, query, search, synapses, build, benchmark, savings, review, all MCP tools, 1 seat</td>
+                                        <td className="py-2">Auto-provisioned on first <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind wakeup .</code> (v1.7.0) — wakeup, query, search, synapses, build, benchmark, savings, review, all MCP tools, 1 seat</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
                                         <td className="py-2 font-semibold text-white">Team</td>
@@ -384,7 +384,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p className="text-sm text-muted">
-                            <strong className="text-white">Free tier note:</strong> v1.7.0 flipped the default tier from &quot;team&quot; to &quot;free&quot; — on first <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">neuralmind wakeup .</code>, a license.json is auto-written with no signup wall.
+                            <strong className="text-white">Free tier note:</strong> v1.7.0 flipped the default tier from &quot;team&quot; to &quot;free&quot; — on first <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind wakeup .</code>, a license.json is auto-written with no signup wall.
                         </p>
                     </div>
                 </section>
@@ -449,8 +449,8 @@ export default function PublicationPage() {
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <ul className="space-y-3 text-sm text-body">
                             <li><strong className="text-white">Language:</strong> Python 3.10+ (stdlib-only)</li>
-                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">{GITHUB_URL}</a></li>
-                            <li><strong className="text-white">Commit:</strong> <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-26)</li>
+                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="link">{GITHUB_URL}</a></li>
+                            <li><strong className="text-white">Commit:</strong> <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-26)</li>
                             <li>
                                 <strong className="text-white">Key files:</strong>
                                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1 font-mono text-xs">

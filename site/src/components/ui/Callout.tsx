@@ -39,7 +39,7 @@ export default function Callout({
     return (
         <aside role="note" className={`rounded-card border px-5 py-4 ${v.box} ${className}`}>
             {heading && (
-                <p className={`font-mono text-eyebrow uppercase tracking-eyebrow mb-2 ${v.label}`}>{heading}</p>
+                <p className={`text-caption font-medium mb-2 ${v.label}`}>{heading}</p>
             )}
             <div className="text-body text-sm leading-relaxed">{children}</div>
         </aside>
