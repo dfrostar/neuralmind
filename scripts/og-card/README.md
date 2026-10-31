@@ -37,11 +37,12 @@ its job — add the measured claim to `claims.json` before shipping it.
   steps, the engram mark, Host Grotesk for words, Atkinson Hyperlegible Mono
   for the measured figures. Amber means a person, blue means measured; don't
   add colours with no job.
-- The background is a still frame of the site's liquid. `render.mjs` lifts
-  the fragment shader out of `site/src/components/ui/LiquidBackground.tsx`
-  and injects it, so the card and the site can't drift; it renders through
-  SwiftShader, so no GPU is needed. Opened by hand, the card shows the plain
-  ground.
+- The background is a still frame of the site's liquid, drawn by
+  `liquid.js`. `render.mjs` lifts the fragment shader out of
+  `site/src/components/ui/LiquidBackground.tsx` and injects it, so the card
+  and the site can't drift; it renders through SwiftShader, so no GPU is
+  needed. Opened by hand, the card shows the plain ground. Keep script out of
+  `card.html` itself: the claims gate counts every digit in its markup.
 - Absolute privacy claims are forbidden here exactly as in the docs guard:
   "local-first, no telemetry by default", never "code never leaves your
   machine".
