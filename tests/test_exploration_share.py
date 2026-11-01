@@ -1,8 +1,10 @@
 """Exploration-share collectors (stdlib only; tiktoken is bypassed with chars/4).
 
 The presence model: a message is paid for by every API call after it until a
-compaction drops it. With chars/4 counting, a 40-character tool result is 10
-tokens, so the numbers below are exact.
+compaction drops it, or until the context size the provider billed for a call
+says it must have been trimmed (oldest droppable messages first). With chars/4
+counting, a 40-character tool result is 10 tokens, so the numbers below are
+exact.
 """
 
 from __future__ import annotations
@@ -65,6 +67,12 @@ def test_categories():
     assert categorize_claude("mcp__x__y", {}) == OTHER
 
 
+def _tool_call(call_id: str, name: str, arguments: str) -> str:
+    return json.dumps(
+        [{"id": call_id, "type": "function", "function": {"name": name, "arguments": arguments}}]
+    )
+
+
 def _hermes_db(path: Path) -> None:
     con = sqlite3.connect(path)
     con.executescript("""
@@ -85,26 +93,7 @@ def _hermes_db(path: Path) -> None:
     rows = [
         ("user", prompt, None, None, None, 1001, 0, 0, 1, prompt + block),
         # call 1: present = system 10 + user 10 + block 10 = 30
-        (
-            "assistant",
-            "",
-            json.dumps(
-                [
-                    {
-                        "id": "c1",
-                        "type": "function",
-                        "function": {"name": "read_file", "arguments": "{}"},
-                    }
-                ]
-            ),
-            None,
-            None,
-            1002,
-            0,
-            0,
-            1,
-            None,
-        ),
+        ("assistant", "", _tool_call("c1", "read_file", "{}"), None, None, 1002, 0, 0, 1, None),
         (
             "tool",
             "R" * 80,
@@ -121,18 +110,7 @@ def _hermes_db(path: Path) -> None:
         (
             "assistant",
             "",
-            json.dumps(
-                [
-                    {
-                        "id": "c2",
-                        "type": "function",
-                        "function": {
-                            "name": "terminal",
-                            "arguments": json.dumps({"command": "pytest"}),
-                        },
-                    }
-                ]
-            ),
+            _tool_call("c2", "terminal", json.dumps({"command": "pytest"})),
             None,
             None,
             1004,
@@ -147,7 +125,9 @@ def _hermes_db(path: Path) -> None:
         ("assistant", "done", None, None, None, 1007, 0, 0, 1, None),
     ]
     con.executemany(
-        "insert into messages (session_id, role, content, tool_calls, tool_name, tool_call_id, timestamp, compacted, _compressed_summary, active, api_content) values ('s1',?,?,?,?,?,?,?,?,?,?)",
+        "insert into messages (session_id, role, content, tool_calls, tool_name, tool_call_id, "
+        "timestamp, compacted, _compressed_summary, active, api_content) "
+        "values ('s1',?,?,?,?,?,?,?,?,?,?)",
         rows,
     )
     con.commit()
@@ -172,69 +152,65 @@ def test_hermes_collector_presence_model(tmp_path):
     assert r.billed_tokens[BLOCK] == 30
     # the shell result (10) is present at call 3 only
     assert r.billed_tokens[SHELL] == 10
-    assert r.compactions == 1
-    assert r.exploration_share == 20 / r.context_tokens_est
+    assert r.compactions == 1 and r.trims == 0
+    # the billing the transcript can't account for is spread over the calls as system
+    assert r.context_tokens_est == 1000
+    assert r.exploration_share == 20 / 1000
     # skip_ids makes a rerun idempotent
     assert hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1"}) == []
 
 
-def _claude_transcript(path: Path) -> None:
+def _claude_transcript(path: Path, billed: tuple[int, int, int]) -> None:
     def line(kind, content, ts, **extra):
         o = {"type": kind, "timestamp": ts, "sessionId": "cc1", "message": {"content": content}}
         o.update(extra)
         return json.dumps(o)
 
-    usage = {
-        "input_tokens": 100,
-        "cache_read_input_tokens": 300,
-        "cache_creation_input_tokens": 0,
-        "output_tokens": 7,
-    }
+    def usage(n):
+        return {
+            "input_tokens": n,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0,
+            "output_tokens": 7,
+        }
+
+    read_use = {"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": "a.py"}}
+    edit_use = {"type": "tool_use", "id": "t2", "name": "Edit", "input": {"file_path": "a.py"}}
     lines = [
         json.dumps({"type": "queue-operation"}),  # ignored
-        line("user", "fix the bug", "2026-10-10T10:00:00Z"),
+        line("user", "fix the bug", "2026-10-10T10:00:00Z"),  # 11 chars -> 2 tokens
         line(
             "user",
             [{"type": "text", "text": "Code matching this prompt:\n- a.py " + "B" * 6}],
             "2026-10-10T10:00:01Z",
-        ),  # 40 chars -> 10
-        # one API call written as two assistant lines with the same requestId
+        ),  # 40 chars -> 10 tokens, the block
+        # call 1 (present: 12), written as two assistant lines with one requestId
         line(
             "assistant",
-            [{"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": "a.py"}}],
+            [read_use],
             "2026-10-10T10:00:02Z",
             requestId="r1",
-            message={
-                "content": [
-                    {"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": "a.py"}}
-                ],
-                "usage": usage,
-                "model": "claude-x",
-            },
+            message={"content": [read_use], "usage": usage(billed[0]), "model": "claude-x"},
         ),
         line(
             "assistant",
             [{"type": "text", "text": "reading"}],
             "2026-10-10T10:00:02Z",
             requestId="r1",
-            message={"content": [{"type": "text", "text": "reading"}], "usage": usage},
+            message={"content": [{"type": "text", "text": "reading"}], "usage": usage(billed[0])},
         ),
         line(
             "user",
             [{"type": "tool_result", "tool_use_id": "t1", "content": "R" * 80}],
             "2026-10-10T10:00:03Z",
         ),  # 20 tokens exploration
+        # call 2
         line(
             "assistant",
-            [{"type": "tool_use", "id": "t2", "name": "Edit", "input": {"file_path": "a.py"}}],
+            [edit_use],
             "2026-10-10T10:00:04Z",
             requestId="r2",
-            message={
-                "content": [
-                    {"type": "tool_use", "id": "t2", "name": "Edit", "input": {"file_path": "a.py"}}
-                ],
-                "usage": usage,
-            },
+            message={"content": [edit_use], "usage": usage(billed[1])},
         ),
         line(
             "user",
@@ -248,12 +224,13 @@ def _claude_transcript(path: Path) -> None:
             "2026-10-10T10:00:05Z",
         ),  # 10 tokens edit
         line("user", "summary of everything", "2026-10-10T10:00:06Z", isCompactSummary=True),
+        # call 3
         line(
             "assistant",
             [{"type": "text", "text": "done"}],
             "2026-10-10T10:00:07Z",
             requestId="r3",
-            message={"content": [{"type": "text", "text": "done"}], "usage": usage},
+            message={"content": [{"type": "text", "text": "done"}], "usage": usage(billed[2])},
         ),
     ]
     path.write_text("\n".join(lines) + "\n")
@@ -262,27 +239,41 @@ def _claude_transcript(path: Path) -> None:
 def test_claude_code_collector(tmp_path):
     proj = tmp_path / "projects" / "-Users-x-repo"
     proj.mkdir(parents=True)
-    _claude_transcript(proj / "cc1.jsonl")
+    # call 1 bills 400 for 12 tokens of content: overhead 388. Call 2's content is 12 + the
+    # tool_use json (5) + "reading" (1) + the read (20) = 38, billed 426 = 388 + 38: no trim.
+    _claude_transcript(proj / "cc1.jsonl", billed=(400, 426, 400))
     since = 1_700_000_000  # well before 2026
     rows = claude_code.collect(tmp_path / "projects", since, 2_000_000_000, TOK)
     assert len(rows) == 1
     r = rows[0]
     assert r.session_id == "cc1" and r.source_group == "interactive" and r.model == "claude-x"
     assert r.calls == 3, "two lines with one requestId are one API call"
-    assert r.prompt_tokens_billed == 3 * 400 and r.output_tokens_billed == 21
-    assert (
-        r.first_tokens[EXPLORATION] == 20
-        and r.first_tokens[EDIT] == 10
-        and r.first_tokens[BLOCK] == 10
-    )
+    assert r.prompt_tokens_billed == 1226 and r.output_tokens_billed == 21
+    assert r.first_tokens[EXPLORATION] == 20 and r.first_tokens[EDIT] == 10
+    assert r.first_tokens[BLOCK] == 10
     assert r.tool_calls == {EXPLORATION: 1, EDIT: 1}
     # read result present at call 2 only (compaction before call 3); block at calls 1 and 2
     assert r.billed_tokens[EXPLORATION] == 20
     assert r.billed_tokens[BLOCK] == 20
-    assert r.billed_tokens.get(EDIT, 0) == 0, "the edit result was compacted before the next call"
-    assert r.compactions == 1
+    assert r.billed_tokens.get(EDIT, 0) == 0, "the edit result was compacted before call 3"
+    assert r.compactions == 1 and r.trims == 0
+    assert r.billed_tokens["system"] == 3 * 388
+    assert 0.95 < r.context_tokens_est / r.prompt_tokens_billed <= 1.0
     # a file outside the window is skipped
     assert claude_code.collect(tmp_path / "projects", 2_000_000_000, 2_100_000_000, TOK) == []
+
+
+def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+    # Billing stays at 400 while the transcript grows: call 2 can hold 12 tokens of content,
+    # so everything older is trimmed, the 20-token read included.
+    _claude_transcript(proj / "cc1.jsonl", billed=(400, 400, 400))
+    r = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)[0]
+    assert r.trims >= 1
+    assert r.first_tokens[EXPLORATION] == 20
+    assert r.billed_tokens.get(EXPLORATION, 0) == 0
+    assert r.context_tokens_est <= r.prompt_tokens_billed
 
 
 def test_report_aggregates_and_reads(tmp_path):
@@ -297,9 +288,9 @@ def test_report_aggregates_and_reads(tmp_path):
     assert agg["n_sessions"] == 1, "duplicates are dropped by (agent, session_id)"
     g = agg["groups"]["hermes/interactive"]
     assert g["sessions"] == 1 and g["calls"] == 3
-    assert g["exploration_share_billed"] == pytest.approx(20 / rows[0].context_tokens_est)
-    assert g["block_share_billed"] == pytest.approx(30 / rows[0].context_tokens_est)
-    assert g["calibration_est_over_billed"] == pytest.approx(rows[0].context_tokens_est / 1000)
-    assert "hermes/interactive" in agg["reading"]
+    assert g["exploration_share_billed"] == pytest.approx(20 / 1000)
+    assert g["block_share_billed"] == pytest.approx(30 / 1000)
+    assert g["calibration_est_over_billed"] == pytest.approx(1.0)
+    assert agg["reading"]["hermes/interactive"].startswith("under 10%")
     md = report.to_markdown(agg, "t")
     assert "hermes/interactive" in md and "Pre-registered reading" in md

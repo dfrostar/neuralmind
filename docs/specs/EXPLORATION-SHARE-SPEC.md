@@ -113,6 +113,28 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   block that names the file replaces some reads, not all, and the block itself
   costs tokens on every call.
 
+## Change log
+
+- **2026-11-01, pass 2: the presence model is calibrated to billing.** The
+  first pass (the model above, as first written) produced per-session
+  calibration ratios from 0.23 to 7.4 on the Mac's Claude Code sessions: the
+  transcript holds no system prompt or tool schemas (so sessions with many
+  short calls were under-estimated), and it keeps every tool result at full
+  size although Claude Code trims old results between compactions (so long
+  sessions with no compaction line were over-estimated several-fold). Pass 1's
+  pooled figures were 72.3% (Claude Code, 87 interactive sessions) and 11.3%
+  (Hermes, 66 interactive sessions, chars/4); they are kept in the data folder
+  as `*.pass1.*` and are not the result. Pass 2 adds two steps, applied before
+  the shares were re-read: (a) the context size the provider billed for a call
+  caps what the model may hold at that call, dropping the oldest droppable
+  messages first (Claude Code: per call, from `usage`; Hermes: the session's
+  mean prompt size per call, since it bills per session); (b) whatever the
+  billing exceeds the transcript by is counted as `system` overhead (Claude
+  Code: fixed from the first call; Hermes: spread over the calls). Claude Code
+  `attachment` lines (CLAUDE.md, memory and hook output rendered as
+  system-reminders) are now counted, which is where NeuralMind's block appears.
+  The thresholds are unchanged.
+
 ## Outputs
 
 - Per-session rows, local only: ai-9970

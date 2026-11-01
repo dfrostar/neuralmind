@@ -32,6 +32,7 @@ from sessions
 where started_at >= ? and started_at < ?
 order by started_at
 """
+CALLS_SQL = "select count(*) from messages where session_id = ? and role = 'assistant'"
 MESSAGES_SQL = """
 select role, content, tool_calls, tool_name, tool_call_id, timestamp,
        compacted, _compressed_summary, active, api_content
@@ -73,6 +74,13 @@ def collect(
         ctx = Context(row)
         ctx.add("system", tok.count(system_prompt), droppable=False)
         call_args: dict[str, tuple[str, str | None]] = {}
+        # Hermes bills per session, not per call: the mean prompt size caps each call's
+        # content (oldest tool results dropped first), and whatever the billing exceeds
+        # the transcript by (tool schemas, not stored) is spread over the calls as system.
+        n_calls = con.execute(CALLS_SQL, (sid,)).fetchone()[0] or 0
+        budget = (
+            row.prompt_tokens_billed // n_calls if n_calls and row.prompt_tokens_billed else None
+        )
         for msg in con.execute(MESSAGES_SQL, (sid,)):
             (
                 role,
@@ -92,6 +100,8 @@ def collect(
                 ctx.add("summary", tok.count(content), droppable=False)
                 continue
             if role == "assistant":
+                if budget is not None:
+                    ctx.cap(budget)
                 ctx.call()
                 text_tokens = tok.count(content) + tok.count(tool_calls)
                 ctx.add("assistant", text_tokens, droppable)
@@ -108,6 +118,10 @@ def collect(
                 if block:
                     ctx.add(BLOCK, tok.count(block), droppable)
             # session_meta and anything else: not part of the prompt
+        if row.calls and row.prompt_tokens_billed > row.context_tokens_est:
+            overhead = row.prompt_tokens_billed - row.context_tokens_est
+            row.context_tokens_est += overhead
+            row.billed_tokens["system"] = row.billed_tokens.get("system", 0) + overhead
         rows.append(row)
     con.close()
     return rows

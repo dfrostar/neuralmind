@@ -57,6 +57,7 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
     sidechain = False
     first_ts: float | None = None
     last_ts: float | None = None
+    overhead: int | None = None  # prompt the transcript doesn't hold, from the first billed call
     with path.open() as fh:
         for line in fh:
             try:
@@ -64,6 +65,11 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
             except json.JSONDecodeError:
                 continue
             kind = o.get("type")
+            if kind == "attachment" and ctx is not None:
+                # system-reminders injected into the next user turn (CLAUDE.md, hook output, …)
+                for part in o.get("rendered") or []:
+                    _add_user_text(ctx, tok, str((part or {}).get("content", "")))
+                continue
             if kind not in ("user", "assistant"):
                 continue
             ts = _ts(o.get("timestamp"))
@@ -93,13 +99,23 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                 req = str(o.get("requestId") or msg.get("id") or o.get("uuid"))
                 if req not in seen_requests:
                     seen_requests.add(req)
-                    ctx.call()
                     usage = msg.get("usage") or {}
-                    row.prompt_tokens_billed += (
+                    billed = (
                         (usage.get("input_tokens") or 0)
                         + (usage.get("cache_read_input_tokens") or 0)
                         + (usage.get("cache_creation_input_tokens") or 0)
                     )
+                    if billed:
+                        # The provider's count is the context size at this call. The first
+                        # call fixes the overhead (system prompt, tool schemas); later calls
+                        # that bill less than the transcript holds were trimmed, oldest first.
+                        if overhead is None:
+                            overhead = max(0, billed - ctx.present_total)
+                        ctx.cap(max(0, billed - overhead))
+                        ctx.call(overhead)
+                    else:
+                        ctx.call()
+                    row.prompt_tokens_billed += billed
                     row.output_tokens_billed += usage.get("output_tokens") or 0
                     row.model = row.model or msg.get("model")
                 for b in content if isinstance(content, list) else []:
