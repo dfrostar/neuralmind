@@ -122,30 +122,30 @@ tokens on every call, which the report shows as its own column.
 
 For one developer's Claude Code sessions (the
 [first field report](https://github.com/dfrostar/neuralmind/blob/main/bench/exploration-share/2026-11-01/README.md):
-88 interactive sessions, 2026-10-02 to 2026-11-01, pass 5), in the layout the
+90 interactive sessions, 2026-10-02 to 2026-11-01, pass 6), in the layout the
 command prints. Yours will differ:
 
 ```text
 Exploration share of the token bill
 Sessions started 2026-10-02 to 2026-11-01 (last 30 days). Claude Code: read; Hermes: not found.
 
-Sessions: 88
+Sessions: 90
 
 Exploration share (reading and searching code):
 
 Agent / source             Sessions  API calls  Exploration of context  of billed prompt  Median session
 -------------------------  --------  ---------  ----------------------  ----------------  --------------
-claude-code / interactive        88     12,540                   30.7%             19.7%           21.1%
+claude-code / interactive        90     13,236                   29.6%             19.0%           20.4%
 
 What else the recorded context holds, and how much of the bill it covers:
 
 Agent / source             Prompt tokens billed  Recorded / billed  NeuralMind block  Edits  Other shell
 -------------------------  --------------------  -----------------  ----------------  -----  -----------
-claude-code / interactive         3,736,688,230              64.0%              0.0%   4.5%        14.8%
+claude-code / interactive         3,900,183,630              64.2%              0.0%   4.5%        15.0%
 
 Pre-registered reading (interactive sessions, share of recorded context):
 
-  claude-code/interactive (88 sessions): 30% or more: a material part of the bill
+  claude-code/interactive (90 sessions): 10% to 30%: the claim stands with the share beside it
 
 Tokenizer: o200k_base
 ```
@@ -218,18 +218,18 @@ report has no per-project breakdown, because that would print project names.
   on them), and the Hermes database path is passed to SQLite as a percent-encoded
   URI, so a `?`, `#` or `%` in it can't end it early. Neither changes a figure on
   the machines the field report ran on.
-- **Definitions are unchanged.** The collectors are the code of the spec's pass 5,
+- **Definitions are unchanged.** The collectors are the code of the spec's pass 6,
   and the spec's pointers to the code now name `neuralmind/measure/`.
 
 ### Limits
 
 - Presence after a compaction is modelled from the flags the agents keep, and
   the numerator's tokenizer is not the provider's. The first field report's
-  Claude Code sessions are accounted for to 64.0% of their bill, and the
+  Claude Code sessions are accounted for to 64.2% of their bill, and the
   shares are stated with that beside them.
 - The first field report is one developer's two machines. Its Claude Code figure
-  (30.7% of the context, 19.7% of the billed prompt) and its Hermes figure
-  (10.4%) both sit within a few points of a threshold, so they are not a
+  (29.6% of the context, 19.0% of the billed prompt) and its Hermes figure
+  (10.5%) both sit within a few points of a threshold, so they are not a
   finding about the thresholds, and not a result for your sessions.
 - A session still running when you run the command is included as far as it has
   got.

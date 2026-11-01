@@ -269,8 +269,8 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   default; aggregates only on stdout; exit 2 when no session started in the
   window). `evals/exploration_share/` re-exports the same modules, and the
   nightly job's commands are unchanged. On the Mac's own Claude Code and Hermes
-  sessions started 2026-10-02 to 2026-10-25 (62 Claude Code and 649 Hermes sessions,
-  characters ÷ 4), the moved code (pass 5, `6c284c69`) wrote rows byte-identical to
+  sessions started 2026-10-02 to 2026-10-25 (90 Claude Code, nested subagent transcripts included, and 649 Hermes
+  sessions, characters ÷ 4), the moved code (pass 6, `ed6cbe60`) wrote rows byte-identical to
   the code before the move. Additions only: the summary JSON gains
   `exploration_share_of_prompt` per group (the second share the field report
   states, billed exploration tokens over the provider's prompt tokens), and the
