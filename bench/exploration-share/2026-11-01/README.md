@@ -10,6 +10,13 @@ started 2026-10-02T00:00Z up to the run on 2026-11-01 at about 20:40Z; a
 session still active at that moment is deferred to a later run, as the spec's
 pass-3 entry says.
 
+**Re-run pending.** Two fixes from later code review landed after these figures
+were computed: git's global options (`git -C <path> diff`) were not read as
+reading commands, and a session recorded while it was still running is now
+collected again once it has written more. Neither has been re-run on either
+machine, so the pass 4 figures below stand until one is; the spec's change log
+(review 3) gives the direction of each.
+
 ## Result (pass 4)
 
 Two shares are reported for exploration, because they answer different
@@ -108,5 +115,6 @@ python -m evals.exploration_share report --rows rows.jsonl --out-json summary.js
 `tests/test_exploration_share.py` fixes the presence model on synthetic
 sessions. On ai-9970 the Hermes cron job `neuralmind-exploration-share`
 (no-agent script, 02:30 UTC daily) appends new sessions to
-`~/nm-bench/tracks/t2-exploration-share/sessions.jsonl` and regenerates the
-summary; the Mac is re-run by hand.
+`~/nm-bench/tracks/t2-exploration-share/sessions.jsonl` (replacing the row of
+a session that has written since) and regenerates the summary; the Mac is
+re-run by hand.

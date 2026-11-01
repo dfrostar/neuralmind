@@ -26,6 +26,12 @@ READ_ONLY_GIT = frozenset(
     "log show diff status blame grep ls-files ls-tree rev-parse branch remote describe "
     "shortlog name-rev cat-file merge-base rev-list tag worktree reflog".split()
 )
+# `git [-C <path>] [-c <name>=<value>] [--git-dir <path>] ... <command>`: global options
+# that take their operand as the next word, so it isn't mistaken for the subcommand.
+# (`--git-dir=<path>` and the other `=` forms are one word and fall under "starts with -".)
+GIT_OPTIONS_WITH_OPERAND = frozenset(
+    "-C -c --git-dir --work-tree --namespace --super-prefix --config-env --attr-source".split()
+)
 # words skipped before the command proper
 PREFIX_WORDS = frozenset("sudo time nohup command builtin exec".split())
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -108,13 +114,27 @@ def shell_is_readonly(command: str | None) -> bool:
     return True
 
 
+def _git_subcommand(words: list[str]) -> tuple[str, list[str]] | None:
+    """The subcommand and its arguments, past git's global options; None when there is none."""
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w in GIT_OPTIONS_WITH_OPERAND:
+            i += 2
+        elif w.startswith("-"):
+            i += 1
+        else:
+            return w, words[i + 1 :]
+    return None
+
+
 def _git_is_readonly(words: list[str]) -> bool:
     """`git <sub> …` with a subcommand that only reads, in a form that only reads:
     `branch`, `tag` and `remote` mutate when given a name, `worktree` unless `list`."""
-    i = next((k for k, w in enumerate(words) if not w.startswith("-")), None)
-    if i is None:
+    found = _git_subcommand(words)
+    if found is None:
         return True  # `git --version`, `git -C x` and the like
-    sub, rest = words[i], words[i + 1 :]
+    sub, rest = found
     if sub not in READ_ONLY_GIT:
         return False
     positional = [w for w in rest if not w.startswith("-")]
