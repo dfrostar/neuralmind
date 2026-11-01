@@ -37,6 +37,7 @@ from __future__ import annotations
 import json
 import re
 import statistics
+from datetime import date
 from pathlib import Path
 
 from tests.test_docs_claims import (
@@ -1215,6 +1216,260 @@ def test_site_reports_the_task_outcome_pilot() -> None:
         if (m := STALE_OUTCOME_DISCLOSURE_RE.search(lines[i]))
     ]
     assert not violations, STALE_OUTCOME_REASON + "\n  " + "\n  ".join(violations)
+
+
+# ---------------------------------------------------------------------------
+# The exploration-share field report: what share of an agent's billed prompt is
+# code being read or searched. One developer's two machines, a field report and
+# nothing stronger, and within a few points of a pre-registered threshold on
+# both interactive rows. /benchmark renders it from the two committed summary
+# files through lib/evidence (which also checks them against the claims.json
+# entry); these tests recompute every quoted figure from the files without that
+# module, so neither reading can drift from the data or from the other.
+# ---------------------------------------------------------------------------
+
+SHARE_DIR = REPO_ROOT / "bench" / "exploration-share" / "2026-11-01"
+SHARE_SOURCE = "bench/exploration-share/2026-11-01/README.md"
+SHARE_SPEC = "docs/specs/EXPLORATION-SHARE-SPEC.md"
+BENCHMARK_PAGE = SITE_ROOT / "app" / "benchmark" / "page.tsx"
+EVIDENCE_TS = SITE_ROOT / "lib" / "evidence.ts"
+
+
+def _share_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == SHARE_SOURCE]
+    assert (
+        len(entries) == 1
+    ), f"site/claims.json must carry exactly one entry for the exploration-share field report (source {SHARE_SOURCE})"
+    return entries[0]
+
+
+def _share_group(summary: str, key: str, *, suffix: str = "") -> dict:
+    path = SHARE_DIR / f"{summary}.summary{suffix}.json"
+    return json.loads(path.read_text(encoding="utf-8"))["groups"][key]
+
+
+def _pct1(fraction: float) -> float:
+    return round(fraction * 100, 1)
+
+
+def test_exploration_share_entry_is_a_field_report() -> None:
+    entry = _share_entry()
+    assert entry["evidence"] == "field-report"
+    assert "field-report" in _claims()["_evidence_levels"]
+    assert entry["spec"] == SHARE_SPEC
+    assert (REPO_ROOT / SHARE_SOURCE).is_file() and (REPO_ROOT / SHARE_SPEC).is_file()
+    assert entry["reproduce"].startswith("python -m evals.exploration_share ")
+    assert "one developer" in entry["claim"]
+    # The claim text is quoted in the ledger: every percentage in it is a figure.
+    f = entry["figures"]
+    quoted = {
+        f["claude_code_interactive"]["share_of_billed_prompt_pct"],
+        f["claude_code_interactive"]["share_of_recorded_context_pct"],
+        f["hermes_interactive"]["share_of_billed_prompt_pct"],
+    }
+    assert {float(x) for x in re.findall(r"(\d+\.\d+)%", entry["claim"])} == quoted
+    assert str(f["claude_code_interactive"]["sessions"]) in entry["claim"]
+    assert str(f["hermes_interactive"]["sessions"]) in entry["claim"]
+    assert f"{f['since']} to {f['until']}" in entry["claim"]
+
+
+def test_exploration_share_figures_match_the_committed_summaries() -> None:
+    """Every figure /benchmark renders for the field report, recomputed from the summaries."""
+    f = _share_entry()["figures"]
+    cc = _share_group("claude-code", "claude-code/interactive")
+    hi = _share_group("hermes", "hermes/interactive")
+    hb = _share_group("hermes", "hermes/benchmark")
+
+    for quoted, group in ((f["claude_code_interactive"], cc), (f["hermes_interactive"], hi)):
+        exploration = group["billed_tokens"]["exploration"]
+        assert group["sessions"] == quoted["sessions"]
+        assert group["prompt_tokens_billed"] == quoted["billed_prompt_tokens"]
+        # The spec's headline: exploration over the recorded (estimated) context. The
+        # summary calls it exploration_share_billed; recompute it from the tokens.
+        assert (
+            _pct1(exploration / group["context_tokens_est"])
+            == quoted["share_of_recorded_context_pct"]
+        )
+        assert _pct1(group["exploration_share_billed"]) == quoted["share_of_recorded_context_pct"]
+        # The same exploration over what the provider billed.
+        assert (
+            _pct1(exploration / group["prompt_tokens_billed"])
+            == quoted["share_of_billed_prompt_pct"]
+        )
+        assert _pct1(group["exploration_share_median_session"]) == quoted["median_session_pct"]
+        assert (
+            _pct1(group["context_tokens_est"] / group["prompt_tokens_billed"])
+            == quoted["calibration_pct"]
+        )
+        assert _pct1(group["calibration_est_over_billed"]) == quoted["calibration_pct"]
+        assert group["tokenizers"] == [f["tokenizer"]]
+
+    # Hermes bills per session, so its estimate is calibrated to billing and its two shares coincide.
+    assert (
+        f["hermes_interactive"]["share_of_recorded_context_pct"]
+        == f["hermes_interactive"]["share_of_billed_prompt_pct"]
+    )
+    # The benchmark harness is reported beside the interactive rows and never pooled into them.
+    assert hb["sessions"] == f["hermes_benchmark"]["sessions"]
+    assert (
+        _pct1(hb["exploration_share_billed"])
+        == f["hermes_benchmark"]["share_of_recorded_context_pct"]
+    )
+    assert hb["source_group"] == "benchmark" and hi["source_group"] == "interactive"
+
+    # The report prints the same figures, so the page, the entry and the report agree.
+    report = (REPO_ROOT / SHARE_SOURCE).read_text(encoding="utf-8")
+    for quoted in (f["claude_code_interactive"], f["hermes_interactive"]):
+        assert f"{quoted['billed_prompt_tokens']:,}" in report
+        assert f"**{quoted['share_of_recorded_context_pct']}%**" in report
+        assert f"**{quoted['share_of_billed_prompt_pct']}%**" in report
+        assert f"{quoted['median_session_pct']}%" in report
+        assert f"{quoted['calibration_pct']}%" in report
+    assert f"{f['hermes_benchmark']['share_of_recorded_context_pct']}%" in report
+    assert f"# Exploration share of the token bill, {f['since']} to {f['until']}" in report
+    # The page says "30 days"; the window is measured, not typed.
+    assert (date.fromisoformat(f["until"]) - date.fromisoformat(f["since"])).days == 30
+
+
+def test_exploration_share_reading_and_words_follow_the_figures() -> None:
+    """The prose around the table: the band, "N points under/over", "a fifth", "three in ten", history, noise."""
+    f = _share_entry()["figures"]
+    cc, hermes = f["claude_code_interactive"], f["hermes_interactive"]
+    low, high = f["thresholds_pct"]
+
+    def band(share: float) -> str:
+        return (
+            f"under {low}%"
+            if share < low
+            else f"{low}% to {high}%" if share < high else f"{high}% or more"
+        )
+
+    spec = (REPO_ROOT / SHARE_SPEC).read_text(encoding="utf-8")
+    for row in (f"| under {low}% |", f"| {low}% to {high}% |", f"| {high}% or more |"):
+        assert row in spec, f"the spec no longer has the threshold row {row!r}"
+    # The band the page prints is the one each summary's own pre-registered reading names.
+    for summary, key, quoted in (
+        ("claude-code", "claude-code/interactive", cc),
+        ("hermes", "hermes/interactive", hermes),
+    ):
+        readings = json.loads((SHARE_DIR / f"{summary}.summary.json").read_text(encoding="utf-8"))[
+            "reading"
+        ]
+        assert readings[key].startswith(band(quoted["share_of_recorded_context_pct"])), key
+        # "... and its billed-prompt share is in the same band"
+        assert band(quoted["share_of_billed_prompt_pct"]) == band(
+            quoted["share_of_recorded_context_pct"]
+        )
+
+    # "within a few points of a threshold", and how far, from the figures the page prints.
+    assert abs(cc["share_of_recorded_context_pct"] - high) <= 3
+    assert abs(hermes["share_of_recorded_context_pct"] - low) <= 3
+    assert round(abs(cc["share_of_recorded_context_pct"] - high), 1) == 0.4
+    assert round(abs(hermes["share_of_recorded_context_pct"] - low), 1) == 0.5
+    assert (
+        cc["share_of_recorded_context_pct"] < high
+    ), "the Mac reads under the line (the page says so)"
+    assert hermes["share_of_recorded_context_pct"] > low
+    # "about a fifth of what these sessions were billed for ... about three in ten of the context".
+    assert abs(cc["share_of_billed_prompt_pct"] / 100 - 1 / 5) <= 0.03
+    assert abs(cc["share_of_recorded_context_pct"] / 100 - 3 / 10) <= 0.03
+    # "the Claude Code headline has read 27.4%, 30.6%, 30.7%, 29.6%, on both sides of the line".
+    history = [
+        _pct1(
+            _share_group("claude-code", "claude-code/interactive", suffix=suffix)[
+                "exploration_share_billed"
+            ]
+        )
+        for suffix in (".pass3", ".pass4", ".pass5", "")
+    ]
+    assert history == f["claude_code_headline_by_pass_pct"]
+    assert min(history) < high < max(history)
+    report_text = " ".join((REPO_ROOT / SHARE_SOURCE).read_text(encoding="utf-8").split())
+    for share in history:
+        assert f"{share}%" in report_text
+    # The two figures about noise are the spec's and the report's own words, not ours.
+    effect = f["classifier_effect_points"]
+    spec_text = " ".join(spec.split())
+    assert f"{effect['recorded_context']:.2f} and {effect['billed_prompt']:.2f} points" in spec_text
+    rules = f["session_rule_sensitivity_pct"]
+    for value in rules.values():
+        assert f"{value:.2f}%" in spec_text and f"{value:.2f}%" in report_text
+    assert round(max(rules.values()) - min(rules.values())) == 1, "the page says 'about a point'"
+    assert "about a point" in report_text
+    # "counts each file as a session, as the spec defines one"
+    assert "one transcript file is one session" in spec_text
+
+
+def test_benchmark_page_renders_the_exploration_share() -> None:
+    page = BENCHMARK_PAGE.read_text(encoding="utf-8")
+    assert "explorationShare" in page
+    assert "What share of a bill is exploration" in page
+    start = page.index('id="exploration-share"')
+    section = page[start : page.index("</section>", start)]
+
+    # A field report, badged as the entry's level and never a stronger one.
+    assert "<EvidenceBadge level={share.evidence} />" in section
+    assert _share_entry()["evidence"] == "field-report"
+    # Under the task-outcome pilot, before the method.
+    assert page.index('id="task-outcomes"') < start < page.index("{/* Method */}")
+    # The report, the spec and both summaries, as links like the pilot's, with no arrows.
+    for target in ("share.source", "share.spec", "share.dataFiles[0]", "share.dataFiles[1]"):
+        assert f"href={{blob({target})}}" in section, target
+    assert section.count('className="link"') >= 5
+    assert not re.search(r"→|&rarr;|&#8594;|›|&rsaquo;", section)
+    # What the section has to say beside the numbers.
+    for phrase in (
+        "Not usage",
+        "never pooled",
+        "not a saving",
+        "Read it as a field report",
+        "within a few points",
+    ):
+        assert phrase in section, phrase
+    for figure in (
+        "claudeCode.calibration",
+        "claudeCodeInWords.ofBilled",
+        "claudeCodeInWords.ofContext",
+        "benchmark.ofContext",
+        "standing",
+        "headlineByPass",
+        "classifierEffect",
+        "sessionRuleSpread",
+        "Both are within noise",
+    ):
+        assert figure in section, figure
+    # The metadata description names the new section.
+    meta = page[page.index("description:") : page.index("keywords:")]
+    assert "exploration" in meta
+
+
+def test_exploration_share_figures_are_never_retyped_on_the_site() -> None:
+    f = _share_entry()["figures"]
+    rendered = BENCHMARK_PAGE.read_text(encoding="utf-8") + EVIDENCE_TS.read_text(encoding="utf-8")
+    for key, quoted in (
+        ("claude_code_interactive", f["claude_code_interactive"]),
+        ("hermes_interactive", f["hermes_interactive"]),
+    ):
+        for name in (
+            "share_of_recorded_context_pct",
+            "share_of_billed_prompt_pct",
+            "median_session_pct",
+            "calibration_pct",
+        ):
+            literal = f"{quoted[name]:.1f}"
+            assert (
+                literal not in rendered
+            ), f"{key}.{name} ({literal}) is typed into the site source; render it from explorationShare"
+        assert f"{quoted['billed_prompt_tokens']:,}" not in rendered
+    assert f"{f['hermes_benchmark']['share_of_recorded_context_pct']:.1f}" not in rendered
+    for earlier in f["claude_code_headline_by_pass_pct"][:-1]:
+        assert (
+            f"{earlier:.1f}" not in rendered
+        ), f"{earlier} (an earlier pass) is typed into the site"
+    for name in ("recorded_context", "billed_prompt"):
+        assert f"{f['classifier_effect_points'][name]:.2f}" not in rendered
+    for value in f["session_rule_sensitivity_pct"].values():
+        assert f"{value:.2f}" not in rendered
 
 
 # Spend framing the pilot contradicts: it measured cost per task with and
