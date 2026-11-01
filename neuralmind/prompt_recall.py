@@ -51,6 +51,21 @@ prompts, a leading file was the one to fix in 7 of the 9 where it held,
 against 10 of 20 for the top file overall. ``NEURALMIND_RECALL_EXCERPT=0``
 turns the excerpt off.
 
+**Lexical anchoring** (opt-in, ``NEURALMIND_RECALL_LEXICAL=1``). The prompt's
+exact identifiers (backticked and quoted spans, ``--flags``, snake_case,
+CamelCase and UPPER_CASE names) are looked up in the working tree's indexed
+source with one ``git grep -F`` call, and each file found gets ``LEXICAL_WEIGHT``
+times the sum, over the identifiers in it, of ``1 / ln(1 + files holding the
+identifier)``, added to its summed match score through its own file node. So a
+file no embedding hit is in can still be named: on the hermes-agent held-out
+tasks the file to fix was among the hits on 4 of 12, while the exact strings
+the prompt quoted were in it on 6 of 12
+(``docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md``, 2026-11-01). Test files give no
+lexical evidence unless the prompt names a test; an identifier in more than
+``LEXICAL_MAX_FILES`` files is dropped as uninformative. The build's BM25 index
+isn't used: it holds symbol names and docstrings, and the identifiers that find
+a file are mostly string literals and constants.
+
 When none of a prompt's matches is code (a book, a docs repository, or a
 question only the docs answer), its document matches are the main list
 instead. Nothing here writes to the index.
@@ -61,6 +76,8 @@ from __future__ import annotations
 import math
 import os
 import re
+import subprocess
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -108,6 +125,32 @@ TESTED_CODE_CREDIT = 1.0
 EXCERPT_MARGIN = 2.0
 # Lines of the leading symbol's code to show, from its first line.
 EXCERPT_LINES = 40
+# Lexical anchoring, opt-in (see the module docstring and the 2026-11-01
+# entry in docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md, which fixed these
+# before any of it was measured).
+LEXICAL_ENV = "NEURALMIND_RECALL_LEXICAL"
+# What one unit of lexical evidence is worth on the embedding scale: an
+# identifier found in one file scores 1 / ln 2 = 1.44, so at 0.5 it counts as
+# one strong match (0.72). Chosen from {0.25, 0.5, 1.0} on the pilot's 20 tasks
+# and the hermes-agent screen's 5, before the held-out replay.
+LEXICAL_WEIGHT = 0.5
+# An identifier in more files than this says nothing about which one.
+LEXICAL_MAX_FILES = 60
+# Identifiers looked up per prompt, in order of appearance: bounds the grep
+# and what a pasted traceback can add.
+LEXICAL_MAX_IDENTIFIERS = 24
+# Shorter identifiers are mostly common words.
+LEXICAL_MIN_LEN = 4
+# A quoted span this long is a message or a value, not an apostrophe's doing.
+LEXICAL_QUOTE_MIN = 8
+# The greps' shared time limit, in seconds: an identifier still being looked
+# up when it runs out gives no evidence.
+LEXICAL_TIMEOUT = 10.0
+# Identifiers looked up at once. git grep stops at a file's first match, so a
+# call per identifier beats one call with every pattern, which git matches
+# pattern by pattern on every line (16 identifiers on hermes-agent's 20,000
+# files: 1.9 s on a pool of four against 10 s combined, M3, 2026-11-01).
+LEXICAL_WORKERS = 4
 # Control characters, including line and paragraph separators: a path or label
 # containing one could otherwise forge extra lines in the injected block.
 _CONTROL_RUN = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029]+")
@@ -133,6 +176,33 @@ _TEST_IDENT = re.compile(r"\btest_\w|\w_tests?\b|\b[A-Za-z]\w*[a-z0-9]Tests?\b")
 _PATH_TOKEN = re.compile(r"[\w.-]*[/\\][\w./\\-]*|[\w-]+\.[A-Za-z]\w*")
 # What a test file's name adds to the name of the code it tests.
 _TEST_AFFIX = re.compile(r"^tests?_|_tests?$|(?<=[a-z0-9])Tests?$")
+# The exact identifiers a prompt quotes. A single-quoted span must start and end
+# at a word's edge, or "doesn't ... user's" would quote the words between.
+_BACKTICKED = re.compile(r"`([^`\n]+)`")
+_QUOTED = re.compile(
+    rf'"([^"`\n]{{{LEXICAL_QUOTE_MIN},}}?)"|(?<!\w)\'([^\'`\n]{{{LEXICAL_QUOTE_MIN},}}?)\'(?!\w)'
+)
+# Words inside a quoted span that look like identifiers: letters, digits, _ - .
+_SPAN_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_\-.]{3,}")
+_FLAG = re.compile(r"(?<![\w-])--[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+_SNAKE = re.compile(r"\b_?[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+_CAMEL = re.compile(r"\b[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+\b")
+_UPPER = re.compile(r"\b[A-Z][A-Z0-9_]{3,}\b")
+# Words a prompt is phrased with, and the task-outcome benchmark's instruction,
+# that name no particular file. Repository names aren't listed: a word in
+# more than LEXICAL_MAX_FILES files is dropped anyway.
+_LEXICAL_STOP = frozenset("""
+    python pytest tests test testing json yaml file files path paths project projects
+    error errors command commands option options default value values string strings
+    line lines list lists return returns true false none null empty output input
+    config settings setting run runs running result results call calls code index
+    store data name names type types check checks message messages number user users
+    time times case cases example agent session sessions gateway model tool tools
+    function functions method methods class classes module modules repository
+    source fix bug issue change changes version http https www
+    """.split())
+# A file's own node id, as the built-in generator derives it from the path.
+_NON_ID = re.compile(r"[^A-Za-z0-9]")
 
 
 @dataclass
@@ -169,6 +239,10 @@ class PromptRecall:
     linked_ids: list[str] = field(default_factory=list)
     code: bool = True
     excerpt: Excerpt | None = None
+    # Lexical anchoring, when it's on: the identifiers looked up and the
+    # lexical score of each file they were found in (before LEXICAL_WEIGHT).
+    identifiers: list[str] = field(default_factory=list)
+    lexical: dict[str, float] = field(default_factory=dict)
 
     @property
     def count(self) -> int:
@@ -225,7 +299,17 @@ def recall(mind: Any, prompt: str) -> PromptRecall:
     test_slot = tests_last and bool(_TEST_PROMPT.search(prompt))
     if tests_last and TESTED_CODE_CREDIT > 0:
         _credit_tested_code(code, info, nodes)
-    result = PromptRecall(similarity=0.0 if similarity is None else similarity, code=bool(code))
+    identifiers: list[str] = []
+    lexical: dict[str, float] = {}
+    if lexical_enabled():
+        identifiers = extract_identifiers(prompt)
+        lexical = _anchor_lexical(mind, identifiers, code, info, nodes, tests_last)
+    result = PromptRecall(
+        similarity=0.0 if similarity is None else similarity,
+        code=bool(code),
+        identifiers=identifiers,
+        lexical=lexical,
+    )
     primary, secondary = (code, other) if code else (other, {})
     result.matches = _by_file(
         primary, info, MATCH_FILES, tests_last=tests_last, test_slot=test_slot
@@ -312,6 +396,214 @@ def is_test_path(path: str) -> bool:
         return True
     name = parts[-1]
     return bool(_TEST_STEM.search(name.split(".")[0]) or _TEST_NAME.search(name))
+
+
+def lexical_enabled() -> bool:
+    """Whether lexical anchoring is on (``NEURALMIND_RECALL_LEXICAL=1``); off by default."""
+    return os.environ.get(LEXICAL_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def extract_identifiers(prompt: str) -> list[str]:
+    """The exact identifiers a prompt quotes, in order of appearance, deduplicated.
+
+    Each backticked span and each quoted span of ``LEXICAL_QUOTE_MIN``
+    characters or more counts whole, and so does each identifier-like word in
+    it; ``--flags``, snake_case, CamelCase and UPPER_CASE names count anywhere.
+    Common words (``_LEXICAL_STOP``), URLs and anything shorter than
+    ``LEXICAL_MIN_LEN`` are dropped, and the list is cut at
+    ``LEXICAL_MAX_IDENTIFIERS``.
+    """
+    found: list[tuple[int, str]] = []
+    spans = [(m.start(1), m.group(1)) for m in _BACKTICKED.finditer(prompt)]
+    # Quotes inside a backticked span (a JSON value, say) would otherwise pair
+    # with a later quote in the prose: blank those spans before pairing.
+    prose = _BACKTICKED.sub(lambda m: " " * len(m.group(0)), prompt)
+    for match in _QUOTED.finditer(prose):
+        group = 1 if match.group(1) is not None else 2
+        spans.append((match.start(group), match.group(group)))
+    for start, span in spans:
+        if span.lstrip().lower().startswith(("http://", "https://")):
+            continue
+        words = [(start + m.start(), m.group(0)) for m in _SPAN_WORD.finditer(span)]
+        # A span of common words alone ("the config file") names nothing.
+        if any(_keep(word) for _, word in words):
+            found.append((start, span.strip()))
+            found.extend(words)
+    for pattern in (_FLAG, _SNAKE, _CAMEL, _UPPER):
+        found.extend((m.start(), m.group(0)) for m in pattern.finditer(prompt))
+    out: list[str] = []
+    seen: set[str] = set()
+    for _, token in sorted(found, key=lambda item: item[0]):
+        token = token.strip().strip(".,;:")
+        if token in seen or not _keep(token):
+            continue
+        seen.add(token)
+        out.append(token)
+        if len(out) == LEXICAL_MAX_IDENTIFIERS:
+            break
+    return out
+
+
+def _keep(token: str) -> bool:
+    """Whether an extracted token is worth looking up."""
+    low = token.strip().strip(".,;:").lower()
+    return (
+        len(low) >= LEXICAL_MIN_LEN
+        and low not in _LEXICAL_STOP
+        and not low.startswith(("http://", "https://"))
+        and "\n" not in low
+    )
+
+
+def lexical_file_scores(
+    matches: dict[str, set[str]], max_files: int = LEXICAL_MAX_FILES
+) -> dict[str, float]:
+    """Each file's lexical score: the sum over the identifiers in it of ``1 / ln(1 + files)``.
+
+    ``matches`` maps an identifier to the eligible files holding it. An
+    identifier in more than ``max_files`` files says nothing about which one
+    and is dropped. Strongest file first.
+    """
+    scores: dict[str, float] = {}
+    for files in matches.values():
+        if not files or len(files) > max_files:
+            continue
+        weight = 1.0 / math.log(1 + len(files))
+        for path in files:
+            scores[path] = scores.get(path, 0.0) + weight
+    return dict(sorted(scores.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
+def _anchor_lexical(
+    mind: Any,
+    identifiers: list[str],
+    code: dict[str, float],
+    info: dict[str, dict],
+    nodes: dict[str, dict],
+    tests_last: bool,
+) -> dict[str, float]:
+    """Add each lexically matched file to ``code`` through its file node; return the lexical scores.
+
+    The files are the indexed code files in the project's working tree that
+    hold an identifier (``_grep_files``), less the test files when the prompt
+    names no test. A file's own node (the built-in generator derives its id
+    from the path; otherwise the node labelled with the file's name) carries
+    the evidence, so ``_by_file`` sums it with the file's matches and the file
+    is named without a symbol when nothing else matched in it. Fails open to
+    no evidence.
+    """
+    if not identifiers:
+        return {}
+    project = str(getattr(mind, "project_path", "") or "")
+    if not project:
+        return {}
+    try:
+        raw = _grep_files(project, identifiers, _code_suffixes())
+    except Exception:
+        return {}
+    if not raw:
+        return {}
+    indexed = _IndexedFiles(nodes)
+    matches: dict[str, set[str]] = {}
+    for identifier, files in raw.items():
+        kept = {
+            path
+            for path in files
+            if indexed.node_of(path) is not None and not (tests_last and is_test_path(path))
+        }
+        if kept:
+            matches[identifier] = kept
+    scores = lexical_file_scores(matches)
+    for path, score in scores.items():
+        node_id = indexed.node_of(path)
+        if node_id is None:  # pragma: no cover - filtered above
+            continue
+        info.setdefault(node_id, nodes.get(node_id) or {"id": node_id, "source_file": path})
+        code[node_id] = max(code.get(node_id, 0.0), 0.0) + LEXICAL_WEIGHT * score
+    return scores
+
+
+class _IndexedFiles:
+    """Which files the graph holds code nodes for, and each file's own node id.
+
+    The built-in generator's file node id is the path with every other
+    character as ``_``, lowercased (``src/a.py`` -> ``src_a_py``): an O(1)
+    lookup. A graph that names files otherwise gets one pass over its nodes,
+    made only when that lookup misses.
+    """
+
+    def __init__(self, nodes: dict[str, dict]):
+        self._nodes = nodes
+        self._by_path: dict[str, str | None] | None = None
+
+    def node_of(self, path: str) -> str | None:
+        guess = _NON_ID.sub("_", path).lower()
+        node = self._nodes.get(guess)
+        if node is not None and _path(node) == path:
+            return guess
+        if self._by_path is None:
+            self._by_path = {}
+            for node_id, node in self._nodes.items():
+                file = _path(node)
+                if not file or not is_code_node(node):
+                    continue
+                # The file's own node is labelled with its name; else any code node in it.
+                if node.get("label") == os.path.basename(file) or file not in self._by_path:
+                    self._by_path[file] = node_id
+        return self._by_path.get(path)
+
+
+def _code_suffixes() -> set[str]:
+    """Every suffix the index treats as code, with the dot."""
+    from .graphgen import _CODE_SUFFIXES
+    from .ir import CODE_SCOPE_EXTENSIONS
+
+    return {s if s.startswith(".") else "." + s for s in (*CODE_SCOPE_EXTENSIONS, *_CODE_SUFFIXES)}
+
+
+def _grep_files(project: str, identifiers: list[str], suffixes: set[str]) -> dict[str, set[str]]:
+    """The tracked files of ``project`` holding each identifier, by exact substring.
+
+    One ``git grep -l -F`` per identifier over the files with a code suffix,
+    ``LEXICAL_WORKERS`` at a time, all under ``LEXICAL_TIMEOUT`` together. A
+    project that isn't a git work tree, a missing git, or an identifier whose
+    grep runs past the deadline gives no files.
+    """
+    if not identifiers:
+        return {}
+    from concurrent.futures import ThreadPoolExecutor
+
+    pathspec = sorted(f"*{suffix}" for suffix in suffixes)
+    deadline = time.monotonic() + LEXICAL_TIMEOUT
+
+    def files_of(identifier: str) -> set[str]:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return set()
+        try:
+            proc = subprocess.run(
+                ["git", "grep", "-I", "-l", "-z", "-F", "-e", identifier, "--", *pathspec],
+                cwd=project,
+                capture_output=True,
+                timeout=remaining,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return set()
+        # 1 is "no match"; anything past that is an error (not a repository, say).
+        if proc.returncode != 0:
+            return set()
+        return {
+            part.decode("utf-8", "replace").replace("\\", "/")
+            for part in proc.stdout.split(b"\0")
+            if part
+        }
+
+    with ThreadPoolExecutor(max_workers=min(LEXICAL_WORKERS, len(identifiers))) as pool:
+        found = pool.map(files_of, identifiers)
+    return {
+        identifier: files for identifier, files in zip(identifiers, found, strict=True) if files
+    }
 
 
 def _credit_tested_code(
