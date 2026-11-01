@@ -205,6 +205,20 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   review 3's classifier; with review 3's `git -C` fix, 24 flip to exploration
   and 7 to shell against pass 4's. What those calls' output adds in tokens has
   not been measured, and the summaries are still pass 4's. Thresholds unchanged.
+- **2026-11-01, pass 5: the review-3 and review-4 fixes, re-run from scratch on
+  both machines.** Pass 4's summaries are kept as `*.pass4.*`. Claude Code
+  interactive (88 sessions): 30.72% of recorded context, 19.67% of billed
+  prompt, median session 21.1%; Hermes interactive (67 sessions): 10.42%,
+  median 5.4%. What the fixes carry in tokens, measured: the pass-4 and the
+  pass-5 classifier run on the same 87 Mac sessions give 30.66% / 19.62% and
+  30.69% / 19.64%, so all the classifier and collector changes since pass 4
+  together move the pooled shares by 0.03 and 0.02 points. The movement
+  between passes comes from which sessions a run can read (a session still
+  writing when its file is read is deferred; others kept growing between
+  runs), about half a point on the headline. The Mac's headline is 0.7 points
+  over the "30% or more" threshold and Hermes interactive 0.4 points over the
+  10% line; the report says both are within noise of the line. Thresholds
+  unchanged.
 
 ## Outputs
 
