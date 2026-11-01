@@ -356,6 +356,36 @@ code, pre, kbd, samp {
     opacity: 1;
 }
 
+/* The code graph that condenses out of the liquid
+   (components/ui/CondensingGraph.tsx). It covers the first screen only,
+   painted over the liquid at the same z-index, and fades out before the
+   content below. Across the middle, where the page's text runs, it is at
+   half strength, so the graph shows mostly in the margins. Its colours are
+   capped like the liquid's, so neither mask is what keeps text at AA. */
+
+.condensing-graph {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: min(110vh, 1000px);
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 600ms var(--ease-out);
+    mask-image:
+        linear-gradient(to bottom, #000 40%, transparent 100%),
+        linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0.5) 75%, #000 100%);
+    mask-composite: intersect;
+    -webkit-mask-image:
+        linear-gradient(to bottom, #000 40%, transparent 100%),
+        linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0.5) 75%, #000 100%);
+    -webkit-mask-composite: source-in;
+}
+
+.condensing-graph[data-drawn] {
+    opacity: 1;
+}
+
 .section-reveal {
     opacity: 0;
     transform: translateY(12px);

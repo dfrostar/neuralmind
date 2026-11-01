@@ -139,7 +139,8 @@ They take the `carbon-card` fill so the liquid never runs through data.
 A value changes when its source does, over `--dur-short` (140ms) on
 `--ease-out`. No reveal, parallax or hover lift; `transform` and `opacity`
 only, never `transition: all`. Every animation stops under
-`prefers-reduced-motion`. The liquid is the one thing that moves on its own.
+`prefers-reduced-motion`. The liquid, with the graph that condenses out of
+it, is the one thing that moves on its own.
 
 ## The mark — `@/components/ui/Logo`
 
@@ -180,6 +181,27 @@ carries the rule's reasons as constraints:
   sits between them at `z-index: -1`. Panels and wells keep their solid steps
   on top.
 - **Colour.** Read from the `:root` tokens at run time, never repeated.
+
+### The graph — `@/components/ui/CondensingGraph`
+
+Over the first screen, mounted after the liquid at the same `z-index`, ASCII
+particles drift as a gas and condense into a code graph like the one `build`
+makes: modules as clusters of nodes, calls as edges. The solid spreads from
+one node along the edges, the way recall spreads, holds, evaporates, and
+condenses into a new graph every 22 seconds. The gas is `ink`, the solid
+`electric`: amber because, as in the mark, an association NeuralMind learned
+is the person's colour.
+
+It is part of the liquid, so the liquid's constraints apply, with two
+specifics:
+
+- **Contrast.** Each glyph colour is its token dimmed in linear light to at
+  most the liquid's `CAP` (the gas to 0.8 of it). A glyph over the liquid is
+  a mix of two colours under the cap, so it stays under it. The masks that
+  fade it out below the first screen and halve it across the text column
+  are for looks, not for AA.
+- **Cost.** A 2D canvas at 15 frames a second, stopped when the tab is
+  hidden or the layer is off screen.
 
 ## The mascot — The Pair
 

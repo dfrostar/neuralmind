@@ -28,7 +28,7 @@ import { useEffect, useRef } from 'react';
  * Colours are read from the `:root` tokens in globals.css, not repeated here.
  */
 
-const CAP = 0.014;
+export const CAP = 0.014;
 const SCALE = 0.55; // canvas pixels per CSS pixel
 const MAX_SIDE = 1100; // and never wider or taller than this
 
@@ -113,7 +113,7 @@ void main() {
 `;
 
 /** A `#rrggbb` token as linear RGB, which is what the shader mixes in. */
-function tokenLinear(styles: CSSStyleDeclaration, name: string): [number, number, number] {
+export function tokenLinear(styles: CSSStyleDeclaration, name: string): [number, number, number] {
     const hex = styles.getPropertyValue(name).trim().replace('#', '');
     const channel = (i: number) => {
         const c = parseInt(hex.slice(i, i + 2), 16) / 255;
