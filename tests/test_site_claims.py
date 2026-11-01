@@ -1016,6 +1016,109 @@ def test_benchmark_page_renders_the_hermes_pilot() -> None:
     assert "taskOutcomeHermes" in page, "/benchmark no longer renders the Hermes pilot."
 
 
+# The memory track (2026-11-01): the same 20 tasks in a fixed order on Hermes,
+# NeuralMind's learned state carried from task to task against fresh runs. Its
+# figures are held to the committed run the same way.
+
+MEMORY_DIR = REPO_ROOT / "bench" / "task_outcome" / "memory-track"
+MEMORY_SOURCE = "bench/task_outcome/memory-track/report.txt"
+
+
+def _memory_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == MEMORY_SOURCE]
+    assert (
+        len(entries) == 1
+    ), f"site/claims.json must carry exactly one memory-track entry (source {MEMORY_SOURCE})"
+    return entries[0]
+
+
+def _tasks_solved(runs: list[dict], key: str, value: str) -> set[str]:
+    """Tasks most of whose runs solved them; a timed-out run never counts as solved."""
+    solved = [r for r in runs if r[key] == value and r["solved"] and not r["timed_out"]]
+    per_task = {r["task"]: sum(x["task"] == r["task"] for x in solved) for r in solved}
+    return {t for t, n in per_task.items() if n >= 2}
+
+
+def test_memory_track_figures_match_the_committed_run() -> None:
+    """Every figure the site renders for the memory track, recomputed from the run."""
+    entry = _memory_entry()
+    assert entry["evidence"] == "pilot"
+    assert entry["spec"] == "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md"
+    f = entry["figures"]
+    report = (MEMORY_DIR / "report.txt").read_text(encoding="utf-8")
+
+    def load(path: Path) -> list[dict]:
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    runs = load(MEMORY_DIR / "runs.jsonl")
+
+    def grab(pattern: str) -> tuple[str, ...]:
+        m = re.search(pattern, report)
+        assert m, f"report.txt has no line matching {pattern!r}"
+        return m.groups()
+
+    def pair(key: str) -> tuple[str, ...]:
+        return tuple(str(f[key][c]) for c in ("fresh", "carried"))
+
+    *solved, p = grab(
+        r"Tasks solved: fresh (\d+), carried (\d+); only fresh (\d+), "
+        r"only carried (\d+) \(one-sided McNemar p = ([\d.]+)\)"
+    )
+    assert tuple(solved) == pair("tasks_solved") + pair("tasks_solved_by_one_condition_only")
+    assert abs(float(p) - f["mcnemar_p"]) < 0.00005
+    assert grab(r"Solved runs: fresh (\d+), carried (\d+)") == pair("runs_solved")
+    assert grab(r"most blocks name a gold file first: fresh (\d+), carried (\d+)") == pair(
+        "tasks_most_blocks_name_a_gold_file_first"
+    )
+    assert grab(r"median learned edges in (\d+),")[0] == str(f["median_learned_edges_carried_in"])
+    ci = f["tokens_change_ci95"].replace("−", "-")
+    assert grab(r"median change carried (\S+) \(95% CI (\S+) to (\S+), ") == (
+        f["median_tokens_change"].replace("−", "-"),
+        *ci.split(" to "),
+    )
+    assert grab(r"Median minutes per task: fresh ([\d.]+), carried ([\d.]+)") == pair(
+        "median_minutes"
+    )
+    assert grab(r"Median turns per task: fresh ([\d.]+), carried ([\d.]+)") == pair("median_turns")
+    assert grab(r"Claim supported: (\w+)")[0] == ("YES" if f["claim_supported"] else "NO")
+
+    assert len(runs) == f["runs"]
+    assert {r["track"] for r in runs} == {"memory"}
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    carried = [r for r in runs if r["condition"] == "carried"]
+    assert len({r["seed"] for r in carried}) == f["chains"]
+    assert len(runs) - len(carried) == f["fresh_runs_per_task"] * f["tasks"]
+    assert {r["agent"] for r in runs} == {"hermes"}
+    assert {r["model"] for r in runs} == {f["model"]}
+    assert {r["hermes_version"].split()[2] for r in runs} == {f"v{f['hermes']}"}
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind"]}
+    for cond in ("fresh", "carried"):
+        mine = [r for r in runs if r["condition"] == cond]
+        assert sum(bool(r["solved"] and not r["timed_out"]) for r in mine) == f["runs_solved"][cond]
+        assert len(_tasks_solved(runs, "condition", cond)) == f["tasks_solved"][cond]
+
+    # The fresh arm against the Hermes pilot's neuralmind arm, the same condition
+    # two days earlier: context the spec records beside the result.
+    hermes = _tasks_solved(load(HERMES_DIR / "runs.jsonl"), "arm", "neuralmind")
+    assert len(hermes) == f["hermes_pilot_neuralmind_tasks_solved"]
+    assert (
+        len(_tasks_solved(runs, "condition", "carried") & hermes) == f["carried_tasks_among_them"]
+    )
+
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert f"**Harness failures: {f['harness_failures_rerun']}, none recorded.**" in spec
+    assert f"The hook check's {f['hook_check_false_alarms']} false alarms" in spec
+
+
+def test_benchmark_page_renders_the_memory_track() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomeMemory" in page, "/benchmark no longer renders the memory track."
+
+
 def test_site_reports_the_task_outcome_pilot() -> None:
     violations = [
         f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"

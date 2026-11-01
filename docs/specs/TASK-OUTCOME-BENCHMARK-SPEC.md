@@ -650,3 +650,71 @@ drawn by the same rule, that the pilot didn't use.
     one session recap, so a continuous chain's run at position p starts with
     p − 1 of them. `analyze_memory` reports the carried runs where that
     doesn't hold, as runs off their chain.
+- 2026-11-01 — the memory track's hook check, changed before its last 7 runs
+  and before any comparison between its conditions was read. The chain had
+  stopped twice on five harness failures, and none of the ten was one.
+  - **What the check got wrong.** A carried run's hook counts were the
+    workspace's total less the counts of the recaps it carried in. NeuralMind
+    keeps its newest 10 recaps, plus any active in the last 24 hours, and
+    deletes the rest as a session starts. Position 16 started 25 to 26 hours
+    after position 1, so from there each carried run deleted one or two of
+    its chain's oldest recaps: 11 recorded carried runs, at positions 16 to
+    19, hold −1 or −2 prompts. Where the deleted recaps held one prompt and
+    the session recorded one, the difference came to 0, the check's failure.
+    A retry restores the same carried state, so the same run failed the same
+    way: `b4c9886021` chain 0 twice, `7a1c90dcab` chains 2 (twice) and 0, then
+    `7a1c90dcab` chain 1 five times in a row.
+  - **NeuralMind reached all ten.** Each aborted session's first message in
+    `state.db` carries its recap and recall block, and a recap is deleted
+    only when the plugin starts a session.
+  - **The change** (`c750fe40`, on ai-9970's checkout of `e9d7ffec`). Each
+    session writes its own recap file, so the check now leaves out the
+    carried files by name instead of subtracting their counts. Only the abort
+    decision and the recorded `hook_*` counts change: what NeuralMind adds to
+    the prompt and how a run is judged don't. The 4 carried runs after it
+    (positions 19 and 20) record their own session's count, 1 prompt each.
+- 2026-11-01 — the memory track is complete, all 120 runs recorded in
+  `bench/task_outcome/memory-track/` (from 2026-10-30 22:58 to 2026-11-01
+  13:39 UTC). `report.txt` there is `analyze`'s output:
+  - **Result, labelled "pilot": claim not supported.** With the carried
+    state, gpt-oss solved 9 of the 20 tasks (most of a task's 3 runs), and 7
+    fresh. Of the 4 tasks only one condition solved, 3 went to carried
+    (`b06a3ee6af` 2 of 3 runs against 1, `21bd34dfc4` and `108b1ee013` 3
+    against 1) and 1 to fresh (`366858e431`, 3 against 1). One-sided McNemar
+    p = 0.31.
+  - **Solved runs: 25 of 60 carried, 21 of 60 fresh.**
+  - **The fresh arm's own variation is as large.** Not part of the
+    pre-registered comparison, which leaves the Hermes run out: the fresh
+    arm repeats that run's `neuralmind` arm on the same tasks, machine and
+    pins, two days later, and solved 7 tasks to its 10. The 9 carried solved
+    are all among those 10, and so are the 3 only carried solved here.
+  - **Mechanism, reported: no difference.** Tasks where most of the runs'
+    blocks name a gold file: 16 carried, 16 fresh; where most put one first:
+    11 and 11. One run in each condition had no block read back.
+  - **Prediction: held.** Carried solved 5 of the 12 repeat tasks to fresh's
+    3, and 4 of the other 8 to fresh's 4.
+  - **Carry-over check.** The 57 carried runs after position 1 carried in a
+    median 36,222 learned edges, all still in the store after the build,
+    96% of them with both ends in the new graph. None started with nothing
+    learned.
+  - **12 runs "off their chain", none of them broken.** All 12 are the three
+    chains' runs at positions 17 to 20. The check assumed a run at position p
+    starts with p − 1 recaps, which NeuralMind's retention (above) ends: from
+    position 17 a chain carries 11 to 14 of them, not 16 to 19. That is the
+    product as shipped; the learned edges carry whole. Two other checks
+    show the chains unbroken. In 56 of the 57 carried runs after position 1,
+    the block's recap quotes the previous position's task (the 57th is the
+    run with no block). And each chain's final state holds the recaps of
+    exactly its own runs at positions 10 to 20.
+  - **Secondary endpoints, reported, not tested.** Median whole-session
+    tokens per task 2.83M fresh and 3.43M carried; the per-task change is
+    +18.2% (95% CI −2.4% to +28.5%). Median minutes per task 14.7 and 15.8,
+    turns 86.8 and 100.2, tool calls before the first edit 30.2 and 30.8;
+    runs that edited a gold file 44 and 52; one timeout in each.
+  - **Harness failures: 11, none recorded.** The hook check's 10 false
+    alarms above, and one run (`fa72224183`) that Hermes moved to its
+    fallback model, `qwen/qwen3.8-flash`, which the harness caught. All 120
+    recorded sessions ran on `gpt-oss:20b-64k` with Hermes v0.22.5,
+    NeuralMind 4.23.1 (tool and plugin) and harness 2, and all are in
+    `state.db`, so `sessions.json` covers every run. Every fresh run
+    recorded the plugin's prompt hook.
