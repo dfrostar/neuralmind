@@ -14,7 +14,18 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import claims from '../../claims.json';
 import type { EvidenceLevel } from '@/components/ui/EvidenceBadge';
-import { NARRATIVE_FILE_RE, histories, latestNarrative, parseNarrative, parseRecord, type Narrative } from './record';
+import {
+    INTEGRITY_NOTES,
+    NARRATIVE_FILE_RE,
+    histories,
+    isIntegrityFileName,
+    isIntegrityHeading,
+    latestNarrative,
+    latestTs,
+    parseNarrative,
+    parseRecord,
+    type Narrative,
+} from './record';
 
 export const RECORD = claims.longitudinal_record;
 
@@ -42,8 +53,46 @@ export function loadNarratives(dir = path.join(REPO_ROOT, RECORD.narratives)): N
         .map((name) => parseNarrative(name, readFileSync(path.join(dir, name), 'utf8')));
 }
 
+function* walk(dir: string): Generator<string> {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) yield* walk(full);
+        else yield full;
+    }
+}
+
+/**
+ * Fail the build on integrity notes anywhere in the record, not only in the
+ * narratives it reads: a file named for them under the record's directory,
+ * or an integrity heading in any narrative file, `TEMPLATE.md` included.
+ * Everything committed there is public on GitHub whether or not a page
+ * renders it.
+ */
+export function assertNoIntegrityNotes(
+    recordDir = path.join(REPO_ROOT, path.dirname(RECORD.source)),
+    narrativesDir = path.join(REPO_ROOT, RECORD.narratives),
+) {
+    const problems: string[] = [];
+    for (const file of walk(recordDir)) {
+        if (isIntegrityFileName(path.basename(file))) problems.push(`${path.relative(recordDir, file)}: named for integrity notes`);
+    }
+    for (const name of readdirSync(narrativesDir).filter((n) => n.endsWith('.md'))) {
+        readFileSync(path.join(narrativesDir, name), 'utf8')
+            .split('\n')
+            .forEach((line, i) => {
+                if (isIntegrityHeading(line)) problems.push(`${name}:${i + 1}: an integrity heading`);
+            });
+    }
+    if (problems.length) {
+        throw new Error(
+            `Integrity notes are not committed to this public repo; keep them in ${INTEGRITY_NOTES}:\n  ${problems.join('\n  ')}`,
+        );
+    }
+}
+
 /** Everything /performance and /performance/linkedin.txt render, loaded once per build. */
 export function performanceRecord() {
+    assertNoIntegrityNotes();
     const rows = loadRecord();
     const profile = loadProfile();
     const projects = histories(rows);
@@ -58,6 +107,6 @@ export function performanceRecord() {
         narrative: latestNarrative(loadNarratives()),
         evidence: RECORD.evidence as EvidenceLevel,
         /** The newest run the page shows; a withheld row doesn't count. */
-        lastRun: projects.flatMap((p) => p.runs.map((r) => r.row.ts)).sort().at(-1) ?? null,
+        lastRun: latestTs(projects.flatMap((p) => p.runs.map((r) => r.row.ts))),
     };
 }

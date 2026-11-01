@@ -115,15 +115,26 @@ function decimals(value: number): number {
     return dot === -1 ? 0 : text.length - dot - 1;
 }
 
+/** Half a unit in the last place the value is written to, but never finer than `floor` places. */
+const halfUlp = (value: number, floor = 0) => 0.5 * 10 ** -Math.max(floor, decimals(value));
+
 /**
- * Hits implied by a rate over `n` questions, or null when the rate is not a
- * whole count of `n` at the precision it is written to. 0.667 of 12 is 8;
- * 0.625 of 12 is 7.5, which no run produces (0.6 could be 7 of 12, rounded).
+ * The whole numbers of hits out of `n` a rate could have been rounded from, at
+ * the precision it is written to. 0.667 of 12 fits only 8; 0.625 of 12 fits
+ * none (7.5 is no run's count); 0.6 of 50 fits 28 to 32, since each of those
+ * rounds to 0.6.
  */
+export function compatibleHits(rate: number, n: number): number[] {
+    const h = halfUlp(rate);
+    const lo = Math.max(0, Math.ceil((rate - h) * n - 1e-9));
+    const hi = Math.min(n, Math.floor((rate + h) * n + 1e-9));
+    return Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i);
+}
+
+/** The hit count a rate implies, or null unless exactly one count fits it. */
 export function impliedHits(rate: number, n: number): number | null {
-    const hits = Math.round(rate * n);
-    const tolerance = n * 0.5 * 10 ** -decimals(rate) + 1e-9;
-    return Math.abs(rate * n - hits) <= tolerance ? hits : null;
+    const fits = compatibleHits(rate, n);
+    return fits.length === 1 ? fits[0] : null;
 }
 
 /**
@@ -177,19 +188,33 @@ export function validateRow(raw: unknown, where: string): RecordRow {
     if (row.gold_n !== null) {
         for (const key of ['hit_at_1', 'hit_at_5'] as const) {
             const v = row[key];
-            if (v !== null && impliedHits(v, row.gold_n) === null) {
-                fail(where, `${key} ${v} is not a whole number of hits out of gold_n ${row.gold_n}`);
+            if (v === null) continue;
+            const fits = compatibleHits(v, row.gold_n);
+            if (fits.length === 0) fail(where, `${key} ${v} is not a whole number of hits out of gold_n ${row.gold_n}`);
+            // The page prints "k of n · m missed": a rate that fits several
+            // counts would make it pick one.
+            if (fits.length > 1) {
+                fail(
+                    where,
+                    `${key} ${v} fits ${fits[0]}–${fits.at(-1)} hits out of gold_n ${row.gold_n}; write it to more decimal places`,
+                );
             }
         }
     }
-    // The ratio is the baseline over the mean context; when the row has all
-    // three, they must agree to the ratio's one decimal.
-    if (row.ratio_vs_indexed !== null && row.baseline_tok !== null && row.avg_ctx_tok) {
-        const recomputed = row.baseline_tok / row.avg_ctx_tok;
-        if (Math.abs(recomputed - row.ratio_vs_indexed) > 0.051 + row.ratio_vs_indexed * 1e-3) {
+    // The ratio is the baseline over the mean context. neuralmind eval rounds
+    // both the mean and the ratio to one decimal (project_eval.py), so the
+    // recorded ratio must be a rounding of baseline / mean for some mean that
+    // rounds to the recorded one.
+    if (row.ratio_vs_indexed !== null && row.baseline_tok !== null && row.avg_ctx_tok !== null) {
+        if (row.avg_ctx_tok === 0) fail(where, 'avg_ctx_tok is 0, so no ratio can be computed from it; write ratio_vs_indexed: null');
+        const hAvg = halfUlp(row.avg_ctx_tok, 1);
+        const hRatio = halfUlp(row.ratio_vs_indexed, 1);
+        const lo = row.baseline_tok / (row.avg_ctx_tok + hAvg);
+        const hi = row.avg_ctx_tok > hAvg ? row.baseline_tok / (row.avg_ctx_tok - hAvg) : Infinity;
+        if (row.ratio_vs_indexed - hRatio > hi + 1e-9 || row.ratio_vs_indexed + hRatio < lo - 1e-9) {
             fail(
                 where,
-                `ratio_vs_indexed ${row.ratio_vs_indexed} disagrees with baseline_tok / avg_ctx_tok = ${recomputed.toFixed(2)}`,
+                `ratio_vs_indexed ${row.ratio_vs_indexed} disagrees with baseline_tok / avg_ctx_tok = ${(row.baseline_tok / row.avg_ctx_tok).toFixed(2)}`,
             );
         }
     }
@@ -422,6 +447,13 @@ export const INTEGRITY_NOTES = claims.longitudinal_record.integrity_notes;
 
 const BLOCK_RE = /^##\s+([A-Z])\b/;
 const ANY_HEADING_RE = /^\s{0,3}#{1,6}(\s|$)/;
+
+/** A heading that holds integrity notes: a `## D` block, or any heading naming integrity. */
+export const isIntegrityHeading = (line: string) =>
+    ANY_HEADING_RE.test(line) && (/integrity/i.test(line) || /^##\s+D\b/.test(line));
+
+/** A file under the record named for integrity notes, which never belong in this public repo. */
+export const isIntegrityFileName = (name: string) => /integrity/i.test(name);
 const ITEM_RE = /^- \[([a-z]+)\]\s+(.+)$/;
 
 /**
@@ -437,7 +469,7 @@ export function parseNarrative(fileName: string, text: string): Narrative {
     let current: 'A' | 'B' | 'C' | null = null;
     text.split('\n').forEach((line, i) => {
         const where = `${fileName}:${i + 1}`;
-        if (ANY_HEADING_RE.test(line) && (/integrity/i.test(line) || /^##\s+D\b/.test(line))) {
+        if (isIntegrityHeading(line)) {
             fail(where, `integrity notes are not committed to this public repo; keep them in ${INTEGRITY_NOTES}`);
         }
         const block = BLOCK_RE.exec(line);
@@ -478,6 +510,14 @@ export function parseNarrative(fileName: string, text: string): Narrative {
     }
 
     return { month: `${m[1]}-${m[2]}`, site: body(blocks.A), linkedin: body(blocks.B), working };
+}
+
+/**
+ * The latest of some ISO 8601 timestamps, by time rather than by string:
+ * `2026-10-23T00:15:00+02:00` is earlier than `2026-10-22T23:00:00Z`.
+ */
+export function latestTs(timestamps: string[]): string | null {
+    return [...timestamps].sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1) ?? null;
 }
 
 /** The most recent month's narrative, or null when none is committed. */

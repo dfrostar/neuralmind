@@ -45,9 +45,12 @@ or a ratio's baseline without them; a row may leave them out, which reads as
 `null`.
 
 The site build (`site/src/lib/record.ts`) rejects a row that has an unknown or
-missing field, a rate outside 0–1, `hit_at_1` above `hit_at_5` or above `mrr`,
-a hit rate that is not a whole number of hits out of `gold_n`, or a
-`ratio_vs_indexed` that disagrees with `baseline_tok / avg_ctx_tok`.
+missing field, an impossible date, a rate outside 0–1, `hit_at_1` above
+`hit_at_5` or above `mrr`, a hit rate that is no whole number of hits out of
+`gold_n` or is written to too few places to say which one, or a
+`ratio_vs_indexed` that no rounding of `baseline_tok / avg_ctx_tok` gives
+(`neuralmind eval` rounds the mean and the ratio to one decimal). It also fails
+on integrity notes anywhere under `benchmarks/ai9970/`.
 
 ## What the page does with a row
 

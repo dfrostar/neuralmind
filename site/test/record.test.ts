@@ -1,12 +1,14 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadNarratives, performanceRecord } from '@/lib/performance';
+import { assertNoIntegrityNotes, loadNarratives, performanceRecord } from '@/lib/performance';
 import {
     INTEGRITY_NOTES,
+    compatibleHits,
     histories,
     impliedHits,
+    latestTs,
     isMeasured,
     isPublishable,
     latestNarrative,
@@ -64,6 +66,49 @@ describe('rates', () => {
         expect(impliedHits(0.625, 12)).toBeNull(); // 7.5 hits
         // One decimal is coarse enough that 0.6 may be 7 of 12 rounded.
         expect(impliedHits(0.6, 12)).toBe(7);
+    });
+});
+
+describe('hit counts', () => {
+    it('are inferred only when one whole number fits the rate', () => {
+        // 28/50 to 32/50 all round to 0.6: printing "30 of 50" would invent a count.
+        expect(compatibleHits(0.6, 50)).toEqual([28, 29, 30, 31, 32]);
+        expect(impliedHits(0.6, 50)).toBeNull();
+        expect(rateView(0.6, 50)).toMatchObject({ shown: true, hits: null, misses: null });
+        expect(compatibleHits(0.6667, 12)).toEqual([8]);
+        expect(compatibleHits(0.625, 12)).toEqual([]);
+    });
+
+    it('reject a row whose rate fits several counts', () => {
+        const r = row({ ts: '2026-10-22', project: 'p', hit_at_1: 0.6, hit_at_5: 0.62, gold_n: 50, baseline_src: 'measured' });
+        expect(() => parseRecord(jsonl([r]))).toThrow(/hit_at_1 0.6 fits 28–32 hits out of gold_n 50; write it to more decimal places/);
+        expect(() => parseRecord(jsonl([{ ...r, hit_at_1: 0.56 }]))).not.toThrow();
+    });
+});
+
+describe('the ratio check', () => {
+    // bible-llm's t0: 180,906 tokens over a mean of 662.7, recorded as 273.0.
+    const base = row({ ts: '2026-10-22', project: 'p', ratio_vs_indexed: 273.0, baseline_src: 'measured', baseline_tok: 180906, avg_ctx_tok: 662.7 });
+
+    it('accepts the ratio the producer would round to', () => {
+        expect(() => parseRecord(jsonl([base]))).not.toThrow();
+        expect(() => parseRecord(jsonl([{ ...base, ratio_vs_indexed: 60.3, baseline_tok: 52218, avg_ctx_tok: 866.2 }]))).not.toThrow();
+    });
+
+    it.each([[273.3], [273.1], [272.8]])('rejects %s, which no mean rounding to 662.7 gives', (ratio) => {
+        expect(() => parseRecord(jsonl([{ ...base, ratio_vs_indexed: ratio }]))).toThrow(/disagrees with baseline_tok \/ avg_ctx_tok/);
+    });
+
+    it('rejects a ratio over zero context tokens', () => {
+        expect(() => parseRecord(jsonl([{ ...base, avg_ctx_tok: 0 }]))).toThrow(/avg_ctx_tok is 0/);
+    });
+});
+
+describe('latestTs', () => {
+    it('orders by time, not by string', () => {
+        expect(latestTs(['2026-10-23T00:15:00+02:00', '2026-10-22T23:00:00Z'])).toBe('2026-10-22T23:00:00Z');
+        expect(latestTs(['2026-10-22', '2026-11-20'])).toBe('2026-11-20');
+        expect(latestTs([])).toBeNull();
     });
 });
 
@@ -194,6 +239,31 @@ describe('narratives', () => {
         const all = loadNarratives(dir);
         expect(all.map((n) => n.month).sort()).toEqual(['2026-10', '2026-11']);
         expect(latestNarrative(all)?.site).toBe('November.');
+    });
+});
+
+describe('assertNoIntegrityNotes', () => {
+    const tree = (files: Record<string, string>) => {
+        const root = mkdtempSync(path.join(tmpdir(), 'record-'));
+        for (const [rel, text] of Object.entries(files)) {
+            mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+            writeFileSync(path.join(root, rel), text);
+        }
+        return { root, narratives: path.join(root, 'narratives') };
+    };
+
+    it('passes a clean record', () => {
+        const { root, narratives } = tree({ 'record.jsonl': '', 'narratives/2026-10.md': NARRATIVE, 'narratives/TEMPLATE.md': '## A\nText.' });
+        expect(() => assertNoIntegrityNotes(root, narratives)).not.toThrow();
+    });
+
+    it.each([
+        ['a file named for integrity notes among the narratives', { 'narratives/integrity-notes.md': 'Re-ran once.' }, /integrity-notes.md: named for integrity notes/],
+        ['one anywhere else under the record', { 'raw/2026-10-integrity.json': '{}' }, /2026-10-integrity.json: named for integrity notes/],
+        ['an integrity heading in the template, which the loader never reads', { 'narratives/TEMPLATE.md': '## A\n## D. Integrity\n' }, /TEMPLATE.md:2: an integrity heading/],
+    ])('fails the build on %s', (_label, files, message) => {
+        const { root, narratives } = tree({ 'record.jsonl': '', 'narratives/2026-10.md': NARRATIVE, ...files });
+        expect(() => assertNoIntegrityNotes(root, narratives)).toThrow(message);
     });
 });
 

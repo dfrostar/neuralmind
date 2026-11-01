@@ -7,10 +7,11 @@ and block B to https://neuralmind.uk/performance/linkedin.txt. Without this
 module, hand-written copy would reach both with no guard reading it.
 
 1. **Narratives pass the site's rules** — no absolute privacy claims, no
-   overclaims, no unsourced or superseded figures, no bare 12–50×, and every
-   ratio either listed in ``site/claims.json`` or the ratio of a measured
-   record row with its baseline recorded (the only ratios the page itself
-   would show). Every block is published, so every block is read.
+   overclaims, no perfect-recall claims, no unsourced or superseded figures,
+   no bare 12–50×, and every ratio either listed in ``site/claims.json`` or
+   the ratio of a measured record row with its baseline recorded (the only
+   ratios the page itself would show). Every block is published, so every
+   block is read.
 2. **No integrity notes in this repo.** It is public on GitHub, so notes on how
    the rows were produced live in the private repo ``site/claims.json`` names
    (``longitudinal_record.integrity_notes``). A ``## D`` block, a heading that
@@ -43,6 +44,7 @@ from tests.test_docs_claims import (
 from tests.test_site_claims import (
     ALLOW_MARKER,
     MIN_CLAIM_RATIO,
+    PERFECT_RECALL_RE,
     _allowed_ratios,
     _claims,
     _ratio_claims_in,
@@ -115,6 +117,11 @@ def violations_in(lines: list[str], allowed_ratios: set[float]) -> list[str]:
         for pattern, reason in SUPERSEDED_FIGURES:
             if m := pattern.search(_without_ranges(line)):
                 found.append(f"{where}: {m.group(0)!r} — {reason}")
+        if m := PERFECT_RECALL_RE.search(line):
+            found.append(
+                f"{where}: {m.group(0)!r} — a perfect-recall claim; say how many of how "
+                "many, as the site does"
+            )
         if unscoped_12_50(lines, i):
             found.append(f"{where}: 12–50× without its fixed-50K baseline")
         for _, ratio in _ratio_claims_in(line):
@@ -198,6 +205,7 @@ def test_guards_trip_on_bad_narrative_copy() -> None:
             "## C. What we are working on",
             "- [stalled] bible-llm at 273.0× — its baseline size is not recorded.",
             "Zero code egress, and 999× once on a warm cache.",
+            "NeuralMind has 100% gold-file recall on both repos.",
         ]
     )
     found = violations_in(published_lines(narrative), allowed)
@@ -209,6 +217,9 @@ def test_guards_trip_on_bad_narrative_copy() -> None:
     assert "smarter" in joined
     assert "273×" in joined
     assert "egress" in joined and "999×" in joined
+    # The site's perfect-recall rule applies to every block too.
+    assert "perfect-recall" in joined
+    assert not violations_in(["## A", "The gold file is in the top five for 10 of 12."], allowed)
     # The title above block A is not published copy.
     assert published_lines("# 999× title\n## A\nText.") == ["", "Text."]
     # A synthetic-baseline row's ratio is never quotable.
