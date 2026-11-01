@@ -1,0 +1,141 @@
+"""Collector over Hermes's ``state.db`` (opened read-only)."""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from pathlib import Path
+
+from .classify import categorize_hermes
+from .rows import BLOCK, Context, SessionRow, count_tool
+from .tokens import Tokenizer
+
+SOURCE_GROUPS = {
+    "cli": "interactive",
+    "desktop": "interactive",
+    "local": "interactive",
+    "telegram": "interactive",
+    "discord": "interactive",
+    "signal": "interactive",
+    "cron": "automated",
+    "oneshot": "automated",
+    "a2a": "automated",
+    "api_server": "automated",
+    "subagent": "subagent",
+    "tool": "benchmark",
+}
+
+SESSIONS_SQL = """
+select id, source, model, started_at, ended_at, system_prompt,
+       input_tokens, output_tokens, cache_read_tokens, cache_write_tokens
+from sessions
+where started_at >= ? and started_at < ?
+order by started_at
+"""
+MESSAGES_SQL = """
+select role, content, tool_calls, tool_name, tool_call_id, timestamp,
+       compacted, _compressed_summary, active, api_content
+from messages where session_id = ?
+order by timestamp, id
+"""
+
+
+def open_readonly(db_path: str | Path) -> sqlite3.Connection:
+    return sqlite3.connect(f"file:{Path(db_path).expanduser()}?mode=ro", uri=True)
+
+
+def collect(
+    db_path: str | Path,
+    since: float,
+    until: float,
+    tokenizer: Tokenizer | None = None,
+    skip_ids: set[str] | None = None,
+) -> list[SessionRow]:
+    tok = tokenizer or Tokenizer()
+    con = open_readonly(db_path)
+    rows: list[SessionRow] = []
+    for sess in con.execute(SESSIONS_SQL, (since, until)):
+        sid, source, model, started, ended, system_prompt, in_tok, out_tok, cr_tok, cw_tok = sess
+        if skip_ids and sid in skip_ids:
+            continue
+        row = SessionRow(
+            agent="hermes",
+            session_id=sid,
+            source=source or "",
+            source_group=SOURCE_GROUPS.get(source or "", "automated"),
+            started_at=started,
+            ended_at=ended,
+            model=model,
+            tokenizer=tok.name,
+            prompt_tokens_billed=(in_tok or 0) + (cr_tok or 0) + (cw_tok or 0),
+            output_tokens_billed=out_tok or 0,
+        )
+        ctx = Context(row)
+        ctx.add("system", tok.count(system_prompt), droppable=False)
+        call_args: dict[str, tuple[str, str | None]] = {}
+        for msg in con.execute(MESSAGES_SQL, (sid,)):
+            (
+                role,
+                content,
+                tool_calls,
+                tool_name,
+                tool_call_id,
+                _ts,
+                compacted,
+                is_summary,
+                active,
+                api_content,
+            ) = msg
+            droppable = bool(compacted) or not active
+            if is_summary:
+                ctx.compact()
+                ctx.add("summary", tok.count(content), droppable=False)
+                continue
+            if role == "assistant":
+                ctx.call()
+                text_tokens = tok.count(content) + tok.count(tool_calls)
+                ctx.add("assistant", text_tokens, droppable)
+                for name, args, call_id in _parse_tool_calls(tool_calls):
+                    call_args[call_id] = (name, args)
+            elif role == "tool":
+                name, args = call_args.get(tool_call_id or "", (tool_name, None))
+                category = categorize_hermes(name or tool_name, args)
+                count_tool(row, category)
+                ctx.add(category, tok.count(content), droppable)
+            elif role == "user":
+                ctx.add("user", tok.count(content), droppable)
+                block = _block_of(content, api_content)
+                if block:
+                    ctx.add(BLOCK, tok.count(block), droppable)
+            # session_meta and anything else: not part of the prompt
+        rows.append(row)
+    con.close()
+    return rows
+
+
+def _parse_tool_calls(tool_calls: str | None) -> list[tuple[str, str | None, str]]:
+    if not tool_calls:
+        return []
+    try:
+        calls = json.loads(tool_calls)
+    except Exception:
+        return []
+    out = []
+    for c in calls if isinstance(calls, list) else []:
+        if not isinstance(c, dict):
+            continue
+        fn = c.get("function") or {}
+        name = fn.get("name") or c.get("name") or ""
+        args = fn.get("arguments") if isinstance(fn, dict) else None
+        call_id = c.get("id") or c.get("call_id") or ""
+        out.append((name, args, call_id))
+    return out
+
+
+def _block_of(content: str | None, api_content: str | None) -> str | None:
+    """The plugin appends its block to the user's text: api_content = content + block."""
+    if not api_content or api_content == content:
+        return None
+    if content and api_content.startswith(content):
+        return api_content[len(content) :]
+    return None
