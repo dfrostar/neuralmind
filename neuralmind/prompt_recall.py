@@ -76,7 +76,8 @@ from __future__ import annotations
 import math
 import os
 import re
-import subprocess
+import shutil
+import subprocess  # nosec B404 - runs git, by absolute path, with a fixed argument list
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -181,6 +182,8 @@ _PATH_TOKEN = re.compile(r"[\w.-]*[/\\][\w./\\-]*|[\w-]+\.[A-Za-z]\w*")
 _TEST_AFFIX = re.compile(r"^tests?_|_tests?$|(?<=[a-z0-9])Tests?$")
 # The exact identifiers a prompt quotes. A single-quoted span must start and end
 # at a word's edge, or "doesn't ... user's" would quote the words between.
+# A URL ends at whitespace or at the quote, backtick or bracket that closes it.
+_URL = re.compile(r"https?://[^\s`'\"<>()\[\]]+")
 _BACKTICKED = re.compile(r"`([^`\n]+)`")
 _QUOTED = re.compile(
     rf'"([^"`\n]{{{LEXICAL_QUOTE_MIN},}}?)"|(?<!\w)\'([^\'`\n]{{{LEXICAL_QUOTE_MIN},}}?)\'(?!\w)'
@@ -417,23 +420,27 @@ def extract_identifiers(prompt: str) -> list[str]:
     ``LEXICAL_MAX_IDENTIFIERS``.
     """
     found: list[tuple[int, str]] = []
-    spans = [(m.start(1), m.group(1)) for m in _BACKTICKED.finditer(prompt)]
+    # A URL's path segments look like identifiers and name nothing in the
+    # code: blank every URL before any pass, keeping positions.
+    text = _URL.sub(_blank, prompt)
+    spans = [(m.start(1), m.group(1)) for m in _BACKTICKED.finditer(text)]
     # Quotes inside a backticked span (a JSON value, say) would otherwise pair
     # with a later quote in the prose: blank those spans before pairing.
-    prose = _BACKTICKED.sub(lambda m: " " * len(m.group(0)), prompt)
+    prose = _BACKTICKED.sub(_blank, text)
     for match in _QUOTED.finditer(prose):
         group = 1 if match.group(1) is not None else 2
         spans.append((match.start(group), match.group(group)))
     for start, span in spans:
-        if span.lstrip().lower().startswith(("http://", "https://")):
-            continue
         words = [(start + m.start(), m.group(0)) for m in _SPAN_WORD.finditer(span)]
         # A span of common words alone ("the config file") names nothing.
-        if any(_keep(word) for _, word in words):
+        if not any(_keep(word) for _, word in words):
+            continue
+        # A span that held a URL counts by its words; whole, it's no longer a string in the code.
+        if span == prompt[start : start + len(span)]:
             found.append((start, span.strip()))
-            found.extend(words)
+        found.extend(words)
     for pattern in (_FLAG, _SNAKE, _CAMEL, _UPPER):
-        found.extend((m.start(), m.group(0)) for m in pattern.finditer(prompt))
+        found.extend((m.start(), m.group(0)) for m in pattern.finditer(text))
     out: list[str] = []
     seen: set[str] = set()
     for _, token in sorted(found, key=lambda item: item[0]):
@@ -447,15 +454,14 @@ def extract_identifiers(prompt: str) -> list[str]:
     return out
 
 
+def _blank(match: re.Match) -> str:
+    return " " * len(match.group(0))
+
+
 def _keep(token: str) -> bool:
     """Whether an extracted token is worth looking up."""
     low = token.strip().strip(".,;:").lower()
-    return (
-        len(low) >= LEXICAL_MIN_LEN
-        and low not in _LEXICAL_STOP
-        and not low.startswith(("http://", "https://"))
-        and "\n" not in low
-    )
+    return len(low) >= LEXICAL_MIN_LEN and low not in _LEXICAL_STOP and "\n" not in low
 
 
 def lexical_file_scores(
@@ -485,45 +491,65 @@ def _anchor_lexical(
     nodes: dict[str, dict],
     tests_last: bool,
 ) -> dict[str, float]:
-    """Add each lexically matched file to ``code`` through its file node; return the lexical scores.
+    """Add each lexically matched file to ``code`` at file level; return the lexical scores.
 
-    The files are the indexed code files in the project's working tree that
-    hold an identifier (``_grep_files``), less the test files when the prompt
-    names no test. A file's own node (the built-in generator derives its id
-    from the path; otherwise the node labelled with the file's name) carries
-    the evidence, so ``_by_file`` sums it with the file's matches and the file
-    is named without a symbol when nothing else matched in it. Fails open to
-    no evidence.
+    The files come from :func:`_lexical_matches`. Each gets its evidence on
+    its own file node (the built-in generator derives its id from the path;
+    otherwise the node labelled with the file's name), which has no symbol, so
+    ``_by_file`` sums it with the file's matches and the file is named without
+    a symbol when nothing else matched in it. A graph with no node for the
+    file itself gets a file-level entry made here, never one of the file's
+    symbols: lexical evidence says which file, not which function, and must
+    not change which function is quoted. Fails open to no evidence.
     """
     if not identifiers:
         return {}
     project = str(getattr(mind, "project_path", "") or "")
     if not project:
         return {}
+    indexed = _IndexedFiles(nodes)
     try:
-        raw = _grep_files(project, identifiers, _code_suffixes())
+        matches = _lexical_matches(project, identifiers, indexed, tests_last)
     except Exception:
         return {}
-    if not raw:
-        return {}
-    indexed = _IndexedFiles(nodes)
+    scores = lexical_file_scores(matches)
+    for path, score in scores.items():
+        node_id = indexed.file_node(path)
+        if node_id is None:
+            node_id = f"lexical://{path}"
+            info[node_id] = {
+                "id": node_id,
+                "source_file": path,
+                "label": os.path.basename(path),
+                "file_type": "code",
+            }
+        else:
+            info.setdefault(node_id, nodes[node_id])
+        code[node_id] = max(code.get(node_id, 0.0), 0.0) + LEXICAL_WEIGHT * score
+    return scores
+
+
+def _lexical_matches(
+    project: str, identifiers: list[str], indexed: _IndexedFiles, tests_last: bool
+) -> dict[str, set[str]]:
+    """The indexed code files holding each identifier: the evidence the ranking uses.
+
+    ``_grep_files`` over the working tree, kept to files the graph holds code
+    nodes for, and to non-test files when the prompt names no test. An
+    identifier with no such file is left out. The replay's diagnostic record
+    is made with this same function, so it shows what the hook saw.
+    """
+    raw = _grep_files(project, identifiers, _code_suffixes())
     matches: dict[str, set[str]] = {}
     for identifier, files in raw.items():
         kept = {
             path
             for path in files
-            if indexed.node_of(path) is not None and not (tests_last and is_test_path(path))
+            if indexed.holds(path) and not (tests_last and is_test_path(path))
         }
         if kept:
             matches[identifier] = kept
-    scores = lexical_file_scores(matches)
-    for path, score in scores.items():
-        node_id = indexed.node_of(path)
-        if node_id is None:  # pragma: no cover - filtered above
-            continue
-        info.setdefault(node_id, nodes.get(node_id) or {"id": node_id, "source_file": path})
-        code[node_id] = max(code.get(node_id, 0.0), 0.0) + LEXICAL_WEIGHT * score
-    return scores
+    return matches
 
 
 class _IndexedFiles:
@@ -537,23 +563,34 @@ class _IndexedFiles:
 
     def __init__(self, nodes: dict[str, dict]):
         self._nodes = nodes
-        self._by_path: dict[str, str | None] | None = None
+        # path -> the file's own node id, or "" for a file with symbols only.
+        self._by_path: dict[str, str] | None = None
 
-    def node_of(self, path: str) -> str | None:
+    def holds(self, path: str) -> bool:
+        """Whether the graph has any code node in ``path``."""
+        return self.file_node(path) is not None or self._scan().get(path) is not None
+
+    def file_node(self, path: str) -> str | None:
+        """The id of ``path``'s own node, or None when the graph has none."""
         guess = _NON_ID.sub("_", path).lower()
         node = self._nodes.get(guess)
         if node is not None and _path(node) == path:
             return guess
+        return self._scan().get(path) or None
+
+    def _scan(self) -> dict[str, str]:
         if self._by_path is None:
             self._by_path = {}
             for node_id, node in self._nodes.items():
                 file = _path(node)
                 if not file or not is_code_node(node):
                     continue
-                # The file's own node is labelled with its name; else any code node in it.
-                if node.get("label") == os.path.basename(file) or file not in self._by_path:
+                # The file's own node is labelled with its name.
+                if node.get("label") == os.path.basename(file):
                     self._by_path[file] = node_id
-        return self._by_path.get(path)
+                else:
+                    self._by_path.setdefault(file, "")
+        return self._by_path
 
 
 def _code_suffixes() -> set[str]:
@@ -567,15 +604,19 @@ def _code_suffixes() -> set[str]:
 def _grep_files(project: str, identifiers: list[str], suffixes: set[str]) -> dict[str, set[str]]:
     """The tracked files of ``project`` holding each identifier, by exact substring.
 
-    One ``git grep -l -F`` per identifier over the files with a code suffix,
-    ``LEXICAL_WORKERS`` at a time, all under ``LEXICAL_TIMEOUT`` together. A
-    project that isn't a git work tree, a missing git, or an identifier whose
-    grep runs past the deadline gives no files.
+    One ``git grep -l -F --untracked`` per identifier over the files with a
+    code suffix, tracked or untracked and not ignored, ``LEXICAL_WORKERS`` at
+    a time, all under ``LEXICAL_TIMEOUT`` together. A project that isn't a git
+    work tree, a missing git, or an identifier whose grep runs past the
+    deadline gives no files.
     """
     if not identifiers:
         return {}
     from concurrent.futures import ThreadPoolExecutor
 
+    git = shutil.which("git")
+    if git is None:
+        return {}
     pathspec = sorted(f"*{suffix}" for suffix in suffixes)
     deadline = time.monotonic() + LEXICAL_TIMEOUT
 
@@ -583,9 +624,24 @@ def _grep_files(project: str, identifiers: list[str], suffixes: set[str]) -> dic
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             return set()
+        # The identifier is one argument of a fixed list, after -e and with -F,
+        # so a prompt can't add an option or a pattern; no shell is involved.
+        # --untracked: the index holds new, not yet staged files too.
         try:
-            proc = subprocess.run(
-                ["git", "grep", "-I", "-l", "-z", "-F", "-e", identifier, "--", *pathspec],
+            proc = subprocess.run(  # nosec B603 - fixed argument list, no shell
+                [
+                    git,
+                    "grep",
+                    "-I",
+                    "-l",
+                    "-z",
+                    "-F",
+                    "--untracked",
+                    "-e",
+                    identifier,
+                    "--",
+                    *pathspec,
+                ],
                 cwd=project,
                 capture_output=True,
                 timeout=remaining,

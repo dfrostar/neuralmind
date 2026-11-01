@@ -80,7 +80,9 @@ runs (`tests/test_prompt_recall_lexical.py`).
   changed is listed; *first*, it's listed first; *excerpt on gold*, the
   quoted code is from such a file. Each row also records the hook's wall
   time per call and, recomputed in-process on the same workspace, the
-  identifiers extracted and the files each matched (`lexical_replica`).
+  identifiers extracted and the files each matched (`lexical_replica`, made
+  with the hook's own matcher on the task's graph, so it is the evidence the
+  ranking used; an identifier past the 60-file cut is recorded by its count).
 - **Hermes.** Nothing here runs hermes-agent code; `hermes --version` was
   checked before and after.
 

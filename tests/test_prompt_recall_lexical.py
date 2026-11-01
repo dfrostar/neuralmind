@@ -69,6 +69,16 @@ def test_quoted_messages_flags_and_names_are_found_in_order():
 def test_common_words_short_tokens_urls_and_spans_of_common_words_are_dropped():
     prompt = "see `run` and `the config file` at `https://example.com/x_y` and `tests`"
     assert extract_identifiers(prompt) == []
+
+
+def test_a_urls_path_is_not_an_identifier_in_any_pass():
+    # Bare, backticked, and inside a longer span: no pass sees the URL's parts.
+    prompt = (
+        "see https://example.com/download_failed/ErrorPage and "
+        "`https://example.com/api/retry_count?x=1` or `visit https://example.com/old_text now "
+        "for memory_key`"
+    )
+    assert extract_identifiers(prompt) == ["visit", "memory_key"]
     # One identifier-like word keeps the span, and the span keeps its words.
     assert extract_identifiers("see `the config file for x_val`") == [
         "the config file for x_val",
@@ -175,6 +185,15 @@ def test_the_grep_finds_exact_case_sensitive_substrings_in_code_files(tmp_path):
         "storage_unavailable": {"pkg/a.py", "pkg/c.ts"},
         "no local fallback": {"pkg/b.py"},
     }
+
+
+def test_an_untracked_file_counts_but_an_ignored_one_doesnt(tmp_path):
+    repo = _repo(tmp_path, {"pkg/a.py": "x = 1\n", ".gitignore": "build/\n"})
+    (repo / "pkg" / "new.py").write_text("STATUS = 'storage_unavailable'\n")
+    (repo / "build").mkdir()
+    (repo / "build" / "gen.py").write_text("STATUS = 'storage_unavailable'\n")
+    found = prompt_recall._grep_files(str(repo), ["storage_unavailable"], {".py"})
+    assert found == {"storage_unavailable": {"pkg/new.py"}}
 
 
 def test_a_directory_that_isnt_a_repository_gives_nothing(tmp_path):
@@ -298,6 +317,48 @@ def test_a_file_whose_node_id_doesnt_follow_the_path_is_found_by_label(
     monkeypatch.setattr(prompt_recall, "_grep_files", grep)
     result = recall(_RootedMind(tmp_path, hits=[("other", 0.4)], nodes=nodes), "WidgetFactory")
     assert [f.path for f in result.matches][0] == "src/Widgets.cs"
+
+
+def test_a_file_with_symbols_but_no_file_node_is_named_without_one(
+    lexical_on, monkeypatch, tmp_path
+):
+    # Evidence for the file must not land on one of its functions: the function
+    # would be listed as the match and could be quoted as the file's best symbol.
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "w.py").write_text("def helper():\n    pass\n\n\ndef other():\n    pass\n")
+    nodes = [
+        _node("sym-helper", "src/w.py", "helper()", 1),
+        _node("sym-other", "src/w.py", "other()", 5),
+        _node("pkg_m_py__run_fn", "pkg/m.py", "run()", 1),
+    ]
+    grep = _canned({"WidgetFactory": {"src/w.py"}, "widget_cache": {"src/w.py"}})
+    monkeypatch.setattr(prompt_recall, "_grep_files", grep)
+    mind = _RootedMind(tmp_path, hits=[("pkg_m_py__run_fn", 0.4)], nodes=nodes)
+    result = recall(mind, "WidgetFactory and widget_cache")
+    first = result.matches[0]
+    assert (first.path, first.symbols, first.top) == ("src/w.py", [], "")
+    assert first.score == pytest.approx(2 * prompt_recall.LEXICAL_WEIGHT / math.log(2))
+    assert result.excerpt is None
+    assert "- src/w.py" in format_block(result).splitlines()
+
+
+def test_lexical_evidence_on_a_file_node_doesnt_change_the_quoted_symbol(
+    lexical_on, monkeypatch, tmp_path
+):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "m.py").write_text("def run():\n    return 1\n")
+    nodes = [
+        _node("pkg_m_py", "pkg/m.py", "m.py", 1),
+        _node("pkg_m_py__run_fn", "pkg/m.py", "run()", 1),
+        _node("pkg_n_py__n_fn", "pkg/n.py", "n()", 1),
+    ]
+    grep = _canned({"run_mode": {"pkg/m.py"}})
+    monkeypatch.setattr(prompt_recall, "_grep_files", grep)
+    hits = [("pkg_m_py__run_fn", 0.5), ("pkg_n_py__n_fn", 0.45)]
+    result = recall(_RootedMind(tmp_path, hits=hits, nodes=nodes), "`run_mode` is wrong")
+    lead = result.matches[0]
+    assert (lead.path, lead.symbols, lead.top) == ("pkg/m.py", ["run() L1"], "pkg_m_py__run_fn")
+    assert result.excerpt is not None and result.excerpt.path == "pkg/m.py"
 
 
 def test_no_identifiers_means_no_grep(lexical_on, monkeypatch, tmp_path):

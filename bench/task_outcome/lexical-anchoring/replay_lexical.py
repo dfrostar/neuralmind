@@ -167,30 +167,51 @@ def _summary(records: list[dict], **extra) -> dict:
     return summary
 
 
-def _lexical_replica(which: str, task: dict, tests_last: bool) -> dict:
-    """What the hook's lexical pass saw, recomputed in-process on the same workspace."""
-    ws = ws_of(which, task["id"])
-    identifiers = prompt_recall.extract_identifiers(prompt_of(which, task))
-    raw = prompt_recall._grep_files(str(ws), identifiers, prompt_recall._code_suffixes())
-    eligible = {
-        ident: {p for p in files if not (tests_last and prompt_recall.is_test_path(p))}
-        for ident, files in raw.items()
-    }
-    eligible = {ident: files for ident, files in eligible.items() if files}
+def _lexical_replica(which: str, tid: str) -> dict:
+    """What the hook's lexical pass saw, recomputed on the same workspace: one process per task.
+
+    It loads the task's graph, as the hook does, and uses the hook's own
+    matcher (``prompt_recall._lexical_matches``), so the eligibility filter,
+    the frequency cut and the scores are the ranking's.
+    """
+    proc = subprocess.run(
+        [sys.executable, "-P", __file__, "_replica", which, tid],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(proc.stdout.splitlines()[-1])
+
+
+def _replica(which: str, tid: str) -> None:
+    use_repo(which)
+    task = next(t for t in tasks(which) if t["id"] == tid)
+    ws = ws_of(which, tid)
+    prompt = prompt_of(which, task)
+    nodes = prompt_recall._node_index(_mind(ws))
+    identifiers = prompt_recall.extract_identifiers(prompt)
+    matches = prompt_recall._lexical_matches(
+        str(ws),
+        identifiers,
+        prompt_recall._IndexedFiles(nodes),
+        not prompt_recall._names_a_test(prompt),
+    )
     cap = prompt_recall.LEXICAL_MAX_FILES
-    return {
-        "identifiers": identifiers,
-        # The files of each identifier that counted; an identifier past the cap
-        # (in hundreds of files, say) is recorded by its count alone.
-        "matched": {ident: sorted(files) for ident, files in eligible.items() if len(files) <= cap},
-        "dropped_too_common": {
-            ident: len(files) for ident, files in eligible.items() if len(files) > cap
-        },
-        "lexical": {
-            path: round(score, 4)
-            for path, score in prompt_recall.lexical_file_scores(eligible).items()
-        },
-    }
+    print(
+        json.dumps(
+            {
+                "identifiers": identifiers,
+                # The files of each identifier that counted; an identifier past
+                # the cap (in hundreds of files, say) is recorded by its count.
+                "matched": {i: sorted(f) for i, f in matches.items() if len(f) <= cap},
+                "dropped_too_common": {i: len(f) for i, f in matches.items() if len(f) > cap},
+                "lexical": {
+                    path: round(score, 4)
+                    for path, score in prompt_recall.lexical_file_scores(matches).items()
+                },
+            }
+        )
+    )
 
 
 def hook(which: str, shim: str, label: str) -> None:
@@ -216,9 +237,7 @@ def hook(which: str, shim: str, label: str) -> None:
         seconds = time.monotonic() - t0
         record = _record(which, task, block, replay.fix_lines(task))
         record["seconds"] = round(seconds, 2)
-        record["lexical_replica"] = _lexical_replica(
-            which, task, tests_last=not prompt_recall._names_a_test(prompt)
-        )
+        record["lexical_replica"] = _lexical_replica(which, task["id"])
         records.append(record)
         (out / "blocks" / f"{task['id']}.md").write_text(block)
         print(
@@ -361,6 +380,8 @@ if __name__ == "__main__":
         variants(rest[0], [float(w) for w in rest[1:]] or list(WEIGHTS))
     elif cmd == "_variant":
         _variant(rest[0], rest[1], [float(w) for w in rest[2:]])
+    elif cmd == "_replica":
+        _replica(rest[0], rest[1])
     elif cmd == "hook":
         hook(rest[0], rest[1], rest[2])
     elif cmd == "summary":
