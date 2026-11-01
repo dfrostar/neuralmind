@@ -8,27 +8,32 @@ in this repo so `tests/test_docs_claims.py` checks its claims.
 
 ## Before posting
 
-- [ ] **Pick the channel by the server's rules, not by habit.** The August
-      venue note names `#agent` as where Hermes discussion happens. Read the
-      server's rules and pinned messages first. If there's a showcase or
-      projects channel, post there instead, and don't cross-post the same
-      message to several channels.
-- [ ] **Check the message fits.** The body below is 1,914 characters, under 2,000
-      (the limit without Nitro). Paste it as is: Discord renders the bold,
+- [ ] **Wait for the catalog listing.** The message says the plugin installs
+      by name from Hermes's plugin catalog. Post only after
+      NousResearch/hermes-agent#147375, which adds it there, has merged, and
+      after checking that `hermes plugins install neuralmind --enable` installs
+      it.
+- [ ] **Post in `#plugins-skills-and-skins`,** not `#agent` as the August venue
+      note had it: Hermes's `CONTRIBUTING.md` names that channel for promoting
+      a standalone plugin. Read the server's rules and pinned messages first,
+      and don't cross-post the same message to several channels.
+- [ ] **Check the message fits.** The body below is 1,970 characters, under 2,000
+      (the limit without Nitro), so any addition needs a cut. Paste it as is: Discord renders the bold,
       bullets and code block.
 - [ ] **Attach the demo** if you've recorded it (see the Reddit doc's "Demo to
       record"). A screenshot of the recall block does more on Discord than the
       text does.
 - [ ] Same as Reddit: **don't mention the Hermes MCP catalog entry**
-      (NousResearch/hermes-agent#97207) unless you've checked its state that
-      day, and re-run the benchmark if the numbers might have moved.
+      (NousResearch/hermes-agent#97207, separate from the plugin catalog
+      listing) unless you've checked its state that day, and re-run the
+      benchmark if the numbers might have moved.
 - [ ] **Answer in a thread.** Open a thread on your own message for questions,
       so the channel doesn't fill up. The Reddit doc's "Replies to prepare"
       table works here too.
 
 ---
 
-## Message (1,914 characters; the limit is 2,000)
+## Message (1,970 characters; the limit is 2,000)
 
 **NeuralMind plugin for Hermes: codebase memory on every turn, no tool call**
 
@@ -44,7 +49,7 @@ pip install -U neuralmind
 neuralmind build /path/to/repo
 neuralmind install-hermes-plugin
 ```
-Or `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`. Needs Hermes 0.21.5 or later. In Desktop or ACP sessions, pin a project or set `NEURALMIND_PROJECT`.
+Or install it from Hermes's plugin catalog: `hermes plugins install neuralmind --enable`. Needs Hermes 0.21.5 or later. On 0.22.2 or later it follows each session's own directory; on older Hermes, pin a project for Desktop or ACP sessions.
 
 **Numbers, misses included:** the right file was in the context for 40 of 40 pre-registered queries across requests, click, flask and rich, at 51–242x fewer tokens than pasting whole files. That's a small sample: a 150-question eval misses 10. A bare vector lookup costs fewer tokens and ranks the right file higher on 2 of the 4 repos.
 
@@ -76,5 +81,8 @@ its "Claim sources" table. Additions specific to this version:
 | Claim | Source |
 |---|---|
 | Needs Hermes 0.21.5 or later (the version it was tested with; Hermes skips it on older ones) | `neuralmind/hermes_plugin/plugin.yaml` (`requires_hermes: ">=0.21.5"`) |
+| Installs by name from Hermes's plugin catalog | NousResearch/hermes-agent#147375 adds `plugin-catalog/neuralmind.yaml`; true only once it has merged |
+| Follows each session's own directory on Hermes 0.22.2 or later; older Hermes needs a pin for Desktop or ACP sessions | `neuralmind/hermes_plugin/README.md` ("Which project") |
+| `#plugins-skills-and-skins` is where to promote a plugin | Hermes's `CONTRIBUTING.md`, on standalone plugin repos |
 | `read_file` recorded only inside the project | `docs/use-cases/hermes-agent.md` §4 |
 | MIT-licensed core | `LICENSE` (excludes `neuralmind/tier2/`) |
