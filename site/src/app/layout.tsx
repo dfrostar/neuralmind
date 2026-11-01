@@ -1,7 +1,8 @@
 import './globals.css';
 import { getLatestRelease } from '@/lib/release';
-import LiquidBackground from '@/components/ui/LiquidBackground';
 import { fontVariables } from '@/lib/fonts';
+import CondensingGraph from '@/components/ui/CondensingGraph';
+import LiquidBackground from '@/components/ui/LiquidBackground';
 
 const SITE_DESCRIPTION =
     'Codebase memory for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
@@ -166,7 +167,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
                 <link rel="manifest" href="/site.webmanifest" />
-                <meta name="theme-color" content="#0a0b0d" />
+                <meta name="theme-color" content="#0d1013" />
                 {!process.env.NODE_ENV || process.env.NODE_ENV === 'production' ? (
                     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "97b18db165e64f6e8d1d75b5e4e16447"}'></script>
                 ) : null}
@@ -175,11 +176,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            {/* `isolate` makes the body its own stacking context, so layers behind the
-                content (-z-10, -z-20) paint over the body's background instead of
-                under it. Without it the hero's grid never showed. */}
-            <body className="isolate bg-carbon text-ink font-sans antialiased">
+            {/* No background on body: the liquid canvas, and the graph that
+                condenses out of it, paint between the ground on <html> and
+                the page. */}
+            <body className="text-ink font-sans antialiased">
                 <LiquidBackground />
+                <CondensingGraph />
                 {children}
             </body>
         </html>

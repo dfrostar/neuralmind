@@ -27,14 +27,13 @@ export default function TeamsSecurity() {
     return (
         <section id="teams" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="Teams & security" title="Memory your team shares, evidence your reviewer asks for">
+                <SectionHeader title="Memory your team shares, evidence your reviewer asks for">
                     Every feature runs free at one seat: the license issues itself on first run, never
                     expires and needs no signup. You pay for seats and support, not for features.
                 </SectionHeader>
 
                 <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                     <div className="panel rounded-card p-6 md:p-8 flex flex-col">
-                        <p className="eyebrow mb-3">For teams</p>
                         <h3 className="font-display text-2xl font-semibold text-white tracking-tight mb-5">
                             Team memory travels with git
                         </h3>
@@ -55,14 +54,13 @@ export default function TeamsSecurity() {
                             <a href="/team" className="btn-secondary text-sm">
                                 How teams use it
                             </a>
-                            <a href="/pricing" className="text-electric hover:text-electric-bright text-sm font-medium self-center">
-                                Pricing →
+                            <a href="/pricing" className="link text-sm font-medium self-center">
+                                Pricing
                             </a>
                         </div>
                     </div>
 
                     <div className="panel rounded-card p-6 md:p-8 flex flex-col">
-                        <p className="eyebrow mb-3">For security review</p>
                         <h3 className="font-display text-2xl font-semibold text-white tracking-tight mb-5">
                             Local by default, verifiable per release
                         </h3>
@@ -98,7 +96,6 @@ export default function TeamsSecurity() {
                     </div>
                     <a href="/services#fit-assessment" className="btn-primary text-sm whitespace-nowrap">
                         About the assessment
-                        <Icon name="arrow-right" className="w-4 h-4" />
                     </a>
                 </div>
             </div>

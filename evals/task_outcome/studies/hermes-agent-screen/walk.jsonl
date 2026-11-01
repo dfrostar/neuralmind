@@ -1,0 +1,12 @@
+{"position": 0, "commit": "0968fa2631b9850d6a4800590f5d058439160dcb", "qualified": true, "before": {"passed": 12, "failed": 2}, "after": {"passed": 14}, "f2p": 2, "p2p": 12}
+{"position": 1, "commit": "1faf3b5e761abfdfdfdb043b2b0dcb341d3c0165", "qualified": true, "before": {"passed": 25, "failed": 5, "skipped": 3}, "after": {"passed": 30, "skipped": 3}, "f2p": 5, "p2p": 25}
+{"position": 2, "commit": "28e6496a5e3adfea57bebfc9571b981bff378523", "qualified": true, "before": {"passed": 183, "failed": 3}, "after": {"passed": 186}, "f2p": 3, "p2p": 183}
+{"position": 3, "commit": "859b999db55876bd97f0086a1abd5c75fe7330ac", "qualified": true, "before": {"passed": 5, "failed": 1}, "after": {"passed": 6}, "f2p": 1, "p2p": 5}
+{"position": 4, "commit": "e9eba2188a473107ebbeb8ca774f7fa2de72f4d0", "qualified": true, "before": {"passed": 10, "failed": 2}, "after": {"passed": 12}, "f2p": 2, "p2p": 10}
+{"position": 5, "commit": "652e4b9194b5315d8bf47a0769488b2da205fe86", "qualified": true, "before": {"passed": 660, "failed": 1}, "after": {"passed": 661}, "f2p": 1, "p2p": 660}
+{"position": 6, "commit": "6a2909c6b1197726ba57a1bf80ff9604dab934b6", "qualified": true, "before": {"passed": 15, "failed": 1}, "after": {"passed": 16}, "f2p": 1, "p2p": 15}
+{"position": 7, "commit": "167a2d00edba22ecfbf24c4ab5a24f35a32c1da5", "qualified": true, "before": {"passed": 2, "failed": 1}, "after": {"passed": 3}, "f2p": 1, "p2p": 2}
+{"position": 8, "commit": "286e723db8dbc4c2ee8c554af1e6dc49eb125f3d", "qualified": true, "before": {"failed": 2, "passed": 2}, "after": {"passed": 4}, "f2p": 2, "p2p": 2}
+{"position": 9, "commit": "24b4f90e978ffc4d5a04fb48d4a9d3b8f7277c7f", "qualified": true, "before": {"passed": 8, "skipped": 29, "failed": 1}, "after": {"passed": 9, "skipped": 29}, "f2p": 1, "p2p": 8}
+{"position": 10, "commit": "3c53adbc1e4a86208ea1b8a341917c59dd167104", "qualified": true, "before": {"passed": 8, "failed": 3}, "after": {"passed": 11}, "f2p": 3, "p2p": 8}
+{"position": 11, "commit": "bc79fe7c7558732a043f3504fe6b9fa6df47828a", "qualified": true, "before": {"passed": 6, "failed": 9}, "after": {"passed": 15}, "f2p": 9, "p2p": 6}

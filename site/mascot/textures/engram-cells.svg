@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+  <!-- The engram's cells alone, for printing straight onto a dark fabric. -->
+  <g fill="#484E54">
+    <rect x="269.231" y="0" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="538.462" y="0" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="538.462" y="269.231" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="269.231" y="538.462" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="269.231" y="807.692" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="538.462" y="807.692" width="192.308" height="192.308" rx="38.4615"/>
+  </g>
+  <g fill="#ECEFF2">
+    <rect x="0" y="0" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="0" y="269.231" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="0" y="538.462" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="0" y="807.692" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="807.692" y="0" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="807.692" y="269.231" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="807.692" y="538.462" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="807.692" y="807.692" width="192.308" height="192.308" rx="38.4615"/>
+  </g>
+  <g fill="#F7B83D">
+    <rect x="269.231" y="269.231" width="192.308" height="192.308" rx="38.4615"/>
+    <rect x="538.462" y="538.462" width="192.308" height="192.308" rx="38.4615"/>
+  </g>
+</svg>

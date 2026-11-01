@@ -70,9 +70,9 @@ export default async function Features() {
         if (!since) return null;
         const out = tagAtLeast(latest, since);
         return (
-            <span className="ml-2 align-middle font-mono text-eyebrow uppercase tracking-eyebrow text-faint whitespace-nowrap">
+            <span className="ml-2 align-middle font-mono text-xs text-faint whitespace-nowrap">
                 v{since}
-                {out ? '+' : ' · next release'}
+                {out ? '+' : ', next release'}
             </span>
         );
     };
@@ -80,15 +80,15 @@ export default async function Features() {
     return (
         <section id="features" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="Features" title="What your agent gets">
+                <SectionHeader title="What your agent gets">
                     Four things, in one local install. Every feature runs free at one seat.
                 </SectionHeader>
 
-                <div className="grid md:grid-cols-2 border-t border-l border-carbon-border">
+                <div className="grid md:grid-cols-2 bg-carbon-card border-t border-l border-carbon-border">
                     {pillars.map((p, i) => (
                         <div key={p.title} className="border-b border-r border-carbon-border p-6 md:p-8 flex flex-col">
                             <div className="flex items-center justify-between mb-5">
-                                <Icon name={p.icon} className="w-6 h-6 text-electric" />
+                                <Icon name={p.icon} className="w-6 h-6 text-muted" />
                                 <span className="font-mono text-xs text-faint tabular-nums">
                                     {String(i + 1).padStart(2, '0')} / {String(pillars.length).padStart(2, '0')}
                                 </span>
@@ -107,8 +107,8 @@ export default async function Features() {
                                 ))}
                             </dl>
                             {p.link && (
-                                <a href={p.link.href} className="mt-auto pt-4 text-electric hover:text-electric-bright text-sm font-medium">
-                                    {p.link.label} →
+                                <a href={p.link.href} className="mt-auto pt-4 link text-sm font-medium">
+                                    {p.link.label}
                                 </a>
                             )}
                         </div>

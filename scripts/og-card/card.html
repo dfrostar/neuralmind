@@ -7,180 +7,101 @@
   render.mjs asserts this and refuses to render otherwise. The previous
   hand-made image shipped "40-70x token reduction" — a figure with no source —
   precisely because pixels are the one surface the text guards cannot scan.
+
+  The three readings are the homepage's headline figures, in the pairing
+  claims.json asks for: the 40-query gold-file count beside ripgrep's, the
+  31-67x token range beside it, and the 150-question eval with its misses.
+
+  Design: the site's Console material (site/DESIGN.md). Graphite, the
+  engram mark, Host Grotesk for words, Atkinson Hyperlegible Mono for the
+  measured figures, and a still frame of the site's liquid behind it, drawn
+  by the same shader (render.mjs injects it from LiquidBackground.tsx).
 -->
 <html>
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
+  :root {
+    --bg: #0D1013; --raised: #06080B; --card: #15191C; --rule: #2D3135; --rule-2: #484E54;
+    --ink: #ECEFF2; --muted: #9DA2A8; --faint: #848A90; --amber: #F7B83D; --blue: #92B3FB;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100vw; height: 100vh; overflow: hidden; }
   body {
-    background: #0A0B0D;
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Host Grotesk', ui-sans-serif, system-ui, sans-serif;
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 50px 72px 50px;
+    padding: 60px 72px 56px;
   }
-  .glow {
-    position: absolute; right: -160px; top: -240px;
-    width: 860px; height: 860px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(27,39,66,1) 0%, rgba(27,39,66,0) 60%);
-    pointer-events: none;
-  }
-  .glow2 {
-    position: absolute; left: -220px; bottom: -320px;
-    width: 640px; height: 640px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(22,48,42,0.7) 0%, rgba(22,48,42,0) 62%);
-    pointer-events: none;
-  }
-  svg.graph { position: absolute; right: -20px; top: 60px; height: 100%; pointer-events: none; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   .top { display: flex; align-items: center; justify-content: space-between; position: relative; }
-  .wordmark { display: flex; align-items: center; gap: 14px; }
-  .mark {
-    width: 44px; height: 44px; border-radius: 11px;
-    background: #131518; border: 1px solid #2E333B;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .wordmark span {
-    font-family: 'Inter Tight', 'Inter', sans-serif;
-    font-weight: 600; font-size: 27px; color: #FFFFFF; letter-spacing: -0.02em;
-  }
-  .site { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 18px; color: #7E8794; }
+  .wordmark { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
+  .site { font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace; font-size: 18px; color: var(--muted); }
 
-  .mid { position: relative; }
-  .eyebrow {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 17px; font-weight: 500; letter-spacing: 0.18em;
-    color: #5B8CFF; margin-bottom: 18px;
-  }
   h1 {
-    font-family: 'Inter Tight', 'Inter', sans-serif;
-    font-weight: 700; font-size: 82px; line-height: 1.03;
-    letter-spacing: -0.035em; color: #FFFFFF; margin-bottom: 34px;
+    position: relative;
+    margin-top: 64px;
+    font-size: 58px; line-height: 1.03; font-weight: 500; letter-spacing: -0.035em;
+    max-width: 960px;
   }
-  h1 .hl { color: #93B4FF; }
 
-  .stats { display: flex; align-items: stretch; gap: 0; }
-  .stat { padding-right: 44px; }
-  .stat + .stat { border-left: 1px solid #22262C; padding-left: 44px; }
-  .stat .num {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-weight: 500; font-size: 46px; color: #4FD1A5;
-    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
-    line-height: 1.1;
+  .readings {
+    position: relative;
+    margin-top: auto;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
   }
-  .stat .lbl { font-size: 17px; color: #7E8794; margin-top: 6px; }
-  .stat.quiet .num { color: #E2E8F0; font-size: 30px; padding-top: 10px; }
-
-  .bottom { display: flex; align-items: center; justify-content: space-between; position: relative; }
-  .cmd {
-    display: inline-flex; align-items: center; gap: 12px;
-    background: #131518; border: 1px solid #2E333B; border-radius: 10px;
-    padding: 15px 24px;
-    font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 22px;
+  .readings > div { padding: 20px 22px; }
+  .readings > div + div { border-left: 1px solid var(--rule); }
+  .label { font-size: 15px; font-weight: 500; color: var(--muted); }
+  .value {
+    font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
+    font-size: 44px; line-height: 1; letter-spacing: -0.04em; margin: 11px 0 9px;
+    font-variant-numeric: tabular-nums slashed-zero;
   }
-  .cmd .p { color: #4FD1A5; }
-  .cmd .c { color: #E2E8F0; }
-  .hosts { font-size: 17px; color: #7E8794; }
-  .hosts .dot { color: #3A4150; padding: 0 8px; }
+  .note { font-size: 14px; color: var(--faint); }
 </style>
 </head>
 <body>
-  <div class="glow"></div>
-  <div class="glow2"></div>
-
-  <svg class="graph" viewBox="0 0 620 640" width="620" fill="none">
-    <defs>
-      <filter id="soft" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur stdDeviation="6"/>
-      </filter>
-    </defs>
-    <!-- quiet edges -->
-    <g stroke="#3A4150" stroke-width="1.6" opacity="0.6">
-      <line x1="500" y1="80"  x2="392" y2="176"/>
-      <line x1="500" y1="80"  x2="566" y2="212"/>
-      <line x1="566" y1="212" x2="470" y2="300"/>
-      <line x1="392" y1="176" x2="300" y2="264"/>
-      <line x1="300" y1="264" x2="360" y2="392"/>
-      <line x1="470" y1="300" x2="360" y2="392"/>
-      <line x1="470" y1="300" x2="576" y2="410"/>
-      <line x1="360" y1="392" x2="450" y2="512"/>
-      <line x1="576" y1="410" x2="450" y2="512"/>
-      <line x1="450" y1="512" x2="368" y2="596"/>
-      <line x1="300" y1="264" x2="238" y2="380"/>
-      <line x1="238" y1="380" x2="360" y2="392"/>
-    </g>
-    <!-- the recalled pathway: glow underlay, then crisp line -->
-    <g stroke="#5B8CFF" stroke-width="7" opacity="0.35" filter="url(#soft)">
-      <line x1="500" y1="80"  x2="392" y2="176"/>
-      <line x1="392" y1="176" x2="470" y2="300"/>
-      <line x1="470" y1="300" x2="360" y2="392"/>
-    </g>
-    <g stroke="#5B8CFF" stroke-width="2.4" opacity="0.95">
-      <line x1="500" y1="80"  x2="392" y2="176"/>
-      <line x1="392" y1="176" x2="470" y2="300"/>
-      <line x1="470" y1="300" x2="360" y2="392"/>
-    </g>
-    <!-- nodes -->
-    <g>
-      <circle cx="500" cy="80"  r="9"  fill="#5B8CFF"/>
-      <circle cx="392" cy="176" r="7"  fill="#5B8CFF"/>
-      <circle cx="566" cy="212" r="6"  fill="#3A4150"/>
-      <circle cx="470" cy="300" r="8"  fill="#5B8CFF"/>
-      <circle cx="238" cy="380" r="5.5" fill="#3A4150"/>
-      <circle cx="300" cy="264" r="6"  fill="#3A4150"/>
-      <circle cx="576" cy="410" r="6"  fill="#3A4150"/>
-      <circle cx="450" cy="512" r="6.5" fill="#3A4150"/>
-      <circle cx="368" cy="596" r="5"  fill="#3A4150" opacity="0.6"/>
-      <!-- terminal memory node: halo + core -->
-      <circle cx="360" cy="392" r="22" fill="#4FD1A5" opacity="0.28" filter="url(#soft)"/>
-      <circle cx="360" cy="392" r="11" fill="#4FD1A5"/>
-    </g>
-  </svg>
+  <canvas id="liquid" aria-hidden="true"></canvas>
 
   <div class="top">
     <div class="wordmark">
-      <div class="mark">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-          <line x1="6" y1="17" x2="12" y2="7" stroke="#3A4150" stroke-width="1.6"/>
-          <line x1="12" y1="7" x2="18" y2="15" stroke="#5B8CFF" stroke-width="1.8"/>
-          <line x1="6" y1="17" x2="18" y2="15" stroke="#3A4150" stroke-width="1.6"/>
-          <circle cx="12" cy="7" r="3" fill="#5B8CFF"/>
-          <circle cx="6" cy="17" r="2.4" fill="#3A4150"/>
-          <circle cx="18" cy="15" r="2.6" fill="#4FD1A5"/>
-        </svg>
-      </div>
-      <span>NeuralMind</span>
+      <svg width="32" height="32" viewBox="0 0 26 26" aria-hidden="true">
+        <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+        <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+        <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
+      </svg>
+      NeuralMind
     </div>
     <div class="site">neuralmind.uk</div>
   </div>
 
-  <div class="mid">
-    <div class="eyebrow">PERSISTENT MEMORY FOR AI CODING AGENTS</div>
-    <h1>Now your agent<br><span class="hl">remembers your codebase.</span></h1>
-    <div class="stats">
-      <div class="stat">
-        <div class="num">95%</div>
-        <div class="lbl">mean gold-file recall</div>
-      </div>
-      <div class="stat">
-        <div class="num">45&#8211;246&#215;</div>
-        <div class="lbl">fewer tokens than full files</div>
-      </div>
-      <div class="stat quiet">
-        <div class="num">local-first</div>
-        <div class="lbl">no telemetry</div>
-      </div>
+  <h1>Your coding agent forgets your codebase. NeuralMind remembers it.</h1>
+
+  <div class="readings">
+    <div>
+      <p class="label">Gold file found</p>
+      <p class="value">40 of 40</p>
+      <p class="note">public benchmark; ripgrep found 32 of 40</p>
+    </div>
+    <div>
+      <p class="label">Fewer tokens than ripgrep</p>
+      <p class="value">31&#8211;67&#215;</p>
+      <p class="note">same queries, top five files opened whole</p>
+    </div>
+    <div>
+      <p class="label">Top-five hit rate</p>
+      <p class="value">93.3%</p>
+      <p class="note">150 questions; all 10 misses published</p>
     </div>
   </div>
 
-  <div class="bottom">
-    <div class="cmd"><span class="p">$</span><span class="c">pip install neuralmind</span></div>
-    <div class="hosts">Claude Code<span class="dot">&#183;</span>Cursor<span class="dot">&#183;</span>Cline<span class="dot">&#183;</span>Continue<span class="dot">&#183;</span>any MCP agent</div>
-  </div>
+  <script src="liquid.js"></script>
 </body>
 </html>

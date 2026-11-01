@@ -174,7 +174,6 @@ export default function WhatItRemembersPage() {
                 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
                 <header className="mb-12 pb-8 border-b border-carbon-border">
-                    <span className="eyebrow block mb-4">Memory, in detail</span>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         What NeuralMind remembers, and what it forgets
                     </h1>
@@ -188,7 +187,7 @@ export default function WhatItRemembersPage() {
                             {answers.map((a, i) => (
                                 <li key={a.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                                     <span className="font-mono text-xs text-faint tabular-nums">{i + 1}</span>
-                                    <a href={`#${a.id}`} className="text-electric hover:text-electric-bright transition-colors">
+                                    <a href={`#${a.id}`} className="link">
                                         {a.q}
                                     </a>
                                     <span className="text-muted text-sm">{a.label}</span>
@@ -210,7 +209,7 @@ export default function WhatItRemembersPage() {
                             <h2 className="font-display text-2xl font-bold text-white mb-4 tracking-tight">{a.q}</h2>
                             <p className="text-body text-lg leading-relaxed mb-6">{withCode(a.short)}</p>
 
-                            <h3 className="eyebrow mb-3">How it works</h3>
+                            <h3 className="label mb-3">How it works</h3>
                             <ul className="space-y-3 mb-6">
                                 {a.points.map((p) => (
                                     <li key={p} className="text-muted leading-relaxed pl-4 border-l border-carbon-border">
@@ -225,7 +224,7 @@ export default function WhatItRemembersPage() {
                                         <caption className="text-left text-faint text-caption mb-2">
                                             One association, used on a schedule and then left idle. Each row is asserted
                                             by{' '}
-                                            <a href={blob('tests/test_learned_decay.py')} className="text-electric hover:text-electric-bright">
+                                            <a href={blob('tests/test_learned_decay.py')} className="link">
                                                 tests/test_learned_decay.py
                                             </a>
                                             .
@@ -256,8 +255,8 @@ export default function WhatItRemembersPage() {
 
                             <div className="grid sm:grid-cols-3 gap-4">
                                 <div className="min-w-0 sm:col-span-2">
-                                    <h3 className="eyebrow mb-3">Check it yourself</h3>
-                                    <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto">
+                                    <h3 className="label mb-3">Check it yourself</h3>
+                                    <div className="bg-carbon-raised rounded-control p-4 font-mono text-xs text-body overflow-x-auto">
                                         {a.check.map((line) => (
                                             <p key={line} className="whitespace-nowrap">
                                                 <span className="text-faint select-none">$ </span>
@@ -267,12 +266,12 @@ export default function WhatItRemembersPage() {
                                     </div>
                                 </div>
                                 <div className="min-w-0">
-                                    <h3 className="eyebrow mb-3">Read the source</h3>
+                                    <h3 className="label mb-3">Read the source</h3>
                                     <ul className="space-y-1.5 text-sm">
                                         {a.sources.map((s) => (
                                             <li key={s.href}>
-                                                <a href={s.href} className="text-electric hover:text-electric-bright transition-colors">
-                                                    {s.label} →
+                                                <a href={s.href} className="link">
+                                                    {s.label}
                                                 </a>
                                             </li>
                                         ))}
@@ -294,15 +293,15 @@ export default function WhatItRemembersPage() {
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                         <a
                             href="https://github.com/dfrostar/neuralmind/issues"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            Open an issue →
+                            Open an issue
                         </a>
                         <a
                             href="https://docs.neuralmind.uk/wiki/Limits-and-Failure-Modes.html"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            Limits and failure modes →
+                            Limits and failure modes
                         </a>
                     </div>
                 </section>
