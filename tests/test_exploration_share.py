@@ -534,7 +534,9 @@ def test_cli_replaces_the_row_of_a_session_that_has_written_since(tmp_path, caps
     assert not list(tmp_path.glob("*.tmp"))
 
 
-def test_cli_keeps_the_first_of_two_transcripts_with_one_session_id(tmp_path, capsys):
+def test_cli_records_each_of_two_transcripts_with_one_session_id(tmp_path, capsys):
+    """The spec's session is one transcript file, so two files under one sessionId are two
+    rows (the rule before pass 6 kept only the first in path order)."""
     proj = tmp_path / "projects" / "-Users-x-repo"
     proj.mkdir(parents=True)
     _claude_transcript(proj / "a.jsonl", billed=(400, 426, 400))
@@ -542,11 +544,12 @@ def test_cli_keeps_the_first_of_two_transcripts_with_one_session_id(tmp_path, ca
     out = tmp_path / "rows.jsonl"
     argv = ["claude-code", "--root", str(tmp_path / "projects"), "--since", "2026-01-01T00:00:00Z"]
     assert main(argv + ["--out", str(out), "--estimate"]) == 0
-    assert "1 sessions added, 0 updated (1 interactive)" in capsys.readouterr().out
-    (row,) = [json.loads(line) for line in out.read_text().splitlines()]
-    assert (
-        row["prompt_tokens_billed"] == 1226
-    ), "a.jsonl, the first in path order, not b.jsonl's 1526"
+    assert "2 sessions added, 0 updated (2 interactive)" in capsys.readouterr().out
+    rows = [json.loads(line) for line in out.read_text().splitlines()]
+    assert sorted((r["session_id"], r["prompt_tokens_billed"]) for r in rows) == [
+        ("a", 1226),
+        ("b", 1526),
+    ]
 
 
 def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
@@ -622,6 +625,46 @@ def test_claude_code_collects_nested_subagent_transcripts_as_their_own_sessions(
     assert by_id["cc-parent/agent-a1"].source_group == "subagent"
     assert by_id["cc-parent/agent-a2"].source_group == "subagent"
     assert by_id["cc-parent/agent-a2"].tool_calls == {EXPLORATION: 2}
+
+
+def test_claude_code_counts_each_transcript_file_as_a_session(tmp_path):
+    """A resumed conversation writes more than one file under one sessionId; the spec's
+    session is the file, so each is its own row, in path order."""
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+
+    def transcript(path, n_calls):
+        lines = [
+            json.dumps(
+                {
+                    "type": "user",
+                    "timestamp": "2026-10-10T10:00:00Z",
+                    "sessionId": "shared-id",
+                    "message": {"content": "go"},
+                }
+            )
+        ]
+        for i in range(n_calls):
+            lines.append(
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "timestamp": f"2026-10-10T10:00:0{i + 1}Z",
+                        "sessionId": "shared-id",
+                        "requestId": f"{path.stem}-{i}",
+                        "message": {
+                            "content": [{"type": "text", "text": "ok"}],
+                            "usage": {"input_tokens": 100},
+                        },
+                    }
+                )
+            )
+        path.write_text("\n".join(lines) + "\n")
+
+    transcript(proj / "file-a.jsonl", 1)
+    transcript(proj / "file-b.jsonl", 3)
+    rows = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)
+    assert [(r.session_id, r.calls) for r in rows] == [("file-a", 1), ("file-b", 3)]
 
 
 def test_claude_code_later_compaction_replaces_earlier_summary(tmp_path):
