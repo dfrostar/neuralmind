@@ -1861,6 +1861,58 @@ def cmd_probe(args):
             print(f"  … and {data['blind_spot_total'] - len(shown)} more (see --json)")
 
 
+def cmd_measure_sessions(args):
+    """`neuralmind measure sessions` — what share of an agent's token bill is exploration.
+
+    Reads the transcripts Claude Code and Hermes already keep on this machine
+    (read-only), counts the prompt tokens spent on reading and searching code
+    against everything the sessions carried, and prints the two shares and the
+    spec's pre-registered reading. Stdout is aggregates only: no paths, project
+    names or prompts. Exit 2 when there is nothing to measure, 1 when ``--rows``
+    can't be written.
+    """
+    from neuralmind.measure import sessions as measure_sessions
+    from neuralmind.measure.tokens import Tokenizer
+
+    # An explicit location that isn't there is a mistake, not an empty window.
+    if args.claude_root and not Path(args.claude_root).expanduser().is_dir():
+        print("measure sessions: --claude-root is not a directory", file=sys.stderr)
+        return 2
+    if args.hermes_db and not Path(args.hermes_db).expanduser().is_file():
+        print("measure sessions: --hermes-db is not a file", file=sys.stderr)
+        return 2
+
+    since, until = measure_sessions.window(args.since_days)
+    tok = Tokenizer(force_estimate=args.estimate)
+    m = measure_sessions.measure(args.claude_root, args.hermes_db, since, until, tok)
+    for warning in m.warnings:
+        print(f"measure sessions: {warning}", file=sys.stderr)
+    if not m.rows:
+        print(
+            f"measure sessions: no sessions found in the last {args.since_days:g} days "
+            f"({measure_sessions.describe_sources(m.sources)}).",
+            file=sys.stderr,
+        )
+        return 2
+
+    agg = measure_sessions.summarize(m, since, until, tok)
+    if args.rows:
+        try:
+            n = measure_sessions.write_rows(args.rows, m.rows)
+        except OSError as exc:
+            print(
+                f"measure sessions: --rows could not be written ({exc.strerror})", file=sys.stderr
+            )
+            return 1
+        print(f"measure sessions: wrote {n} session rows to {args.rows}", file=sys.stderr)
+    if args.json:
+        print(json.dumps(agg, indent=2, sort_keys=True))
+        return 0
+
+    print(measure_sessions.render(agg, args.since_days), end="")
+    return 0
+
+
 def _run_public_benchmark(args) -> None:
     """`neuralmind benchmark --public` — the reproducible vs-alternatives benchmark.
 
@@ -7283,6 +7335,17 @@ def _positive_int(value: str) -> int:
     return n
 
 
+def _positive_float(value: str) -> float:
+    """argparse ``type=`` for a span of days: a number above 0."""
+    try:
+        x = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid number: {value!r}") from None
+    if not 0 < x < float("inf"):
+        raise argparse.ArgumentTypeError(f"must be above 0, got {value}")
+    return x
+
+
 def _duration_arg(value: str) -> float:
     """argparse ``type=`` for ``--stale-after``: ``30m``, ``2h``, ``1d`` -> seconds."""
     from neuralmind.freshness import parse_duration
@@ -7683,6 +7746,48 @@ def build_parser() -> argparse.ArgumentParser:
     )
     probe_p.add_argument("--json", "-j", action="store_true")
     probe_p.set_defaults(func=cmd_probe)
+
+    measure_p = subparsers.add_parser(
+        "measure",
+        help="Measure what your agent sessions spend tokens on (local, read-only)",
+    )
+    measure_sub = measure_p.add_subparsers(dest="measure_cmd", required=True)
+    measure_sessions_p = measure_sub.add_parser(
+        "sessions",
+        help="What share of the prompt tokens your Claude Code and Hermes sessions were "
+        "billed for went to reading and searching code (exit 2 when there are none)",
+    )
+    measure_sessions_p.add_argument(
+        "--since-days",
+        type=_positive_float,
+        default=30,
+        metavar="N",
+        help="Sessions that started in the last N days (default: 30)",
+    )
+    measure_sessions_p.add_argument(
+        "--claude-root",
+        metavar="PATH",
+        help="Claude Code transcripts (default: $CLAUDE_CONFIG_DIR/projects, else ~/.claude/projects)",
+    )
+    measure_sessions_p.add_argument(
+        "--hermes-db",
+        metavar="PATH",
+        help="Hermes state.db, opened read-only (default: the Hermes home's, usually ~/.hermes/state.db)",
+    )
+    measure_sessions_p.add_argument(
+        "--json", "-j", action="store_true", help="Print the aggregate as JSON"
+    )
+    measure_sessions_p.add_argument(
+        "--rows",
+        metavar="PATH",
+        help="Write per-session rows (JSON lines) to PATH, replacing it; they stay where you put them",
+    )
+    measure_sessions_p.add_argument(
+        "--estimate",
+        action="store_true",
+        help="Count with characters / 4 instead of tiktoken (which fetches its vocabulary on first use)",
+    )
+    measure_sessions_p.set_defaults(func=cmd_measure_sessions)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
     search_p.add_argument("project_path", type=_existing_project_dir)

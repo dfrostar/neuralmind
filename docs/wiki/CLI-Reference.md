@@ -44,6 +44,7 @@ Complete command-line interface documentation for NeuralMind.
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
   - [savings](#savings-v0400)
+  - [measure sessions](#measure-sessions-v4240)
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
   - [team governance](#team-governance)
@@ -4120,6 +4121,69 @@ To check that an index is in use from a cron job, read `queries.last_ts` from
 `neuralmind metrics . --json`, or count `"event": "query"` lines in the
 `metrics_*.jsonl` files directly.
 
+### measure sessions *(v4.24.0+)*
+
+What share of the prompt tokens your agent sessions were billed for went to
+*reading and searching code*, from the transcripts Claude Code and Hermes-Agent
+already keep on this machine. Read-only; needs no project, index or build.
+
+```bash
+neuralmind measure sessions [--since-days N] [--claude-root PATH] [--hermes-db PATH]
+                            [--json] [--rows PATH] [--estimate]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--since-days N` | 30 | Sessions that started in the last N days (a number above 0) |
+| `--claude-root PATH` | `$CLAUDE_CONFIG_DIR/projects`, else `~/.claude/projects` | Claude Code's transcripts (`<project>/<session>.jsonl`). A path that isn't a directory exits 2 |
+| `--hermes-db PATH` | `state.db` in the Hermes home (`$HERMES_HOME`, else the active profile, else `~/.hermes`) | Hermes's session database, opened read-only. A path that isn't a file exits 2 |
+| `--json`, `-j` | off | Print the aggregate as JSON (the groups, `reading`, `window`, `sources`, `tokenizer`) instead of the report |
+| `--rows PATH` | off | Write one JSON line per session (id, source label, model, timestamps, token counts by kind) to `PATH`, replacing it. No prompt text or paths |
+| `--estimate` | off | Count characters ÷ 4 instead of tiktoken's `o200k_base`, and touch no tokenizer vocabulary |
+
+Each source that exists is read: pass one flag and the other source is still
+looked for at its default. A source that is missing is skipped; one that is
+there but can't be read is reported on stderr (with no path) and skipped, so the
+other is still measured.
+
+The report has two tables and the spec's reading. The first gives, per agent and
+source group (`interactive`, `automated`, `subagent`, `benchmark`), the sessions
+and API calls, the exploration share **of context** (exploration tool results
+present in each call over everything the transcripts record it carrying; the
+spec's headline), the same tokens **of billed prompt** (over what the provider
+reported), and the median session. The second gives the prompt tokens billed,
+**Recorded / billed** (how much of the bill the transcripts account for), and
+the shares of the same context that were NeuralMind's own block, edits and other
+shell. The reading applies the spec's thresholds (under 10%, 10% to 30%, 30% or
+more) to interactive groups, with their session counts. Definitions, the
+presence model and its limits: [`docs/specs/EXPLORATION-SHARE-SPEC.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/specs/EXPLORATION-SHARE-SPEC.md).
+
+Stdout holds aggregates only: no paths, project names, prompts or session ids.
+Claude Code's transcripts cover every project on the machine and are pooled.
+Tokens are counted with tiktoken's `o200k_base` when tiktoken is installed and
+its vocabulary is available (tiktoken fetches it on first use), else with
+characters ÷ 4, and the report says which. The command measures where tokens
+went; it makes no estimate of what any tool would change.
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | A report was printed |
+| 1 | `--rows` could not be written (nothing is printed) |
+| 2 | No session started in the window (stderr says which of Claude Code and Hermes was found), or an argument is wrong: `--since-days` not above 0, a `--claude-root` that isn't a directory, a `--hermes-db` that isn't a file |
+
+#### Examples
+
+```bash
+neuralmind measure sessions                      # the last 30 days, both agents
+neuralmind measure sessions --since-days 7 --json | jq '.groups | keys'
+neuralmind measure sessions --rows sessions.jsonl --estimate
+neuralmind measure sessions --since-days 1 || echo "nothing to measure"
+```
+
+Walkthrough: [Measure what your agent's token bill goes to](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-what-your-agent-spends.md).
+
 ### status *(v3.1.4+; index reporting v3.4.0+)*
 
 Two independent halves of a project's state in one glance: what is **indexed**
@@ -4594,7 +4658,7 @@ renewed — issue a new one.
 |------|----------|
 | 0 | Success |
 | 1 | General error |
-| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist; *(v4.16.0+)* `team seats sync`: the manifest was applied only in part |
+| 2 | Invalid arguments, including *(v4.8.2+)* a project path that doesn't exist; *(v4.16.0+)* `team seats sync`: the manifest was applied only in part; *(v4.24.0+)* `measure sessions`: no session started in the window |
 | 3 | `build --strict`: the code graph fails the freshness check; `daemon status`: the daemon isn't running |
 | 6 | `license expiring`: renewals due inside the window |
 | 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |

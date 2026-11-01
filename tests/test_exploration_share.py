@@ -421,3 +421,30 @@ def test_report_aggregates_and_reads(tmp_path):
     assert agg["reading"]["hermes/interactive"].startswith("under 10%")
     md = report.to_markdown(agg, "t")
     assert "hermes/interactive" in md and "Pre-registered reading" in md
+
+
+def test_the_nightly_job_still_needs_only_the_standard_library():
+    """`python -m evals.exploration_share` ran on stdlib alone before the collectors moved
+    into the package; `import neuralmind` needs PyYAML and more, so with those missing the
+    re-export loads neuralmind/measure by itself."""
+    import subprocess
+    import sys
+    import tempfile
+
+    root = Path(__file__).resolve().parent.parent
+    code = (
+        "import sys; sys.modules['yaml'] = None; sys.path.insert(0, sys.argv[1])\n"
+        "from evals.exploration_share import classify, hermes_db, report\n"
+        "from evals.exploration_share.__main__ import main\n"
+        "assert classify.__name__ == 'neuralmind.measure.classify', classify.__name__\n"
+        "assert getattr(sys.modules['neuralmind'], '__file__', None) is None, 'full package'\n"
+        "assert classify.shell_is_readonly('cat a.py')\n"
+    )
+    with tempfile.TemporaryDirectory() as cwd:  # not the checkout: nothing on sys.path by accident
+        done = subprocess.run(
+            [sys.executable, "-I", "-c", code, str(root)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    assert done.returncode == 0, done.stderr

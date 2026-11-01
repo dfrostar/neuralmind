@@ -3,7 +3,8 @@
 **Status:** pre-registered 2026-11-01, before any share was computed (see "Prior
 exposure" below for exactly what had been seen).
 **Owner:** Darren Frost. **Analyst:** Claude (Fable 5.1), session `ba588627`.
-**Code:** `evals/exploration_share/`. **Nightly job:** Hermes cron
+**Code:** `neuralmind/measure/`, shipped as `neuralmind measure sessions`;
+`evals/exploration_share/` re-exports it and runs the nightly job. **Nightly job:** Hermes cron
 `neuralmind-exploration-share` on ai-9970 (no-agent script).
 
 ## The question
@@ -35,7 +36,7 @@ share decides whether that effect is something a bill can feel, or arithmetic.
     `NotebookRead`, and `Bash` with a read-only command. A command is read-only
     when every stage of its pipeline (`|`, `&&`, `;`, `||`), after any `cd …`,
     variable assignments, `sudo`, `time` or `nohup` prefix, starts with a word
-    on the read-only list in `evals/exploration_share/classify.py` (`cat`,
+    on the read-only list in `neuralmind/measure/classify.py` (`cat`,
     `head`, `grep`, `rg`, `find`, `ls`, `wc`, `diff`, `sed` without `-i`, `git`
     with `log`/`show`/`diff`/`status`/`blame`/`grep`/`ls-files`/`rev-parse`,
     …), and it writes to no file (`>`/`>>` other than to `/dev/null` or
@@ -168,6 +169,22 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   holds no tool results, so the billed-prompt share is the recorded share
   times the calibration ratio, not a bound), and track 1's task list no
   longer counts three held-out tasks twice. Thresholds unchanged.
+- **2026-11-01, the collectors ship as a command; definitions, thresholds and
+  figures unchanged.** The collectors moved from `evals/exploration_share/` to
+  `neuralmind/measure/` and run as `neuralmind measure sessions`, which anyone
+  can point at their own Claude Code and Hermes sessions (last 30 days by
+  default; aggregates only on stdout; exit 2 when no session started in the
+  window). `evals/exploration_share/` re-exports the same modules, and the
+  nightly job's commands are unchanged. On the Mac's and ai-9970's sessions
+  started 2026-10-02 to 2026-10-25 (64 Claude Code and 649 Hermes sessions,
+  characters ÷ 4), the moved code wrote rows byte-identical to the code before the
+  move, and `report`'s Markdown identical. Additions only: the summary JSON gains
+  `exploration_share_of_prompt` per group (the second share the pass-4 field report
+  states, billed exploration tokens over the provider's prompt tokens), and the
+  collectors read transcripts as UTF-8 whatever the locale and pass the Hermes
+  database path to SQLite as a percent-encoded URI. The command prints the
+  pre-registered reading beside each interactive group's session count; the
+  thresholds are unchanged.
 
 ## Outputs
 

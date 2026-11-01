@@ -199,6 +199,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4240">
+            <h2>What&rsquo;s New in v4.24.0 &mdash; <code>neuralmind measure sessions</code>: what your agent&rsquo;s token bill goes to</h2>
+            <p>NeuralMind quotes a token ratio per question. Whether it shows on a bill depends on how much of the bill is code being read and searched, and nothing told you that for your own sessions. This release adds a read-only meter over the transcripts your agents already keep. It measures where tokens went; it makes no estimate of what any tool would change.</p>
+            <ul>
+                <li><strong><code>neuralmind measure sessions</code></strong> &mdash; reads Claude Code&rsquo;s <code>~/.claude/projects</code> and Hermes&rsquo;s <code>state.db</code> on this machine, read-only, for the sessions that started in the last 30 days (<code>--since-days</code>), with no project, index or build needed</li>
+                <li><strong>Two shares, stated separately</strong> &mdash; exploration (<code>Read</code>, <code>Grep</code>, <code>Glob</code>, <code>read_file</code>, <code>search_files</code>, read-only shell) <em>of the recorded context</em>, the spec&rsquo;s headline, and <em>of the billed prompt</em>, with the share of the bill the transcripts account for beside them, and NeuralMind&rsquo;s own block, edits and shell output as their own columns</li>
+                <li><strong>The pre-registered reading</strong> &mdash; under 10%, 10% to 30%, 30% or more, applied to interactive sessions with the number of sessions it rests on; automated, subagent and benchmark sessions are shown and never read against it</li>
+                <li><strong>Aggregates only on stdout</strong> &mdash; no paths, project names, prompts or session ids; <code>--json</code> prints the aggregate, <code>--rows PATH</code> writes per-session rows to a file you name; exit <code>2</code> when no session started in the window</li>
+                <li><strong>The first field report</strong> &mdash; one developer&rsquo;s two machines: 30.6% of the recorded context and 19.6% of the billed prompt on Claude Code (87 interactive sessions), 10.4% on Hermes (67), each within a few points of a threshold, so not a finding about the thresholds and not a result for your sessions</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.24.0.md">v4.24.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-what-your-agent-spends.md">Measure what your agent&rsquo;s token bill goes to</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4233">
             <h2>What&rsquo;s New in v4.23.3 &mdash; a rebuild gives the graph a full build gives, and its type pass parses only the files that changed</h2>
             <p>v4.23.2 made the build&rsquo;s type pass read each file once. It still parsed every file on every build, incremental ones included, so a rebuild after a one-line commit cost as much as a build from scratch. This release keeps each file&rsquo;s results between builds; the type edges, the stored rows and the block the agent gets come out identical, checked byte for byte.</p>
