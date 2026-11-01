@@ -1,0 +1,58 @@
+{
+ "groups": {
+  "claude-code/interactive": {
+   "agent": "claude-code",
+   "billed_tokens": {
+    "assistant": 499832572,
+    "block": 614389,
+    "edit": 8922656,
+    "exploration": 734166460,
+    "other": 64050043,
+    "shell": 237686310,
+    "summary": 10316759,
+    "system": 818140955,
+    "user": 301265584,
+    "web": 2992488
+   },
+   "block_share_billed": 0.00022942184596976584,
+   "calibration_est_over_billed": 0.634817565837191,
+   "calls": 14105,
+   "context_tokens_est": 2677988216,
+   "edit_share_billed": 0.0033318503594192066,
+   "exploration_share_billed": 0.2741485028252268,
+   "exploration_share_first": 0.7212387433872847,
+   "exploration_share_median_session": 0.19727140991496933,
+   "first_tokens": {
+    "assistant": 5266304,
+    "block": 7664,
+    "edit": 91959,
+    "exploration": 33148362,
+    "other": 1941045,
+    "shell": 2304987,
+    "summary": 92430,
+    "system": 0,
+    "user": 3070947,
+    "web": 36620
+   },
+   "prompt_tokens_billed": 4218516248,
+   "sessions": 87,
+   "sessions_with_block": 4,
+   "shell_share_billed": 0.08875554738438028,
+   "source_group": "interactive",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 1829,
+    "exploration": 4806,
+    "other": 1907,
+    "shell": 6933,
+    "web": 73
+   }
+  }
+ },
+ "n_sessions": 87,
+ "reading": {
+  "claude-code/interactive": "10% to 30%: the claim stands with the share beside it"
+ }
+}

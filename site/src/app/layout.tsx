@@ -1,6 +1,7 @@
 import './globals.css';
 import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
+import CondensingGraph from '@/components/ui/CondensingGraph';
 import LiquidBackground from '@/components/ui/LiquidBackground';
 
 const SITE_DESCRIPTION =
@@ -175,10 +176,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            {/* No background on body: the liquid canvas paints between the
-                ground on <html> and the page. */}
+            {/* No background on body: the liquid canvas, and the graph that
+                condenses out of it, paint between the ground on <html> and
+                the page. */}
             <body className="text-ink font-sans antialiased">
                 <LiquidBackground />
+                <CondensingGraph />
                 {children}
             </body>
         </html>

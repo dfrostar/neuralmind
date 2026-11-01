@@ -48,6 +48,8 @@ export default function Mascot({
 
         const start = async () => {
             setState('loading');
+            // Held outside the try so a failed load can still free it.
+            let created: import('three').WebGLRenderer | undefined;
             try {
                 const [THREE, { GLTFLoader }, { VRMLoaderPlugin, VRMUtils }] = await Promise.all([
                     import('three'),
@@ -57,6 +59,7 @@ export default function Mascot({
                 if (disposed) return;
 
                 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+                created = renderer;
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 renderer.outputColorSpace = THREE.SRGBColorSpace;
                 renderer.domElement.setAttribute('aria-hidden', 'true');
@@ -78,7 +81,13 @@ export default function Mascot({
                 const loader = new GLTFLoader();
                 loader.register((parser) => new VRMLoaderPlugin(parser));
                 const gltf = await loader.loadAsync(src);
-                if (disposed) return;
+                if (disposed) {
+                    // Unmounted while the model loaded: teardown was never set, so free it here.
+                    VRMUtils.deepDispose(gltf.scene);
+                    renderer.dispose();
+                    renderer.forceContextLoss();
+                    return;
+                }
                 const vrm = gltf.userData.vrm as VRM;
                 VRMUtils.removeUnnecessaryVertices(gltf.scene);
                 VRMUtils.combineSkeletons(gltf.scene);
@@ -229,6 +238,8 @@ export default function Mascot({
                     renderer.domElement.remove();
                 };
             } catch {
+                created?.dispose();
+                created?.forceContextLoss();
                 if (!disposed) setState('failed');
             }
         };

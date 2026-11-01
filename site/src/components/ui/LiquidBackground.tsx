@@ -28,7 +28,7 @@ import { useEffect, useRef } from 'react';
  * Colours are read from the `:root` tokens in globals.css, not repeated here.
  */
 
-const CAP = 0.014;
+export const CAP = 0.014;
 const SCALE = 0.55; // canvas pixels per CSS pixel
 const MAX_SIDE = 1100; // and never wider or taller than this
 
@@ -108,12 +108,17 @@ void main() {
     float y = dot(col, vec3(0.2126, 0.7152, 0.0722));
     if (y > uCap) col *= uCap / y;
 
-    gl_FragColor = vec4(pow(col, vec3(1.0 / 2.4)), 1.0);
+    // Encode with the full sRGB transfer function. A bare pow(1/2.4) skips its
+    // scale and offset and reads brighter on screen than the capped value: at
+    // the cap it displayed about 0.025, putting faint text near 4.0:1.
+    vec3 lo = col * 12.92;
+    vec3 hi = 1.055 * pow(col, vec3(1.0 / 2.4)) - 0.055;
+    gl_FragColor = vec4(mix(hi, lo, step(col, vec3(0.0031308))), 1.0);
 }
 `;
 
 /** A `#rrggbb` token as linear RGB, which is what the shader mixes in. */
-function tokenLinear(styles: CSSStyleDeclaration, name: string): [number, number, number] {
+export function tokenLinear(styles: CSSStyleDeclaration, name: string): [number, number, number] {
     const hex = styles.getPropertyValue(name).trim().replace('#', '');
     const channel = (i: number) => {
         const c = parseInt(hex.slice(i, i + 2), 16) / 255;
