@@ -740,3 +740,38 @@ drawn by the same rule, that the pilot didn't use.
       pasted traceback could crowd the embedding ranking. The 24-identifier
       cap and the 60-file cut bound it; the per-task listings show whether
       it happened.
+- 2026-11-01 — lexical anchoring replayed, as pre-registered above; results
+  in `bench/task_outcome/lexical-anchoring/`. Offline, no agent runs.
+  - **`LEXICAL_WEIGHT` = 0.5,** chosen in-process on cached hits before the
+    held-out replay: on the pilot's 20, 0.25 gave 17 listed / 13 first, 0.5
+    and 1.0 gave 18 / 13; on the screen's 5 all three gave 3 / 3, and 1.0
+    listed two more test files. 0.5 and 1.0 tied on listed and first over
+    both sets, so 0.5 kept it. The held-out replay then ran once.
+  - **The gate holds.** Through the real hook on the test-ranking study's
+    indexes, flag off against flag on: held out 4 listed / 3 first against
+    **7 / 5** (gate 6 / 5); pilot 17 / 11 against **18 / 13** (gate 17 / 11);
+    test files among the held-out blocks' files 14 of 84 both ways (gate: not
+    above). The flag-off rows reproduce the study's `#731 + credit` rows task
+    for task.
+  - **What moved.** Held out, 6 of 12 blocks changed: two tasks gained first
+    on a quoted message found in one file (`24b4f90e97`, `cd69be6909`), one
+    gold file went from absent to second (`4a78de2805`), the three firsts
+    the hook had held, and `696f6e9ff9` changed to other wrong files. Pilot,
+    18 of 20 blocks changed: one task gained listed and first, two gained
+    first, one lost first to the `cli.py` its quoted flags live in. Code
+    quoted / from a changed file: held out 3 / 1 both ways, pilot 8 / 7 to
+    10 / 9. Median hook time on hermes-agent 8.33 to 9.17 s (cold graph
+    loads: these indexes predate the graph cache), on this repository 0.54
+    to 0.68 s.
+  - **Read against the bound.** The git-grep replay that motivated the entry
+    took backticked spans only; the pre-registered extractor also takes
+    quoted messages, which is what found `24b4f90e97`. So the fused block
+    reaches that replay's union-with-the-hook on listed (7) and falls one
+    short of it on first (5 against 6).
+  - **The first count is exactly at its threshold,** from two tasks
+    changing. As registered, the next step is confirmation on 12 new
+    held-out tasks from the seeded walk (seed 20261025, positions 25
+    onward), before any agent run; the default stays off until then.
+  - The `lexical_flag` label in each row's summary was recomputed from the
+    shim's text after the runs (the first reading had sourced, and so run,
+    the shim); nothing else in the results was touched.

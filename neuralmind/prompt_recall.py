@@ -132,7 +132,10 @@ LEXICAL_ENV = "NEURALMIND_RECALL_LEXICAL"
 # What one unit of lexical evidence is worth on the embedding scale: an
 # identifier found in one file scores 1 / ln 2 = 1.44, so at 0.5 it counts as
 # one strong match (0.72). Chosen from {0.25, 0.5, 1.0} on the pilot's 20 tasks
-# and the hermes-agent screen's 5, before the held-out replay.
+# and the hermes-agent screen's 5, before the held-out replay. With it the
+# block named the file to fix on 7 of the 12 held-out hermes-agent tasks
+# (first on 5) against 4 (3) without, and on 18 of the pilot's 20 (first on
+# 13) against 17 (11) (bench/task_outcome/lexical-anchoring).
 LEXICAL_WEIGHT = 0.5
 # An identifier in more files than this says nothing about which one.
 LEXICAL_MAX_FILES = 60
