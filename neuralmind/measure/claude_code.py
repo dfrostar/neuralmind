@@ -108,7 +108,8 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                     tokenizer=tok.name,
                 )
                 ctx = Context(row)
-            assert row is not None and ctx is not None
+            if row is None or ctx is None:
+                continue  # both are set together above; this narrows them for the type checker
             msg = o.get("message") or {}
             content = msg.get("content")
             if kind == "assistant":

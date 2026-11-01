@@ -158,12 +158,13 @@ def categorize_claude(tool_name: str | None, tool_input: dict | None) -> str:
 
 
 def _command_of(arguments: str | dict | None) -> str | None:
+    parsed = arguments
     if isinstance(arguments, str):
         try:
-            arguments = json.loads(arguments)
+            parsed = json.loads(arguments)
         except Exception:
             return arguments
-    if isinstance(arguments, dict):
-        cmd = arguments.get("command")
+    if isinstance(parsed, dict):
+        cmd = parsed.get("command")
         return cmd if isinstance(cmd, str) else None
     return None

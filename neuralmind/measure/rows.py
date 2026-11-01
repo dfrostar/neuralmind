@@ -27,9 +27,11 @@ class SessionRow:
     output_tokens_billed: int = 0
     # estimated, same tokenizer and presence model on both sides
     context_tokens_est: int = 0
-    first_tokens: dict = field(default_factory=dict)  # kind -> tokens, counted once
-    billed_tokens: dict = field(default_factory=dict)  # kind -> tokens summed over calls present
-    tool_calls: dict = field(default_factory=dict)  # category -> count
+    first_tokens: dict[str, int] = field(default_factory=dict)  # kind -> tokens, counted once
+    billed_tokens: dict[str, int] = field(
+        default_factory=dict
+    )  # kind -> tokens summed over calls present
+    tool_calls: dict[str, int] = field(default_factory=dict)  # category -> count
     compactions: int = 0
     trims: int = 0  # calls at which the billing cap dropped the oldest messages
 
