@@ -1,0 +1,56 @@
+{
+ "groups": {
+  "claude-code/interactive": {
+   "agent": "claude-code",
+   "billed_tokens": {
+    "assistant": 491651868,
+    "block": 152104,
+    "edit": 10077979,
+    "exploration": 3086569317,
+    "other": 165352253,
+    "shell": 429150623,
+    "summary": 27927791,
+    "user": 56280098,
+    "web": 4713839
+   },
+   "block_share_billed": 3.560590348539041e-05,
+   "calibration_est_over_billed": 1.0159276992675195,
+   "calls": 14066,
+   "context_tokens_est": 4271875872,
+   "edit_share_billed": 0.0023591460290445444,
+   "exploration_share_billed": 0.7225325382768987,
+   "exploration_share_first": 0.7466115503691143,
+   "exploration_share_median_session": 0.38361136255873096,
+   "first_tokens": {
+    "assistant": 4501950,
+    "block": 2470,
+    "edit": 89868,
+    "exploration": 31871654,
+    "other": 1940209,
+    "shell": 3567072,
+    "summary": 92430,
+    "user": 586129,
+    "web": 36620
+   },
+   "prompt_tokens_billed": 4204901466,
+   "sessions": 87,
+   "sessions_with_block": 2,
+   "shell_share_billed": 0.10045952547752306,
+   "source_group": "interactive",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 1805,
+    "exploration": 2799,
+    "other": 1895,
+    "shell": 8903,
+    "web": 73
+   }
+  }
+ },
+ "n_sessions": 87,
+ "reading": {
+  "claude-code/interactive": "30% or more: a material part of the bill"
+ }
+}

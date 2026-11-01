@@ -126,6 +126,9 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                         ctx.add("assistant", tok.count(json.dumps(b.get("input") or {})))
                     elif b.get("type") == "text":
                         ctx.add("assistant", tok.count(b.get("text", "")))
+                    elif b.get("type") == "thinking":
+                        # interleaved thinking is sent back with the conversation
+                        ctx.add("assistant", tok.count(b.get("thinking", "")))
                 if isinstance(content, str):
                     ctx.add("assistant", tok.count(content))
                 continue
