@@ -17,7 +17,7 @@ a published loss at v4.3.4.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **The gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| 📉 | **Smaller context** | **The gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting every source file — fewer tokens than `ripgrep` on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **A gold file in the top five for 93.3% of 150 questions** (MRR 0.750, ~830 tokens per question) at v4.12.0 — and 10 questions still missed, published | Retrieval eval, **real repos** (`requests`, `click`, `flask`, `rich`, this repository) — reproducible, not a CI gate |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer learns which files you use together and re-ranks recall with those links — **budget-neutral** (no extra tokens). CI gates the direction only: recall never lowers top-k hit rate. Earlier releases measured +3.5 to +14 points; **+0 at v4.12.0**, where the fixture reaches 97% with recall off. Its benefit on a real repo is not shown — measure it on yours with `neuralmind eval . --synapse-ab` (v4.14.0+) | Synapse A/B eval (**reference fixture**, ~500 lines — smaller scope) |
 | 🔬 | **Answer grounding vs. naive truncation** | At a *matched* token budget on this prose-heavy fixture: **delta +0.265 at v4.12.0** (measured with CI's command on one machine; v4.11.1 +0.027), after a published loss of −0.054 at v4.3.4. CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
@@ -902,7 +902,7 @@ neuralmind build .
 neuralmind benchmark . --contribute
 ```
 
-This outputs your reduction ratio, tokens per query, and an estimated monthly savings figure at Claude 3.5 Sonnet pricing. The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
+This outputs your reduction ratio, tokens per query, and an estimated monthly input-cost difference against pasting every file: both contexts priced at Claude 3.5 Sonnet input rates, at 100 queries a day for 30 days. It's modeled from token counts, not a measured bill. Fewer context tokens hasn't been shown to lower what an agent costs to finish a task ([task-outcome pilot](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt)). The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
 
 Full walkthrough: [Does NeuralMind work on *your* codebase?](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md)
 

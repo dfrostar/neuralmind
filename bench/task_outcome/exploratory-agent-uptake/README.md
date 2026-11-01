@@ -33,3 +33,21 @@ rerun asks whether those changed the agent's behaviour on the same 20 tasks.
 
 Transcripts are kept out of git (as in the pilot); each run records its
 transcript's SHA-256.
+
+**Reproduce**
+
+The analyzer pairs arms from one directory's `runs.jsonl`, and this rerun has
+only the `neuralmind` arm, so put the pilot's baseline rows beside it in a
+directory of its own and analyze that:
+
+```bash
+mkdir <pair>
+{ grep '"arm": "baseline"' bench/task_outcome/pilot/runs.jsonl
+  cat bench/task_outcome/exploratory-agent-uptake/runs.jsonl; } > <pair>/runs.jsonl
+python -m evals.task_outcome.analyze <pair>
+```
+
+That prints [report.txt](report.txt)'s paired figures, from the committed
+runs. For new runs, first run `python -m evals.task_outcome.run` as
+`site/claims.json` gives it, with `--out <rerun>`, and use `<rerun>/runs.jsonl`
+in place of this directory's.
