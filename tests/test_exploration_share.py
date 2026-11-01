@@ -68,6 +68,39 @@ TOK = Tokenizer(force_estimate=True)
         ("git worktree add ../w", False),
         ("git remote -v", True),
         ("git remote add o url", False),
+        # a listing flag doesn't rescue a mutating option, alone or in a cluster
+        ("git branch -d -v feature", False),
+        ("git branch -vD feature", False),
+        ("git branch -m old new", False),
+        ("git branch --delete --list feature", False),
+        ("git branch --set-upstream-to=origin/main", False),
+        ("git branch -vv", True),
+        ("git tag -d v1", False),
+        ("git tag -l -d v1", False),
+        ("git tag -a v1 -m msg", False),
+        ("git tag --list 'v*'", True),
+        # reflog: bare, show and exists read; expire and delete write
+        ("git reflog", True),
+        ("git reflog show HEAD", True),
+        ("git reflog HEAD@{1}", True),
+        ("git reflog exists refs/heads/main", True),
+        ("git reflog expire --expire=now --all", False),
+        ("git reflog delete HEAD@{0}", False),
+        # an escaped operator outside quotes is an ordinary character; \<newline> continues the line
+        ("rg \\> src", True),
+        ("rg foo\\|bar src", True),
+        ("cat a.py \\\n b.py", True),
+        ("cat a.py \\\n && pytest", False),
+        # read-only commands with a writing or executing option
+        ("find . -name '*.pyc' -delete", False),
+        ("find . -name x -exec rm {} \\;", False),
+        ("find . -name '*.py' -fprint out.txt", False),
+        ("find . -name '*.py'", True),
+        ("sort -o out.txt in.txt", False),
+        ("sort --output=out.txt in.txt", False),
+        ("sort in.txt", True),
+        ("yq -i '.a = 1' f.yaml", False),
+        ("yq '.a' f.yaml", True),
         # git's global options take an operand, which is not the subcommand
         ("git -C /repo diff", True),
         ("git -c color.ui=false log --oneline", True),
@@ -527,6 +560,68 @@ def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
     assert r.first_tokens[EXPLORATION] == 25
     assert r.billed_tokens.get(EXPLORATION, 0) == 0
     assert r.context_tokens_est <= r.prompt_tokens_billed
+
+
+def test_claude_code_collects_nested_subagent_transcripts_as_their_own_sessions(tmp_path):
+    """A subagent's transcript lives at <project>/<session>/subagents/agent-<id>.jsonl and
+    carries its parent's sessionId; each file is a subagent row with an id of its own."""
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    nested = proj / "cc-parent" / "subagents"
+    nested.mkdir(parents=True)
+
+    def line(kind, content, ts, **extra):
+        o = {"type": kind, "timestamp": ts, "sessionId": "cc-parent", "isSidechain": True}
+        o["message"] = {"content": content}
+        o.update(extra)
+        return json.dumps(o)
+
+    def agent_file(name, n_results):
+        lines = [line("user", "go", "2026-10-10T10:00:00Z")]
+        for i in range(n_results):
+            use = {
+                "type": "tool_use",
+                "id": f"{name}-{i}",
+                "name": "Read",
+                "input": {"file_path": "a.py"},
+            }
+            lines.append(
+                line(
+                    "assistant",
+                    [use],
+                    f"2026-10-10T10:00:0{i + 1}Z",
+                    requestId=f"{name}-r{i}",
+                    message={"content": [use], "usage": {"input_tokens": 400 + 40 * i}},
+                )
+            )
+            lines.append(
+                line(
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": f"{name}-{i}", "content": "R" * 80}],
+                    f"2026-10-10T10:00:0{i + 1}Z",
+                )
+            )
+        (nested / f"agent-{name}.jsonl").write_text("\n".join(lines) + "\n")
+
+    agent_file("a1", 1)
+    agent_file("a2", 2)
+    (proj / "cc-parent.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "user",
+                "timestamp": "2026-10-10T09:59:00Z",
+                "sessionId": "cc-parent",
+                "message": {"content": "hello"},
+            }
+        )
+        + "\n"
+    )
+    rows = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)
+    by_id = {r.session_id: r for r in rows}
+    assert set(by_id) == {"cc-parent", "cc-parent/agent-a1", "cc-parent/agent-a2"}
+    assert by_id["cc-parent"].source_group == "interactive"
+    assert by_id["cc-parent/agent-a1"].source_group == "subagent"
+    assert by_id["cc-parent/agent-a2"].source_group == "subagent"
+    assert by_id["cc-parent/agent-a2"].tool_calls == {EXPLORATION: 2}
 
 
 def test_claude_code_later_compaction_replaces_earlier_summary(tmp_path):

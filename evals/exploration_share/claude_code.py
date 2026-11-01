@@ -26,7 +26,10 @@ def collect(
     """
     tok = tokenizer or Tokenizer()
     rows: list[SessionRow] = []
-    for path in sorted(Path(root).expanduser().glob("*/*.jsonl")):
+    base = Path(root).expanduser()
+    # top-level sessions, and the transcripts of the subagents they ran
+    # (`<project>/<session>/subagents/agent-<id>.jsonl`)
+    for path in sorted([*base.glob("*/*.jsonl"), *base.glob("*/*/subagents/*.jsonl")]):
         if path.stat().st_mtime < since:
             continue  # nothing written in the window
         row = _collect_file(path, since, until, tok)
@@ -90,10 +93,18 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
             if ts is not None:
                 last_ts = ts
             if row is None:
-                sidechain = bool(o.get("isSidechain"))
+                nested = path.parent.name == "subagents"
+                sidechain = bool(o.get("isSidechain")) or nested
+                # a subagent's file carries its parent's sessionId: its own id is the file's,
+                # or siblings would collapse into one row
+                session_id = (
+                    f"{o.get('sessionId') or path.parent.parent.name}/{path.stem}"
+                    if nested
+                    else str(o.get("sessionId") or path.stem)
+                )
                 row = SessionRow(
                     agent="claude-code",
-                    session_id=str(o.get("sessionId") or path.stem),
+                    session_id=session_id,
                     source="sidechain" if sidechain else "session",
                     source_group="subagent" if sidechain else "interactive",
                     started_at=first_ts,
