@@ -1,0 +1,309 @@
+"""Tool categories (see the spec's "Tool categories"): exploration, edit, web,
+shell, other. Shell commands are exploration only when every pipeline stage is
+read-only and nothing is redirected to a file."""
+
+from __future__ import annotations
+
+import json
+import re
+import shlex
+
+EXPLORATION = "exploration"
+EDIT = "edit"
+WEB = "web"
+SHELL = "shell"
+OTHER = "other"
+CATEGORIES = (EXPLORATION, EDIT, WEB, SHELL, OTHER)
+
+READ_ONLY_WORDS = frozenset(
+    """cat head tail less more wc ls ll tree find grep rg ag egrep fgrep stat file
+    which type pwd echo printf du df diff cut sort uniq awk jq yq tr column nl od
+    xxd strings realpath readlink basename dirname test true false printenv
+    date hostname uname id whoami ps pgrep md5sum sha256sum shasum b2sum
+    tokei cloc sloccount fd fdfind bat rga ripgrep""".split()
+)
+READ_ONLY_GIT = frozenset(
+    "log show diff status blame grep ls-files ls-tree rev-parse branch remote describe "
+    "shortlog name-rev cat-file merge-base rev-list tag worktree reflog".split()
+)
+# `git [-C <path>] [-c <name>=<value>] [--git-dir <path>] ... <command>`: global options
+# that take their operand as the next word, so it isn't mistaken for the subcommand.
+# (`--git-dir=<path>` and the other `=` forms are one word and fall under "starts with -".)
+GIT_OPTIONS_WITH_OPERAND = frozenset(
+    "-C -c --git-dir --work-tree --namespace --super-prefix --config-env --attr-source".split()
+)
+# words skipped before the command proper. `env` is one of them: it runs the command that
+# follows (`env PYTHONPATH=. pytest`), and on its own it only prints the environment.
+PREFIX_WORDS = frozenset("sudo time nohup command builtin exec env".split())
+_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# Operators are split out by shlex itself, so a `|` or `;` inside quotes stays part of
+# its word (`rg 'foo|bar'`), and an unquoted newline separates stages like `;` does.
+_PUNCT = "|&;()<>\n"
+# Operator characters inside quotes are swapped for private-use characters before the
+# lexer sees them, so a word that is nothing but quoted punctuation (`grep -F '>' a.py`)
+# can't be mistaken for an operator; the words are translated back afterwards.
+_MASK = {c: chr(0xE000 + i) for i, c in enumerate(_PUNCT)}
+_UNMASK = str.maketrans({v: k for k, v in _MASK.items()})
+
+
+def _mask(command: str) -> str:
+    """Drop unquoted comments (keeping the newline that ends them: `cat a # x\\npytest` is
+    two stages) and hide operator characters that sit inside quotes."""
+    out: list[str] = []
+    quote = ""
+    i, n = 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote:
+            if c == quote:
+                quote = ""
+                out.append(c)
+            elif c == "\\" and quote == '"' and i + 1 < n:
+                out.append(c)
+                out.append(_MASK.get(command[i + 1], command[i + 1]))
+                i += 1
+            else:
+                out.append(_MASK.get(c, c))
+        elif c == "\\" and i + 1 < n:
+            if command[i + 1] == "\n":
+                i += 1  # a line continuation: the pair is dropped, the line goes on
+            else:
+                out.append(c)
+                out.append(_MASK.get(command[i + 1], command[i + 1]))
+                i += 1
+        elif c in "'\"":
+            quote = c
+            out.append(c)
+        elif c == "#" and (i == 0 or command[i - 1] in " \t\r\n" + _PUNCT):
+            while i < n and command[i] != "\n":
+                i += 1
+            continue
+        else:
+            out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _stages(command: str) -> list[list[str]] | None:
+    """Split a shell command into pipeline stages (lists of words), quote-aware.
+
+    Returns None when the command can't be tokenized (unbalanced quotes) or when a
+    redirection writes to something other than /dev/null or another descriptor.
+    """
+    lex = shlex.shlex(_mask(command), posix=True, punctuation_chars=_PUNCT)
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    lex.commenters = ""  # comments are dropped by _mask, which keeps the newline
+    try:
+        tokens = list(lex)
+    except ValueError:
+        return None
+    stages: list[list[str]] = [[]]
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t and all(c in _PUNCT for c in t):
+            if ">" in t:
+                # a redirection: `>` / `>>` to a file writes unless the target is /dev/null;
+                # `>&` / `&>` with a descriptor number is a dup (2>&1) and writes nothing
+                target = tokens[i + 1].translate(_UNMASK) if i + 1 < len(tokens) else ""
+                dup = t.endswith("&") and target.isdigit()
+                if not dup and target != "/dev/null":
+                    return None
+                i += 2
+                continue
+            if "<" in t:
+                i += 2  # input redirection or heredoc marker: skip the operand
+                continue
+            if stages[-1]:
+                stages.append([])
+            i += 1
+            continue
+        stages[-1].append(t.translate(_UNMASK))
+        i += 1
+    return stages
+
+
+def shell_is_readonly(command: str | None) -> bool:
+    if not command or not command.strip():
+        return False
+    stages = _stages(command)
+    if stages is None:
+        return False
+    for words in stages:
+        i = 0
+        # skip `cd X`, assignments and prefixes
+        while i < len(words):
+            w = words[i]
+            if w == "cd":
+                i += 2
+                continue
+            if _ASSIGN.match(w) or w in PREFIX_WORDS or w.startswith("-"):
+                i += 1
+                continue
+            break
+        if i >= len(words):
+            continue  # a bare `cd X` stage, or nothing
+        head = words[i].rsplit("/", 1)[-1]
+        rest = words[i + 1 :]
+        if head == "git":
+            if not _git_is_readonly(rest):
+                return False
+            continue
+        if head == "sed":
+            if any(w == "-i" or w.startswith("-i") or w == "--in-place" for w in rest):
+                return False
+            continue
+        if head in MUTATING_FORMS and _has_mutating_form(head, rest):
+            return False
+        if head not in READ_ONLY_WORDS:
+            return False
+    return True
+
+
+# Commands that read, except with an option that writes or runs something.
+MUTATING_FORMS = {
+    "find": (
+        "-delete",
+        "-exec",
+        "-execdir",
+        "-ok",
+        "-okdir",
+        "-fprint",
+        "-fprint0",
+        "-fprintf",
+        "-fls",
+    ),
+    "sort": ("-o", "--output"),
+    "yq": ("-i", "--inplace"),
+}
+
+
+def _has_mutating_form(head: str, rest: list[str]) -> bool:
+    bad = MUTATING_FORMS[head]
+    return any(
+        w in bad or any(w.startswith(b + "=") for b in bad if b.startswith("--")) for w in rest
+    )
+
+
+def _git_subcommand(words: list[str]) -> tuple[str, list[str]] | None:
+    """The subcommand and its arguments, past git's global options; None when there is none."""
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w in GIT_OPTIONS_WITH_OPERAND:
+            i += 2
+        elif w.startswith("-"):
+            i += 1
+        else:
+            return w, words[i + 1 :]
+    return None
+
+
+def _git_is_readonly(words: list[str]) -> bool:
+    """`git <sub> …` with a subcommand that only reads, in a form that only reads:
+    `branch`, `tag` and `remote` mutate when given a name, `worktree` unless `list`."""
+    found = _git_subcommand(words)
+    if found is None:
+        return True  # `git --version`, `git -C x` and the like
+    sub, rest = found
+    if sub not in READ_ONLY_GIT:
+        return False
+    positional = [w for w in rest if not w.startswith("-")]
+    if sub == "worktree":
+        return bool(positional) and positional[0] == "list"
+    if sub == "reflog":
+        # bare, `show` and `exists` read (`git reflog HEAD` is `show`); `expire` and `delete` write
+        return not positional or positional[0] not in ("expire", "delete")
+    if sub == "tag":
+        if _has_option(
+            rest,
+            "dafsmuF",
+            (
+                "--delete",
+                "--force",
+                "--annotate",
+                "--sign",
+                "--message",
+                "--file",
+                "--local-user",
+                "--edit",
+            ),
+        ):
+            return False
+        return not positional or any(w in ("-l", "--list") for w in rest)
+    if sub == "branch":
+        # a listing flag (`-v`, `-a`, `-l`) doesn't rescue a mutating one (`-d -v feature`)
+        if _has_option(
+            rest,
+            "dDmMcCfut",
+            (
+                "--delete",
+                "--move",
+                "--copy",
+                "--force",
+                "--set-upstream-to",
+                "--unset-upstream",
+                "--edit-description",
+                "--track",
+                "--no-track",
+            ),
+        ):
+            return False
+        listing = ("-l", "--list", "-a", "-r", "-v", "-vv", "--show-current")
+        return not positional or any(w in listing for w in rest)
+    if sub == "remote":
+        return not positional or positional[0] in ("show", "get-url")
+    return True
+
+
+def _has_option(words: list[str], short: str, long_forms: tuple[str, ...]) -> bool:
+    """True when any option word is one of ``long_forms`` (with or without `=value`), or a
+    short-option cluster (`-vD`) contains one of the letters in ``short``."""
+    for w in words:
+        if w == "--":
+            break
+        if w.startswith("--"):
+            if w.split("=", 1)[0] in long_forms:
+                return True
+        elif w.startswith("-") and len(w) > 1 and any(ch in short for ch in w[1:]):
+            return True
+    return False
+
+
+def categorize_hermes(tool_name: str | None, arguments: str | dict | None) -> str:
+    name = tool_name or ""
+    if name in ("read_file", "search_files"):
+        return EXPLORATION
+    if name == "terminal":
+        return EXPLORATION if shell_is_readonly(_command_of(arguments)) else SHELL
+    if name in ("patch", "write_file"):
+        return EDIT
+    if name in ("web_search", "web_extract", "web_fetch"):
+        return WEB
+    return OTHER
+
+
+def categorize_claude(tool_name: str | None, tool_input: dict | None) -> str:
+    name = tool_name or ""
+    if name in ("Read", "Grep", "Glob", "LS", "NotebookRead"):
+        return EXPLORATION
+    if name == "Bash":
+        return EXPLORATION if shell_is_readonly((tool_input or {}).get("command")) else SHELL
+    if name in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+        return EDIT
+    if name in ("WebFetch", "WebSearch"):
+        return WEB
+    return OTHER
+
+
+def _command_of(arguments: str | dict | None) -> str | None:
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except Exception:
+            return arguments
+    if isinstance(arguments, dict):
+        cmd = arguments.get("command")
+        return cmd if isinstance(cmd, str) else None
+    return None
