@@ -281,6 +281,20 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v4240">
+            <h2>What&rsquo;s New in v4.24.0 &mdash; lexical anchoring for the per-prompt block, behind a flag, with its pre-registered replay</h2>
+            <p>On 12 held-out hermes-agent bug-fix tasks the block the prompt hook adds named a file the fix touched on 4, under every ranking tried: the file wasn&rsquo;t among the embedding hits at all. Yet on 6 of them the prompt quoted an exact string that lives in that file: an error message, a dict key, a constant. This release adds that evidence to the ranking, behind <code>NEURALMIND_RECALL_LEXICAL=1</code>. With the flag unset nothing changes.</p>
+            <ul>
+                <li><strong>Exact identifiers, looked up in the working tree</strong> &mdash; backticked and quoted spans, <code>--flags</code>, snake_case, CamelCase and UPPER_CASE names, one <code>git grep</code> per identifier over the files the index holds code nodes for. Each file found gets <code>1 / ln(1 + files holding the identifier)</code> per identifier, at half weight, added to its match score, so a file no semantic hit is in can still be named. Test files give no lexical evidence unless the prompt names a test.</li>
+                <li><strong>Pre-registered, then replayed offline</strong> &mdash; the gate was fixed in the task-outcome spec before any code, and the real hook ran on the same cached indexes as v4.23.0&rsquo;s study. Held out, 12 tasks: a file the fix changed listed on 7 against 4, first on 5 against 3; the pilot&rsquo;s 20 tasks: 18 against 17, first on 13 against 11; test files listed unchanged. The gate held on every condition.</li>
+                <li><strong>What it doesn&rsquo;t show</strong> &mdash; 12 tasks from one repository, with the first count exactly on its threshold, and prompts written from each fix&rsquo;s tests and diff. The default stays off until a confirmation on 12 new tasks; whether an agent does anything differently with the block is not measured.</li>
+                <li><strong>Cost</strong> &mdash; the grep adds about 0.1&nbsp;s a prompt on NeuralMind&rsquo;s repository and 1&ndash;2&nbsp;s on hermes-agent&rsquo;s 20,000 tracked files; a persisted per-file index would remove it if the flag ships on.</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.24.0.md">v4.24.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v4233">
             <h2>What&rsquo;s New in v4.23.3 &mdash; a rebuild gives the graph a full build gives, and its type pass parses only the files that changed</h2>
             <p>v4.23.2 made the build&rsquo;s type pass read each file once. It still parsed every file on every build, incremental ones included, so a rebuild after a one-line commit cost as much as a build from scratch. This release keeps each file&rsquo;s results between builds; the type edges, the stored rows and the block the agent gets come out identical, checked byte for byte.</p>

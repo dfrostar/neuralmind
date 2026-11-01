@@ -1,0 +1,200 @@
+{
+ "groups": {
+  "hermes/automated": {
+   "agent": "hermes",
+   "billed_tokens": {
+    "assistant": 6491503,
+    "block": 1419687,
+    "edit": 77049,
+    "exploration": 5689719,
+    "other": 753486,
+    "shell": 4356613,
+    "summary": 1182479,
+    "system": 44243520,
+    "user": 9513733,
+    "web": 9706258
+   },
+   "block_share_billed": 0.017015679462366245,
+   "calibration_est_over_billed": 1.0006413604512419,
+   "calls": 6637,
+   "context_tokens_est": 83434047,
+   "edit_share_billed": 0.0009234719250763421,
+   "exploration_share_billed": 0.06819421093165959,
+   "exploration_share_first": 0.15647552098964818,
+   "exploration_share_median_session": 0.0,
+   "first_tokens": {
+    "assistant": 1278846,
+    "block": 236245,
+    "edit": 6922,
+    "exploration": 1177772,
+    "other": 143095,
+    "shell": 731633,
+    "summary": 153886,
+    "system": 0,
+    "user": 2053860,
+    "web": 1744618
+   },
+   "prompt_tokens_billed": 83380570,
+   "sessions": 1767,
+   "sessions_with_block": 496,
+   "shell_share_billed": 0.05221624932085579,
+   "source_group": "automated",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 35,
+    "exploration": 2795,
+    "other": 446,
+    "shell": 2777,
+    "web": 580
+   }
+  },
+  "hermes/benchmark": {
+   "agent": "hermes",
+   "billed_tokens": {
+    "assistant": 86640134,
+    "block": 1378445,
+    "edit": 11032588,
+    "exploration": 409794575,
+    "other": 6095166,
+    "shell": 19994064,
+    "summary": 33473110,
+    "system": 221708872,
+    "user": 2435881
+   },
+   "block_share_billed": 0.0017392468225793426,
+   "calibration_est_over_billed": 1.0046053260512022,
+   "calls": 33148,
+   "context_tokens_est": 792552835,
+   "edit_share_billed": 0.013920318637179564,
+   "exploration_share_billed": 0.5170564748531875,
+   "exploration_share_first": 0.7775239545113657,
+   "exploration_share_median_session": 0.5183443513028465,
+   "first_tokens": {
+    "assistant": 3966734,
+    "block": 55493,
+    "edit": 593706,
+    "exploration": 28178150,
+    "other": 263640,
+    "shell": 1213492,
+    "summary": 1440543,
+    "system": 0,
+    "user": 529119
+   },
+   "prompt_tokens_billed": 788919603,
+   "sessions": 261,
+   "sessions_with_block": 191,
+   "shell_share_billed": 0.02522742095799834,
+   "source_group": "benchmark",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 1908,
+    "exploration": 24873,
+    "other": 1655,
+    "shell": 4387,
+    "web": 0
+   }
+  },
+  "hermes/interactive": {
+   "agent": "hermes",
+   "billed_tokens": {
+    "assistant": 238111754,
+    "block": 10848438,
+    "edit": 21702753,
+    "exploration": 83411635,
+    "other": 74202232,
+    "shell": 75605615,
+    "summary": 18180995,
+    "system": 290333145,
+    "user": 21419816,
+    "web": 29468331
+   },
+   "block_share_billed": 0.01256646599212227,
+   "calibration_est_over_billed": 1.0028919336019972,
+   "calls": 5435,
+   "context_tokens_est": 863284714,
+   "edit_share_billed": 0.02513973970353424,
+   "exploration_share_billed": 0.09662123474133472,
+   "exploration_share_first": 0.14345335481211818,
+   "exploration_share_median_session": 0.04894145881546241,
+   "first_tokens": {
+    "assistant": 2409129,
+    "block": 172511,
+    "edit": 181949,
+    "exploration": 888909,
+    "other": 1142050,
+    "shell": 843899,
+    "summary": 127884,
+    "system": 0,
+    "user": 190399,
+    "web": 239772
+   },
+   "prompt_tokens_billed": 860795351,
+   "sessions": 67,
+   "sessions_with_block": 42,
+   "shell_share_billed": 0.08757900351285497,
+   "source_group": "interactive",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 610,
+    "exploration": 957,
+    "other": 1308,
+    "shell": 2755,
+    "web": 87
+   }
+  },
+  "hermes/subagent": {
+   "agent": "hermes",
+   "billed_tokens": {
+    "assistant": 20708,
+    "exploration": 140516,
+    "other": 2191,
+    "shell": 306,
+    "system": 485640,
+    "user": 4928,
+    "web": 53667
+   },
+   "block_share_billed": 0.0,
+   "calibration_est_over_billed": 1.0,
+   "calls": 40,
+   "context_tokens_est": 707956,
+   "edit_share_billed": 0.0,
+   "exploration_share_billed": 0.1984812615473278,
+   "exploration_share_first": 0.47198113994826,
+   "exploration_share_median_session": 0.0,
+   "first_tokens": {
+    "assistant": 18208,
+    "exploration": 45246,
+    "other": 1420,
+    "shell": 306,
+    "system": 0,
+    "user": 1655,
+    "web": 29029
+   },
+   "prompt_tokens_billed": 707956,
+   "sessions": 11,
+   "sessions_with_block": 0,
+   "shell_share_billed": 0.0004322302515975569,
+   "source_group": "subagent",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 0,
+    "exploration": 36,
+    "other": 4,
+    "shell": 3,
+    "web": 15
+   }
+  }
+ },
+ "n_sessions": 2106,
+ "reading": {
+  "hermes/interactive": "under 10%: arithmetic, not felt on a bill"
+ }
+}

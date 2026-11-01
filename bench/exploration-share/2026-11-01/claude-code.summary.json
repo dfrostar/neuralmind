@@ -1,0 +1,104 @@
+{
+ "groups": {
+  "claude-code/interactive": {
+   "agent": "claude-code",
+   "billed_tokens": {
+    "assistant": 114723971,
+    "block": 464268,
+    "edit": 111854824,
+    "exploration": 740335764,
+    "other": 127180319,
+    "shell": 375546008,
+    "summary": 4589146,
+    "system": 756636761,
+    "user": 266908578,
+    "web": 3967981
+   },
+   "block_share_billed": 0.0001855433563102969,
+   "calibration_est_over_billed": 0.6415614897599065,
+   "calls": 13236,
+   "context_tokens_est": 2502207620,
+   "edit_share_billed": 0.0447024551863526,
+   "exploration_share_billed": 0.29587303550774097,
+   "exploration_share_first": 0.7269228348805925,
+   "exploration_share_median_session": 0.20355030511945124,
+   "first_tokens": {
+    "assistant": 1209549,
+    "block": 5181,
+    "edit": 1162247,
+    "exploration": 33798520,
+    "other": 3226573,
+    "shell": 4154729,
+    "summary": 56820,
+    "system": 0,
+    "user": 2825418,
+    "web": 56297
+   },
+   "prompt_tokens_billed": 3900183630,
+   "sessions": 90,
+   "sessions_with_block": 3,
+   "shell_share_billed": 0.1500858701725159,
+   "source_group": "interactive",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 1710,
+    "exploration": 4538,
+    "other": 1731,
+    "shell": 6448,
+    "web": 104
+   }
+  },
+  "claude-code/subagent": {
+   "agent": "claude-code",
+   "billed_tokens": {
+    "assistant": 23123,
+    "edit": 286776,
+    "exploration": 34434030,
+    "other": 1195713,
+    "shell": 7205188,
+    "system": 37749597,
+    "user": 15083455,
+    "web": 919389
+   },
+   "block_share_billed": 0.0,
+   "calibration_est_over_billed": 0.7493762272589715,
+   "calls": 1006,
+   "context_tokens_est": 96897271,
+   "edit_share_billed": 0.0029595879950014277,
+   "exploration_share_billed": 0.35536635495131746,
+   "exploration_share_first": 0.4925134797937131,
+   "exploration_share_median_session": 0.25176268329731993,
+   "first_tokens": {
+    "assistant": 4292,
+    "edit": 19093,
+    "exploration": 1019661,
+    "other": 195595,
+    "shell": 298834,
+    "system": 0,
+    "user": 418690,
+    "web": 114156
+   },
+   "prompt_tokens_billed": 129303903,
+   "sessions": 29,
+   "sessions_with_block": 0,
+   "shell_share_billed": 0.07435903948213361,
+   "source_group": "subagent",
+   "tokenizers": [
+    "o200k_base"
+   ],
+   "tool_calls": {
+    "edit": 35,
+    "exploration": 748,
+    "other": 65,
+    "shell": 308,
+    "web": 137
+   }
+  }
+ },
+ "n_sessions": 119,
+ "reading": {
+  "claude-code/interactive": "10% to 30%: the claim stands with the share beside it"
+ }
+}
