@@ -1,4 +1,4 @@
-# 🧠 NeuralMind
+# NeuralMind
 
 [![PyPI version](https://badge.fury.io/py/neuralmind.svg)](https://pypi.org/project/neuralmind/)
 [![Downloads](https://static.pepy.tech/badge/neuralmind/month)](https://pepy.tech/project/neuralmind)
@@ -593,7 +593,7 @@ neuralmind benchmark .
 
 ---
 
-## 🧠 What You Get
+## What You Get
 
 - **Progressive context disclosure (L0–L3).** A question costs a few hundred
   tokens (670–961 on the public benchmark), not your whole repo. The agent asks for more depth only where it needs it.

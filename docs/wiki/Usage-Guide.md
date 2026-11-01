@@ -556,7 +556,7 @@ hand instead:
 # Create post-commit hook
 cat > .git/hooks/post-commit << 'EOF'
 #!/bin/bash
-echo "🧠 Updating NeuralMind index..."
+echo "Updating NeuralMind index..."
 neuralmind build . 2>/dev/null
 echo "✓ NeuralMind index updated"
 EOF
