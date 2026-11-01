@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import ast
+import json
+import os
+import shutil
 import textwrap
+from collections import Counter
+from pathlib import Path
 
 import pytest
 
+from neuralmind import graphgen
+from neuralmind import type_verifier as tv_mod
 from neuralmind.type_verifier import (
     TypeInfo,
     TypeRisk,
@@ -376,3 +384,511 @@ def test_find_function_file_cross_language(tmp_project):
         result is not None
     ), f"Expected to find helper in {ts_file}, got None. Files: {list(tmp_project.iterdir())}"
     assert result.suffix == ".ts"
+
+
+def test_a_name_defined_twice_gets_the_first_in_breadth_first_order(tmp_path):
+    """Each file is read once into a name -> type map; a name keeps the
+    function the old per-lookup ``ast.walk`` search found first, which is
+    breadth-first: a module-level def beats an earlier nested one."""
+    (tmp_path / "m.py").write_text(textwrap.dedent("""
+            class Box:
+                def get(self) -> int:
+                    return 1
+
+            def get() -> str | None:
+                return None
+        """))
+    info = TypeVerifier(tmp_path).infer_return_type("m.py::get")
+    assert info is not None
+    assert info.return_type == "str | None"
+    assert info.is_optional is True
+
+
+def test_tree_sitter_names_keep_the_first_in_depth_first_order(tmp_path):
+    """The tree-sitter search walked depth-first, pre-order: an outer
+    function's nested function comes before a later top-level one."""
+    pytest.importorskip("tree_sitter_typescript")
+    (tmp_path / "m.ts").write_text(
+        "function outer(): number {\n"
+        "  function inner(): string { return 'a'; }\n"
+        "  return 1;\n"
+        "}\n"
+        "function inner(): boolean { return true; }\n"
+    )
+    info = TypeVerifier(tmp_path).infer_return_type("m.ts::inner")
+    assert info is not None
+    assert info.return_type == "string"
+
+
+def test_each_file_is_walked_once_however_many_lookups(tmp_project, monkeypatch):
+    # The old search parsed a file once (it cached the tree) but walked the
+    # whole tree again for every distinct name looked up in it. Count node
+    # visits (``ast.walk`` makes them through ``iter_child_nodes`` too): five
+    # lookups in a file visit no more nodes than one.
+    visits = []
+    real = ast.iter_child_nodes
+    monkeypatch.setattr(ast, "iter_child_nodes", lambda node: visits.append(1) or real(node))
+
+    def visits_for(names):
+        visits.clear()
+        tv = TypeVerifier(tmp_project)
+        for name in names:
+            tv.infer_return_type(f"module_a.py::{name}")
+        return len(visits)
+
+    one = visits_for(["get_user"])
+    assert one > 0
+    assert visits_for(["get_user", "fetch_all", "no_annotation", "returns_none", "missing"]) == one
+    assert TypeVerifier(tmp_project).infer_return_type("module_a.py::missing") is None
+
+
+def test_a_file_that_does_not_parse_gives_no_types(tmp_path):
+    (tmp_path / "bad.py").write_text("def broken(:\n")
+    assert TypeVerifier(tmp_path).infer_return_type("bad.py::broken") is None
+
+
+def test_augment_graph_runs_in_one_thread(tmp_project, monkeypatch):
+    """The work is pure Python: a thread pool only added GIL contention."""
+    import threading
+
+    threads = set()
+    real = TypeVerifier.infer_return_type
+
+    def record(self, node_id):
+        threads.add(threading.get_ident())
+        return real(self, node_id)
+
+    monkeypatch.setattr(TypeVerifier, "infer_return_type", record)
+    graph = {
+        "nodes": [{"id": "module_a.py::get_user", "label": "get_user()"}],
+        "edges": [
+            {
+                "source": "module_b.py::process",
+                "target": "module_a.py::get_user",
+                "relation": "calls",
+            },
+            {
+                "source": "module_b.py::process",
+                "target": "module_a.py::fetch_all",
+                "relation": "calls",
+            },
+        ],
+    }
+    assert TypeVerifier(tmp_project).augment_graph(graph) == 2
+    assert threads == {threading.get_ident()}
+    # In edge order, so the persisted rows come out in the same order every build.
+    assert [callee for _, callee, _ in graph["type_edges"]] == [
+        "module_a.py::get_user",
+        "module_a.py::fetch_all",
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Same answers as the per-lookup algorithm, with and without the file cache
+# --------------------------------------------------------------------------- #
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+LANGUAGE_FIXTURES = sorted(p.name for p in FIXTURES.glob("sample_project*") if p.is_dir())
+
+
+def _reference_index(tv: TypeVerifier, project: Path) -> dict[str, Path]:
+    """The function index as v4.23.1 built it: every file under the project, last one wins."""
+    index: dict[str, Path] = {}
+    for root, _dirs, files in os.walk(project):
+        if any(
+            p.startswith(".") or p in ("__pycache__", "node_modules", "venv", ".venv")
+            for p in Path(root).parts
+        ):
+            continue
+        for fname in files:
+            if not fname.endswith((".py", ".ts", ".tsx", ".go", ".rs")):
+                continue
+            fpath = Path(root) / fname
+            try:
+                source = fpath.read_text(encoding="utf-8", errors="replace")
+                if fname.endswith(".py"):
+                    for node in ast.walk(ast.parse(source)):
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            index[node.name] = fpath
+                    continue
+                ext = fpath.suffix.lower().lstrip(".")
+                lang = tv._ts_language("typescript" if ext in ("ts", "tsx") else ext)
+                if lang is None:
+                    continue
+
+                def walk(node, _fpath=fpath):
+                    if node.type in tv_mod._INDEX_FUNCS:
+                        for child in node.children:
+                            if child.type == "identifier":
+                                index[child.text.decode("utf8")] = _fpath
+                                break
+                    for child in node.children:
+                        walk(child)
+
+                walk(tv._ts_parse(source, lang).root_node)
+            except Exception:
+                continue
+    return index
+
+
+def _reference_infer(tv: TypeVerifier, project: Path, lookup: str, index) -> TypeInfo | None:
+    """One lookup as v4.23.1 did it: parse the callee's file and walk it for the first match."""
+    if "::" in lookup:
+        file_part, func_name = lookup.split("::", 1)
+        source_file = project / file_part
+        if not source_file.is_file():
+            return None
+    else:
+        func_name = lookup
+        source_file = index.get(func_name)
+        if source_file is None or not source_file.exists():
+            return None
+    try:
+        source = source_file.read_text(encoding="utf-8", errors="replace")
+        ext = source_file.suffix.lower()
+        kind = {".ts": "ts", ".tsx": "ts", ".go": "go", ".rs": "rs"}.get(ext)
+        if kind:
+            lang = tv._ts_language(tv_mod._TS_GRAMMAR[kind])
+            if lang is None:
+                return None
+            infer = {
+                "ts": tv._infer_ts_return,
+                "go": tv._infer_go_return,
+                "rs": tv._infer_rust_return,
+            }[kind]
+
+            def walk(node):
+                if node.type in tv_mod._TS_FUNCS[kind]:
+                    for child in node.children:
+                        if child.type == "identifier" and child.text.decode("utf8") == func_name:
+                            return infer(node)
+                for child in node.children:
+                    result = walk(child)
+                    if result:
+                        return result
+                return None
+
+            return walk(tv._ts_parse(source, lang).root_node)
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func_name:
+                return tv_mod._py_return(node)
+    except Exception:
+        return None
+    return None
+
+
+def _reference_type_edges(project: Path, graph: dict) -> Counter:
+    tv = TypeVerifier(project)
+    node_map = {n.get("id"): n for n in graph.get("nodes", [])}
+    index = None
+    found: Counter = Counter()
+    for edge in graph.get("edges", graph.get("links", [])):
+        if edge.get("relation") not in ("calls", "call") and edge.get("label") not in (
+            "calls",
+            "call",
+        ):
+            continue
+        callee = edge.get("target", edge.get("_tgt", ""))
+        caller = edge.get("source", edge.get("_src", ""))
+        if not callee:
+            continue
+        node = node_map.get(callee, {})
+        func_name = node.get("label", callee).rstrip("()[]").split(".")[-1]
+        if "::" in callee:
+            lookup = callee
+        elif node.get("source_file", ""):
+            lookup = f"{node['source_file']}::{func_name}"
+        else:
+            lookup = func_name
+            if index is None:
+                index = _reference_index(tv, project)
+        info = _reference_infer(tv, project, lookup, index or {})
+        if info is not None:
+            found[(caller, callee, info)] += 1
+    return found
+
+
+def _rows(tv: TypeVerifier, db: Path) -> list[tuple]:
+    from neuralmind.synapses import SynapseStore
+
+    store = SynapseStore(db)
+    tv.persist_type_edges(store)
+    with store._connect() as conn:
+        return conn.execute(
+            "SELECT source_node, target_node, return_type, is_optional, confidence, inferred_by"
+            " FROM type_edges ORDER BY source_node, target_node"
+        ).fetchall()
+
+
+def _reference_rows(edges: Counter) -> list[tuple]:
+    rows = {
+        (caller, callee): (
+            info.return_type,
+            int(info.is_optional),
+            info.confidence,
+            info.inferred_by,
+        )
+        for caller, callee, info in edges
+    }
+    return [k + v for k, v in sorted(rows.items())]
+
+
+def _run(project: Path, graph: dict) -> tuple[Counter, TypeVerifier]:
+    graph = json.loads(json.dumps(graph))
+    tv = TypeVerifier(project)
+    count = tv.augment_graph(graph)
+    assert count == len(graph["type_edges"])
+    return Counter(graph["type_edges"]), tv
+
+
+def _fixture_graphs(name: str, tmp_path: Path):
+    project = tmp_path / name
+    shutil.copytree(FIXTURES / name, project)
+    yield "graphgen", project, graphgen.build_graph(project)
+    committed = project / "graphify-out" / "graph.json"
+    if committed.is_file():
+        yield "graphify-out", project, json.loads(committed.read_text())
+
+
+@pytest.mark.skipif(not graphgen.is_available(), reason="tree-sitter not installed")
+@pytest.mark.parametrize("name", LANGUAGE_FIXTURES)
+def test_fixture_type_edges_match_per_lookup_algorithm(name, tmp_path):
+    """Each language fixture: the same type_edges and persisted rows, cold and warm."""
+    for source, project, graph in _fixture_graphs(name, tmp_path):
+        (project / ".neuralmind").mkdir(exist_ok=True)
+        (project / ".neuralmind" / "type_cache.json").unlink(missing_ok=True)
+        expected = _reference_type_edges(project, graph)
+        for run in ("cold", "warm"):
+            got, tv = _run(project, graph)
+            assert got == expected, (name, source, run)
+            db = tmp_path / f"{name}-{source}-{run}.db"
+            assert _rows(tv, db) == _reference_rows(expected), (name, source, run)
+        if expected:
+            assert (project / ".neuralmind" / "type_cache.json").is_file()
+
+
+EDGE_CASES = {
+    # BFS order: the module-level ``target`` is met before the nested one and
+    # the method, though both come first in the file.
+    "pkg/nested.py": textwrap.dedent("""
+        class Holder:
+            def target(self) -> int:
+                return 1
+
+        def outer():
+            def target() -> bytes:
+                return b""
+            return target
+
+        def target() -> str:
+            return ""
+
+        async def fetch() -> "Optional[int]":
+            return None
+
+        def target_unannotated(x):
+            return x
+    """),
+    "pkg/broken.py": "def oops(:\n    pass\n",
+    "pkg/other.py": "def target() -> float:\n    return 1.0\n",
+    "web/app.ts": textwrap.dedent("""
+        export function load(): Promise<string> { return fetch('/'); }
+        const twice = x => x * 2;
+        class Box { open(): void {} }
+        function load(): number { return 1; }
+    """),
+    "srv/main.go": textwrap.dedent("""
+        package main
+        func Run() (int, error) { return 0, nil }
+        func (s *Server) Run() string { return "" }
+        func Quiet() {}
+    """),
+    "core/lib.rs": textwrap.dedent("""
+        pub fn find(id: u64) -> Option<User> { None }
+        pub fn add(a: i32, b: i32) -> i32 { a + b }
+        fn unit() {}
+    """),
+    "node_modules/dep/index.py": "def hidden() -> int:\n    return 0\n",
+    ".venv/lib/site.py": "def target() -> list:\n    return []\n",
+}
+
+
+def _edge_case_project(tmp_path: Path) -> tuple[Path, dict]:
+    project = tmp_path / "edge"
+    for rel, source in EDGE_CASES.items():
+        path = project / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source)
+    (project / ".neuralmind").mkdir()
+    targets = [
+        "pkg/nested.py::target",
+        "pkg/nested.py::fetch",
+        "pkg/nested.py::target_unannotated",
+        "pkg/nested.py::missing",
+        "pkg/broken.py::oops",
+        "pkg/gone.py::target",
+        "web/app.ts::load",
+        "web/app.ts::x",
+        "web/app.ts::open",
+        "srv/main.go::Run",
+        "srv/main.go::Quiet",
+        "core/lib.rs::find",
+        "core/lib.rs::add",
+        "core/lib.rs::unit",
+        # Bare names resolve through the function index.
+        "target",
+        "fetch",
+        "load",
+        "Run",
+        "find",
+        "hidden",
+        "nowhere",
+    ]
+    graph = {
+        "nodes": [
+            {"id": "n1", "label": "Holder.target()", "source_file": "pkg/nested.py"},
+            {"id": "n2", "label": "twice", "source_file": "web/app.ts"},
+        ],
+        "links": [{"source": "caller", "target": t, "relation": "calls"} for t in targets]
+        + [
+            {"source": "caller", "target": "n1", "relation": "calls"},
+            {"source": "other", "target": "n1", "relation": "calls"},
+            {"source": "caller", "target": "n1", "relation": "calls"},
+            {"_src": "legacy", "_tgt": "pkg/other.py::target", "label": "call"},
+            {"source": "caller", "target": "n2", "relation": "calls"},
+            {"source": "caller", "target": "pkg/nested.py::target", "relation": "imports"},
+        ],
+    }
+    return project, graph
+
+
+def test_edge_cases_match_per_lookup_algorithm(tmp_path):
+    project, graph = _edge_case_project(tmp_path)
+    expected = _reference_type_edges(project, graph)
+    assert expected  # the project exercises real matches
+    infos = {callee: info for _caller, callee, info in expected}
+    assert infos["pkg/nested.py::target"].return_type == "str"  # breadth-first
+    assert "core/lib.rs::find" in infos and "find" not in infos  # Rust is never indexed
+    # The last file in walk order wins; skipped directories never count.
+    assert "hidden" not in infos and infos["target"].return_type in ("str", "float")
+    for _run_name in ("cold", "warm"):
+        got, tv = _run(project, graph)
+        assert got == expected
+        assert _rows(tv, tmp_path / f"{_run_name}.db") == _reference_rows(expected)
+
+
+def test_edge_cases_without_state_dir_write_no_cache(tmp_path):
+    project, graph = _edge_case_project(tmp_path)
+    shutil.rmtree(project / ".neuralmind")
+    got, _tv = _run(project, graph)
+    assert got == _reference_type_edges(project, graph)
+    assert not (project / ".neuralmind").exists()
+
+
+def test_type_edges_follow_edge_order(tmp_path):
+    project, graph = _edge_case_project(tmp_path)
+    graph = json.loads(json.dumps(graph))
+    TypeVerifier(project).augment_graph(graph)
+    callees = [callee for _caller, callee, _info in graph["type_edges"]]
+    calls = [
+        e.get("target", e.get("_tgt"))
+        for e in graph["links"]
+        if e.get("relation") in ("calls", "call") or e.get("label") in ("calls", "call")
+    ]
+    assert callees == [c for c in calls if c in set(callees)]
+
+
+@pytest.fixture
+def count_parses(monkeypatch):
+    calls = Counter()
+    py_facts, ts_facts = tv_mod._py_facts, TypeVerifier._ts_facts
+
+    def counting_py(source):
+        calls["py"] += 1
+        return py_facts(source)
+
+    def counting_ts(self, source, kind):
+        calls[kind] += 1
+        return ts_facts(self, source, kind)
+
+    monkeypatch.setattr(tv_mod, "_py_facts", counting_py)
+    monkeypatch.setattr(TypeVerifier, "_ts_facts", counting_ts)
+    return calls
+
+
+# Windows hashes every file (its ctime is the creation time), so the stat
+# shortcut is tested where it's used.
+STAT_MODES = [
+    pytest.param(True, marks=pytest.mark.skipif(os.name == "nt", reason="ctime is creation time")),
+    False,
+]
+
+
+@pytest.mark.parametrize("trust_stat", STAT_MODES)
+@pytest.mark.parametrize("racy_ns", [0, tv_mod._RACY_NS])
+def test_warm_cache_parses_nothing(tmp_path, monkeypatch, count_parses, racy_ns, trust_stat):
+    """Matched by stat (files older than the racy window) or by content hash (newer)."""
+    monkeypatch.setattr(tv_mod, "_RACY_NS", racy_ns)
+    monkeypatch.setattr(tv_mod, "_TRUST_STAT", trust_stat)
+    project, graph = _edge_case_project(tmp_path)
+    cold, _ = _run(project, graph)
+    assert sum(count_parses.values()) > 0
+    count_parses.clear()
+    reads = []
+    read_text = Path.read_text
+
+    def counting_read(self, *args, **kwargs):
+        if project in self.parents and ".neuralmind" not in self.parts:
+            reads.append(self)  # a source file, not the cache
+        return read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counting_read)
+    warm, _ = _run(project, graph)
+    assert warm == cold
+    assert sum(count_parses.values()) == 0
+    assert (len(reads) == 0) == (trust_stat and racy_ns == 0)
+
+
+@pytest.mark.parametrize("trust_stat", STAT_MODES)
+def test_cache_sees_same_size_edit_with_mtime_restored(
+    tmp_path, monkeypatch, count_parses, trust_stat
+):
+    monkeypatch.setattr(tv_mod, "_RACY_NS", 0)
+    monkeypatch.setattr(tv_mod, "_TRUST_STAT", trust_stat)
+    project, graph = _edge_case_project(tmp_path)
+    _run(project, graph)
+    path = project / "pkg" / "other.py"
+    before = path.stat()
+    path.write_text(path.read_text().replace("float", "bytes"))
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    assert path.stat().st_size == before.st_size
+    count_parses.clear()
+    got, _ = _run(project, graph)
+    assert count_parses["py"] == 1
+    assert got == _reference_type_edges(project, graph)
+    assert any(info.return_type == "bytes" for _c, _e, info in got)
+
+
+def test_cache_drops_deleted_files(tmp_path):
+    project, graph = _edge_case_project(tmp_path)
+    _run(project, graph)
+    cache = project / ".neuralmind" / "type_cache.json"
+    records = len(json.loads(cache.read_text())["records"])
+    (project / "srv" / "main.go").unlink()
+    got, _ = _run(project, graph)
+    assert got == _reference_type_edges(project, graph)
+    assert len(json.loads(cache.read_text())["records"]) == records - 1
+
+
+@pytest.mark.parametrize(
+    "content",
+    ["not json", "[]", '{"env": "other", "paths": {}, "records": {}}', '{"env": null}'],
+)
+def test_bad_or_stale_cache_is_ignored(tmp_path, count_parses, content):
+    project, graph = _edge_case_project(tmp_path)
+    cache = project / ".neuralmind" / "type_cache.json"
+    cache.write_text(content)
+    got, _ = _run(project, graph)
+    assert got == _reference_type_edges(project, graph)
+    assert count_parses["py"] > 0
+    assert json.loads(cache.read_text())["env"] == tv_mod._cache_env()

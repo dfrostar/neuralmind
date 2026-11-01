@@ -514,6 +514,16 @@ def test_env_var_overrides_branch_detection(tmp_path, monkeypatch):
     assert resolved == EPHEMERAL_NAMESPACE
 
 
+def test_structural_is_never_the_active_namespace(tmp_path, monkeypatch):
+    """Every build replaces 'structural', so learning there would be lost."""
+    _mock_git(monkeypatch, branch="feature-x", default_branch="main")
+    from_env = namespaces.resolve_namespace(tmp_path, env={"NEURALMIND_NAMESPACE": "structural"})
+    from_config = namespaces.resolve_namespace(
+        tmp_path, config={"memory_namespace": "structural"}, env={}
+    )
+    assert from_env == from_config == "branch:feature-x"
+
+
 def test_config_pin_overrides_branch_detection(tmp_path, monkeypatch):
     _mock_git(monkeypatch, branch="feature-x", default_branch="main")
     resolved = namespaces.resolve_namespace(

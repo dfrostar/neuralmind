@@ -78,16 +78,20 @@ Start a new Hermes session, or restart the gateway, to load the plugin.
 
 ## Which project
 
-1. `NEURALMIND_PROJECT`, if set;
+1. `NEURALMIND_PROJECT`, if set where the plugin runs;
 2. else the project pinned at install;
-3. else Hermes's terminal working directory (`TERMINAL_CWD`);
-4. else, only when `TERMINAL_CWD` isn't set, the directory Hermes runs in.
+3. else the directory Hermes works in for the session: on Hermes 0.22.2 and
+   later, the session's own working directory (`ctx.session_cwd()`); on older
+   Hermes, `TERMINAL_CWD`, else, only when that isn't set, the directory Hermes
+   runs in.
 
 The first of these that has been built wins. If none has, the plugin does
-nothing. `TERMINAL_CWD` matches the terminal CLI and a standalone gateway.
-Hermes Desktop, ACP editor sessions and per-session workspaces keep each
-session's directory elsewhere, so with those, pin a project or set
-`NEURALMIND_PROJECT`.
+nothing. On Hermes 0.22.2 and later every CLI, TUI and Desktop session's hooks
+run in one Hermes gateway process. `ctx.session_cwd()` is where that session
+was started, or the profile's terminal working directory for a messaging chat,
+so one unpinned install follows each session. A variable set on the `hermes`
+command you run stays in that client: `NEURALMIND_PROJECT` counts only in the
+gateway's own environment, where it covers every session.
 
 A pin applies to every Hermes session that uses that Hermes home, in any
 directory. Each one gets the pinned project's context, has its prompts
@@ -105,6 +109,7 @@ several projects, don't pin one.
 | `NEURALMIND_HERMES_TIMEOUT` | `8` | Seconds each call to NeuralMind may take before it's stopped and its context left out. A session's first turn makes two calls; keep twice this below Hermes's `plugins.hook_callback_timeout` (default 30) |
 | `NEURALMIND_BYPASS` | unset | `1` switches off every action |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | `0` leaves out the recall |
+| `NEURALMIND_PROVENANCE_INJECT` | `1` | `0` leaves out the decisions from commit trailers |
 | `NEURALMIND_SESSION_RECAP` | `1` | `0` stops recording prompts and edited files, and the recap |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | `0` skips the `SYNAPSE_MEMORY.md` export on a session's first turn |
 | `NEURALMIND_NO_LEARN` | unset | `1` stops the recording and the learning; an existing recap is still shown |
@@ -118,6 +123,16 @@ several projects, don't pin one.
   (recorded as a step in the synapse layer's file-to-file transitions, as
   Claude Code's Read hook does), on a background thread. Each call is stopped after
   `NEURALMIND_HERMES_TIMEOUT` seconds.
+- **Runs read-only `git` commands in the project.** NeuralMind runs `git`
+  queries such as `rev-parse`, `ls-files`, `log` and `diff --name-only` to
+  find the branch, check whether the index is current, and read decisions
+  recorded in commit trailers. It changes nothing in the repository.
+- **Can leave a background process running after a session's first turn.**
+  The `SessionStart` action may start NeuralMind in a detached process that
+  outlives the hook: one writes the project's graph cache when it's missing
+  or stale, and, on a large synapse store, one runs the decay tick and the
+  export described below. Each runs once per project at a time and exits
+  when it's done.
 - **Reads and writes the project's `.neuralmind/` directory.** NeuralMind
   stores what it learns there and, for the recap, each session's prompts
   (secret-redacted and truncated) and the paths of the files it edited.
@@ -131,8 +146,12 @@ several projects, don't pin one.
 - **Network.** The plugin makes no network requests of its own, and
   NeuralMind sends no telemetry. NeuralMind downloads its embedding model
   once, over HTTPS, when it has no cached copy, normally during
-  `neuralmind build`. `NEURALMIND_ONNX_MODEL_DIR` points it at a copy you
-  provide instead.
+  `neuralmind build`: ChromaDB's all-MiniLM-L6-v2 ONNX archive, from
+  `chroma-onnx-models.s3.amazonaws.com`, checked against a pinned SHA-256
+  and cached in `~/.cache/neuralmind/`. `NEURALMIND_ONNX_MODEL_DIR` points
+  it at a copy you provide instead. (A project built with
+  `--embedder bge-large` uses `BAAI/bge-large-en-v1.5`, which
+  sentence-transformers fetches from Hugging Face.)
 - **What reaches your model provider.** The added context is part of the
   user message, so it's sent to your model provider with that turn. Hermes
   keeps it in the session's history, so it's sent again with the session's
@@ -159,7 +178,7 @@ If turns get no NeuralMind context, check that:
 
 ## Limits
 
-- Tested with Hermes v0.21.5.
+- Tested with Hermes v0.21.5 and v0.22.5.
 - What the added context changes in Hermes's answers hasn't been measured.
 
 ## Uninstall

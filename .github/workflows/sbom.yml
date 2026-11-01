@@ -1,11 +1,33 @@
 name: SBOM
 
-# Generate a Software Bill of Materials for every tagged release as
-# `neuralmind-vX.Y.Z.sbom.json` (CycloneDX JSON), covering the project + every
-# transitive runtime dep (chromadb, mcp, pyyaml, toml, plus their transitives).
-# Releases on this repo are immutable, so attaching it to the GitHub Release
-# fails once release-please has published it; the SBOM is served from
-# neuralmind.uk/sbom/ (site/public/sbom/) and kept as a workflow artifact.
+# Generate a Software Bill of Materials for every tagged release, one per
+# platform (CycloneDX JSON), each listing the project and every package a
+# default `pip install` brings in there. The dependency set differs by
+# platform: pyproject.toml installs turbovec where it has a wheel (Linux,
+# Apple Silicon macOS, Windows x86_64) and ChromaDB with its own tree
+# everywhere else (Intel macOS, Windows ARM), so one Linux install can't
+# describe them all.
+#
+# Files, served from neuralmind.uk/sbom/ (site/public/sbom/):
+#   neuralmind-vX.Y.Z-<platform>.sbom.json   one per platform below
+#   neuralmind-vX.Y.Z.sbom.json              the linux-x86_64 one, under the
+#                                            name /security and older docs use
+# Releases on this repo are immutable, so attaching them to the GitHub Release
+# fails once release-please has published it; they are also kept as a
+# workflow artifact.
+#
+# Each platform's install runs natively on its own runner. Cross-resolving
+# from Linux is not reliable: uv's --python-platform x86_64-pc-windows-msvc
+# reports platform_machine as x86_64 where CPython on Windows reports AMD64,
+# so it resolves Windows x86_64 to ChromaDB. The runners only install; they
+# upload the installed packages' *.dist-info metadata, and one Linux job runs
+# syft over each, so every SBOM comes from the same syft on the same OS.
+#
+# A platform whose install fails (a dependency with no wheel there and a
+# build the runner can't do) is reported in the run summary, and its SBOM is
+# skipped; only linux-x86_64 is required. Each SBOM records, as metadata
+# properties, the platform it was made on and any package pip had to build
+# from source there, because that is a toolchain the user needs too.
 #
 # Tracks issue #120. Uses Anchore's syft via the official action so the
 # SBOM format is consistent with what most enterprise scanners ingest
@@ -48,14 +70,31 @@ jobs:
       # entire workflow file. See release.yml's copy of this note.
       release_tag: ${{ inputs.tag || github.ref_name }}
 
-  # Two jobs, so that no installed package ever runs beside the deploy key
-  # that can push to main. `sbom` installs the release and runs syft with a
-  # read-only token; `publish` holds the key and runs only git, gh and the
-  # pinned actions below, publishing the one file `sbom` produced.
-  sbom:
-    name: Generate SBOM
+  # No installed package ever runs beside the deploy key that can push to
+  # main. `install` installs the release on each platform with a read-only
+  # token, `sbom` runs syft over what it installed, and `publish` holds the
+  # key and runs only git, gh and the pinned actions below, publishing the
+  # files `sbom` produced.
+  install:
+    name: Install (${{ matrix.platform }})
     needs: validate-version
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    # Only linux-x86_64 is required: it is the SBOM /security links. Another
+    # platform's failed install is reported by the sbom job, not fatal.
+    continue-on-error: ${{ matrix.platform != 'linux-x86_64' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-x86_64, runner: ubuntu-latest }
+          - { platform: linux-aarch64, runner: ubuntu-24.04-arm }
+          - { platform: macos-arm64, runner: macos-latest }
+          - { platform: macos-x86_64, runner: macos-15-intel }
+          - { platform: windows-amd64, runner: windows-latest }
+          - { platform: windows-arm64, runner: windows-11-arm }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,34 +106,133 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install project (so syft sees the full dep tree)
+      # A clean venv, so the SBOM holds the release's dependencies and pip,
+      # not whatever the runner image ships in its own Python.
+      - name: Install the release as a user would
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          python -m pip install --upgrade pip
-          pip install .
+          set -euo pipefail
+          python -m venv venv
+          if [ "${RUNNER_OS}" = "Windows" ]; then PY=venv/Scripts/python; else PY=venv/bin/python; fi
+          "${PY}" -m pip install --upgrade pip
+          # Build the wheel first, so neuralmind itself is installed the way
+          # PyPI serves it and every other entry in pip's report is a
+          # dependency it resolved for this platform.
+          "${PY}" -m pip wheel --no-deps . -w dist
+          "${PY}" -m pip install --report pip-report.json dist/neuralmind-*.whl
+          "${PY}" - <<'EOF'
+          import json, os, pathlib, platform, shutil, sys, sysconfig
 
-      - name: Generate SBOM (CycloneDX JSON) with syft
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+          out = pathlib.Path("meta")
+          site = out / "site"
+          site.mkdir(parents=True)
+          for d in pathlib.Path(sysconfig.get_paths()["purelib"]).glob("*.dist-info"):
+              shutil.copytree(d, site / d.name)
+
+          # A dependency pip installed from anything but a wheel was built
+          # here from source: say so, since a user on this platform needs
+          # the same compiler or toolchain.
+          # pip writes its report as UTF-8; read it as UTF-8, since the
+          # default on Windows is the ANSI code page (cp1252), which can't
+          # decode it.
+          report = json.loads(pathlib.Path("pip-report.json").read_text(encoding="utf-8"))
+          built = sorted(
+              item["metadata"]["name"]
+              for item in report.get("install", [])
+              if not item["download_info"]["url"].endswith(".whl")
+          )
+          info = {
+              "platform": os.environ["PLATFORM"],
+              "os": platform.platform(),
+              "machine": platform.machine(),
+              "python": platform.python_version(),
+              "built_from_source": built,
+          }
+          (out / "platform.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+          print(json.dumps(info, indent=2))
+          EOF
+
+      - name: Upload the installed packages' metadata
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          # Scan the active Python environment for the full transitive
-          # dep tree rather than just the source directory's manifests.
-          path: ${{ env.pythonLocation }}
-          format: cyclonedx-json
-          output-file: neuralmind-${{ env.RELEASE_TAG }}.sbom.json
-          # Don't auto-attach — we do that ourselves below so the asset
-          # name matches the documented "neuralmind-vX.Y.Z.sbom.json" shape.
-          upload-artifact: false
-          upload-release-assets: false
+          name: dist-info-${{ matrix.platform }}
+          path: meta/
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Upload SBOM as workflow artifact (the publish job's input, and a fallback copy)
+  sbom:
+    name: Generate SBOMs
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch every platform's metadata
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: dist-info-*
+          path: meta
+
+      - name: Install syft
+        id: syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+
+      - name: Generate one CycloneDX SBOM per platform with syft
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+          # The root component is the release, not the directory scanned.
+          SYFT_SOURCE_NAME: neuralmind
+          # Only the packages: the files syft would list are the dist-info
+          # metadata files themselves, which say nothing about the install.
+          SYFT_FILE_METADATA_SELECTION: none
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG}"
+          export SYFT_SOURCE_VERSION="${TAG#v}"
+          mkdir -p out
+          {
+            echo "## SBOMs for ${TAG}"
+            echo
+            echo "| Platform | Packages | Built from source |"
+            echo "|---|---|---|"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          for platform in linux-x86_64 linux-aarch64 macos-arm64 macos-x86_64 windows-amd64 windows-arm64; do
+            dir="meta/dist-info-${platform}"
+            if [ ! -f "${dir}/platform.json" ]; then
+              echo "::warning title=No SBOM for ${platform}::The ${platform} install failed or didn't run; see its Install job. No SBOM is published for it."
+              echo "| ${platform} | install failed: no SBOM | |" >> "${GITHUB_STEP_SUMMARY}"
+              continue
+            fi
+            file="out/neuralmind-${TAG}-${platform}.sbom.json"
+            "${SYFT}" scan "dir:${dir}/site" -o "cyclonedx-json=${file}.tmp" -q
+            # Record where the SBOM was made and what had to be compiled there.
+            jq --slurpfile p "${dir}/platform.json" '
+              .metadata.properties = ((.metadata.properties // []) + [
+                {name: "neuralmind:platform", value: $p[0].platform},
+                {name: "neuralmind:os", value: $p[0].os},
+                {name: "neuralmind:machine", value: $p[0].machine},
+                {name: "neuralmind:python", value: $p[0].python},
+                {name: "neuralmind:built-from-source", value: ($p[0].built_from_source | join(","))}
+              ])' "${file}.tmp" > "${file}"
+            rm "${file}.tmp"
+            count=$(jq '[.components[] | select(.type == "library")] | length' "${file}")
+            built=$(jq -r '.built_from_source | join(", ")' "${dir}/platform.json")
+            echo "| ${platform} | ${count} | ${built:-none} |" >> "${GITHUB_STEP_SUMMARY}"
+          done
+          # linux-x86_64 also goes out under the unsuffixed name that
+          # /security and every SBOM before per-platform files use.
+          cp "out/neuralmind-${TAG}-linux-x86_64.sbom.json" "out/neuralmind-${TAG}.sbom.json"
+          ls -l out
+
+      - name: Upload SBOMs as workflow artifact (the publish job's input, and a fallback copy)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom-${{ env.RELEASE_TAG }}
-          path: neuralmind-${{ env.RELEASE_TAG }}.sbom.json
+          path: out/*.sbom.json
           if-no-files-found: error
           retention-days: 90
 
   publish:
-    name: Attach + publish SBOM
+    name: Attach + publish SBOMs
     needs: sbom
     runs-on: ubuntu-latest
     permissions:
@@ -112,19 +250,18 @@ jobs:
           # Unset (forks), checkout falls back to GITHUB_TOKEN as before.
           ssh-key: ${{ secrets.MAIN_PUSH_DEPLOY_KEY }}
 
-      - name: Fetch the SBOM
+      - name: Fetch the SBOMs
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sbom-${{ env.RELEASE_TAG }}
           path: .
 
-      - name: Attach SBOM to GitHub Release
+      - name: Attach SBOMs to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="${RELEASE_TAG}"
-          ASSET="neuralmind-${TAG}.sbom.json"
 
           # release.yml runs in parallel with this workflow on the same
           # tag push and creates the GitHub Release as one of its later
@@ -145,17 +282,16 @@ jobs:
             exit 0
           fi
 
-          if gh release upload "${TAG}" "${ASSET}" --repo "${GITHUB_REPOSITORY}" --clobber; then
-            echo "SBOM attached as ${ASSET}"
+          if gh release upload "${TAG}" neuralmind-"${TAG}"*.sbom.json --repo "${GITHUB_REPOSITORY}" --clobber; then
+            echo "SBOMs attached to ${TAG}"
           else
             echo "::warning title=SBOM upload failed::Release ${TAG} may be immutable. SBOM preserved as workflow artifact below."
           fi
 
-      - name: Publish SBOM to the site
+      - name: Publish SBOMs to the site
         run: |
           set -euo pipefail
           TAG="${RELEASE_TAG}"
-          ASSET="neuralmind-${TAG}.sbom.json"
 
           # Published Releases on this repo are immutable, so the upload above
           # fails permanently for releases created by release-please. Serve the
@@ -167,16 +303,25 @@ jobs:
           git fetch origin main
           git checkout -B sbom-publish origin/main
           mkdir -p site/public/sbom
-          cp "${ASSET}" "site/public/sbom/${ASSET}"
-          git add "site/public/sbom/${ASSET}"
+          # A published SBOM is never rewritten: a re-run for a tag (say, to
+          # add the per-platform files to an older release) adds only the
+          # files that aren't there yet.
+          for f in neuralmind-"${TAG}"*.sbom.json; do
+            if [ -e "site/public/sbom/${f}" ]; then
+              echo "${f} already published; keeping the published copy."
+            else
+              cp "${f}" "site/public/sbom/${f}"
+              git add "site/public/sbom/${f}"
+            fi
+          done
           if git diff --cached --quiet; then
-            echo "SBOM for ${TAG} already published — nothing to commit."
+            echo "Every SBOM for ${TAG} is already published — nothing to commit."
             exit 0
           fi
           # [skip ci]: a deploy-key push starts workflows, which a
           # GITHUB_TOKEN push never did. This job dispatches the site deploy
           # itself, so keep the push from starting CI or a second deploy.
-          git commit -m "chore(sbom): publish ${ASSET} to the site [skip ci]"
+          git commit -m "chore(sbom): publish the ${TAG} SBOMs to the site [skip ci]"
           for attempt in 1 2 3; do
             if git push origin sbom-publish:main; then
               exit 0
@@ -189,7 +334,7 @@ jobs:
           # Fail the job: a ruleset rejecting the push (no MAIN_PUSH_DEPLOY_KEY,
           # so checkout fell back to GITHUB_TOKEN) used to leave a green run
           # and an SBOM that never went live.
-          echo "::error title=SBOM site publish failed::Could not push ${ASSET} to main. If the log shows a repository rule violation, the MAIN_PUSH_DEPLOY_KEY secret is missing or its deploy key lacks write access; otherwise main moved. Fix that, then re-run this workflow."
+          echo "::error title=SBOM site publish failed::Could not push the ${TAG} SBOMs to main. If the log shows a repository rule violation, the MAIN_PUSH_DEPLOY_KEY secret is missing or its deploy key lacks write access; otherwise main moved. Fix that, then re-run this workflow."
           exit 1
 
       # The push above carries [skip ci], so it doesn't fire deploy-site.yml's

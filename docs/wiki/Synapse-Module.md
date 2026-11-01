@@ -84,6 +84,12 @@ The store learns by *co-activation*: nodes that fire together wire together.
   A 60-day-old edge has exactly half the weight of a 1-day-old edge at the
   default 30-day half-life. Decay is one-way — it never re-inflates a fresh
   edge, and never resurrects a pruned one.
+- **Learned per-edge half-life** — each edge also learns its own half-life
+  from how often it is reinforced, between 3 and 120 days by default
+  (`learned_decay.py`). Just after an activation it decays at that rate; the
+  longer it stays idle, the closer its rate gets back to the namespace
+  default. Before v4.21.0 an idle edge kept its learned rate, so one
+  reinforced rarely kept fading fast however long it sat.
 - **Pruning** — weights decaying below `PRUNE_THRESHOLD` are deleted; stale
   synapses older than N days can be cleared with `neuralmind synapse prune`.
 - **Long-term potentiation (LTP)** — edges whose lifetime activation count
@@ -108,18 +114,22 @@ import/export and new kinds stay trivial — there is no enum table.
 | `shared` | Imported team baseline — `seed_from_*`, bundles, `neuralmind memory import`. | 60 days |
 | `branch:<name>` | Per-git-branch working memory. | 30 days (active namespace weighting) |
 | `ephemeral` | Session-scoped scratch; decays fast, cleared at session boundaries. | 1 day |
+| `structural` | The checked-out code's call and import edges (v4.22.0+). Every build replaces it; never written by use, never published. | None (rebuilt) |
 
 **Merged-read weighting.** Reads default to a *merged* view across the active
-namespace, `personal`, and `shared`, each scaled by a constant:
+namespace, `personal`, `shared` and `structural`, each scaled by a constant:
 
 ```
 merged_weight = W_BRANCH · w_active + W_PERSONAL · w_personal + W_SHARED · w_shared
+              + W_STRUCTURAL · w_structural
 ```
 
 - Active namespace reads at `W_BRANCH` (1.0) → recent/branch-local context wins.
 - `personal`, when not the active namespace, reads at `W_PERSONAL` (0.8).
 - `shared` reads at `W_SHARED` (0.5) → imported team baseline is never louder
   than your own memory.
+- `structural` reads at `W_STRUCTURAL` (0.5), the weight the call-graph seeds
+  had while they lived in `shared`.
 
 Passing `namespaces=[...]` reads **only** those namespaces at **raw** weights
 (no multipliers), which is what `neuralmind synapse stats`, `export`, and
@@ -192,9 +202,16 @@ weight = clamp(BASE + LOG_SCALE · ln(call_count + 1), MAX)   # 0.25 → 0.70
 ```
 
 Hot call paths grow toward the cap; single-observation edges stay near the
-floor. Seeded edges land in the **`shared`** namespace (60-day half-life), are
-**not** LTP-protected, and increment `activation_count` on re-seed — so a path
-that disappears from the graph eventually prunes after enough builds skip it.
+floor. Seeded edges land in the **`structural`** namespace, which each build
+replaces with the graph of the code checked out (v4.22.0+): a call that exists
+only on a feature branch is gone after the next build on another branch, and a
+call deleted from the code is gone after the next build. Seeds keep
+`activation_count = 1`, so they are never LTP-protected, and they don't decay.
+Through v4.21.0 they were upserted into `shared`, which every branch reads and
+nothing cleared, so a branch's calls stayed in the default branch's recall
+until they decayed (60-day half-life). Seeding never touches `shared`: those
+old seeds look like team memory (approved and imported edges are
+single-activation rows too), so they stay and fade on the shared half-life.
 
 ### Business-context seeding — N-13
 
@@ -261,9 +278,13 @@ the model references associations even without calling the MCP tools:
   exists.
 
 Content: top strongest pairs (with LTP tags), hub nodes, and directional
-"what typically comes next" transitions (v0.11.0+). Keys off `stats()`; an
-empty store still yields a valid document. Purely an export — never blocks the
-live store, fails open (returns the paths that succeeded).
+"what typically comes next" transitions (v0.11.0+). It reads the namespaces a
+merged recall read covers on the checkout (v4.22.0+): the active one, then
+`personal`, `shared` and `structural`, so another branch's memory, or a stale
+`ephemeral` session's, never reaches the file; the header counts those
+namespaces and names them. Through v4.21.0 it read every namespace. An empty
+store still yields a valid document. Purely an export — never blocks the live
+store, fails open (returns the paths that succeeded).
 
 ---
 

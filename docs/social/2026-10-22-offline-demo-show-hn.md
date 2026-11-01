@@ -1,7 +1,7 @@
 # Show HN draft — 2026-10-22: `neuralmind demo`, offline after `pip install`
 
-**Draft, ready to post** once v4.20.0 is on PyPI (the offline demo shipped in
-v4.19.0).
+**Draft, ready to post:** v4.21.0 is on PyPI (the offline demo shipped in
+v4.19.0; v4.21.0 makes it run on Intel macOS).
 
 A "Show HN" post for developers, built around the lowest-friction way to try
 NeuralMind. Drafted here so `tests/test_docs_claims.py` vets it before it is
@@ -10,13 +10,23 @@ posted. Hacker News readers check numbers, so every figure is from
 
 ## Before posting
 
-- [ ] Check the demo still can't run offline on Intel macOS and Windows ARM
-      (no turbovec wheel; ChromaDB is installed instead). If that's been
-      fixed, drop the platform caveat from the post.
-- [ ] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
+- [x] The demo crashed on Intel macOS and Windows ARM (no turbovec wheel;
+      ChromaDB is installed instead). Fixed in v4.21.0 for Intel macOS: it
+      builds the sample with ChromaDB, downloading the model once, so keep
+      the platform caveat in the post. A native Windows on ARM install fails
+      to build its dependencies (#715); under WSL 2 it is a Linux ARM64
+      install, with turbovec and the offline demo.
+- [x] Post only once v4.21.0 or later is on PyPI (it is, as of 2026-10-22).
+- [x] In a fresh virtualenv on a machine with no `~/.cache/neuralmind`, run
       `pip install neuralmind && neuralmind demo` with the network off after
       the install. It should finish without downloading the model. Paste its
       real output into the first comment, not this draft.
+      Done 2026-10-25 on v4.21.0 (Linux, Python 3.13, empty `HOME`, no network
+      namespace): it used the bundled index and question vectors, downloaded
+      nothing, and reported 6.9×, 7.0× and 7.6× (7.2× average). Offline,
+      tiktoken can't fetch its vocabulary either, so the demo says it
+      estimates tokens at about 4 characters each; say so beside the pasted
+      output, since a run with network access counts slightly differently.
 - [ ] Post on a weekday morning US time; reply to every question in the first
       two hours.
 - [ ] Don't lead with cost savings: the task-outcome pilot found none (see
@@ -45,8 +55,9 @@ sample's vector index and its three questions' embeddings ship in the package,
 so it ranks exactly as it would with the embedding model, on a plane or behind
 a proxy that blocks model downloads. That holds on Linux, Apple Silicon macOS
 and 64-bit Windows, where the default install includes the turbovec index; on
-Intel macOS and Windows ARM the install uses ChromaDB instead and the demo
-needs the model.
+Intel macOS the install uses ChromaDB instead and the demo downloads the
+model once. On Windows on ARM, install it under WSL 2, where it is a Linux
+install.
 
 The numbers we can back up, with the misses:
 
@@ -75,6 +86,8 @@ https://neuralmind.uk/benchmark
 |---|---|
 | Demo bundles the vector index and question embeddings; no model download | `docs/wiki/CLI-Reference.md#demo`, `tests/test_cli.py::TestCLIDemoOffline` |
 | Only on Linux, Apple Silicon macOS and 64-bit Windows | `pyproject.toml` turbovec / chromadb platform markers |
+| On Intel macOS the demo builds with ChromaDB and downloads the model once | `docs/releases/RELEASE_NOTES_v4.21.0.md`, `neuralmind/cli.py::cmd_demo` |
+| Windows on ARM: use WSL 2 (a native install fails to build) | `docs/releases/RELEASE_NOTES_v4.21.0.md#what-installing-there-still-needs`, `docs/COMPATIBILITY.md` |
 | Ranks exactly as with the model | `scripts/build_demo_index.py --check` in `ci-benchmark.yml` compares top-5 rankings |
 | 40 of 40 vs ripgrep's 32 of 40, 31–67× | `bench/public/results.json`, `site/claims.json` |
 | 93.3% top-five, 10 misses | `bench/retrieval/on-v4.12/results.json`, `site/claims.json` |

@@ -1,11 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="nm-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#7c3aed"/>
-      <stop offset="100%" style="stop-color:#10b981"/>
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="20" fill="#0c0c0c"/>
-  <rect x="2" y="2" width="96" height="96" rx="18" fill="url(#nm-grad)" opacity="0.12"/>
-  <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="46" fill="url(#nm-grad)">N</text>
+  <!-- The engram (src/components/ui/Logo.tsx) on a graphite tile: two files
+       in ink, the association learned between them in amber, the cells that
+       never fired in the rule colour. Inside the maskable safe zone. -->
+  <rect width="100" height="100" rx="20" fill="#0D1013"/>
+  <g fill="#484E54">
+    <rect x="37" y="22" width="11" height="11" rx="2"/>
+    <rect x="52" y="22" width="11" height="11" rx="2"/>
+    <rect x="52" y="37" width="11" height="11" rx="2"/>
+    <rect x="37" y="52" width="11" height="11" rx="2"/>
+    <rect x="37" y="67" width="11" height="11" rx="2"/>
+    <rect x="52" y="67" width="11" height="11" rx="2"/>
+  </g>
+  <g fill="#ECEFF2">
+    <rect x="22" y="22" width="11" height="11" rx="2"/>
+    <rect x="22" y="37" width="11" height="11" rx="2"/>
+    <rect x="22" y="52" width="11" height="11" rx="2"/>
+    <rect x="22" y="67" width="11" height="11" rx="2"/>
+    <rect x="67" y="22" width="11" height="11" rx="2"/>
+    <rect x="67" y="37" width="11" height="11" rx="2"/>
+    <rect x="67" y="52" width="11" height="11" rx="2"/>
+    <rect x="67" y="67" width="11" height="11" rx="2"/>
+  </g>
+  <g fill="#F7B83D">
+    <rect x="37" y="37" width="11" height="11" rx="2"/>
+    <rect x="52" y="52" width="11" height="11" rx="2"/>
+  </g>
 </svg>

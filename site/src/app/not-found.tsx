@@ -19,7 +19,7 @@ export default function NotFound() {
             <Navbar />
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
-                    <span className="eyebrow block mb-4">404</span>
+                    <p className="reading text-6xl text-faint mb-6">404</p>
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
                         Page not found
                     </h1>
@@ -27,7 +27,7 @@ export default function NotFound() {
                         That page doesn&apos;t exist, or it moved. The docs now live at{' '}
                         <a
                             href="https://docs.neuralmind.uk/"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
                             docs.neuralmind.uk
                         </a>
@@ -35,9 +35,9 @@ export default function NotFound() {
                     </p>
                     <Link
                         href="/"
-                        className="text-electric hover:text-electric-bright transition-colors"
+                        className="link"
                     >
-                        ← Back to the homepage
+                        Back to the homepage
                     </Link>
                 </article>
             </main>

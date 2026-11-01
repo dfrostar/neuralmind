@@ -100,6 +100,7 @@ from .synapses import (
     DEFAULT_NAMESPACE,
     EPHEMERAL_NAMESPACE,
     SHARED_NAMESPACE,
+    STRUCTURAL_NAMESPACE,
     SynapseStore,
     default_db_path,
 )
@@ -113,7 +114,7 @@ from .team_memory import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "4.20.0"
+__version__ = "4.23.3"
 # Derived so it can never drift from __version__ again (release-please only
 # rewrites the string literal above; the old hardcoded tuple sat at (1, 12, 0)
 # through three releases).
@@ -165,6 +166,7 @@ __all__ = [
     "DEFAULT_NAMESPACE",
     "SHARED_NAMESPACE",
     "EPHEMERAL_NAMESPACE",
+    "STRUCTURAL_NAMESPACE",
     "resolve_namespace",
     "SYNAPSE_BUNDLE_VERSION",
     "export_synapse_bundle",

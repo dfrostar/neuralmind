@@ -554,6 +554,17 @@ for node in graph['nodes']:
         skip_count += 1
 ```
 
+Graph extraction and the type pass are incremental too *(v4.23.3+)*.
+`.neuralmind/extraction_cache.json` records each indexed file's content
+hash. A rebuild re-extracts the changed files and every file that names
+something a change added, removed or reordered, and takes every other
+file's names, nodes and edges from the previous graph in build order (Java,
+C#, PHP and Ruby files are parsed again for their `package` or `namespace`
+line), so it writes the `graph.json` a full build would, byte for byte. The
+type pass keeps each file's map from function name to return type in
+`.neuralmind/type_cache.json`, keyed by a hash of the file's text, and
+parses only files whose text changed.
+
 ---
 
 ## Community Detection
@@ -727,8 +738,9 @@ batch to `reinforce()`. Started by the `neuralmind watch` CLI.
 ### Memory export
 
 `neuralmind/synapse_memory.py` renders the learned graph as markdown:
-strongest pairs (LTP-tagged), top hubs, summary stats. Writes to two
-locations:
+strongest pairs (LTP-tagged), top hubs, summary stats, over the namespaces
+recall reads on the checkout (v4.22.0+), so a feature branch's memory stays
+out of the file on `main`. Writes to two locations:
 
 - `<project>/.neuralmind/SYNAPSE_MEMORY.md` (always)
 - `~/.claude/projects/<slug>/memory/synapse-activations.md` (when Claude Code's auto-memory directory exists)

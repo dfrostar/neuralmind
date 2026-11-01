@@ -48,17 +48,17 @@ export default function HowItWorks() {
     return (
         <section id="how-it-works" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="How it works" title="Index once. Every session starts oriented.">
+                <SectionHeader title="Index once. Every session starts oriented.">
                     Agents reason well over what is in the window and forget it when the session
                     ends, so each one pays again to find its way around the same repo. NeuralMind
                     keeps that map on your machine and answers from it.
                 </SectionHeader>
 
-                <ol className="grid grid-cols-1 md:grid-cols-3 border-t border-l border-carbon-border">
+                <ol className="grid grid-cols-1 md:grid-cols-3 bg-carbon-card border-t border-l border-carbon-border">
                     {steps.map((step, i) => (
                         <li key={step.title} className="border-b border-r border-carbon-border p-7 md:p-8">
                             <div className="flex items-center justify-between mb-6">
-                                <Icon name={step.icon} className="w-6 h-6 text-electric" />
+                                <Icon name={step.icon} className="w-6 h-6 text-muted" />
                                 <span className="font-mono text-xs text-faint tabular-nums">
                                     {String(i + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
                                 </span>
@@ -67,8 +67,7 @@ export default function HowItWorks() {
                                 {step.title}
                             </h3>
                             <p className="text-muted leading-relaxed text-body-sm mb-6">{withCode(step.desc)}</p>
-                            <span className="inline-flex items-center gap-2 font-mono text-eyebrow uppercase tracking-eyebrow text-faint">
-                                <span className="w-1 h-1 rounded-pill bg-proton" />
+                            <span className="label">
                                 {step.tag}
                             </span>
                         </li>
@@ -102,8 +101,8 @@ export default function HowItWorks() {
                         <p className="text-muted text-sm mt-5">
                             Using Hermes? <code className="font-mono text-code-inline text-body">neuralmind install-hermes-plugin</code>.
                             Other MCP clients point at <code className="font-mono text-code-inline text-body">neuralmind-mcp</code>.{' '}
-                            <a href="https://docs.neuralmind.uk/wiki/CLI-Reference" className="text-electric hover:text-electric-bright">
-                                CLI reference →
+                            <a href="https://docs.neuralmind.uk/wiki/CLI-Reference" className="link">
+                                CLI reference
                             </a>
                         </p>
                     </div>
@@ -111,10 +110,7 @@ export default function HowItWorks() {
                     {/* ── Real output ────────────────────────────────────── */}
                     <figure id="real-output" className="panel rounded-card overflow-hidden scroll-mt-24 min-w-0 flex flex-col">
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-carbon-border bg-carbon-raised">
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="w-2.5 h-2.5 rounded-pill bg-carbon-line" />
-                            <span className="ml-2 font-mono text-eyebrow text-faint tracking-wide">requests/src/requests — zsh</span>
+                            <span className="font-mono text-xs text-faint">requests/src/requests — zsh</span>
                         </div>
                         <div className="p-5 font-mono text-caption leading-relaxed overflow-x-auto flex-1">
                             {QUERY_EXCERPT.map((line, i) => (

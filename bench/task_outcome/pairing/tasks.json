@@ -1,0 +1,191 @@
+[
+ {
+  "id": "ef8222b932",
+  "fix_commit": "ef8222b9322ea1bc45b03b5994daf44730a92120",
+  "base_commit": "ef8222b9322ea1bc45b03b5994daf44730a92120^",
+  "gold_files": [
+   "hermes_cli/providers.py",
+   "hermes_cli/runtime_provider_custom.py"
+  ],
+  "test_files": [
+   "tests/hermes_cli/test_local_runtime.py"
+  ],
+  "fail_to_pass": [
+   "tests.hermes_cli.test_local_runtime::test_configured_llamacpp_provider_wins_over_managed_alias",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_runtime_forwards_detect_ports_config"
+  ],
+  "pass_to_pass": [
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[-ubuntu-cpu]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[AMD Radeon RX 7900-win-vulkan]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[NVIDIA GeForce RTX 5090-win-cuda]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[None-macos-metal]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[None-win-cpu]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[intel-win-vulkan]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[nvidia-macos-metal]",
+   "tests.hermes_cli.test_local_runtime::test_backend_selection[nvidia-ubuntu-cuda]",
+   "tests.hermes_cli.test_local_runtime::test_base_url_dials_loopback_ip_never_localhost",
+   "tests.hermes_cli.test_local_runtime::test_boot_in_flight_real_gate",
+   "tests.hermes_cli.test_local_runtime::test_bootstrap_disabled_is_noop",
+   "tests.hermes_cli.test_local_runtime::test_bootstrap_failure_never_raises",
+   "tests.hermes_cli.test_local_runtime::test_bootstrap_reuses_running_server",
+   "tests.hermes_cli.test_local_runtime::test_bootstrap_skips_boot_with_no_staged_models",
+   "tests.hermes_cli.test_local_runtime::test_endpoint_identity_stable_across_supervisor_instances",
+   "tests.hermes_cli.test_local_runtime::test_ensure_model_ready_unknown_model_raises",
+   "tests.hermes_cli.test_local_runtime::test_idle_sweep_busy_after_probe_failure_still_resets_clock",
+   "tests.hermes_cli.test_local_runtime::test_idle_sweep_busy_model_resets_clock",
+   "tests.hermes_cli.test_local_runtime::test_idle_sweep_probe_failure_keeps_clock",
+   "tests.hermes_cli.test_local_runtime::test_idle_sweep_unloads_idle_models",
+   "tests.hermes_cli.test_local_runtime::test_install_dir_is_profile_scoped",
+   "tests.hermes_cli.test_local_runtime::test_is_idle_requires_no_busy_slots_and_zero_processing",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_aliases_route_to_custom_profile",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_dead_server_raises_friendly_error",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_endpoint_no_wait_when_not_enabled",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_endpoint_resolution_prefers_managed",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_endpoint_stale_state_falls_through",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_endpoint_starting_server_resolves",
+   "tests.hermes_cli.test_local_runtime::test_llamacpp_endpoint_waits_for_boot_in_flight",
+   "tests.hermes_cli.test_local_runtime::test_local_runtime_config_defaults_shape",
+   "tests.hermes_cli.test_local_runtime::test_manifest_verified_tolerates_non_dict_manifest",
+   "tests.hermes_cli.test_local_runtime::test_probe_auth_required_still_detected",
+   "tests.hermes_cli.test_local_runtime::test_probe_dead_port_returns_none",
+   "tests.hermes_cli.test_local_runtime::test_probe_fingerprints_real_llama_server",
+   "tests.hermes_cli.test_local_runtime::test_probe_rejects_non_llama_openai_server",
+   "tests.hermes_cli.test_local_runtime::test_probe_single_model_mode_is_not_router",
+   "tests.hermes_cli.test_local_runtime::test_resolution_kicks_boot_when_no_thread_is_booting",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[macos-arm64-metal-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[ubuntu-x64-cpu-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[ubuntu-x64-cuda-False]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[ubuntu-x64-vulkan-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-arm64-cpu-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-arm64-cuda-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-arm64-vulkan-False]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-x64-cpu-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-x64-cuda-True]",
+   "tests.hermes_cli.test_local_runtime::test_resolver_platform_matrix[win-x64-vulkan-True]",
+   "tests.hermes_cli.test_local_runtime::test_runtime_provider_seam_explicit_base_url_wins",
+   "tests.hermes_cli.test_local_runtime::test_runtime_provider_seam_llamacpp_alias",
+   "tests.hermes_cli.test_local_runtime::test_sha256_mismatch_rejects",
+   "tests.hermes_cli.test_local_runtime::test_staged_models_requires_every_split_part",
+   "tests.hermes_cli.test_local_runtime::test_switch_model_explicit_llamacpp_provider",
+   "tests.hermes_cli.test_local_runtime::test_touch_generate_is_the_readiness_proof",
+   "tests.hermes_cli.test_local_runtime::test_touch_generate_scans_reasoning_content",
+   "tests.hermes_cli.test_local_runtime::test_windows_cuda_arm64_pairs_cudart_on_its_own_version",
+   "tests.hermes_cli.test_local_runtime::test_windows_cuda_pairs_cudart"
+  ],
+  "prompt": "Users report the following problem with the product:\n\nhonor configured llamacpp endpoint\n\nFind the cause in the source code and fix it. Do not add or change tests; the fix will be judged by tests you cannot see. You can run the existing tests with `python -m pytest <path>`. Stop when the fix is done."
+ },
+ {
+  "id": "9701123540",
+  "fix_commit": "97011235409cb4205cdb6a87ce312133183f5ecb",
+  "base_commit": "97011235409cb4205cdb6a87ce312133183f5ecb^",
+  "gold_files": [
+   "gateway/run_shutdown.py"
+  ],
+  "test_files": [
+   "tests/gateway/test_scale_to_zero.py"
+  ],
+  "fail_to_pass": [
+   "tests.gateway.test_scale_to_zero::test_scale_to_zero_gate_accounts_for_secondary_profile_direct_adapter"
+  ],
+  "pass_to_pass": [
+   "tests.gateway.test_scale_to_zero::test_arm_blocked_without_wake_url",
+   "tests.gateway.test_scale_to_zero::test_brokered_sleep_url_reads_the_stamp",
+   "tests.gateway.test_scale_to_zero::test_brokered_sleep_url_rejects_a_malformed_stamp",
+   "tests.gateway.test_scale_to_zero::test_brokered_timeout_outlasts_the_broker_and_fits_the_redial_hold",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[ On ]",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[1]",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[TRUE]",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[on]",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[true]",
+   "tests.gateway.test_scale_to_zero::test_enabled_truthy_values[yes]",
+   "tests.gateway.test_scale_to_zero::test_idle_exactly_at_threshold",
+   "tests.gateway.test_scale_to_zero::test_malformed_sleep_url_warns_once_not_every_idle_tick",
+   "tests.gateway.test_scale_to_zero::test_no_platform_is_true",
+   "tests.gateway.test_scale_to_zero::test_not_idle_with_running_agent",
+   "tests.gateway.test_scale_to_zero::test_relay_only_is_true",
+   "tests.gateway.test_scale_to_zero::test_request_brokered_suspend_fails_awake",
+   "tests.gateway.test_scale_to_zero::test_request_brokered_suspend_posts_the_signed_url",
+   "tests.gateway.test_scale_to_zero::test_self_suspend_available_needs_identity_and_socket",
+   "tests.gateway.test_scale_to_zero::test_suspend_available_accepts_either_lever",
+   "tests.gateway.test_scale_to_zero::test_suspend_self_missing_socket_is_false_not_raise",
+   "tests.gateway.test_scale_to_zero::test_suspend_self_non_2xx_is_false_not_raise",
+   "tests.gateway.test_scale_to_zero::test_suspend_self_posts_suspend_for_this_machine",
+   "tests.gateway.test_scale_to_zero::test_suspend_self_requires_machine_identity",
+   "tests.gateway.test_scale_to_zero::test_timeout_invalid_values_degrade_to_default",
+   "tests.gateway.test_scale_to_zero::test_timeout_parses_minutes_to_seconds",
+   "tests.gateway.test_scale_to_zero::test_watcher_reasks_gate_before_dormant_sequence"
+  ],
+  "prompt": "Users report the following problem with the product:\n\ncount secondary adapters parked mid-reconnect in the scale-to-zero gate\n\n_handle_profile_adapter_fatal_error pops a failed secondary adapter out of\n_profile_adapters and parks it in _profile_failed_platforms while\n_run_secondary_profile_reconnect retries (e.g. a Photon SIDECAR_FAILED with\nretryable=True). The gate unioned config.platforms, self.adapters and\n_profile_adapters only, so during that window a relay-fronted launch profile\nlooked relay-only and the watcher could suspend the process; the reconnect\nthen never completed. Union the platform keys of every\n_profile_failed_platforms entry as well: a pending reconnect is still a\nserved direct connection.\n\nExtends the existing secondary-adapter gate test with the parked case\n(red on the previous head, green with this change).\n\nFind the cause in the source code and fix it. Do not add or change tests; the fix will be judged by tests you cannot see. You can run the existing tests with `python -m pytest <path>`. Stop when the fix is done."
+ },
+ {
+  "id": "69316aa66f",
+  "fix_commit": "69316aa66f88402d4f668e7d48cc453f549a1704",
+  "base_commit": "69316aa66f88402d4f668e7d48cc453f549a1704^",
+  "gold_files": [
+   "gateway/host_rendezvous.py"
+  ],
+  "test_files": [
+   "tests/gateway/test_host_rendezvous.py"
+  ],
+  "fail_to_pass": [
+   "tests.gateway.test_host_rendezvous::test_reused_early_pid_after_reboot_is_not_the_gateway"
+  ],
+  "pass_to_pass": [
+   "tests.gateway.test_host_rendezvous::test_boot_epoch_mismatch_rejects_a_tick_match",
+   "tests.gateway.test_host_rendezvous::test_empty_boot_epoch_does_not_stale_a_live_owner",
+   "tests.gateway.test_host_rendezvous::test_live_host_record_survives_wall_clock_create_time_drift",
+   "tests.gateway.test_host_rendezvous::test_lock_cache_follows_the_lock_directory",
+   "tests.gateway.test_host_rendezvous::test_probe_owner_refuses_a_closed_port_and_a_foreign_listener",
+   "tests.gateway.test_host_rendezvous::test_relative_xdg_state_home_is_ignored",
+   "tests.gateway.test_host_rendezvous::test_sigterm_removes_the_record_and_its_live_session_token",
+   "tests.gateway.test_host_rendezvous::test_stale_record_is_never_attachable[creation-time-mismatch]",
+   "tests.gateway.test_host_rendezvous::test_stale_record_is_never_attachable[dead-pid]",
+   "tests.gateway.test_host_rendezvous::test_two_homes_take_their_own_per_home_lock_but_only_one_host_lock",
+   "tests.gateway.test_host_rendezvous::test_unopenable_lock_dir_is_not_reported_as_another_owner"
+  ],
+  "prompt": "Users report the following problem with the product:\n\ndrop argv identity from host rendezvous liveness\n\nReview: do not infer process identity from argv substrings (AGENTS.md).\nLegacy leftover records still fail on a reboot-scale createTime gap.\nBoot-epoch mismatch stays Linux-proven; an empty epoch does not stale.\n\n(cherry picked from commit c7fa3cbfaa67c26842e26e5e3fc94c03f7895875)\n\nFind the cause in the source code and fix it. Do not add or change tests; the fix will be judged by tests you cannot see. You can run the existing tests with `python -m pytest <path>`. Stop when the fix is done."
+ },
+ {
+  "id": "e113c1b3af",
+  "fix_commit": "e113c1b3aff3d9248ee1209f4f31cc74f49761c5",
+  "base_commit": "e113c1b3aff3d9248ee1209f4f31cc74f49761c5^",
+  "gold_files": [
+   "agent/video_gen_provider.py"
+  ],
+  "test_files": [
+   "tests/plugins/video_gen/test_deepinfra_provider.py"
+  ],
+  "fail_to_pass": [
+   "tests.plugins.video_gen.test_deepinfra_provider::test_generate_uses_env_only_proxy_http_client"
+  ],
+  "pass_to_pass": [
+   "tests.plugins.video_gen.test_deepinfra_provider::test_generate_text_to_video_downloads_url_and_saves_locally",
+   "tests.plugins.video_gen.test_deepinfra_provider::test_identity_and_availability",
+   "tests.plugins.video_gen.test_deepinfra_provider::test_list_models_filters_by_video_gen_tag"
+  ],
+  "prompt": "Users report the following problem with the product:\n\nbuild the OpenAI-compatible video client on the env-only-proxy httpx client\n\nOpenAICompatibleVideoGenProvider has a configurable <NAME>_BASE_URL, so a\nlocal/custom endpoint hit the same macOS system-proxy symptom as the image\nprovider (#64888 sibling). Route it through build_keepalive_http_client(base_url);\none generate()-level test with a plain httpx.Client() control.\n\nFind the cause in the source code and fix it. Do not add or change tests; the fix will be judged by tests you cannot see. You can run the existing tests with `python -m pytest <path>`. Stop when the fix is done."
+ },
+ {
+  "id": "b86be0c098",
+  "fix_commit": "b86be0c09870f969a31c766823719b5cab9dd8e3",
+  "base_commit": "b86be0c09870f969a31c766823719b5cab9dd8e3^",
+  "gold_files": [
+   "gateway/session_viewer_automation.py"
+  ],
+  "test_files": [
+   "tests/gateway/test_session_viewer_automation.py"
+  ],
+  "fail_to_pass": [
+   "tests.gateway.test_session_viewer_automation::test_a_read_that_clears_a_goal_barrier_repaints_the_other_viewers[goal-is_waiting]",
+   "tests.gateway.test_session_viewer_automation::test_a_read_that_clears_a_goal_barrier_repaints_the_other_viewers[loop-goal_blocks_tick]"
+  ],
+  "pass_to_pass": [
+   "tests.gateway.test_session_viewer_automation::test_cli_driven_loop_changes_repaint_the_other_viewers",
+   "tests.gateway.test_session_viewer_automation::test_goal_mutations_land_in_the_owners_row",
+   "tests.gateway.test_session_viewer_automation::test_loop_and_heartbeat_ticks_are_claimed_on_the_owner",
+   "tests.gateway.test_session_viewer_automation::test_the_goal_judge_runs_on_the_owner",
+   "tests.gateway.test_session_viewer_automation::test_unknown_calls_are_refused"
+  ],
+  "prompt": "Users report the following problem with the product:\n\na CLI barrier check that clears a goal barrier repaints the other viewers\n\nis_waiting and goal_blocks_tick were treated as reads, but they drop a satisfied\nbarrier (the goal resumes, the loop defers to it). Publish when the session's\ngoal/loop/heartbeat rows actually changed; an unchanged poll stays quiet\n(independent review finding).\n\nFind the cause in the source code and fix it. Do not add or change tests; the fix will be judged by tests you cannot see. You can run the existing tests with `python -m pytest <path>`. Stop when the fix is done."
+ }
+]

@@ -1,0 +1,6 @@
+{
+  "1faf3b5e76": "(c) The parametrized lost-completion test (3 of the 5 FAIL_TO_PASS cases) asserts the exact output line 'Desktop app build owed: the update completion did not finish', a reason string the fix introduces (base code only uses 'the source-update tail did not run/finish'), so a correct fix written from the symptom would word it differently and still fail.",
+  "6a2909c6b1": "(c) test_startup_recovery_backs_off_after_a_failed_install monkeypatches STARTUP_RETRY_SECONDS on the memory_provider_migration module, a constant that at the base commit exists only in left_core_migration and that the fix moves there, so a symptom-derived fix that reuses or names the back-off differently fails with AttributeError.",
+  "286e723db8": "(c) test_loads_configured_skills_and_reports_missing calls build_auto_load_prompt(..., home_override=home), a keyword parameter that does not exist at the base commit and is introduced by the fix.",
+  "bc79fe7c75": "(c) Both tests set HERMES_LANGFUSE_MAX_DEPTH and assert a warning containing that name and 'non-negative integer'; the env var and message are introduced by the fix (a new setting, not a bug in existing behaviour), so a symptom cannot reach them."
+}

@@ -96,7 +96,7 @@ const sourceHref = (source: string) => blob(source);
 function Source({ figure }: { figure: Pick<Figure, 'source' | 'reproduce'> }) {
     return (
         <>
-            <a href={sourceHref(figure.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright break-all">
+            <a href={sourceHref(figure.source)} target="_blank" rel="noopener noreferrer" className="link break-all">
                 {figure.source}
             </a>
             <code className="block mt-1 font-mono text-caption text-faint break-all">{figure.reproduce}</code>
@@ -233,7 +233,7 @@ export default function BenchmarkPage() {
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         <EvidenceBadge level={grep.evidence} />
                         <span className="text-faint text-sm">
-                            {publicBenchmark.repoNames.length} pinned repos · {publicBenchmark.total} pre-registered queries
+                            {publicBenchmark.repoNames.length} pinned repos, {publicBenchmark.total} pre-registered queries
                         </span>
                     </div>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
@@ -248,7 +248,7 @@ export default function BenchmarkPage() {
                     <p className="text-muted leading-relaxed">
                         Every query was registered before tuning, every miss is published, and every
                         number on this page is read from the committed run or from{' '}
-                        <a href={blob('site/claims.json')} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                        <a href={blob('site/claims.json')} target="_blank" rel="noopener noreferrer" className="link">
                             site/claims.json
                         </a>{' '}
                         when the site is built.
@@ -260,7 +260,7 @@ export default function BenchmarkPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Rerun it yourself</h2>
                     <div className="rounded-card border border-carbon-border bg-carbon-card overflow-x-auto">
                         <pre className="font-mono text-caption leading-relaxed text-body p-5 whitespace-pre">
-{`git clone `}<span className="text-electric">https://github.com/dfrostar/neuralmind</span>{` && cd neuralmind
+{`git clone `}<span className="text-ink">https://github.com/dfrostar/neuralmind</span>{` && cd neuralmind
 pip install -e . tiktoken                            `}<span className="text-faint"># source checkout ships the harness</span>{`
 NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-faint"># clones the pinned repos, prints the table</span>
                         </pre>
@@ -273,15 +273,15 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         0.8% off on a per-repo mean;{' '}
                         <code className="font-mono text-code-inline text-body">NEURALMIND_ORT_THREADS=1</code> matches
                         CI&rsquo;s setup (
-                        <a href={`${PUBLIC_MD}#how-exactly-a-re-run-reproduces`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
+                        <a href={`${PUBLIC_MD}#how-exactly-a-re-run-reproduces`} target="_blank" rel="noopener noreferrer" className="link">
                             what moves, and the evidence
                         </a>
                         ). Raw per-query data is committed in{' '}
-                        <a href={RESULTS_JSON} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
+                        <a href={RESULTS_JSON} target="_blank" rel="noopener noreferrer" className="link">
                             bench/public/results.json
                         </a>
                         ; the query set is in{' '}
-                        <a href={MANIFEST} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
+                        <a href={MANIFEST} target="_blank" rel="noopener noreferrer" className="link">
                             evals/public/manifest.json
                         </a>.
                     </p>
@@ -297,7 +297,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                     </p>
                     <div className="grid lg:grid-cols-2 gap-6 items-start">
                         <div className="min-w-0">
-                            <p className="eyebrow mb-3">Retrieval · what reaches the window</p>
+                            <p className="label mb-3">Retrieval: what reaches the window</p>
                             <StatGrid className="grid-cols-2">
                                 <Stat
                                     label="Gold file found"
@@ -326,7 +326,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             </StatGrid>
                         </div>
                         <div className="min-w-0">
-                            <p className="eyebrow mb-3">Task outcomes · does the agent do better</p>
+                            <p className="label mb-3">Task outcomes: does the agent do better</p>
                             <StatGrid className="grid-cols-2">
                                 <Stat
                                     label="Tasks solved"
@@ -354,8 +354,8 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 />
                             </StatGrid>
                             <p className="mt-3 text-sm">
-                                <a href="#task-outcomes" className="text-electric hover:text-electric-bright">
-                                    What the pilot found, and why →
+                                <a href="#task-outcomes" className="link">
+                                    What the pilot found, and why
                                 </a>
                             </p>
                         </div>
@@ -446,22 +446,22 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                     href={blob('bench/task_outcome/exploratory-agent-uptake/README.md')}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-electric hover:text-electric-bright"
+                                    className="link"
                                 >
-                                    The rerun →
+                                    The rerun
                                 </a>
                             </p>
                         </div>
                     </div>
                     <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
-                        <a href={blob(taskOutcomePilot.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
-                            Analyzer report →
+                        <a href={blob(taskOutcomePilot.source)} target="_blank" rel="noopener noreferrer" className="link">
+                            Analyzer report
                         </a>
-                        <a href={blob('bench/task_outcome/pilot/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
-                            All {pilot.runs} runs →
+                        <a href={blob('bench/task_outcome/pilot/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="link">
+                            All {pilot.runs} runs
                         </a>
-                        <a href={blob(taskOutcomePilot.spec)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
-                            Pre-registered spec →
+                        <a href={blob(taskOutcomePilot.spec)} target="_blank" rel="noopener noreferrer" className="link">
+                            Pre-registered spec
                         </a>
                     </p>
                 </section>
@@ -498,7 +498,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-1">
                                     <h3 className="font-mono text-base text-white">{repo.name}</h3>
                                     <span className="font-mono text-xs text-faint">@ {repo.sha}</span>
-                                    <span className="text-faint text-sm">· {repo.queries} queries</span>
+                                    <span className="text-faint text-sm">{repo.queries} queries</span>
                                     <span className="ml-auto font-mono text-sm text-proton">{repo.ratio.text} fewer tokens</span>
                                 </div>
                                 {REPO_NOTES[repo.name] && (
@@ -524,7 +524,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             On the larger {retrievalEval.questions}-question retrieval eval ({retrievalEval.repos} repos,
                             including NeuralMind&rsquo;s own), the same build misses the gold file in the top five
                             on {retrievalEval.misses} questions, listed in{' '}
-                            <a href={blob(retrievalEval.source)} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            <a href={blob(retrievalEval.source)} target="_blank" rel="noopener noreferrer" className="link">
                                 {retrievalEval.source}
                             </a>
                             . On NeuralMind&rsquo;s own repository, four of its six misses are files vector search
@@ -583,7 +583,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                     <h2 className="font-display text-xl font-bold text-white mb-2">Every number the site quotes</h2>
                     <p className="text-muted mb-6 leading-relaxed">
                         Rendered from{' '}
-                        <a href={blob('site/claims.json')} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                        <a href={blob('site/claims.json')} target="_blank" rel="noopener noreferrer" className="link">
                             site/claims.json
                         </a>
                         , the file CI holds every page to: each figure with the kind of evidence it is, where it
@@ -597,7 +597,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                     <th scope="col">Figure</th>
                                     <th scope="col">What it is</th>
                                     <th scope="col">Evidence</th>
-                                    <th scope="col">Source · reproduce</th>
+                                    <th scope="col">Source and reproduce command</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -639,14 +639,14 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         <code className="font-mono text-code-inline text-body">neuralmind benchmark .</code> prints it.
                     </p>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                        <a href={PUBLIC_MD} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright transition-colors">
-                            Full methodology and corpus notes →
+                        <a href={PUBLIC_MD} target="_blank" rel="noopener noreferrer" className="link">
+                            Full methodology and corpus notes
                         </a>
-                        <a href="/measure-your-own/" className="text-electric hover:text-electric-bright transition-colors">
-                            How to measure your own →
+                        <a href="/measure-your-own/" className="link">
+                            How to measure your own
                         </a>
-                        <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
-                            A single-repo field report →
+                        <a href="/field-reports/measure-memory-across-a-refactor/" className="link">
+                            A single-repo field report
                         </a>
                     </div>
                 </section>

@@ -46,6 +46,7 @@ from typing import Any
 
 import numpy as np
 
+from . import graph_cache
 from .child_python import python_argv, python_cwd, python_env
 from .embedding_backend import EmbeddingBackend
 from .ir import CODE_SCOPE_EXTENSIONS, node_community
@@ -580,33 +581,13 @@ class TurboVecEmbedder(EmbeddingBackend):
     # ------------------------------------------------------------- graph load
     def _prefer_ir_over_graph(self) -> bool:
         """True when the persisted IR is present and not stale vs graph.json."""
-        if not self.ir_path.exists():
-            return False
-        if not self.graph_path.exists():
-            return True
-        try:
-            return self.ir_path.stat().st_mtime >= self.graph_path.stat().st_mtime
-        except OSError:
-            return False
+        return graph_cache.prefer_ir(self.ir_path, self.graph_path)
 
     def load_graph(self) -> bool:
-        from . import ir as ir_mod
-
-        if self._prefer_ir_over_graph():
-            try:
-                ir_data = json.loads(self.ir_path.read_text(encoding="utf-8"))
-                index_ir = ir_mod.IndexIR.from_dict(ir_data)
-                self.graph = ir_mod.to_graph_json(index_ir)
-            except (json.JSONDecodeError, ir_mod.IRError, KeyError, ValueError):
-                if not self.graph_path.exists():
-                    return False
-                with self.graph_path.open(encoding="utf-8") as f:
-                    self.graph = json.load(f)
-        else:
-            if not self.graph_path.exists():
-                return False
-            with self.graph_path.open(encoding="utf-8") as f:
-                self.graph = json.load(f)
+        graph = graph_cache.load(self.ir_path, self.graph_path)
+        if graph is None:
+            return False
+        self.graph = graph
         self.nodes = self.graph.get("nodes", [])
         self.edges = self.graph.get("edges", self.graph.get("links", []))
         return True
@@ -1175,6 +1156,9 @@ class TurboVecEmbedder(EmbeddingBackend):
             or e.get("source") in node_ids
             or e.get("target") in node_ids
         ]
+
+    def has_rows(self) -> bool:
+        return self._conn.execute("SELECT 1 FROM nodes LIMIT 1").fetchone() is not None
 
     def get_stats(self) -> dict[str, Any]:
         total = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()["c"]
