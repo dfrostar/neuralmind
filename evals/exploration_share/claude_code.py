@@ -16,16 +16,26 @@ def collect(
     since: float,
     until: float,
     tokenizer: Tokenizer | None = None,
-    skip_ids: set[str] | None = None,
+    recorded: dict[str, float | None] | None = None,
 ) -> list[SessionRow]:
+    """Sessions started in [since, until) and idle since ``until``.
+
+    ``recorded`` maps a session id to the latest activity its recorded row holds: a
+    session is skipped only while it has written nothing newer, so one recorded
+    half-way (or resumed since) is collected again and its row replaced.
+    """
     tok = tokenizer or Tokenizer()
     rows: list[SessionRow] = []
     for path in sorted(Path(root).expanduser().glob("*/*.jsonl")):
         if path.stat().st_mtime < since:
             continue  # nothing written in the window
         row = _collect_file(path, since, until, tok)
-        if row is not None and not (skip_ids and row.session_id in skip_ids):
-            rows.append(row)
+        if row is None:
+            continue
+        before = (recorded or {}).get(row.session_id)
+        if before is not None and row.last_activity is not None and row.last_activity <= before:
+            continue  # nothing newer than the row already recorded
+        rows.append(row)
     return rows
 
 
@@ -88,6 +98,7 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                     source_group="subagent" if sidechain else "interactive",
                     started_at=first_ts,
                     ended_at=None,
+                    last_activity=None,
                     model=None,
                     tokenizer=tok.name,
                 )
@@ -161,6 +172,7 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
     if last_ts is not None and last_ts > until:
         return None  # still active after the window's end: deferred, so it isn't recorded half-way
     row.ended_at = last_ts
+    row.last_activity = last_ts
     return row
 
 

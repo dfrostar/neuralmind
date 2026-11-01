@@ -75,7 +75,8 @@ share decides whether that effect is something a bill can feel, or arithmetic.
 - **Window.** Retrospective: sessions started 2026-10-02T00:00Z to
   2026-11-01T23:59Z, on ai-9970 (Hermes) and on the Mac (Claude Code). Then
   nightly on ai-9970: every session ended since the previous run, appended,
-  de-duplicated by session id.
+  de-duplicated by session id; a session that has written since its row was
+  recorded is collected again and its row replaced.
 
 ## Pre-registered reading of the result
 
@@ -168,6 +169,26 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   holds no tool results, so the billed-prompt share is the recorded share
   times the calibration ratio, not a bound), and track 1's task list no
   longer counts three held-out tasks twice. Thresholds unchanged.
+- **2026-11-01, review 3: two more findings from code review (Codex, PR
+  #765), fixed after pass 4's figures had been read** (Claude Code interactive
+  30.6% of recorded context, 19.6% of billed prompt; Hermes interactive
+  10.4%). Neither fix has been re-run on either machine: the committed
+  summaries are still pass 4's, and the figures will move. (a) `git -C <path>
+  diff` and `git -c <name>=<value> log`: git's global options that take an
+  operand were read as the subcommand, so those reading commands counted as
+  shell. The subcommand is now found past them. This can only raise the
+  exploration share; in the Mac's transcripts it flips 22 of 13,585 Bash calls
+  in the window, all `git -C`, and what their output adds has not been
+  measured. (b) A session was recorded once, by id, even while it was still
+  running (with `--lag-hours 0` the window ends at the run, so a running
+  session's last message is inside it), and every later run skipped it: any
+  session that spanned a collection stayed half-counted. A row now holds the
+  session's latest activity (`last_activity`), and a later run collects a
+  session again when it has written something newer, replacing its row; rows
+  from before the field fall back to `ended_at`, and one with neither is
+  collected once more. This can move a share either way. Whether any row in
+  the pass 4 summaries was recorded early is not known from the aggregates.
+  Thresholds unchanged.
 
 ## Outputs
 

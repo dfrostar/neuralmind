@@ -51,23 +51,29 @@ def collect(
     since: float,
     until: float,
     tokenizer: Tokenizer | None = None,
-    skip_ids: set[str] | None = None,
+    recorded: dict[str, float | None] | None = None,
 ) -> list[SessionRow]:
+    """Sessions started in [since, until) and finished by ``until``.
+
+    ``recorded`` maps a session id to the latest activity its recorded row holds: a
+    session is skipped only while it has written nothing newer, so one recorded
+    half-way (or resumed since) is collected again and its row replaced.
+    """
     tok = tokenizer or Tokenizer()
     con = open_readonly(db_path)
     rows: list[SessionRow] = []
     for sess in con.execute(SESSIONS_SQL, (since, until)):
         sid, source, model, started, ended, system_prompt, in_tok, out_tok, cr_tok, cw_tok = sess
-        if skip_ids and sid in skip_ids:
+        last_ts = con.execute(LAST_TS_SQL, (sid,)).fetchone()[0]
+        # One still active at the window's end is deferred to a later run rather than
+        # recorded half-way: ended after `until`, or writing after it.
+        if (ended is not None and ended > until) or (last_ts is not None and last_ts > until):
             continue
-        # A session is recorded once, so one still active at the window's end is deferred
-        # to a later run: ended after `until`, or not ended and still writing after it.
-        if ended is not None and ended > until:
-            continue
-        if ended is None:
-            last_ts = con.execute(LAST_TS_SQL, (sid,)).fetchone()[0]
-            if last_ts is not None and last_ts > until:
-                continue
+        activity = last_ts if last_ts is not None else (ended if ended is not None else started)
+        if recorded is not None and sid in recorded:
+            before = recorded[sid]
+            if before is not None and activity is not None and activity <= before:
+                continue  # nothing newer than the row already recorded
         row = SessionRow(
             agent="hermes",
             session_id=sid,
@@ -75,6 +81,7 @@ def collect(
             source_group=SOURCE_GROUPS.get(source or "", "automated"),
             started_at=started,
             ended_at=ended,
+            last_activity=activity,
             model=model,
             tokenizer=tok.name,
             prompt_tokens_billed=(in_tok or 0) + (cr_tok or 0) + (cw_tok or 0),
