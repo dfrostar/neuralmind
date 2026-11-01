@@ -6,75 +6,91 @@ reading and searching code, as defined and pre-registered in
 [`docs/specs/EXPLORATION-SHARE-SPEC.md`](../../../docs/specs/EXPLORATION-SHARE-SPEC.md)
 before any figure was computed. Per-session rows stay on the machines (they
 hold paths and project names); only these aggregates are committed. Sessions
-started 2026-10-02T00:00Z up to the run on 2026-11-01 at about 19:55Z.
+started 2026-10-02T00:00Z up to the run on 2026-11-01 at about 20:40Z; a
+session still active at that moment is deferred to a later run, as the spec's
+pass-3 entry says.
 
-## Result (pass 3)
+## Result (pass 4)
 
-| Agent, source | Sessions | API calls | Prompt tokens billed | Context est. ÷ billed | **Exploration share** (billed) | median per session | NeuralMind block | Edits | Other shell |
-|---|---|---|---|---|---|---|---|---|---|
-| Claude Code, interactive (Mac) | 87 | 14,105 | 4,218,516,248 | 63.5% | **27.4%** | 19.7% | 0.0% | 0.3% | 8.9% |
-| Hermes, interactive (ai-9970) | 67 | 5,435 | 860,795,351 | 100.3% | **9.7%** | 4.9% | 1.3% | 2.5% | 8.8% |
-| Hermes, automated (cron etc.) | 1,767 | 6,637 | 83,380,570 | 100.1% | 6.8% | 0.0% | 1.7% | 0.1% | 5.2% |
-| Hermes, subagent | 11 | 40 | 707,956 | 100.0% | 19.8% | 0.0% | 0.0% | 0.0% | 0.0% |
-| Hermes, benchmark (task-outcome harness) | 261 | 33,148 | 788,919,603 | 100.5% | 51.7% | 51.8% | 0.2% | 1.4% | 2.5% |
+Two shares are reported for exploration, because they answer different
+questions. **Of the recorded context** is the spec's headline: exploration tool
+results present in each API call, over everything the transcript records as
+present, both with the same tokenizer and presence model. **Of the billed
+prompt** divides the same numerator by what the provider billed; the part of
+the prompt the transcript doesn't hold (tool schemas, system-reminders,
+thinking blocks) contains no tool results, so this is the recorded share times
+the calibration ratio, not a bound.
 
-Tokenizer `o200k_base` throughout. "Exploration share (billed)" is the
-exploration tool results present in each API call's context, summed over
-calls, divided by the estimated context the same way; "median per session" is
-the median of that ratio across sessions.
+| Agent, source | Sessions | API calls | Prompt tokens billed | Context est. ÷ billed | **Exploration, of recorded context** | **of billed prompt** | median per session | NeuralMind block | Edits | Other shell |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Claude Code, interactive (Mac) | 87 | 12,691 | 3,752,452,025 | 63.8% | **30.6%** | **19.6%** | 21.0% | 0.0% | 4.5% | 15.2% |
+| Hermes, interactive (ai-9970) | 67 | 5,435 | 860,795,351 | 100.0% | **10.4%** | **10.4%** | 5.4% | 1.2% | 8.7% | 13.3% |
+| Hermes, automated (cron etc.) | 1,769 | 6,645 | 83,458,547 | 100.1% | 7.2% | 7.2% | 0.0% | 1.7% | 0.3% | 8.0% |
+| Hermes, subagent | 11 | 40 | 707,956 | 100.0% | 18.9% | 18.9% | 0.0% | 0.0% | 0.0% | 0.1% |
+| Hermes, benchmark (task-outcome harness) | 261 | 33,148 | 788,919,603 | 100.0% | 50.6% | 50.6% | 50.1% | 0.2% | 3.1% | 3.1% |
 
-**Pre-registered reading, interactive sessions:**
+Tokenizer `o200k_base` throughout. Hermes bills per session, so its estimate
+is calibrated to billing by construction and the two shares coincide; Claude
+Code bills per call, and the transcript accounts for 63.8% of it (quartiles
+0.62 / 0.69 / 0.76 across sessions over 1M tokens).
 
-- **Claude Code (the Mac, where the coding happens): 10% to 30%.** The
-  per-question token claim stands, with the share quoted beside it. Per-session
-  quartiles 9.9% / 19.7% / 27.4%. One caveat the spec requires: the transcript
-  accounts for 63.5% of what was billed (quartiles 0.62 / 0.68 / 0.76 across
-  sessions over 1M tokens); the rest is prompt the transcript doesn't hold
-  (tool schemas added during the session, system-reminders, thinking blocks,
-  which Claude Code doesn't store). If none of it is exploration, exploration
-  was 17% of the billed prompt; so **between 17% and 27%** of what these
-  sessions were billed for was code being read or searched and re-sent.
-- **Hermes (ai-9970, mostly operations and chat): under 10%, just.** 9.7%
-  pooled, 4.9% per session: on these sessions the saving is arithmetic, real
-  per question and not felt on a bill. It sits at the edge of the band, so the
-  nightly job's next weeks decide which side it settles on.
+**Pre-registered reading, interactive sessions.** The spec's thresholds apply
+to the headline, the share of recorded context:
+
+- **Claude Code (the Mac, where the coding happens): 30.6%, "30% or more".**
+  Per-session quartiles 10.7% / 21.0% / 29.6%. Of the billed prompt the same
+  exploration is 19.6%, inside the 10–30% band. Both are true; the figure that
+  speaks to a bill is the second. Said carefully: on this machine, about a
+  fifth of what the sessions were billed for was code being read or searched
+  and re-sent, and about a third of the context the agent could see.
+- **Hermes (ai-9970, mostly operations and chat): 10.4%, "10% to 30%", at the
+  band's lower edge** (5.4% per session). The claim stands with the share
+  beside it; on these sessions the saving is small.
+
+Both figures sit within a few points of a threshold, and both crossed one
+between pass 3 and pass 4 (below). The nightly job on ai-9970 and the next
+Mac run decide which side they settle on; a reading this close to a line is
+not a finding about the line.
 
 What else the data says:
 
-- **Exploration is what gets written, not what gets kept.** 72% of the
+- **Exploration is what gets written, not what gets kept.** 75% of the
   content Claude Code's transcripts hold is exploration output (first-time
-  share), but Claude Code trims and compacts it: 106 of 14,105 calls had to be
-  trimmed to fit what was billed, 21 compactions were recorded, and the billed
-  share is 27%.
-- **NeuralMind's own block cost 1.3% of the Hermes interactive prompt** (the
+  share), but Claude Code trims and compacts it: 106 of 12,691 calls had to be
+  trimmed to fit what was billed, 13 compactions were recorded, and the share
+  of recorded context is 31%.
+- **NeuralMind's own block cost 1.2% of the Hermes interactive prompt** (the
   block appeared in 42 of the 67 sessions) and a rounding of zero on the Mac,
-  where it appeared in 4 of 87 sessions (most Mac sessions were in projects
+  where it appeared in 3 of 87 sessions (most Mac sessions were in projects
   without NeuralMind hooks). In the benchmark sessions it appeared in 191 of
   261 (the baseline arm has none) and cost 0.2%.
 - **The benchmark sessions are not usage.** The task-outcome harness's 261
-  Hermes sessions spent 52% of their context on exploration, because a 20B
+  Hermes sessions spent 51% of their context on exploration, because a 20B
   model on a 120-turn budget reads and greps far more than a developer does.
   They are reported, never pooled into the headline.
 
 ## Earlier passes, superseded (kept for the record)
 
-The spec's change log has the detail; the files are `*.summary.pass1.json`
-and `*.summary.pass2.json`.
+The spec's change log has the detail; the files are `*.summary.pass<n>.json`.
 
-| Pass | Claude Code interactive | Hermes interactive | Why superseded |
+| Pass | Claude Code interactive (recorded context; billed prompt) | Hermes interactive | Why superseded |
 |---|---|---|---|
 | 1 | 72.3% (median 38.4%) | 11.3% (chars/4 tokenizer) | kept every tool result until a compaction line, counted no prompt the transcript doesn't hold: calibrated 0.23× to 7.4× per session |
-| 2 | 22.5% (median 14.6%) | 7.6% (median 3.8%) | calibrated to billing, but split pipeline stages on `\|`, `;`, `&&` inside quotes (quoted regexes counted as shell), never dropped an earlier compaction summary, and could record a still-running session once |
-| 3 | **27.4% (median 19.7%)** | **9.7% (median 4.9%)** | this report |
+| 2 | 22.5% (median 14.6%) | 7.6% (median 3.8%) | calibrated to billing, but split pipeline stages on `\|`, `;`, `&&` inside quotes (quoted regexes counted as shell), never dropped an earlier compaction summary, could record a still-running session once |
+| 3 | 27.4%; 17.4% (median 19.7%) | 9.7% (median 4.9%) | tool-call arguments counted as assistant text; active Hermes rows immune to the billing cap; `git branch feature` counted as exploration; one still-running session (1,457 calls, 480M tokens, share 13%) included |
+| 4 | **30.6%; 19.6% (median 21.0%)** | **10.4% (median 5.4%)** | this report |
 
-Pass 3's fixes came from code review of the pull request after pass 2 had
-been read; the thresholds never changed.
+Of the pass 3 → 4 change on the Mac, deferring the still-running session moved
+the pooled figures from 27.4% / 17.4% to 29.1% / 18.6%, and counting tool-call
+arguments with their category moved them to 30.6% / 19.6%. Passes 3 and 4 came
+from code review of the pull request after the previous pass had been read;
+the thresholds never changed.
 
 ## Files
 
-- `claude-code.summary.json`, `hermes.summary.json` — pass 3 aggregates
+- `claude-code.summary.json`, `hermes.summary.json` — pass 4 aggregates
   (`python -m evals.exploration_share report` output).
-- `*.summary.pass1.json`, `*.summary.pass2.json` — earlier passes.
+- `*.summary.pass1.json` … `*.summary.pass3.json` — earlier passes.
 
 ## Reproduce
 

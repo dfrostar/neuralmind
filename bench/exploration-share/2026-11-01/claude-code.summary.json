@@ -3,56 +3,56 @@
   "claude-code/interactive": {
    "agent": "claude-code",
    "billed_tokens": {
-    "assistant": 499832572,
-    "block": 614389,
-    "edit": 8922656,
-    "exploration": 734166460,
-    "other": 64050043,
-    "shell": 237686310,
-    "summary": 10316759,
-    "system": 818140955,
-    "user": 301265584,
-    "web": 2992488
+    "assistant": 112296333,
+    "block": 442220,
+    "edit": 107752462,
+    "exploration": 734272282,
+    "other": 79306822,
+    "shell": 365123609,
+    "summary": 4559314,
+    "system": 726405062,
+    "user": 262159614,
+    "web": 3439909
    },
-   "block_share_billed": 0.00022942184596976584,
-   "calibration_est_over_billed": 0.634817565837191,
-   "calls": 14105,
-   "context_tokens_est": 2677988216,
-   "edit_share_billed": 0.0033318503594192066,
-   "exploration_share_billed": 0.2741485028252268,
-   "exploration_share_first": 0.7212387433872847,
-   "exploration_share_median_session": 0.19727140991496933,
+   "block_share_billed": 0.00018458461532845202,
+   "calibration_est_over_billed": 0.638451234296593,
+   "calls": 12691,
+   "context_tokens_est": 2395757627,
+   "edit_share_billed": 0.04497636187635937,
+   "exploration_share_billed": 0.30648855031277333,
+   "exploration_share_first": 0.7468779236486767,
+   "exploration_share_median_session": 0.2101511422638843,
    "first_tokens": {
-    "assistant": 5266304,
-    "block": 7664,
-    "edit": 91959,
-    "exploration": 33148362,
-    "other": 1941045,
-    "shell": 2304987,
-    "summary": 92430,
+    "assistant": 1169160,
+    "block": 5181,
+    "edit": 1125568,
+    "exploration": 33227480,
+    "other": 2129042,
+    "shell": 4000602,
+    "summary": 56820,
     "system": 0,
-    "user": 3070947,
-    "web": 36620
+    "user": 2733247,
+    "web": 41402
    },
-   "prompt_tokens_billed": 4218516248,
+   "prompt_tokens_billed": 3752452025,
    "sessions": 87,
-   "sessions_with_block": 4,
-   "shell_share_billed": 0.08875554738438028,
+   "sessions_with_block": 3,
+   "shell_share_billed": 0.1524042352553053,
    "source_group": "interactive",
    "tokenizers": [
     "o200k_base"
    ],
    "tool_calls": {
-    "edit": 1829,
-    "exploration": 4806,
-    "other": 1907,
-    "shell": 6933,
+    "edit": 1651,
+    "exploration": 4430,
+    "other": 1617,
+    "shell": 6194,
     "web": 73
    }
   }
  },
  "n_sessions": 87,
  "reading": {
-  "claude-code/interactive": "10% to 30%: the claim stands with the share beside it"
+  "claude-code/interactive": "30% or more: a material part of the bill"
  }
 }
