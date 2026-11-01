@@ -718,3 +718,132 @@ drawn by the same rule, that the pilot didn't use.
     NeuralMind 4.23.1 (tool and plugin) and harness 2, and all are in
     `state.db`, so `sessions.json` covers every run. Every fresh run
     recorded the plugin's prompt hook.
+- 2026-11-01 — lexical anchoring for the prompt hook's block, pre-registered
+  before any scorer code was written. Offline replays only, no agent runs;
+  the hypothesis, mechanism, tuning allowance and gate are fixed here first.
+  - **Question.** The block names a file the fix touched on 4 of the 12
+    held-out hermes-agent tasks (first on 3) under every ranking tried
+    (`bench/task_outcome/hermes-agent-test-ranking/`), because the file isn't
+    among the embedding hits at all. A git-grep replay of the exact
+    identifiers in each prompt (backticked spans, snake_case and CamelCase
+    names, `--flags`, quoted error messages), scoring files by the sum over
+    matched identifiers of 1 / ln(1 + files matching the identifier), named
+    6 of the 12 (first on 3), with firsts disjoint from the hook's: together
+    7 named and 6 first, a bound no fusion can beat. On the pilot's 20 tasks
+    it named 17 (first 11), the hook's own figures. Does adding that lexical
+    evidence to the block's ranking reach the held-out gate below while
+    holding the pilot's floors?
+  - **Mechanism, behind a default-off flag** (`NEURALMIND_RECALL_LEXICAL=1`;
+    with it unset the block is byte-identical to today's):
+    - *Extract* exact identifiers from the prompt: each backticked span and
+      each single- or double-quoted span of 8 characters or more, whole, and
+      the identifier-like words of 4 characters or more inside them;
+      `--flags`; snake_case, CamelCase and UPPER_CASE names of 4 characters
+      or more anywhere in the prompt. A generic stop list of English and
+      programming words (not repository names) is dropped, as are URLs. At
+      most 24 identifiers per prompt, in order of appearance.
+    - *Match* them exactly, case-sensitively, over the project's working tree
+      with one `git grep -F` call, restricted to files the index holds code
+      nodes for. Test files are left out of the lexical evidence unless the
+      prompt names a test, the rule the ranking already applies to test
+      files. An identifier matching more than 60 files is dropped as
+      uninformative. A project that isn't a git work tree gets no lexical
+      evidence (the flag fails open).
+    - *Score* each matched file by the sum over its matched identifiers of
+      1 / ln(1 + files matching the identifier): an identifier found in one
+      file is worth 1.44, in two 0.91, in five 0.56.
+    - *Fuse*: a matched file enters the ranking with `LEXICAL_WEIGHT` times
+      its lexical score added to the summed embedding scores of its matching
+      symbols, through its own file node when the graph has one, so a file no
+      embedding hit is in can still be named. Everything after that is
+      unchanged: tests after the code, the reserved test slot, the
+      tested-code credit, the excerpt's 2:1 margin, the linked section, the
+      docs line, and the hook's similarity gate.
+    - *Why not the index's BM25*: the build's unified BM25 index holds each
+      code node's symbol name and path and each docstring, not the source
+      text. On the held-out tasks the identifiers that found the gold file
+      are mostly string literals and constants (`'storage_unavailable': 503`,
+      `"readiness check still in progress; retrying next tick"`,
+      `ENV_EXAMPLE_FILENAME = ".env.EXAMPLE"`), which no symbol index holds;
+      and loading that index is a 196 MB JSON parse per hook call on
+      hermes-agent. `git grep -F` over 9,603 Python files took 0.2–0.5 s per
+      prompt there; the hook's time with the flag on is reported.
+  - **Tuning allowance.** `LEXICAL_WEIGHT` is chosen from {0.25, 0.5, 1.0}
+    on the pilot's 20 tasks and the hermes-agent screen's 5 tasks (both were
+    the earlier ranking changes' tuning sets), by named then first on both
+    sets, ties to 0.5. The value is fixed, and recorded in the results
+    README, before the held-out replay, which runs once. Nothing else is
+    tuned.
+  - **Gate**, on the real `neuralmind _hook prompt-submit`, scored by
+    `evals/task_outcome/replay.py`'s `score()`, on the same cached indexes
+    (built once with v4.22.1) as the test-ranking study, so the flag is the
+    only difference between the rows:
+    - held out, 12 hermes-agent tasks: a file the fix touched is listed on
+      at least 6 of 12, and listed first on at least 5 of 12;
+    - pilot, 20 tasks: listed on at least 17, first on at least 11 (today's
+      figures, not the CI floors of 15 and 9);
+    - the share of test files among the files the 12 held-out blocks list
+      does not rise above today's 14 of 84.
+    All three must hold. If they do, the next step is confirmation on 12 new
+    held-out tasks from the seeded walk (seed 20261025, positions 25 onward)
+    before any agent run; the default stays off until then. If they don't,
+    the replay is published as it is, with a plain reading of what moved.
+  - **Also reported, not gated:** per task, the files listed, which changed
+    against the flag-off row, the identifiers extracted and matched; the
+    excerpt shown and on a changed file; median block size; the hook's time
+    per call on one held-out index, flag off and on; the same figures on the
+    screen's 5 tasks.
+  - **Threats, stated up front.**
+    - The prompts were written by an agent from each fix's tests and diff.
+      They may quote identifiers more faithfully than a user's bug report
+      would, which favours lexical matching; the hook's `#731` and credit
+      changes were measured on the same prompts, so the comparison is fair,
+      but the size of the gain may not transfer.
+    - The lexical-only held-out figures above were known before this entry
+      was written (they motivate it). The gate is on the fused block, which
+      hasn't been run, and on the pilot's floors.
+    - 12 tasks from one repository: enough to see the count move, not to
+      estimate the size of the effect. Hence the confirmation step.
+    - More identifiers in a prompt mean more lexical evidence; a long
+      pasted traceback could crowd the embedding ranking. The 24-identifier
+      cap and the 60-file cut bound it; the per-task listings show whether
+      it happened.
+- 2026-11-01 — lexical anchoring replayed, as pre-registered above; results
+  in `bench/task_outcome/lexical-anchoring/`. Offline, no agent runs.
+  - **`LEXICAL_WEIGHT` = 0.5,** chosen in-process on cached hits before the
+    held-out replay: on the pilot's 20, 0.25 gave 17 listed / 13 first, 0.5
+    and 1.0 gave 18 / 13; on the screen's 5 all three gave 3 / 3, and 1.0
+    listed two more test files. 0.5 and 1.0 tied on listed and first over
+    both sets, so 0.5 kept it. The held-out replay then ran once.
+  - **The gate holds.** Through the real hook on the test-ranking study's
+    indexes, flag off against flag on: held out 4 listed / 3 first against
+    **7 / 5** (gate 6 / 5); pilot 17 / 11 against **18 / 13** (gate 17 / 11);
+    test files among the held-out blocks' files 14 of 84 both ways (gate: not
+    above). The flag-off rows reproduce the study's `#731 + credit` rows task
+    for task.
+  - **What moved.** Held out, 6 of 12 blocks changed: two tasks gained first
+    on a quoted message found in one file (`24b4f90e97`, `cd69be6909`), one
+    gold file went from absent to second (`4a78de2805`), the three firsts
+    the hook had held, and `696f6e9ff9` changed to other wrong files. Pilot,
+    18 of 20 blocks changed: one task gained listed and first, two gained
+    first, one lost first to the `cli.py` its quoted flags live in. Code
+    quoted / from a changed file: held out 3 / 1 both ways, pilot 8 / 7 to
+    10 / 9. Median hook time on hermes-agent 9.32 to 9.82 s (cold graph
+    loads: these indexes predate the graph cache), on this repository 0.50
+    to 0.68 s.
+  - **Read against the bound.** The git-grep replay that motivated the entry
+    took backticked spans only; the pre-registered extractor also takes
+    quoted messages, which is what found `24b4f90e97`. So the fused block
+    reaches that replay's union-with-the-hook on listed (7) and falls one
+    short of it on first (5 against 6).
+  - **The first count is exactly at its threshold,** from two tasks
+    changing. As registered, the next step is confirmation on 12 new
+    held-out tasks from the seeded walk (seed 20261025, positions 25
+    onward), before any agent run; the default stays off until then.
+  - **Run twice, same blocks.** Review of the PR changed the code after the
+    first run (URLs blanked before every extraction pass, untracked files
+    searched, a file-level entry where the graph has no file node) and the
+    diagnostic record (made with the hook's own matcher). All six rows were
+    re-run; every one of the 72 blocks was identical to the first run's, so
+    the counts stand as the single pre-registered replay. The committed rows
+    and the hook times are the second run's.
