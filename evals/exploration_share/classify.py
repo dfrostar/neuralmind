@@ -96,8 +96,7 @@ def shell_is_readonly(command: str | None) -> bool:
         head = words[i].rsplit("/", 1)[-1]
         rest = words[i + 1 :]
         if head == "git":
-            sub = next((w for w in rest if not w.startswith("-")), "")
-            if sub not in READ_ONLY_GIT:
+            if not _git_is_readonly(rest):
                 return False
             continue
         if head == "sed":
@@ -106,6 +105,28 @@ def shell_is_readonly(command: str | None) -> bool:
             continue
         if head not in READ_ONLY_WORDS:
             return False
+    return True
+
+
+def _git_is_readonly(words: list[str]) -> bool:
+    """`git <sub> …` with a subcommand that only reads, in a form that only reads:
+    `branch`, `tag` and `remote` mutate when given a name, `worktree` unless `list`."""
+    i = next((k for k, w in enumerate(words) if not w.startswith("-")), None)
+    if i is None:
+        return True  # `git --version`, `git -C x` and the like
+    sub, rest = words[i], words[i + 1 :]
+    if sub not in READ_ONLY_GIT:
+        return False
+    positional = [w for w in rest if not w.startswith("-")]
+    if sub == "worktree":
+        return bool(positional) and positional[0] == "list"
+    if sub == "tag":
+        return not positional or any(w in ("-l", "--list") for w in rest)
+    if sub == "branch":
+        listing = ("-l", "--list", "-a", "-r", "-v", "-vv", "--show-current")
+        return not positional or any(w in listing for w in rest)
+    if sub == "remote":
+        return not positional or positional[0] in ("show", "get-url")
     return True
 
 

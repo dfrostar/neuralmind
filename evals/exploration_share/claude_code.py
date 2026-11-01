@@ -122,8 +122,12 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                     if not isinstance(b, dict):
                         continue
                     if b.get("type") == "tool_use":
-                        tool_inputs[str(b.get("id"))] = (str(b.get("name")), b.get("input") or {})
-                        ctx.add("assistant", tok.count(json.dumps(b.get("input") or {})))
+                        name, tool_input = str(b.get("name")), b.get("input") or {}
+                        tool_inputs[str(b.get("id"))] = (name, tool_input)
+                        # the call's arguments (a path, a pattern, a command) count with its category
+                        ctx.add(
+                            categorize_claude(name, tool_input), tok.count(json.dumps(tool_input))
+                        )
                     elif b.get("type") == "text":
                         ctx.add("assistant", tok.count(b.get("text", "")))
                     elif b.get("type") == "thinking":

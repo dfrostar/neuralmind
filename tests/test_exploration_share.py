@@ -2,7 +2,7 @@
 
 The presence model: a message is paid for by every API call after it until a
 compaction drops it, or until the context size the provider billed for a call
-says it must have been trimmed (oldest droppable messages first). With chars/4
+says it must have been trimmed (oldest trimmable messages first). With chars/4
 counting, a 40-character tool result is 10 tokens, so the numbers below are
 exact.
 """
@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from evals.exploration_share import claude_code, hermes_db, report
+from evals.exploration_share.__main__ import _parse
 from evals.exploration_share.classify import (
     EDIT,
     EXPLORATION,
@@ -42,6 +43,7 @@ TOK = Tokenizer(force_estimate=True)
         ("sed -n 1,20p a.py", True),
         ("sed -i s/a/b/ a.py", False),
         ("ls > files.txt", False),
+        ("ls 2>errors.log", False),
         ("pytest tests/ 2>&1 | tail -5", False),
         ("pip install tiktoken", False),
         ("echo hi > /dev/null", True),
@@ -57,6 +59,15 @@ TOK = Tokenizer(force_estimate=True)
         ("cat a.py\npytest", False),
         ("ls\nwc -l < a.py", True),
         ("echo 'unbalanced", False),
+        # git subcommands that read in one form and write in another
+        ("git branch -a", True),
+        ("git branch feature", False),
+        ("git tag -l", True),
+        ("git tag v1.0", False),
+        ("git worktree list", True),
+        ("git worktree add ../w", False),
+        ("git remote -v", True),
+        ("git remote add o url", False),
     ],
 )
 def test_shell_is_readonly(command, readonly):
@@ -75,6 +86,13 @@ def test_categories():
     assert categorize_claude("Bash", {"command": "npm test"}) == SHELL
     assert categorize_claude("Edit", {}) == EDIT
     assert categorize_claude("mcp__x__y", {}) == OTHER
+
+
+def test_parse_timestamps_default_to_utc():
+    utc_midnight = 1_790_899_200  # 2026-10-02T00:00:00Z
+    assert _parse("2026-10-02T00:00:00Z") == utc_midnight
+    assert _parse("2026-10-02T00:00:00") == utc_midnight, "no offset means UTC, not local time"
+    assert _parse("2026-10-02T02:00:00+02:00") == utc_midnight, "an explicit offset is kept"
 
 
 def _tool_call(call_id: str, name: str, arguments: str) -> str:
@@ -111,6 +129,7 @@ def _hermes_db(path: Path) -> None:
     rows = [
         ("user", prompt, None, None, None, 1001, 0, 0, 1, prompt + block),
         # call 1: present = system 10 + user 10 + block 10 = 30
+        # the read's arguments "{}" are 1 token of exploration
         ("assistant", "", _tool_call("c1", "read_file", "{}"), None, None, 1002, 0, 0, 1, None),
         (
             "tool",
@@ -124,7 +143,7 @@ def _hermes_db(path: Path) -> None:
             0,
             None,
         ),  # 20 tokens, compacted later
-        # call 2: present = 30 + assistant(tool_calls json) + read 20
+        # call 2: present = 30 + call-1 json + read 20; the pytest arguments are 5 tokens of shell
         (
             "assistant",
             "",
@@ -152,6 +171,29 @@ def _hermes_db(path: Path) -> None:
             ("s2", "assistant", "hi", None, None, None, 1990, 0, 0, 1, None),
         ],
     )
+    # s3: billed 100 over 2 calls (budget 50 a call) but holds an active 200-token read
+    con.execute("insert into sessions values ('s3','cli','m',1600,1700,'',100,10,0,0)")
+    con.executemany(
+        INSERT_MSG,
+        [
+            ("s3", "user", "U" * 40, None, None, None, 1601, 0, 0, 1, None),
+            (
+                "s3",
+                "assistant",
+                "",
+                _tool_call("c9", "read_file", "{}"),
+                None,
+                None,
+                1602,
+                0,
+                0,
+                1,
+                None,
+            ),
+            ("s3", "tool", "R" * 800, None, "read_file", "c9", 1603, 0, 0, 1, None),
+            ("s3", "assistant", "done", None, None, None, 1604, 0, 0, 1, None),
+        ],
+    )
     con.commit()
     con.close()
 
@@ -160,26 +202,29 @@ def test_hermes_collector_presence_model(tmp_path):
     db = tmp_path / "state.db"
     _hermes_db(db)
     rows = hermes_db.collect(db, 0, 2000, TOK)
-    assert [r.session_id for r in rows] == ["s1", "s2"]
+    assert [r.session_id for r in rows] == ["s1", "s2", "s3"]
     r = rows[0]
     assert r.source_group == "interactive"
     assert r.calls == 3
     assert r.prompt_tokens_billed == 1000
-    assert r.first_tokens[EXPLORATION] == 20
+    assert r.first_tokens[EXPLORATION] == 21, "the read result (20) and its arguments (1)"
     assert r.first_tokens[BLOCK] == 10
     assert r.tool_calls == {EXPLORATION: 1, SHELL: 1}
-    # the read (20) is present at call 2 only: compacted before call 3
-    assert r.billed_tokens[EXPLORATION] == 20
+    # the read (20) is present at call 2 only (compacted before call 3); its arguments,
+    # on an uncompacted assistant row, stay present at calls 2 and 3
+    assert r.billed_tokens[EXPLORATION] == 22
     # the block (10) is present at calls 1, 2 and 3
     assert r.billed_tokens[BLOCK] == 30
-    # the shell result (10) is present at call 3 only
-    assert r.billed_tokens[SHELL] == 10
+    # the shell result (10) and the pytest arguments (5) are present at call 3
+    assert r.billed_tokens[SHELL] == 15
     assert r.compactions == 1 and r.trims == 0
-    # the billing the transcript can't account for is spread over the calls as system
+    # the billing the transcript can't account for is counted as system
     assert r.context_tokens_est == 1000
-    assert r.exploration_share == 20 / 1000
+    assert r.exploration_share == 22 / 1000
     # skip_ids makes a rerun idempotent
-    assert [r.session_id for r in hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1"})] == ["s2"]
+    assert [r.session_id for r in hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1", "s3"})] == [
+        "s2"
+    ]
 
 
 def test_hermes_collector_defers_sessions_still_active(tmp_path):
@@ -187,6 +232,17 @@ def test_hermes_collector_defers_sessions_still_active(tmp_path):
     _hermes_db(db)
     # window ends at 1500: s2 started inside it but was still writing at 1990
     assert [r.session_id for r in hermes_db.collect(db, 0, 1500, TOK)] == ["s1"]
+
+
+def test_hermes_billing_cap_trims_active_results(tmp_path):
+    db = tmp_path / "state.db"
+    _hermes_db(db)
+    r = [x for x in hermes_db.collect(db, 0, 2000, TOK) if x.session_id == "s3"][0]
+    assert r.first_tokens[EXPLORATION] == 201
+    # the 200-token read can't have been in a prompt that averaged 50 tokens: trimmed
+    assert r.trims == 1
+    assert r.billed_tokens.get(EXPLORATION, 0) <= 1
+    assert r.context_tokens_est == r.prompt_tokens_billed == 100
 
 
 def _claude_transcript(path: Path, billed: tuple[int, int, int]) -> None:
@@ -269,7 +325,8 @@ def test_claude_code_collector(tmp_path):
     proj = tmp_path / "projects" / "-Users-x-repo"
     proj.mkdir(parents=True)
     # call 1 bills 400 for 12 tokens of content: overhead 388. Call 2's content is 12 + the
-    # tool_use json (5) + "reading" (1) + the read (20) = 38, billed 426 = 388 + 38: no trim.
+    # Read arguments (5, exploration) + "reading" (1) + the read result (20) = 38, billed
+    # 426 = 388 + 38: no trim.
     _claude_transcript(proj / "cc1.jsonl", billed=(400, 426, 400))
     since = 1_700_000_000  # well before 2026
     rows = claude_code.collect(tmp_path / "projects", since, 2_000_000_000, TOK)
@@ -278,13 +335,15 @@ def test_claude_code_collector(tmp_path):
     assert r.session_id == "cc1" and r.source_group == "interactive" and r.model == "claude-x"
     assert r.calls == 3, "two lines with one requestId are one API call"
     assert r.prompt_tokens_billed == 1226 and r.output_tokens_billed == 21
-    assert r.first_tokens[EXPLORATION] == 20 and r.first_tokens[EDIT] == 10
+    assert r.first_tokens[EXPLORATION] == 25, "the Read's arguments (5) and its result (20)"
+    assert r.first_tokens[EDIT] == 15, "the Edit's arguments (5) and its result (10)"
     assert r.first_tokens[BLOCK] == 10
     assert r.tool_calls == {EXPLORATION: 1, EDIT: 1}
-    # read result present at call 2 only (compaction before call 3); block at calls 1 and 2
-    assert r.billed_tokens[EXPLORATION] == 20
+    # the Read (arguments and result) is present at call 2 only (compaction before call 3);
+    # the block at calls 1 and 2
+    assert r.billed_tokens[EXPLORATION] == 25
     assert r.billed_tokens[BLOCK] == 20
-    assert r.billed_tokens.get(EDIT, 0) == 0, "the edit result was compacted before call 3"
+    assert r.billed_tokens.get(EDIT, 0) == 0, "the edit was compacted before call 3"
     assert r.compactions == 1 and r.trims == 0
     assert r.billed_tokens["system"] == 3 * 388
     assert 0.95 < r.context_tokens_est / r.prompt_tokens_billed <= 1.0
@@ -303,7 +362,7 @@ def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
     _claude_transcript(proj / "cc1.jsonl", billed=(400, 400, 400))
     r = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)[0]
     assert r.trims >= 1
-    assert r.first_tokens[EXPLORATION] == 20
+    assert r.first_tokens[EXPLORATION] == 25
     assert r.billed_tokens.get(EXPLORATION, 0) == 0
     assert r.context_tokens_est <= r.prompt_tokens_billed
 
@@ -356,7 +415,7 @@ def test_report_aggregates_and_reads(tmp_path):
     assert agg["n_sessions"] == 1, "duplicates are dropped by (agent, session_id)"
     g = agg["groups"]["hermes/interactive"]
     assert g["sessions"] == 1 and g["calls"] == 3
-    assert g["exploration_share_billed"] == pytest.approx(20 / 1000)
+    assert g["exploration_share_billed"] == pytest.approx(22 / 1000)
     assert g["block_share_billed"] == pytest.approx(30 / 1000)
     assert g["calibration_est_over_billed"] == pytest.approx(1.0)
     assert agg["reading"]["hermes/interactive"].startswith("under 10%")

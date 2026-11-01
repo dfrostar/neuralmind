@@ -34,11 +34,11 @@ def _window(args) -> tuple[float, float]:
 
 
 def _parse(s: str) -> float:
-    return (
-        datetime.fromisoformat(s.replace("Z", "+00:00"))
-        .replace(tzinfo=timezone.utc if "T" not in s or s.endswith("Z") else None)
-        .timestamp()
-    )
+    """ISO 8601; an explicit offset is kept, a timestamp without one is UTC."""
+    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 
 
 def _existing_ids(out: Path) -> set[str]:

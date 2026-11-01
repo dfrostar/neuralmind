@@ -81,11 +81,11 @@ def collect(
             output_tokens_billed=out_tok or 0,
         )
         ctx = Context(row)
-        ctx.add("system", tok.count(system_prompt), droppable=False)
+        ctx.add("system", tok.count(system_prompt), compactable=False, trimmable=False)
         call_args: dict[str, tuple[str, str | None]] = {}
         # Hermes bills per session, not per call: the mean prompt size caps each call's
-        # content (oldest tool results dropped first), and whatever the billing exceeds
-        # the transcript by (tool schemas, not stored) is spread over the calls as system.
+        # content (oldest messages dropped first), and whatever the billing exceeds
+        # the transcript by (tool schemas, not stored) is counted as system.
         n_calls = con.execute(CALLS_SQL, (sid,)).fetchone()[0] or 0
         budget = (
             row.prompt_tokens_billed // n_calls if n_calls and row.prompt_tokens_billed else None
@@ -103,31 +103,36 @@ def collect(
                 active,
                 api_content,
             ) = msg
-            droppable = bool(compacted) or not active
+            # what the next compression removes, as Hermes recorded it on the row
+            compactable = bool(compacted) or not active
             if is_summary:
-                # replaces what it summarizes; a later compression can replace it in turn,
-                # which Hermes records on the row's own flags
                 ctx.compact()
-                ctx.add("summary", tok.count(content), droppable)
+                ctx.add("summary", tok.count(content), compactable)
                 continue
             if role == "assistant":
                 if budget is not None:
                     ctx.cap(budget)
                 ctx.call()
-                text_tokens = tok.count(content) + tok.count(tool_calls)
-                ctx.add("assistant", text_tokens, droppable)
-                for name, args, call_id in _parse_tool_calls(tool_calls):
+                calls = _parse_tool_calls(tool_calls)
+                args_tokens = 0
+                for name, args, call_id in calls:
                     call_args[call_id] = (name, args)
+                    # the call's arguments (a path, a pattern, a command) count with its category
+                    n = tok.count(args)
+                    args_tokens += n
+                    ctx.add(categorize_hermes(name, args), n, compactable)
+                wrapper = max(0, tok.count(tool_calls) - args_tokens)
+                ctx.add("assistant", tok.count(content) + wrapper, compactable)
             elif role == "tool":
                 name, args = call_args.get(tool_call_id or "", (tool_name, None))
                 category = categorize_hermes(name or tool_name, args)
                 count_tool(row, category)
-                ctx.add(category, tok.count(content), droppable)
+                ctx.add(category, tok.count(content), compactable)
             elif role == "user":
-                ctx.add("user", tok.count(content), droppable)
+                ctx.add("user", tok.count(content), compactable)
                 block = _block_of(content, api_content)
                 if block:
-                    ctx.add(BLOCK, tok.count(block), droppable)
+                    ctx.add(BLOCK, tok.count(block), compactable)
             # session_meta and anything else: not part of the prompt
         if row.calls and row.prompt_tokens_billed > row.context_tokens_est:
             overhead = row.prompt_tokens_billed - row.context_tokens_est
@@ -153,7 +158,9 @@ def _parse_tool_calls(tool_calls: str | None) -> list[tuple[str, str | None, str
         name = fn.get("name") or c.get("name") or ""
         args = fn.get("arguments") if isinstance(fn, dict) else None
         call_id = c.get("id") or c.get("call_id") or ""
-        out.append((name, args, call_id))
+        out.append(
+            (name, args if isinstance(args, str) else json.dumps(args) if args else None, call_id)
+        )
     return out
 
 

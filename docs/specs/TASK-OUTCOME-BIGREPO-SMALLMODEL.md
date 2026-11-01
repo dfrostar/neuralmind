@@ -35,12 +35,15 @@ pilot 18 / 13 against 17 / 11; test share 14 of 84 unchanged. **Passed.**
 ## Stage 1 and 2 design, fixed now
 
 - **Tasks:** the 12 held-out tasks of
-  [`hermes-agent-test-ranking/heldout/tasks.json`](../../bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json),
+  [`hermes-agent-test-ranking/heldout/tasks.json`](../../bench/task_outcome/hermes-agent-test-ranking/heldout/tasks.json)
+  (which already include the 3 screen candidates the screen didn't select),
   the screen's 5
-  ([`studies/hermes-agent-screen/tasks.json`](../../evals/task_outcome/studies/hermes-agent-screen/tasks.json))
-  and the 3 screen candidates not selected, in that order: 20. The floor check
-  may replace tasks only as its "if it fails" column says, and the replacement
-  list is committed before stage 2's first run.
+  ([`studies/hermes-agent-screen/tasks.json`](../../evals/task_outcome/studies/hermes-agent-screen/tasks.json)),
+  and the first 3 qualifying tasks of stage 0b's confirmation set (the seeded
+  walk from position 25, in walk order), in that order: 20 distinct tasks.
+  The 3 confirmation tasks are named here, by id, before stage 1's first run;
+  the floor check may replace tasks only as its "if it fails" column says, and
+  the replacement list is committed before stage 2's first run.
 - **Agent:** Hermes (version recorded per run) on `gpt-oss:20b-64k` via Ollama
   on ai-9970, as in the Hermes pilot; same prompts (the task prompts say how to
   run the tests and not to change them), same 120-turn cap and timeout as the

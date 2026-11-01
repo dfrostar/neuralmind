@@ -150,6 +150,24 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   raise the exploration share, (b) can only lower the denominator; neither
   direction was chosen with the thresholds in view, and the thresholds are
   unchanged.
+- **2026-11-01, pass 4: four more defects from code review (Copilot, PR
+  #765), fixed after pass 3's figures had been read** (27.4% / 19.7% Claude
+  Code interactive; 9.7% / 4.9% Hermes interactive; 51.7% benchmark; files kept
+  as `*.pass3.*`). (a) The arguments of a tool call (a path, a pattern, a
+  command) are counted with the call's category, as "First-time exploration
+  tokens" above says, instead of as assistant text. (b) Whether a message is
+  removed by a compaction and whether the billing cap may trim it are separate
+  flags: Hermes rows that are active and uncompacted were immune to the cap, so
+  a tool result larger than the session's mean prompt was charged in full. (c)
+  `git branch`, `tag`, `remote` and `worktree` count as exploration only in
+  their listing forms (`git branch feature`, `git tag v1`, `git worktree add`
+  are shell). (d) A timestamp given to the CLI with an explicit offset keeps
+  it; one without is UTC. Also from that review: the field report states
+  exploration's share of the recorded context and its share of the billed
+  prompt as two figures, not as a range (the unrecorded part of the prompt
+  holds no tool results, so the billed-prompt share is the recorded share
+  times the calibration ratio, not a bound), and track 1's task list no
+  longer counts three held-out tasks twice. Thresholds unchanged.
 
 ## Outputs
 
