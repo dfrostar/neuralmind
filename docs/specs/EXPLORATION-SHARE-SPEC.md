@@ -175,8 +175,8 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   can point at their own Claude Code and Hermes sessions (last 30 days by
   default; aggregates only on stdout; exit 2 when no session started in the
   window). `evals/exploration_share/` re-exports the same modules, and the
-  nightly job's commands are unchanged. On the Mac's and ai-9970's sessions
-  started 2026-10-02 to 2026-10-25 (64 Claude Code and 649 Hermes sessions,
+  nightly job's commands are unchanged. On the Mac's own Claude Code and Hermes
+  sessions started 2026-10-02 to 2026-10-25 (64 Claude Code and 649 Hermes sessions,
   characters ÷ 4), the moved code wrote rows byte-identical to the code before the
   move, and `report`'s Markdown identical. Additions only: the summary JSON gains
   `exploration_share_of_prompt` per group (the second share the pass-4 field report
@@ -185,6 +185,25 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   database path to SQLite as a percent-encoded URI. The command prints the
   pre-registered reading beside each interactive group's session count; the
   thresholds are unchanged.
+- **2026-11-01, pass 5: two classifier defects from code review (Codex, PR
+  #767), fixed after pass 4's figures had been read.** (a) A git command with a
+  global option that takes an operand (`git -C /repo diff`, `git -c color.ui=false
+  log`, `git --git-dir /x/.git log`) took the operand for the subcommand and was
+  counted as shell; the operands of `-C`, `-c`, `--git-dir`, `--work-tree`,
+  `--namespace`, `--config-env`, `--super-prefix` and `--attr-source` are now
+  skipped before the subcommand is read. (b) A quoted or backslash-escaped
+  operator character (`rg '>' src`, `rg '|' src`) lost its quotes in the
+  tokenizer and was read as a redirection or a pipe, so the command was counted
+  as shell; operator characters inside quotes or after a backslash are now kept as
+  part of their word. Both only move commands from shell to exploration, so they
+  can only raise the exploration share and lower the shell share; neither
+  direction was chosen with the thresholds in view. On the Mac's own sessions
+  started 2026-10-02 to 2026-10-25 (characters ÷ 4) the shares of recorded
+  context moved from 34.96% to 34.98% (Claude Code interactive, 62 sessions),
+  16.43% to 16.46% (Hermes interactive, 37) and 31.54% to 32.31% (Hermes
+  subagent, 18): no reading changes. The committed pass-4 field report predates
+  the fix and is not regenerated here; the nightly job and the next Mac run use
+  it. Thresholds unchanged.
 
 ## Outputs
 

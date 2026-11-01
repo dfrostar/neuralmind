@@ -68,6 +68,23 @@ TOK = Tokenizer(force_estimate=True)
         ("git worktree add ../w", False),
         ("git remote -v", True),
         ("git remote add o url", False),
+        # git's own options come before the subcommand and some take an operand
+        ("git -C /repo diff", True),
+        ("git -c color.ui=false log", True),
+        ("git --git-dir /x/.git log", True),
+        ("git --no-pager -C /repo log -3", True),
+        ("git -C /repo commit -m x", False),
+        ("git -C /repo branch feature", False),
+        ("git -C /repo branch -a", True),
+        # a quoted or escaped operator character is an argument, not an operator
+        ("rg '>' src", True),
+        ("rg '|' src", True),
+        ('rg ">>" src', True),
+        ("rg \\> src", True),
+        ("rg '>' src | head", True),
+        ("rg '>' src > out.txt", False),
+        ("rg 'a' src > '>'", False),
+        ("pytest '|' x | cat", False),
     ],
 )
 def test_shell_is_readonly(command, readonly):

@@ -24,8 +24,8 @@ It looks for `~/.claude/projects` (Claude Code, or `$CLAUDE_CONFIG_DIR/projects`
 and for `state.db` in your Hermes home (usually `~/.hermes/state.db`), reads
 the sessions that started in the last 30 days, and prints this. The figures
 here are the first field report's for one developer's Claude Code sessions
-(87 interactive sessions, 2026-10-02 to 2026-11-01), in the layout the command
-prints; yours will differ:
+(87 interactive sessions, 2026-10-02 to 2026-11-01, computed before the spec's
+pass-5 classifier fixes), in the layout the command prints; yours will differ:
 
 ```text
 Exploration share of the token bill

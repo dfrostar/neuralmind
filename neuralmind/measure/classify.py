@@ -27,12 +27,43 @@ READ_ONLY_GIT = frozenset(
     "log show diff status blame grep ls-files ls-tree rev-parse branch remote describe "
     "shortlog name-rev cat-file merge-base rev-list tag worktree reflog".split()
 )
+# git's own options that take the next word as their operand, before the subcommand
+_GIT_OPTIONS_WITH_VALUE = frozenset(
+    "-C -c --git-dir --work-tree --namespace --config-env --super-prefix --attr-source".split()
+)
 # words skipped before the command proper
 PREFIX_WORDS = frozenset("sudo time nohup command builtin exec".split())
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Operators are split out by shlex itself, so a `|` or `;` inside quotes stays part of
 # its word (`rg 'foo|bar'`), and an unquoted newline separates stages like `;` does.
 _PUNCT = "|&;()<>\n"
+# shlex drops the quotes from a quoted word, so a quoted `>` or `|` (`rg '>' src`) would come
+# back looking like the operator. Operator characters inside quotes or after a backslash are
+# swapped for private-use stand-ins before shlex runs, and words get the originals back.
+_STAND_IN = {c: chr(0xE000 + n) for n, c in enumerate(_PUNCT)}
+_RESTORE = str.maketrans({v: k for k, v in _STAND_IN.items()})
+
+
+def _protect_quoted_operators(command: str) -> str:
+    out: list[str] = []
+    quote = ""  # the quote character while inside one
+    escaped = False
+    for c in command:
+        if escaped:
+            out.append(_STAND_IN.get(c, c))
+            escaped = False
+        elif c == "\\" and quote != "'":
+            out.append(c)
+            escaped = True
+        elif quote:
+            out.append(c if c == quote else _STAND_IN.get(c, c))
+            if c == quote:
+                quote = ""
+        else:
+            out.append(c)
+            if c in "'\"":
+                quote = c
+    return "".join(out)
 
 
 def _stages(command: str) -> list[list[str]] | None:
@@ -41,7 +72,7 @@ def _stages(command: str) -> list[list[str]] | None:
     Returns None when the command can't be tokenized (unbalanced quotes) or when a
     redirection writes to something other than /dev/null or another descriptor.
     """
-    lex = shlex.shlex(command, posix=True, punctuation_chars=_PUNCT)
+    lex = shlex.shlex(_protect_quoted_operators(command), posix=True, punctuation_chars=_PUNCT)
     lex.whitespace = " \t\r"
     lex.whitespace_split = True
     try:
@@ -56,7 +87,7 @@ def _stages(command: str) -> list[list[str]] | None:
             if ">" in t:
                 # a redirection: `>` / `>>` to a file writes unless the target is /dev/null;
                 # `>&` / `&>` with a descriptor number is a dup (2>&1) and writes nothing
-                target = tokens[i + 1] if i + 1 < len(tokens) else ""
+                target = tokens[i + 1].translate(_RESTORE) if i + 1 < len(tokens) else ""
                 dup = t.endswith("&") and target.isdigit()
                 if not dup and target != "/dev/null":
                     return None
@@ -69,7 +100,7 @@ def _stages(command: str) -> list[list[str]] | None:
                 stages.append([])
             i += 1
             continue
-        stages[-1].append(t)
+        stages[-1].append(t.translate(_RESTORE))
         i += 1
     return stages
 
@@ -112,9 +143,16 @@ def shell_is_readonly(command: str | None) -> bool:
 def _git_is_readonly(words: list[str]) -> bool:
     """`git <sub> …` with a subcommand that only reads, in a form that only reads:
     `branch`, `tag` and `remote` mutate when given a name, `worktree` unless `list`."""
-    i = next((k for k, w in enumerate(words) if not w.startswith("-")), None)
-    if i is None:
-        return True  # `git --version`, `git -C x` and the like
+    i = 0
+    while i < len(words):
+        if words[i] in _GIT_OPTIONS_WITH_VALUE:
+            i += 2  # `git -C /repo diff`: the operand is not the subcommand
+        elif words[i].startswith("-"):
+            i += 1
+        else:
+            break
+    if i >= len(words):
+        return True  # `git --version` and the like
     sub, rest = words[i], words[i + 1 :]
     if sub not in READ_ONLY_GIT:
         return False

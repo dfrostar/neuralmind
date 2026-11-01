@@ -29,8 +29,8 @@ tokens on every call, which the report shows as its own column.
 
 For one developer's Claude Code sessions (the
 [first field report](https://github.com/dfrostar/neuralmind/blob/main/bench/exploration-share/2026-11-01/README.md):
-87 interactive sessions, 2026-10-02 to 2026-11-01), in the layout the command
-prints. Yours will differ:
+87 interactive sessions, 2026-10-02 to 2026-11-01, as computed before the
+classifier fixes below), in the layout the command prints. Yours will differ:
 
 ```text
 Exploration share of the token bill
@@ -124,8 +124,14 @@ report has no per-project breakdown, because that would print project names.
   on them), and the Hermes database path is passed to SQLite as a percent-encoded
   URI, so a `?`, `#` or `%` in it can't end it early. Neither changes a figure on
   the machines the field report ran on.
-- **Definitions are unchanged.** The spec gained a change-log entry saying so,
-  and its pointers to the code now name `neuralmind/measure/`.
+- **Two classifier fixes from review, in the spec as pass 5.** `git -C /repo diff`
+  and `git -c color.ui=false log` were counted as shell, because the option's
+  operand was read as the subcommand; and `rg '>' src` and `rg '|' src` were
+  counted as shell, because the tokenizer lost the quotes and read the pattern
+  as a redirection or a pipe. Both now count as exploration. They can only raise
+  the exploration share: on one Mac's sessions it moved by 0.02 to 0.8 points
+  and no reading changed. Definitions and thresholds are unchanged, and the
+  spec's pointers to the code now name `neuralmind/measure/`.
 
 ## Limits
 
