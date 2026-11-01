@@ -33,6 +33,7 @@ where started_at >= ? and started_at < ?
 order by started_at
 """
 CALLS_SQL = "select count(*) from messages where session_id = ? and role = 'assistant'"
+LAST_TS_SQL = "select max(timestamp) from messages where session_id = ?"
 MESSAGES_SQL = """
 select role, content, tool_calls, tool_name, tool_call_id, timestamp,
        compacted, _compressed_summary, active, api_content
@@ -59,6 +60,14 @@ def collect(
         sid, source, model, started, ended, system_prompt, in_tok, out_tok, cr_tok, cw_tok = sess
         if skip_ids and sid in skip_ids:
             continue
+        # A session is recorded once, so one still active at the window's end is deferred
+        # to a later run: ended after `until`, or not ended and still writing after it.
+        if ended is not None and ended > until:
+            continue
+        if ended is None:
+            last_ts = con.execute(LAST_TS_SQL, (sid,)).fetchone()[0]
+            if last_ts is not None and last_ts > until:
+                continue
         row = SessionRow(
             agent="hermes",
             session_id=sid,
@@ -96,8 +105,10 @@ def collect(
             ) = msg
             droppable = bool(compacted) or not active
             if is_summary:
+                # replaces what it summarizes; a later compression can replace it in turn,
+                # which Hermes records on the row's own flags
                 ctx.compact()
-                ctx.add("summary", tok.count(content), droppable=False)
+                ctx.add("summary", tok.count(content), droppable)
                 continue
             if role == "assistant":
                 if budget is not None:

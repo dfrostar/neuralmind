@@ -134,6 +134,22 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   `attachment` lines (CLAUDE.md, memory and hook output rendered as
   system-reminders) are now counted, which is where NeuralMind's block appears.
   The thresholds are unchanged.
+- **2026-11-01, pass 3: three defects found in code review (Codex, PR #765),
+  fixed after pass 2's figures had been read.** Pass 2 read 22.5% pooled /
+  14.6% median for Claude Code interactive and 7.6% / 3.8% for Hermes
+  interactive (48.3% benchmark); those files are kept as `*.pass2.*`. The
+  fixes: (a) pipeline stages are now split quote-aware (shlex with operator
+  characters), so `rg 'foo|bar' src` or `git log --format='%h;%s'` is
+  exploration rather than failing to parse and being counted as shell, and an
+  unquoted newline separates stages like `;`; (b) a compaction summary is
+  droppable, so the next compaction replaces it instead of charging every
+  earlier summary to every later call; (c) a session still active at the
+  window's end (ended after it, or not ended and still writing) is deferred
+  to a later run rather than recorded half-way and then skipped for good, and
+  an explicit `--until` is capped at now minus `--lag-hours`. (a) can only
+  raise the exploration share, (b) can only lower the denominator; neither
+  direction was chosen with the thresholds in view, and the thresholds are
+  unchanged.
 
 ## Outputs
 

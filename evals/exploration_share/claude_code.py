@@ -134,8 +134,10 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                 continue
             # user line
             if o.get("isCompactSummary"):
+                # the summary replaces everything before it, earlier summaries included,
+                # and is itself replaced by the next one
                 ctx.compact()
-                ctx.add("summary", tok.count(_text_of(content)), droppable=False)
+                ctx.add("summary", tok.count(_text_of(content)))
                 continue
             if isinstance(content, str):
                 _add_user_text(ctx, tok, content)
@@ -152,6 +154,8 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
                     _add_user_text(ctx, tok, b.get("text", ""))
     if row is None:
         return None
+    if last_ts is not None and last_ts > until:
+        return None  # still active after the window's end: deferred, so it isn't recorded half-way
     row.ended_at = last_ts
     return row
 

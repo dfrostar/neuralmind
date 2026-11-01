@@ -22,14 +22,15 @@ from .tokens import Tokenizer
 
 
 def _window(args) -> tuple[float, float]:
+    # A session is collected once and never updated, so the window never reaches
+    # into the last --lag-hours, and the collectors defer sessions still active at
+    # its end.
+    latest = time.time() - args.lag_hours * 3600
     if args.since or args.until:
         since = _parse(args.since) if args.since else 0.0
-        until = _parse(args.until) if args.until else time.time()
+        until = min(_parse(args.until), latest) if args.until else latest
         return since, until
-    # A nightly run leaves out the newest sessions (--lag-hours), which may still
-    # be running: a session is collected once and never updated.
-    until = time.time() - args.lag_hours * 3600
-    return until - args.since_days * 86400, until
+    return latest - args.since_days * 86400, latest
 
 
 def _parse(s: str) -> float:

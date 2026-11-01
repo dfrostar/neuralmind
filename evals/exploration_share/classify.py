@@ -29,28 +29,57 @@ READ_ONLY_GIT = frozenset(
 # words skipped before the command proper
 PREFIX_WORDS = frozenset("sudo time nohup command builtin exec".split())
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-_SPLIT = re.compile(r"\|\||&&|;|\|")
-_REDIRECT = re.compile(r"(?<![0-9&])>{1,2}\s*(\S+)")
+# Operators are split out by shlex itself, so a `|` or `;` inside quotes stays part of
+# its word (`rg 'foo|bar'`), and an unquoted newline separates stages like `;` does.
+_PUNCT = "|&;()<>\n"
+
+
+def _stages(command: str) -> list[list[str]] | None:
+    """Split a shell command into pipeline stages (lists of words), quote-aware.
+
+    Returns None when the command can't be tokenized (unbalanced quotes) or when a
+    redirection writes to something other than /dev/null or another descriptor.
+    """
+    lex = shlex.shlex(command, posix=True, punctuation_chars=_PUNCT)
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    try:
+        tokens = list(lex)
+    except ValueError:
+        return None
+    stages: list[list[str]] = [[]]
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t and all(c in _PUNCT for c in t):
+            if ">" in t:
+                # a redirection: `>` / `>>` to a file writes unless the target is /dev/null;
+                # `>&` / `&>` with a descriptor number is a dup (2>&1) and writes nothing
+                target = tokens[i + 1] if i + 1 < len(tokens) else ""
+                dup = t.endswith("&") and target.isdigit()
+                if not dup and target != "/dev/null":
+                    return None
+                i += 2
+                continue
+            if "<" in t:
+                i += 2  # input redirection or heredoc marker: skip the operand
+                continue
+            if stages[-1]:
+                stages.append([])
+            i += 1
+            continue
+        stages[-1].append(t)
+        i += 1
+    return stages
 
 
 def shell_is_readonly(command: str | None) -> bool:
     if not command or not command.strip():
         return False
-    # Any redirect to something other than /dev/null (2>&1 and &> are excluded by
-    # the lookbehind) writes a file.
-    for target in _REDIRECT.findall(command):
-        if target not in ("/dev/null", "&1", "&2"):
-            return False
-    if "&>" in command:
+    stages = _stages(command)
+    if stages is None:
         return False
-    for stage in _SPLIT.split(command):
-        stage = stage.strip()
-        if not stage:
-            continue
-        try:
-            words = shlex.split(stage, posix=True)
-        except ValueError:
-            return False
+    for words in stages:
         i = 0
         # skip `cd X`, assignments and prefixes
         while i < len(words):
@@ -63,7 +92,7 @@ def shell_is_readonly(command: str | None) -> bool:
                 continue
             break
         if i >= len(words):
-            continue  # a bare `cd X` stage
+            continue  # a bare `cd X` stage, or nothing
         head = words[i].rsplit("/", 1)[-1]
         rest = words[i + 1 :]
         if head == "git":
@@ -74,8 +103,6 @@ def shell_is_readonly(command: str | None) -> bool:
         if head == "sed":
             if any(w == "-i" or w.startswith("-i") or w == "--in-place" for w in rest):
                 return False
-            continue
-        if head in ("tail", "head", "cat") and any(w in ("-f", "--follow") for w in rest):
             continue
         if head not in READ_ONLY_WORDS:
             return False

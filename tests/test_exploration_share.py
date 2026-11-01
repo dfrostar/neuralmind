@@ -47,6 +47,16 @@ TOK = Tokenizer(force_estimate=True)
         ("echo hi > /dev/null", True),
         ("FOO=1 rg pattern .", True),
         ("", False),
+        # operators inside quotes belong to the word
+        ("rg 'foo|bar' src", True),
+        ("git log --format='%h;%s' -3", True),
+        ('grep -r "a && b" .', True),
+        ("cat a.py 2>&1", True),
+        ("rg -n 'x' . 2>/dev/null | head", True),
+        # an unquoted newline separates stages
+        ("cat a.py\npytest", False),
+        ("ls\nwc -l < a.py", True),
+        ("echo 'unbalanced", False),
     ],
 )
 def test_shell_is_readonly(command, readonly):
@@ -73,17 +83,25 @@ def _tool_call(call_id: str, name: str, arguments: str) -> str:
     )
 
 
+HERMES_SCHEMA = """
+create table sessions (id text primary key, source text, model text, started_at real,
+    ended_at real, system_prompt text, input_tokens int, output_tokens int,
+    cache_read_tokens int, cache_write_tokens int);
+create table messages (id integer primary key autoincrement, session_id text, role text,
+    content text, tool_calls text, tool_name text, tool_call_id text, timestamp real,
+    compacted int default 0, _compressed_summary int default 0, active int default 1,
+    api_content text);
+"""
+INSERT_MSG = (
+    "insert into messages (session_id, role, content, tool_calls, tool_name, tool_call_id, "
+    "timestamp, compacted, _compressed_summary, active, api_content) "
+    "values (?,?,?,?,?,?,?,?,?,?,?)"
+)
+
+
 def _hermes_db(path: Path) -> None:
     con = sqlite3.connect(path)
-    con.executescript("""
-        create table sessions (id text primary key, source text, model text, started_at real,
-            ended_at real, system_prompt text, input_tokens int, output_tokens int,
-            cache_read_tokens int, cache_write_tokens int);
-        create table messages (id integer primary key autoincrement, session_id text, role text,
-            content text, tool_calls text, tool_name text, tool_call_id text, timestamp real,
-            compacted int default 0, _compressed_summary int default 0, active int default 1,
-            api_content text);
-        """)
+    con.executescript(HERMES_SCHEMA)
     con.execute(
         "insert into sessions values ('s1','cli','m',1000,1100,?,400,50,600,0)",
         ("S" * 40,),  # system prompt: 10 tokens
@@ -124,11 +142,15 @@ def _hermes_db(path: Path) -> None:
         # call 3: read dropped; shell stays
         ("assistant", "done", None, None, None, 1007, 0, 0, 1, None),
     ]
+    con.executemany(INSERT_MSG, [("s1",) + r for r in rows])
+    # s2: not ended, last message at 1990 -> deferred when the window ends before that
+    con.execute("insert into sessions values ('s2','cli','m',1400,NULL,'',100,10,0,0)")
     con.executemany(
-        "insert into messages (session_id, role, content, tool_calls, tool_name, tool_call_id, "
-        "timestamp, compacted, _compressed_summary, active, api_content) "
-        "values ('s1',?,?,?,?,?,?,?,?,?,?)",
-        rows,
+        INSERT_MSG,
+        [
+            ("s2", "user", "hello", None, None, None, 1401, 0, 0, 1, None),
+            ("s2", "assistant", "hi", None, None, None, 1990, 0, 0, 1, None),
+        ],
     )
     con.commit()
     con.close()
@@ -138,7 +160,7 @@ def test_hermes_collector_presence_model(tmp_path):
     db = tmp_path / "state.db"
     _hermes_db(db)
     rows = hermes_db.collect(db, 0, 2000, TOK)
-    assert len(rows) == 1
+    assert [r.session_id for r in rows] == ["s1", "s2"]
     r = rows[0]
     assert r.source_group == "interactive"
     assert r.calls == 3
@@ -157,7 +179,14 @@ def test_hermes_collector_presence_model(tmp_path):
     assert r.context_tokens_est == 1000
     assert r.exploration_share == 20 / 1000
     # skip_ids makes a rerun idempotent
-    assert hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1"}) == []
+    assert [r.session_id for r in hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1"})] == ["s2"]
+
+
+def test_hermes_collector_defers_sessions_still_active(tmp_path):
+    db = tmp_path / "state.db"
+    _hermes_db(db)
+    # window ends at 1500: s2 started inside it but was still writing at 1990
+    assert [r.session_id for r in hermes_db.collect(db, 0, 1500, TOK)] == ["s1"]
 
 
 def _claude_transcript(path: Path, billed: tuple[int, int, int]) -> None:
@@ -261,6 +290,9 @@ def test_claude_code_collector(tmp_path):
     assert 0.95 < r.context_tokens_est / r.prompt_tokens_billed <= 1.0
     # a file outside the window is skipped
     assert claude_code.collect(tmp_path / "projects", 2_000_000_000, 2_100_000_000, TOK) == []
+    # a session still writing after the window's end is deferred (last line is at 10:00:07Z)
+    ends_at_10_00_05 = 1_791_626_405  # 2026-10-10T10:00:05Z
+    assert claude_code.collect(tmp_path / "projects", since, ends_at_10_00_05, TOK) == []
 
 
 def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
@@ -276,10 +308,46 @@ def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
     assert r.context_tokens_est <= r.prompt_tokens_billed
 
 
+def test_claude_code_later_compaction_replaces_earlier_summary(tmp_path):
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+
+    def line(kind, content, ts, **extra):
+        o = {"type": kind, "timestamp": ts, "sessionId": "cc2", "message": {"content": content}}
+        o.update(extra)
+        return json.dumps(o)
+
+    def call(req, n, ts):
+        return line(
+            "assistant",
+            [{"type": "text", "text": "ok"}],
+            ts,
+            requestId=req,
+            message={"content": [{"type": "text", "text": "ok"}], "usage": {"input_tokens": n}},
+        )
+
+    # "fix" is 1 token, each summary 10; overhead from call 1 is 399; calls 2 and 3 bill
+    # 399 + 10, room for exactly one summary each
+    lines = [
+        line("user", "fix", "2026-10-10T10:00:00Z"),
+        call("r1", 400, "2026-10-10T10:00:01Z"),
+        line("user", "A" * 40, "2026-10-10T10:00:02Z", isCompactSummary=True),
+        call("r2", 409, "2026-10-10T10:00:03Z"),
+        line("user", "B" * 40, "2026-10-10T10:00:04Z", isCompactSummary=True),
+        call("r3", 409, "2026-10-10T10:00:05Z"),
+    ]
+    (proj / "cc2.jsonl").write_text("\n".join(lines) + "\n")
+    r = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)[0]
+    assert r.compactions == 2
+    assert r.billed_tokens["summary"] == 20, "summary A at call 2, summary B at call 3, never both"
+    assert r.trims == 0
+    assert r.context_tokens_est == r.prompt_tokens_billed == 1218
+
+
 def test_report_aggregates_and_reads(tmp_path):
     db = tmp_path / "state.db"
     _hermes_db(db)
-    rows = hermes_db.collect(db, 0, 2000, TOK)
+    rows = [r for r in hermes_db.collect(db, 0, 2000, TOK) if r.session_id == "s1"]
     out = tmp_path / "rows.jsonl"
     out.write_text(
         "".join(json.dumps(r.to_json()) + "\n" for r in rows) * 2
