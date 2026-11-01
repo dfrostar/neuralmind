@@ -66,9 +66,12 @@ def _mask(command: str) -> str:
             else:
                 out.append(_MASK.get(c, c))
         elif c == "\\" and i + 1 < n:
-            out.append(c)
-            out.append(command[i + 1])
-            i += 1
+            if command[i + 1] == "\n":
+                i += 1  # a line continuation: the pair is dropped, the line goes on
+            else:
+                out.append(c)
+                out.append(_MASK.get(command[i + 1], command[i + 1]))
+                i += 1
         elif c in "'\"":
             quote = c
             out.append(c)
@@ -152,9 +155,36 @@ def shell_is_readonly(command: str | None) -> bool:
             if any(w == "-i" or w.startswith("-i") or w == "--in-place" for w in rest):
                 return False
             continue
+        if head in MUTATING_FORMS and _has_mutating_form(head, rest):
+            return False
         if head not in READ_ONLY_WORDS:
             return False
     return True
+
+
+# Commands that read, except with an option that writes or runs something.
+MUTATING_FORMS = {
+    "find": (
+        "-delete",
+        "-exec",
+        "-execdir",
+        "-ok",
+        "-okdir",
+        "-fprint",
+        "-fprint0",
+        "-fprintf",
+        "-fls",
+    ),
+    "sort": ("-o", "--output"),
+    "yq": ("-i", "--inplace"),
+}
+
+
+def _has_mutating_form(head: str, rest: list[str]) -> bool:
+    bad = MUTATING_FORMS[head]
+    return any(
+        w in bad or any(w.startswith(b + "=") for b in bad if b.startswith("--")) for w in rest
+    )
 
 
 def _git_subcommand(words: list[str]) -> tuple[str, list[str]] | None:
@@ -183,14 +213,63 @@ def _git_is_readonly(words: list[str]) -> bool:
     positional = [w for w in rest if not w.startswith("-")]
     if sub == "worktree":
         return bool(positional) and positional[0] == "list"
+    if sub == "reflog":
+        # bare, `show` and `exists` read (`git reflog HEAD` is `show`); `expire` and `delete` write
+        return not positional or positional[0] not in ("expire", "delete")
     if sub == "tag":
+        if _has_option(
+            rest,
+            "dafsmuF",
+            (
+                "--delete",
+                "--force",
+                "--annotate",
+                "--sign",
+                "--message",
+                "--file",
+                "--local-user",
+                "--edit",
+            ),
+        ):
+            return False
         return not positional or any(w in ("-l", "--list") for w in rest)
     if sub == "branch":
+        # a listing flag (`-v`, `-a`, `-l`) doesn't rescue a mutating one (`-d -v feature`)
+        if _has_option(
+            rest,
+            "dDmMcCfut",
+            (
+                "--delete",
+                "--move",
+                "--copy",
+                "--force",
+                "--set-upstream-to",
+                "--unset-upstream",
+                "--edit-description",
+                "--track",
+                "--no-track",
+            ),
+        ):
+            return False
         listing = ("-l", "--list", "-a", "-r", "-v", "-vv", "--show-current")
         return not positional or any(w in listing for w in rest)
     if sub == "remote":
         return not positional or positional[0] in ("show", "get-url")
     return True
+
+
+def _has_option(words: list[str], short: str, long_forms: tuple[str, ...]) -> bool:
+    """True when any option word is one of ``long_forms`` (with or without `=value`), or a
+    short-option cluster (`-vD`) contains one of the letters in ``short``."""
+    for w in words:
+        if w == "--":
+            break
+        if w.startswith("--"):
+            if w.split("=", 1)[0] in long_forms:
+                return True
+        elif w.startswith("-") and len(w) > 1 and any(ch in short for ch in w[1:]):
+            return True
+    return False
 
 
 def categorize_hermes(tool_name: str | None, arguments: str | dict | None) -> str:

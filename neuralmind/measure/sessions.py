@@ -68,7 +68,7 @@ def aliases_input(
     root, db = resolve_sources(claude_root, hermes_db_path)
     inputs = [db, db.with_name(db.name + "-wal"), db.with_name(db.name + "-shm")]
     if root.is_dir():
-        inputs.extend(root.glob("*/*.jsonl"))
+        inputs.extend([*root.glob("*/*.jsonl"), *root.glob("*/*/subagents/*.jsonl")])
     for path in inputs:
         try:
             if path.exists() and os.path.samefile(target, path):
