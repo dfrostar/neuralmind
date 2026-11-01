@@ -8,6 +8,7 @@ import {
     blob,
     claimedRatios,
     disclosures,
+    explorationShare,
     headline,
     publicBenchmark,
     quotableClaims,
@@ -29,7 +30,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/benchmark',
     title: 'Code Retrieval Benchmark: Recall vs. Tokens — NeuralMind',
     description:
-        'NeuralMind vs ripgrep, vector RAG and pasting files on 40 pre-registered queries, misses published — and a 20-task outcome pilot that found no difference.',
+        'NeuralMind vs ripgrep, RAG and pasting files on 40 pre-registered queries, misses published; a 20-task pilot with no difference; exploration’s share of a bill.',
     keywords: [
         'AI coding agent benchmark',
         'gold-file recall',
@@ -42,6 +43,8 @@ export const metadata: Metadata = pageMetadata({
         'NeuralMind benchmark',
         'task-outcome benchmark',
         'coding agent pilot study',
+        'agent token usage',
+        'exploration share of the token bill',
     ],
     ogTitle: 'The NeuralMind Public Benchmark',
     ogDescription:
@@ -182,6 +185,8 @@ export default function BenchmarkPage() {
     const vsPaste = ratioRange(51, 242);
     const grep = headline('ripgrep (query keywords');
     const pilot = taskOutcomePilot.figures;
+    const share = explorationShare;
+    const [lowLine, highLine] = share.thresholds;
     const usd = (v: number) => `$${v.toFixed(3)}`;
 
     // Where the bare vector baseline beats NeuralMind, read off the run.
@@ -431,6 +436,114 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                         </a>
                         <a href={blob(taskOutcomePilot.spec)} target="_blank" rel="noopener noreferrer" className="link">
                             Pre-registered spec
+                        </a>
+                    </p>
+                </section>
+
+                {/* Exploration share */}
+                <section id="exploration-share" className="mb-14 scroll-mt-24">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <h2 className="font-display text-xl font-bold text-white">What share of a bill is exploration</h2>
+                        <EvidenceBadge level={share.evidence} />
+                    </div>
+                    <p className="text-muted mb-5 leading-relaxed">
+                        NeuralMind&rsquo;s per-question ratio applies inside one slice of a session: the code an agent
+                        reads and searches before it changes anything. The size of that slice bounds what any
+                        retrieval tool can save, so we pre-registered the question and measured it on one
+                        developer&rsquo;s own sessions, {share.since} to {share.until}. On the Mac, about{' '}
+                        {share.claudeCodeInWords.ofBilled} of what the Claude Code sessions were billed for was code
+                        being read or searched and re-sent, and about {share.claudeCodeInWords.ofContext} of the context
+                        the agent could see. On the second machine, running Hermes mostly for operations and chat, it
+                        was {share.hermes.ofBilled} of the billed prompt.
+                    </p>
+                    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mb-4">
+                        <table className="data-table min-w-[40rem]">
+                            <caption className="sr-only">Exploration share of the token bill, interactive sessions, one developer&rsquo;s two machines</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Interactive sessions</th>
+                                    <th scope="col" className="num">Sessions</th>
+                                    <th scope="col" className="num">Billed prompt tokens</th>
+                                    <th scope="col" className="num">Share of recorded context</th>
+                                    <th scope="col" className="num">Share of billed prompt</th>
+                                    <th scope="col" className="num">Median per session</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    ['Claude Code, on the Mac', share.claudeCode],
+                                    ['Hermes, on the second machine', share.hermes],
+                                ].map(([label, r]) => {
+                                    const x = r as typeof share.claudeCode;
+                                    return (
+                                        <tr key={label as string}>
+                                            <th scope="row">{label as string}</th>
+                                            <td className="num">{x.sessions}</td>
+                                            <td className="num">{x.billedTokens}</td>
+                                            <td className="num">{x.ofContext}</td>
+                                            <td className="num">{x.ofBilled}</td>
+                                            <td className="num">{x.median}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="text-muted text-sm mb-5 leading-relaxed">
+                        Not usage, and never pooled into either row: the task-outcome harness&rsquo;s {share.benchmark.sessions}{' '}
+                        Hermes sessions spent {share.benchmark.ofContext} of their context on exploration. The harness
+                        drives a small model through a fixed turn budget, which reads and searches far more than a
+                        developer does.
+                    </p>
+                    <Callout variant="caution" title="Read it as a field report">
+                        <ul className="space-y-3">
+                            <li>
+                                One developer, two machines, {share.days} days. It is not a sample of developers or
+                                projects, and the Hermes sessions are mostly operations and chat, so they say little about
+                                what a coding agent reads.
+                            </li>
+                            <li>
+                                Both figures sit within a few points of a threshold the spec fixed before any share was
+                                computed: under {lowLine}% is arithmetic a bill doesn&rsquo;t feel, {lowLine}% to {highLine}%
+                                is a claim that stands with the share beside it, {highLine}% or more is a material part
+                                of the bill. Claude Code&rsquo;s {share.claudeCode.ofContext} of the recorded context is
+                                just over the top line while its {share.claudeCode.ofBilled} of the billed prompt is inside
+                                the middle band, and Hermes&rsquo;s {share.hermes.ofContext} is just over the bottom line.
+                            </li>
+                            <li>
+                                Both of those headline figures crossed a line between the last two passes of the
+                                computation, which were corrected after code review and are kept beside this one, so
+                                neither is a finding about the line. A nightly job adds Hermes sessions and the Mac is
+                                re-run by hand, so the figures will move.
+                            </li>
+                            <li>
+                                Claude Code&rsquo;s transcripts account for {share.claudeCode.calibration} of what was
+                                billed. The rest (tool schemas, system-reminders, thinking blocks) holds no tool results,
+                                so the share of the billed prompt is the recorded share times that ratio, not a bound.
+                                Hermes bills per session, so its estimate matches billing by construction and its two
+                                shares coincide.
+                            </li>
+                            <li>
+                                It is a slice, not a saving. What NeuralMind does to a bill is the question the{' '}
+                                <a href="#task-outcomes" className="link">
+                                    task-outcome pilot
+                                </a>{' '}
+                                asked, and it found no difference.
+                            </li>
+                        </ul>
+                    </Callout>
+                    <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
+                        <a href={blob(share.source)} target="_blank" rel="noopener noreferrer" className="link">
+                            The field report
+                        </a>
+                        <a href={blob(share.spec)} target="_blank" rel="noopener noreferrer" className="link">
+                            Pre-registered spec
+                        </a>
+                        <a href={blob(share.dataFiles[0])} target="_blank" rel="noopener noreferrer" className="link">
+                            Claude Code data
+                        </a>
+                        <a href={blob(share.dataFiles[1])} target="_blank" rel="noopener noreferrer" className="link">
+                            Hermes data
                         </a>
                     </p>
                 </section>

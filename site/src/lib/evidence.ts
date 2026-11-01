@@ -15,6 +15,10 @@
  *   rule, enforced.
  * - `bench/retrieval/on-v4.12/results.json` is the 150-question retrieval
  *   eval's raw output; its hit rate and misses are counted, not quoted.
+ * - `bench/exploration-share/2026-11-01/*.summary.json` are the exploration-share
+ *   field report's aggregates; its shares are computed from them and checked
+ *   against the claims.json entry, so a re-run that moves one breaks the build
+ *   until the entry is updated with it.
  *
  * Server-only: these imports are large, and only server components (every
  * page here is statically exported) may import this module.
@@ -22,6 +26,8 @@
 import claims from '../../claims.json';
 import publicRun from '../../../bench/public/results.json';
 import retrievalRun from '../../../bench/retrieval/on-v4.12/results.json';
+import explorationClaudeCode from '../../../bench/exploration-share/2026-11-01/claude-code.summary.json';
+import explorationHermes from '../../../bench/exploration-share/2026-11-01/hermes.summary.json';
 import type { EvidenceLevel } from '@/components/ui/EvidenceBadge';
 
 export const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
@@ -242,5 +248,143 @@ export const retrievalEval = (() => {
         evidence: claim.evidence,
         source: claim.source,
         reproduce: claim.reproduce,
+    };
+})();
+
+// ---------------------------------------------------------------------------
+// The exploration-share field report (bench/exploration-share/2026-11-01/)
+// ---------------------------------------------------------------------------
+
+const EXPLORATION_DIR = 'bench/exploration-share/2026-11-01';
+
+/** The slice of a summary group this page reads. */
+interface ShareGroup {
+    sessions: number;
+    prompt_tokens_billed: number;
+    billed_tokens: { exploration: number };
+    /** The spec's headline: billed exploration tokens over the estimated (recorded) context. */
+    exploration_share_billed: number;
+    exploration_share_median_session: number;
+    calibration_est_over_billed: number;
+}
+
+interface ShareRowFigures {
+    sessions: number;
+    billed_prompt_tokens: number;
+    share_of_recorded_context_pct: number;
+    share_of_billed_prompt_pct: number;
+    median_session_pct: number;
+    calibration_pct: number;
+}
+
+interface ShareFigures {
+    since: string;
+    until: string;
+    tokenizer: string;
+    thresholds_pct: number[];
+    claude_code_interactive: ShareRowFigures;
+    hermes_interactive: ShareRowFigures;
+    hermes_benchmark: { sessions: number; share_of_recorded_context_pct: number };
+}
+
+const FRACTION_WORDS: [number, string][] = [
+    [0.1, 'a tenth'],
+    [0.2, 'a fifth'],
+    [0.25, 'a quarter'],
+    [1 / 3, 'a third'],
+    [0.5, 'half'],
+];
+
+/** "a fifth" for 0.196: the copy's rounding in words, refused when no word is within three points. */
+function aboutFraction(v: number): string {
+    const [target, words] = FRACTION_WORDS.reduce((best, f) => (Math.abs(f[0] - v) < Math.abs(best[0] - v) ? f : best));
+    if (Math.abs(target - v) > 0.03) {
+        throw new Error(`${(v * 100).toFixed(1)}% is not about any fraction the exploration-share copy names; reword it.`);
+    }
+    return words;
+}
+
+/**
+ * What share of the prompt tokens an agent's sessions were billed for was
+ * exploration (reading and searching code): one developer's two machines, a
+ * field report, pre-registered in docs/specs/EXPLORATION-SHARE-SPEC.md.
+ *
+ * Every share is computed here from the committed summaries and compared with
+ * the `figures` in the claims.json entry, to the digit the page prints. They
+ * are the same numbers read twice on purpose: a regenerated summary that moves
+ * one fails `next build` until the entry (the canon) is updated, and
+ * tests/test_site_claims.py recomputes them again without this module.
+ */
+export const explorationShare = (() => {
+    const c = claims.non_ratio_headline_claims.find((e) => e.source === `${EXPLORATION_DIR}/README.md`);
+    if (!c || !('figures' in c) || !('spec' in c)) {
+        throw new Error(`site/claims.json has no exploration-share entry (source ${EXPLORATION_DIR}/README.md).`);
+    }
+    const quoted = c.figures as unknown as ShareFigures;
+
+    const group = (run: { groups: unknown }, key: string): ShareGroup => {
+        const g = (run.groups as Record<string, ShareGroup>)[key];
+        if (!g) throw new Error(`${EXPLORATION_DIR} has no ${key} group.`);
+        return g;
+    };
+    const percent = (what: string, computed: number, claimed: number): string => {
+        if ((computed * 100).toFixed(1) !== claimed.toFixed(1)) {
+            throw new Error(
+                `Exploration share, ${what}: the summaries give ${(computed * 100).toFixed(1)}% but site/claims.json says ${claimed.toFixed(1)}%. Update the entry first, then the copy.`,
+            );
+        }
+        return `${claimed.toFixed(1)}%`;
+    };
+    const row = (what: string, g: ShareGroup, q: ShareRowFigures) => {
+        if (g.sessions !== q.sessions || g.prompt_tokens_billed !== q.billed_prompt_tokens) {
+            throw new Error(`Exploration share, ${what}: sessions or billed tokens differ from site/claims.json.`);
+        }
+        const ofBilled = g.billed_tokens.exploration / g.prompt_tokens_billed;
+        return {
+            sessions: fmt.format(g.sessions),
+            billedTokens: fmt.format(g.prompt_tokens_billed),
+            /** Exploration tool results over everything the transcript records: the spec's headline. */
+            ofContext: percent(`${what} of recorded context`, g.exploration_share_billed, q.share_of_recorded_context_pct),
+            /** The same exploration over what the provider billed. */
+            ofBilled: percent(`${what} of billed prompt`, ofBilled, q.share_of_billed_prompt_pct),
+            median: percent(`${what} median per session`, g.exploration_share_median_session, q.median_session_pct),
+            /** Transcript-estimated context over billed prompt. */
+            calibration: percent(`${what} calibration`, g.calibration_est_over_billed, q.calibration_pct),
+            /** Unrounded, for the sentence that says them in words. */
+            fractions: { ofContext: g.exploration_share_billed, ofBilled },
+        };
+    };
+
+    const bench = group(explorationHermes, 'hermes/benchmark');
+    if (bench.sessions !== quoted.hermes_benchmark.sessions) {
+        throw new Error('Exploration share, benchmark harness: session count differs from site/claims.json.');
+    }
+    const claudeCode = row('Claude Code interactive', group(explorationClaudeCode, 'claude-code/interactive'), quoted.claude_code_interactive);
+    const days = Math.round((Date.parse(quoted.until) - Date.parse(quoted.since)) / 86_400_000);
+
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        spec: c.spec as string,
+        reproduce: c.reproduce,
+        since: quoted.since,
+        until: quoted.until,
+        days,
+        tokenizer: quoted.tokenizer,
+        /** The spec's pre-registered bands: under the first, between, at or above the second. */
+        thresholds: quoted.thresholds_pct,
+        claudeCode,
+        /** The report's sentence: "about a fifth of what these sessions were billed for ... about a third of the context". */
+        claudeCodeInWords: {
+            ofBilled: aboutFraction(claudeCode.fractions.ofBilled),
+            ofContext: aboutFraction(claudeCode.fractions.ofContext),
+        },
+        hermes: row('Hermes interactive', group(explorationHermes, 'hermes/interactive'), quoted.hermes_interactive),
+        benchmark: {
+            sessions: fmt.format(bench.sessions),
+            ofContext: percent('Hermes benchmark harness', bench.exploration_share_billed, quoted.hermes_benchmark.share_of_recorded_context_pct),
+        },
+        dataFiles: [`${EXPLORATION_DIR}/claude-code.summary.json`, `${EXPLORATION_DIR}/hermes.summary.json`],
     };
 })();
