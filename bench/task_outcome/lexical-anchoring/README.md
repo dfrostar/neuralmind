@@ -99,7 +99,7 @@ runs (`tests/test_prompt_recall_lexical.py`).
 | Code quoted / from a changed file | 3 / 1 | 3 / 1 | |
 | Test files among the files listed | 14 of 84 | 14 of 84 | not above 14 of 84 |
 | Median block size (characters) | 804 | 804 | |
-| Median hook time (seconds) | 8.33 | 9.17 | |
+| Median hook time (seconds) | 9.32 | 9.82 | |
 
 | Pilot, 20 tasks | flag off | flag on | gate |
 |---|---|---|---|
@@ -107,14 +107,14 @@ runs (`tests/test_prompt_recall_lexical.py`).
 | First | 11 | **13** | ≥ 11 |
 | Code quoted / from a changed file | 8 / 7 | 10 / 9 | |
 | Test files among the files listed | 7 of 123 | 3 of 133 | |
-| Median hook time (seconds) | 0.54 | 0.68 | |
+| Median hook time (seconds) | 0.50 | 0.68 | |
 
 | Screen, 5 tasks (tuning set) | flag off | flag on |
 |---|---|---|
 | Listed / first | 3 / 3 | 3 / 3 |
 | Code quoted / from a changed file | 1 / 1 | 1 / 1 |
 | Test files among the files listed | 6 of 35 | 6 of 35 |
-| Median hook time (seconds) | 7.59 | 8.91 |
+| Median hook time (seconds) | 7.79 | 9.67 |
 
 The flag-off rows are the test-ranking study's `#731 + credit` rows, task
 for task ([heldout/flag-off](heldout/flag-off/replay-results.json),
@@ -192,8 +192,8 @@ What it shows, and what it doesn't:
   in their list. Both are the CI replay's floors with room to spare, but that
   job runs with the flag off, so it doesn't yet guard this ranking.
 - **The hook is slower with the flag on.** On hermes-agent the median rose
-  from 8.33 to 9.17 s held out and from 7.59 to 8.91 s on the screen's
-  tasks; on this repository from 0.54 to 0.68 s. The added part is the
+  from 9.32 to 9.82 s held out and from 7.79 to 9.67 s on the screen's
+  tasks; on this repository from 0.50 to 0.68 s. The added part is the
   grep, one `git grep -l -F` per identifier over 20,000 tracked files, 6 to
   16 identifiers a prompt. The absolute times are high because these indexes
   were built by v4.22.1, before the graph cache, so every call loaded the
@@ -210,11 +210,16 @@ What it shows, and what it doesn't:
   from the seeded walk (seed 20261025, positions 25 onward) before any agent
   run; the default stays off until then.
 
-One correction to the files, made after the runs: the `lexical_flag` label
-in each row's summary was first read by sourcing the shim, which ran it and
-recorded its usage text; the label was recomputed from the shim's text
-(`1` for the flag-on rows, `unset` for flag-off). Nothing else in the files
-was touched.
+**The rows here are from a second run of all six.** After the first run,
+review changed the code (URLs blanked before every extraction pass, `git
+grep --untracked`, a file-level entry for a file the graph has no file node
+for) and the diagnostic record (the replica now uses the hook's own matcher
+on the task's graph, so it applies the index filter). Every one of the 72
+blocks came back identical to the first run's, so the counts above are the
+pre-registered single replay's; the hook times are the second run's, and six
+pilot records' `lexical_replica` changed because the first run's replica had
+counted grep hits in files the index doesn't hold (a minified chart bundle
+under `docs/benchmarks/`, the site's Tailwind config).
 
 ## Reproduce
 

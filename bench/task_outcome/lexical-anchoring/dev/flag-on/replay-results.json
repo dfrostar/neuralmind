@@ -14,7 +14,7 @@
     "median_chars": 686,
     "tests_listed": 6,
     "files_listed": 35,
-    "median_seconds": 8.91
+    "median_seconds": 9.67
   },
   "tasks": [
     {
@@ -39,7 +39,7 @@
       "excerpt_on_fix": false,
       "chars": 775,
       "tests_listed": 2,
-      "seconds": 7.05,
+      "seconds": 8.77,
       "lexical_replica": {
         "identifiers": [
           "DELETE",
@@ -83,7 +83,7 @@
         458
       ],
       "tests_listed": 1,
-      "seconds": 8.91,
+      "seconds": 9.67,
       "lexical_replica": {
         "identifiers": [
           "skills/.archive/",
@@ -230,8 +230,8 @@
           ]
         },
         "dropped_too_common": {
-          "skills": 457,
-          "archive": 321,
+          "skills": 455,
+          "archive": 320,
           "skills/": 118,
           "days": 189
         },
@@ -364,7 +364,7 @@
       "excerpt_on_fix": false,
       "chars": 590,
       "tests_listed": 1,
-      "seconds": 8.19,
+      "seconds": 8.27,
       "lexical_replica": {
         "identifiers": [
           "NVIDIA",
@@ -520,14 +520,14 @@
           ]
         },
         "dropped_too_common": {
-          "Failed": 499,
-          "body": 901,
-          "into": 1632,
-          "target": 1379,
-          "match": 1480,
-          "variant": 457,
+          "Failed": 498,
+          "body": 899,
+          "into": 1630,
+          "target": 1377,
+          "match": 1478,
+          "variant": 456,
           "enum": 495,
-          "column": 332
+          "column": 330
         },
         "lexical": {
           "agent/error_classifier.py": 0.8676,
@@ -651,7 +651,7 @@
       "excerpt_on_fix": false,
       "chars": 599,
       "tests_listed": 1,
-      "seconds": 9.76,
+      "seconds": 10.07,
       "lexical_replica": {
         "identifiers": [
           "tui-notif-poller-<session id>",
@@ -689,7 +689,7 @@
       "excerpt_on_fix": false,
       "chars": 686,
       "tests_listed": 1,
-      "seconds": 9.76,
+      "seconds": 13.38,
       "lexical_replica": {
         "identifiers": [],
         "matched": {},

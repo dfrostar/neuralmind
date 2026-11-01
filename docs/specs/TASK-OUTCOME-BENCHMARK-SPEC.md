@@ -760,8 +760,8 @@ drawn by the same rule, that the pilot didn't use.
     18 of 20 blocks changed: one task gained listed and first, two gained
     first, one lost first to the `cli.py` its quoted flags live in. Code
     quoted / from a changed file: held out 3 / 1 both ways, pilot 8 / 7 to
-    10 / 9. Median hook time on hermes-agent 8.33 to 9.17 s (cold graph
-    loads: these indexes predate the graph cache), on this repository 0.54
+    10 / 9. Median hook time on hermes-agent 9.32 to 9.82 s (cold graph
+    loads: these indexes predate the graph cache), on this repository 0.50
     to 0.68 s.
   - **Read against the bound.** The git-grep replay that motivated the entry
     took backticked spans only; the pre-registered extractor also takes
@@ -772,6 +772,10 @@ drawn by the same rule, that the pilot didn't use.
     changing. As registered, the next step is confirmation on 12 new
     held-out tasks from the seeded walk (seed 20261025, positions 25
     onward), before any agent run; the default stays off until then.
-  - The `lexical_flag` label in each row's summary was recomputed from the
-    shim's text after the runs (the first reading had sourced, and so run,
-    the shim); nothing else in the results was touched.
+  - **Run twice, same blocks.** Review of the PR changed the code after the
+    first run (URLs blanked before every extraction pass, untracked files
+    searched, a file-level entry where the graph has no file node) and the
+    diagnostic record (made with the hook's own matcher). All six rows were
+    re-run; every one of the 72 blocks was identical to the first run's, so
+    the counts stand as the single pre-registered replay. The committed rows
+    and the hook times are the second run's.

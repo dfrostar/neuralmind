@@ -14,7 +14,7 @@
     "median_chars": 804,
     "tests_listed": 14,
     "files_listed": 84,
-    "median_seconds": 9.17
+    "median_seconds": 9.82
   },
   "tasks": [
     {
@@ -38,7 +38,7 @@
       "excerpt_on_fix": false,
       "chars": 804,
       "tests_listed": 1,
-      "seconds": 12.86,
+      "seconds": 13.53,
       "lexical_replica": {
         "identifiers": [
           "hermes dashboard",
@@ -135,14 +135,14 @@
           ]
         },
         "dropped_too_common": {
-          "hermes": 3155,
-          "dashboard": 534,
-          "PATCH": 87,
-          "WebSocket": 213,
+          "hermes": 3144,
+          "dashboard": 531,
+          "PATCH": 86,
+          "WebSocket": 212,
           "connection": 941,
-          "failed": 1907,
-          "local": 2054,
-          "fallback": 1288,
+          "failed": 1902,
+          "local": 2050,
+          "fallback": 1285,
           "permission_denied": 63,
           "not_found": 125
         },
@@ -234,7 +234,7 @@
       "excerpt_on_fix": false,
       "chars": 478,
       "tests_listed": 1,
-      "seconds": 9.41,
+      "seconds": 10.37,
       "lexical_replica": {
         "identifiers": [
           "hermes update",
@@ -251,12 +251,12 @@
           ]
         },
         "dropped_too_common": {
-          "hermes update": 199,
-          "hermes": 2794,
-          "update": 1473,
-          "would": 1761,
-          "start": 2674,
-          "outside": 569
+          "hermes update": 198,
+          "hermes": 2783,
+          "update": 1469,
+          "would": 1757,
+          "start": 2662,
+          "outside": 564
         },
         "lexical": {
           "hermes_cli/update_custody.py": 1.4427
@@ -289,7 +289,7 @@
         131
       ],
       "tests_listed": 2,
-      "seconds": 8.16,
+      "seconds": 9.05,
       "lexical_replica": {
         "identifiers": [
           "WebSocket",
@@ -301,9 +301,9 @@
         ],
         "matched": {},
         "dropped_too_common": {
-          "WebSocket": 178,
-          "unknown": 1211,
-          "client": 925
+          "WebSocket": 177,
+          "unknown": 1210,
+          "client": 923
         },
         "lexical": {}
       }
@@ -329,7 +329,7 @@
       "excerpt_on_fix": false,
       "chars": 741,
       "tests_listed": 2,
-      "seconds": 13.07,
+      "seconds": 16.21,
       "lexical_replica": {
         "identifiers": [
           "target",
@@ -377,14 +377,14 @@
           ]
         },
         "dropped_too_common": {
-          "target": 1936,
-          "operations": 139,
-          "memory": 765,
-          "action": 1778,
-          "remove": 1371,
-          "port": 5957,
-          "content": 1397,
-          "more": 657
+          "target": 1927,
+          "operations": 138,
+          "memory": 764,
+          "action": 1775,
+          "remove": 1365,
+          "port": 5939,
+          "content": 1392,
+          "more": 655
         },
         "lexical": {
           "apps/desktop/src/app/command-center/maintenance.tsx": 0.9102,
@@ -431,7 +431,7 @@
       "excerpt_on_fix": false,
       "chars": 883,
       "tests_listed": 1,
-      "seconds": 8.38,
+      "seconds": 9.38,
       "lexical_replica": {
         "identifiers": [
           "model.base_url",
@@ -594,8 +594,8 @@
         },
         "dropped_too_common": {
           "base_url": 413,
-          "custom": 416,
-          "provider": 1102,
+          "custom": 415,
+          "provider": 1101,
           "OpenRouter": 116
         },
         "lexical": {
@@ -736,7 +736,7 @@
       "excerpt_on_fix": false,
       "chars": 728,
       "tests_listed": 0,
-      "seconds": 8.07,
+      "seconds": 8.87,
       "lexical_replica": {
         "identifiers": [],
         "matched": {},
@@ -770,7 +770,7 @@
         121
       ],
       "tests_listed": 1,
-      "seconds": 12.06,
+      "seconds": 13.48,
       "lexical_replica": {
         "identifiers": [
           "\u2234 Thought for Ns \u00b7 <title>",
@@ -834,7 +834,7 @@
           ]
         },
         "dropped_too_common": {
-          "title": 1371,
+          "title": 1369,
           "reasoning": 531,
           "about": 615
         },
@@ -904,7 +904,7 @@
       "excerpt_on_fix": false,
       "chars": 575,
       "tests_listed": 1,
-      "seconds": 9.18,
+      "seconds": 10.04,
       "lexical_replica": {
         "identifiers": [
           "setup.status",
@@ -992,11 +992,11 @@
         },
         "dropped_too_common": {
           "readiness": 102,
-          "still": 1706,
-          "progress": 497,
+          "still": 1700,
+          "progress": 494,
           "retrying": 218,
-          "next": 1739,
-          "tick": 656
+          "next": 1737,
+          "tick": 655
         },
         "lexical": {
           "tui_gateway/methods_config.py": 2.5142,
@@ -1056,7 +1056,7 @@
         172
       ],
       "tests_listed": 1,
-      "seconds": 8.08,
+      "seconds": 8.89,
       "lexical_replica": {
         "identifiers": [
           "singularity",
@@ -1200,9 +1200,9 @@
         },
         "dropped_too_common": {
           "TypeError": 431,
-          "multiple": 386,
+          "multiple": 385,
           "argument": 533,
-          "local": 1377,
+          "local": 1375,
           "docker": 142
         },
         "lexical": {
@@ -1283,7 +1283,7 @@
       "excerpt_on_fix": false,
       "chars": 662,
       "tests_listed": 1,
-      "seconds": 11.87,
+      "seconds": 16.46,
       "lexical_replica": {
         "identifiers": [
           "/toolsets",
@@ -1442,7 +1442,7 @@
       "excerpt_on_fix": false,
       "chars": 708,
       "tests_listed": 2,
-      "seconds": 8.6,
+      "seconds": 9.6,
       "lexical_replica": {
         "identifiers": [
           "skills/",
@@ -1486,13 +1486,13 @@
         },
         "dropped_too_common": {
           "skills/": 119,
-          "skills": 429,
-          "hermes": 2218,
-          "profile": 1234,
-          "update": 1116,
+          "skills": 428,
+          "hermes": 2216,
+          "profile": 1232,
+          "update": 1114,
           "symlink": 119,
-          "refusing": 115,
-          "replace": 1259,
+          "refusing": 114,
+          "replace": 1257,
           "SOUL.md": 76,
           "SOUL": 82,
           "cron/": 99,
@@ -1537,7 +1537,7 @@
       "excerpt_on_fix": false,
       "chars": 835,
       "tests_listed": 1,
-      "seconds": 9.16,
+      "seconds": 8.75,
       "lexical_replica": {
         "identifiers": [
           "prompt.submit",
@@ -1631,9 +1631,9 @@
           ]
         },
         "dropped_too_common": {
-          "target": 1636,
-          "longer": 469,
-          "history": 570
+          "target": 1628,
+          "longer": 468,
+          "history": 568
         },
         "lexical": {
           "apps/desktop/src/app/session/hooks/use-prompt-actions/rewind.ts": 2.9316,
