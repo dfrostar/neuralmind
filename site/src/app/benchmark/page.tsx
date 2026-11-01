@@ -506,15 +506,21 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                                 Both figures sit within a few points of a threshold the spec fixed before any share was
                                 computed: under {lowLine}% is arithmetic a bill doesn&rsquo;t feel, {lowLine}% to {highLine}%
                                 is a claim that stands with the share beside it, {highLine}% or more is a material part
-                                of the bill. Claude Code&rsquo;s {share.claudeCode.ofContext} of the recorded context is
-                                just over the top line while its {share.claudeCode.ofBilled} of the billed prompt is inside
-                                the middle band, and Hermes&rsquo;s {share.hermes.ofContext} is just over the bottom line.
+                                of the bill. Claude Code&rsquo;s {share.claudeCode.ofContext} of the recorded context is{' '}
+                                {share.marginsOverLine.claudeCode} points over the top line while its{' '}
+                                {share.claudeCode.ofBilled} of the billed prompt is inside the middle band, and
+                                Hermes&rsquo;s {share.hermes.ofContext} is {share.marginsOverLine.hermes} points over the
+                                bottom line.
                             </li>
                             <li>
-                                Both of those headline figures crossed a line between the last two passes of the
-                                computation, which were corrected after code review and are kept beside this one, so
-                                neither is a finding about the line. A nightly job adds Hermes sessions and the Mac is
-                                re-run by hand, so the figures will move.
+                                Both are within noise. Across the last three passes of the computation, each corrected
+                                after code review and kept beside this one, the Claude Code headline has read{' '}
+                                {share.headlineByPass.join(', ')}. On identical sessions the last round of fixes moves
+                                the pooled shares by only {share.classifierEffect.recordedContext} and{' '}
+                                {share.classifierEffect.billedPrompt} points; what moves a reading between runs is which
+                                sessions a run can read, about {share.sessionSetDrift} on the headline. So neither is a
+                                finding about the line. A nightly job adds Hermes sessions and the Mac is re-run by
+                                hand, so the figures will move.
                             </li>
                             <li>
                                 Claude Code&rsquo;s transcripts account for {share.claudeCode.calibration} of what was

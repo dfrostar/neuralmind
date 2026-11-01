@@ -27,6 +27,8 @@ import claims from '../../claims.json';
 import publicRun from '../../../bench/public/results.json';
 import retrievalRun from '../../../bench/retrieval/on-v4.12/results.json';
 import explorationClaudeCode from '../../../bench/exploration-share/2026-11-01/claude-code.summary.json';
+import explorationClaudeCodePass3 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass3.json';
+import explorationClaudeCodePass4 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass4.json';
 import explorationHermes from '../../../bench/exploration-share/2026-11-01/hermes.summary.json';
 import type { EvidenceLevel } from '@/components/ui/EvidenceBadge';
 
@@ -285,6 +287,12 @@ interface ShareFigures {
     claude_code_interactive: ShareRowFigures;
     hermes_interactive: ShareRowFigures;
     hermes_benchmark: { sessions: number; share_of_recorded_context_pct: number };
+    /** The Claude Code headline at passes 3, 4 and the current one. */
+    claude_code_headline_by_pass_pct: number[];
+    /** What the last classifier fixes move the pooled shares by on identical sessions (spec, pass 5). */
+    classifier_effect_points: { recorded_context: number; billed_prompt: number };
+    /** What moves a reading between runs: which sessions a run can read (report, pass 5). */
+    session_set_drift_points: number;
 }
 
 const FRACTION_WORDS: [number, string][] = [
@@ -298,7 +306,7 @@ const FRACTION_WORDS: [number, string][] = [
 /** "a fifth" for 0.196: the copy's rounding in words, refused when no word is within three points. */
 function aboutFraction(v: number): string {
     const [target, words] = FRACTION_WORDS.reduce((best, f) => (Math.abs(f[0] - v) < Math.abs(best[0] - v) ? f : best));
-    if (Math.abs(target - v) > 0.03) {
+    if (Math.abs(target - v) > 3 / 100) {
         throw new Error(`${(v * 100).toFixed(1)}% is not about any fraction the exploration-share copy names; reword it.`);
     }
     return words;
@@ -360,6 +368,19 @@ export const explorationShare = (() => {
         throw new Error('Exploration share, benchmark harness: session count differs from site/claims.json.');
     }
     const claudeCode = row('Claude Code interactive', group(explorationClaudeCode, 'claude-code/interactive'), quoted.claude_code_interactive);
+    const [lowLine, highLine] = quoted.thresholds_pct;
+    // The headline's history, read from the pass 3 and pass 4 summaries beside the current one.
+    const history = [
+        group(explorationClaudeCodePass3, 'claude-code/interactive'),
+        group(explorationClaudeCodePass4, 'claude-code/interactive'),
+        group(explorationClaudeCode, 'claude-code/interactive'),
+    ].map((g, i) => percent(`Claude Code headline, pass ${i + 3}`, g.exploration_share_billed, quoted.claude_code_headline_by_pass_pct[i]));
+    // "N points over the line": refuses a reading that is no longer over it, so the section is reworded then.
+    const over = (what: string, share: number, line: number): string => {
+        if (share <= line) throw new Error(`${what} is no longer over the ${line}% line; the section's reading has to be reworded.`);
+        return (share - line).toFixed(1);
+    };
+    const drift = quoted.session_set_drift_points;
     const days = Math.round((Date.parse(quoted.until) - Date.parse(quoted.since)) / 86_400_000);
 
     return {
@@ -375,6 +396,20 @@ export const explorationShare = (() => {
         /** The spec's pre-registered bands: under the first, between, at or above the second. */
         thresholds: quoted.thresholds_pct,
         claudeCode,
+        /** How far over its line each interactive headline is, in points, to one decimal. */
+        marginsOverLine: {
+            claudeCode: over('Claude Code interactive', quoted.claude_code_interactive.share_of_recorded_context_pct, highLine),
+            hermes: over('Hermes interactive', quoted.hermes_interactive.share_of_recorded_context_pct, lowLine),
+        },
+        /** The Claude Code headline at passes 3, 4 and the current one, each as "NN.N%". */
+        headlineByPass: history,
+        /** Pooled shares moved by the last classifier fixes on identical sessions, in points, to two decimals. */
+        classifierEffect: {
+            recordedContext: quoted.classifier_effect_points.recorded_context.toFixed(2),
+            billedPrompt: quoted.classifier_effect_points.billed_prompt.toFixed(2),
+        },
+        /** "half a point": what a run's session set moves the headline by. */
+        sessionSetDrift: drift === 0.5 ? 'half a point' : `${drift} points`,
         /** The report's sentence: "about a fifth of what these sessions were billed for ... about a third of the context". */
         claudeCodeInWords: {
             ofBilled: aboutFraction(claudeCode.fractions.ofBilled),
