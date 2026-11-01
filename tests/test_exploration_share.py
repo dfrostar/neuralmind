@@ -501,6 +501,21 @@ def test_cli_replaces_the_row_of_a_session_that_has_written_since(tmp_path, caps
     assert not list(tmp_path.glob("*.tmp"))
 
 
+def test_cli_keeps_the_first_of_two_transcripts_with_one_session_id(tmp_path, capsys):
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+    _claude_transcript(proj / "a.jsonl", billed=(400, 426, 400))
+    _claude_transcript(proj / "b.jsonl", billed=(500, 526, 500))  # same sessionId "cc1"
+    out = tmp_path / "rows.jsonl"
+    argv = ["claude-code", "--root", str(tmp_path / "projects"), "--since", "2026-01-01T00:00:00Z"]
+    assert main(argv + ["--out", str(out), "--estimate"]) == 0
+    assert "1 sessions added, 0 updated (1 interactive)" in capsys.readouterr().out
+    (row,) = [json.loads(line) for line in out.read_text().splitlines()]
+    assert (
+        row["prompt_tokens_billed"] == 1226
+    ), "a.jsonl, the first in path order, not b.jsonl's 1526"
+
+
 def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
     proj = tmp_path / "projects" / "-Users-x-repo"
     proj.mkdir(parents=True)

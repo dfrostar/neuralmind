@@ -62,6 +62,15 @@ def _recorded(existing: list[dict], agent: str) -> dict[str, float | None]:
     }
 
 
+def _dedupe(rows) -> list:
+    """One row per (agent, session id): two transcript files can carry the same session id,
+    and the first one, in path order, is the row, as ``report.read_rows`` has always kept."""
+    first: dict[tuple[str, str], object] = {}
+    for r in rows:
+        first.setdefault((r.agent, r.session_id), r)
+    return list(first.values())
+
+
 def _write(out: Path, existing: list[dict], rows) -> tuple[int, int]:
     """Replace the rows of sessions collected again and add the new ones; (added, updated)."""
     fresh = {(r.agent, r.session_id): r.to_json() for r in rows}
@@ -113,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
             rows = hermes_db.collect(args.db, since, until, tok, recorded=recorded)
         else:
             rows = claude_code.collect(args.root, since, until, tok, recorded=recorded)
+        rows = _dedupe(rows)
         added, updated = _write(out, existing, rows)
         inter = [x for x in rows if x.source_group == "interactive"]
         print(
