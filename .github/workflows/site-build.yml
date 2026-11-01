@@ -31,6 +31,9 @@ on:
       - 'bench/public/results.json'
       - 'bench/retrieval/*/results.json'
       - 'commercial-terms.json'
+      # /performance renders the longitudinal record and its narratives
+      # (site/src/lib/performance.ts); a monthly rows PR must build and test.
+      - 'benchmarks/ai9970/**'
       - '.github/workflows/site-build.yml'
       - '.github/workflows/deploy-site.yml'
       - 'scripts/check_site_seo.py'
@@ -69,6 +72,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Component and gate tests
+        # vitest over site/test: the performance record's honest-render gates
+        # (measured-only ratios, rates with their gold-set size, no line across
+        # a null) and the components that apply them.
+        run: npm test
 
       - name: Build static export
         env:

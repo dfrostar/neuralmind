@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
@@ -25,7 +26,9 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.4",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vite": "7.3.7",
+    "vitest": "4.1.11"
   },
   "overrides": {
     "postcss": "^8.5.26",

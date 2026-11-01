@@ -18,6 +18,7 @@ const productLinks: NavItem[] = [
     { href: '/#quickstart', label: 'Quickstart', hint: 'Five commands' },
     { href: '/#features', label: 'Features', hint: 'Four things your agent gets' },
     { href: '/benchmark', label: 'Benchmark', hint: '40 public queries, every miss published' },
+    { href: '/performance', label: 'Performance record', hint: 'Our own repos, run by run' },
     { href: '/field-reports/measure-memory-across-a-refactor', label: 'Field report', hint: 'One production repo, before and after' },
     { href: '/whats-new', label: "What's new", hint: 'Recent releases and the drift guards' },
 ];

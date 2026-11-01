@@ -323,8 +323,26 @@ Head row in the label style over a `carbon-line` rule; cells in `muted` with
 `carbon-border` rules; row heads in mono `caption`, because a backend's name
 there is what the benchmark wrote. `.num` right-aligns on tabular figures and
 sets the cell (not its head) in mono; `.is-ours` puts the measured subject's
-row on `proton-dim` with its head in `proton`. Give the table a `min-w-*`
-inside an `overflow-x-auto` box so a phone scrolls the table, not the page.
+row on `proton-dim` with its head in `proton`; `.is-regressed` puts a run that
+fell from the one before it on `electric-dim` with its head in `warn`, and
+keeps it in place. Give the table a `min-w-*` inside an `overflow-x-auto` box
+so a phone scrolls the table, not the page.
+
+### Performance record — `@/components/performance/*`
+
+The `/performance` page's parts. Every rate and ratio goes through the gates
+in `src/lib/record.ts`, so the rules hold in the components, not in copy. The
+figure is `.metric`; the words beside it ("8 of 12 · 4 missed", "not shown:
+…", a badge) are set `font-sans`, so a `.num` cell's mono stops at the number.
+
+| Component | Renders |
+|---|---|
+| `RateValue` | A rate over its gold-set size and misses ("8 of 12 · 4 missed"; MRR shows "n = 12"), with a `warn` "Small sample" badge under 50 questions. Without a gold-set size: not shown, and why. |
+| `RatioValue` | A ratio over its measured baseline in tokens. Not shown unless the row's `baseline_src` is `measured` and its baseline is recorded. |
+| `Sparkline` | One metric over time: x by date, a fixed 0–1 axis for rates and a zero-based one for ratios, `proton` line broken at every null (a `faint` tick marks it), `warn` dot on a drop, dashed `carbon-line` rule at each version bump, labelled in mono (a version is what the system wrote). |
+| `RecordTable` | Every published run, `.is-regressed` on a drop, a "New version" badge on a bump, and the count of withheld runs under it. |
+| `ProfileCard` | A `panel` with the project's facts (`.label` names) and its latest run in a `StatGrid`. |
+| `Prose`, `WorkingOn` | A narrative's block A (Markdown subset, as React elements, links as `.link`) and block C (`success` "Moved", `warn` "Stalled" badges). |
 
 ### Surfaces and text helpers
 

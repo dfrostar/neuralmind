@@ -14,6 +14,7 @@ const groups: { heading: string; links: { label: string; href: string }[] }[] = 
             { label: 'Services', href: '/services' },
             { label: 'Security', href: '/security' },
             { label: 'Benchmark', href: '/benchmark' },
+            { label: 'Performance record', href: '/performance' },
             { label: 'Field report', href: '/field-reports/measure-memory-across-a-refactor' },
         ],
     },

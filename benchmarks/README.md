@@ -53,6 +53,7 @@ the same checks that run on every PR.
 | 8 | **Your own repo** — reduction ratio, tokens/query, est. monthly savings | `neuralmind benchmark .` | none | — |
 | 9 | **SWE-bench retrieval** — does NeuralMind surface the files a real fix edits? (gold-patch-file recall@k / MRR) | `python -m evals.swe_bench.runner --run` | `pip install datasets` + network | [`bench/swe_bench/`](../bench/swe_bench/REPRODUCE.md) (offline gate: `--selfcheck`) |
 | 10 | **Multi-repo retrieval eval** (v4.6.0) — which ranking changes earn a default: hit@5 / MRR on 30 questions per repo (pre-registered and committed for the five public repos, plus a private 383-file repo), every flag configuration, keep rule applied (reproducible on demand, not a CI gate) | `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run --public-benchmark` (`--private PATH` adds your own repo, locally) | `pip install -e . tiktoken` + network (clones repos) | [`bench/retrieval/`](../bench/retrieval/README.md) |
+| 11 | **Longitudinal record** — hit@1 / hit@5 / MRR and tokens vs indexed code on our own repos, re-measured on one dev box; misses, gold-set sizes and drops kept (a field report, not a CI gate) | `neuralmind eval .` | none | [`benchmarks/ai9970/`](ai9970/README.md) (rendered at [neuralmind.uk/performance](https://neuralmind.uk/performance/)) |
 
 Useful variants of #8:
 
