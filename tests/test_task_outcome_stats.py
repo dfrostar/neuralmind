@@ -337,6 +337,25 @@ def test_a_neuralmind_run_without_a_recorded_prompt_is_a_harness_failure(tmp_pat
     assert not run.neuralmind_missing("baseline", {})
 
 
+def test_a_carried_run_counts_only_its_own_recap(tmp_path) -> None:
+    # The carried recaps aren't this session's. NeuralMind deletes the oldest as
+    # the session starts, so subtracting their counts from the total can come to 0
+    # for a session it reached: the memory track's false harness failures.
+    recaps = tmp_path / ".neuralmind" / "recaps"
+    recaps.mkdir(parents=True)
+    for name in ("oldest.jsonl", "kept.jsonl"):
+        (recaps / name).write_text(json.dumps({"kind": "prompt"}) + "\n")
+    carried = frozenset(p.name for p in recaps.glob("*.jsonl"))
+    assert run.neuralmind_missing("neuralmind", run.hook_activity(tmp_path, carried))
+    (recaps / "oldest.jsonl").unlink()
+    (recaps / "this-session.jsonl").write_text(
+        json.dumps({"kind": "prompt"}) + "\n" + json.dumps({"kind": "edit"}) + "\n"
+    )
+    hooks = run.hook_activity(tmp_path, carried)
+    assert hooks == {"hook_prompts_recorded": 1, "hook_edits_recorded": 1}
+    assert not run.neuralmind_missing("neuralmind", hooks)
+
+
 def test_plan_is_deterministic_and_complete() -> None:
     tasks = [{"id": "a"}, {"id": "b"}]
     first = run.plan(tasks, ("baseline", "neuralmind"), 3, order_seed=7)
