@@ -256,13 +256,14 @@ def _prepare(
     mcp_servers: dict = {}
     build_seconds = 0.0
     carried: dict = {}
-    hooks_carried: dict = {}
+    recaps_carried: frozenset = frozenset()
     index_cached = False
     if arm == "neuralmind":
         nm = str(tool_venv / "bin" / "neuralmind")
         if carry is not None:
             carried = carry_in(carry, ws)
-            hooks_carried = hook_activity(ws)
+            recaps = ws / ".neuralmind" / "recaps"
+            recaps_carried = frozenset(p.name for p in recaps.glob("*.jsonl"))
         # A carried run's index is built over its carried store, never restored.
         build_seconds, index_cached = _build_index(
             task, ws, nm, env, None if carry is not None else cache, builder
@@ -284,7 +285,7 @@ def _prepare(
         "build_seconds": build_seconds,
         "index_cached": index_cached,
         "carried": carried,
-        "hooks_carried": hooks_carried,
+        "recaps_carried": recaps_carried,
     }
 
 
@@ -589,15 +590,19 @@ def harness_failure(agent: dict, timed_out: bool) -> bool:
     return agent["subtype"] is None or agent.get("terminal_reason") == "api_error"
 
 
-def hook_activity(ws: Path) -> dict:
+def hook_activity(ws: Path, carried: frozenset = frozenset()) -> dict:
     """Manipulation check: did NeuralMind's hooks run inside this session?
 
     Claude Code's event stream shows only the SessionStart hook, so the
     evidence is NeuralMind's own session recap, which its prompt and edit
-    hooks append to while the session runs.
+    hooks append to while the session runs. Each session writes its own
+    file, so the recaps a carried run brought in (``carried``, by file name)
+    are left out.
     """
     prompts = edits = 0
     for recap in (ws / ".neuralmind" / "recaps").glob("*.jsonl"):
+        if recap.name in carried:
+            continue
         for line in recap.read_text().splitlines():
             kind = json.loads(line).get("kind") if line.strip() else None
             prompts += kind == "prompt"
@@ -874,9 +879,10 @@ def run_one(
         agent = parse_stream(stdout.splitlines())
     # After the background commands are stopped, before anything is cleaned up.
     check_guard(args.guard, guarded, f"{where} (agent session)", ws)
-    hooks = hook_activity(ws) if arm == "neuralmind" else {}
     # A carried run's recaps hold the chain's earlier runs too: count only this one's.
-    hooks = {k: v - prep["hooks_carried"].get(k, 0) for k, v in hooks.items()}
+    # Not by subtracting the carried counts: NeuralMind deletes the oldest recaps as
+    # the session starts, which can bring that difference to 0 for a session it reached.
+    hooks = hook_activity(ws, prep["recaps_carried"]) if arm == "neuralmind" else {}
     if not failure and not harness_failure(agent, timed_out) and neuralmind_missing(arm, hooks):
         failure = "NeuralMind's prompt hook recorded nothing in the workspace"
     if harness_failure(agent, timed_out) or failure:
