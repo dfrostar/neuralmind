@@ -19,7 +19,7 @@ CATEGORIES = (EXPLORATION, EDIT, WEB, SHELL, OTHER)
 READ_ONLY_WORDS = frozenset(
     """cat head tail less more wc ls ll tree find grep rg ag egrep fgrep stat file
     which type pwd echo printf du df diff cut sort uniq awk jq yq tr column nl od
-    xxd strings realpath readlink basename dirname test true false env printenv
+    xxd strings realpath readlink basename dirname test true false printenv
     date hostname uname id whoami ps pgrep md5sum sha256sum shasum b2sum
     tokei cloc sloccount fd fdfind bat rga ripgrep""".split()
 )
@@ -27,42 +27,58 @@ READ_ONLY_GIT = frozenset(
     "log show diff status blame grep ls-files ls-tree rev-parse branch remote describe "
     "shortlog name-rev cat-file merge-base rev-list tag worktree reflog".split()
 )
-# git's own options that take the next word as their operand, before the subcommand
-_GIT_OPTIONS_WITH_VALUE = frozenset(
-    "-C -c --git-dir --work-tree --namespace --config-env --super-prefix --attr-source".split()
+# `git [-C <path>] [-c <name>=<value>] [--git-dir <path>] ... <command>`: global options
+# that take their operand as the next word, so it isn't mistaken for the subcommand.
+# (`--git-dir=<path>` and the other `=` forms are one word and fall under "starts with -".)
+GIT_OPTIONS_WITH_OPERAND = frozenset(
+    "-C -c --git-dir --work-tree --namespace --super-prefix --config-env --attr-source".split()
 )
-# words skipped before the command proper
-PREFIX_WORDS = frozenset("sudo time nohup command builtin exec".split())
+# words skipped before the command proper. `env` is one of them: it runs the command that
+# follows (`env PYTHONPATH=. pytest`), and on its own it only prints the environment.
+PREFIX_WORDS = frozenset("sudo time nohup command builtin exec env".split())
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Operators are split out by shlex itself, so a `|` or `;` inside quotes stays part of
 # its word (`rg 'foo|bar'`), and an unquoted newline separates stages like `;` does.
 _PUNCT = "|&;()<>\n"
-# shlex drops the quotes from a quoted word, so a quoted `>` or `|` (`rg '>' src`) would come
-# back looking like the operator. Operator characters inside quotes or after a backslash are
-# swapped for private-use stand-ins before shlex runs, and words get the originals back.
-_STAND_IN = {c: chr(0xE000 + n) for n, c in enumerate(_PUNCT)}
-_RESTORE = str.maketrans({v: k for k, v in _STAND_IN.items()})
+# Operator characters inside quotes are swapped for private-use characters before the
+# lexer sees them, so a word that is nothing but quoted punctuation (`grep -F '>' a.py`)
+# can't be mistaken for an operator; the words are translated back afterwards.
+_MASK = {c: chr(0xE000 + i) for i, c in enumerate(_PUNCT)}
+_UNMASK = str.maketrans({v: k for k, v in _MASK.items()})
 
 
-def _protect_quoted_operators(command: str) -> str:
+def _mask(command: str) -> str:
+    """Drop unquoted comments (keeping the newline that ends them: `cat a # x\\npytest` is
+    two stages) and hide operator characters that sit inside quotes."""
     out: list[str] = []
-    quote = ""  # the quote character while inside one
-    escaped = False
-    for c in command:
-        if escaped:
-            out.append(_STAND_IN.get(c, c))
-            escaped = False
-        elif c == "\\" and quote != "'":
-            out.append(c)
-            escaped = True
-        elif quote:
-            out.append(c if c == quote else _STAND_IN.get(c, c))
+    quote = ""
+    i, n = 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote:
             if c == quote:
                 quote = ""
+                out.append(c)
+            elif c == "\\" and quote == '"' and i + 1 < n:
+                out.append(c)
+                out.append(_MASK.get(command[i + 1], command[i + 1]))
+                i += 1
+            else:
+                out.append(_MASK.get(c, c))
+        elif c == "\\" and i + 1 < n:
+            out.append(c)
+            out.append(command[i + 1])
+            i += 1
+        elif c in "'\"":
+            quote = c
+            out.append(c)
+        elif c == "#" and (i == 0 or command[i - 1] in " \t\r\n" + _PUNCT):
+            while i < n and command[i] != "\n":
+                i += 1
+            continue
         else:
             out.append(c)
-            if c in "'\"":
-                quote = c
+        i += 1
     return "".join(out)
 
 
@@ -72,9 +88,10 @@ def _stages(command: str) -> list[list[str]] | None:
     Returns None when the command can't be tokenized (unbalanced quotes) or when a
     redirection writes to something other than /dev/null or another descriptor.
     """
-    lex = shlex.shlex(_protect_quoted_operators(command), posix=True, punctuation_chars=_PUNCT)
+    lex = shlex.shlex(_mask(command), posix=True, punctuation_chars=_PUNCT)
     lex.whitespace = " \t\r"
     lex.whitespace_split = True
+    lex.commenters = ""  # comments are dropped by _mask, which keeps the newline
     try:
         tokens = list(lex)
     except ValueError:
@@ -87,7 +104,7 @@ def _stages(command: str) -> list[list[str]] | None:
             if ">" in t:
                 # a redirection: `>` / `>>` to a file writes unless the target is /dev/null;
                 # `>&` / `&>` with a descriptor number is a dup (2>&1) and writes nothing
-                target = tokens[i + 1].translate(_RESTORE) if i + 1 < len(tokens) else ""
+                target = tokens[i + 1].translate(_UNMASK) if i + 1 < len(tokens) else ""
                 dup = t.endswith("&") and target.isdigit()
                 if not dup and target != "/dev/null":
                     return None
@@ -100,7 +117,7 @@ def _stages(command: str) -> list[list[str]] | None:
                 stages.append([])
             i += 1
             continue
-        stages[-1].append(t.translate(_RESTORE))
+        stages[-1].append(t.translate(_UNMASK))
         i += 1
     return stages
 
@@ -140,20 +157,27 @@ def shell_is_readonly(command: str | None) -> bool:
     return True
 
 
+def _git_subcommand(words: list[str]) -> tuple[str, list[str]] | None:
+    """The subcommand and its arguments, past git's global options; None when there is none."""
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w in GIT_OPTIONS_WITH_OPERAND:
+            i += 2
+        elif w.startswith("-"):
+            i += 1
+        else:
+            return w, words[i + 1 :]
+    return None
+
+
 def _git_is_readonly(words: list[str]) -> bool:
     """`git <sub> …` with a subcommand that only reads, in a form that only reads:
     `branch`, `tag` and `remote` mutate when given a name, `worktree` unless `list`."""
-    i = 0
-    while i < len(words):
-        if words[i] in _GIT_OPTIONS_WITH_VALUE:
-            i += 2  # `git -C /repo diff`: the operand is not the subcommand
-        elif words[i].startswith("-"):
-            i += 1
-        else:
-            break
-    if i >= len(words):
-        return True  # `git --version` and the like
-    sub, rest = words[i], words[i + 1 :]
+    found = _git_subcommand(words)
+    if found is None:
+        return True  # `git --version`, `git -C x` and the like
+    sub, rest = found
     if sub not in READ_ONLY_GIT:
         return False
     positional = [w for w in rest if not w.startswith("-")]

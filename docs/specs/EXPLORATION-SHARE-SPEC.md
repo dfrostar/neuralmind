@@ -76,7 +76,8 @@ share decides whether that effect is something a bill can feel, or arithmetic.
 - **Window.** Retrospective: sessions started 2026-10-02T00:00Z to
   2026-11-01T23:59Z, on ai-9970 (Hermes) and on the Mac (Claude Code). Then
   nightly on ai-9970: every session ended since the previous run, appended,
-  de-duplicated by session id.
+  de-duplicated by session id; a session that has written since its row was
+  recorded is collected again and its row replaced.
 
 ## Pre-registered reading of the result
 
@@ -169,6 +170,56 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   holds no tool results, so the billed-prompt share is the recorded share
   times the calibration ratio, not a bound), and track 1's task list no
   longer counts three held-out tasks twice. Thresholds unchanged.
+- **2026-11-01, review 3: two more findings from code review (Codex, PR
+  #765), fixed after pass 4's figures had been read** (Claude Code interactive
+  30.6% of recorded context, 19.6% of billed prompt; Hermes interactive
+  10.4%). Neither fix has been re-run on either machine: the committed
+  summaries are still pass 4's, and the figures will move. (a) `git -C <path>
+  diff` and `git -c <name>=<value> log`: git's global options that take an
+  operand were read as the subcommand, so those reading commands counted as
+  shell. The subcommand is now found past them. This can only raise the
+  exploration share; in the Mac's transcripts it flips 22 of 13,585 Bash calls
+  in the window, all `git -C`, and what their output adds has not been
+  measured. (b) A session was recorded once, by id, even while it was still
+  running (with `--lag-hours 0` the window ends at the run, so a running
+  session's last message is inside it), and every later run skipped it: any
+  session that spanned a collection stayed half-counted. A row now holds the
+  session's latest activity (`last_activity`), and a later run collects a
+  session again when it has written something newer, replacing its row; rows
+  from before the field fall back to `ended_at`, and one with neither is
+  collected once more. This can move a share either way. Whether any row in
+  the pass 4 summaries was recorded early is not known from the aggregates.
+  Thresholds unchanged.
+- **2026-11-01, review 4: three more classifier findings (Copilot, PR #766's
+  view of this code), fixed before any re-run.** (a) `env` was on the read-only
+  list, so `env PYTHONPATH=. python -m pytest` counted as exploration; `env` is
+  now a prefix like `sudo` (the command it runs is classified; on its own it
+  prints the environment and still reads). (b) An unquoted comment swallowed the
+  newline after it, so `cat a.py # note` followed by `pytest` on the next line
+  was one stage; comments are now dropped before tokenizing and their newline
+  kept. (c) A quoted argument made only of operator characters (`grep -F '>'
+  a.py`, `rg ";" src`) was read as the operator, so the command counted as
+  shell, or a quoted `|` split a stage; operator characters inside quotes are
+  now masked before tokenizing. (a) and (b) can only lower the exploration
+  share, (c) only raise it. In the Mac's transcripts, of about 13,640 Bash
+  calls in the window, these three flip 2 to exploration and 7 to shell against
+  review 3's classifier; with review 3's `git -C` fix, 24 flip to exploration
+  and 7 to shell against pass 4's. What those calls' output adds in tokens has
+  not been measured, and the summaries are still pass 4's. Thresholds unchanged.
+- **2026-11-01, pass 5: the review-3 and review-4 fixes, re-run from scratch on
+  both machines.** Pass 4's summaries are kept as `*.pass4.*`. Claude Code
+  interactive (88 sessions): 30.72% of recorded context, 19.67% of billed
+  prompt, median session 21.1%; Hermes interactive (67 sessions): 10.42%,
+  median 5.4%. What the fixes carry in tokens, measured: the pass-4 and the
+  pass-5 classifier run on the same 87 Mac sessions give 30.66% / 19.62% and
+  30.69% / 19.64%, so all the classifier and collector changes since pass 4
+  together move the pooled shares by 0.03 and 0.02 points. The movement
+  between passes comes from which sessions a run can read (a session still
+  writing when its file is read is deferred; others kept growing between
+  runs), about half a point on the headline. The Mac's headline is 0.7 points
+  over the "30% or more" threshold and Hermes interactive 0.4 points over the
+  10% line; the report says both are within noise of the line. Thresholds
+  unchanged.
 - **2026-11-01, the collectors ship as a command; definitions, thresholds and
   figures unchanged.** The collectors moved from `evals/exploration_share/` to
   `neuralmind/measure/` and run as `neuralmind measure sessions`, which anyone
@@ -176,34 +227,15 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   default; aggregates only on stdout; exit 2 when no session started in the
   window). `evals/exploration_share/` re-exports the same modules, and the
   nightly job's commands are unchanged. On the Mac's own Claude Code and Hermes
-  sessions started 2026-10-02 to 2026-10-25 (64 Claude Code and 649 Hermes sessions,
-  characters ÷ 4), the moved code wrote rows byte-identical to the code before the
-  move, and `report`'s Markdown identical. Additions only: the summary JSON gains
-  `exploration_share_of_prompt` per group (the second share the pass-4 field report
+  sessions started 2026-10-02 to 2026-10-25 (62 Claude Code and 649 Hermes sessions,
+  characters ÷ 4), the moved code (pass 5, `6c284c69`) wrote rows byte-identical to
+  the code before the move. Additions only: the summary JSON gains
+  `exploration_share_of_prompt` per group (the second share the field report
   states, billed exploration tokens over the provider's prompt tokens), and the
   collectors read transcripts as UTF-8 whatever the locale and pass the Hermes
   database path to SQLite as a percent-encoded URI. The command prints the
   pre-registered reading beside each interactive group's session count; the
   thresholds are unchanged.
-- **2026-11-01, pass 5: two classifier defects from code review (Codex, PR
-  #767), fixed after pass 4's figures had been read.** (a) A git command with a
-  global option that takes an operand (`git -C /repo diff`, `git -c color.ui=false
-  log`, `git --git-dir /x/.git log`) took the operand for the subcommand and was
-  counted as shell; the operands of `-C`, `-c`, `--git-dir`, `--work-tree`,
-  `--namespace`, `--config-env`, `--super-prefix` and `--attr-source` are now
-  skipped before the subcommand is read. (b) A quoted or backslash-escaped
-  operator character (`rg '>' src`, `rg '|' src`) lost its quotes in the
-  tokenizer and was read as a redirection or a pipe, so the command was counted
-  as shell; operator characters inside quotes or after a backslash are now kept as
-  part of their word. Both only move commands from shell to exploration, so they
-  can only raise the exploration share and lower the shell share; neither
-  direction was chosen with the thresholds in view. On the Mac's own sessions
-  started 2026-10-02 to 2026-10-25 (characters ÷ 4) the shares of recorded
-  context moved from 34.96% to 34.98% (Claude Code interactive, 62 sessions),
-  16.43% to 16.46% (Hermes interactive, 37) and 31.54% to 32.31% (Hermes
-  subagent, 18): no reading changes. The committed pass-4 field report predates
-  the fix and is not regenerated here; the nightly job and the next Mac run use
-  it. Thresholds unchanged.
 
 ## Outputs
 

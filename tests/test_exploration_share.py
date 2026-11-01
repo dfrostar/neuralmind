@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from evals.exploration_share import claude_code, hermes_db, report
-from evals.exploration_share.__main__ import _parse
+from evals.exploration_share.__main__ import _parse, main
 from evals.exploration_share.classify import (
     EDIT,
     EXPLORATION,
@@ -68,23 +68,50 @@ TOK = Tokenizer(force_estimate=True)
         ("git worktree add ../w", False),
         ("git remote -v", True),
         ("git remote add o url", False),
-        # git's own options come before the subcommand and some take an operand
+        # git's global options take an operand, which is not the subcommand
         ("git -C /repo diff", True),
-        ("git -c color.ui=false log", True),
-        ("git --git-dir /x/.git log", True),
-        ("git --no-pager -C /repo log -3", True),
-        ("git -C /repo commit -m x", False),
+        ("git -c color.ui=false log --oneline", True),
+        ("git --no-pager log -3", True),
+        ("git --git-dir=/x/.git status", True),
+        ("git --git-dir /x/.git --work-tree /x status", True),
+        ("git -C /a -C b log | head", True),
+        ("cd /repo && git -C sub grep -n foo", True),
+        ("git --version", True),
+        ("git -C /repo", True),
         ("git -C /repo branch feature", False),
         ("git -C /repo branch -a", True),
-        # a quoted or escaped operator character is an argument, not an operator
-        ("rg '>' src", True),
-        ("rg '|' src", True),
-        ('rg ">>" src', True),
-        ("rg \\> src", True),
-        ("rg '>' src | head", True),
-        ("rg '>' src > out.txt", False),
-        ("rg 'a' src > '>'", False),
-        ("pytest '|' x | cat", False),
+        ("git -c user.name=x commit -m y", False),
+        ("git -C /repo worktree add ../w", False),
+        ("git -C /repo checkout main", False),
+        # `env` runs the command after it; on its own it prints the environment
+        ("env PYTHONPATH=. python -m pytest", False),
+        ("env FOO=1 rg x .", True),
+        ("env -i rg x .", True),
+        ("env", True),
+        ("env | grep PATH", True),
+        ("printenv HOME", True),
+        # an unquoted comment ends at the newline, which still separates stages
+        ("cat a.py # inspect the file\npytest", False),
+        ("cat a.py # pytest", True),
+        ("cat a.py;# note\nls", True),
+        ("# only a comment\nrg foo .", True),
+        ("grep '#' a.py", True),
+        ('grep "#" a.py', True),
+        ("echo a#b", True),
+        ("echo $# ${#x}", True),
+        ("echo \\# ; pytest", False),
+        # quoted operator characters are arguments, never operators
+        ("grep -F '>' a.py", True),
+        ("grep -c '|' a.py", True),
+        ('rg ";" src', True),
+        ("grep '&&' a.py", True),
+        ('grep -F "(" a.py | wc -l', True),
+        ("grep -F '<' a.py", True),
+        ("git log --format='a\nb' -3", True),
+        ("echo '>' > out.txt", False),
+        ("echo '>' > '/dev/null'", True),
+        ("cat a.py '|' pytest", True),
+        ("grep -F '>' a.py; pytest", False),
     ],
 )
 def test_shell_is_readonly(command, readonly):
@@ -100,6 +127,10 @@ def test_categories():
     assert categorize_hermes("tool_search", None) == OTHER
     assert categorize_claude("Read", {}) == EXPLORATION
     assert categorize_claude("Bash", {"command": "rg foo"}) == EXPLORATION
+    assert categorize_claude("Bash", {"command": "git -C /repo diff"}) == EXPLORATION
+    assert categorize_claude("Bash", {"command": "git -C /repo commit"}) == SHELL
+    assert categorize_claude("Bash", {"command": "env PYTHONPATH=. pytest"}) == SHELL
+    assert categorize_claude("Bash", {"command": "grep -F '>' a.py"}) == EXPLORATION
     assert categorize_claude("Bash", {"command": "npm test"}) == SHELL
     assert categorize_claude("Edit", {}) == EDIT
     assert categorize_claude("mcp__x__y", {}) == OTHER
@@ -238,9 +269,36 @@ def test_hermes_collector_presence_model(tmp_path):
     # the billing the transcript can't account for is counted as system
     assert r.context_tokens_est == 1000
     assert r.exploration_share == 22 / 1000
-    # skip_ids makes a rerun idempotent
-    assert [r.session_id for r in hermes_db.collect(db, 0, 2000, TOK, skip_ids={"s1", "s3"})] == [
-        "s2"
+    # a rerun is idempotent: sessions that have written nothing since their rows are skipped
+    seen = {"s1": r.last_activity, "s3": 1604}
+    assert r.last_activity == 1007, "the session's latest message"
+    assert [x.session_id for x in hermes_db.collect(db, 0, 2000, TOK, recorded=seen)] == ["s2"]
+
+
+def test_hermes_collector_collects_again_a_session_that_has_written_since(tmp_path):
+    db = tmp_path / "state.db"
+    _hermes_db(db)
+    first = hermes_db.collect(db, 0, 2000, TOK)
+    s2 = {r.session_id: r for r in first}["s2"]
+    # s2 had no ended_at when it was recorded: still running, however late the window ends
+    assert s2.ended_at is None and s2.last_activity == 1990 and s2.calls == 1
+    recorded = {r.session_id: r.last_activity for r in first}
+    assert hermes_db.collect(db, 0, 2000, TOK, recorded=recorded) == []
+
+    con = sqlite3.connect(db)
+    con.execute(INSERT_MSG, ("s2", "assistant", "more", None, None, None, 1995, 0, 0, 1, None))
+    con.commit()
+    con.close()
+    again = hermes_db.collect(db, 0, 2000, TOK, recorded=recorded)
+    assert [r.session_id for r in again] == ["s2"], "only the session that grew"
+    assert again[0].calls == 2 and again[0].last_activity == 1995
+
+    # a row recorded without a last_activity cannot say whether it grew: collected once more
+    unknown = {r.session_id: None for r in first}
+    assert [r.session_id for r in hermes_db.collect(db, 0, 2000, TOK, recorded=unknown)] == [
+        "s1",
+        "s2",
+        "s3",
     ]
 
 
@@ -369,6 +427,78 @@ def test_claude_code_collector(tmp_path):
     # a session still writing after the window's end is deferred (last line is at 10:00:07Z)
     ends_at_10_00_05 = 1_791_626_405  # 2026-10-10T10:00:05Z
     assert claude_code.collect(tmp_path / "projects", since, ends_at_10_00_05, TOK) == []
+
+
+def test_claude_code_collector_collects_again_a_session_that_has_written_since(tmp_path):
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+    _claude_transcript(proj / "cc1.jsonl", billed=(400, 426, 400))
+    since, until = 1_700_000_000, 2_000_000_000
+    (r,) = claude_code.collect(tmp_path / "projects", since, until, TOK)
+    assert r.last_activity == _parse("2026-10-10T10:00:07Z")
+    assert (
+        claude_code.collect(
+            tmp_path / "projects", since, until, TOK, recorded={"cc1": r.last_activity}
+        )
+        == []
+    )
+    older = {"cc1": r.last_activity - 1}
+    assert [
+        x.session_id
+        for x in claude_code.collect(tmp_path / "projects", since, until, TOK, recorded=older)
+    ] == ["cc1"]
+    unknown = {"cc1": None}
+    assert [
+        x.session_id
+        for x in claude_code.collect(tmp_path / "projects", since, until, TOK, recorded=unknown)
+    ] == ["cc1"]
+
+
+def test_cli_replaces_the_row_of_a_session_that_has_written_since(tmp_path, capsys):
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+    transcript = proj / "cc1.jsonl"
+    _claude_transcript(transcript, billed=(400, 426, 400))
+    out = tmp_path / "rows.jsonl"
+    # rows of another agent in the same file (the README's commands share one) are never touched
+    other = json.dumps({"agent": "hermes", "session_id": "cc1", "source_group": "interactive"})
+    out.write_text(other + "\n")
+    argv = ["claude-code", "--root", str(tmp_path / "projects"), "--since", "2026-01-01T00:00:00Z"]
+    argv += ["--out", str(out), "--estimate"]
+
+    assert main(argv) == 0
+    assert "1 sessions added, 0 updated" in capsys.readouterr().out
+    lines = out.read_text().splitlines()
+    assert lines[0] == other and len(lines) == 2
+    first = json.loads(lines[1])
+    assert first["calls"] == 3 and first["last_activity"] == _parse("2026-10-10T10:00:07Z")
+
+    # nothing written since: the file is not touched
+    before = out.read_text()
+    assert main(argv) == 0
+    assert "0 sessions added, 0 updated" in capsys.readouterr().out
+    assert out.read_text() == before
+
+    # the session resumes: its row is replaced, not duplicated, and nothing is left behind
+    resumed = {
+        "type": "assistant",
+        "timestamp": "2026-10-10T10:30:00Z",
+        "sessionId": "cc1",
+        "requestId": "r4",
+        "message": {
+            "content": [{"type": "text", "text": "more"}],
+            "usage": {"input_tokens": 400, "output_tokens": 3},
+        },
+    }
+    with transcript.open("a") as fh:
+        fh.write(json.dumps(resumed) + "\n")
+    assert main(argv) == 0
+    assert "0 sessions added, 1 updated" in capsys.readouterr().out
+    lines = out.read_text().splitlines()
+    assert lines[0] == other and len(lines) == 2
+    second = json.loads(lines[1])
+    assert second["calls"] == 4 and second["last_activity"] == _parse("2026-10-10T10:30:00Z")
+    assert not list(tmp_path.glob("*.tmp"))
 
 
 def test_claude_code_billing_cap_trims_oldest_first(tmp_path):

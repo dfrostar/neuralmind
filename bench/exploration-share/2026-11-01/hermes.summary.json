@@ -3,50 +3,50 @@
   "hermes/automated": {
    "agent": "hermes",
    "billed_tokens": {
-    "assistant": 3192658,
+    "assistant": 3192848,
     "block": 1379780,
     "edit": 285241,
-    "exploration": 6030137,
+    "exploration": 6026487,
     "other": 905200,
-    "shell": 6695866,
+    "shell": 6699629,
     "summary": 1105712,
-    "system": 45115652,
-    "user": 9454872,
+    "system": 45156135,
+    "user": 9462735,
     "web": 9346906
    },
-   "block_share_billed": 0.016521932219005973,
-   "calibration_est_over_billed": 1.0006407612152652,
-   "calls": 6645,
-   "context_tokens_est": 83512024,
-   "edit_share_billed": 0.003415568038441985,
-   "exploration_share_billed": 0.07220681179993914,
-   "exploration_share_first": 0.16880998285621257,
+   "block_share_billed": 0.016512313154777965,
+   "calibration_est_over_billed": 1.0006403879253711,
+   "calls": 6648,
+   "context_tokens_est": 83560673,
+   "edit_share_billed": 0.0034135794957036785,
+   "exploration_share_billed": 0.07212109217933178,
+   "exploration_share_first": 0.16862906388645768,
    "exploration_share_median_session": 0.0,
    "first_tokens": {
-    "assistant": 847530,
+    "assistant": 847664,
     "block": 236534,
     "edit": 32488,
-    "exploration": 1272294,
+    "exploration": 1271408,
     "other": 162958,
-    "shell": 1012145,
+    "shell": 1013108,
     "summary": 153886,
     "system": 0,
-    "user": 2059168,
+    "user": 2061789,
     "web": 1759838
    },
-   "prompt_tokens_billed": 83458547,
-   "sessions": 1769,
+   "prompt_tokens_billed": 83507196,
+   "sessions": 1770,
    "sessions_with_block": 497,
-   "shell_share_billed": 0.08017846627690403,
+   "shell_share_billed": 0.08017681954284882,
    "source_group": "automated",
    "tokenizers": [
     "o200k_base"
    ],
    "tool_calls": {
     "edit": 35,
-    "exploration": 2798,
+    "exploration": 2797,
     "other": 448,
-    "shell": 2778,
+    "shell": 2781,
     "web": 580
    }
   },
@@ -56,9 +56,9 @@
     "assistant": 48218374,
     "block": 1236639,
     "edit": 24181607,
-    "exploration": 399388062,
+    "exploration": 399383109,
     "other": 6996103,
-    "shell": 24398985,
+    "shell": 24403938,
     "summary": 30499474,
     "system": 251826331,
     "user": 2174028
@@ -68,16 +68,16 @@
    "calls": 33148,
    "context_tokens_est": 788919603,
    "edit_share_billed": 0.03065154789923505,
-   "exploration_share_billed": 0.5062468475637562,
-   "exploration_share_first": 0.7933014424568147,
+   "exploration_share_billed": 0.5062405693574837,
+   "exploration_share_first": 0.7932931645114438,
    "exploration_share_median_session": 0.5008007391438251,
    "first_tokens": {
     "assistant": 2394547,
     "block": 55493,
     "edit": 1335233,
-    "exploration": 28749940,
+    "exploration": 28749640,
     "other": 311459,
-    "shell": 1424543,
+    "shell": 1424843,
     "summary": 1440543,
     "system": 0,
     "user": 529119
@@ -85,16 +85,16 @@
    "prompt_tokens_billed": 788919603,
    "sessions": 261,
    "sessions_with_block": 191,
-   "shell_share_billed": 0.030927086749041016,
+   "shell_share_billed": 0.03093336495531345,
    "source_group": "benchmark",
    "tokenizers": [
     "o200k_base"
    ],
    "tool_calls": {
     "edit": 1908,
-    "exploration": 24873,
+    "exploration": 24871,
     "other": 1655,
-    "shell": 4387,
+    "shell": 4389,
     "web": 0
    }
   },
@@ -104,9 +104,9 @@
     "assistant": 110836269,
     "block": 10330918,
     "edit": 74476997,
-    "exploration": 89855849,
+    "exploration": 89676865,
     "other": 92735277,
-    "shell": 114596284,
+    "shell": 114775268,
     "summary": 16281165,
     "system": 301500204,
     "user": 20515079,
@@ -117,16 +117,16 @@
    "calls": 5435,
    "context_tokens_est": 860795655,
    "edit_share_billed": 0.0865211116801002,
-   "exploration_share_billed": 0.10438696858896203,
-   "exploration_share_first": 0.15294516164119693,
+   "exploration_share_billed": 0.1041790400301219,
+   "exploration_share_first": 0.151835987465186,
    "exploration_share_median_session": 0.053517143268440974,
    "first_tokens": {
     "assistant": 1120173,
     "block": 172511,
     "edit": 644006,
-    "exploration": 947725,
+    "exploration": 940852,
     "other": 1494276,
-    "shell": 1257421,
+    "shell": 1264294,
     "summary": 127884,
     "system": 0,
     "user": 190399,
@@ -135,16 +135,16 @@
    "prompt_tokens_billed": 860795351,
    "sessions": 67,
    "sessions_with_block": 42,
-   "shell_share_billed": 0.13312832532826854,
+   "shell_share_billed": 0.13333625388710865,
    "source_group": "interactive",
    "tokenizers": [
     "o200k_base"
    ],
    "tool_calls": {
     "edit": 610,
-    "exploration": 957,
+    "exploration": 949,
     "other": 1308,
-    "shell": 2755,
+    "shell": 2763,
     "web": 87
    }
   },
@@ -193,7 +193,7 @@
    }
   }
  },
- "n_sessions": 2108,
+ "n_sessions": 2109,
  "reading": {
   "hermes/interactive": "10% to 30%: the claim stands with the share beside it"
  }

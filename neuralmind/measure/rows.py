@@ -19,6 +19,9 @@ class SessionRow:
     source_group: str  # interactive | automated | subagent | benchmark
     started_at: float | None
     ended_at: float | None
+    # the session's latest message when the row was recorded: a later run re-collects
+    # the session (and replaces its row) once it has written something newer
+    last_activity: float | None
     model: str | None
     tokenizer: str
     calls: int = 0

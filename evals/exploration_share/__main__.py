@@ -4,14 +4,17 @@
     python -m evals.exploration_share claude-code --root ~/.claude/projects --since-days 30 --out rows.jsonl
     python -m evals.exploration_share report --rows rows.jsonl [more.jsonl] --out-md summary.md --out-json summary.json
 
-Collectors append to ``--out`` and skip session ids already there, so a nightly
-run over a window that overlaps the previous one adds only new sessions.
+Collectors write to ``--out`` and skip sessions already there, so a nightly run
+over a window that overlaps the previous one adds only new sessions. A session whose
+row was recorded before it finished (or that was resumed since) has written something
+newer than its row holds: the next run collects it again and replaces its row.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -22,9 +25,9 @@ from .tokens import Tokenizer
 
 
 def _window(args) -> tuple[float, float]:
-    # A session is collected once and never updated, so the window never reaches
-    # into the last --lag-hours, and the collectors defer sessions still active at
-    # its end.
+    # The window never reaches into the last --lag-hours, and the collectors defer
+    # sessions still active at its end, so most rows are recorded once, finished. A row
+    # recorded early anyway is replaced by the next run (see _write).
     latest = time.time() - args.lag_hours * 3600
     if args.since or args.until:
         since = _parse(args.since) if args.since else 0.0
@@ -41,23 +44,39 @@ def _parse(s: str) -> float:
     return dt.timestamp()
 
 
-def _existing_ids(out: Path) -> set[str]:
+def _read(out: Path) -> list[dict]:
     if not out.exists():
-        return set()
-    ids = set()
+        return []
     with out.open() as fh:
-        for line in fh:
-            if line.strip():
-                ids.add(json.loads(line)["session_id"])
-    return ids
+        return [json.loads(line) for line in fh if line.strip()]
 
 
-def _append(out: Path, rows) -> int:
+def _recorded(existing: list[dict], agent: str) -> dict[str, float | None]:
+    """Session id -> the latest activity its row holds. Rows from before `last_activity`
+    existed fall back to `ended_at`, which is the last line for Claude Code; a row with
+    neither is collected again once."""
+    return {
+        r["session_id"]: r.get("last_activity", r.get("ended_at"))
+        for r in existing
+        if r.get("agent") == agent
+    }
+
+
+def _write(out: Path, existing: list[dict], rows) -> tuple[int, int]:
+    """Replace the rows of sessions collected again and add the new ones; (added, updated)."""
+    fresh = {(r.agent, r.session_id): r.to_json() for r in rows}
+    if not fresh:
+        return 0, 0
+    old = {(e.get("agent"), e["session_id"]) for e in existing}
+    kept = [e for e in existing if (e.get("agent"), e["session_id"]) not in fresh]
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("a") as fh:
-        for r in rows:
-            fh.write(json.dumps(r.to_json(), sort_keys=True) + "\n")
-    return len(rows)
+    tmp = out.with_name(out.name + ".tmp")
+    with tmp.open("w") as fh:
+        for r in [*kept, *fresh.values()]:
+            fh.write(json.dumps(r, sort_keys=True) + "\n")
+    os.replace(tmp, out)  # a run killed half-way leaves the previous file intact
+    updated = len(fresh.keys() & old)
+    return len(fresh) - updated, updated
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             c.add_argument("--root", default="~/.claude/projects")
         c.add_argument("--since-days", type=float, default=30)
         c.add_argument(
-            "--lag-hours", type=float, default=0, help="leave out sessions started this recently"
+            "--lag-hours", type=float, default=0, help="end the window this long before now"
         )
         c.add_argument("--since", help="ISO timestamp, UTC")
         c.add_argument("--until", help="ISO timestamp, UTC")
@@ -87,17 +106,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd in ("hermes", "claude-code"):
         since, until = _window(args)
         out = Path(args.out).expanduser()
-        skip = _existing_ids(out)
+        existing = _read(out)
+        recorded = _recorded(existing, "hermes" if args.cmd == "hermes" else "claude-code")
         tok = Tokenizer(force_estimate=args.estimate)
         if args.cmd == "hermes":
-            rows = hermes_db.collect(args.db, since, until, tok, skip_ids=skip)
+            rows = hermes_db.collect(args.db, since, until, tok, recorded=recorded)
         else:
-            rows = claude_code.collect(args.root, since, until, tok, skip_ids=skip)
-        n = _append(out, rows)
+            rows = claude_code.collect(args.root, since, until, tok, recorded=recorded)
+        added, updated = _write(out, existing, rows)
         inter = [x for x in rows if x.source_group == "interactive"]
         print(
-            f"{datetime.now(timezone.utc).date()} {args.cmd}: {n} sessions added "
-            f"({len(inter)} interactive), tokenizer {tok.name}, window "
+            f"{datetime.now(timezone.utc).date()} {args.cmd}: {added} sessions added, "
+            f"{updated} updated ({len(inter)} interactive), tokenizer {tok.name}, window "
             f"{datetime.fromtimestamp(since, timezone.utc):%Y-%m-%d}..{datetime.fromtimestamp(until, timezone.utc):%Y-%m-%d}"
         )
         return 0
