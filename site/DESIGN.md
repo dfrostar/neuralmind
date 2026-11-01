@@ -21,9 +21,12 @@ The tokens live in [`tailwind.config.ts`](tailwind.config.ts); the rules that
 need raw CSS (controls, surfaces, labels, readings, the data table, the
 liquid) live in [`src/app/globals.css`](src/app/globals.css), whose `:root`
 variables mirror the config and whose first lines carry the Hallmark stamp.
-Change the config first, then the CSS mirror. The docs site
-(`docs/_layouts/default.html`) still carries the previous palette and is
-restyled separately.
+Change the config first, then the CSS mirror, then the docs site, which
+copies the same tokens into three places: `docs/_layouts/default.html`
+(every Markdown page), `docs/about.html` and
+`docs/benchmarks/dashboard.css` (with the chart chrome in `dashboard.js`).
+Those are static and can't import from here, so they are kept in step by
+hand.
 
 `tests/test_site_design_tokens.py` (stdlib-only) fails the build on an
 arbitrary type value, a raw Tailwind palette colour, a radius outside the
@@ -369,8 +372,9 @@ A copyable shell command on the deepest step. `className` sizes the box
   psf/requests index in the graph view's own colours (re-capture it the same
   way, cropped above the sidebar's per-query ratios, which aren't in
   claims.json).
-- `docs/_layouts/default.html` and `docs/about.html` keep their own palettes;
-  the docs site is restyled separately from neuralmind.uk.
+- The docs site has no liquid or mascot: it carries the tokens, type and mark,
+  not the WebGL layers. The wiki pages' own emoji stay, because the same
+  Markdown is mirrored into the GitHub Wiki.
 - The Pair's model itself: until `public/mascot/pair.vrm` is committed, the
   hero renders without it. The slot was tested with pixiv's public VRM
   sample, which is not in the repo.

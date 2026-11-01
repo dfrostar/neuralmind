@@ -1,5 +1,5 @@
 <!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
-# 🧠 NeuralMind Wiki
+# NeuralMind Wiki
 
 **Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server, Claude Code hooks and a Hermes-Agent plugin — for Claude Code, Hermes-Agent, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: the gold file on 40 of 40 queries, against 32 of 40 for keyword `ripgrep` opening its top five files whole, at 31–67× fewer tokens than that ripgrep baseline — and 51–242× fewer than pasting every source file. Forty queries is a small sample: the 150-question retrieval eval puts a gold file in the top five for 93.3% of questions and misses 10, published.
 
@@ -15,12 +15,12 @@ the 150-question retrieval eval. The last two are measured A/Bs on the bundled
 **reference fixture**, so they're real but smaller-scope — and the last one was
 a published loss at v4.3.4.
 
-| | Benefit | Measured result | Where it's measured |
-|---|---|---|---|
-| 💸 | **Cheaper context** | **The gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
-| 🎯 | **Finds the *right* code, not just less of it** | **A gold file in the top five for 93.3% of 150 questions** (MRR 0.750, ~830 tokens per question) at v4.12.0 — and 10 questions still missed, published | Retrieval eval, **real repos** (`requests`, `click`, `flask`, `rich`, this repository) — reproducible, not a CI gate |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer learns which files you use together and re-ranks recall with those links — **budget-neutral** (no extra tokens). CI gates the direction only: recall never lowers top-k hit rate. Earlier releases measured +3.5 to +14 points; **+0 at v4.12.0**, where the fixture reaches 97% with recall off. Its benefit on a real repo is not shown — measure it on yours with `neuralmind eval . --synapse-ab` (v4.14.0+) | Synapse A/B eval (**reference fixture**, ~500 lines — smaller scope) |
-| 🔬 | **Answer grounding vs. naive truncation** | At a *matched* token budget on this prose-heavy fixture: **delta +0.265 at v4.12.0** (measured with CI's command on one machine; v4.11.1 +0.027), after a published loss of −0.054 at v4.3.4. CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
+| Benefit | Measured result | Where it's measured |
+|---|---|---|
+| **Cheaper context** | **The gold file on 40 of 40 queries at 51–242× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| **Finds the *right* code, not just less of it** | **A gold file in the top five for 93.3% of 150 questions** (MRR 0.750, ~830 tokens per question) at v4.12.0 — and 10 questions still missed, published | Retrieval eval, **real repos** (`requests`, `click`, `flask`, `rich`, this repository) — reproducible, not a CI gate |
+| **Learns how you work** | A Hebbian *synapse* layer learns which files you use together and re-ranks recall with those links — **budget-neutral** (no extra tokens). CI gates the direction only: recall never lowers top-k hit rate. Earlier releases measured +3.5 to +14 points; **+0 at v4.12.0**, where the fixture reaches 97% with recall off. Its benefit on a real repo is not shown — measure it on yours with `neuralmind eval . --synapse-ab` (v4.14.0+) | Synapse A/B eval (**reference fixture**, ~500 lines — smaller scope) |
+| **Answer grounding vs. naive truncation** | At a *matched* token budget on this prose-heavy fixture: **delta +0.265 at v4.12.0** (measured with CI's command on one machine; v4.11.1 +0.027), after a published loss of −0.054 at v4.3.4. CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
 (fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the "beats ripgrep" claim is specifically

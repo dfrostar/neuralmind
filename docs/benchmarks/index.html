@@ -34,7 +34,9 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://neuralmind.uk/icon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#0d1013">
     <link rel="stylesheet" href="dashboard.css">
     <!-- Chart.js 4.4.1, vendored — the dashboard makes zero third-party requests -->
     <script src="chart.umd.min.js"></script>
@@ -44,11 +46,10 @@
 <nav>
     <div class="container nav-inner">
         <a class="nav-logo" href="https://neuralmind.uk/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
-                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
-                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
-                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
             </svg>
             NeuralMind
         </a>
@@ -59,16 +60,15 @@
             <a href="#contribute">Contribute</a>
             <a href="/wiki/Home">Docs</a>
             <a href="/about.html">About</a>
-            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub</a>
         </div>
     </div>
 </nav>
 
 <header class="hero">
-    <div class="hero-glow"></div>
     <div class="container">
-        <p class="badge"><span class="dot"></span> Deterministic — re-run in CI on every commit</p>
-        <h1>Benchmarks you can <span class="grad">re-run yourself</span></h1>
+        <p class="badge">Deterministic — re-run in CI on every commit</p>
+        <h1>Benchmarks you can re-run yourself</h1>
         <p class="hero-sub">Every number on this page comes from one of two sources: a <strong>deterministic public benchmark on pinned, real OSS repos</strong> that CI re-runs on every commit, and <strong>community submissions</strong> PR'd into a schema-validated dataset. No synthetic demos, no cherry-picking — every row ships with the exact command that reproduces it.</p>
         <div class="cta-row">
             <a class="btn btn-primary" href="#contribute">Benchmark your own repo</a>
@@ -88,7 +88,6 @@
 
 <section id="public">
     <div class="container">
-        <p class="eyebrow">The public benchmark</p>
         <h2>Cost and correctness, reported together</h2>
         <p class="lede">A token-reduction number with no correctness number attached is meaningless. The public benchmark scores both at once: does the <strong>objectively-correct file</strong> land in the context window, and how many tokens did it cost to put it there? Built to be hard to dismiss:</p>
         <div class="cards">
@@ -113,7 +112,7 @@
         <div class="results-grid">
             <div class="result-block">
                 <h3><code>requests</code> @ <code>0e322af877</code></h3>
-                <p class="result-meta">14 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <p class="result-meta">14 pre-registered queries, tokenizer tiktoken <code>o200k_base</code></p>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -131,7 +130,7 @@
             </div>
             <div class="result-block">
                 <h3><code>click</code> @ <code>874ca2bc1c</code></h3>
-                <p class="result-meta">7 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <p class="result-meta">7 pre-registered queries, tokenizer tiktoken <code>o200k_base</code></p>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -149,7 +148,7 @@
             </div>
             <div class="result-block">
                 <h3><code>flask</code> @ <code>c12a5d874c</code></h3>
-                <p class="result-meta">10 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <p class="result-meta">10 pre-registered queries, tokenizer tiktoken <code>o200k_base</code></p>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -167,7 +166,7 @@
             </div>
             <div class="result-block">
                 <h3><code>rich</code> @ <code>7f580bdcf0</code></h3>
-                <p class="result-meta">9 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <p class="result-meta">9 pre-registered queries, tokenizer tiktoken <code>o200k_base</code></p>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -202,7 +201,6 @@ NEURALMIND_ORT_THREADS=1 <span class="kw">python</span> -m evals.public.run</pre
 
 <section id="community">
     <div class="container">
-        <p class="eyebrow">Community numbers</p>
         <h2>Real repos, submitted via pull request</h2>
         <p class="lede">Each entry below was produced by running <code>neuralmind benchmark . --json</code> on the submitter's <strong>own repository</strong> and PR'd into the dataset. CI validates every submission against a schema. NeuralMind never uploads anything automatically — these are deliberate, auditable contributions.</p>
 
@@ -256,7 +254,6 @@ NEURALMIND_ORT_THREADS=1 <span class="kw">python</span> -m evals.public.run</pre
 
 <section id="contribute">
     <div class="container">
-        <p class="eyebrow">Contribute</p>
         <h2>Add your repo's numbers</h2>
         <p class="lede">The dataset gets stronger with every repo it covers — especially across different languages and sizes. Five minutes, two commands, one PR:</p>
         <div class="codeblock">
@@ -271,18 +268,17 @@ neuralmind benchmark . --contribute">Copy</button>
 <span class="kw">neuralmind benchmark</span> . --contribute</pre>
         </div>
         <p class="note">Then open a PR adding the blob as one entry in <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>docs/community-benchmarks.json</code></a> (fields enforced by <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.schema.json"><code>community-benchmarks.schema.json</code></a>), or file it via the <a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">benchmark submission issue template</a>. CI validates the entry; this dashboard updates automatically once it merges.</p>
-        <p class="center-cta"><a class="btn btn-primary" href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md">5-minute walkthrough →</a></p>
+        <p class="center-cta"><a class="btn btn-primary" href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md">5-minute walkthrough</a></p>
     </div>
 </section>
 
 <footer>
     <div class="container foot-inner">
         <a class="nav-logo" href="https://neuralmind.uk/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
-                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
-                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
-                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
-                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
             </svg>
             NeuralMind
         </a>
@@ -295,7 +291,7 @@ neuralmind benchmark . --contribute">Copy</button>
             <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a>
             <a href="/about.html">About</a>
         </div>
-        <p class="foot-meta">© 2026 NeuralMind · US-based. MIT License. Dashboard reads <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>community-benchmarks.json</code></a> at page load — no server, no tracking, no data sent anywhere. View source: <a href="https://github.com/dfrostar/neuralmind/tree/main/docs/benchmarks">docs/benchmarks/</a>.</p>
+        <p class="foot-meta">© 2026 NeuralMind. US-based. MIT License. Dashboard reads <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>community-benchmarks.json</code></a> at page load — no server, no tracking, no data sent anywhere. View source: <a href="https://github.com/dfrostar/neuralmind/tree/main/docs/benchmarks">docs/benchmarks/</a>.</p>
     </div>
 </footer>
 

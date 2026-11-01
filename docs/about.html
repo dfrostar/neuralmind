@@ -44,41 +44,123 @@
       }
     }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://neuralmind.uk/icon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#0d1013">
     <style>
+        /* The docs layout's tokens (docs/_layouts/default.html), which are
+           neuralmind.uk's: Hallmark's Console material, "NeuralMind graphite".
+           This page is static HTML outside the layout, so it carries a copy. */
+        :root {
+            --bg: #0d1013; --bg-raised: #06080b; --bg-card: #15191c;
+            --border: #2d3135; --border-strong: #484e54;
+            --text: #eceff2; --text-body: #c3c8cc; --text-dim: #9da2a8; --text-faint: #848a90;
+            --accent: #f7b83d;
+            --radius-control: 0.375rem; --radius-card: 0.625rem;
+            --mono: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --sans: 'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; }
-        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-        .container { max-width: 900px; margin: 0 auto; padding: 0 2rem; }
-        section { padding: 3rem 2rem; border-bottom: 1px solid #eee; }
-        h2 { font-size: 1.8rem; color: #667eea; margin-bottom: 1.5rem; }
-        h3 { font-size: 1.3rem; color: #333; margin: 2rem 0 1rem 0; }
-        ul { margin-left: 2rem; margin-bottom: 1rem; }
+        html { overflow-x: clip; scroll-padding-top: 5.5rem; }
+        body { font-family: var(--sans); line-height: 1.75; color: var(--text-body); background: var(--bg); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+        ::selection { background: rgba(247, 184, 61, 0.25); color: var(--text); }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+        a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color 140ms cubic-bezier(0.22, 1, 0.36, 1), text-decoration-color 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+        a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+        h1, h2, h3 { font-family: var(--sans); color: var(--text); font-weight: 500; letter-spacing: -0.03em; text-wrap: balance; overflow-wrap: break-word; }
+        h2 { font-size: 1.6rem; line-height: 1.2; margin-bottom: 1.25rem; }
+        h3 { font-size: 1.2rem; line-height: 1.3; margin: 2rem 0 0.75rem; }
+        p { margin-bottom: 1rem; text-wrap: pretty; }
+        strong { color: var(--text); font-weight: 600; }
+        ul { margin: 0 0 1rem 1.5rem; }
         li { margin-bottom: 0.5rem; }
-        a { color: #667eea; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        nav { background: #333; padding: 1rem 2rem; }
-        nav a { color: white; margin-right: 2rem; }
-        footer { background: #333; color: white; padding: 2rem; text-align: center; }
-        .quote { font-size: 1.1rem; font-style: italic; color: #666; margin: 2rem 0; padding: 1rem 2rem; border-left: 4px solid #667eea; }
+        code { font-family: var(--mono); font-size: 0.85em; background: var(--bg-raised); border: 1px solid var(--border); padding: 0.1em 0.35em; border-radius: var(--radius-control); color: var(--text); }
+        section { padding: 3rem 0; border-bottom: 1px solid var(--border); }
+        .container > section { padding-left: 0; padding-right: 0; }
+
+        /* Nav: the docs layout's */
+        .site-nav { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); }
+        .site-nav .container { max-width: 1120px; display: flex; align-items: center; justify-content: space-between; height: 4rem; gap: 1.5rem; }
+        .nav-logo { display: flex; align-items: center; gap: 0.6rem; font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.03em; color: var(--text); text-decoration: none; }
+        .nav-logo svg { width: 24px; height: 24px; flex: none; }
+        .nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1.5rem; }
+        .nav-links a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; text-decoration: none; }
+        .nav-links a:hover, .nav-links a[aria-current] { color: var(--text); }
+        .nav-links a.nav-gh { border: 1px solid var(--border-strong); border-radius: var(--radius-control); padding: 0.4rem 0.9rem; color: var(--text); background: var(--bg-card); font-size: 0.875rem; }
+        .nav-links a.nav-gh:hover { border-color: #5d646b; }
+        .subnav { border-bottom: 1px solid var(--border); background: var(--bg-card); }
+        .subnav .container { display: flex; gap: 1.4rem; overflow-x: auto; }
+        .subnav a { color: var(--text-faint); font-size: 0.84rem; font-weight: 500; white-space: nowrap; padding: 0.6rem 0; text-decoration: none; }
+        .subnav a:hover { color: var(--text); }
+
+        .page-head { padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); }
+        .page-head h1 { font-size: 2.5rem; line-height: 1.05; margin-bottom: 0.6rem; }
+        .page-head p { color: var(--text-dim); font-size: 1.1rem; margin: 0; }
+
+        /* A pull-quote or a note: a panel, not an italic flourish. */
+        .quote { color: var(--text-dim); margin: 1.5rem 0; padding: 0.9rem 1.2rem; background: var(--bg-card); border: 1px solid var(--border); border-left: 2px solid var(--border-strong); border-radius: var(--radius-card); }
+        .note { color: var(--text-dim); font-size: 0.95rem; }
+
+        table.data { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+        table.data th { text-align: left; padding: 0.5rem 1rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-dim); border-bottom: 1px solid var(--border-strong); }
+        table.data td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+        table.data tr:last-child td { border-bottom: 0; }
+
+        .values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 1px; margin: 2rem 0; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+        .value { padding: 1.5rem; background: var(--bg-card); }
+        .value p { margin: 0.4rem 0 0; }
+
+        footer { background: var(--bg-card); color: var(--text-faint); padding: 2.5rem 0; }
+        .foot-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+        .foot-links li { margin: 0; }
+        .foot-links a { color: var(--text-dim); text-decoration: none; }
+        .foot-links a:hover { color: var(--accent); }
+        .foot-meta { font-size: 0.8125rem; margin: 0; }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; } }
         @media (max-width: 768px) {
-            header h1 { font-size: 1.5rem; }
-            h2 { font-size: 1.3rem; }
+            .page-head h1 { font-size: 1.9rem; }
+            h2 { font-size: 1.35rem; }
+            .site-nav .container { height: auto; padding-top: 0.8rem; padding-bottom: 0.8rem; flex-wrap: wrap; }
         }
     </style>
 </head>
 <body>
-    <header>
+    <nav class="site-nav">
+        <div class="container">
+            <a class="nav-logo" href="https://neuralmind.uk/">
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
+            </svg>
+            NeuralMind
+            </a>
+            <div class="nav-links">
+                <a href="https://neuralmind.uk/#how-it-works">How it works</a>
+                <a href="/benchmarks/">Benchmarks</a>
+                <a href="/wiki/Home">Docs</a>
+                <a href="/about.html" aria-current="page">About</a>
+                <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            </div>
+        </div>
+    </nav>
+    <nav class="subnav" aria-label="Documentation">
+        <div class="container">
+            <a href="https://docs.neuralmind.uk/wiki/Home">Wiki</a>
+            <a href="https://docs.neuralmind.uk/use-cases">Use Cases</a>
+            <a href="https://docs.neuralmind.uk/comparisons">Comparisons</a>
+        </div>
+    </nav>
+    <header class="page-head">
         <div class="container">
             <h1>About NeuralMind</h1>
             <p>Semantic code intelligence with brain-like memory</p>
         </div>
     </header>
-    <nav>
-        <a href="https://docs.neuralmind.uk/wiki/Home">Wiki</a>
-        <a href="https://docs.neuralmind.uk/use-cases">Use Cases</a>
-        <a href="https://docs.neuralmind.uk/comparisons">Comparisons</a>
-    </nav>
     <div class="container">
         <section>
             <h2>What is NeuralMind?</h2>
@@ -107,7 +189,7 @@
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>
-            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; the public benchmark&rsquo;s 51&ndash;242&times; is four pinned repos and 40 queries, a range rather than a promise for yours, and task outcomes aren&rsquo;t measured. Point it at your own repo to see your ratio.</em></p> <!-- claims-guard:allow — dated history; a 20-task pilot measured task outcomes on 2026-10-20 -->
+            <p class="note"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; the public benchmark&rsquo;s 51&ndash;242&times; is four pinned repos and 40 queries, a range rather than a promise for yours, and task outcomes aren&rsquo;t measured. Point it at your own repo to see your ratio.</em></p> <!-- claims-guard:allow — dated history; a 20-task pilot measured task outcomes on 2026-10-20 -->
         </div>
     </section>
 
@@ -164,33 +246,33 @@
                 <li><strong><a href="https://github.com/chopratejas/headroom">Headroom</a> (Transport Stage):</strong> Lossless transport-layer compression. Intercepts traffic between client and LLM, applying a three-stage engine (CacheAligner for KV prefix stability, ContentRouter for JSON/HTML/diff payloads, IntelligentContext for relevance scoring) with 60–95% payload reduction and a reversible CCR loop backed by local SQLite storage.</li>
             </ul>
             <h3>Where each tool intervenes</h3>
-            <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+            <table class="data">
                 <thead>
-                    <tr style="border-bottom:2px solid #667eea;">
-                        <th style="text-align:left;padding:0.5rem 1rem;">Tool</th>
-                        <th style="text-align:left;padding:0.5rem 1rem;">Locus</th>
-                        <th style="text-align:left;padding:0.5rem 1rem;">Primary Mechanism</th>
-                        <th style="text-align:left;padding:0.5rem 1rem;">Verified Savings</th>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Locus</th>
+                        <th>Primary Mechanism</th>
+                        <th>Verified Savings</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr style="border-bottom:1px solid #eee;">
-                        <td style="padding:0.5rem 1rem;"><strong>NeuralMind</strong></td>
-                        <td style="padding:0.5rem 1rem;">Retrieval</td>
-                        <td style="padding:0.5rem 1rem;">Hebbian synapse networks</td>
-                        <td style="padding:0.5rem 1rem;">51&ndash;242&times; fewer tokens than pasting every source file (public benchmark, v4.12.0)</td>
-                    </tr>
-                    <tr style="border-bottom:1px solid #eee;">
-                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a></td>
-                        <td style="padding:0.5rem 1rem;">Generation</td>
-                        <td style="padding:0.5rem 1rem;">Sequential decision ladder</td>
-                        <td style="padding:0.5rem 1rem;">80–94% output token savings</td>
+                    <tr>
+                        <td><strong>NeuralMind</strong></td>
+                        <td>Retrieval</td>
+                        <td>Hebbian synapse networks</td>
+                        <td>51&ndash;242&times; fewer tokens than pasting every source file (public benchmark, v4.12.0)</td>
                     </tr>
                     <tr>
-                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/chopratejas/headroom">Headroom</a></td>
-                        <td style="padding:0.5rem 1rem;">Transport</td>
-                        <td style="padding:0.5rem 1rem;">Reversible CCR loops</td>
-                        <td style="padding:0.5rem 1rem;">60–95% payload reduction</td>
+                        <td><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a></td>
+                        <td>Generation</td>
+                        <td>Sequential decision ladder</td>
+                        <td>80–94% output token savings</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/chopratejas/headroom">Headroom</a></td>
+                        <td>Transport</td>
+                        <td>Reversible CCR loops</td>
+                        <td>60–95% payload reduction</td>
                     </tr>
                 </tbody>
             </table>
@@ -1921,28 +2003,28 @@ $ neuralmind query . "CMMC gap analysis"
     <section>
         <div class="container">
             <h2>Core Values</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+            <div class="values">
+                <div class="value">
                     <strong>Privacy First</strong>
                     <p>NeuralMind runs locally. By default it sends no telemetry and transmits no repository content off your machine; its one default outbound request is a one-time public embedding-model download on first build. The one opt-in that sends data, <code>NEURALMIND_LLM_SEED=1</code>, is off by default. Your agent still sends the slice it selects to its own model provider.</p>
                 </div>
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                <div class="value">
                     <strong>Transparency</strong>
                     <p>Open source, MIT-licensed core. Every decision is auditable, every result is explainable.</p>
                 </div>
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                <div class="value">
                     <strong>Evidence for Review</strong>
                     <p>A hash-chained audit log and framework mappings (NIST AI RMF, SOC 2, CMMC) as evidence for your own review. Certification and assessment are of your deployment; NeuralMind holds none.</p>
                 </div>
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                <div class="value">
                     <strong>Interoperable</strong>
                     <p>Works with your tools. Claude Code, Cursor, ChatGPT, local LLMs—not locked in.</p>
                 </div>
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                <div class="value">
                     <strong>Efficient</strong>
                     <p>Selected context instead of whole files: 51&ndash;242&times; fewer tokens than pasting every source file on the public benchmark (v4.12.0). What is measured is what reaches the agent&rsquo;s window and whether the right file is in it. On task outcomes, a pre-registered 20-task pilot found no cost difference: the agent never called NeuralMind&rsquo;s tools (<a href="https://neuralmind.uk/benchmark/#task-outcomes">the pilot</a>).</p>
                 </div>
-                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                <div class="value">
                     <strong>Community Driven</strong>
                     <p>Built in public. Issues, discussions, and contributions welcome.</p>
                 </div>
@@ -1965,13 +2047,13 @@ $ neuralmind query . "CMMC gap analysis"
 
     <footer>
         <div class="container">
-            <p style="margin-bottom: 1rem;">
-                <a href="./">Home</a> •
-                <a href="wiki/Home">Docs</a> •
-                <a href="about.html">About</a> •
-                <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
-            </p>
-            <p style="color: #999;">© 2026 NeuralMind · US-based. Core open source under the MIT License; Team modules source-available. Not affiliated with NeuralMind.ai.</p>
+            <ul class="foot-links">
+                <li><a href="./">Home</a></li>
+                <li><a href="wiki/Home">Docs</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind">GitHub</a></li>
+            </ul>
+            <p class="foot-meta">© 2026 NeuralMind. US-based. Core open source under the MIT License; Team modules source-available. Not affiliated with NeuralMind.ai.</p>
         </div>
     </footer>
 </body>
