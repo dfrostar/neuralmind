@@ -183,7 +183,9 @@ function condense(width: number, height: number, seed: number): Particle[] {
                 ...gas(),
                 tx: na.x + dx * k,
                 ty: na.y + dy * k,
-                delay: (Math.min(hops[a], hops[b]) + k) * SPREAD + rand() * 0.2,
+                // The wave reaches this cell from whichever end it gets to
+                // first, so an edge fills outward from its nearer node.
+                delay: Math.min(hops[a] + k, hops[b] + 1 - k) * SPREAD + rand() * 0.2,
                 solid: glyph,
             });
         }
