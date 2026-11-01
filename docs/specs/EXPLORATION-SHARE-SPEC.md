@@ -246,6 +246,22 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   further classification edge cases go to a follow-up change, which re-runs
   both machines and adds a change-log entry of its own, not to this PR.
   Thresholds unchanged.
+- **2026-11-01, pass 6: one transcript file is one session.** The spec's
+  definition of a Claude Code session is a transcript file, but the CLI rewrite
+  in review 3 keyed rows by the `sessionId` inside the file, so when a resumed
+  conversation wrote several files under one id only one of them was recorded:
+  the last in path order after review 3 (30.17% on one fixed snapshot of the
+  Mac) and the first after the fix to that (30.65%). One Mac id has three files
+  (701, 346 and 288 transcript lines, same start). Rows are now keyed by the
+  file (`<file stem>`, and `<session folder>/<agent file stem>` for subagent
+  transcripts), which is the spec's definition and removes the choice. It
+  counts the history that resumed files share once per file; how else to count
+  it moves the Mac headline within the same noise band as everything else
+  (same rows, pass-4 classifier: keep first 30.62%, keep longest 30.14%, each
+  file 29.77%, drop the id 30.83%; figures by the site session). The rule was
+  chosen by following the registered definition, not by its effect on the
+  reading; it puts the Mac headline just under the 30% line and the report
+  says the headline is 30% within about a point. Thresholds unchanged.
 - **2026-11-01, the collectors ship as a command; definitions, thresholds and
   figures unchanged.** The collectors moved from `evals/exploration_share/` to
   `neuralmind/measure/` and run as `neuralmind measure sessions`, which anyone

@@ -109,13 +109,11 @@ def _collect_file(path: Path, since: float, until: float, tok: Tokenizer) -> Ses
             if row is None:
                 nested = path.parent.name == "subagents"
                 sidechain = bool(o.get("isSidechain")) or nested
-                # a subagent's file carries its parent's sessionId: its own id is the file's,
-                # or siblings would collapse into one row
-                session_id = (
-                    f"{o.get('sessionId') or path.parent.parent.name}/{path.stem}"
-                    if nested
-                    else str(o.get("sessionId") or path.stem)
-                )
+                # The spec's session is one transcript file, so a file's id is the file's own:
+                # a resumed conversation can write several files under one sessionId, and a
+                # subagent's file carries its parent's, so keying on the line's sessionId
+                # would collapse them into one row (whichever file was read first).
+                session_id = f"{path.parent.parent.name}/{path.stem}" if nested else path.stem
                 row = SessionRow(
                     agent="claude-code",
                     session_id=session_id,
