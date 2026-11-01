@@ -12,7 +12,7 @@ import EvidenceBadge, { type EvidenceLevel } from './EvidenceBadge';
  * this component makes it easy to label, not exempt from the ledger.
  */
 export function StatGrid({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-    return <dl className={`grid border-t border-l border-carbon-border ${className}`}>{children}</dl>;
+    return <dl className={`grid bg-carbon-card border-t border-l border-carbon-border ${className}`}>{children}</dl>;
 }
 
 export default function Stat({
@@ -31,7 +31,7 @@ export default function Stat({
 }) {
     return (
         <div className="border-b border-r border-carbon-border p-5 flex flex-col">
-            <dt className="font-mono text-eyebrow uppercase tracking-eyebrow text-faint mb-3">{label}</dt>
+            <dt className="label mb-3">{label}</dt>
             <dd className="flex flex-col flex-1">
                 <p
                     className={

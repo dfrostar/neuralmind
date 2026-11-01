@@ -3,27 +3,33 @@
 /**
  * Design tokens.
  *
- * The legacy names (`carbon*`, `electric*`, `proton`, `iris`) are kept because
- * 200+ usages across 25 files reference them; repointing the values here
- * restyles every page at once instead of touching each one. What changed is
- * what they mean:
+ * The site wears Hallmark's Console material (github.com/nutlope/hallmark,
+ * MIT) in a colourway of its own, "NeuralMind graphite". Console is a public
+ * theme, so the material alone would make this one of many pages that look
+ * alike; what is ours is the colourway, the mark and the record the hero
+ * draws from the committed benchmark run (site/DESIGN.md says which is which).
  *
- * - `carbon*` lost its navy cast. The old #070b15 was a blue-black, which is
- *   what put the whole site on the same footing as every dark SaaS template.
- *   These are true neutrals, so the one accent is the only chromatic thing on
- *   the page and therefore actually reads as an accent.
- * - `electric` is the single interactive colour: links, focus rings, the
- *   primary action. It is no longer Tailwind's own blue-500 (#3b82f6), which
- *   is the most default colour on the web.
- * - `proton` stopped being the purple half of a blue→purple→pink gradient and
- *   became the evidence colour — verified, measured, CI-gated. Blue means
- *   "you can click this", green means "this was measured". Two colours with
- *   two jobs, which is a system; six colours with no jobs is a mood board.
- * - Text has four named steps (`ink`, `body`, `muted`, `faint`) instead of
- *   Tailwind's slate scale, whose blue cast fought the neutral surfaces.
- * - `danger` / `warn` / `success` are verdict colours for tables of claims
- *   (refuted / modeled / passing). They are not evidence: a result that was
- *   measured is `proton`, never `success`.
+ * The legacy names (`carbon*`, `electric*`, `proton`, `iris`) are kept because
+ * 300+ usages across 25 files reference them; repointing the values here
+ * restyles every page at once instead of touching each one. What they mean
+ * now:
+ *
+ * - `carbon*` is graphite in three lightness steps: the ground, a panel one
+ *   step up (`carbon-card`), and the deepest step (`carbon-raised`, kept for
+ *   its name) for code, logs and wells. Nothing glows and nothing floats: a
+ *   surface is a 1px rule with a step of graphite inside it.
+ * - `electric` is amber, and amber means a person: the action you take (the
+ *   primary button, the focus ring, a hovered link) and a deviation someone
+ *   should look at. One per view.
+ * - `proton` is the blue the site always had, at the lightness of its old
+ *   `electric-bright`, and it now means an instrument: a number that was
+ *   measured, a CI-gated or reproducible badge, the NeuralMind row in a
+ *   results table. The brand keeps its blue; the blue stops meaning "click".
+ * - Text has four named steps (`ink`, `body`, `muted`, `faint`), all clearing
+ *   WCAG AA on every surface.
+ * - `danger` / `success` are Console's bad and ok, for diffs and verdicts
+ *   only. `warn` is amber: a modeled or mixed result is a deviation, and a
+ *   third signal colour is exactly what the material forbids.
  *
  * Type, radius and colour are closed sets: `tests/test_site_design_tokens.py`
  * fails on arbitrary type values, raw palette colours and radii outside
@@ -42,53 +48,60 @@ module.exports = {
         borderRadius: {
             none: '0',
             control: '0.375rem',
-            card: '0.75rem',
+            card: '0.625rem',
             pill: '9999px',
         },
         extend: {
             colors: {
-                // Surfaces — neutral, four steps, each a real elevation.
-                carbon: '#0A0B0D',
-                'carbon-raised': '#0F1114',
-                'carbon-card': '#131518',
-                'carbon-border': '#22262C',
-                'carbon-line': '#2E333B',
+                // Graphite, three steps plus two rules. OKLCH in the comments
+                // is the source; the hex is what Tailwind's opacity modifiers
+                // (`bg-proton/10`) can take.
+                carbon: '#0D1013', // oklch(17% 0.008 250), the ground
+                'carbon-raised': '#06080B', // oklch(13.5% 0.007 250), the deepest step: code, wells
+                'carbon-card': '#15191C', // oklch(21% 0.009 250), a panel
+                'carbon-border': '#2D3135', // oklch(31% 0.01 250), hairlines
+                'carbon-line': '#484E54', // oklch(42% 0.012 250), the selected row, outlines
 
-                // Interactive.
-                electric: '#5B8CFF',
-                'electric-bright': '#93B4FF',
-                'electric-dim': '#1B2742',
+                // A person: the action, the focus ring, a deviation.
+                electric: '#F7B83D', // oklch(82% 0.15 80)
+                'electric-bright': '#FFCC69', // oklch(87% 0.13 82), hover
+                'electric-dim': '#38280A', // oklch(29% 0.05 80), fills behind amber
 
-                // Evidence / measured.
-                proton: '#4FD1A5',
-                'proton-dim': '#16302A',
+                // An instrument: what was measured.
+                proton: '#92B3FB', // oklch(77% 0.11 265)
+                'proton-dim': '#1F2B44', // oklch(29% 0.05 265)
 
-                // Retained so stray references resolve; deliberately near-neutral.
-                iris: '#8A93A3',
+                // Retained so stray references resolve; the `muted` value.
+                iris: '#9DA2A8',
 
-                // Text, brightest to dimmest. Contrast on `carbon` / `carbon-card`
-                // (WCAG AA body text needs 4.5): ink 16.3 / 15.2, body 12.5 /
-                // 11.6, muted 7.7 / 7.2, faint 5.4 / 5.0. `faint` is the floor:
-                // Tailwind's slate-500 and slate-600 do not clear AA, which is
-                // what the site was using for captions, labels and legal lines.
-                ink: '#E8EAED',
-                body: '#C9CED6',
-                muted: '#9AA3AF',
-                faint: '#7E8794',
+                // Text, brightest to dimmest. Contrast on carbon / carbon-card /
+                // carbon-raised: ink 16.5 / 15.3 / 17.4, body 11.3 / 10.5 /
+                // 11.9, muted 7.4 / 6.9 / 7.8, faint 5.5 / 5.1 / 5.7. `faint`
+                // is the floor: nothing dimmer carries text.
+                ink: '#ECEFF2', // oklch(95% 0.005 250)
+                body: '#C3C8CC', // oklch(83% 0.008 250)
+                muted: '#9DA2A8', // oklch(71% 0.01 250)
+                faint: '#848A90', // oklch(63% 0.012 250)
 
-                // Verdicts. Each clears 6.6:1 on every surface.
-                danger: '#F27B7B',
-                warn: '#E5B567',
-                success: '#6CCB86',
+                // Verdicts. Each clears 6.1:1 on every surface.
+                danger: '#F66D67', // oklch(70% 0.17 25), bad
+                warn: '#F7B83D', // amber: a deviation
+                success: '#61CB7C', // oklch(76% 0.15 150), ok
             },
             fontFamily: {
                 sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
                 mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-                display: ['var(--font-display)', 'var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                // Console sets heads in the body face; the token stays for the classes that name it.
+                display: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            // Console sets every head at one weight, 500, and never 700. Body
+            // emphasis (`strong`) is 600 in globals.css.
+            fontWeight: {
+                semibold: '500',
+                bold: '500',
             },
             // Named steps between Tailwind's own, so no page needs `text-[…]`.
             fontSize: {
-                eyebrow: ['0.6875rem', { lineHeight: '1rem' }], // uppercase mono labels, table heads
                 caption: ['0.8125rem', { lineHeight: '1.25rem' }], // table cells, terminal text, small print
                 'body-sm': ['0.9375rem', { lineHeight: '1.5rem' }], // card ledes, mobile nav
                 'title-sm': ['1.0625rem', { lineHeight: '1.5rem' }], // card titles, wordmark
@@ -101,9 +114,7 @@ module.exports = {
                 display: '1.05',
             },
             letterSpacing: {
-                tightest: '-0.045em',
-                tighter: '-0.03em',
-                eyebrow: '0.14em',
+                tighter: '-0.03em', // every display head
             },
             animation: {
                 'fade-in': 'fadeIn 0.5s ease-out both',

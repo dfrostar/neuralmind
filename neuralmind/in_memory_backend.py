@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from . import graph_cache
 from .embedding_backend import EmbeddingBackend
 from .ir import node_community
 from .paths import graph_json_path
@@ -43,33 +43,13 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def _prefer_ir_over_graph(self) -> bool:
         """True when the persisted IR is present and not stale vs graph.json."""
-        if not self.ir_path.exists():
-            return False
-        if not self.graph_path.exists():
-            return True
-        try:
-            return self.ir_path.stat().st_mtime >= self.graph_path.stat().st_mtime
-        except OSError:
-            return False
+        return graph_cache.prefer_ir(self.ir_path, self.graph_path)
 
     def load_graph(self) -> bool:
-        from . import ir as ir_mod
-
-        if self._prefer_ir_over_graph():
-            try:
-                ir_data = json.loads(self.ir_path.read_text(encoding="utf-8"))
-                index_ir = ir_mod.IndexIR.from_dict(ir_data)
-                self.graph = ir_mod.to_graph_json(index_ir)
-            except (json.JSONDecodeError, ir_mod.IRError, KeyError, ValueError):
-                if not self.graph_path.exists():
-                    return False
-                with self.graph_path.open(encoding="utf-8") as f:
-                    self.graph = json.load(f)
-        else:
-            if not self.graph_path.exists():
-                return False
-            with self.graph_path.open(encoding="utf-8") as f:
-                self.graph = json.load(f)
+        graph = graph_cache.load(self.ir_path, self.graph_path)
+        if graph is None:
+            return False
+        self.graph = graph
         self.nodes = self.graph.get("nodes", [])
         self.edges = self.graph.get("edges", self.graph.get("links", []))
         return True
@@ -253,6 +233,9 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
             or edge.get("from") in ids
             or edge.get("to") in ids
         ]
+
+    def has_rows(self) -> bool:
+        return bool(self._index)
 
     def get_stats(self) -> dict[str, Any]:
         communities = {

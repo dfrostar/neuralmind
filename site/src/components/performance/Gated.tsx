@@ -16,9 +16,9 @@ export function SmallSampleBadge() {
     return (
         <span
             title={`Fewer than ${SMALL_SAMPLE_N} questions: one question moves the rate by a large step.`}
-            className="inline-flex items-center px-1.5 rounded-control border border-warn/30 text-warn font-mono text-eyebrow uppercase tracking-eyebrow whitespace-nowrap"
+            className="inline-flex items-center px-2 py-0.5 rounded-control border border-warn/30 text-warn font-sans text-xs font-medium whitespace-nowrap"
         >
-            small sample
+            Small sample
         </span>
     );
 }
@@ -32,7 +32,7 @@ export function WithheldValue({ reason, align = 'start' }: { reason: string; ali
             <span className="text-faint" aria-hidden="true">
                 —
             </span>
-            <span className="text-faint text-caption">not shown: {reason}</span>
+            <span className="text-faint text-caption font-sans">not shown: {reason}</span>
         </span>
     );
 }
@@ -43,7 +43,7 @@ export function RateValue({ view, align = 'start' }: { view: RateView; align?: A
     return (
         <span className={column(align)} data-rate={view.value} data-n={view.n}>
             <span className="metric text-white">{fmtRate(view.value)}</span>
-            <span className="text-faint text-caption">
+            <span className="text-faint text-caption font-sans">
                 {view.hits !== null && view.misses !== null
                     ? `${view.hits} of ${view.n} · ${view.misses} missed`
                     : `n = ${view.n}`}
@@ -63,7 +63,7 @@ export function RatioValue({ view, align = 'start' }: { view: RatioView; align?:
     return (
         <span className={column(align)} data-ratio={view.ratio} data-baseline={view.baselineTok}>
             <span className="metric text-white">{fmtRatio(view.ratio)}</span>
-            <span className="text-faint text-caption">
+            <span className="text-faint text-caption font-sans">
                 vs {fmtInt(view.baselineTok)} measured tokens
             </span>
         </span>

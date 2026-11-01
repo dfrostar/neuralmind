@@ -23,6 +23,7 @@ const groups: { heading: string; links: { label: string; href: string }[] }[] = 
         links: [
             { label: 'Docs', href: 'https://docs.neuralmind.uk/wiki/Home' },
             { label: 'Measure your own', href: '/measure-your-own' },
+            { label: 'What it remembers', href: '/what-it-remembers' },
             { label: 'Research', href: '/publications' },
             { label: 'GitHub', href: 'https://github.com/dfrostar/neuralmind' },
             { label: 'PyPI', href: 'https://pypi.org/project/neuralmind/' },
@@ -49,7 +50,7 @@ export default function Footer() {
                 <div className="grid gap-10 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
                     <div>
                         <Link href="/" className="inline-flex items-center gap-2.5 mb-4">
-                            <Logo className="w-[1.5rem] h-[1.5rem] text-electric" />
+                            <Logo className="w-[1.5rem] h-[1.5rem]" />
                             <span className="font-display font-semibold text-base tracking-tight text-white">
                                 NeuralMind
                             </span>
@@ -62,7 +63,7 @@ export default function Footer() {
 
                     {groups.map((group) => (
                         <nav key={group.heading} aria-label={group.heading}>
-                            <p className="eyebrow mb-4">{group.heading}</p>
+                            <p className="label mb-4">{group.heading}</p>
                             <ul className="space-y-2.5">
                                 {group.links.map((link) => (
                                     <li key={link.label}>
@@ -85,8 +86,8 @@ export default function Footer() {
                 <div className="rule mt-12 mb-6" />
 
                 <p className="text-faint text-sm">
-                    © 2025–2026 Cheval-Volant LLC, d/b/a NeuralMind · MIT core, source-available Team
-                    modules
+                    © 2025–2026 Cheval-Volant LLC, d/b/a NeuralMind. MIT core, source-available Team
+                    modules.
                 </p>
             </div>
         </footer>

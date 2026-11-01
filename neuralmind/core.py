@@ -28,7 +28,7 @@ import logging
 import os
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO
@@ -36,10 +36,10 @@ from typing import Any, TextIO
 from neuralmind.state_dir import ensure_parent_dir
 from neuralmind.storage_guard import enforce_storage_policy
 
+from . import graph_cache, querying, synapse_feedback
 from . import ir as ir_mod
 from . import namespaces as ns_mod
 from . import paths as paths_mod
-from . import querying, synapse_feedback
 from . import recent_queries as recent_queries_log
 from .audit import AuditUnrecordedError, get_audit_trail
 from .backend_manager import BackendManager
@@ -960,6 +960,12 @@ class NeuralMind:
             status_updates["synapses"] = synapse_totals
         self._record_build_status(status_updates)
         self._write_unified_bm25()
+        # The next process that loads this index (a hook, a query) reads the
+        # cached graph instead of converting the IR again. Fails open.
+        source_ir = getattr(self.embedder, "ir_path", None)
+        source_graph = getattr(self.embedder, "graph_path", None)
+        if source_ir is not None and source_graph is not None:
+            graph_cache.warm(source_ir, source_graph)
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -1113,12 +1119,14 @@ class NeuralMind:
             removed = 0
         return {"removed": removed}
 
-    def _init_query_state(self) -> None:
+    def _init_query_state(self, *, structural: bool = True) -> None:
         """Set up everything a query needs from the loaded graph.
 
         Shared by ``build()`` and the read-only load path, so a query against
         an existing index sees exactly what it would after a build — without
-        regenerating the graph or touching the vector store.
+        regenerating the graph or touching the vector store. ``structural=False``
+        skips the structural edge index, as ``NEURALMIND_STRUCTURAL=0`` does,
+        for a caller that never reads it (the prompt-submit hook).
         """
         # Detect project_kind (prose vs code) from the loaded graph
         # before creating the selector so it can use the right strategy.
@@ -1194,7 +1202,7 @@ class NeuralMind:
         # signal — so default retrieval stays byte-identical and the synapse
         # layer's measured lift is preserved. The query tools carry the
         # headline value with zero retrieval risk.
-        if os.environ.get("NEURALMIND_STRUCTURAL") != "0":
+        if structural and os.environ.get("NEURALMIND_STRUCTURAL") != "0":
             self._structural_index = StructuralIndex(
                 hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50)
             )
@@ -2161,27 +2169,34 @@ class NeuralMind:
             }
         return self.build()
 
-    def _load_existing_index(self) -> bool:
+    def _load_existing_index(self, *, structural: bool = True) -> bool:
         """Load an already-built index for querying. False when there is none.
 
         Reads the graph the embedder points at and checks the vector store has
-        rows; never writes anything. Prints one stderr line only if loading
-        takes over two seconds.
+        rows; writes nothing but the graph cache (:mod:`neuralmind.graph_cache`).
+        Prints one stderr line only if loading takes over two seconds.
+        ``structural`` is passed to :meth:`_init_query_state`.
         """
         import sys
 
         try:
-            total = int((self.embedder.get_stats() or {}).get("total_nodes", 0) or 0)
+            # Not get_stats(): on a large index its per-community count cost
+            # the prompt hook ~65 ms, only to learn the store isn't empty.
+            if not self.embedder.has_rows():
+                return False
         except Exception:
-            return False
-        if total <= 0:
             return False
 
         def _slow_notice() -> None:
+            # Only a load this slow pays for the count. It runs on the timer's
+            # thread, so if counting fails there the line goes without it.
             try:
-                print(f"Loading index ({total:,} nodes)...", file=sys.stderr)
+                total = int((self.embedder.get_stats() or {}).get("total_nodes", 0) or 0)
+                message = f"Loading index ({total:,} nodes)..."
             except Exception:
-                pass
+                message = "Loading index..."
+            with suppress(OSError, ValueError):  # stderr closed or gone
+                print(message, file=sys.stderr)
 
         timer = threading.Timer(2.0, _slow_notice)
         timer.daemon = True
@@ -2190,7 +2205,7 @@ class NeuralMind:
             if not getattr(self.embedder, "nodes", None):
                 if not self.embedder.load_graph():
                     return False
-            self._init_query_state()
+            self._init_query_state(structural=structural)
         except Exception:
             self.selector = None
             return False

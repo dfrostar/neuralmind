@@ -38,6 +38,10 @@ export const metadata: Metadata = pageMetadata({
  */
 const { projects, profile, narrative, evidence, lastRun } = performanceRecord();
 
+/** "2026-10" -> "October 2026", for a narrative's heading. */
+const monthName = (month: string) =>
+    new Date(`${month}-01T00:00:00Z`).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
 const TRENDS: { metric: Metric; label: string; domain?: [number, number] }[] = [
     { metric: 'hit_at_1', label: 'hit@1', domain: [0, 1] },
     { metric: 'hit_at_5', label: 'hit@5', domain: [0, 1] },
@@ -50,7 +54,7 @@ function Trend({ history, metric, label, domain }: { history: ProjectHistory; me
     return (
         <figure className="panel rounded-card p-4 flex flex-col gap-3 min-w-0">
             <figcaption className="flex items-start justify-between gap-3">
-                <span className="eyebrow">{label}</span>
+                <span className="label">{label}</span>
                 {latest &&
                     (isRatio ? (
                         <RatioValue view={ratioView(latest)} align="end" />
@@ -78,7 +82,6 @@ export default function PerformancePage() {
             <Navbar />
             <main className="max-w-5xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <header className="mb-12 pb-8 border-b border-carbon-border">
-                    <span className="eyebrow block mb-4">Performance record</span>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         Retrieval on our own repos, run by run
                     </h1>
@@ -90,8 +93,8 @@ export default function PerformancePage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
                         <EvidenceBadge level={evidence} />
                         {lastRun && <span>Latest run {lastRun.slice(0, 10)}</span>}
-                        <a href={blob(RECORD.source)} className="text-electric hover:text-electric-bright transition-colors">
-                            Raw rows (JSONL) →
+                        <a href={blob(RECORD.source)} className="link">
+                            Raw rows (JSONL)
                         </a>
                     </div>
                 </header>
@@ -141,9 +144,8 @@ export default function PerformancePage() {
 
                 {narrative?.site && (
                     <section className="mb-14" aria-labelledby="this-month">
-                        <span className="eyebrow block mb-3">{narrative.month}</span>
                         <h2 id="this-month" className="font-display text-xl font-bold text-white mb-5">
-                            This month
+                            The record in {monthName(narrative.month)}
                         </h2>
                         <div className="max-w-3xl">
                             <Prose markdown={narrative.site} />
@@ -167,10 +169,10 @@ export default function PerformancePage() {
 
                 {narrative && narrative.working.length > 0 && (
                     <section className="mb-14" aria-labelledby="working-on">
-                        <span className="eyebrow block mb-3">{narrative.month}</span>
-                        <h2 id="working-on" className="font-display text-xl font-bold text-white mb-5">
+                        <h2 id="working-on" className="font-display text-xl font-bold text-white mb-2">
                             What we are working on
                         </h2>
+                        <p className="text-muted text-sm mb-5">As of {monthName(narrative.month)}.</p>
                         <WorkingOn items={narrative.working} />
                     </section>
                 )}
@@ -180,16 +182,16 @@ export default function PerformancePage() {
                         Reproduce it on your repo
                     </h2>
                     <p className="text-muted text-sm leading-relaxed mb-5">
-                        These rows come from two commands you can run on your own code. <code className="font-mono text-code-inline text-electric-bright">eval</code>{' '}
-                        scores questions you write, each with the file that answers it; <code className="font-mono text-code-inline text-electric-bright">benchmark</code>{' '}
+                        These rows come from two commands you can run on your own code. <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">eval</code>{' '}
+                        scores questions you write, each with the file that answers it; <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">benchmark</code>{' '}
                         measures tokens per question against your indexed code.
                     </p>
                     <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-5">
                         <CommandLine command="neuralmind eval ." />
                         <CommandLine command="neuralmind benchmark ." />
                     </div>
-                    <a href="/measure-your-own/" className="text-electric hover:text-electric-bright transition-colors text-sm">
-                        Step-by-step: measure it on your own repo →
+                    <a href="/measure-your-own/" className="link text-sm">
+                        Step-by-step: measure it on your own repo
                     </a>
                 </section>
             </main>

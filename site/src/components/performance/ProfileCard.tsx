@@ -12,7 +12,7 @@ import { RateValue, RatioValue, fmtInt } from './Gated';
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="grid grid-cols-[7rem_1fr] gap-3 py-2 border-b border-carbon-border last:border-b-0">
-            <dt className="eyebrow pt-0.5">{label}</dt>
+            <dt className="label pt-0.5">{label}</dt>
             <dd className="text-body text-sm">{children}</dd>
         </div>
     );

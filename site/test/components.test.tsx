@@ -49,7 +49,7 @@ describe('RecordTable', () => {
         // Both runs' rates carry their gold-set size, misses and the small-sample badge.
         expect(html).toContain('8 of 12 · 4 missed');
         expect(html).toContain('7 of 12 · 5 missed');
-        expect(count(html, 'small sample')).toBe(6); // 3 rates × 2 runs
+        expect(count(html, 'Small sample')).toBe(6); // 3 rates × 2 runs
     });
 
     it('null-heavy: blanks stay blank and the synthetic-baseline run is counted, not shown', () => {
@@ -63,8 +63,8 @@ describe('RecordTable', () => {
     });
 
     it('shows no small-sample badge on a large gold set', () => {
-        expect(renderToStaticMarkup(<RateValue view={rateView(0.75, 60)} />)).not.toContain('small sample');
-        expect(renderToStaticMarkup(<RateValue view={rateView(0.75, 12)} />)).toContain('small sample');
+        expect(renderToStaticMarkup(<RateValue view={rateView(0.75, 60)} />)).not.toContain('Small sample');
+        expect(renderToStaticMarkup(<RateValue view={rateView(0.75, 12)} />)).toContain('Small sample');
     });
 });
 

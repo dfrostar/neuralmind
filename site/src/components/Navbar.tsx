@@ -20,6 +20,7 @@ const productLinks: NavItem[] = [
     { href: '/benchmark', label: 'Benchmark', hint: '40 public queries, every miss published' },
     { href: '/performance', label: 'Performance record', hint: 'Our own repos, run by run' },
     { href: '/field-reports/measure-memory-across-a-refactor', label: 'Field report', hint: 'One production repo, before and after' },
+    { href: '/whats-new', label: "What's new", hint: 'Recent releases and the drift guards' },
 ];
 
 const resourceLinks: NavItem[] = [
@@ -81,13 +82,13 @@ function Dropdown({ label, items }: { label: string; items: NavItem[] }) {
 
             {open && (
                 <div className="absolute left-0 top-full pt-2 w-[17rem] animate-fade-in">
-                    <div className="panel rounded-card p-1.5 shadow-2xl shadow-black/50">
+                    <div className="panel rounded-card p-1.5">
                         {items.map((item) => (
                             <Link
                                 key={item.href}
                                 href={item.href}
                                 onClick={() => setOpen(false)}
-                                className="block px-3 py-2.5 rounded-control hover:bg-white/[0.045] transition-colors group"
+                                className="block px-3 py-2.5 rounded-control hover:bg-carbon-raised transition-colors group"
                             >
                                 <span className="block text-sm text-ink group-hover:text-white font-medium">
                                     {item.label}
@@ -108,8 +109,8 @@ export default function Navbar() {
     const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
-    // The bar is borderless over the hero and gains its hairline once the page
-    // moves, so it reads as part of the page rather than a strip bolted on top.
+    // The bar sits on the liquid as a panel of ground colour: no glass, no
+    // blur. It gains its hairline once the page moves.
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
         onScroll();
@@ -121,13 +122,13 @@ export default function Navbar() {
 
     return (
         <nav
-            className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl transition-colors duration-200 ${
-                scrolled ? 'bg-carbon/85 border-b border-carbon-border' : 'bg-carbon/40 border-b border-transparent'
+            className={`fixed top-0 left-0 right-0 z-50 bg-carbon transition-colors duration-200 ${
+                scrolled ? 'border-b border-carbon-border' : 'border-b border-transparent'
             }`}
         >
             <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-6">
                 <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-                    <Logo className="w-[1.625rem] h-[1.625rem] text-electric transition-colors group-hover:text-electric-bright" />
+                    <Logo className="w-[1.625rem] h-[1.625rem]" />
                     <span className="font-display font-semibold text-title-sm tracking-tight text-white">
                         NeuralMind
                     </span>
@@ -179,7 +180,7 @@ export default function Navbar() {
             </div>
 
             {open && (
-                <div className="lg:hidden border-t border-carbon-border bg-carbon/95 backdrop-blur-xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+                <div className="lg:hidden border-t border-carbon-border bg-carbon max-h-[calc(100vh-4rem)] overflow-y-auto">
                     <div className="px-4 py-4 flex flex-col gap-1">
                         {allMobileLinks.map((link) => (
                             <Link

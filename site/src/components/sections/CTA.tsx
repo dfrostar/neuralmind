@@ -30,7 +30,6 @@ export default function CTA() {
                         <CommandLine command="pip install neuralmind" />
                         <a href="#quickstart" className="btn-primary py-3">
                             Quickstart
-                            <Icon name="arrow-right" className="w-4 h-4" />
                         </a>
                     </div>
 

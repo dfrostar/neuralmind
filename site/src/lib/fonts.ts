@@ -13,31 +13,29 @@
  * third-party connection for a privacy page to have to explain, and no FOUT
  * beyond the `swap` window.
  */
-import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
+import { Atkinson_Hyperlegible_Mono, Host_Grotesk } from 'next/font/google';
 
-/** UI and body copy. */
-export const sans = Inter({
+/**
+ * Host Grotesk for everything a person reads, heads included: Console sets
+ * one face at two weights (400 body, 500 heads) rather than pairing a display
+ * face with a text face, so a head reads as the same voice, calmer and larger.
+ */
+export const sans = Host_Grotesk({
     subsets: ['latin'],
     display: 'swap',
     variable: '--font-sans',
 });
 
 /**
- * Headlines. Inter Tight is the same voice as the body at display size —
- * tighter apertures, less sidebearing — so headings read dense and
- * deliberate instead of introducing a second, unrelated typeface.
+ * Atkinson Hyperlegible Mono for what an instrument wrote: a measured figure,
+ * a command, a path, a version, a sha. Its slashed zero and tailed one are the
+ * point. Never a label, a head or a button.
  */
-export const display = Inter_Tight({
-    subsets: ['latin'],
-    display: 'swap',
-    variable: '--font-display',
-});
-
-/** Code, CLI invocations, and every measured figure. */
-export const mono = JetBrains_Mono({
+export const mono = Atkinson_Hyperlegible_Mono({
     subsets: ['latin'],
     display: 'swap',
     variable: '--font-mono',
 });
 
-export const fontVariables = `${sans.variable} ${display.variable} ${mono.variable}`;
+/** `font-display` resolves to the same face; the token stays so 130 heads keep their class. */
+export const fontVariables = `${sans.variable} ${mono.variable}`;

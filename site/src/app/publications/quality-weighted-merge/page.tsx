@@ -102,7 +102,7 @@ export default function PublicationPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">Defensive Publication</span>
                         <span className="text-faint text-sm">July 22, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -118,9 +118,9 @@ export default function PublicationPage() {
                             href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/publications/defensive-quality-weighted-merge.md`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            View source →
+                            View source
                         </a>
                     </div>
                 </header>
@@ -161,19 +161,19 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">1. Edge Quality Scoring</h3>
                         <p className="text-body mb-3">
-                            Each edge <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">e</code> in namespace <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">ns</code> is scored by a composite quality function:
+                            Each edge <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">e</code> in namespace <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">ns</code> is scored by a composite quality function:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p>score(e) = w<sub>r</sub> × reinforcement(e) + w<sub>t</sub> × recency(e) − w<sub>c</sub> × conflict_rate(e)</p>
                         </div>
                         <p className="text-body mb-3">where:</p>
                         <ul className="list-disc list-inside space-y-2 text-body ml-4 mb-4">
-                            <li><code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">reinforcement(e) = log1p(activation_count) / log1p(30)</code> — saturates at ~1.0 after 30 activations</li>
-                            <li><code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">recency(e) = exp(−0.693 × days_since_last_activation / 30.0)</code> — 30-day half-life</li>
-                            <li><code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">conflict_rate(e) = conflict_count / max(1, total_comparisons)</code> — [0.0, 1.0]</li>
+                            <li><code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">reinforcement(e) = log1p(activation_count) / log1p(30)</code> — saturates at ~1.0 after 30 activations</li>
+                            <li><code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">recency(e) = exp(−0.693 × days_since_last_activation / 30.0)</code> — 30-day half-life</li>
+                            <li><code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">conflict_rate(e) = conflict_count / max(1, total_comparisons)</code> — [0.0, 1.0]</li>
                         </ul>
                         <p className="text-body mb-3">
-                            Default weights: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">w<sub>r</sub> = 0.4</code>, <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">w<sub>t</sub> = 0.35</code>, <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">w<sub>c</sub> = 0.25</code>. Theoretical maximum is 0.75 (achievable when activation_count ≥ 30 and edge was just activated). In practice, most edges score below 0.70.
+                            Default weights: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">w<sub>r</sub> = 0.4</code>, <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">w<sub>t</sub> = 0.35</code>, <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">w<sub>c</sub> = 0.25</code>. Theoretical maximum is 0.75 (achievable when activation_count ≥ 30 and edge was just activated). In practice, most edges score below 0.70.
                         </p>
 
                         {/* Classification bands */}
@@ -187,22 +187,22 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-body">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">≥ 0.70</td>
-                                        <td className="py-2">Auto-promote to <code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">shared</code> namespace</td>
+                                        <td className="py-2 font-mono text-ink">≥ 0.70</td>
+                                        <td className="py-2">Auto-promote to <code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">shared</code> namespace</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">[0.30, 0.70)</td>
+                                        <td className="py-2 font-mono text-ink">[0.30, 0.70)</td>
                                         <td className="py-2">Retain as neutral (survives import, but doesn't win conflicts against ≥0.70 edges)</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 font-mono text-electric-bright">&lt; 0.30</td>
-                                        <td className="py-2">Reject (excluded from <code className="text-electric-bright bg-carbon px-1 rounded-control text-xs">shared</code>)</td>
+                                        <td className="py-2 font-mono text-ink">&lt; 0.30</td>
+                                        <td className="py-2">Reject (excluded from <code className="text-ink bg-carbon-raised px-1 rounded-control text-xs">shared</code>)</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <p className="text-body text-sm">
-                            <strong className="text-white">Peer review:</strong> Edges in the [0.30, 0.70) range are evaluated by <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-xs">PeerReviewGate</code> (E3) — a secondary gating mechanism that can auto-promote, reject, or queue for operator review based on additional heuristics.
+                            <strong className="text-white">Peer review:</strong> Edges in the [0.30, 0.70) range are evaluated by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-xs">PeerReviewGate</code> (E3) — a secondary gating mechanism that can auto-promote, reject, or queue for operator review based on additional heuristics.
                         </p>
                     </div>
 
@@ -210,11 +210,11 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">2. Conflict Resolution</h3>
                         <p className="text-body mb-3">
-                            When two bundles contain edges for the same <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">(source, target)</code> pair:
+                            When two bundles contain edges for the same <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">(source, target)</code> pair:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
                             <p><span className="text-faint">resolve(existing, incoming):</span></p>
-                            <p className="ml-4"><span className="text-faint">if</span> |existing.score − incoming.score| &lt; <span className="text-electric-bright">0.05</span> <span className="text-faint">AND</span> max(existing.score, incoming.score) &lt; <span className="text-electric-bright">0.30</span>:</p>
+                            <p className="ml-4"><span className="text-faint">if</span> |existing.score − incoming.score| &lt; <span className="text-ink">0.05</span> <span className="text-faint">AND</span> max(existing.score, incoming.score) &lt; <span className="text-ink">0.30</span>:</p>
                             <p className="ml-8"><span className="text-faint">return</span> CONTEST  <span className="text-faint">→ escalate to review</span></p>
                             <p className="ml-4"><span className="text-faint">else:</span></p>
                             <p className="ml-8">winner = argmax(existing.score, incoming.score)</p>
@@ -239,17 +239,17 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-body">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">shared</td>
+                                        <td className="py-2 font-mono text-ink">shared</td>
                                         <td className="py-2">30 days</td>
                                         <td className="py-2 font-mono">2<sup>(−5/30)</sup> ≈ 0.891</td>
                                     </tr>
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2 font-mono text-electric-bright">branch:*</td>
+                                        <td className="py-2 font-mono text-ink">branch:*</td>
                                         <td className="py-2">14 days</td>
                                         <td className="py-2 font-mono">2<sup>(−5/14)</sup> ≈ 0.787</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 font-mono text-electric-bright">personal</td>
+                                        <td className="py-2 font-mono text-ink">personal</td>
                                         <td className="py-2">60 days</td>
                                         <td className="py-2 font-mono">2<sup>(−5/60)</sup> ≈ 0.943</td>
                                     </tr>
@@ -259,12 +259,12 @@ export default function PublicationPage() {
                         <p className="text-body">
                             Decay is applied as a <strong className="text-white">constant per-pass factor</strong> (not a cumulative formula):
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3">
                             <p><span className="text-faint">decay_factor</span> = 2<sup>(−fast_decay / half_life)</sup> = 2<sup>(−5/30)</sup> ≈ 0.891 <span className="text-faint">per pass</span></p>
                         </div>
                         <p className="text-body">
                             {/* claims-guard:allow — worked example: decay arithmetic, not a performance claim */}
-                            After 30 daily passes: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.891³⁰ = 2<sup>−5</sup> = 1/32</code> — exactly 5× normal decay, <strong className="text-white">no compounding explosion</strong>.
+                            After 30 daily passes: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.891³⁰ = 2<sup>−5</sup> = 1/32</code> — exactly 5× normal decay, <strong className="text-white">no compounding explosion</strong>.
                         </p>
                     </div>
                 </section>
@@ -284,7 +284,7 @@ export default function PublicationPage() {
  activation_count=40,
  conflicts=0, comparisons=1)`}
                             </pre>
-                            <p className="text-electric-bright font-mono text-sm mt-2">Score: 0.743</p>
+                            <p className="text-ink font-mono text-sm mt-2">Score: 0.743</p>
                         </div>
                         <div className="bg-carbon-card border border-carbon-border rounded-card p-4">
                             <h4 className="text-white font-semibold mb-2 text-sm">Bob's bundle</h4>
@@ -295,14 +295,14 @@ export default function PublicationPage() {
  activation_count=3,
  conflicts=1, comparisons=2)`}
                             </pre>
-                            <p className="text-electric-bright font-mono text-sm mt-2">Score: 0.387</p>
+                            <p className="text-ink font-mono text-sm mt-2">Score: 0.387</p>
                         </div>
                     </div>
 
-                    <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body space-y-1 mb-4">
+                    <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body space-y-1 mb-4">
                         <p><span className="text-faint">Difference:</span> 0.743 − 0.387 = 0.356 (&gt; 0.05, no contest)</p>
                         <p><span className="text-faint">Winner:</span> Alice's edge (score 0.743)</p>
-                        <p><span className="text-faint">Result:</span> Bob's edge is excluded from the <span className="text-electric-bright">shared</span> namespace</p>
+                        <p><span className="text-faint">Result:</span> Bob's edge is excluded from the <span className="text-ink">shared</span> namespace</p>
                     </div>
                 </section>
 
@@ -312,11 +312,11 @@ export default function PublicationPage() {
                     <div className="space-y-6 text-body leading-relaxed">
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">Convergence</h3>
-                            <p>Conflict resolution excludes the loser from the <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">shared</code> namespace — the winner survives, the loser is dropped. This forces the graph toward consensus: each conflict eliminates one conflicting assertion, monotonically reducing the set of competing edges.</p>
+                            <p>Conflict resolution excludes the loser from the <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">shared</code> namespace — the winner survives, the loser is dropped. This forces the graph toward consensus: each conflict eliminates one conflicting assertion, monotonically reducing the set of competing edges.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">Eventual Consistency</h3>
-                            <p>Bundle import is idempotent (tracked by content hash in <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">meta.team_bundle_imported_hash</code>). Given the same set of bundles, all replicas converge to the same state.</p>
+                            <p>Bundle import is idempotent (tracked by content hash in <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">meta.team_bundle_imported_hash</code>). Given the same set of bundles, all replicas converge to the same state.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">Complexity</h3>
@@ -335,8 +335,8 @@ export default function PublicationPage() {
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <ul className="space-y-3 text-sm text-body">
                             <li><strong className="text-white">Language:</strong> Python 3.10+ (stdlib-only)</li>
-                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">{GITHUB_URL}</a></li>
-                            <li><strong className="text-white">Commit:</strong> <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-22)</li>
+                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="link">{GITHUB_URL}</a></li>
+                            <li><strong className="text-white">Commit:</strong> <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control">{POST_COMMIT}</code> (2026-07-22)</li>
                             <li>
                                 <strong className="text-white">Files:</strong>
                                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1 font-mono text-xs">
@@ -369,9 +369,9 @@ export default function PublicationPage() {
                         href={`${GITHUB_URL}/blob/${POST_COMMIT}/docs/publications/defensive-quality-weighted-merge.md`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-electric hover:text-electric-bright text-sm transition-colors"
+                        className="link text-sm transition-colors"
                     >
-                        View on GitHub →
+                        View on GitHub
                     </a>
                 </footer>
             </main>

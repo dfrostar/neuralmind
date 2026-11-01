@@ -8,7 +8,8 @@ with C's tests laid over it, and on C itself. A test that passes on C but not
 on P is a FAIL_TO_PASS test, the proof that the fix fixed something; a test
 that passes on both is PASS_TO_PASS, the proof that nothing else broke. A
 commit qualifies when it has at least one FAIL_TO_PASS test and changes source
-under ``neuralmind/``.
+as its study's profile defines it (``profiles.py``: ``neuralmind/`` for the
+pilot). ``--repo`` points at another clone, ``--profile`` names its rules.
 
 Each candidate is written with an empty ``prompt``. The prompt, a statement of
 the symptom that names no file or function, is written by hand before any agent
@@ -23,46 +24,57 @@ import shutil
 import sys
 from pathlib import Path
 
-from evals.task_outcome import harness
+from evals.task_outcome import harness, profiles
 
-CUTOFF = "2026-07-01"  # committed on or after (committer date, UTC)
+CUTOFF = profiles.PROFILES[profiles.DEFAULT].cutoff  # the pilot's
 MAX_SOURCE_FILES = 3
 
 
-def eligible(subject: str, committed: str, source_files: list[str]) -> str | None:
+def eligible(
+    subject: str, committed: str, source_files: list[str], cutoff: str = CUTOFF
+) -> str | None:
     """``None`` when a commit meets the pre-registered gates, else the reason it doesn't."""
     if not subject.startswith("fix"):
         return "subject does not start with 'fix'"
-    if committed[:10] < CUTOFF:
-        return f"committed {committed[:10]}, before {CUTOFF}"
+    if committed[:10] < cutoff:
+        return f"committed {committed[:10]}, before {cutoff}"
     if not 1 <= len(source_files) <= MAX_SOURCE_FILES:
         return f"changes {len(source_files)} source file(s), not 1-{MAX_SOURCE_FILES}"
     return None
 
 
-def harvest_one(commit: str, python: str, work: Path) -> dict | None:
+def harvest_one(
+    commit: str, python: str, work: Path, profile: profiles.Profile | None = None
+) -> dict | None:
+    profile = profile or profiles.get(profiles.DEFAULT)
     commit = harness.git("rev-parse", commit).decode().strip()
     parent = harness.parent_of(commit)
-    src = [
-        p
-        for p in harness.changed_files(commit)
-        if p.startswith("neuralmind/") and p.endswith(".py")
-    ]
+    src = profile.source_files(harness.changed_files(commit))
     tests = harness.test_files_of(commit)
     run_files = [p for p in tests if Path(p).name.startswith("test_") and p.endswith(".py")]
     subject, committed = (
         harness.git("log", "-1", "--format=%s%n%cI", commit).decode().strip().split("\n", 1)
     )
-    reason = eligible(subject, committed, src)
+    reason = eligible(subject, committed, src, profile.cutoff)
     if reason or not run_files:
         print(f"{commit[:10]}: ineligible — {reason or 'no tests/test_*.py changed'}", flush=True)
         return None
 
     before_ws = harness.snapshot(parent, work / f"{commit[:10]}-before")
     harness.overlay(commit, tests, before_ws)
-    before = harness.run_tests(before_ws, run_files, python)
+    before = harness.run_tests(
+        before_ws,
+        run_files,
+        python,
+        extra_env=harness.workspace_env(before_ws, profile.isolated_hermes_home),
+    )
     after_ws = harness.snapshot(commit, work / f"{commit[:10]}-after")
-    after = harness.run_tests(after_ws, run_files, python)
+    after = harness.run_tests(
+        after_ws,
+        run_files,
+        python,
+        extra_env=harness.workspace_env(after_ws, profile.isolated_hermes_home),
+    )
     shutil.rmtree(before_ws, ignore_errors=True)
     shutil.rmtree(after_ws, ignore_errors=True)
 
@@ -92,7 +104,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--work-dir", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--repo", type=Path, help="clone to draw from (default: this repository)")
+    ap.add_argument("--profile", default=profiles.DEFAULT, choices=sorted(profiles.PROFILES))
     args = ap.parse_args(argv)
+    if args.repo:
+        harness.use_repo(args.repo)
+    profile = profiles.get(args.profile)
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
     found = json.loads(args.out.read_text()) if args.out.is_file() else []
@@ -101,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         commit = harness.git("rev-parse", commit).decode().strip()
         if commit[:10] in done:
             continue
-        task = harvest_one(commit, args.python, args.work_dir)
+        task = harvest_one(commit, args.python, args.work_dir, profile)
         status = (
             f"{len(task['fail_to_pass'])} F2P, {len(task['pass_to_pass'])} P2P"
             if task

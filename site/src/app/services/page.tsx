@@ -112,7 +112,7 @@ export default function ServicesPage() {
                             id={tier.id}
                             className={`scroll-mt-24 rounded-card p-6 flex flex-col ${
                                 tier.highlight
-                                    ? 'bg-carbon-card border-2 border-electric shadow-electric/10 shadow-2xl'
+                                    ? 'bg-carbon-card border border-carbon-line'
                                     : 'bg-carbon-card border border-carbon-border'
                             }`}
                         >
@@ -168,7 +168,7 @@ export default function ServicesPage() {
                                 key={step.n}
                                 className="bg-carbon-card border border-carbon-border rounded-card p-5"
                             >
-                                <div className="w-8 h-8 rounded-control bg-gradient-to-br from-electric to-proton flex items-center justify-center mb-3">
+                                <div className="w-8 h-8 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center mb-3">
                                     <span className="text-white font-display font-bold text-sm">
                                         {step.n}
                                     </span>
@@ -256,7 +256,7 @@ export default function ServicesPage() {
                     </a>
                     <p className="text-faint text-sm mt-6">
                         Looking for self-serve? The software is free at 1 seat and the
-                        Team tier is on the <a href="/pricing" className="text-electric hover:text-electric-bright">pricing page</a>.
+                        Team tier is on the <a href="/pricing" className="link">pricing page</a>.
                     </p>
                 </section>
             </main>

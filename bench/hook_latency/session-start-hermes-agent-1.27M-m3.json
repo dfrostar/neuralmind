@@ -1,0 +1,226 @@
+{
+  "benchmark": "tests/benchmark/session_start_latency.py",
+  "command": "python -m tests.benchmark.session_start_latency <project-copy> --label hermes-agent-1.27M --runs 5 --out <file>; v4.23.0 with its checkout on PYTHONPATH",
+  "measured": "2026-10-28",
+  "store": {
+    "source": "the synapse store of held-out task 0cb3760383's hermes-agent index (bench/task_outcome/hermes-agent-test-ranking), built by v4.22.1: 474,232 synapse edges, all in the structural namespace",
+    "scaled_to": "1,272,023 synapse edges, the count reported on a freshly rebuilt hermes-agent index (337,346 nodes) on a 32-core Linux machine",
+    "learned_rows": "synthetic: random weights and ages, so the export's content is not meaningful, only how long it takes",
+    "recipe_sql": [
+      "INSERT OR IGNORE INTO synapses SELECT node_a||'#2', node_b||'#2', namespace, weight, activation_count, last_activated, created_at, half_life_days, learned_at FROM synapses WHERE namespace='structural';",
+      "INSERT OR IGNORE INTO synapses SELECT node_a||'#3', node_b||'#3', namespace, weight, activation_count, last_activated, created_at, half_life_days, learned_at FROM synapses WHERE namespace='structural' AND rowid % 3 <> 0;",
+      "INSERT OR IGNORE INTO synapses SELECT node_a, node_b, 'personal', 0.1 + (abs(random()) % 90)/100.0, abs(random()) % 12, strftime('%s','now') - abs(random()) % 2592000, strftime('%s','now') - 2592000, NULL, NULL FROM synapses WHERE namespace='structural' AND rowid % 20 = 0;",
+      "INSERT OR IGNORE INTO synapse_transitions SELECT node_a, node_b, 'personal', 1.0 + abs(random()) % 20, 1 + abs(random()) % 10, strftime('%s','now'), strftime('%s','now') FROM synapses WHERE namespace='personal' AND rowid % 10 = 0;",
+      "INSERT OR IGNORE INTO node_activations SELECT node_a, 'personal', 3, strftime('%s','now') FROM synapses WHERE namespace='personal';",
+      "DELETE FROM synapses WHERE rowid IN (SELECT rowid FROM synapses WHERE namespace='structural' AND node_a LIKE '%#3' LIMIT 387789);",
+      "VACUUM;"
+    ],
+    "namespaces": {
+      "structural": 1192985,
+      "personal": 79038
+    }
+  },
+  "notes": "hook_s: one fresh `neuralmind _hook session-start` process, start to exit, as the agent waits for it. done_s: from the same start until the detached maintenance process released its lock, or the hook's exit when none ran. Each run used a fresh APFS clone of the same scaled store.",
+  "runs": [
+    {
+      "version": "v4.23.0",
+      "condition": "idle",
+      "project": "hermes-agent-1.27M",
+      "machine": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "processor": "arm",
+        "cpus": 8,
+        "load_average": 2.5
+      },
+      "neuralmind": {
+        "version": "4.23.0",
+        "commit": "06e1c024"
+      },
+      "plugin_timeout_s": 8.0,
+      "store": {
+        "synapses_db_mb": 1073,
+        "synapses": 1272023,
+        "synapse_transitions": 7904,
+        "node_activations": 51919
+      },
+      "recap_chars": [
+        406
+      ],
+      "hook_s": {
+        "mean": 4.34,
+        "min": 4.12,
+        "max": 5.19,
+        "samples": [
+          5.19,
+          4.12,
+          4.15,
+          4.12,
+          4.12
+        ],
+        "within_plugin_timeout": 5
+      },
+      "done_s": {
+        "mean": 4.34,
+        "min": 4.12,
+        "max": 5.19,
+        "samples": [
+          5.19,
+          4.12,
+          4.15,
+          4.12,
+          4.12
+        ]
+      }
+    },
+    {
+      "version": "v4.23.1 (this change)",
+      "condition": "idle",
+      "project": "hermes-agent-1.27M",
+      "machine": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "processor": "arm",
+        "cpus": 8,
+        "load_average": 2.3
+      },
+      "neuralmind": {
+        "version": "4.23.0",
+        "commit": "12165d41"
+      },
+      "plugin_timeout_s": 8.0,
+      "store": {
+        "synapses_db_mb": 1073,
+        "synapses": 1272023,
+        "synapse_transitions": 7904,
+        "node_activations": 51919
+      },
+      "recap_chars": [
+        406
+      ],
+      "hook_s": {
+        "mean": 0.2,
+        "min": 0.18,
+        "max": 0.22,
+        "samples": [
+          0.22,
+          0.2,
+          0.19,
+          0.19,
+          0.18
+        ],
+        "within_plugin_timeout": 5
+      },
+      "done_s": {
+        "mean": 4.39,
+        "min": 4.16,
+        "max": 5.18,
+        "samples": [
+          5.18,
+          4.23,
+          4.19,
+          4.2,
+          4.16
+        ]
+      }
+    },
+    {
+      "version": "v4.23.0",
+      "condition": "six busy loops (yes > /dev/null)",
+      "project": "hermes-agent-1.27M",
+      "machine": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "processor": "arm",
+        "cpus": 8,
+        "load_average": 6.3
+      },
+      "neuralmind": {
+        "version": "4.23.0",
+        "commit": "06e1c024"
+      },
+      "plugin_timeout_s": 8.0,
+      "store": {
+        "synapses_db_mb": 1073,
+        "synapses": 1272023,
+        "synapse_transitions": 7904,
+        "node_activations": 51919
+      },
+      "recap_chars": [
+        406
+      ],
+      "hook_s": {
+        "mean": 7.0,
+        "min": 6.7,
+        "max": 8.03,
+        "samples": [
+          8.03,
+          6.78,
+          6.79,
+          6.72,
+          6.7
+        ],
+        "within_plugin_timeout": 4
+      },
+      "done_s": {
+        "mean": 7.0,
+        "min": 6.7,
+        "max": 8.03,
+        "samples": [
+          8.03,
+          6.78,
+          6.79,
+          6.72,
+          6.7
+        ]
+      }
+    },
+    {
+      "version": "v4.23.1 (this change)",
+      "condition": "six busy loops (yes > /dev/null)",
+      "project": "hermes-agent-1.27M",
+      "machine": {
+        "platform": "macOS-27.2-arm64-arm-64bit",
+        "processor": "arm",
+        "cpus": 8,
+        "load_average": 8.2
+      },
+      "neuralmind": {
+        "version": "4.23.0",
+        "commit": "12165d41"
+      },
+      "plugin_timeout_s": 8.0,
+      "store": {
+        "synapses_db_mb": 1073,
+        "synapses": 1272023,
+        "synapse_transitions": 7904,
+        "node_activations": 51919
+      },
+      "recap_chars": [
+        406
+      ],
+      "hook_s": {
+        "mean": 0.33,
+        "min": 0.25,
+        "max": 0.62,
+        "samples": [
+          0.27,
+          0.25,
+          0.26,
+          0.62,
+          0.25
+        ],
+        "within_plugin_timeout": 5
+      },
+      "done_s": {
+        "mean": 7.48,
+        "min": 6.87,
+        "max": 8.21,
+        "samples": [
+          8.21,
+          6.91,
+          7.5,
+          7.89,
+          6.87
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "summary": {
+    "tasks": 5,
+    "named": 2,
+    "first": 1,
+    "excerpt_shown": 3,
+    "excerpt_on_gold": 1,
+    "excerpt_on_fix": 1,
+    "excerpt_on_gold_share": 0.333,
+    "median_chars": 990
+  },
+  "tasks": [
+    {
+      "task": "28e6496a5e",
+      "gold": [
+        "hermes_cli/web_routers/sessions.py",
+        "hermes_state_sessions.py"
+      ],
+      "listed": [
+        "tests/hermes_state/test_hermes_state.py",
+        "hermes_state_sessions.py",
+        "hermes_cli/session_recovery.py",
+        "tests/hermes_state/test_session_lifecycle_status.py",
+        "tests/hermes_state/test_empty_sweep_archived_transcript.py",
+        "hermes_state.py",
+        "tests/hermes_cli/test_session_system_prompt_dedup.py"
+      ],
+      "named": true,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 955
+    },
+    {
+      "task": "167a2d00ed",
+      "gold": [
+        "hermes_cli/curator.py"
+      ],
+      "listed": [
+        "hermes_cli/curator.py",
+        "agent/curator_backup.py",
+        "tests/hermes_cli/test_curator_archive_prune.py",
+        "hermes_cli/skills_hub.py",
+        "tests/agent/test_curator_backup.py",
+        "tools/skill_usage.py",
+        "tools/skill_ledger.py"
+      ],
+      "named": true,
+      "first": true,
+      "excerpt_shown": true,
+      "excerpt_on_gold": true,
+      "excerpt_on_fix": true,
+      "chars": 2815,
+      "excerpt": [
+        "hermes_cli/curator.py",
+        419,
+        458
+      ]
+    },
+    {
+      "task": "0968fa2631",
+      "gold": [
+        "agent/error_classifier.py"
+      ],
+      "listed": [
+        "tests/agent/test_413_image_payload_recovery.py",
+        "tests/agent/test_image_corrupt_recovery.py",
+        "tests/agent/test_error_classifier.py",
+        "tests/agent/test_image_rejection_fallback.py",
+        "agent/message_sanitization.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 990,
+      "excerpt": [
+        "tests/agent/test_413_image_payload_recovery.py",
+        77,
+        82
+      ]
+    },
+    {
+      "task": "652e4b9194",
+      "gold": [
+        "tui_gateway/session_registry.py"
+      ],
+      "listed": [
+        "hermes_cli/heartbeat.py",
+        "hermes_cli/cli_loops_mixin.py",
+        "tests/hermes_cli/test_proxy_off_loop.py",
+        "hermes_cli/cli_commands_session_tools.py",
+        "hermes_cli/gateway_tools.py",
+        "hermes_cli/cli_commands_mixin.py",
+        "tests/gateway/test_heartbeat_acceptance.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": false,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 671
+    },
+    {
+      "task": "859b999db5",
+      "gold": [
+        "run_agent.py"
+      ],
+      "listed": [
+        "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+        "tests/tui_gateway/test_serve_exit_flush.py",
+        "tests/hermes_cli/test_gateway_host_verbs.py",
+        "tests/gateway/test_agent_cache_memory_lifecycle.py",
+        "tests/gateway/test_host_attach_lifecycle.py",
+        "tests/gateway/test_agent_cache.py"
+      ],
+      "named": false,
+      "first": false,
+      "excerpt_shown": true,
+      "excerpt_on_gold": false,
+      "excerpt_on_fix": false,
+      "chars": 1546,
+      "excerpt": [
+        "tests/hermes_cli/test_cli_shutdown_memory_messages.py",
+        82,
+        103
+      ]
+    }
+  ]
+}

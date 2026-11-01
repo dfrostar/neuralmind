@@ -104,7 +104,7 @@ export default function PublicationPage() {
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">Defensive Publication</span>
                         <span className="text-faint text-sm">August 7, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -120,14 +120,14 @@ export default function PublicationPage() {
                             href={`${GITHUB_URL}/blob/main/${SOURCE_PATH}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            View source →
+                            View source
                         </a>
                     </div>
                     <p className="text-sm text-muted bg-carbon-card border border-carbon-border rounded-card px-4 py-3">
                         <strong className="text-white">Companion publication:</strong> the learning loop that produces the graph this method retrieves from is specified in{' '}
-                        <a href="/publications/synapse-learning-loop" className="text-electric hover:text-electric-bright transition-colors">
+                        <a href="/publications/synapse-learning-loop" className="link">
                             Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation
                         </a>
                         . This publication is its retrieval-side complement — the novel claims here are the learned per-edge half-life and budget-neutral injection.
@@ -171,11 +171,11 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">1. Hebbian Co-Activation Reinforcement</h3>
                         <p className="text-body mb-3">
-                            Agent activity events yield a set of co-activated node ids. Every pairwise combination is reinforced as an undirected edge under canonical ordering (<code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">node_a &lt; node_b</code>):
+                            Agent activity events yield a set of co-activated node ids. Every pairwise combination is reinforced as an undirected edge under canonical ordering (<code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">node_a &lt; node_b</code>):
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
-                            <p>Δw = <span className="text-electric-bright">0.30</span> × clamp(strength, 0.0, 2.0)</p>
-                            <p>weight(a,b) = min(<span className="text-electric-bright">1.0</span>, weight(a,b) + Δw)</p>
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
+                            <p>Δw = <span className="text-ink">0.30</span> × clamp(strength, 0.0, 2.0)</p>
+                            <p>weight(a,b) = min(<span className="text-ink">1.0</span>, weight(a,b) + Δw)</p>
                             <p>activation_count(a,b) += 1</p>
                         </div>
                         <p className="text-body">
@@ -187,20 +187,24 @@ export default function PublicationPage() {
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-white mb-3">2. Learned Per-Edge Half-Life Decay</h3>
                         <p className="text-body mb-3">
-                            Weights decay by wall-clock exponential half-life: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">w(t) = w₀ × exp(−λ × age_days)</code>, <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">λ = ln(2) / half_life_days</code>. Namespace defaults: personal/branch 30 days, shared 60, ephemeral 1. The half-life is then <strong className="text-white">learned per edge</strong>, recomputed inside the same transaction as each reinforcement:
+                            Weights decay by wall-clock exponential half-life: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">w(t) = w₀ × exp(−λ × age_days)</code>, <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">λ = ln(2) / half_life_days</code>. Namespace defaults: personal/branch 30 days, shared 60, ephemeral 1. The half-life is then <strong className="text-white">learned per edge</strong>, recomputed inside the same transaction as each reinforcement:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
                             <p>freq = activation_count / age_days</p>
                             <p>confidence = exp(−ln(2) × days_since_last / ns_default)</p>
-                            <p>ratio = log1p(freq × age_days / <span className="text-electric-bright">10</span>)</p>
+                            <p>ratio = log1p(freq × age_days / <span className="text-ink">10</span>)</p>
                             <p>learned = lo + (hi − lo) × ratio / (1 + ratio)</p>
                             <p>half_life = (1 − confidence) × ns_default + confidence × learned</p>
                         </div>
                         <p className="text-body mb-3">
-                            bounded to <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">[3.0, 120.0]</code> days: a rarely-used edge never decays slower than a 3-day half-life, a heavily-used one never faster than 120.
+                            bounded to <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">[3.0, 120.0]</code> days: a rarely-used edge never decays faster than a 3-day half-life, a heavily-used one never slower than 120.
+                        </p>
+                        <p className="text-muted text-sm mb-3">
+                            <strong className="text-body">Correction (October 2026).</strong> Two details of the shipped code differed from the formula above. The ratio is <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">log1p(freq) / ln(2)</code>: multiplying <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">freq</code> by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">age_days</code> cancelled the age back out, leaving the raw activation count. And the blend was computed only at each reinforcement, when <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">days_since_last</code> is zero and the confidence term is 1, so until v4.21.0 an idle edge kept its learned rate instead of drifting back to the namespace default. Since v4.21.0 decay integrates the blend over the idle time, in closed form, so the edge decays as the formula describes. The bounds sentence above also had its directions reversed; it now reads as the code behaves.{' '}
+                            <a href="/what-it-remembers/#forgetting" className="link">What this means for code you haven&apos;t touched</a>
                         </p>
                         <p className="text-body">
-                            <strong className="text-white">Long-term potentiation:</strong> edges with lifetime <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">activation_count ≥ 5</code> are floored at weight <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.20</code> during decay — proven associations fade but never vanish. Weights below <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">0.01</code> are pruned.
+                            <strong className="text-white">Long-term potentiation:</strong> edges with lifetime <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">activation_count ≥ 5</code> are floored at weight <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.20</code> during decay — proven associations fade but never vanish. Weights below <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">0.01</code> are pruned.
                         </p>
                     </div>
 
@@ -210,12 +214,12 @@ export default function PublicationPage() {
                         <p className="text-body mb-3">
                             Recall seeds energy at query-relevant nodes and propagates it outward for 2 hops. Edge weights merge across memory namespaces before propagation (active branch 1.0, personal 0.8, shared 0.5):
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
-                            <p>hub_factor(n) = sqrt(<span className="text-electric-bright">50</span> / degree(n))  <span className="text-faint">if degree(n) &gt; 50 else 1.0</span></p>
-                            <p>propagated = energy × merged_weight × <span className="text-electric-bright">0.6</span> × hub_factor</p>
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
+                            <p>hub_factor(n) = sqrt(<span className="text-ink">50</span> / degree(n))  <span className="text-faint">if degree(n) &gt; 50 else 1.0</span></p>
+                            <p>propagated = energy × merged_weight × <span className="text-ink">0.6</span> × hub_factor</p>
                         </div>
                         <p className="text-body">
-                            The square-root form is deliberate: a linear penalty would mute hubs so hard they stop routing energy; <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">sqrt</code> keeps them useful as conduits while preventing dominance — a degree-200 node propagates at exactly 0.5×, a degree-5000 node at 0.1×.
+                            The square-root form is deliberate: a linear penalty would mute hubs so hard they stop routing energy; <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">sqrt</code> keeps them useful as conduits while preventing dominance — a degree-200 node propagates at exactly 0.5×, a degree-5000 node at 0.1×.
                         </p>
                     </div>
 
@@ -225,9 +229,9 @@ export default function PublicationPage() {
                         <p className="text-body mb-3">
                             Activation energies fold into the vector result list under a hard invariant — <strong className="text-white">the result count never grows</strong>:
                         </p>
-                        <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
-                            <p><span className="text-faint">(a) BOOST:</span> score += <span className="text-electric-bright">0.3</span> × energy <span className="text-faint">for nodes already present; re-sort</span></p>
-                            <p><span className="text-faint">(b) DISPLACE:</span> swap ≤ <span className="text-electric-bright">2</span> absent nodes with energy ≥ <span className="text-electric-bright">0.15</span></p>
+                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body mb-3 space-y-1 overflow-x-auto">
+                            <p><span className="text-faint">(a) BOOST:</span> score += <span className="text-ink">0.3</span> × energy <span className="text-faint">for nodes already present; re-sort</span></p>
+                            <p><span className="text-faint">(b) DISPLACE:</span> swap ≤ <span className="text-ink">2</span> absent nodes with energy ≥ <span className="text-ink">0.15</span></p>
                             <p className="ml-4"><span className="text-faint">in for the weakest vector hits, one-for-one; keep ≥ 1 original hit</span></p>
                         </div>
                         <p className="text-body">
@@ -252,7 +256,7 @@ personal 0.9 × 1.0 = 0.9
 degree 6 → hub_factor 1.0
 1.0 × 0.9 × 0.6 = 0.54`}
                             </pre>
-                            <p className="text-electric-bright font-mono text-sm mt-2">0.54 ≥ 0.15 → displaces weakest hit</p>
+                            <p className="text-ink font-mono text-sm mt-2">0.54 ≥ 0.15 → displaces weakest hit</p>
                         </div>
                         <div className="bg-carbon-card border border-carbon-border rounded-card p-4">
                             <h4 className="text-white font-semibold mb-2 text-sm">Already in results (#7)</h4>
@@ -261,13 +265,13 @@ degree 6 → hub_factor 1.0
 shared 0.5 × 0.5 = 0.25
 1.0 × 0.25 × 0.6 = 0.15`}
                             </pre>
-                            <p className="text-electric-bright font-mono text-sm mt-2">boost 0.3 × 0.15 = 0.045 → re-ranked up</p>
+                            <p className="text-ink font-mono text-sm mt-2">boost 0.3 × 0.15 = 0.045 → re-ranked up</p>
                         </div>
                     </div>
 
-                    <div className="bg-carbon rounded-control p-4 font-mono text-sm text-body space-y-1 mb-4">
+                    <div className="bg-carbon-raised rounded-control p-4 font-mono text-sm text-body space-y-1 mb-4">
                         <p><span className="text-faint">Result:</span> 8 hits in, 8 hits out — same token budget</p>
-                        <p><span className="text-faint">Gained:</span> <span className="text-electric-bright">config/secrets.py::load_keys</span> — lexically unrelated to &quot;auth&quot;, learned from co-use</p>
+                        <p><span className="text-faint">Gained:</span> <span className="text-ink">config/secrets.py::load_keys</span> — lexically unrelated to &quot;auth&quot;, learned from co-use</p>
                         <p><span className="text-faint">Dropped:</span> a docstring stub that matched on the word &quot;auth&quot;</p>
                     </div>
                 </section>
@@ -286,7 +290,7 @@ shared 0.5 × 0.5 = 0.25
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">Hub Resistance</h3>
-                            <p>With <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control text-sm">hub_factor = sqrt(50/degree)</code>, utility nodes remain traversable conduits but cannot flood the top-k.</p>
+                            <p>With <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">hub_factor = sqrt(50/degree)</code>, utility nodes remain traversable conduits but cannot flood the top-k.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">Complexity</h3>
@@ -305,8 +309,8 @@ shared 0.5 × 0.5 = 0.25
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <ul className="space-y-3 text-sm text-body">
                             <li><strong className="text-white">Language:</strong> Python 3.10+ (stdlib-only synapse layer; SQLite storage)</li>
-                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">{GITHUB_URL}</a></li>
-                            <li><strong className="text-white">Commit:</strong> <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded-control">{IMPL_COMMIT}</code> (2026-08-07)</li>
+                            <li><strong className="text-white">Repo:</strong> <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="link">{GITHUB_URL}</a></li>
+                            <li><strong className="text-white">Commit:</strong> <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control">{IMPL_COMMIT}</code> (2026-08-07)</li>
                             <li>
                                 <strong className="text-white">Files:</strong>
                                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1 font-mono text-xs">
@@ -327,7 +331,7 @@ shared 0.5 × 0.5 = 0.25
                         To the best of our knowledge, the specific combination of: (1) Hebbian edge learning driven by AI-agent tool telemetry, (2) per-edge learned exponential half-life blended by recency confidence toward a namespace default, (3) square-root hub-normalized spreading activation over namespace-merged edge weights, and (4) budget-neutral injection via score boost plus one-for-one displacement with a byte-identical cold-start guarantee — has not been previously published in the context of local-first code intelligence systems.
                     </p>
                     <p className="text-body leading-relaxed">
-                        Related work includes the companion <a href="/publications/synapse-learning-loop" className="text-electric hover:text-electric-bright transition-colors">NeuralMind synapse learning loop publication</a> (Frost, 2026 — specifies the capture, reinforcement, LTP, and recall machinery this method builds on, but not learned per-edge half-lives or budget-neutral injection), Hebbian learning (Hebb, 1949), spreading activation in semantic memory (Collins &amp; Loftus, 1975; Anderson&apos;s ACT-R, 1983), spreading activation in information retrieval (Crestani, 1997), forgetting curves (Ebbinghaus, 1885), retrieval-augmented generation (Lewis et al., 2020), and LLM memory hierarchies (MemGPT — Packer et al., 2023).
+                        Related work includes the companion <a href="/publications/synapse-learning-loop" className="link">NeuralMind synapse learning loop publication</a> (Frost, 2026 — specifies the capture, reinforcement, LTP, and recall machinery this method builds on, but not learned per-edge half-lives or budget-neutral injection), Hebbian learning (Hebb, 1949), spreading activation in semantic memory (Collins &amp; Loftus, 1975; Anderson&apos;s ACT-R, 1983), spreading activation in information retrieval (Crestani, 1997), forgetting curves (Ebbinghaus, 1885), retrieval-augmented generation (Lewis et al., 2020), and LLM memory hierarchies (MemGPT — Packer et al., 2023).
                     </p>
                 </section>
 
@@ -340,9 +344,9 @@ shared 0.5 × 0.5 = 0.25
                         href={`${GITHUB_URL}/blob/main/${SOURCE_PATH}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-electric hover:text-electric-bright text-sm transition-colors"
+                        className="link text-sm transition-colors"
                     >
-                        View on GitHub →
+                        View on GitHub
                     </a>
                 </footer>
             </main>

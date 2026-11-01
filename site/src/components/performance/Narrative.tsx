@@ -19,7 +19,7 @@ function inline(text: string): React.ReactNode[] {
         const key = `${at}`;
         if (token.startsWith('`')) {
             out.push(
-                <code key={key} className="font-mono text-code-inline text-electric-bright">
+                <code key={key} className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">
                     {token.slice(1, -1)}
                 </code>,
             );
@@ -33,7 +33,7 @@ function inline(text: string): React.ReactNode[] {
             const [, label, href] = LINK_RE.exec(token)!;
             out.push(
                 /^(https:\/\/|\/)/.test(href) ? (
-                    <a key={key} href={href} className="text-electric hover:text-electric-bright transition-colors">
+                    <a key={key} href={href} className="link">
                         {label}
                     </a>
                 ) : (
@@ -68,9 +68,9 @@ export function Prose({ markdown }: { markdown: string }) {
     );
 }
 
-const TAGS: Record<WorkItem['tag'], string> = {
-    moved: 'border-success/30 text-success',
-    stalled: 'border-warn/30 text-warn',
+const TAGS: Record<WorkItem['tag'], { label: string; tone: string }> = {
+    moved: { label: 'Moved', tone: 'border-success/30 text-success' },
+    stalled: { label: 'Stalled', tone: 'border-warn/30 text-warn' },
 };
 
 /** Block C: areas for improvement, each tagged moved or stalled. */
@@ -80,9 +80,9 @@ export function WorkingOn({ items }: { items: WorkItem[] }) {
             {items.map((item, i) => (
                 <li key={i} className="flex items-start gap-4 py-4" data-tag={item.tag}>
                     <span
-                        className={`shrink-0 inline-flex justify-center w-20 px-2 py-0.5 rounded-control border font-mono text-eyebrow uppercase tracking-eyebrow ${TAGS[item.tag]}`}
+                        className={`shrink-0 inline-flex justify-center w-20 px-2 py-0.5 rounded-control border text-xs font-medium ${TAGS[item.tag].tone}`}
                     >
-                        {item.tag}
+                        {TAGS[item.tag].label}
                     </span>
                     <span className="text-body text-sm leading-relaxed">{inline(item.text)}</span>
                 </li>

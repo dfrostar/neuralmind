@@ -233,6 +233,48 @@ class TestCacheCorrupted:
         assert "b.py" in source_files
 
 
+class TestCacheFromAnOlderVersion:
+    """A cache from before CACHE_VERSION 2 → one full extraction."""
+
+    def test_a_cache_without_the_version_loads_empty(self, project_with_output: Path) -> None:
+        from neuralmind.incremental_extract import CACHE_VERSION, IncrementalExtractor
+
+        cache_path = project_with_output / ".neuralmind" / "extraction_cache.json"
+        data = json.loads(cache_path.read_text())
+        assert data["version"] == CACHE_VERSION
+        assert IncrementalExtractor(project_with_output)._cache
+        del data["version"]
+        cache_path.write_text(json.dumps(data))
+        assert IncrementalExtractor(project_with_output)._cache == {}
+
+    def test_an_edge_an_older_incremental_build_kept_is_rebuilt(self, tmp_path: Path) -> None:
+        # Before 4.23.2 an incremental build could point m.run's call at
+        # z.search, the unchanged file's function, instead of a.search. An
+        # incremental build now carries an unchanged file's edges over, so
+        # the first build after upgrading must extract everything.
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / "a.py").write_text("def search():\n    return 1\n")
+        (root / "m.py").write_text("def run():\n    return search()\n")
+        (root / "z.py").write_text("def search():\n    return 2\n")
+        graphgen.write_graph(root)
+        graph_path = root / ".neuralmind" / "graph.json"
+        graph = json.loads(graph_path.read_text())
+        for edge in graph["links"]:
+            if edge["relation"] == "calls":
+                edge["target"] = "z_py__search_fn"
+        graph_path.write_text(json.dumps(graph, indent=2))
+        cache_path = root / ".neuralmind" / "extraction_cache.json"
+        cache = json.loads(cache_path.read_text())
+        del cache["version"]
+        cache_path.write_text(json.dumps(cache))
+
+        graph = json.loads(graphgen.write_graph(root).read_text())
+
+        calls = {(e["source"], e["target"]) for e in graph["links"] if e["relation"] == "calls"}
+        assert calls == {("m_py__run_fn", "a_py__search_fn")}
+
+
 class TestImporterIndexPersistence:
     """Importer index survives across builds."""
 
@@ -274,3 +316,54 @@ class TestPerformanceTarget:
             )
 
         assert incremental_time < full_build_time * 2  # generous bound for CI noise
+
+
+class TestIgnoredFiles:
+    """A file the build ignores is never extracted, so never cached: the scan
+    must not see it either, or it is "added" on every incremental build."""
+
+    @pytest.fixture
+    def ignoring_project(self, sample_project: Path) -> Path:
+        (sample_project / ".neuralmindignore").write_text("tests/\n")
+        (sample_project / "tests").mkdir()
+        (sample_project / "tests" / "test_a.py").write_text(
+            "from a import helper\n\ndef test_helper():\n    assert helper() == 42\n"
+        )
+        graphgen.write_graph(sample_project)
+        return sample_project
+
+    def _changed(self, monkeypatch) -> list[list[str]]:
+        from neuralmind.incremental_extract import IncrementalExtractor
+
+        seen: list[list[str]] = []
+        real = IncrementalExtractor.get_changed_with_dependents
+
+        def spy(self, *args, **kwargs):
+            changed = real(self, *args, **kwargs)
+            seen.append(changed)
+            return changed
+
+        monkeypatch.setattr(IncrementalExtractor, "get_changed_with_dependents", spy)
+        return seen
+
+    def test_a_build_with_no_change_re_extracts_nothing(self, ignoring_project, monkeypatch):
+        seen = self._changed(monkeypatch)
+        path = graphgen.write_graph(ignoring_project)
+        before = path.read_bytes()
+        graphgen.write_graph(ignoring_project)
+        assert seen == [[], []]
+        assert path.read_bytes() == before
+
+    def test_an_edit_to_an_ignored_file_re_extracts_nothing(self, ignoring_project, monkeypatch):
+        seen = self._changed(monkeypatch)
+        time.sleep(0.05)
+        (ignoring_project / "tests" / "test_a.py").write_text("def test_other():\n    pass\n")
+        graphgen.write_graph(ignoring_project)
+        assert seen == [[]]
+
+    def test_a_file_no_longer_ignored_is_added(self, ignoring_project, monkeypatch):
+        seen = self._changed(monkeypatch)
+        (ignoring_project / ".neuralmindignore").write_text("")
+        result = graphgen.build_graph(ignoring_project)
+        assert "tests/test_a.py" in seen[0]
+        assert any(n.get("source_file") == "tests/test_a.py" for n in result["nodes"])

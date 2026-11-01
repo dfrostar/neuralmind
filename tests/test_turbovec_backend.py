@@ -178,6 +178,15 @@ class TurboVecBackendTests(unittest.TestCase):
         self.assertEqual(be.get_nodes_by_ids(["n_user"]), [])
         be.close()
 
+    def test_has_rows_answers_without_counting(self) -> None:
+        be = self._backend()
+        self.assertFalse(be.has_rows())
+        be.embed_nodes()
+        self.assertTrue(be.has_rows())
+        be.delete_nodes([n["id"] for n in _nodes()])
+        self.assertFalse(be.has_rows())
+        be.close()
+
     def test_stats_shape(self) -> None:
         be = self._backend()
         be.embed_nodes()

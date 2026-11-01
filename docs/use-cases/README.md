@@ -12,6 +12,7 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings — `neuralmind savings --cost` prices them in dollars (v0.45.0+) |
 | [Any LLM (ChatGPT / Gemini / local)](./any-llm.md) | You use non-MCP chats or a model-agnostic workflow | Get NeuralMind context into any chat window |
 | [Offline / regulated work](./offline-regulated.md) | Regulated industries, air-gapped machines | Local retrieval, no telemetry |
+| **[Verify a NeuralMind release before installing it](./verify-a-release.md)** | **Security reviewers, platform teams mirroring packages, anyone answering a vendor review (v4.14.0+ releases)** | **Check the image signature and the build provenance of the image and wheel, then read the SBOM and VEX — and know what each check does and doesn't prove** |
 | [CMMC CUI enclave](./cmmc-cui-enclave.md) | Defense contractors indexing CUI source code | MCP roles bound to OS accounts, encrypted storage verified *(v4.7.0+)* |
 | [Growing monorepo](./growing-monorepo.md) | Codebase where old context goes stale fast | Keep the index fresh with minimal effort |
 | [Multi-agent codebase](./multi-agent.md) | You use multiple AI tools (Claude Code + Cursor + Hermes + OpenClaw) on the same project | One shared associative memory across every agent; v0.6.0 live graph shows the union |

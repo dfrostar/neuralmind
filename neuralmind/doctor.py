@@ -378,37 +378,11 @@ def _check_mcp() -> Check:
 
 def _check_hooks(project: Path) -> Check:
     try:
-        from neuralmind.hooks import _is_neuralmind_block, _settings_path
+        from neuralmind.wiring import claude_code_hook_scopes
+
+        installed = claude_code_hook_scopes(project)
     except Exception as e:
         return Check("Claude Code hooks", WARN, f"could not check hooks ({e})")
-
-    scopes: list[tuple[str, Path]] = []
-    try:
-        scopes.append(("project", _settings_path("project", str(project))))
-    except Exception:
-        pass
-    try:
-        scopes.append(("global", _settings_path("global")))
-    except Exception:
-        pass
-
-    installed = []
-    for label, path in scopes:
-        if not path.exists():
-            continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        blocks = [
-            block
-            for event_blocks in (data.get("hooks") or {}).values()
-            if isinstance(event_blocks, list)
-            for block in event_blocks
-        ]
-        if any(_is_neuralmind_block(b) for b in blocks):
-            installed.append(label)
-
     if installed:
         return Check("Claude Code hooks", OK, f"installed ({', '.join(installed)})")
     return Check(
@@ -1017,6 +991,28 @@ def run_diagnostics(project_path: str, stale_after: float | None = None) -> list
         _check_audit_writes(project),
         _check_audit_forwarding(project),
     ]
+
+
+def run_wiring(project_path: str) -> tuple[list[Check], str]:
+    """The Wiring section: is anything calling NeuralMind for this project?
+
+    Returns the checks (daemon, Git hooks, Hermes plugin, one per MCP client)
+    and the state they add up to: ``inert`` when no agent host is wired
+    (Claude Code's hooks count too), ``wired`` when everything that applies
+    is, else ``partial``. Wiring checks only ever WARN, so they never change
+    doctor's exit status. ``project_path`` is used as typed in the fixes, so
+    they paste into the same shell.
+    """
+    from . import wiring
+
+    project = Path(project_path).resolve()
+    items = wiring.collect(project, project_arg=project_path)
+    try:
+        hooks = bool(wiring.claude_code_hook_scopes(project))
+    except Exception:
+        hooks = False
+    checks = [Check(i.name, WARN if i.needs_fix else OK, i.detail, i.fix) for i in items]
+    return checks, wiring.state(items, hooks)
 
 
 def overall_status(checks: list[Check]) -> str:

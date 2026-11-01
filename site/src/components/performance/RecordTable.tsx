@@ -56,10 +56,10 @@ export default function RecordTable({ history }: { history: ProjectHistory }) {
                                     <span className="block whitespace-nowrap">{row.ts.slice(0, 10)}</span>
                                     {row.git_sha && <span className="block text-faint">{row.git_sha.slice(0, 10)}</span>}
                                     {regressions.length > 0 && (
-                                        <span className="block text-warn text-eyebrow uppercase tracking-eyebrow mt-1">dropped</span>
+                                        <span className="block text-warn font-sans font-medium mt-1">Dropped</span>
                                     )}
                                     {goldChanged && (
-                                        <span className="block text-faint text-caption whitespace-nowrap">
+                                        <span className="block text-faint text-caption font-sans whitespace-nowrap">
                                             gold set {goldChanged.from} → {goldChanged.to}
                                         </span>
                                     )}
@@ -69,9 +69,9 @@ export default function RecordTable({ history }: { history: ProjectHistory }) {
                                     {versionBump && (
                                         <span
                                             data-bump={versionBump.to}
-                                            className="inline-flex mt-1 px-1.5 rounded-control border border-carbon-line text-body font-mono text-eyebrow uppercase tracking-eyebrow whitespace-nowrap"
+                                            className="inline-flex items-center mt-1 px-2 py-0.5 rounded-control border border-carbon-line text-body text-xs font-medium whitespace-nowrap"
                                         >
-                                            new version
+                                            New version
                                         </span>
                                     )}
                                 </td>

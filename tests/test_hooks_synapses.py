@@ -174,7 +174,7 @@ class _StubMind:
             nodes=self.NODES, search=lambda query, n: hits[:n], get_nodes_by_ids=lambda ids: []
         )
 
-    def _load_existing_index(self):
+    def _load_existing_index(self, *, structural=True):
         return True
 
 

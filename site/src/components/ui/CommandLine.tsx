@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
+import { COPIED_EVENT } from '@/lib/events';
 
 /**
  * A copy-to-clipboard install line.
@@ -28,6 +29,8 @@ export default function CommandLine({ command, className = '' }: { command: stri
         try {
             await navigator.clipboard.writeText(command);
             setCopied(true);
+            // The mascot, when there is one, smiles at this.
+            window.dispatchEvent(new Event(COPIED_EVENT));
             // Cancel the previous reset first. Without this, two clicks 800ms
             // apart leave the first timer running, and it clears the tick
             // 800ms into the second click's window instead of 1600ms.
@@ -49,7 +52,7 @@ export default function CommandLine({ command, className = '' }: { command: stri
                 type="button"
                 onClick={copy}
                 aria-label={copied ? 'Copied to clipboard' : `Copy "${command}" to clipboard`}
-                className="flex items-center justify-center w-11 border-l border-carbon-border text-faint hover:text-white hover:bg-white/[0.04] transition-colors"
+                className="flex items-center justify-center w-11 border-l border-carbon-border text-faint hover:text-white hover:bg-carbon-card transition-colors"
             >
                 {copied ? (
                     <Icon name="check" className="w-4 h-4 text-proton" strokeWidth={2} />
