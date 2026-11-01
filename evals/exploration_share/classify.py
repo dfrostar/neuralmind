@@ -18,7 +18,7 @@ CATEGORIES = (EXPLORATION, EDIT, WEB, SHELL, OTHER)
 READ_ONLY_WORDS = frozenset(
     """cat head tail less more wc ls ll tree find grep rg ag egrep fgrep stat file
     which type pwd echo printf du df diff cut sort uniq awk jq yq tr column nl od
-    xxd strings realpath readlink basename dirname test true false env printenv
+    xxd strings realpath readlink basename dirname test true false printenv
     date hostname uname id whoami ps pgrep md5sum sha256sum shasum b2sum
     tokei cloc sloccount fd fdfind bat rga ripgrep""".split()
 )
@@ -32,12 +32,53 @@ READ_ONLY_GIT = frozenset(
 GIT_OPTIONS_WITH_OPERAND = frozenset(
     "-C -c --git-dir --work-tree --namespace --super-prefix --config-env --attr-source".split()
 )
-# words skipped before the command proper
-PREFIX_WORDS = frozenset("sudo time nohup command builtin exec".split())
+# words skipped before the command proper. `env` is one of them: it runs the command that
+# follows (`env PYTHONPATH=. pytest`), and on its own it only prints the environment.
+PREFIX_WORDS = frozenset("sudo time nohup command builtin exec env".split())
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Operators are split out by shlex itself, so a `|` or `;` inside quotes stays part of
 # its word (`rg 'foo|bar'`), and an unquoted newline separates stages like `;` does.
 _PUNCT = "|&;()<>\n"
+# Operator characters inside quotes are swapped for private-use characters before the
+# lexer sees them, so a word that is nothing but quoted punctuation (`grep -F '>' a.py`)
+# can't be mistaken for an operator; the words are translated back afterwards.
+_MASK = {c: chr(0xE000 + i) for i, c in enumerate(_PUNCT)}
+_UNMASK = str.maketrans({v: k for k, v in _MASK.items()})
+
+
+def _mask(command: str) -> str:
+    """Drop unquoted comments (keeping the newline that ends them: `cat a # x\\npytest` is
+    two stages) and hide operator characters that sit inside quotes."""
+    out: list[str] = []
+    quote = ""
+    i, n = 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote:
+            if c == quote:
+                quote = ""
+                out.append(c)
+            elif c == "\\" and quote == '"' and i + 1 < n:
+                out.append(c)
+                out.append(_MASK.get(command[i + 1], command[i + 1]))
+                i += 1
+            else:
+                out.append(_MASK.get(c, c))
+        elif c == "\\" and i + 1 < n:
+            out.append(c)
+            out.append(command[i + 1])
+            i += 1
+        elif c in "'\"":
+            quote = c
+            out.append(c)
+        elif c == "#" and (i == 0 or command[i - 1] in " \t\r\n" + _PUNCT):
+            while i < n and command[i] != "\n":
+                i += 1
+            continue
+        else:
+            out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def _stages(command: str) -> list[list[str]] | None:
@@ -46,9 +87,10 @@ def _stages(command: str) -> list[list[str]] | None:
     Returns None when the command can't be tokenized (unbalanced quotes) or when a
     redirection writes to something other than /dev/null or another descriptor.
     """
-    lex = shlex.shlex(command, posix=True, punctuation_chars=_PUNCT)
+    lex = shlex.shlex(_mask(command), posix=True, punctuation_chars=_PUNCT)
     lex.whitespace = " \t\r"
     lex.whitespace_split = True
+    lex.commenters = ""  # comments are dropped by _mask, which keeps the newline
     try:
         tokens = list(lex)
     except ValueError:
@@ -61,7 +103,7 @@ def _stages(command: str) -> list[list[str]] | None:
             if ">" in t:
                 # a redirection: `>` / `>>` to a file writes unless the target is /dev/null;
                 # `>&` / `&>` with a descriptor number is a dup (2>&1) and writes nothing
-                target = tokens[i + 1] if i + 1 < len(tokens) else ""
+                target = tokens[i + 1].translate(_UNMASK) if i + 1 < len(tokens) else ""
                 dup = t.endswith("&") and target.isdigit()
                 if not dup and target != "/dev/null":
                     return None
@@ -74,7 +116,7 @@ def _stages(command: str) -> list[list[str]] | None:
                 stages.append([])
             i += 1
             continue
-        stages[-1].append(t)
+        stages[-1].append(t.translate(_UNMASK))
         i += 1
     return stages
 
