@@ -160,6 +160,18 @@ def _every_account_a_reader(project: Path) -> None:
         path.chmod(0o644)
 
 
+def _hermes_state_db(project: Path) -> None:
+    """A Hermes state.db with the synthetic sessions of tests/test_exploration_share.py.
+
+    They sit at epoch 1000-1990, so a window of 100000 days holds them and one of a day doesn't.
+    """
+    from tests.test_exploration_share import _hermes_db
+
+    _hermes_db(project / "state.db")
+
+
+MEASURE = ["measure", "sessions", "--claude-root", "{p}", "--hermes-db", "{p}/state.db"]
+
 # (id, argv with {p} for the project dir, setup, env, expected code)
 CONTRACT = [
     # The regression this file exists for: no graph -> the code-graph check
@@ -215,6 +227,30 @@ CONTRACT = [
     ("audit-forward-target-down", ["audit", "forward", "{p}"], _forward_to_a_closed_port, {}, 1),
     # v4.19.0: hardening exits 1 when a baseline rule fails; a default project fails several.
     ("hardening-baseline-not-met", ["hardening", "{p}"], None, {}, 1),
+    # v4.24.0: measure sessions prints its report (0), exits 2 when no session started
+    # in the window or --rows names a file it reads, and 1 when --rows can't be written. An empty --claude-root and the fixture state.db keep HOME out of it.
+    (
+        "measure-sessions-reports",
+        [*MEASURE, "--since-days", "100000", "--estimate"],
+        _hermes_state_db,
+        {},
+        0,
+    ),
+    ("measure-sessions-none-in-window", [*MEASURE, "--since-days", "1"], _hermes_state_db, {}, 2),
+    (
+        "measure-sessions-rows-would-replace-its-input",
+        [*MEASURE, "--since-days", "100000", "--rows", "{p}/state.db"],
+        _hermes_state_db,
+        {},
+        2,
+    ),
+    (
+        "measure-sessions-rows-unwritable",
+        [*MEASURE, "--since-days", "100000", "--rows", "{p}/state.db/rows.jsonl"],
+        _hermes_state_db,
+        {},
+        1,
+    ),
     (
         "license-expiring-none-due",
         ["license", "expiring"],
