@@ -927,6 +927,233 @@ def test_benchmark_page_renders_the_task_outcome_pilot() -> None:
     )
 
 
+# The Hermes pilot (2026-10-30): the same 20 tasks, Hermes-Agent on a local
+# model, NeuralMind through its Hermes plugin. Tasks solved is its primary
+# endpoint, and its figures are held to the committed run the same way.
+
+HERMES_DIR = REPO_ROOT / "bench" / "task_outcome" / "hermes-pilot"
+HERMES_SOURCE = "bench/task_outcome/hermes-pilot/report.txt"
+SPEC = REPO_ROOT / "docs" / "specs" / "TASK-OUTCOME-BENCHMARK-SPEC.md"
+
+
+def _hermes_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == HERMES_SOURCE]
+    assert (
+        len(entries) == 1
+    ), f"site/claims.json must carry exactly one Hermes pilot entry (source {HERMES_SOURCE})"
+    return entries[0]
+
+
+def test_hermes_pilot_figures_match_the_committed_run() -> None:
+    """Every figure the site renders for the Hermes pilot, recomputed from the run."""
+    entry = _hermes_entry()
+    assert entry["evidence"] == "pilot"
+    assert entry["spec"] == "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md"
+    f = entry["figures"]
+    report = (HERMES_DIR / "report.txt").read_text(encoding="utf-8")
+    runs = [
+        json.loads(line)
+        for line in (HERMES_DIR / "runs.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    def grab(pattern: str) -> tuple[str, ...]:
+        m = re.search(pattern, report)
+        assert m, f"report.txt has no line matching {pattern!r}"
+        return m.groups()
+
+    def pair(key: str) -> tuple[str, ...]:
+        return tuple(str(f[key][a]) for a in ("baseline", "neuralmind"))
+
+    *solved, p = grab(
+        r"Tasks solved: baseline (\d+), NeuralMind (\d+); only baseline (\d+), "
+        r"only NeuralMind (\d+) \(one-sided McNemar p = ([\d.]+)\)"
+    )
+    assert tuple(solved) == pair("tasks_solved") + pair("tasks_solved_by_one_arm_only")
+    assert abs(float(p) - f["mcnemar_p"]) < 0.00005
+    assert grab(r"Solved runs: baseline (\d+), neuralmind (\d+)") == pair("runs_solved")
+    ci = f["tokens_change_ci95"].replace("−", "-")
+    assert grab(r"median change with NeuralMind (\S+) \(95% CI (\S+) to (\S+), ") == (
+        f["median_tokens_change"].replace("−", "-"),
+        *ci.split(" to "),
+    )
+    assert grab(r"Median minutes per task: baseline ([\d.]+), neuralmind ([\d.]+)") == pair(
+        "median_minutes"
+    )
+    assert grab(r"Median turns per task: baseline ([\d.]+), neuralmind ([\d.]+)") == pair(
+        "median_turns"
+    )
+    assert grab(r"Runs that hit the timeout \(unsolved\): baseline (\d+), neuralmind (\d+)") == (
+        pair("runs_timed_out")
+    )
+    assert grab(r"Claim supported: (\w+)")[0] == ("YES" if f["claim_supported"] else "NO")
+
+    assert len(runs) == f["runs"]
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    assert len({r["seed"] for r in runs}) == f["seeds"]
+    assert {r["agent"] for r in runs} == {"hermes"}
+    assert {r["model"] for r in runs} == {f["model"]}
+    assert {r["hermes_version"].split()[2] for r in runs} == {f"v{f['hermes']}"}
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind"]}
+    for arm in ("baseline", "neuralmind"):
+        mine = [r for r in runs if r["arm"] == arm]
+        # The spec's rule: a run that hit the timeout never counts as solved,
+        # whatever the tests said of the edits it had made by then.
+        solved = [r for r in mine if r["solved"] and not r["timed_out"]]
+        assert len(solved) == f["runs_solved"][arm]
+        assert sum(bool(r["timed_out"]) for r in mine) == f["runs_timed_out"][arm]
+        by_task = {t: sum(r["task"] == t for r in solved) for t in {r["task"] for r in runs}}
+        assert sum(n * 2 > f["seeds"] for n in by_task.values()) == f["tasks_solved"][arm]
+
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert (
+        f"in {f['runs_judged_with_an_agent_command_running']} of the {f['runs']} runs "
+        "a command the agent started was still running when judging began"
+    ) in spec
+
+
+def test_benchmark_page_renders_the_hermes_pilot() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomeHermes" in page, "/benchmark no longer renders the Hermes pilot."
+
+
+# The memory track (2026-11-01): the same 20 tasks in a fixed order on Hermes,
+# NeuralMind's learned state carried from task to task against fresh runs. Its
+# figures are held to the committed run the same way.
+
+MEMORY_DIR = REPO_ROOT / "bench" / "task_outcome" / "memory-track"
+MEMORY_SOURCE = "bench/task_outcome/memory-track/report.txt"
+
+
+def _memory_entry() -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == MEMORY_SOURCE]
+    assert (
+        len(entries) == 1
+    ), f"site/claims.json must carry exactly one memory-track entry (source {MEMORY_SOURCE})"
+    return entries[0]
+
+
+def _tasks_solved(runs: list[dict], key: str, value: str) -> set[str]:
+    """Tasks most of whose runs solved them; a timed-out run never counts as solved."""
+    solved = [r for r in runs if r[key] == value and r["solved"] and not r["timed_out"]]
+    per_task = {r["task"]: sum(x["task"] == r["task"] for x in solved) for r in solved}
+    return {t for t, n in per_task.items() if n >= 2}
+
+
+def test_memory_track_figures_match_the_committed_run() -> None:
+    """Every figure the site renders for the memory track, recomputed from the run."""
+    entry = _memory_entry()
+    assert entry["evidence"] == "pilot"
+    assert entry["spec"] == "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md"
+    f = entry["figures"]
+    report = (MEMORY_DIR / "report.txt").read_text(encoding="utf-8")
+
+    def load(path: Path) -> list[dict]:
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    runs = load(MEMORY_DIR / "runs.jsonl")
+
+    def grab(pattern: str) -> tuple[str, ...]:
+        m = re.search(pattern, report)
+        assert m, f"report.txt has no line matching {pattern!r}"
+        return m.groups()
+
+    def pair(key: str) -> tuple[str, ...]:
+        return tuple(str(f[key][c]) for c in ("fresh", "carried"))
+
+    *solved, p = grab(
+        r"Tasks solved: fresh (\d+), carried (\d+); only fresh (\d+), "
+        r"only carried (\d+) \(one-sided McNemar p = ([\d.]+)\)"
+    )
+    assert tuple(solved) == pair("tasks_solved") + pair("tasks_solved_by_one_condition_only")
+    assert abs(float(p) - f["mcnemar_p"]) < 0.00005
+    assert grab(r"Solved runs: fresh (\d+), carried (\d+)") == pair("runs_solved")
+    assert grab(r"most blocks name a gold file first: fresh (\d+), carried (\d+)") == pair(
+        "tasks_most_blocks_name_a_gold_file_first"
+    )
+    assert grab(r"median learned edges in (\d+),")[0] == str(f["median_learned_edges_carried_in"])
+    ci = f["tokens_change_ci95"].replace("−", "-")
+    assert grab(r"median change carried (\S+) \(95% CI (\S+) to (\S+), ") == (
+        f["median_tokens_change"].replace("−", "-"),
+        *ci.split(" to "),
+    )
+    assert grab(r"Median minutes per task: fresh ([\d.]+), carried ([\d.]+)") == pair(
+        "median_minutes"
+    )
+    assert grab(r"Median turns per task: fresh ([\d.]+), carried ([\d.]+)") == pair("median_turns")
+    assert grab(r"Claim supported: (\w+)")[0] == ("YES" if f["claim_supported"] else "NO")
+
+    assert len(runs) == f["runs"]
+    assert {r["track"] for r in runs} == {"memory"}
+    assert len({r["task"] for r in runs}) == f["tasks"]
+    carried = [r for r in runs if r["condition"] == "carried"]
+    assert len({r["seed"] for r in carried}) == f["chains"]
+    assert len(runs) - len(carried) == f["fresh_runs_per_task"] * f["tasks"]
+    assert {r["agent"] for r in runs} == {"hermes"}
+    assert {r["model"] for r in runs} == {f["model"]}
+    assert {r["hermes_version"].split()[2] for r in runs} == {f"v{f['hermes']}"}
+    assert {r["neuralmind_version"].split()[-1] for r in runs} == {f["neuralmind"]}
+    for cond in ("fresh", "carried"):
+        mine = [r for r in runs if r["condition"] == cond]
+        assert sum(bool(r["solved"] and not r["timed_out"]) for r in mine) == f["runs_solved"][cond]
+        assert len(_tasks_solved(runs, "condition", cond)) == f["tasks_solved"][cond]
+
+    # The fresh arm against the Hermes pilot's neuralmind arm, the same condition
+    # two days earlier: context the spec records beside the result.
+    hermes = _tasks_solved(load(HERMES_DIR / "runs.jsonl"), "arm", "neuralmind")
+    assert len(hermes) == f["hermes_pilot_neuralmind_tasks_solved"]
+    assert (
+        len(_tasks_solved(runs, "condition", "carried") & hermes) == f["carried_tasks_among_them"]
+    )
+
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert f"**Harness failures: {f['harness_failures_rerun']}, none recorded.**" in spec
+    assert f"The hook check's {f['hook_check_false_alarms']} false alarms" in spec
+
+
+def test_benchmark_page_renders_the_memory_track() -> None:
+    page = (SITE_ROOT / "app" / "benchmark" / "page.tsx").read_text(encoding="utf-8")
+    assert "taskOutcomeMemory" in page, "/benchmark no longer renders the memory track."
+
+
+def test_committed_reports_are_what_the_analyzer_prints_from_the_raw_data() -> None:
+    """The tests above read the token, interval and minute figures out of report.txt.
+    Those come from ``sessions.json`` (Hermes reports no total for some sessions),
+    which the tests never open, so a changed run or session could leave a stale
+    report, and stale published figures, passing. Regenerating the report from the
+    committed ``runs.jsonl`` and ``sessions.json`` and requiring it to equal the
+    saved one closes that: every figure the site quotes from report.txt is then
+    one the raw data produces."""
+    import contextlib
+    import io
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT))
+    try:
+        from evals.task_outcome import analyze
+    finally:
+        sys.path.remove(str(REPO_ROOT))
+
+    for study_dir in (HERMES_DIR, MEMORY_DIR):
+        name = study_dir.name
+        assert (study_dir / "sessions.json").is_file(), f"{name} lost its sessions.json."
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = analyze.main([str(study_dir)])
+        assert rc == 0, f"the analyzer gives no verdict on {name}'s committed runs."
+        saved = (study_dir / "report.txt").read_text(encoding="utf-8")
+        assert out.getvalue() == saved, (
+            f"{name}/report.txt is not what the analyzer prints from its committed "
+            "runs.jsonl and sessions.json; regenerate it with "
+            f"`python -m evals.task_outcome.analyze bench/task_outcome/{name} > "
+            f"bench/task_outcome/{name}/report.txt`, then update site/claims.json."
+        )
+
+
 def test_site_reports_the_task_outcome_pilot() -> None:
     violations = [
         f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
