@@ -1050,49 +1050,72 @@ def test_exploration_share_figures_match_the_committed_summaries() -> None:
 
 
 def test_exploration_share_reading_and_words_follow_the_figures() -> None:
-    """The prose around the table: thresholds, "N points over", "a fifth", "a third", the history and the noise."""
+    """The prose around the table: the band, "N points under/over", "a fifth", "three in ten", history, noise."""
     f = _share_entry()["figures"]
     cc, hermes = f["claude_code_interactive"], f["hermes_interactive"]
     low, high = f["thresholds_pct"]
 
+    def band(share: float) -> str:
+        return (
+            f"under {low}%"
+            if share < low
+            else f"{low}% to {high}%" if share < high else f"{high}% or more"
+        )
+
     spec = (REPO_ROOT / SHARE_SPEC).read_text(encoding="utf-8")
     for row in (f"| under {low}% |", f"| {low}% to {high}% |", f"| {high}% or more |"):
         assert row in spec, f"the spec no longer has the threshold row {row!r}"
-    readings = json.loads((SHARE_DIR / "claude-code.summary.json").read_text(encoding="utf-8"))[
-        "reading"
-    ]
-    assert readings["claude-code/interactive"].startswith(f"{high}% or more")
-    readings = json.loads((SHARE_DIR / "hermes.summary.json").read_text(encoding="utf-8"))[
-        "reading"
-    ]
-    assert readings["hermes/interactive"].startswith(f"{low}% to {high}%")
+    # The band the page prints is the one each summary's own pre-registered reading names.
+    for summary, key, quoted in (
+        ("claude-code", "claude-code/interactive", cc),
+        ("hermes", "hermes/interactive", hermes),
+    ):
+        readings = json.loads((SHARE_DIR / f"{summary}.summary.json").read_text(encoding="utf-8"))[
+            "reading"
+        ]
+        assert readings[key].startswith(band(quoted["share_of_recorded_context_pct"])), key
+        # "... and its billed-prompt share is in the same band"
+        assert band(quoted["share_of_billed_prompt_pct"]) == band(
+            quoted["share_of_recorded_context_pct"]
+        )
 
-    # "within a few points of a threshold ... just over the top line ... just over the bottom line".
-    assert 0 < cc["share_of_recorded_context_pct"] - high <= 3
-    assert low < cc["share_of_billed_prompt_pct"] < high
-    assert 0 < hermes["share_of_recorded_context_pct"] - low <= 3
-    # "about a fifth of what these sessions were billed for ... about a third of the context".
+    # "within a few points of a threshold", and how far, from the figures the page prints.
+    assert abs(cc["share_of_recorded_context_pct"] - high) <= 3
+    assert abs(hermes["share_of_recorded_context_pct"] - low) <= 3
+    assert round(abs(cc["share_of_recorded_context_pct"] - high), 1) == 0.4
+    assert round(abs(hermes["share_of_recorded_context_pct"] - low), 1) == 0.5
+    assert (
+        cc["share_of_recorded_context_pct"] < high
+    ), "the Mac reads under the line (the page says so)"
+    assert hermes["share_of_recorded_context_pct"] > low
+    # "about a fifth of what these sessions were billed for ... about three in ten of the context".
     assert abs(cc["share_of_billed_prompt_pct"] / 100 - 1 / 5) <= 0.03
-    assert abs(cc["share_of_recorded_context_pct"] / 100 - 1 / 3) <= 0.03
-    # "N points over the line", rendered from the figures.
-    assert round(cc["share_of_recorded_context_pct"] - high, 1) == 0.7
-    assert round(hermes["share_of_recorded_context_pct"] - low, 1) == 0.4
-    # "the Claude Code headline has read 27.4%, 30.6%, 30.7%": passes 3, 4 and the current one.
+    assert abs(cc["share_of_recorded_context_pct"] / 100 - 3 / 10) <= 0.03
+    # "the Claude Code headline has read 27.4%, 30.6%, 30.7%, 29.6%, on both sides of the line".
     history = [
         _pct1(
             _share_group("claude-code", "claude-code/interactive", suffix=suffix)[
                 "exploration_share_billed"
             ]
         )
-        for suffix in (".pass3", ".pass4", "")
+        for suffix in (".pass3", ".pass4", ".pass5", "")
     ]
     assert history == f["claude_code_headline_by_pass_pct"]
-    # The two figures about noise are the report's and the spec's own words, not ours.
-    effect, drift = f["classifier_effect_points"], f["session_set_drift_points"]
+    assert min(history) < high < max(history)
+    report_text = " ".join((REPO_ROOT / SHARE_SOURCE).read_text(encoding="utf-8").split())
+    for share in history:
+        assert f"{share}%" in report_text
+    # The two figures about noise are the spec's and the report's own words, not ours.
+    effect = f["classifier_effect_points"]
     spec_text = " ".join(spec.split())
     assert f"{effect['recorded_context']:.2f} and {effect['billed_prompt']:.2f} points" in spec_text
-    report_text = " ".join((REPO_ROOT / SHARE_SOURCE).read_text(encoding="utf-8").split())
-    assert drift == 0.5 and "about half a point on the headline" in report_text
+    rules = f["session_rule_sensitivity_pct"]
+    for value in rules.values():
+        assert f"{value:.2f}%" in spec_text and f"{value:.2f}%" in report_text
+    assert round(max(rules.values()) - min(rules.values())) == 1, "the page says 'about a point'"
+    assert "about a point" in report_text
+    # "counts each file as a session, as the spec defines one"
+    assert "one transcript file is one session" in spec_text
 
 
 def test_benchmark_page_renders_the_exploration_share() -> None:
@@ -1126,10 +1149,10 @@ def test_benchmark_page_renders_the_exploration_share() -> None:
         "claudeCodeInWords.ofBilled",
         "claudeCodeInWords.ofContext",
         "benchmark.ofContext",
-        "marginsOverLine",
+        "standing",
         "headlineByPass",
         "classifierEffect",
-        "sessionSetDrift",
+        "sessionRuleSpread",
         "Both are within noise",
     ):
         assert figure in section, figure
@@ -1157,12 +1180,14 @@ def test_exploration_share_figures_are_never_retyped_on_the_site() -> None:
             ), f"{key}.{name} ({literal}) is typed into the site source; render it from explorationShare"
         assert f"{quoted['billed_prompt_tokens']:,}" not in rendered
     assert f"{f['hermes_benchmark']['share_of_recorded_context_pct']:.1f}" not in rendered
-    for earlier in f["claude_code_headline_by_pass_pct"][:2]:
+    for earlier in f["claude_code_headline_by_pass_pct"][:-1]:
         assert (
             f"{earlier:.1f}" not in rendered
         ), f"{earlier} (an earlier pass) is typed into the site"
     for name in ("recorded_context", "billed_prompt"):
         assert f"{f['classifier_effect_points'][name]:.2f}" not in rendered
+    for value in f["session_rule_sensitivity_pct"].values():
+        assert f"{value:.2f}" not in rendered
 
 
 # Spend framing the pilot contradicts: it measured cost per task with and

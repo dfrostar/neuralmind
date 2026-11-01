@@ -29,6 +29,7 @@ import retrievalRun from '../../../bench/retrieval/on-v4.12/results.json';
 import explorationClaudeCode from '../../../bench/exploration-share/2026-11-01/claude-code.summary.json';
 import explorationClaudeCodePass3 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass3.json';
 import explorationClaudeCodePass4 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass4.json';
+import explorationClaudeCodePass5 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass5.json';
 import explorationHermes from '../../../bench/exploration-share/2026-11-01/hermes.summary.json';
 import type { EvidenceLevel } from '@/components/ui/EvidenceBadge';
 
@@ -287,18 +288,19 @@ interface ShareFigures {
     claude_code_interactive: ShareRowFigures;
     hermes_interactive: ShareRowFigures;
     hermes_benchmark: { sessions: number; share_of_recorded_context_pct: number };
-    /** The Claude Code headline at passes 3, 4 and the current one. */
+    /** The Claude Code headline at passes 3, 4, 5 and the current one. */
     claude_code_headline_by_pass_pct: number[];
-    /** What the last classifier fixes move the pooled shares by on identical sessions (spec, pass 5). */
+    /** What the review fixes between pass 4 and pass 5 move the pooled shares by on identical sessions (spec, pass 5). */
     classifier_effect_points: { recorded_context: number; billed_prompt: number };
-    /** What moves a reading between runs: which sessions a run can read (report, pass 5). */
-    session_set_drift_points: number;
+    /** The Mac headline under each rule for counting three transcript files with one session id (spec, pass 6). */
+    session_rule_sensitivity_pct: { keep_first: number; keep_longest: number; each_file: number; drop_id: number };
 }
 
 const FRACTION_WORDS: [number, string][] = [
     [0.1, 'a tenth'],
     [0.2, 'a fifth'],
     [0.25, 'a quarter'],
+    [0.3, 'three in ten'],
     [1 / 3, 'a third'],
     [0.5, 'half'],
 ];
@@ -369,18 +371,38 @@ export const explorationShare = (() => {
     }
     const claudeCode = row('Claude Code interactive', group(explorationClaudeCode, 'claude-code/interactive'), quoted.claude_code_interactive);
     const [lowLine, highLine] = quoted.thresholds_pct;
-    // The headline's history, read from the pass 3 and pass 4 summaries beside the current one.
+    // The headline's history, read from the pass 3, 4 and 5 summaries beside the current one.
     const history = [
         group(explorationClaudeCodePass3, 'claude-code/interactive'),
         group(explorationClaudeCodePass4, 'claude-code/interactive'),
+        group(explorationClaudeCodePass5, 'claude-code/interactive'),
         group(explorationClaudeCode, 'claude-code/interactive'),
     ].map((g, i) => percent(`Claude Code headline, pass ${i + 3}`, g.exploration_share_billed, quoted.claude_code_headline_by_pass_pct[i]));
-    // "N points over the line": refuses a reading that is no longer over it, so the section is reworded then.
-    const over = (what: string, share: number, line: number): string => {
-        if (share <= line) throw new Error(`${what} is no longer over the ${line}% line; the section's reading has to be reworded.`);
-        return (share - line).toFixed(1);
+    // Where an interactive headline stands against the spec's lines: its band, and how far from the nearest
+    // line. The band must be the one the summary's own pre-registered reading names, and the billed-prompt
+    // share must sit in the same band, or the section's sentence is wrong and the build says so.
+    const bandOf = (share: number) =>
+        share < lowLine ? `under ${lowLine}%` : share < highLine ? `${lowLine}% to ${highLine}%` : `${highLine}% or more`;
+    const standing = (what: string, run: { reading: unknown }, key: string, q: ShareRowFigures) => {
+        const share = q.share_of_recorded_context_pct;
+        const band = bandOf(share);
+        const reading = (run.reading as Record<string, string>)[key] ?? '';
+        if (!reading.startsWith(band)) {
+            throw new Error(`${what}: the summary's pre-registered reading is "${reading}", the entry's figure reads "${band}".`);
+        }
+        if (bandOf(q.share_of_billed_prompt_pct) !== band) {
+            throw new Error(`${what}: the billed-prompt share is in another band than the recorded-context share; reword the section.`);
+        }
+        const line = [lowLine, highLine].reduce((a, b) => (Math.abs(b - share) < Math.abs(a - share) ? b : a));
+        return {
+            band,
+            points: Math.abs(share - line).toFixed(1),
+            side: share >= line ? 'over' : 'under',
+            line: line === highLine ? 'top' : 'bottom',
+        };
     };
-    const drift = quoted.session_set_drift_points;
+    const rules = Object.values(quoted.session_rule_sensitivity_pct);
+    const spread = Math.round(Math.max(...rules) - Math.min(...rules));
     const days = Math.round((Date.parse(quoted.until) - Date.parse(quoted.since)) / 86_400_000);
 
     return {
@@ -396,21 +418,21 @@ export const explorationShare = (() => {
         /** The spec's pre-registered bands: under the first, between, at or above the second. */
         thresholds: quoted.thresholds_pct,
         claudeCode,
-        /** How far over its line each interactive headline is, in points, to one decimal. */
-        marginsOverLine: {
-            claudeCode: over('Claude Code interactive', quoted.claude_code_interactive.share_of_recorded_context_pct, highLine),
-            hermes: over('Hermes interactive', quoted.hermes_interactive.share_of_recorded_context_pct, lowLine),
+        /** Each interactive headline against the lines: its band, points from the nearest line, over or under it. */
+        standing: {
+            claudeCode: standing('Claude Code interactive', explorationClaudeCode, 'claude-code/interactive', quoted.claude_code_interactive),
+            hermes: standing('Hermes interactive', explorationHermes, 'hermes/interactive', quoted.hermes_interactive),
         },
-        /** The Claude Code headline at passes 3, 4 and the current one, each as "NN.N%". */
+        /** The Claude Code headline at passes 3, 4, 5 and the current one, each as "NN.N%". */
         headlineByPass: history,
-        /** Pooled shares moved by the last classifier fixes on identical sessions, in points, to two decimals. */
+        /** Pooled shares moved by the review fixes between passes 4 and 5 on identical sessions, in points, to two decimals. */
         classifierEffect: {
             recordedContext: quoted.classifier_effect_points.recorded_context.toFixed(2),
             billedPrompt: quoted.classifier_effect_points.billed_prompt.toFixed(2),
         },
-        /** "half a point": what a run's session set moves the headline by. */
-        sessionSetDrift: drift === 0.5 ? 'half a point' : `${drift} points`,
-        /** The report's sentence: "about a fifth of what these sessions were billed for ... about a third of the context". */
+        /** What the rule for counting a resumed conversation's transcript files moves the Mac headline by: "a point". */
+        sessionRuleSpread: spread === 1 ? 'a point' : `${spread} points`,
+        /** The report's sentence: "about a fifth of what these sessions were billed for ... about three in ten of the context". */
         claudeCodeInWords: {
             ofBilled: aboutFraction(claudeCode.fractions.ofBilled),
             ofContext: aboutFraction(claudeCode.fractions.ofContext),
