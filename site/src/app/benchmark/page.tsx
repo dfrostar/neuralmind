@@ -14,6 +14,8 @@ import {
     ratio,
     ratioRange,
     retrievalEval,
+    taskOutcomeHermes,
+    taskOutcomeMemory,
     taskOutcomePilot,
     type Figure,
     type RepoResult,
@@ -29,7 +31,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/benchmark',
     title: 'Code Retrieval Benchmark: Recall vs. Tokens — NeuralMind',
     description:
-        'NeuralMind vs ripgrep, vector RAG and pasting files on 40 pre-registered queries, misses published — and a 20-task outcome pilot that found no difference.',
+        'NeuralMind vs ripgrep, vector RAG and pasting files on 40 pre-registered queries, misses published — and three 20-task outcome pilots, none significant.',
     keywords: [
         'AI coding agent benchmark',
         'gold-file recall',
@@ -183,6 +185,11 @@ export default function BenchmarkPage() {
     const grep = headline('ripgrep (query keywords');
     const pilot = taskOutcomePilot.figures;
     const usd = (v: number) => `$${v.toFixed(3)}`;
+    const hermes = taskOutcomeHermes.figures;
+    // The fewest one-sided tasks, all one way, that reach the pre-registered
+    // p < 0.05 in an exact one-sided McNemar test (0.5^n < 0.05).
+    const mcnemarFloor = Math.ceil(Math.log(0.05) / Math.log(0.5));
+    const memory = taskOutcomeMemory.figures;
 
     // Where the bare vector baseline beats NeuralMind, read off the run.
     const row = (r: RepoResult, b: string) => r.rows.find((x) => x.backend === b)!;
@@ -353,7 +360,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             </StatGrid>
                             <p className="mt-3 text-sm">
                                 <a href="#task-outcomes" className="link">
-                                    What the pilot found, and why
+                                    What the pilots found, and why
                                 </a>
                             </p>
                         </div>
@@ -363,7 +370,7 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                 {/* Task outcomes */}
                 <section id="task-outcomes" className="mb-14 scroll-mt-24">
                     <div className="flex flex-wrap items-center gap-3 mb-2">
-                        <h2 className="font-display text-xl font-bold text-white">Task outcomes: a pilot found no difference</h2>
+                        <h2 className="font-display text-xl font-bold text-white">Task outcomes: three pilots, no significant difference</h2>
                         <EvidenceBadge level={taskOutcomePilot.evidence} />
                     </div>
                     <p className="text-muted mb-5 leading-relaxed">
@@ -433,6 +440,176 @@ NEURALMIND_ORT_THREADS=1 python -m evals.public.run  `}<span className="text-fai
                             Pre-registered spec
                         </a>
                     </p>
+
+                    <div id="task-outcomes-hermes" className="mt-12 scroll-mt-24">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h3 className="font-display text-lg font-bold text-white">
+                                The same tasks on a local model: {hermes.tasks_solved.neuralmind} vs{' '}
+                                {hermes.tasks_solved.baseline}, not significant
+                            </h3>
+                            <EvidenceBadge level={taskOutcomeHermes.evidence} />
+                        </div>
+                        <p className="text-muted mb-5 leading-relaxed">
+                            A second, separate pilot ran the same {hermes.tasks} tasks with a different agent:
+                            Hermes-Agent v{hermes.hermes} driving {hermes.model} on one local GPU, {hermes.seeds}{' '}
+                            seeds per arm, {hermes.runs} runs, finished {hermes.date}. NeuralMind reached it only
+                            through its Hermes plugin (a context block on every prompt, the session recap, edit
+                            learning); neither arm had an MCP server. A local model costs nothing per call, so the
+                            primary endpoint is tasks solved. The claim it tested, that the model solves more of
+                            these tasks with NeuralMind, is not supported.
+                        </p>
+                        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mb-5">
+                            <table className="data-table min-w-[30rem]">
+                                <caption className="sr-only">Hermes pilot, baseline against NeuralMind</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Per arm</th>
+                                        <th scope="col" className="num">Without</th>
+                                        <th scope="col" className="num">With NeuralMind</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        [`Tasks solved (most of ${hermes.seeds} seeds)`, hermes.tasks_solved, (v: number) => `${v} of ${hermes.tasks}`],
+                                        ['Runs solved', hermes.runs_solved, (v: number) => `${v} of ${hermes.runs / 2}`],
+                                        ['Median minutes per task', hermes.median_minutes, String],
+                                        ['Median turns per task', hermes.median_turns, String],
+                                        ['Runs that hit the timeout', hermes.runs_timed_out, String],
+                                    ].map(([label, pair, fmt]) => {
+                                        const p = pair as { baseline: number; neuralmind: number };
+                                        const f = fmt as (v: number) => string;
+                                        return (
+                                            <tr key={label as string}>
+                                                <th scope="row">{label as string}</th>
+                                                <td className="num">{f(p.baseline)}</td>
+                                                <td className="num">{f(p.neuralmind)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="space-y-4">
+                            <Callout variant="note" title="Why two tasks aren’t enough">
+                                {hermes.tasks_solved_by_one_arm_only.neuralmind} tasks were solved with NeuralMind
+                                alone and {hermes.tasks_solved_by_one_arm_only.baseline} without it alone (one-sided
+                                McNemar p = {hermes.mcnemar_p}), the lowest p that many can give. The pre-registered
+                                test needs at least {mcnemarFloor}, all one way, to reach p &lt; 0.05. Tokens per task
+                                changed by a median {hermes.median_tokens_change} with NeuralMind (95% CI{' '}
+                                {hermes.tokens_change_ci95}): no measurable difference.
+                            </Callout>
+                            <Callout variant="caution" title="What it can and can’t show">
+                                It&rsquo;s a pilot: {hermes.tasks} tasks from one repository (NeuralMind&rsquo;s own),
+                                one model on one GPU, a fresh index each run (Hermes-Agent v{hermes.hermes},{' '}
+                                {hermes.model}, NeuralMind {hermes.neuralmind}). In{' '}
+                                {hermes.runs_judged_with_an_agent_command_running} of the {hermes.runs} runs, a
+                                command the agent had started, usually the whole test suite, was still running when the
+                                hidden tests judged the fix. The verdicts stand as recorded, and the harness now stops
+                                such commands first. The machine&rsquo;s scheduled Hermes jobs were paused partway
+                                through, with both arms run on both sides of the pause, which can move the minutes.
+                            </Callout>
+                        </div>
+                        <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
+                            <a href={blob(taskOutcomeHermes.source)} target="_blank" rel="noopener noreferrer" className="link">
+                                Analyzer report
+                            </a>
+                            <a href={blob('bench/task_outcome/hermes-pilot/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="link">
+                                All {hermes.runs} runs
+                            </a>
+                            <a href={blob(taskOutcomeHermes.spec)} target="_blank" rel="noopener noreferrer" className="link">
+                                Pre-registered spec
+                            </a>
+                        </p>
+                    </div>
+
+                    <div id="task-outcomes-memory" className="mt-12 scroll-mt-24">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h3 className="font-display text-lg font-bold text-white">
+                                Carrying what NeuralMind learned from task to task: {memory.tasks_solved.carried} vs{' '}
+                                {memory.tasks_solved.fresh}, not significant
+                            </h3>
+                            <EvidenceBadge level={taskOutcomeMemory.evidence} />
+                        </div>
+                        <p className="text-muted mb-5 leading-relaxed">
+                            A third pilot asked whether what NeuralMind learns during one task helps with the next.
+                            The same {memory.tasks} tasks ran in a fixed order on Hermes-Agent v{memory.hermes} and{' '}
+                            {memory.model}, along {memory.chains} chains that each carried NeuralMind&rsquo;s learned
+                            state (its synapse store and session recaps) from one task to the next, beside{' '}
+                            {memory.fresh_runs_per_task} fresh runs per task that started with nothing learned:{' '}
+                            {memory.runs} runs, side by side on the same days, finished {memory.date}. The claim it
+                            tested, that the model solves more of these tasks with the carried state, is not
+                            supported.
+                        </p>
+                        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mb-5">
+                            <table className="data-table min-w-[30rem]">
+                                <caption className="sr-only">Memory track, fresh against carried</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Per condition</th>
+                                        <th scope="col" className="num">Fresh</th>
+                                        <th scope="col" className="num">Carried</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[
+                                        [`Tasks solved (most of ${memory.fresh_runs_per_task} runs)`, memory.tasks_solved, (v: number) => `${v} of ${memory.tasks}`],
+                                        ['Runs solved', memory.runs_solved, (v: number) => `${v} of ${memory.runs / 2}`],
+                                        ['Tasks where most context blocks led with a file the fix touched', memory.tasks_most_blocks_name_a_gold_file_first, (v: number) => `${v} of ${memory.tasks}`],
+                                        ['Median minutes per task', memory.median_minutes, String],
+                                        ['Median turns per task', memory.median_turns, String],
+                                    ].map(([label, pair, fmt]) => {
+                                        const p = pair as { fresh: number; carried: number };
+                                        const f = fmt as (v: number) => string;
+                                        return (
+                                            <tr key={label as string}>
+                                                <th scope="row">{label as string}</th>
+                                                <td className="num">{f(p.fresh)}</td>
+                                                <td className="num">{f(p.carried)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="space-y-4">
+                            <Callout variant="note" title="Why two tasks aren’t a learning effect">
+                                {memory.tasks_solved_by_one_condition_only.carried} tasks were solved only with the
+                                carried state and {memory.tasks_solved_by_one_condition_only.fresh} only fresh (one-sided
+                                McNemar p = {memory.mcnemar_p}); the pre-registered test needs at least {mcnemarFloor},
+                                all one way. The fresh runs repeat the Hermes pilot&rsquo;s NeuralMind arm, which solved{' '}
+                                {memory.hermes_pilot_neuralmind_tasks_solved} of the same tasks two days earlier, and{' '}
+                                {memory.carried_tasks_among_them} of the {memory.tasks_solved.carried} tasks the carried
+                                runs solved are among those. What NeuralMind told the agent didn&rsquo;t move either: on{' '}
+                                {memory.tasks_most_blocks_name_a_gold_file_first.carried} tasks with the carried state and{' '}
+                                {memory.tasks_most_blocks_name_a_gold_file_first.fresh} fresh, most runs&rsquo; context
+                                blocks led with a file the fix touched. Tokens per task rose a median{' '}
+                                {memory.median_tokens_change} with the carried state (95% CI {memory.tokens_change_ci95}),
+                                an interval that includes no change.
+                            </Callout>
+                            <Callout variant="caution" title="What it can and can’t show">
+                                It&rsquo;s a pilot: {memory.tasks} tasks from one repository (NeuralMind&rsquo;s own) in
+                                one order, {memory.chains} chains, one model on one GPU (Hermes-Agent v{memory.hermes},{' '}
+                                {memory.model}, NeuralMind {memory.neuralmind}). A carried run started with a median{' '}
+                                {memory.median_learned_edges_carried_in.toLocaleString('en-US')} learned associations,
+                                and from the 17th task with only the session recaps NeuralMind keeps, its newest 10 or
+                                so, as shipped. {memory.harness_failures_rerun} runs were harness failures and were rerun,
+                                as the spec requires; {memory.hook_check_false_alarms} of them were false alarms in the
+                                harness&rsquo;s check that NeuralMind ran, which was fixed before the last 7 runs without
+                                changing what the agent saw.
+                            </Callout>
+                        </div>
+                        <p className="mt-4 text-sm flex flex-wrap gap-x-6 gap-y-2">
+                            <a href={blob(taskOutcomeMemory.source)} target="_blank" rel="noopener noreferrer" className="link">
+                                Analyzer report
+                            </a>
+                            <a href={blob('bench/task_outcome/memory-track/runs.jsonl')} target="_blank" rel="noopener noreferrer" className="link">
+                                All {memory.runs} runs
+                            </a>
+                            <a href={blob(taskOutcomeMemory.spec)} target="_blank" rel="noopener noreferrer" className="link">
+                                Pre-registered spec
+                            </a>
+                        </p>
+                    </div>
                 </section>
 
                 {/* Method */}
