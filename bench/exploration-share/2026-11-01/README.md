@@ -10,12 +10,13 @@ started 2026-10-02T00:00Z up to the run on 2026-11-01 at about 20:40Z; a
 session still active at that moment is deferred to a later run, as the spec's
 pass-3 entry says.
 
-**Re-run pending.** Two fixes from later code review landed after these figures
+**Re-run pending.** Fixes from later code review landed after these figures
 were computed: git's global options (`git -C <path> diff`) were not read as
-reading commands, and a session recorded while it was still running is now
-collected again once it has written more. Neither has been re-run on either
-machine, so the pass 4 figures below stand until one is; the spec's change log
-(review 3) gives the direction of each.
+reading commands, `env pytest` counted as exploration, a comment swallowed the
+newline after it, a quoted `>` was read as a redirect, and a session recorded
+while it was still running is now collected again once it has written more.
+None has been re-run on either machine, so the pass 4 figures below stand until
+one is; the spec's change log (reviews 3 and 4) gives the direction of each.
 
 ## Result (pass 4)
 

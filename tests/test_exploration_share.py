@@ -83,6 +83,35 @@ TOK = Tokenizer(force_estimate=True)
         ("git -c user.name=x commit -m y", False),
         ("git -C /repo worktree add ../w", False),
         ("git -C /repo checkout main", False),
+        # `env` runs the command after it; on its own it prints the environment
+        ("env PYTHONPATH=. python -m pytest", False),
+        ("env FOO=1 rg x .", True),
+        ("env -i rg x .", True),
+        ("env", True),
+        ("env | grep PATH", True),
+        ("printenv HOME", True),
+        # an unquoted comment ends at the newline, which still separates stages
+        ("cat a.py # inspect the file\npytest", False),
+        ("cat a.py # pytest", True),
+        ("cat a.py;# note\nls", True),
+        ("# only a comment\nrg foo .", True),
+        ("grep '#' a.py", True),
+        ('grep "#" a.py', True),
+        ("echo a#b", True),
+        ("echo $# ${#x}", True),
+        ("echo \\# ; pytest", False),
+        # quoted operator characters are arguments, never operators
+        ("grep -F '>' a.py", True),
+        ("grep -c '|' a.py", True),
+        ('rg ";" src', True),
+        ("grep '&&' a.py", True),
+        ('grep -F "(" a.py | wc -l', True),
+        ("grep -F '<' a.py", True),
+        ("git log --format='a\nb' -3", True),
+        ("echo '>' > out.txt", False),
+        ("echo '>' > '/dev/null'", True),
+        ("cat a.py '|' pytest", True),
+        ("grep -F '>' a.py; pytest", False),
     ],
 )
 def test_shell_is_readonly(command, readonly):
@@ -100,6 +129,8 @@ def test_categories():
     assert categorize_claude("Bash", {"command": "rg foo"}) == EXPLORATION
     assert categorize_claude("Bash", {"command": "git -C /repo diff"}) == EXPLORATION
     assert categorize_claude("Bash", {"command": "git -C /repo commit"}) == SHELL
+    assert categorize_claude("Bash", {"command": "env PYTHONPATH=. pytest"}) == SHELL
+    assert categorize_claude("Bash", {"command": "grep -F '>' a.py"}) == EXPLORATION
     assert categorize_claude("Bash", {"command": "npm test"}) == SHELL
     assert categorize_claude("Edit", {}) == EDIT
     assert categorize_claude("mcp__x__y", {}) == OTHER

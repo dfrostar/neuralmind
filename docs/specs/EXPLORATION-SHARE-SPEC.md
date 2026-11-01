@@ -189,6 +189,22 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   collected once more. This can move a share either way. Whether any row in
   the pass 4 summaries was recorded early is not known from the aggregates.
   Thresholds unchanged.
+- **2026-11-01, review 4: three more classifier findings (Copilot, PR #766's
+  view of this code), fixed before any re-run.** (a) `env` was on the read-only
+  list, so `env PYTHONPATH=. python -m pytest` counted as exploration; `env` is
+  now a prefix like `sudo` (the command it runs is classified; on its own it
+  prints the environment and still reads). (b) An unquoted comment swallowed the
+  newline after it, so `cat a.py # note` followed by `pytest` on the next line
+  was one stage; comments are now dropped before tokenizing and their newline
+  kept. (c) A quoted argument made only of operator characters (`grep -F '>'
+  a.py`, `rg ";" src`) was read as the operator, so the command counted as
+  shell, or a quoted `|` split a stage; operator characters inside quotes are
+  now masked before tokenizing. (a) and (b) can only lower the exploration
+  share, (c) only raise it. In the Mac's transcripts, of about 13,640 Bash
+  calls in the window, these three flip 2 to exploration and 7 to shell against
+  review 3's classifier; with review 3's `git -C` fix, 24 flip to exploration
+  and 7 to shell against pass 4's. What those calls' output adds in tokens has
+  not been measured, and the summaries are still pass 4's. Thresholds unchanged.
 
 ## Outputs
 
