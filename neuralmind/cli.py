@@ -1868,8 +1868,8 @@ def cmd_measure_sessions(args):
     (read-only), counts the prompt tokens spent on reading and searching code
     against everything the sessions carried, and prints the two shares and the
     spec's pre-registered reading. Stdout is aggregates only: no paths, project
-    names or prompts. Exit 2 when there is nothing to measure, 1 when ``--rows``
-    can't be written.
+    names or prompts. Exit 2 when there is nothing to measure or ``--rows`` names a
+    file the command reads, 1 when ``--rows`` can't be written.
     """
     from neuralmind.measure import sessions as measure_sessions
     from neuralmind.measure.tokens import Tokenizer
@@ -1880,6 +1880,14 @@ def cmd_measure_sessions(args):
         return 2
     if args.hermes_db and not Path(args.hermes_db).expanduser().is_file():
         print("measure sessions: --hermes-db is not a file", file=sys.stderr)
+        return 2
+
+    # --rows replaces its file: never one of the transcripts or the database it reads.
+    if args.rows and measure_sessions.aliases_input(args.rows, args.claude_root, args.hermes_db):
+        print(
+            "measure sessions: --rows names a file this command reads; pick another path",
+            file=sys.stderr,
+        )
         return 2
 
     since, until = measure_sessions.window(args.since_days)

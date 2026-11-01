@@ -47,6 +47,37 @@ class Measurement:
     warnings: list[str] = field(default_factory=list)  # for stderr; no paths
 
 
+def resolve_sources(
+    claude_root: str | Path | None, hermes_db_path: str | Path | None
+) -> tuple[Path, Path]:
+    """The Claude Code transcripts directory and the Hermes database, flags or defaults."""
+    root = Path(claude_root).expanduser() if claude_root else default_claude_root()
+    db = Path(hermes_db_path).expanduser() if hermes_db_path else default_hermes_db()
+    return root, db
+
+
+def aliases_input(
+    dest: str | Path, claude_root: str | Path | None, hermes_db_path: str | Path | None
+) -> bool:
+    """Whether ``dest`` is a file this command reads: the Hermes database (or its journals)
+    or a Claude Code transcript. Compared by identity, so a symlink or a hard link to one
+    counts; writing rows there would replace what the command only reads."""
+    target = Path(dest).expanduser()
+    if not target.exists():
+        return False
+    root, db = resolve_sources(claude_root, hermes_db_path)
+    inputs = [db, db.with_name(db.name + "-wal"), db.with_name(db.name + "-shm")]
+    if root.is_dir():
+        inputs.extend(root.glob("*/*.jsonl"))
+    for path in inputs:
+        try:
+            if path.exists() and os.path.samefile(target, path):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def measure(
     claude_root: str | Path | None,
     hermes_db_path: str | Path | None,
@@ -61,7 +92,7 @@ def measure(
     """
     out = Measurement()
 
-    root = Path(claude_root).expanduser() if claude_root else default_claude_root()
+    root, db = resolve_sources(claude_root, hermes_db_path)
     if not root.is_dir():
         out.sources[CLAUDE_CODE] = NOT_FOUND
     else:
@@ -81,7 +112,6 @@ def measure(
                 f"Skipped {len(unreadable)} Claude Code transcript(s) that could not be read."
             )
 
-    db = Path(hermes_db_path).expanduser() if hermes_db_path else default_hermes_db()
     if not db.is_file():
         out.sources[HERMES] = NOT_FOUND
     else:

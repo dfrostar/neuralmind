@@ -91,7 +91,8 @@ neuralmind measure sessions [--since-days N] [--claude-root PATH] [--hermes-db P
 | `--estimate` | Count characters ÷ 4 instead of tiktoken's `o200k_base`. Without `--estimate`, tiktoken is used when it is installed and its vocabulary is available (it fetches the vocabulary the first time it runs); otherwise the report counts characters ÷ 4 and says so. |
 
 **Exit codes:** `0` after printing a report; `1` when the `--rows` file can't be
-written; `2` when no session started in the window, or an argument is wrong
+written; `2` when no session started in the window, or an argument is wrong (including a
+`--rows` that names a transcript or the database it reads, which it would replace)
 (`tests/test_cli_exit_codes.py` runs all three).
 A transcript or database that can't be read is reported on stderr and skipped,
 and the other source is still measured.

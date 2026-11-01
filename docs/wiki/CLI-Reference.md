@@ -4138,7 +4138,7 @@ neuralmind measure sessions [--since-days N] [--claude-root PATH] [--hermes-db P
 | `--claude-root PATH` | `$CLAUDE_CONFIG_DIR/projects`, else `~/.claude/projects` | Claude Code's transcripts (`<project>/<session>.jsonl`). A path that isn't a directory exits 2 |
 | `--hermes-db PATH` | `state.db` in the Hermes home (`$HERMES_HOME`, else the active profile, else `~/.hermes`) | Hermes's session database, opened read-only. A path that isn't a file exits 2 |
 | `--json`, `-j` | off | Print the aggregate as JSON (the groups, `reading`, `window`, `sources`, `tokenizer`) instead of the report |
-| `--rows PATH` | off | Write one JSON line per session (id, source label, model, timestamps, token counts by kind) to `PATH`, replacing it. No prompt text or paths |
+| `--rows PATH` | off | Write one JSON line per session (id, source label, model, timestamps, token counts by kind) to `PATH`, replacing it. No prompt text or paths. A `PATH` that is one of the transcripts or the database the command reads (by identity: a symlink or hard link to one counts) exits 2 and leaves it alone |
 | `--estimate` | off | Count characters ÷ 4 instead of tiktoken's `o200k_base`, and touch no tokenizer vocabulary |
 
 Each source that exists is read: pass one flag and the other source is still
@@ -4171,7 +4171,7 @@ went; it makes no estimate of what any tool would change.
 |------|---------|
 | 0 | A report was printed |
 | 1 | `--rows` could not be written (nothing is printed) |
-| 2 | No session started in the window (stderr says which of Claude Code and Hermes was found), or an argument is wrong: `--since-days` not above 0, a `--claude-root` that isn't a directory, a `--hermes-db` that isn't a file |
+| 2 | No session started in the window (stderr says which of Claude Code and Hermes was found), or an argument is wrong: `--since-days` not above 0, a `--claude-root` that isn't a directory, a `--hermes-db` that isn't a file, a `--rows` that names a file the command reads |
 
 #### Examples
 

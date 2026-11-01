@@ -228,7 +228,7 @@ CONTRACT = [
     # v4.19.0: hardening exits 1 when a baseline rule fails; a default project fails several.
     ("hardening-baseline-not-met", ["hardening", "{p}"], None, {}, 1),
     # v4.24.0: measure sessions prints its report (0), exits 2 when no session started
-    # in the window, and 1 when --rows can't be written. An empty --claude-root and the fixture state.db keep HOME out of it.
+    # in the window or --rows names a file it reads, and 1 when --rows can't be written. An empty --claude-root and the fixture state.db keep HOME out of it.
     (
         "measure-sessions-reports",
         [*MEASURE, "--since-days", "100000", "--estimate"],
@@ -237,6 +237,13 @@ CONTRACT = [
         0,
     ),
     ("measure-sessions-none-in-window", [*MEASURE, "--since-days", "1"], _hermes_state_db, {}, 2),
+    (
+        "measure-sessions-rows-would-replace-its-input",
+        [*MEASURE, "--since-days", "100000", "--rows", "{p}/state.db"],
+        _hermes_state_db,
+        {},
+        2,
+    ),
     (
         "measure-sessions-rows-unwritable",
         [*MEASURE, "--since-days", "100000", "--rows", "{p}/state.db/rows.jsonl"],

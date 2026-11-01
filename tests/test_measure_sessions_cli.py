@@ -175,6 +175,45 @@ def test_exit_1_when_the_rows_file_cannot_be_written(home, stores, tmp_path, mon
     assert "--rows could not be written" in err and str(tmp_path) not in err.split("(")[-1]
 
 
+def _is_intact(path: Path, before: bytes) -> bool:
+    return path.read_bytes() == before
+
+
+def test_rows_never_replace_a_file_the_command_reads(home, stores, tmp_path, monkeypatch, capsys):
+    claude_root, db = stores
+    transcript = next(claude_root.glob("*/*.jsonl"))
+    db_before, transcript_before = db.read_bytes(), transcript.read_bytes()
+    link = tmp_path / "link.jsonl"
+    try:
+        link.symlink_to(db)
+    except OSError:
+        pytest.skip("symlinks need a privilege here")
+    hard = tmp_path / "hard.jsonl"
+    hard.hardlink_to(transcript)
+    for target in (db, transcript, link, hard):
+        code, out, err = run(
+            monkeypatch,
+            capsys,
+            *WIDE,
+            "--claude-root",
+            str(claude_root),
+            "--hermes-db",
+            str(db),
+            "--rows",
+            str(target),
+        )
+        assert code == 2 and out == "", target.name
+        assert "--rows names a file this command reads" in err
+    assert _is_intact(db, db_before) and _is_intact(transcript, transcript_before)
+    # a file of its own, which the command may replace, is not refused
+    mine = tmp_path / "mine.jsonl"
+    mine.write_text("old\n", encoding="utf-8")
+    code, _, _ = run(
+        monkeypatch, capsys, *WIDE, "--claude-root", str(claude_root), "--rows", str(mine)
+    )
+    assert code == 0 and "old" not in mine.read_text(encoding="utf-8")
+
+
 def test_finds_both_stores_without_flags(home, stores, monkeypatch, capsys):
     claude_root, db = stores
     (home / ".claude").mkdir()
