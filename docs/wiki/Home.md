@@ -902,7 +902,7 @@ neuralmind build .
 neuralmind benchmark . --contribute
 ```
 
-This outputs your reduction ratio, tokens per query, and what those tokens would cost at Claude 3.5 Sonnet input pricing: an estimate from token counts against pasting every file, not a measured bill. Fewer context tokens hasn't been shown to lower what an agent costs to finish a task ([task-outcome pilot](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt)). The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
+This outputs your reduction ratio, tokens per query, and an estimated monthly input-cost difference against pasting every file: both contexts priced at Claude 3.5 Sonnet input rates, at 100 queries a day for 30 days. It's modeled from token counts, not a measured bill. Fewer context tokens hasn't been shown to lower what an agent costs to finish a task ([task-outcome pilot](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/pilot/report.txt)). The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
 
 Full walkthrough: [Does NeuralMind work on *your* codebase?](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md)
 

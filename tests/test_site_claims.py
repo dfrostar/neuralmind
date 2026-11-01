@@ -1001,7 +1001,9 @@ COST_CTA_RE = re.compile(
     r"|\bsavings?\s+(?:are|is)\s+free\b|\bcheaper\s+agents?\b"
     # Narrowed 2026-10-22: "cheaper context" read as a smaller bill, and a
     # dollar figure computed from token counts isn't a measured saving.
-    r"|\bcheaper\s+context\b|\breal\s+dollar\s+savings?\b|\bmonthly\s+savings\b",
+    r"|\bcheaper\s+context\b|\breal\s+dollar\s+savings?\b|\bmonthly\s+savings\b"
+    # "Verify dollar savings" promises the same measured saving, unqualified.
+    r"|\b(?:verify|check)\s+(?:your\s+)?dollar\s+savings?\b",
     re.IGNORECASE,
 )
 

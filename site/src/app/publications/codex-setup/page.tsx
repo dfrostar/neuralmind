@@ -28,7 +28,7 @@ export const metadata = {
     },
     openGraph: {
         title: 'How to Use NeuralMind with OpenAI Codex — Setup, Token Measurement, Savings',
-        description: 'Step-by-step guide verified against the live codebase: install NeuralMind, register the MCP server with Codex, measure token budgets, and verify dollar savings.',
+        description: 'Step-by-step guide verified against the live codebase: install NeuralMind, register the MCP server with Codex, measure token budgets, and estimate what those tokens cost.',
         url: 'https://neuralmind.uk/publications/codex-setup',
         siteName: 'NeuralMind',
         locale: 'en_US',
