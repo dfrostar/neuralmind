@@ -1119,6 +1119,40 @@ def test_benchmark_page_renders_the_memory_track() -> None:
     assert "taskOutcomeMemory" in page, "/benchmark no longer renders the memory track."
 
 
+def test_committed_reports_are_what_the_analyzer_prints_from_the_raw_data() -> None:
+    """The tests above read the token, interval and minute figures out of report.txt.
+    Those come from ``sessions.json`` (Hermes reports no total for some sessions),
+    which the tests never open, so a changed run or session could leave a stale
+    report, and stale published figures, passing. Regenerating the report from the
+    committed ``runs.jsonl`` and ``sessions.json`` and requiring it to equal the
+    saved one closes that: every figure the site quotes from report.txt is then
+    one the raw data produces."""
+    import contextlib
+    import io
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT))
+    try:
+        from evals.task_outcome import analyze
+    finally:
+        sys.path.remove(str(REPO_ROOT))
+
+    for study_dir in (HERMES_DIR, MEMORY_DIR):
+        name = study_dir.name
+        assert (study_dir / "sessions.json").is_file(), f"{name} lost its sessions.json."
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rc = analyze.main([str(study_dir)])
+        assert rc == 0, f"the analyzer gives no verdict on {name}'s committed runs."
+        saved = (study_dir / "report.txt").read_text(encoding="utf-8")
+        assert out.getvalue() == saved, (
+            f"{name}/report.txt is not what the analyzer prints from its committed "
+            "runs.jsonl and sessions.json; regenerate it with "
+            f"`python -m evals.task_outcome.analyze bench/task_outcome/{name} > "
+            f"bench/task_outcome/{name}/report.txt`, then update site/claims.json."
+        )
+
+
 def test_site_reports_the_task_outcome_pilot() -> None:
     violations = [
         f"{path.relative_to(REPO_ROOT)}:{i + 1}: {m.group(0)!r}"
