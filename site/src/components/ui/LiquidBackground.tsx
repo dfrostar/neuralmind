@@ -108,7 +108,12 @@ void main() {
     float y = dot(col, vec3(0.2126, 0.7152, 0.0722));
     if (y > uCap) col *= uCap / y;
 
-    gl_FragColor = vec4(pow(col, vec3(1.0 / 2.4)), 1.0);
+    // Encode with the full sRGB transfer function. A bare pow(1/2.4) skips its
+    // scale and offset and reads brighter on screen than the capped value: at
+    // the cap it displayed about 0.025, putting faint text near 4.0:1.
+    vec3 lo = col * 12.92;
+    vec3 hi = 1.055 * pow(col, vec3(1.0 / 2.4)) - 0.055;
+    gl_FragColor = vec4(mix(hi, lo, step(col, vec3(0.0031308))), 1.0);
 }
 `;
 
