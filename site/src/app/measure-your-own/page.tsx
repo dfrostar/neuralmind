@@ -140,10 +140,10 @@ export default function MeasureYourOwnPage() {
 
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="px-3 py-1 rounded-control bg-proton/10 text-proton text-xs font-mono">
+                        <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">
                             ~15 minutes
                         </span>
-                        <span className="text-faint text-sm">No account · runs on your machine · no telemetry</span>
+                        <span className="text-faint text-sm">No account, runs on your machine, no telemetry</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-display font-bold text-white mb-5 leading-display tracking-tighter">
                         Measure it on your own repo
@@ -157,7 +157,7 @@ export default function MeasureYourOwnPage() {
                         We do not have testimonials yet. What we have is a benchmark that runs locally,
                         against your code, in about fifteen minutes. Run it and read your own number. If
                         it is good,{' '}
-                        <a href="mailto:hello@neuralmind.uk" className="text-electric hover:text-electric-bright transition-colors">
+                        <a href="mailto:hello@neuralmind.uk" className="link">
                             tell us — we will publish it
                         </a>
                         . If it is not, tell us that too: we will explain why, or fix it.
@@ -170,14 +170,14 @@ export default function MeasureYourOwnPage() {
                         {steps.map((s) => (
                             <div key={s.step} className="card rounded-card p-6 flex flex-col min-w-0">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-electric tabular-nums">
+                                    <span className="w-7 h-7 rounded-control border border-carbon-line bg-carbon-raised flex items-center justify-center font-mono text-xs text-body tabular-nums">
                                         {s.step}
                                     </span>
                                     <h3 className="font-display text-lg font-bold text-white">{s.title}</h3>
                                 </div>
                                 <p className="text-muted text-sm mb-4">{s.body}</p>
                                 <div className="mt-auto space-y-2">
-                                    <div className="bg-carbon rounded-control p-4 font-mono text-xs text-body overflow-x-auto">
+                                    <div className="bg-carbon-raised rounded-control p-4 font-mono text-xs text-body overflow-x-auto">
                                         {s.code.map((line) => (
                                             <p key={line} className={`whitespace-nowrap ${line.startsWith('#') ? 'text-faint' : ''}`}>
                                                 <span className="text-faint select-none">{line.startsWith('#') ? '' : '$ '}</span>
@@ -186,7 +186,7 @@ export default function MeasureYourOwnPage() {
                                         ))}
                                     </div>
                                     {s.output && (
-                                        <div className="bg-carbon rounded-control p-4 font-mono text-xs text-muted overflow-x-auto">
+                                        <div className="bg-carbon-raised rounded-control p-4 font-mono text-xs text-muted overflow-x-auto">
                                             {s.output.map((line) => (
                                                 <p key={line} className="whitespace-pre">{line}</p>
                                             ))}
@@ -201,7 +201,7 @@ export default function MeasureYourOwnPage() {
 
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-6">What you get</h2>
-                    <dl className="grid sm:grid-cols-2 border-t border-l border-carbon-border overflow-hidden">
+                    <dl className="grid sm:grid-cols-2 bg-carbon-card border-t border-l border-carbon-border overflow-hidden">
                         {whatYouGet.map((item) => (
                             <div key={item.metric} className="border-b border-r border-carbon-border p-6">
                                 <dt className="font-display text-lg font-semibold tracking-tight text-white mb-2">
@@ -213,7 +213,7 @@ export default function MeasureYourOwnPage() {
                     </dl>
                     <p className="text-muted text-sm mt-4 leading-relaxed">
                         Want correctness scored as well as cost? The{' '}
-                        <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
+                        <a href="/benchmark/" className="link">public benchmark</a>{' '}
                         measures against every source file and scores gold-file recall on pre-registered
                         queries — it needs a source checkout because the harness ships in the repo.
                     </p>
@@ -232,15 +232,15 @@ export default function MeasureYourOwnPage() {
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                         <a
                             href="mailto:hello@neuralmind.uk?subject=My%20NeuralMind%20benchmark"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            Share your results →
+                            Share your results
                         </a>
                         <a
                             href="/benchmark/"
-                            className="text-electric hover:text-electric-bright transition-colors"
+                            className="link"
                         >
-                            See the public benchmark →
+                            See the public benchmark
                         </a>
                     </div>
                 </section>

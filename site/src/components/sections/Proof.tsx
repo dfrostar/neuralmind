@@ -66,7 +66,7 @@ export default function Proof() {
     return (
         <section id="proof" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="Proof" title="Measured, with the misses published">
+                <SectionHeader title="Measured, with the misses published">
                     Every number says which kind of evidence it is: gated in CI on every PR,
                     reproducible from a fresh clone, a pilot, or one repo&rsquo;s field report. The
                     retrieval wins sit beside the task-outcome pilot that found no difference.
@@ -117,8 +117,8 @@ export default function Proof() {
                     Mean tokens per query ({publicBenchmark.tokenizer}), from the committed run. Pre-registered
                     queries on pinned commits; a gold file is the definition site of the symbol asked about, so
                     there is no judge to argue with.{' '}
-                    <a href="/benchmark/" className="text-electric hover:text-electric-bright">
-                        All four backends, MRR and the reproduce command →
+                    <a href="/benchmark/" className="link">
+                        All four backends, MRR and the reproduce command
                     </a>
                 </p>
 
@@ -136,8 +136,8 @@ export default function Proof() {
                         {pilot.tasks_solved.neuralmind} with it, at a median per-task cost change of{' '}
                         {pilot.median_cost_change} (95% CI {pilot.cost_change_ci95}). The reason: in{' '}
                         {pilot.runs / 2} runs the agent never called NeuralMind&rsquo;s tools.{' '}
-                        <a href="/benchmark/#task-outcomes" className="text-electric hover:text-electric-bright">
-                            The pilot, its spec and every run →
+                        <a href="/benchmark/#task-outcomes" className="link">
+                            The pilot, its spec and every run
                         </a>
                     </p>
                 </div>
@@ -171,8 +171,8 @@ export default function Proof() {
                     />
                 </StatGrid>
                 <p className="mt-3 text-faint text-caption">
-                    <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright">
-                        Read the field report, before-and-after numbers included →
+                    <a href="/field-reports/measure-memory-across-a-refactor/" className="link">
+                        Read the field report, before-and-after numbers included
                     </a>
                 </p>
 
@@ -212,7 +212,7 @@ export default function Proof() {
                             {rows.map((r) => (
                                 <tr key={r.name} className={r.ours ? 'is-ours' : undefined}>
                                     <th scope="row">
-                                        <a href={r.href} className="hover:text-electric-bright">
+                                        <a href={r.href} className="hover:text-electric">
                                             {r.name}
                                         </a>
                                     </th>
@@ -234,12 +234,12 @@ export default function Proof() {
                             {withCode(
                                 'Run `neuralmind benchmark .` for tokens per question on your code, and `neuralmind eval . --synapse-ab` with your own questions to see whether learned recall helps on your repo.',
                             )}{' '}
-                            <a href="/measure-your-own/" className="text-electric hover:text-electric-bright">
-                                How to measure your own →
+                            <a href="/measure-your-own/" className="link">
+                                How to measure your own
                             </a>
                         </p>
                     </div>
-                    <div className="bg-carbon rounded-control p-4 font-mono text-caption text-body overflow-x-auto">
+                    <div className="bg-carbon-raised rounded-control p-4 font-mono text-caption text-body overflow-x-auto">
                         {['pip install neuralmind', 'cd your-repo && neuralmind build .', 'neuralmind benchmark .'].map((line) => (
                             <p key={line} className="whitespace-nowrap">
                                 <span className="text-faint select-none">$ </span>

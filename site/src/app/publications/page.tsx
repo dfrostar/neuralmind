@@ -132,7 +132,7 @@ export default function PublicationsIndex() {
                             className="block bg-carbon-card border border-carbon-border rounded-card p-6 hover:border-electric/50 transition-colors group"
                         >
                             <div className="flex items-center gap-3 mb-3">
-                                <span className="px-3 py-1 rounded-control bg-electric/10 text-electric text-xs font-mono">{pub.type}</span>
+                                <span className="px-2.5 py-1 rounded-control border border-carbon-line text-muted text-xs font-medium">{pub.type}</span>
                                 <span className="text-faint text-sm">{pub.date}</span>
                             </div>
                             <h2 className="font-display text-xl font-bold text-white mb-2 group-hover:text-electric transition-colors">

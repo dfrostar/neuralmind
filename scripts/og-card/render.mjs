@@ -30,7 +30,7 @@ const repo = join(here, '..', '..');
 // --- claims gate -----------------------------------------------------------
 // Numbers rendered by card.html. If you change the card's copy, change this
 // list to match — the point is that both must trace to site/claims.json.
-const REQUIRED_CANON = ['95', '45', '246'];
+const REQUIRED_CANON = ['40 of 40', '32 of 40', '31', '67', '93.3', '150'];
 
 const claims = readFileSync(join(repo, 'site', 'claims.json'), 'utf8');
 const card = readFileSync(join(here, 'card.html'), 'utf8');
@@ -81,9 +81,20 @@ const targets = [
   { w: 1280, h: 640, out: join(here, 'github-social-preview.png') },
 ];
 
-const browser = await chromium.launch({ executablePath: findChrome(), args: ['--no-sandbox'] });
+// The card's background is a still frame of the site's liquid, drawn by the
+// site's own shader so the two can't drift: lift the GLSL out of the component.
+const liquid = readFileSync(join(repo, 'site', 'src', 'components', 'ui', 'LiquidBackground.tsx'), 'utf8');
+const fragment = /const FRAGMENT = `([\s\S]*?)`;/.exec(liquid)?.[1];
+if (!fragment) throw new Error('FRAGMENT shader not found in LiquidBackground.tsx');
+
+// SwiftShader gives headless Chromium WebGL with no GPU.
+const browser = await chromium.launch({
+  executablePath: findChrome(),
+  args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+});
 for (const { w, h, out } of targets) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
+  await page.addInitScript((f) => { window.__LIQUID_FRAGMENT__ = f; }, fragment);
   await page.goto('file://' + join(here, 'card.html'));
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: out });

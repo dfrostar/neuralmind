@@ -4,8 +4,8 @@
   "description": "Persistent codebase memory for Claude Code, Cursor and any MCP agent. Local-first, no telemetry, MIT core.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0c0c",
-  "theme_color": "#0c0c0c",
+  "background_color": "#0D1013",
+  "theme_color": "#0D1013",
   "icons": [
     {
       "src": "/icon.svg",
