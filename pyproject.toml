@@ -16,6 +16,7 @@ maintainers = [
 ]
 keywords = [
     "ai-coding-agent",
+    "lexical-anchoring",
     "agent-memory",
     "persistent-memory",
     "codebase-memory",

@@ -68,6 +68,39 @@ TOK = Tokenizer(force_estimate=True)
         ("git worktree add ../w", False),
         ("git remote -v", True),
         ("git remote add o url", False),
+        # a listing flag doesn't rescue a mutating option, alone or in a cluster
+        ("git branch -d -v feature", False),
+        ("git branch -vD feature", False),
+        ("git branch -m old new", False),
+        ("git branch --delete --list feature", False),
+        ("git branch --set-upstream-to=origin/main", False),
+        ("git branch -vv", True),
+        ("git tag -d v1", False),
+        ("git tag -l -d v1", False),
+        ("git tag -a v1 -m msg", False),
+        ("git tag --list 'v*'", True),
+        # reflog: bare, show and exists read; expire and delete write
+        ("git reflog", True),
+        ("git reflog show HEAD", True),
+        ("git reflog HEAD@{1}", True),
+        ("git reflog exists refs/heads/main", True),
+        ("git reflog expire --expire=now --all", False),
+        ("git reflog delete HEAD@{0}", False),
+        # an escaped operator outside quotes is an ordinary character; \<newline> continues the line
+        ("rg \\> src", True),
+        ("rg foo\\|bar src", True),
+        ("cat a.py \\\n b.py", True),
+        ("cat a.py \\\n && pytest", False),
+        # read-only commands with a writing or executing option
+        ("find . -name '*.pyc' -delete", False),
+        ("find . -name x -exec rm {} \\;", False),
+        ("find . -name '*.py' -fprint out.txt", False),
+        ("find . -name '*.py'", True),
+        ("sort -o out.txt in.txt", False),
+        ("sort --output=out.txt in.txt", False),
+        ("sort in.txt", True),
+        ("yq -i '.a = 1' f.yaml", False),
+        ("yq '.a' f.yaml", True),
         # git's global options take an operand, which is not the subcommand
         ("git -C /repo diff", True),
         ("git -c color.ui=false log --oneline", True),
@@ -501,7 +534,9 @@ def test_cli_replaces_the_row_of_a_session_that_has_written_since(tmp_path, caps
     assert not list(tmp_path.glob("*.tmp"))
 
 
-def test_cli_keeps_the_first_of_two_transcripts_with_one_session_id(tmp_path, capsys):
+def test_cli_records_each_of_two_transcripts_with_one_session_id(tmp_path, capsys):
+    """The spec's session is one transcript file, so two files under one sessionId are two
+    rows (the rule before pass 6 kept only the first in path order)."""
     proj = tmp_path / "projects" / "-Users-x-repo"
     proj.mkdir(parents=True)
     _claude_transcript(proj / "a.jsonl", billed=(400, 426, 400))
@@ -509,11 +544,12 @@ def test_cli_keeps_the_first_of_two_transcripts_with_one_session_id(tmp_path, ca
     out = tmp_path / "rows.jsonl"
     argv = ["claude-code", "--root", str(tmp_path / "projects"), "--since", "2026-01-01T00:00:00Z"]
     assert main(argv + ["--out", str(out), "--estimate"]) == 0
-    assert "1 sessions added, 0 updated (1 interactive)" in capsys.readouterr().out
-    (row,) = [json.loads(line) for line in out.read_text().splitlines()]
-    assert (
-        row["prompt_tokens_billed"] == 1226
-    ), "a.jsonl, the first in path order, not b.jsonl's 1526"
+    assert "2 sessions added, 0 updated (2 interactive)" in capsys.readouterr().out
+    rows = [json.loads(line) for line in out.read_text().splitlines()]
+    assert sorted((r["session_id"], r["prompt_tokens_billed"]) for r in rows) == [
+        ("a", 1226),
+        ("b", 1526),
+    ]
 
 
 def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
@@ -527,6 +563,108 @@ def test_claude_code_billing_cap_trims_oldest_first(tmp_path):
     assert r.first_tokens[EXPLORATION] == 25
     assert r.billed_tokens.get(EXPLORATION, 0) == 0
     assert r.context_tokens_est <= r.prompt_tokens_billed
+
+
+def test_claude_code_collects_nested_subagent_transcripts_as_their_own_sessions(tmp_path):
+    """A subagent's transcript lives at <project>/<session>/subagents/agent-<id>.jsonl and
+    carries its parent's sessionId; each file is a subagent row with an id of its own."""
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    nested = proj / "cc-parent" / "subagents"
+    nested.mkdir(parents=True)
+
+    def line(kind, content, ts, **extra):
+        o = {"type": kind, "timestamp": ts, "sessionId": "cc-parent", "isSidechain": True}
+        o["message"] = {"content": content}
+        o.update(extra)
+        return json.dumps(o)
+
+    def agent_file(name, n_results):
+        lines = [line("user", "go", "2026-10-10T10:00:00Z")]
+        for i in range(n_results):
+            use = {
+                "type": "tool_use",
+                "id": f"{name}-{i}",
+                "name": "Read",
+                "input": {"file_path": "a.py"},
+            }
+            lines.append(
+                line(
+                    "assistant",
+                    [use],
+                    f"2026-10-10T10:00:0{i + 1}Z",
+                    requestId=f"{name}-r{i}",
+                    message={"content": [use], "usage": {"input_tokens": 400 + 40 * i}},
+                )
+            )
+            lines.append(
+                line(
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": f"{name}-{i}", "content": "R" * 80}],
+                    f"2026-10-10T10:00:0{i + 1}Z",
+                )
+            )
+        (nested / f"agent-{name}.jsonl").write_text("\n".join(lines) + "\n")
+
+    agent_file("a1", 1)
+    agent_file("a2", 2)
+    (proj / "cc-parent.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "user",
+                "timestamp": "2026-10-10T09:59:00Z",
+                "sessionId": "cc-parent",
+                "message": {"content": "hello"},
+            }
+        )
+        + "\n"
+    )
+    rows = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)
+    by_id = {r.session_id: r for r in rows}
+    assert set(by_id) == {"cc-parent", "cc-parent/agent-a1", "cc-parent/agent-a2"}
+    assert by_id["cc-parent"].source_group == "interactive"
+    assert by_id["cc-parent/agent-a1"].source_group == "subagent"
+    assert by_id["cc-parent/agent-a2"].source_group == "subagent"
+    assert by_id["cc-parent/agent-a2"].tool_calls == {EXPLORATION: 2}
+
+
+def test_claude_code_counts_each_transcript_file_as_a_session(tmp_path):
+    """A resumed conversation writes more than one file under one sessionId; the spec's
+    session is the file, so each is its own row, in path order."""
+    proj = tmp_path / "projects" / "-Users-x-repo"
+    proj.mkdir(parents=True)
+
+    def transcript(path, n_calls):
+        lines = [
+            json.dumps(
+                {
+                    "type": "user",
+                    "timestamp": "2026-10-10T10:00:00Z",
+                    "sessionId": "shared-id",
+                    "message": {"content": "go"},
+                }
+            )
+        ]
+        for i in range(n_calls):
+            lines.append(
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "timestamp": f"2026-10-10T10:00:0{i + 1}Z",
+                        "sessionId": "shared-id",
+                        "requestId": f"{path.stem}-{i}",
+                        "message": {
+                            "content": [{"type": "text", "text": "ok"}],
+                            "usage": {"input_tokens": 100},
+                        },
+                    }
+                )
+            )
+        path.write_text("\n".join(lines) + "\n")
+
+    transcript(proj / "file-a.jsonl", 1)
+    transcript(proj / "file-b.jsonl", 3)
+    rows = claude_code.collect(tmp_path / "projects", 1_700_000_000, 2_000_000_000, TOK)
+    assert [(r.session_id, r.calls) for r in rows] == [("file-a", 1), ("file-b", 3)]
 
 
 def test_claude_code_later_compaction_replaces_earlier_summary(tmp_path):

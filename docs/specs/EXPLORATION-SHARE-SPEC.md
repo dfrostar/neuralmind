@@ -219,6 +219,48 @@ computed, and nothing at all for interactive sessions or for Claude Code.
   over the "30% or more" threshold and Hermes interactive 0.4 points over the
   10% line; the report says both are within noise of the line. Thresholds
   unchanged.
+- **2026-11-01, review 5: four more findings from code review (Copilot on
+  PR #767, which carries a copy of this code), fixed before any re-run.** (a)
+  `git branch -d -v feature` and `git tag -l -d v1` counted as exploration:
+  a listing flag rescued a mutating option. Mutating options (`-d -D -m -M -c
+  -C -f -u -t` and their long forms, in short-option clusters too) are
+  rejected first for `branch` and `tag`. (b) `git reflog expire` and `delete`
+  counted as exploration; only bare `reflog`, `show` and `exists` read.
+  (c) A backslash-escaped operator outside quotes (`rg \> src`) was read as
+  an operator, and a backslash-newline was read as a word; the escaped
+  character is masked like a quoted one and a line continuation is dropped.
+  The same class of hole, found while fixing these: `find` with `-delete`,
+  `-exec`, `-execdir`, `-ok`, `-fprint*`, `sort -o` and `yq -i` counted as
+  exploration; they are shell now. (d) Claude Code subagent transcripts live at
+  `<project>/<session>/subagents/agent-<id>.jsonl`, which the file discovery
+  (`*/*.jsonl`) never reached: 33 files against 94 top-level ones on the Mac,
+  and the Claude Code "subagent" row was empty. They are collected as
+  `subagent` sessions with an id of their own (`<session>/<agent file>`; the
+  file carries its parent's sessionId, so one id would collapse siblings into
+  one row). They add a row; the interactive headline is unchanged by (d).
+  (a), (b) and (c) can only lower the exploration share, apart from the
+  quoted-operator case in (c), which raises it. **Freeze.** The classifier and
+  collectors are frozen for PR #765 after this entry: the last four rounds of
+  review findings moved the Mac's pooled share by 0.03 points between them, so
+  further classification edge cases go to a follow-up change, which re-runs
+  both machines and adds a change-log entry of its own, not to this PR.
+  Thresholds unchanged.
+- **2026-11-01, pass 6: one transcript file is one session.** The spec's
+  definition of a Claude Code session is a transcript file, but the CLI rewrite
+  in review 3 keyed rows by the `sessionId` inside the file, so when a resumed
+  conversation wrote several files under one id only one of them was recorded:
+  the last in path order after review 3 (30.17% on one fixed snapshot of the
+  Mac) and the first after the fix to that (30.65%). One Mac id has three files
+  (701, 346 and 288 transcript lines, same start). Rows are now keyed by the
+  file (`<file stem>`, and `<session folder>/<agent file stem>` for subagent
+  transcripts), which is the spec's definition and removes the choice. It
+  counts the history that resumed files share once per file; how else to count
+  it moves the Mac headline within the same noise band as everything else
+  (same rows, pass-4 classifier: keep first 30.62%, keep longest 30.14%, each
+  file 29.77%, drop the id 30.83%; figures by the site session). The rule was
+  chosen by following the registered definition, not by its effect on the
+  reading; it puts the Mac headline just under the 30% line and the report
+  says the headline is 30% within about a point. Thresholds unchanged.
 
 ## Outputs
 
