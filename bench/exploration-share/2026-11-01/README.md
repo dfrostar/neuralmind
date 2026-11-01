@@ -44,9 +44,10 @@ What else the data says:
   trimmed to fit what was billed, 21 compactions were recorded, and the billed
   share is 22.5%.
 - **NeuralMind's own block cost 1.3% of the Hermes interactive prompt** (the
-  plugin ran on 66 of 66 sessions) and a rounding of zero on the Mac, where the
-  hook was active in 4 of 87 sessions (most Mac sessions were in projects
-  without NeuralMind hooks).
+  block appeared in 42 of the 66 sessions) and a rounding of zero on the Mac,
+  where it appeared in 4 of 87 sessions (most Mac sessions were in projects
+  without NeuralMind hooks). In the benchmark sessions it appeared in 191 of
+  261 (the baseline arm has none) and cost 0.2%.
 - **The benchmark sessions are not usage.** The task-outcome harness's 261
   Hermes sessions spent 48% of their context on exploration, because a 20B
   model on a 120-turn budget reads and greps far more than a developer does.
