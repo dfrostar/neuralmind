@@ -5,27 +5,22 @@ import CondensingGraph from '@/components/ui/CondensingGraph';
 import LiquidBackground from '@/components/ui/LiquidBackground';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
+    'A local code index for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
 
 export const metadata = {
-    title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
+    title: 'NeuralMind — Local Code Index for AI Coding Agents',
     description: SITE_DESCRIPTION,
     keywords: [
-        'Claude Code memory',
-        'AI coding agent memory',
-        'codebase memory',
-        'persistent memory for AI agents',
+        'local code index for AI coding agents',
+        'code intelligence for AI agents',
+        'Claude Code',
+        'Hermes agent',
         'MCP server',
-        'MCP memory server',
-        'reduce Claude Code token usage',
+        'measure Claude Code token usage',
         'context engineering',
-        'token reduction',
+        'fewer tokens per question',
         'semantic code search',
         'code knowledge graph',
-        'Cursor',
-        'Codex',
-        'Cline',
-        'team memory for AI agents',
         'local-first',
     ],
     authors: [{ name: 'Darren Frost', url: 'https://github.com/dfrostar' }],
@@ -36,7 +31,7 @@ export const metadata = {
         canonical: '/',
     },
     openGraph: {
-        title: 'NeuralMind — Your coding agent forgets your codebase. NeuralMind remembers it.',
+        title: 'NeuralMind — Finds the right code for a fraction of the tokens',
         description:
             'The gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file. 93.3% top-5 on a larger 150-question eval, every miss published. Local-first, no telemetry by default, MIT core.',
         url: 'https://neuralmind.uk',
@@ -48,13 +43,13 @@ export const metadata = {
                 url: '/social-preview.png',
                 width: 2400,
                 height: 1260,
-                alt: 'NeuralMind — Code Memory for AI Coding Agents',
+                alt: 'NeuralMind — a local code index for AI coding agents',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
+        title: 'NeuralMind — Local Code Index for AI Coding Agents',
         description: SITE_DESCRIPTION,
         images: ['https://neuralmind.uk/social-preview.png'],
     },
@@ -93,10 +88,10 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             '@id': 'https://neuralmind.uk/#software',
             name: 'NeuralMind',
             applicationCategory: 'DeveloperApplication',
-            applicationSubCategory: 'AI coding agent memory & code intelligence',
+            applicationSubCategory: 'Code intelligence for AI coding agents',
             operatingSystem: 'Linux, macOS, Windows',
             description:
-                'Local-first persistent memory for AI coding agents. NeuralMind indexes a codebase into a code graph, learns which files belong together from how you work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue or any MCP client — the gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, with its 10 misses published.',
+                'A local code index for AI coding agents. NeuralMind indexes a codebase into a code graph and assembles compact, ranked context from it, delivered to Claude Code and Hermes through a prompt hook and to any MCP client through a server — the gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, with its 10 misses published. It has not been shown to make agents finish more tasks or spend less, and every run that tested that is published.',
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
@@ -111,14 +106,14 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             operatingSystemRequirements: 'Python 3.10+',
             codeRepository: 'https://github.com/dfrostar/neuralmind',
             keywords:
-                'AI coding agent memory, Claude Code memory, MCP server, codebase memory, context engineering, token reduction, code knowledge graph, Hebbian synapses, progressive context disclosure',
+                'local code index, code intelligence for AI agents, Claude Code, Hermes agent, MCP server, context engineering, code knowledge graph, progressive context disclosure',
             featureList: [
                 'The gold file on 40 of 40 pre-registered queries on four public repos vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, misses published',
-                'Hebbian synapse layer that learns which files go together from how you use the codebase — budget-neutral recall',
+                'Synapse layer that records which files are used together and re-ranks recall; a task-outcome run found no gain from carrying that state between tasks',
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
-                'MCP server for Claude Code, Codex, Cursor, Cline, Continue and any MCP-compatible agent',
-                'Claude Code lifecycle hooks: session-start memory, prompt-time recall, stale-decision guard',
-                'Team memory that travels with git clone, with a quality review queue for imports and a hash-chained audit log',
+                'MCP server for MCP-compatible clients; agents did not call its tools in our task-outcome runs',
+                'Prompt hook for Claude Code and Hermes: session-start context, prompt-time recall, stale-decision guard',
+                'Committed team bundle of recorded file associations that travels with git, with a review queue for imports and a hash-chained audit log',
                 'Bundled tree-sitter code graph indexing ten languages plus JavaScript (parsed with the TypeScript grammars)',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
                 'Commit-time drift guard, decision memory and stale-decision guard',

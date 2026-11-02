@@ -6,17 +6,15 @@ import { pageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = pageMetadata({
     path: '/team',
-    title: 'Team Memory for AI Coding Agents — NeuralMind for Teams',
+    title: 'NeuralMind for Teams — Seats, Audit Log, Self-Hosted',
     description:
-        'Shared codebase memory for Claude Code and MCP agents: it travels with git, follows your admin’s policy, and every change is hash-chain audited. Free at 1 seat.',
+        'For teams of 5–50 seats: a committed team bundle that travels with git, follows your admin’s policy, and a hash-chained audit log. Free at 1 seat.',
     keywords: [
-        'team memory for AI coding agents',
-        'shared Claude Code memory',
+        'NeuralMind for teams',
         'Claude Code for teams',
         'AI agent governance',
         'hash-chained audit log',
         'self-hosted AI coding tools',
-        'MCP server for teams',
     ],
 });
 

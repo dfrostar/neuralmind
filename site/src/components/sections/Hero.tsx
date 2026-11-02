@@ -4,14 +4,12 @@ import Stat, { StatGrid } from '@/components/ui/Stat';
 import { QUERY_ID, QUERY_REPO, QUERY_TEXT } from '@/lib/capturedQuery';
 import { headline, publicBenchmark, publicQuery, ratioRange, retrievalEval } from '@/lib/evidence';
 
-const AGENTS = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Hermes'];
-
 // The commands a reader runs to try it, verified against neuralmind/cli.py:
-// install, index, register the MCP server with Claude Code (`--client` picks
-// Cursor, Cline, VS Code or Claude Desktop instead), and install Claude Code's
-// hooks. In the task-outcome pilot the agent never called the MCP tools; the
-// hooks were how NeuralMind reached it, so they are part of the install.
-const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-mcp', 'neuralmind install-hooks .'];
+// install, index, install Claude Code's hooks, then measure on their own repo.
+// In every task-outcome run the agent never called the MCP tools (0 of 135
+// Claude Code runs); the hooks are how NeuralMind reaches it, so they are the
+// install. `neuralmind install-mcp` (with `--client`) is in the quickstart.
+const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-hooks .', 'neuralmind benchmark .'];
 
 export default function Hero() {
     // Every figure below is read from the committed runs through lib/evidence,
@@ -28,7 +26,7 @@ export default function Hero() {
                     {/* ── Copy ───────────────────────────────────────────── */}
                     <div className="min-w-0">
                         <h1 className="font-display text-4xl sm:text-5xl lg:text-hero font-semibold text-white leading-display tracking-tighter mb-6">
-                            Your coding agent forgets your codebase. NeuralMind remembers it.
+                            NeuralMind finds the right code for a fraction of the tokens.
                         </h1>
 
                         {/* tests/test_site_claims.py: the found count stays on one
@@ -39,10 +37,10 @@ export default function Hero() {
                             <span className="text-ink font-medium">the gold file on 40 of 40 public-benchmark queries, where keyword ripgrep opening its top five files whole found 32 of 40, at 31–67× fewer tokens than ripgrep</span>{' '}
                             and 51–242× fewer than pasting every source file. On a larger 150-question
                             eval it puts a gold file in the top five on 93.3%, and all 10 misses are
-                            published. By default, no telemetry. MIT core, free at one seat.
+                            published. It has not been shown to finish more tasks, and every run that tested that is published. By default, no telemetry. MIT core, free at one seat.
                         </p>
 
-                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in four commands">
+                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install and measure in four commands">
                             {INSTALL.map((cmd, i) => (
                                 <li key={cmd} className="flex items-center gap-3">
                                     <span className="w-6 shrink-0 font-mono text-xs text-faint tabular-nums">
@@ -54,8 +52,8 @@ export default function Hero() {
                         </ol>
 
                         <div className="flex flex-wrap items-center gap-3">
-                            <a href="/team" className="btn-primary py-3">
-                                For teams
+                            <a href="/measure-your-own" className="btn-primary py-3">
+                                Measure your own repo
                             </a>
                             <a href="#quickstart" className="btn-secondary py-3">
                                 Quickstart
@@ -66,8 +64,8 @@ export default function Hero() {
                         </div>
 
                         <p className="mt-6 text-faint text-sm">
-                            Persistent codebase memory and an MCP server. Works with {AGENTS.join(', ')} and
-                            any MCP client.
+                            A prompt hook reaches Claude Code and Hermes. An MCP server is there for other
+                            clients; agents did not call its tools in our task-outcome runs.
                         </p>
                     </div>
 
