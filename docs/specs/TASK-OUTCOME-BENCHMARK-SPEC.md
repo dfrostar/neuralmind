@@ -847,3 +847,21 @@ drawn by the same rule, that the pilot didn't use.
     re-run; every one of the 72 blocks was identical to the first run's, so
     the counts stand as the single pre-registered replay. The committed rows
     and the hook times are the second run's.
+- 2026-11-02 — the Hermes harness's fallback check, widened (`harness_version` 5),
+  before any further Hermes run. Changes no recorded result.
+  - **What it missed.** Hermes names a session for the model it ended on but
+    the endpoint it started on, so "session ran on X, not `gpt-oss:20b-64k`"
+    passes a run that fell back to OpenRouter and came back. Checking the
+    ai-9970 labels found two benchmark sessions that had made paid calls,
+    both reading `qwen/qwen3.8-flash` on `http://127.0.0.1:11434/v1`: the
+    10-30 smoke attempt (31 OpenRouter calls, Hermes's estimate $0.058) and a
+    memory-track run on 11-01 (35 calls, $0.073). The model check caught both
+    and neither is a recorded run, but it caught them only because they ended
+    on the fallback model.
+  - **The check now.** A run is also aborted, nothing recorded, when Hermes
+    prices its session above zero, or when Hermes's agent log shows an
+    OpenRouter API call for it. The model check stays. Run against the 261
+    benchmark sessions in `state.db` it flags exactly those two and none of
+    the other 259, so every recorded run (stages 1 and 2, the memory track)
+    stands as recorded. The agent logs that survive begin 10-30 10:56 UTC;
+    for the earlier sessions the price is the only evidence, and it is zero.
