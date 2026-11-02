@@ -34,8 +34,8 @@ the server ([the studies](../benchmarks/public.md)).
 Then ask the questions you'd otherwise grep for:
 
 ```bash
-neuralmind search "where are inbound webhooks verified"
-neuralmind query "how does a request get from the router to the database"
+neuralmind search . "where are inbound webhooks verified"
+neuralmind query . "how does a request get from the router to the database"
 neuralmind skeleton src/billing/invoices.py     # functions and call graph, not the file
 ```
 
@@ -52,7 +52,7 @@ number is closer to your day one than the first; both are on
 Before recommending a change, see what it reaches:
 
 ```bash
-neuralmind impact RequestSigner.verify       # callers, importers, subclasses
+neuralmind impact . RequestSigner.verify     # callers, importers, subclasses
 ```
 
 Before you push, ask what your diff may have forgotten:
@@ -77,13 +77,15 @@ Record what you learned where the next engineer will find it:
 ```bash
 git commit -m "fix: verify webhook signatures before parsing
 
-Decision: signatures are checked in the router, not the handlers, so a new
-handler can't skip it."
-neuralmind why src/router.py                 # recall it later, from the code
+Decision: signatures are checked in `verify_signature` in `src/router.py`,
+  not in the handlers, so a new handler can't skip it.
+  Subjects: `verify_signature`, `src/router.py`."
+neuralmind why verify_signature              # recall it later, by the symbol
 ```
 
-The client keeps the `Decision:` trailers in their history whether or not
-they keep NeuralMind.
+Subjects come from the backticked names or a `Subjects:` line, and a wrapped
+line must be indented; `why` matches a subject, not the rationale. The client
+keeps the trailers in their history whether or not they keep NeuralMind.
 
 ## Regulated clients: the evidence their review asks for
 
