@@ -4,7 +4,6 @@
 # 225 errors
 neuralmind/bge_embedder.py: Returning Any from function declared to return "list[list[float]]"  [no-any-return]
 neuralmind/bm25.py: Function "builtins.callable" is not valid as a type  [valid-type]
-neuralmind/chapter_indexer.py: Item "None" of "Any | None" has no attribute "embed"  [union-attr]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "_track_book_assets"  [attr-defined]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "embed_content"  [attr-defined]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "embed_content"  [attr-defined]
