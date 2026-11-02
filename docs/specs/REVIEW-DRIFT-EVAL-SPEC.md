@@ -1,7 +1,7 @@
 # `neuralmind review` and `neuralmind drift` on real commits — pre-registration
 
 **Status:** run 2026-11-02; **both commands fail their gate** (review hit@10
-0.628 against git co-change 0.644; drift 5% on fixes and 5% on controls);
+0.628 against git co-change 0.649; drift 5% on fixes and 5% on controls);
 [results](../../bench/review_drift/2026-11-02/README.md) · **Harness:**
 `evals/review_drift/` · **Results:** `bench/review_drift/2026-11-02/`
 
@@ -218,8 +218,10 @@ level, as every other figure does.
   changes a review rank: the co-change baseline breaks ties on count, then
   recency, then **path** (it had left ties to set-iteration order, which
   varies with the hash seed), and both baselines were re-scored for every
-  recorded pair under that sort, with any changed figure noted in the
-  results README; MRR is reported as **MRR@10** for every method (review
+  recorded pair under that sort: 56 co-change ranks changed, pooled co-change
+  hit@5 went 0.547 → 0.551 and hit@10 0.644 → 0.649, adjacency and review
+  ranks did not change, and the verdict did not change; MRR is reported as
+  **MRR@10** for every method (review
   lists at most ten entries, so a baseline's rank 30 scores as a miss, as
   review's does); the decision rule is evaluated on exact counts, not rounded
   rates; and a `review` or `drift` call that fails now stops the run instead

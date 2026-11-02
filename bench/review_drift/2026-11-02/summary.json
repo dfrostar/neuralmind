@@ -19,19 +19,25 @@
   "pooled": {
    "pairs": 430,
    "review": {
+    "hits@5": 193,
+    "hits@10": 270,
     "hit@5": 0.449,
     "hit@10": 0.628,
-    "mrr": 0.275
+    "mrr@10": 0.275
    },
    "cochange": {
-    "hit@5": 0.547,
-    "hit@10": 0.644,
-    "mrr": 0.366
+    "hits@5": 237,
+    "hits@10": 279,
+    "hit@5": 0.551,
+    "hit@10": 0.649,
+    "mrr@10": 0.359
    },
    "adjacency": {
+    "hits@5": 172,
+    "hits@10": 229,
     "hit@5": 0.4,
     "hit@10": 0.533,
-    "mrr": 0.254
+    "mrr@10": 0.237
    },
    "random": {
     "hit@5": 0.057,
@@ -50,19 +56,25 @@
    "click": {
     "pairs": 123,
     "review": {
+     "hits@5": 69,
+     "hits@10": 97,
      "hit@5": 0.561,
      "hit@10": 0.789,
-     "mrr": 0.402
+     "mrr@10": 0.402
     },
     "cochange": {
-     "hit@5": 0.667,
-     "hit@10": 0.789,
-     "mrr": 0.415
+     "hits@5": 83,
+     "hits@10": 98,
+     "hit@5": 0.675,
+     "hit@10": 0.797,
+     "mrr@10": 0.412
     },
     "adjacency": {
+     "hits@5": 55,
+     "hits@10": 74,
      "hit@5": 0.447,
      "hit@10": 0.602,
-     "mrr": 0.301
+     "mrr@10": 0.281
     },
     "random": {
      "hit@5": 0.082,
@@ -80,19 +92,25 @@
    "flask": {
     "pairs": 166,
     "review": {
+     "hits@5": 81,
+     "hits@10": 115,
      "hit@5": 0.488,
      "hit@10": 0.693,
-     "mrr": 0.267
+     "mrr@10": 0.267
     },
     "cochange": {
-     "hit@5": 0.584,
+     "hits@5": 95,
+     "hits@10": 108,
+     "hit@5": 0.572,
      "hit@10": 0.651,
-     "mrr": 0.385
+     "mrr@10": 0.367
     },
     "adjacency": {
+     "hits@5": 65,
+     "hits@10": 88,
      "hit@5": 0.392,
      "hit@10": 0.53,
-     "mrr": 0.221
+     "mrr@10": 0.2
     },
     "random": {
      "hit@5": 0.065,
@@ -110,19 +128,25 @@
    "requests": {
     "pairs": 4,
     "review": {
+     "hits@5": 1,
+     "hits@10": 2,
      "hit@5": 0.25,
      "hit@10": 0.5,
-     "mrr": 0.275
+     "mrr@10": 0.275
     },
     "cochange": {
-     "hit@5": 0.0,
-     "hit@10": 0.0,
-     "mrr": 0.078
-    },
-    "adjacency": {
+     "hits@5": 1,
+     "hits@10": 2,
      "hit@5": 0.25,
      "hit@10": 0.5,
-     "mrr": 0.18
+     "mrr@10": 0.156
+    },
+    "adjacency": {
+     "hits@5": 1,
+     "hits@10": 2,
+     "hit@5": 0.25,
+     "hit@10": 0.5,
+     "mrr@10": 0.15
     },
     "random": {
      "hit@5": 0.132,
@@ -140,19 +164,25 @@
    "rich": {
     "pairs": 137,
     "review": {
+     "hits@5": 42,
+     "hits@10": 56,
      "hit@5": 0.307,
      "hit@10": 0.409,
-     "mrr": 0.17
+     "mrr@10": 0.17
     },
     "cochange": {
-     "hit@5": 0.409,
-     "hit@10": 0.526,
-     "mrr": 0.306
+     "hits@5": 58,
+     "hits@10": 71,
+     "hit@5": 0.423,
+     "hit@10": 0.518,
+     "mrr@10": 0.307
     },
     "adjacency": {
+     "hits@5": 51,
+     "hits@10": 65,
      "hit@5": 0.372,
      "hit@10": 0.474,
-     "mrr": 0.254
+     "mrr@10": 0.245
     },
     "random": {
      "hit@5": 0.024,
@@ -311,7 +341,10 @@
  "verdict": {
   "review": {
    "hit@10": 0.628,
-   "cochange_hit@10": 0.644,
+   "cochange_hit@10": 0.649,
+   "hits@10": 270,
+   "cochange_hits@10": 279,
+   "pairs": 430,
    "floor_met": true,
    "beats_cochange": false,
    "worth_quoting": false
@@ -319,6 +352,10 @@
   "drift": {
    "recall_fix": 0.05,
    "rate_control": 0.05,
+   "fix_hits": 6,
+   "fix_commits": 121,
+   "control_hits": 6,
+   "control_commits": 121,
    "floor_met": false,
    "beats_control": false,
    "worth_quoting": false

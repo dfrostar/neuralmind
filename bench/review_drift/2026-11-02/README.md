@@ -34,40 +34,50 @@ out in turn (430 pairs), the other files took the commit's version, and
 `neuralmind review . --json --top-k 10` was asked for co-break candidates.
 The same pairs were ranked by two baselines a reviewer already has.
 
-| Set | Pairs | Method | hit@5 | hit@10 | MRR |
+| Set | Pairs | Method | hit@5 | hit@10 | MRR@10 |
 |---|---|---|---|---|---|
 | **pooled** | 430 | **review** | **0.449** | **0.628** | 0.275 |
-| pooled | 430 | git co-change (300 commits before the parent) | 0.547 | 0.644 | 0.366 |
-| pooled | 430 | structural adjacency (direct call/import/inherits edges) | 0.400 | 0.533 | 0.254 |
+| pooled | 430 | git co-change (300 commits before the parent) | 0.551 | 0.649 | 0.359 |
+| pooled | 430 | structural adjacency (direct call/import/inherits edges) | 0.400 | 0.533 | 0.237 |
 | pooled | 430 | random, expected | 0.057 | 0.114 | — |
 | click | 123 | review | 0.561 | 0.789 | 0.402 |
-| click | 123 | co-change | 0.667 | 0.789 | 0.415 |
-| click | 123 | adjacency | 0.447 | 0.602 | 0.301 |
+| click | 123 | co-change | 0.675 | 0.797 | 0.412 |
+| click | 123 | adjacency | 0.447 | 0.602 | 0.281 |
 | flask | 166 | review | 0.488 | 0.693 | 0.267 |
-| flask | 166 | co-change | 0.584 | 0.651 | 0.385 |
-| flask | 166 | adjacency | 0.392 | 0.530 | 0.221 |
+| flask | 166 | co-change | 0.572 | 0.651 | 0.367 |
+| flask | 166 | adjacency | 0.392 | 0.530 | 0.200 |
 | rich | 137 | review | 0.307 | 0.409 | 0.170 |
-| rich | 137 | co-change | 0.409 | 0.526 | 0.306 |
-| rich | 137 | adjacency | 0.372 | 0.474 | 0.254 |
+| rich | 137 | co-change | 0.423 | 0.518 | 0.307 |
+| rich | 137 | adjacency | 0.372 | 0.474 | 0.245 |
 | requests | 4 | review | 0.250 | 0.500 | 0.275 |
-| requests | 4 | co-change | 0.000 | 0.000 | 0.078 |
-| requests | 4 | adjacency | 0.250 | 0.500 | 0.180 |
+| requests | 4 | co-change | 0.250 | 0.500 | 0.156 |
+| requests | 4 | adjacency | 0.250 | 0.500 | 0.150 |
 
-**Decision rule:** hit@10 ≥ 0.50 (met: 0.628) *and* at least 5 points over
-co-change (not met: 0.628 against 0.644, −1.6 points). **Not worth quoting as
-a reviewer feature.** Said plainly: on a repository you have just indexed,
-the co-break list is right about six times in ten at ten entries, and the git
-log is right about as often, with a better top five (0.547 against 0.449).
+Every method is scored to the same depth: review lists at most ten entries,
+so a baseline's rank beyond ten counts as a miss in hit@10 and in MRR@10.
+The baselines were re-scored after review of the harness gave the co-change
+sort a deterministic final tie-break (count, then recency, then path; it had
+left ties to set-iteration order): 56 of 430 co-change ranks changed, pooled
+co-change moved from 0.547 / 0.644 to 0.551 / 0.649, adjacency and review
+ranks did not change, and nothing below changed its verdict.
+
+**Decision rule:** hit@10 ≥ 0.50 (met: 270 of 430, 0.628) *and* at least 5
+points over co-change (not met: 270 against 279 of 430, −2.1 points). **Not
+worth quoting as a reviewer feature.** Said plainly: on a repository you have
+just indexed, the co-break list is right about six times in ten at ten
+entries, and the git log is right about as often, with a better top five
+(0.551 against 0.449).
 
 What else the records say:
 
 - **The two methods miss different pairs.** At ten entries review alone hit
-  62 pairs the git log missed, the git log alone hit 69 that review missed,
-  and either hit 79% of pairs. A reviewer who runs both does better than
-  either; nothing ships that today.
+  62 pairs the git log missed, the git log alone hit 71 that review missed,
+  and either hit 79% of pairs (69% at five). A reviewer who runs both does
+  better than either; nothing ships that today.
 - **Review does relatively better with more context.** With one seed file
-  (a 2-file commit) review hit 0.70 against co-change's 0.73; with three
-  seeds, 0.60 against 0.55; with four or more, 0.60 against 0.60.
+  (a 2-file commit) review hit 0.70 against co-change's 0.73; with two,
+  0.66 against 0.76; with three, 0.60 against 0.57; with four or more, 0.60
+  against 0.60.
 - **Spreading beats the raw edges it spreads over.** Review (0.628) is 10
   points above direct structural adjacency (0.533) on the same graph, so the
   spread is doing something; it is the information, not the method, that
@@ -129,9 +139,13 @@ repository with no control set, so it says little on its own.
   takes them.
 - The four public repositories are the retrieval benchmark's. `review` and
   `drift` were not tuned on them, but they are not held out either.
-- Co-change here is the plain count over 300 commits. A reviewer's `git log`
-  has the whole history; a weighted or time-decayed version could do better
-  still.
+- Co-change here is the plain count over 300 commits, ties broken by recency
+  then path. A reviewer's `git log` has the whole history; a weighted or
+  time-decayed version could do better still.
+- `records.jsonl` holds the review ranks as the run recorded them and the
+  baseline ranks as re-scored (the `rescore` record at the end names the
+  tool and the count of changed pairs); `summary.json` is recomputed from it
+  by `analyze`.
 
 ## Reproduce
 
