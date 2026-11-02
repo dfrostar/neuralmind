@@ -7,13 +7,12 @@ const POST_COMMIT = '3fe5a61';
 const SOURCE_COMMIT = '3f654b5d';
 
 export const metadata = {
-    title: 'Claude Code Team Memory & Token Savings — NeuralMind',
-    description: 'Claude Code team memory with NeuralMind: setup, committed memory bundles that prevent agent amnesia, and token measurement at every layer. Verified in code.',
+    title: 'Claude Code Teams: Setup & Token Measurement — NeuralMind',
+    description: 'NeuralMind with Claude Code teams: setup, committed team bundles of recorded file associations, and token measurement at every layer. Verified in code.',
     keywords: [
-        'Claude Code team memory',
+        'Claude Code teams',
         'token reduction',
-        'agent amnesia',
-        'team memory bundle',
+        'team bundle',
         'NeuralMind Claude',
         'MCP server',
         'Claude Code hooks',
@@ -29,8 +28,8 @@ export const metadata = {
         canonical: '/publications/claude-teams-deep-dive',
     },
     openGraph: {
-        title: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention',
-        description: 'Deep-dive research report verified against the live codebase. How to use NeuralMind with Claude Code teams, measure token reduction, and eliminate agent amnesia.',
+        title: 'NeuralMind + Claude Teams: Procedures and Token Measurement',
+        description: 'Deep-dive research report verified against the live codebase. How to use NeuralMind with Claude Code teams, and measure token reduction.',
         url: 'https://neuralmind.uk/publications/claude-teams-deep-dive',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -38,7 +37,7 @@ export const metadata = {
         publishedTime: '2026-07-26',
         modifiedTime: '2026-07-26',
         authors: ['Darren Frost'],
-        tags: ['Claude Code', 'team memory', 'token reduction', 'agent amnesia', 'NeuralMind'],
+        tags: ['Claude Code', 'team bundle', 'token reduction', 'NeuralMind'],
         images: [
             {
                 url: '/social-preview.png',
@@ -50,7 +49,7 @@ export const metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention',
+        title: 'NeuralMind + Claude Teams: Procedures and Token Measurement',
         description: 'Deep-dive research report verified against the live codebase.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
@@ -73,8 +72,8 @@ export default function PublicationPage() {
                         __html: JSON.stringify({
                             '@context': 'https://schema.org',
                             '@type': 'Article',
-                            headline: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention',
-                            description: 'Deep-dive research report: how to use NeuralMind with Claude Code teams, measure token reduction, and eliminate agent amnesia via committed team memory bundles.',
+                            headline: 'NeuralMind + Claude Teams: Procedures and Token Measurement',
+                            description: 'Deep-dive research report: how to use NeuralMind with Claude Code teams, and measure token reduction with committed team bundles.',
                             author: {
                                 '@type': 'Person',
                                 name: 'Darren Frost',
@@ -91,7 +90,7 @@ export default function PublicationPage() {
                                 '@type': 'WebPage',
                                 '@id': 'https://neuralmind.uk/publications/claude-teams-deep-dive',
                             },
-                            keywords: ['Claude Code', 'team memory', 'token reduction', 'agent amnesia', 'NeuralMind'],
+                            keywords: ['Claude Code', 'team bundle', 'token reduction', 'NeuralMind'],
                             about: {
                                 '@type': 'SoftwareApplication',
                                 name: 'NeuralMind',
@@ -111,7 +110,7 @@ export default function PublicationPage() {
                         NeuralMind + Claude Teams
                     </h1>
                     <p className="text-lg text-body mb-2">
-                        Procedures, Token Measurement, and Amnesia Prevention
+                        Procedures and Token Measurement
                     </p>
                     <p className="text-muted text-sm mb-4">
                         Verified against the live codebase. DeepSeek v4 Pro QA-corrected.
