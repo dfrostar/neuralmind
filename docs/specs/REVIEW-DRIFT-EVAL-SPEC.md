@@ -1,7 +1,9 @@
 # `neuralmind review` and `neuralmind drift` on real commits — pre-registration
 
-**Status:** pre-registered 2026-11-02, before the harness was written; not yet
-run · **Harness:** `evals/review_drift/` · **Results:** `bench/review_drift/<date>/`
+**Status:** run 2026-11-02; **both commands fail their gate** (review hit@10
+0.628 against git co-change 0.644; drift 5% on fixes and 5% on controls);
+[results](../../bench/review_drift/2026-11-02/README.md) · **Harness:**
+`evals/review_drift/` · **Results:** `bench/review_drift/2026-11-02/`
 
 ## Why
 
@@ -204,3 +206,11 @@ level, as every other figure does.
   an editable install of the checkout. Nothing from the stopped run was read
   beyond its progress lines and the build records' synapse namespaces, which
   is how the mismatch was found (4.21.0 seeded `shared`, not `structural`).
+- 2026-11-02 — run complete (`neuralmind 4.24.0` at `d35bfbc5`; 319 builds,
+  430 review pairs on 119 commits, 121 fix and 121 control commits, 17
+  hermes-agent fixes). Review: hit@10 0.628, co-change 0.644, adjacency
+  0.533; floor met, margin not. Drift: 0.050 on fixes, 0.050 on controls;
+  neither condition met. Both published as failing. As the rule requires,
+  `review`'s closing text no longer says the files were "historically edited
+  together"; on a cold index it reports structural coupling, and the text and
+  the docs now say so.
