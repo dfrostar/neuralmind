@@ -153,7 +153,6 @@ neuralmind/retrieval_enhancement.py: Need type annotation for "all_nodes"  [var-
 neuralmind/retrieval_enhancement.py: Need type annotation for "new_results" (hint: "new_results: list[<type>] = ...")  [var-annotated]
 neuralmind/retrieval_enhancement.py: Returning Any from function declared to return "str"  [no-any-return]
 neuralmind/retrieval_enhancement.py: Returning Any from function declared to return "str"  [no-any-return]
-neuralmind/scip_backend.py: Incompatible types in assignment (expression has type "ScipIndex", variable has type "None")  [assignment]
 neuralmind/security_config.py: Module has no attribute "windll"  [attr-defined]
 neuralmind/security_profile.py: Argument 1 to "_is_loopback_address" has incompatible type "str | int"; expected "str"  [arg-type]
 neuralmind/server.py: Argument "days" to "full_dashboard" has incompatible type "str"; expected "int"  [arg-type]
