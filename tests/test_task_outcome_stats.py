@@ -318,6 +318,15 @@ def test_a_run_that_fell_back_and_returned_is_caught_by_its_log_alone(tmp_path) 
     assert run.hermes_paid_use("local-bbb", clean, logs) == ""
 
 
+def test_a_missing_state_db_does_not_hide_the_logged_calls(tmp_path) -> None:
+    logs = tmp_path / "logs"
+    _agent_log(logs, "agent.log", [_call("local-aaa", 1, "qwen/qwen3.8-flash", "openrouter")])
+    reason = run.hermes_paid_use("local-aaa", tmp_path / "absent.db", logs)
+    assert reason == "its agent log shows 1 call(s) to openrouter:qwen/qwen3.8-flash"
+    # No session id at all (nothing to look up): nothing to say.
+    assert run.hermes_paid_use(None, tmp_path / "absent.db", logs) == ""
+
+
 def test_a_session_with_both_a_price_and_logged_calls_reports_both(tmp_path) -> None:
     db_path = _priced_db(
         tmp_path / "state.db", sessions=[("local-aaa", "qwen/qwen3.8-flash", 0.07, None)]

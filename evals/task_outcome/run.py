@@ -938,9 +938,10 @@ def run_one(
             # Hermes falls back to another provider when its own model fails:
             # that run measured some other model.
             failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
-        elif session and not failure:
+        elif not failure:
             # The model label is where the session ended: a run that fell back to a
-            # paid provider and came back reads as local. Its price and log don't.
+            # paid provider and came back reads as local. Its price and log don't, and
+            # the log names the session by id, so a missing row doesn't hide it.
             paid = hermes_paid_use(session_id)
             if paid:
                 failure = f"session used a paid provider ({paid})"
