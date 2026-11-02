@@ -235,3 +235,30 @@ def test_review_table_and_markdown_render(tmp_path):
     summary = json.loads((tmp_path / "summary.json").read_text())
     assert summary["verdict"]["review"]["worth_quoting"] is False
     assert summary["drift"]["pooled"]["fix"]["rate"] == 1.0
+
+
+def test_cochange_ties_break_on_the_path(tmp_path):
+    repo = tmp_path
+    _git(repo, "init", "-q")
+    _commit(repo, {"a.py": "1", "z.py": "1", "m.py": "1"}, "base")
+    head = _commit(repo, {"a.py": "2"}, "study")
+    # z and m tie on count and recency; the path decides, every run.
+    assert run.cochange_ranking(repo, head, {"a.py"}, {"z.py", "m.py"}) == ["m.py", "z.py"]
+
+
+def test_prune_incomplete_drops_an_unfinished_parent(tmp_path):
+    path = tmp_path / "records.jsonl"
+    rows = [
+        {"kind": "run_start", "tool": {}},
+        {"kind": "build", "repo": "r", "parent": "p1", "ok": True},
+        {"kind": "review_pair", "repo": "r", "parent": "p1", "held_out": "x"},
+        {"kind": "parent_done", "repo": "r", "parent": "p1"},
+        {"kind": "build", "repo": "r", "parent": "p2", "ok": True},
+        {"kind": "review_pair", "repo": "r", "parent": "p2", "held_out": "y"},
+    ]
+    run.write_records(path, rows)
+    assert run.prune_incomplete(path) == 2
+    kept = run.load_records(path)
+    assert [r["kind"] for r in kept] == ["run_start", "build", "review_pair", "parent_done"]
+    assert run.done_parents(path) == {("r", "p1")}
+    assert run.prune_incomplete(path) == 0

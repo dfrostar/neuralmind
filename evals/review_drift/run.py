@@ -103,7 +103,10 @@ def cochange_ranking(repo: Path, parent: str, seeds: set[str], candidates: set[s
         elif line.strip():
             files.append(line.strip())
     flush()
-    return sorted(score, key=lambda f: (-score[f], recency[f]))
+    # The path is the last key: without it, candidates tied on count and
+    # recency kept the order of a set iteration, which varies with the hash
+    # seed, and a published rank must not.
+    return sorted(score, key=lambda f: (-score[f], recency[f], f))
 
 
 # --------------------------------------------------------------------- #
@@ -316,15 +319,43 @@ def tool_identity(binary: str) -> dict:
     return identity
 
 
+def load_records(records_path: Path) -> list[dict]:
+    if not records_path.exists():
+        return []
+    return [json.loads(line) for line in records_path.read_text().splitlines() if line.strip()]
+
+
+def write_records(records_path: Path, records: list[dict]) -> None:
+    records_path.write_text("".join(json.dumps(r) + "\n" for r in records))
+
+
 def done_parents(records_path: Path) -> set[tuple[str, str]]:
-    done = set()
-    if records_path.exists():
-        for line in records_path.read_text().splitlines():
-            if line.strip():
-                r = json.loads(line)
-                if r.get("kind") == "parent_done":
-                    done.add((r["repo"], r["parent"]))
-    return done
+    return {
+        (r["repo"], r["parent"])
+        for r in load_records(records_path)
+        if r.get("kind") == "parent_done"
+    }
+
+
+def prune_incomplete(records_path: Path) -> int:
+    """Drop the records of parents that never reached ``parent_done``.
+
+    A run interrupted mid-parent would otherwise keep that parent's partial
+    review and drift records and, on resume, append a second full set, which
+    ``analyze`` would count twice. Returns the number of records dropped.
+    """
+    records = load_records(records_path)
+    done = {(r["repo"], r["parent"]) for r in records if r.get("kind") == "parent_done"}
+    kept = [
+        r
+        for r in records
+        if r.get("kind") in ("run_start", "parent_done")
+        or "parent" not in r
+        or (r["repo"], r["parent"]) in done
+    ]
+    if len(kept) != len(records):
+        write_records(records_path, kept)
+    return len(records) - len(kept)
 
 
 def run_public(args: argparse.Namespace) -> int:
@@ -332,6 +363,9 @@ def run_public(args: argparse.Namespace) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     records_path = out / "records.jsonl"
+    dropped = prune_incomplete(records_path)
+    if dropped:
+        print(f"resume: dropped {dropped} record(s) of an unfinished parent", flush=True)
     done = done_parents(records_path)
     with records_path.open("a") as fh:
 
@@ -387,12 +421,69 @@ def run_public(args: argparse.Namespace) -> int:
     return 0
 
 
+def rescore_baselines(args: argparse.Namespace) -> int:
+    """Recompute the two baselines' ranks for every recorded review pair.
+
+    Rebuilds the index at each parent (the candidate set is the files it
+    holds) but makes no ``review`` or ``drift`` call, so the published review
+    ranks stay as recorded; only ``rank_cochange`` and ``rank_adjacency`` are
+    rewritten in place. Used after the co-change sort gained its deterministic
+    tie-break.
+    """
+    sets = json.loads(Path(args.sets).read_text())
+    records_path = Path(args.out) / "records.jsonl"
+    records = load_records(records_path)
+    by_parent: dict[tuple[str, str], list[dict]] = collections.defaultdict(list)
+    for r in records:
+        if r.get("kind") == "review_pair":
+            by_parent[(r["repo"], r["parent"])].append(r)
+    changed = 0
+    for (name, parent), pairs in by_parent.items():
+        repo = Path(sets["repos"][name]["path"])
+        checkout(repo, parent)
+        built = build(args.neuralmind, repo)
+        if not built["ok"]:
+            print(f"{name} {parent[:10]}: build failed, ranks left as recorded", flush=True)
+            continue
+        node_file = graph_files(repo)
+        indexed = set(node_file.values())
+        for p in pairs:
+            seed_set = set(p["seeds"])
+            candidates = indexed - seed_set
+            before = (p["rank_cochange"], p["rank_adjacency"])
+            p["rank_cochange"] = rank_of(
+                p["held_out"], cochange_ranking(repo, parent, seed_set, candidates)
+            )
+            p["rank_adjacency"] = rank_of(
+                p["held_out"], adjacency_ranking(repo, node_file, seed_set, candidates)
+            )
+            p["n_candidates"] = len(candidates)
+            changed += before != (p["rank_cochange"], p["rank_adjacency"])
+        print(f"{name} {parent[:10]}: rescored {len(pairs)} pair(s)", flush=True)
+    for _name, repo_info in sets["repos"].items():
+        checkout(Path(repo_info["path"]), repo_info["pinned"])
+    records.append(
+        {
+            "kind": "rescore",
+            "ts": time.time(),
+            "tool": tool_identity(args.neuralmind),
+            "pairs_changed": changed,
+        }
+    )
+    write_records(records_path, records)
+    print(f"rescored: {changed} pair(s) changed a baseline rank", flush=True)
+    return 0
+
+
 def run_hermes(args: argparse.Namespace) -> int:
     """Drift only, on the task-outcome tasks whose indexes are cached."""
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     records_path = out / "records.jsonl"
     repo = Path(args.hermes_clone)
+    dropped = prune_incomplete(records_path)
+    if dropped:
+        print(f"resume: dropped {dropped} record(s) of an unfinished parent", flush=True)
     done = done_parents(records_path)
     tasks: list[tuple[str, dict]] = []
     for tasks_file in args.hermes_tasks:
@@ -475,6 +566,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--hermes", action="store_true", help="drift arm on the hermes-agent tasks instead"
     )
+    ap.add_argument(
+        "--rescore-baselines",
+        action="store_true",
+        help="recompute co-change and adjacency ranks for recorded review pairs; no review/drift calls",
+    )
     ap.add_argument("--hermes-clone", help="hermes-agent clone holding the tasks' commits")
     ap.add_argument(
         "--hermes-tasks", action="append", default=[], help="tasks.json files (held-out, screen)"
@@ -486,6 +582,10 @@ def main(argv: list[str] | None = None) -> int:
         help="directories holding <task id>/.neuralmind caches",
     )
     args = ap.parse_args(argv)
+    if args.rescore_baselines:
+        if not args.sets:
+            ap.error("--rescore-baselines needs --sets")
+        return rescore_baselines(args)
     if args.hermes:
         if not (args.hermes_clone and args.hermes_tasks and args.hermes_index):
             ap.error("--hermes needs --hermes-clone, --hermes-tasks and --hermes-index")
