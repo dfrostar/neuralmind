@@ -28,12 +28,15 @@ v4.12.0). Every figure here comes from the current `site/claims.json`.
       the post uses the new numbers.
 - [ ] **Record the demo** (below). A Reddit post with a GIF or screenshot of
       the injected block will get far more attention than text alone.
-- [ ] **Confirm** `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`
-      still works on the current Hermes release (the manifest requires
-      `>=0.21.5`).
+- [ ] **Wait for the catalog listing.** Both versions below offer
+      `hermes plugins install neuralmind --enable` from Hermes's plugin
+      catalog. Post only after NousResearch/hermes-agent#147375, which adds the
+      plugin there, has merged, and confirm that command installs it on the
+      current Hermes release (the manifest requires `>=0.21.5`).
 - [ ] Do **not** mention the Hermes MCP catalog entry
-      (NousResearch/hermes-agent#97207) unless you have checked its state on
-      posting day. The plugin install below does not depend on it.
+      (NousResearch/hermes-agent#97207, separate from the plugin catalog
+      listing) unless you have checked its state on posting day. The plugin
+      install below does not depend on it.
 
 ---
 
@@ -43,7 +46,7 @@ v4.12.0). Every figure here comes from the current `site/claims.json`.
 2. I wrote a Hermes-Agent plugin so the agent stops starting cold on my repo
 3. Persistent code memory for Hermes-Agent: a `pre_llm_call` plugin, local index, published benchmark misses included
 
-## Body (posting version, ~1,900 characters)
+## Body (posting version, ~2,000 characters)
 
 I built NeuralMind (MIT-licensed core, runs locally) and just shipped a Hermes-Agent plugin for it. I'd like feedback from people using Hermes on real codebases.
 
@@ -60,6 +63,8 @@ I built NeuralMind (MIT-licensed core, runs locally) and just shipped a Hermes-A
     pip install -U neuralmind
     neuralmind build /path/to/repo
     neuralmind install-hermes-plugin
+
+Or from Hermes's plugin catalog: `hermes plugins install neuralmind --enable`. Needs Hermes 0.21.5 or later.
 
 **Numbers, misses included:** on 40 queries written before tuning, across requests, click, flask and rich, the right file was in the context for 40 of 40, at 51–242x fewer tokens than pasting whole files. 40 is a small sample: on a 150-question eval it gets the right file into the top five 93.3% of the time and misses 10. A bare vector lookup always costs fewer tokens and ranks the right file higher on two of the four repos. To reproduce, run `python -m evals.public.run` from a clone.
 
@@ -124,17 +129,18 @@ Here's what the model sees (example file names):
     neuralmind build /path/to/repo
     neuralmind install-hermes-plugin            # follows whichever built repo Hermes is working in
 
-Or let Hermes manage it:
+Or install it from Hermes's plugin catalog and let Hermes manage it:
 
-    hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
+    hermes plugins install neuralmind --enable
 
 Start a new session (or restart the gateway) to load it. If you skip the path,
 one install serves every repo you've built and does nothing in the rest. If
 you installed with a path before, a re-run without one keeps that pin; run
 `neuralmind install-hermes-plugin --unpin` to go back to following the
-directory. Hermes Desktop and ACP editor sessions don't expose each session's directory,
-so there you pin a project (`install-hermes-plugin /path`) or set
-`NEURALMIND_PROJECT`.
+directory. On Hermes 0.22.2 or later that covers CLI, TUI and Desktop
+sessions: the plugin asks Hermes for each session's own directory. For ACP
+editor sessions, or on older Hermes, pin a project
+(`install-hermes-plugin /path`).
 
 **Numbers, including where it loses.** On a public benchmark of 40 queries
 written before tuning, across `requests`, `click`, `flask` and `rich` pinned to
@@ -210,8 +216,8 @@ Don't put a stopwatch on any of these. No latency figure is allowed.
 | Claim | Source |
 |---|---|
 | Plugin hooks, per-turn block, appended to user message (cache untouched), first-turn recap, edit and read recording, the unrecorded cases | `docs/use-cases/hermes-agent.md` §2–§4; `neuralmind/hermes_plugin/plugin.yaml` |
-| `hermes plugins install …#neuralmind/hermes_plugin --enable`, `requires_hermes >=0.21.5` | `docs/releases/RELEASE_NOTES_v4.10.0.md`; `plugin.yaml` |
-| Project resolution, Desktop/ACP pin rule | `docs/use-cases/hermes-agent.md` §5; `CLAUDE.md` multi-project scoping |
+| `hermes plugins install neuralmind --enable` from Hermes's plugin catalog; `requires_hermes >=0.21.5` | NousResearch/hermes-agent#147375 adds `plugin-catalog/neuralmind.yaml`, true only once it has merged; `plugin.yaml` |
+| Project resolution; on Hermes 0.22.2+ it follows each CLI, TUI and Desktop session's directory; pin for ACP editor sessions and older Hermes | `docs/use-cases/hermes-agent.md` §5; `neuralmind/hermes_plugin/README.md` ("Which project"). No doc covers ACP sessions on 0.22.2+, so the pin advice stays for them |
 | Reads recorded (v4.14.0+) | `docs/use-cases/hermes-agent.md` §4 |
 | 40 of 40, 51–242x, 31–67x, ripgrep 32 of 40 | `site/claims.json` (`ratios`, `non_ratio_headline_claims`) → `docs/benchmarks/public.md`, v4.12.0 |
 | 150-question eval: 93.3% top-5, 10 misses | `site/claims.json` note; `docs/wiki/Benchmarks.md` |
