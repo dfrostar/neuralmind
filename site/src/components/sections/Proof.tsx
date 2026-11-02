@@ -18,7 +18,7 @@ const DOCS = 'https://docs.neuralmind.uk/comparisons';
 const comparisons = (found: string, grepFound: string) => [
     {
         name: 'NeuralMind',
-        gets: 'A project map, the relevant symbols and their callers, plus links learned from use. Rebuilt by git hooks; says when it is stale.',
+        gets: 'A project map, the relevant symbols and their callers, plus links recorded from use. Rebuilt by git hooks; says when it is stale.',
         measured: `Public benchmark: the gold file on ${found} queries.`,
         href: '/benchmark/',
         ours: true,
@@ -44,7 +44,7 @@ const comparisons = (found: string, grepFound: string) => [
     {
         name: 'Cursor and Windsurf memory',
         gets: 'Memories and an index inside one editor’s agent.',
-        measured: 'Not benchmarked here. NeuralMind serves every MCP agent from one index in your repo.',
+        measured: 'Not benchmarked here. NeuralMind’s MCP server works with MCP clients; its prompt hook reaches Claude Code and Hermes only.',
         href: `${DOCS}/vs-cursor-codebase.html`,
     },
     {
@@ -151,7 +151,7 @@ export default function Proof() {
                         evidence={floor.evidence}
                     />
                     <Stat
-                        label="Learned recall"
+                        label="Synapse recall gate"
                         value="Never lowers hit rate"
                         figure={false}
                         note="Synapse recall on vs off, at a neutral token budget, on the same fixture: it shows direction, not size."
@@ -232,7 +232,7 @@ export default function Proof() {
                         </h3>
                         <p className="text-muted text-sm leading-relaxed">
                             {withCode(
-                                'Run `neuralmind benchmark .` for tokens per question on your code, and `neuralmind eval . --synapse-ab` with your own questions to see whether learned recall helps on your repo.',
+                                'Run `neuralmind benchmark .` for tokens per question on your code, and `neuralmind eval . --synapse-ab` with your own questions to see whether synapse recall changes ranking on your repo.',
                             )}{' '}
                             <a href="/measure-your-own/" className="link">
                                 How to measure your own

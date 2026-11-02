@@ -14,7 +14,7 @@ import Logo from '@/components/ui/Logo';
 type NavItem = { href: string; label: string; hint?: string };
 
 const productLinks: NavItem[] = [
-    { href: '/#how-it-works', label: 'How it works', hint: 'Index, query, remember' },
+    { href: '/#how-it-works', label: 'How it works', hint: 'Index, query, hook' },
     { href: '/#quickstart', label: 'Quickstart', hint: 'Five commands' },
     { href: '/#features', label: 'Features', hint: 'Four things your agent gets' },
     { href: '/benchmark', label: 'Benchmark', hint: '40 public queries, every miss published' },

@@ -29,12 +29,12 @@ const pillars: Pillar[] = [
     },
     {
         icon: 'restore',
-        title: 'Stays current, and remembers',
-        lede: 'An index that keeps up with git and says when it hasn’t, plus memory that survives the session.',
+        title: 'Stays current',
+        lede: 'An index that keeps up with git and says when it hasn’t, and decisions that go stale with their code.',
         items: [
             { name: 'Fresh after every git move', desc: '`neuralmind init-hook .` installs post-commit, post-merge, post-checkout and post-rewrite hooks, so commits, pulls, branch switches and rebases rebuild in the background.', since: '4.13.0' },
             { name: 'Stale-index warnings', desc: 'When commits since the last build changed the project, or the background rebuild failed, query, search, the MCP tools and the prompt hook say so in one line.', since: '4.17.0' },
-            { name: 'Learned associations', desc: 'A Hebbian synapse layer links files you use together and re-ranks recall with those links; `neuralmind eval . --synapse-ab` measures whether that helps on your repo.' },
+            { name: 'Recorded associations', desc: 'A synapse layer records which files are used together and re-ranks recall with those links; `neuralmind eval . --synapse-ab` measures whether that changes ranking on your repo. In a pre-registered run, carrying that state between tasks did not help an agent.' },
             { name: 'Decisions that go stale with their code', desc: 'Architecture decisions are stored with their files. A later commit or pull that changes those files marks them stale, and a hook surfaces a stale one before your agent edits under it.' },
         ],
     },
@@ -54,11 +54,11 @@ const pillars: Pillar[] = [
     {
         icon: 'hub',
         title: 'Works with your agent',
-        lede: 'No new IDE, no model swap, no hosted service. Claude Code is tested end to end; other MCP clients connect through the same protocol.',
+        lede: 'No new IDE, no model swap, no hosted service. The prompt hook is how NeuralMind reaches an agent: in our task-outcome runs the agent never called its MCP tools. Claude Code is tested end to end; other MCP clients connect through the same protocol.',
         items: [
-            { name: 'MCP server', desc: '`neuralmind install-mcp` registers it with Claude Code, or Cursor, Cline, VS Code and Claude Desktop via `--client`; any other client points at `neuralmind-mcp`.' },
-            { name: 'Claude Code hooks', desc: 'Memory at session start, related files at each prompt, and a guard that surfaces a stale decision before an edit.' },
+            { name: 'Claude Code hooks', desc: 'Context at session start, related files at each prompt, and a guard that surfaces a stale decision before an edit.' },
             { name: 'Hermes plugin', desc: '`neuralmind install-hermes-plugin` runs the same hook actions inside Hermes-Agent.' },
+            { name: 'MCP server', desc: '`neuralmind install-mcp` registers it with Claude Code, or Cursor, Cline, VS Code and Claude Desktop via `--client`; any other client points at `neuralmind-mcp`. Agents did not call its tools in our task-outcome runs.' },
             { name: 'Ten languages', desc: 'Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby and PHP, plus JavaScript, OpenAPI, SQL DDL and Protocol Buffers.' },
         ],
     },

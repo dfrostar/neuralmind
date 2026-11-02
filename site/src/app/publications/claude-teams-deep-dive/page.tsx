@@ -134,7 +134,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Abstract</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <p className="text-body leading-relaxed">
-                            NeuralMind is a persistent memory layer that turns Claude (a stateless cortex) into an agent with long-term memory. This report provides a complete, citation-heavy reference for using NeuralMind with Claude Code teams: one-time setup, team memory publish/inherit workflows, daily usage patterns, token measurement at every layer, and the five mechanisms that eliminate agent amnesia. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected multiple refuted and aspirational claims from the original draft — the corrections are flagged inline.
+                            NeuralMind keeps a local code graph and a record of which files are used together for Claude Code. This report is a citation-heavy reference for using it with Claude Code teams: one-time setup, team bundle publish and import workflows, daily usage patterns, token measurement at every layer, and the five mechanisms that carry state between sessions. It does not show that carrying that state helps an agent: a pre-registered memory-track run found no significant gain in tasks solved. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected multiple refuted and aspirational claims from the original draft — the corrections are flagged inline.
                         </p>
                     </div>
                 </section>
@@ -144,7 +144,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Architecture</h2>
                     <div className="space-y-4 text-body leading-relaxed">
                         <p>
-                            <strong className="text-white">The Two-Brain Model:</strong> Claude is the cortex (stateless reasoning over a working-memory window). NeuralMind is the hippocampus + associative cortex (persistent weighted graph of code nodes that learns by Hebbian co-activation, decays unused edges, and runs spreading activation for recall).
+                            <strong className="text-white">How the pieces fit:</strong> Claude is stateless reasoning over a working-memory window. NeuralMind adds a persistent weighted graph of code nodes that records co-activation, decays unused edges, and runs spreading activation for recall. That is the design, not a result: a pre-registered memory-track run that carried this state between tasks found no significant gain in tasks solved (<a href="/benchmark/" className="link">/benchmark</a>).
                         </p>
                         <p>
                             <strong className="text-white">Communication channels:</strong> MCP tools (15 tools, any agent), Claude Code lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse), and the file activity watcher (always-on, per-project).
@@ -164,7 +164,7 @@ export default function PublicationPage() {
                             <p>neuralmind build .             # builds knowledge graph + vector index (1-3 min)</p>
                             <p>neuralmind install-hooks .     # registers PostToolUse + SessionStart + PreCompact hooks</p>
                             <p>neuralmind init-hook .         # auto-rebuild on commit, merge, checkout and rebase (v4.13.0+)</p>
-                            <p>neuralmind watch . &           # always-on file watcher — the "brain" that learns</p>
+                            <p>neuralmind watch . &           # always-on file watcher that keeps the index current</p>
                         </div>
                     </div>
 
@@ -270,14 +270,15 @@ export default function PublicationPage() {
                     </div>
                 </section>
 
-                {/* Amnesia Prevention */}
+                {/* Mechanisms that carry state between sessions */}
                 <section className="mb-10">
-                    <h2 className="font-display text-xl font-bold text-white mb-4">Amnesia Prevention — Five Mechanisms</h2>
+                    <h2 className="font-display text-xl font-bold text-white mb-4">Five Mechanisms That Carry State Between Sessions</h2>
+                    <p className="text-muted text-sm mb-4">These describe what the code does. None of them is shown to improve outcomes.</p>
 
                     <div className="space-y-6 text-body leading-relaxed">
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">1. Persistent Synapse Store (synapses.py, SQLite)</h3>
-                            <p>Learns weighted associations from how an agent actually uses the codebase. Time-based half-life decay: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">weight × exp(−λ × age_days)</code>. Per-namespace half-lives: personal=30d, shared=60d, ephemeral=1d. Structural synapse seeding (v0.46.0) converts 1,903 code graph edges into synapse edges on every build.</p>
+                            <p>Records weighted associations from how an agent actually uses the codebase. Time-based half-life decay: <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">weight × exp(−λ × age_days)</code>. Per-namespace half-lives: personal=30d, shared=60d, ephemeral=1d. Structural synapse seeding (v0.46.0) converts 1,903 code graph edges into synapse edges on every build.</p>
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">2. SessionStart Auto-Import (hooks.py:313-362)</h3>

@@ -126,7 +126,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Abstract</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-card p-6">
                         <p className="text-body leading-relaxed">
-                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that cuts the tokens a code question costs at the retrieval stage: 51–242× fewer than pasting every source file on the public benchmark (v4.12.0), and 12–50× in field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
+                            NeuralMind gives an AI coding agent a local index of your codebase — a weighted graph that cuts the tokens a code question costs at the retrieval stage: 51–242× fewer than pasting every source file on the public benchmark (v4.12.0), and 12–50× in field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
                         </p>
                     </div>
                 </section>
@@ -136,7 +136,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Architecture</h2>
                     <div className="space-y-4 text-body leading-relaxed">
                         <p>
-                            <strong className="text-white">The Two-Brain Model:</strong> Codex is the cortex (stateless reasoning over a working-memory window). NeuralMind is the hippocampus + associative cortex (persistent weighted graph of code nodes that learns by Hebbian co-activation, decays unused edges, and runs spreading activation for recall).
+                            <strong className="text-white">How the pieces fit:</strong> Codex is stateless reasoning over a working-memory window. NeuralMind adds a persistent weighted graph of code nodes that records co-activation, decays unused edges, and runs spreading activation for recall. That is the design, not a result: a pre-registered memory-track run that carried this state between tasks found no significant gain in tasks solved (<a href="/benchmark/" className="link">/benchmark</a>).
                         </p>
                         <p>
                             <strong className="text-white">Communication channels:</strong> MCP tools (19 tools, any agent), lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse), and the file activity watcher (always-on, per-project).
@@ -246,7 +246,7 @@ export default function PublicationPage() {
                             has the measurements.
                         </p>
                         <p className="text-body text-sm">
-                            The hooks are Claude Code-specific, so Codex never ran them. For Codex, token savings come from the MCP retrieval layer (wakeup/query) alone.
+                            The hooks are Claude Code-specific, so Codex never ran them. For Codex, the token reduction comes from the MCP retrieval layer (wakeup/query) alone, and we have not driven Codex end to end to measure it.
                         </p>
                     </div>
 
@@ -346,7 +346,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The savings are at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage reduction: the Claude Code hooks add no compression on top (see the correction above). Whether it lowers what a task costs was measured once: a 20-task pilot found <a href="/benchmark/#task-outcomes" className="link">no difference</a>.
+                            <strong className="text-white">Bottom line:</strong> The reduction is at the retrieval stage. On the public benchmark NeuralMind&apos;s context averaged 670–961 tokens per question, per repo, against 41,729–232,483 to paste every source file (51–242×, v4.12.0); the older 12–50× range comes from field reports measured by <code className="text-ink bg-carbon-raised px-1.5 py-0.5 rounded-control text-sm">neuralmind benchmark</code> before v4.5.0 against its fixed 50K-token estimate. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage reduction: the Claude Code hooks add no compression on top (see the correction above). Whether it lowers what a task costs was measured once: a 20-task pilot found <a href="/benchmark/#task-outcomes" className="link">no difference</a>.
                         </p>
                     </div>
                 </section>
