@@ -78,7 +78,10 @@ from evals.task_outcome import harness, profiles
 # 4: 3 plus the memory track (--track memory) and the block read back on every
 # Hermes run. The memory track's runs recorded 2: they ran on the Hermes
 # harness before 3 was merged in, which is 4 without profiles and the guard.
-HARNESS_VERSION = 4
+# 5: 4 plus a Hermes run that used a paid provider is aborted whatever its final
+# model label says: Hermes prices it above zero, or its agent log shows an
+# OpenRouter call.
+HARNESS_VERSION = 5
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -94,6 +97,9 @@ BASE_TOOLS = [
 AGENTS = ("claude", "hermes")
 HERMES_TOOLSETS = "file,terminal,no_mcp"
 HERMES_STATE_DB = Path.home() / ".hermes" / "state.db"
+HERMES_LOG_DIR = Path.home() / ".hermes" / "logs"
+# Providers a Hermes run must never have called: the fallback chain ends there.
+PAID_PROVIDERS = ("openrouter",)
 HERMES_PLUGIN_CONFIG = Path.home() / ".hermes" / "plugins" / "neuralmind" / "config.json"
 # The memory track's order, fixed in the spec before any of its runs: the fix
 # commits by author date, which also puts every fix after its ancestors.
@@ -452,6 +458,63 @@ def hermes_session(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> 
         "input_tokens": tokens_in,
         "output_tokens": tokens_out,
     }
+
+
+def hermes_session_cost(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> float | None:
+    """What Hermes priced a session at, in USD; None when it has no figure to give.
+
+    A local model costs nothing and any provider it fell back to does. Hermes
+    names a session for the model it ended on but the endpoint it started on, so
+    the model label alone passes a run that fell back and came back; the price
+    does not depend on a label.
+    """
+    if not session_id:
+        return None
+    import sqlite3
+
+    try:
+        rows = _state_db_rows(
+            state_db,
+            "SELECT estimated_cost_usd, actual_cost_usd FROM sessions WHERE id = ?",
+            (session_id,),
+        )
+    except sqlite3.OperationalError:
+        return None  # a Hermes whose table has no cost columns
+    figures = [float(x) for x in (rows[0] if rows else ()) if x is not None]
+    return max(figures) if figures else None
+
+
+def hermes_paid_calls(session_id: str | None, log_dir: Path = HERMES_LOG_DIR) -> dict[str, int]:
+    """API calls a session made to a paid provider, by ``provider:model``, from the agent logs."""
+    if not session_id or not log_dir.is_dir():
+        return {}
+    call = re.compile(rf"\[{re.escape(session_id)}\].*API call #\d+: model=(\S+) provider=(\S+)")
+    counts: dict[str, int] = {}
+    for log in sorted(log_dir.glob("agent.log*")):
+        with open(log, errors="replace") as fh:
+            for line in fh:
+                found = call.search(line) if session_id in line else None
+                if found and found.group(2) in PAID_PROVIDERS:
+                    key = f"{found.group(2)}:{found.group(1)}"
+                    counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def hermes_paid_use(
+    session_id: str | None,
+    state_db: Path = HERMES_STATE_DB,
+    log_dir: Path = HERMES_LOG_DIR,
+) -> str:
+    """Why a Hermes session counts as having used a paid provider; "" when nothing says so."""
+    reasons = []
+    cost = hermes_session_cost(session_id, state_db)
+    if cost:
+        reasons.append(f"Hermes priced it at ${cost:.4f}")
+    calls = hermes_paid_calls(session_id, log_dir)
+    if calls:
+        listed = ", ".join(f"{n} call(s) to {key}" for key, n in sorted(calls.items()))
+        reasons.append(f"its agent log shows {listed}")
+    return "; ".join(reasons)
 
 
 def hermes_session_in(ws: Path, state_db: Path = HERMES_STATE_DB) -> str | None:
@@ -875,6 +938,12 @@ def run_one(
             # Hermes falls back to another provider when its own model fails:
             # that run measured some other model.
             failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
+        elif session and not failure:
+            # The model label is where the session ended: a run that fell back to a
+            # paid provider and came back reads as local. Its price and log don't.
+            paid = hermes_paid_use(session_id)
+            if paid:
+                failure = f"session used a paid provider ({paid})"
     else:
         agent = parse_stream(stdout.splitlines())
     # After the background commands are stopped, before anything is cleaned up.

@@ -212,6 +212,122 @@ def test_hermes_session_reads_the_model_the_run_used(tmp_path) -> None:
     assert run.hermes_session(None, db_path) == {}
 
 
+def _priced_db(path, sessions=()):
+    """A Hermes state.db cut down to the columns that price a session."""
+    import sqlite3
+
+    db = sqlite3.connect(path)
+    db.execute(
+        "CREATE TABLE sessions (id TEXT, model TEXT, estimated_cost_usd REAL, actual_cost_usd REAL)"
+    )
+    db.executemany("INSERT INTO sessions VALUES (?, ?, ?, ?)", sessions)
+    db.commit()
+    db.close()
+    return path
+
+
+def _agent_log(log_dir, name, lines):
+    log_dir.mkdir(exist_ok=True)
+    (log_dir / name).write_text("\n".join(lines) + "\n")
+
+
+def _call(session_id, n, model, provider):
+    return (
+        f"2026-11-01 12:15:4{n},034 INFO [{session_id}] agent.conversation_loop: "
+        f"API call #{n}: model={model} provider={provider} in=8112 out=511 total=8623"
+    )
+
+
+def test_a_session_hermes_priced_above_zero_used_a_paid_provider(tmp_path) -> None:
+    db_path = _priced_db(
+        tmp_path / "state.db",
+        sessions=[
+            ("local", "gpt-oss:20b-64k", 0.0, None),
+            ("mixed", "qwen/qwen3.8-flash", 0.0729, None),
+            # Fell back and came back: the label reads as local, the price doesn't.
+            ("returned", "gpt-oss:20b-64k", 0.011, None),
+            ("billed", "gpt-oss:20b-64k", None, 0.5),
+            ("unpriced", "gpt-oss:20b-64k", None, None),
+        ],
+    )
+    assert run.hermes_session_cost("local", db_path) == 0.0
+    assert run.hermes_session_cost("mixed", db_path) == 0.0729
+    assert run.hermes_session_cost("billed", db_path) == 0.5
+    assert run.hermes_session_cost("unpriced", db_path) is None
+    assert run.hermes_session_cost("missing", db_path) is None
+    assert run.hermes_session_cost(None, db_path) is None
+    no_logs = tmp_path / "no-logs"
+    assert run.hermes_paid_use("local", db_path, no_logs) == ""
+    assert run.hermes_paid_use("unpriced", db_path, no_logs) == ""
+    assert "$0.0110" in run.hermes_paid_use("returned", db_path, no_logs)
+    assert "$0.5000" in run.hermes_paid_use("billed", db_path, no_logs)
+
+
+def test_a_state_db_without_cost_columns_gives_no_price(tmp_path) -> None:
+    # The cut-down table the other tests build has none: an older Hermes.
+    db_path = _state_db(
+        tmp_path / "state.db",
+        sessions=[("s1", "gpt-oss:20b-64k", 7, "http://127.0.0.1:11434/v1", 900, 100, "/w", 1, 1)],
+    )
+    assert run.hermes_session_cost("s1", db_path) is None
+    assert run.hermes_session_cost("s1", tmp_path / "absent.db") is None
+
+
+def test_agent_log_calls_to_openrouter_count_only_for_that_session(tmp_path) -> None:
+    logs = tmp_path / "logs"
+    _agent_log(
+        logs,
+        "agent.log",
+        [
+            _call("local-aaa", 1, "gpt-oss:20b-64k", "custom"),
+            _call("local-aaa", 2, "qwen/qwen3.8-flash", "openrouter"),
+            _call("local-bbb", 1, "qwen/qwen3.8-flash", "openrouter"),
+            "unrelated line that mentions local-aaa but is no API call",
+        ],
+    )
+    # A rotated file: the run's calls can straddle a rotation.
+    _agent_log(logs, "agent.log.1", [_call("local-aaa", 3, "qwen/qwen3.8-flash", "openrouter")])
+    assert run.hermes_paid_calls("local-aaa", logs) == {"openrouter:qwen/qwen3.8-flash": 2}
+    assert run.hermes_paid_calls("local-bbb", logs) == {"openrouter:qwen/qwen3.8-flash": 1}
+    assert run.hermes_paid_calls("local-ccc", logs) == {}
+    assert run.hermes_paid_calls(None, logs) == {}
+    assert run.hermes_paid_calls("local-aaa", tmp_path / "no-logs") == {}
+
+
+def test_a_run_that_fell_back_and_returned_is_caught_by_its_log_alone(tmp_path) -> None:
+    # Priced at zero and labelled gpt-oss: only the log shows the OpenRouter calls.
+    db_path = _priced_db(
+        tmp_path / "state.db", sessions=[("local-aaa", "gpt-oss:20b-64k", 0.0, 0.0)]
+    )
+    logs = tmp_path / "logs"
+    _agent_log(
+        logs,
+        "agent.log",
+        [
+            _call("local-aaa", 1, "gpt-oss:20b-64k", "custom"),
+            _call("local-aaa", 2, "qwen/qwen3.8-flash", "openrouter"),
+            _call("local-aaa", 3, "gpt-oss:20b-64k", "custom"),
+        ],
+    )
+    reason = run.hermes_paid_use("local-aaa", db_path, logs)
+    assert "1 call(s) to openrouter:qwen/qwen3.8-flash" in reason
+    assert "priced" not in reason
+    # A session whose calls were all local passes both checks.
+    clean = _priced_db(tmp_path / "clean.db", sessions=[("local-bbb", "gpt-oss:20b-64k", 0.0, 0.0)])
+    _agent_log(logs, "agent.log.1", [_call("local-bbb", 1, "gpt-oss:20b-64k", "custom")])
+    assert run.hermes_paid_use("local-bbb", clean, logs) == ""
+
+
+def test_a_session_with_both_a_price_and_logged_calls_reports_both(tmp_path) -> None:
+    db_path = _priced_db(
+        tmp_path / "state.db", sessions=[("local-aaa", "qwen/qwen3.8-flash", 0.07, None)]
+    )
+    logs = tmp_path / "logs"
+    _agent_log(logs, "agent.log", [_call("local-aaa", 1, "qwen/qwen3.8-flash", "openrouter")])
+    reason = run.hermes_paid_use("local-aaa", db_path, logs)
+    assert reason.startswith("Hermes priced it at $0.0700; its agent log shows 1 call(s) to ")
+
+
 def test_a_timed_out_run_finds_its_session_by_the_resolved_workspace(tmp_path) -> None:
     ws = tmp_path / "real" / "ws"
     ws.mkdir(parents=True)
