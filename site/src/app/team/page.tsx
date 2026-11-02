@@ -28,25 +28,25 @@ export const metadata: Metadata = pageMetadata({
 const steps = [
     {
         n: '1',
-        title: 'Learn locally',
-        body: 'Each developer’s synapse layer learns from their own work — which files get opened, edited and queried together. It stays in the project’s local .neuralmind/ store until someone publishes it.',
+        title: 'Record locally',
+        body: 'Each developer’s synapse layer records their own work — which files get opened, edited and queried together. It stays in the project’s local .neuralmind/ store until someone publishes it.',
     },
     {
         n: '2',
         title: 'Publish through git',
-        body: 'neuralmind memory publish writes the project’s learned associations — weights between files, never source code — to .neuralmind-team-memory.json at the repo root. You commit it like any other file, so it goes through code review.',
+        body: 'neuralmind memory publish writes the project’s recorded associations — weights between files, never source code — to .neuralmind-team-memory.json at the repo root. You commit it like any other file, so it goes through code review.',
     },
     {
         n: '3',
         title: 'Inherit on the next session',
-        body: 'Teammates’ agents import the bundle automatically at session start or build, once per content hash. Each association is quality-scored: strong ones enter shared memory, borderline ones wait for review, weak ones are dropped. Shared weights decay, so a stale bundle cannot permanently skew recall.',
+        body: 'Teammates’ agents import the bundle automatically at session start or build, once per content hash. Each association is quality-scored: strong ones enter the shared store, borderline ones wait for review, weak ones are dropped. Shared weights decay, so a stale bundle cannot permanently skew recall.',
     },
 ];
 
 // What governance does today, stated precisely. Every item below runs in
 // neuralmind/team_memory.py + neuralmind/tier2/: `memory publish` reads the
 // scope and weight threshold (scope `personal` refuses to publish), and
-// `team governance remove-edge` deletes the association from shared memory and
+// `team governance remove-edge` deletes the association from the shared store and
 // retracts it in the committed bundle, which teammates' imports apply. Until
 // v4.6.0 both were recorded without being enforced; if either regresses, this
 // page must say so again.
@@ -58,7 +58,7 @@ const governance = [
         cmd: 'neuralmind team governance set-scope shared --admin you@yourco.com',
     },
     {
-        title: 'Review queue for imported memory',
+        title: 'Review queue for imported associations',
         status: 'Live',
         body: 'When a teammate’s bundle is imported, every association is quality-scored. Borderline ones wait in a queue until someone approves or rejects them; conflicts with what you already have are resolved by quality, not by whoever published last.',
         cmd: 'neuralmind memory review-list',
@@ -66,7 +66,7 @@ const governance = [
     {
         title: 'Retract an association',
         status: 'Live',
-        body: 'Removing an association deletes it from shared memory and retracts it in the committed bundle, so each teammate’s next session drops it and no later publish re-adds it. Admin-only, and on the audit record like every publish, import and review.',
+        body: 'Removing an association deletes it from the shared store and retracts it in the committed bundle, so each teammate’s next session drops it and no later publish re-adds it. Admin-only, and on the audit record like every publish, import and review.',
         cmd: 'neuralmind team governance remove-edge api/auth.py legacy/session.py --admin you@yourco.com',
     },
 ];
@@ -79,7 +79,7 @@ const seatCommands = [
 
 type Cell = string | boolean;
 const comparison: { feature: string; free: Cell; team: Cell; enterprise: Cell }[] = [
-    { feature: 'Team memory through git (memory publish)', free: true, team: true, enterprise: true },
+    { feature: 'Team bundle through git (memory publish)', free: true, team: true, enterprise: true },
     { feature: 'Governance: publish policy, retraction, review queue', free: true, team: true, enterprise: true },
     { feature: 'Hash-chained audit log, verify and export', free: true, team: true, enterprise: true },
     { feature: 'Self-hosted deployment', free: true, team: 'With deployment support', enterprise: true },
@@ -106,12 +106,13 @@ export default async function TeamPage() {
                 {/* Hero */}
                 <section className="max-w-4xl mx-auto text-center mb-20">
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-5 tracking-tight">
-                        Team memory for AI coding agents
+                        A team bundle that travels with git
                     </h1>
                     <p className="text-lg text-body max-w-2xl mx-auto leading-relaxed">
-                        What one developer&apos;s agent learns about the codebase, every
-                        teammate&apos;s agent inherits — through your git repo, with a review
-                        queue for what comes in and an audit trail of every admin change.
+                        The file associations one developer&apos;s setup records, teammates&apos;
+                        agents can import — through your git repo, with a review queue for what
+                        comes in and an audit trail of every admin change. We have not shown that
+                        sharing them helps an agent: a memory-track run found no significant gain.
                     </p>
                     <p className="text-faint text-sm mt-5 max-w-2xl mx-auto">
                         Every feature on this page runs free at 1 seat, so you can evaluate it
@@ -126,10 +127,10 @@ export default async function TeamPage() {
                 {/* How team memory works */}
                 <section className="max-w-5xl mx-auto mb-20">
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
-                        How team memory works
+                        How the team bundle works
                     </h2>
                     <p className="text-muted mb-8 max-w-3xl leading-relaxed">
-                        No relay, no hosted service, no server of ours in the path. The shared memory
+                        No relay, no hosted service, no server of ours in the path. The bundle
                         is a file in your repository, so it travels with <code className="font-mono text-code-inline text-body">git clone</code> and
                         inherits your existing review and access controls.
                     </p>
@@ -152,9 +153,9 @@ export default async function TeamPage() {
                         Governance: what is enforced today
                     </h2>
                     <p className="text-muted mb-8 max-w-3xl leading-relaxed">
-                        Shared memory steers every teammate&apos;s agent, so what enters it is
-                        screened, what leaves a machine follows the admin&apos;s policy, and every
-                        change is on the record. Here is exactly what runs today.
+                        What enters the shared store is screened, what leaves a machine follows
+                        the admin&apos;s policy, and every change is on the record. Here is
+                        exactly what runs today.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {governance.map((g) => (
@@ -181,7 +182,7 @@ export default async function TeamPage() {
                                 An audit trail you can verify
                             </h2>
                             <p className="text-muted text-sm leading-relaxed mb-3">
-                                Every governance change and admin action — and every team-memory
+                                Every governance change and admin action — and every team-bundle
                                 publish, import, review decision and retraction — is recorded with the
                                 acting user in an append-only log where each entry carries the SHA-256
                                 of the one before it, so an edited or deleted entry breaks the chain.
@@ -260,7 +261,7 @@ export default async function TeamPage() {
                     </div>
                     <p className="text-faint text-sm mt-4">
                         On the roadmap, not available on any tier today: SSO / SAML, and real-time
-                        cross-machine sync. Team memory syncs by commit and pull.
+                        cross-machine sync. The team bundle syncs by commit and pull.
                     </p>
                 </section>
 

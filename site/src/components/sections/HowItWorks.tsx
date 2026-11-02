@@ -14,13 +14,13 @@ const steps: { icon: IconName; title: string; desc: string; tag: string }[] = [
     {
         icon: 'query',
         title: 'Query',
-        desc: 'Your agent asks over MCP or a Claude Code hook and gets a project map, the relevant symbols and their callers, deeper only where the question needs it. A local index lookup, not another model call.',
+        desc: 'A prompt hook (Claude Code and Hermes) puts context in front of your agent, or an MCP client asks for it: a project map, the relevant symbols and their callers, deeper only where the question needs it. A local index lookup, not another model call.',
         tag: 'L0–L3 disclosure',
     },
     {
         icon: 'recall',
-        title: 'Remember',
-        desc: 'A synapse layer links files you use together and re-ranks recall with those links next session. `neuralmind memory publish` writes them to a file you commit, so teammates start with them.',
+        title: 'Record',
+        desc: 'A synapse layer records which files are used together and re-ranks recall with those links next session. `neuralmind memory publish` writes them to a file you commit. Carrying this state between tasks did not help an agent in our memory-track run.',
         tag: 'Across sessions',
     },
 ];
@@ -32,8 +32,8 @@ const steps: { icon: IconName; title: string; desc: string; tag: string }[] = [
 const QUICKSTART: { cmd: string; note: string }[] = [
     { cmd: 'pip install neuralmind', note: 'Python 3.10+' },
     { cmd: 'cd your-repo && neuralmind build .', note: 'first build downloads a public embedding model' },
-    { cmd: 'neuralmind install-mcp', note: 'Claude Code; --client cursor | cline | vscode | claude-desktop' },
-    { cmd: 'neuralmind install-hooks .', note: 'Claude Code: session-start memory, prompt-time recall, stale-decision guard' },
+    { cmd: 'neuralmind install-hooks .', note: 'Claude Code: session-start context, prompt-time recall, stale-decision guard' },
+    { cmd: 'neuralmind install-mcp', note: 'optional, for MCP clients (--client cursor | cline | vscode | claude-desktop); agents did not call its tools in our runs' },
     { cmd: 'neuralmind init-hook .', note: 'rebuild after commits, pulls, checkouts and rebases' },
     { cmd: 'neuralmind benchmark .', note: 'your own tokens-per-question, on your code' },
 ];
@@ -48,7 +48,7 @@ export default function HowItWorks() {
     return (
         <section id="how-it-works" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader title="Index once. Every session starts oriented.">
+                <SectionHeader title="Index once. Query it every session.">
                     Agents reason well over what is in the window and forget it when the session
                     ends, so each one pays again to find its way around the same repo. NeuralMind
                     keeps that map on your machine and answers from it.
