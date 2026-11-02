@@ -885,3 +885,80 @@ class TestReadTransitionsWithClaudeCodePayload:
 
         store = SynapseStore(default_db_path(str(tmp_path)))
         assert store.get_meta("_last_touched_file") == str(tmp_path / "b.py")
+
+
+class TestPluginCopyStandsAside:
+    """The Claude Code plugin's copy of a hook defers to a settings file's.
+
+    Claude Code runs a plugin's hook beside an identical one from
+    .claude/settings.json rather than once, so a project with both the
+    plugin and `install-hooks` got every action twice. A plugin hook is the
+    one Claude Code exports CLAUDE_PLUGIN_ROOT to.
+    """
+
+    def _setup(self, tmp_path, monkeypatch, plugin_name="neuralmind"):
+        project = tmp_path / "proj"
+        (project / ".neuralmind").mkdir(parents=True)
+        plugin = tmp_path / "plugin"
+        (plugin / ".claude-plugin").mkdir(parents=True)
+        (plugin / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": plugin_name}))
+        config = tmp_path / "config"
+        config.mkdir()
+        monkeypatch.setenv("CLAUDE_PLUGIN_ROOT", str(plugin))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(project))
+        monkeypatch.delenv("NEURALMIND_BYPASS", raising=False)
+        return project, config
+
+    def _ran(self, project, monkeypatch, action="prompt-submit"):
+        import neuralmind.hooks as hooks_mod
+
+        calls = []
+        monkeypatch.setattr(hooks_mod, "_run_action", lambda a, *rest: calls.append(a) or 0)
+        payload = {"cwd": str(project), "prompt": "how does login work?"}
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        monkeypatch.setattr(sys, "stdout", io.StringIO())
+        assert run_hook(action) == 0
+        return calls == [action]
+
+    def test_stands_aside_for_project_settings(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        install_hooks(scope="project", project_path=str(project))
+        assert not self._ran(project, monkeypatch)
+
+    def test_stands_aside_for_user_settings_in_claude_config_dir(self, tmp_path, monkeypatch):
+        project, config = self._setup(tmp_path, monkeypatch)
+        block = {"hooks": [{"type": "command", "command": "neuralmind _hook prompt-submit"}]}
+        (config / "settings.json").write_text(json.dumps({"hooks": {"UserPromptSubmit": [block]}}))
+        assert not self._ran(project, monkeypatch)
+
+    def test_runs_when_no_settings_file_registers_it(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        assert self._ran(project, monkeypatch)
+
+    def test_runs_an_action_settings_from_an_older_install_lack(self, tmp_path, monkeypatch):
+        # A v3 block had no Stop hook: the plugin's copy is the only one.
+        project, _ = self._setup(tmp_path, monkeypatch)
+        settings = project / ".claude" / "settings.json"
+        settings.parent.mkdir()
+        block = {"hooks": [{"type": "command", "command": "neuralmind _hook session-start"}]}
+        settings.write_text(json.dumps({"hooks": {"SessionStart": [block]}}))
+        assert self._ran(project, monkeypatch, action="stop")
+
+    def test_settings_copy_always_runs(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        install_hooks(scope="project", project_path=str(project))
+        monkeypatch.delenv("CLAUDE_PLUGIN_ROOT")
+        assert self._ran(project, monkeypatch)
+
+    def test_another_plugins_environment_does_not_count(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch, plugin_name="someone-else")
+        install_hooks(scope="project", project_path=str(project))
+        assert self._ran(project, monkeypatch)
+
+    def test_unparseable_settings_register_nothing(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        settings = project / ".claude" / "settings.json"
+        settings.parent.mkdir()
+        settings.write_text('{"hooks": {"UserPromptSubmit": [],}}')
+        assert self._ran(project, monkeypatch)

@@ -26,6 +26,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Literal
@@ -282,6 +283,68 @@ def _is_neuralmind_block(block: dict) -> bool:
     return False
 
 
+# The Claude Code plugin (integrations/claude-code/neuralmind/) registers the
+# same commands as install-hooks. Claude Code runs a plugin's copy of a hook
+# beside a settings file's copy, not instead of it, so with both installed
+# every action ran twice: two recaps, two recall blocks, doubled learning.
+PLUGIN_NAME = "neuralmind"
+_HOOK_ACTION = re.compile(r"neuralmind _hook ([a-z-]+)")
+
+
+def _claude_config_dir() -> Path:
+    """Where Claude Code keeps user settings: ``$CLAUDE_CONFIG_DIR``, else ``~/.claude``."""
+    configured = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
+    return Path(configured).expanduser() if configured else Path.home() / ".claude"
+
+
+def _from_plugin() -> bool:
+    """True when this hook runs from NeuralMind's Claude Code plugin.
+
+    Claude Code exports ``CLAUDE_PLUGIN_ROOT`` to a plugin's hooks and not to
+    a settings file's, and the manifest there names the plugin, so an
+    environment inherited from some other plugin doesn't count.
+    """
+    root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if not root:
+        return False
+    try:
+        manifest = json.loads(
+            (Path(root) / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return False
+    return isinstance(manifest, dict) and manifest.get("name") == PLUGIN_NAME
+
+
+def _settings_hook_actions(project_dir: str) -> set[str]:
+    """The ``neuralmind _hook`` actions the settings files Claude Code reads register.
+
+    Those are the project's ``.claude/settings.json`` and
+    ``settings.local.json`` and the user's ``settings.json``. A file that is
+    missing or doesn't parse registers nothing.
+    """
+    project = Path(project_dir) / ".claude"
+    actions: set[str] = set()
+    for path in (
+        project / "settings.json",
+        project / "settings.local.json",
+        _claude_config_dir() / "settings.json",
+    ):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        hooks = data.get("hooks") if isinstance(data, dict) else None
+        for blocks in hooks.values() if isinstance(hooks, dict) else ():
+            for block in blocks if isinstance(blocks, list) else ():
+                handlers = block.get("hooks") if isinstance(block, dict) else None
+                for handler in handlers if isinstance(handlers, list) else ():
+                    command = handler.get("command") if isinstance(handler, dict) else None
+                    if isinstance(command, str):
+                        actions.update(_HOOK_ACTION.findall(command))
+    return actions
+
+
 # -----------------------------------------------------------------------------
 # Hook runtime — executed per tool call by Claude Code
 # -----------------------------------------------------------------------------
@@ -330,6 +393,14 @@ def run_hook(action: str) -> int:
         return 0
     root = _project_root(session_cwd)
     if root is None:
+        return 0
+
+    # The plugin's copy of a hook a settings file also registers stands
+    # aside, so the action runs once. The settings copy is the one that runs:
+    # it can't tell whether the plugin is enabled.
+    if _from_plugin() and action in _settings_hook_actions(
+        os.environ.get("CLAUDE_PROJECT_DIR") or session_cwd
+    ):
         return 0
 
     tool_input = payload.get("tool_input")

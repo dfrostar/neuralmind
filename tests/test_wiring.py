@@ -32,6 +32,9 @@ def home(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     monkeypatch.delenv("NEURALMIND_NO_DAEMON", raising=False)
     monkeypatch.setenv("NEURALMIND_DAEMON_HOME", str(tmp_path / "daemon"))
+    # Claude Code's user settings move with CLAUDE_CONFIG_DIR, which would
+    # point past the fake home.
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     return home
 
 
@@ -524,6 +527,36 @@ def test_claude_code_hooks_in_settings_local_count(home, tmp_path):
     block = {"hooks": [{"type": "command", "command": "neuralmind _hook prompt-submit"}]}
     local.write_text(json.dumps({"hooks": {"UserPromptSubmit": [block]}}))
     assert wiring.claude_code_hook_scopes(tmp_path) == ["project local"]
+
+
+def _enable_plugin(settings: Path, on: bool = True) -> None:
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(json.dumps({"enabledPlugins": {"neuralmind@neuralmind": on}}))
+
+
+def test_claude_code_plugin_counts_as_hooks_and_mcp(home, tmp_path):
+    # /plugin install records the plugin in the scope's settings file; it
+    # carries the hooks and the MCP server, so neither should be offered.
+    _enable_plugin(home / ".claude" / "settings.json")
+    scope = "plugin neuralmind@neuralmind, user settings"
+    assert wiring.claude_code_hook_scopes(tmp_path) == [scope]
+    item = {i.name: i for i in wiring.mcp_items(tmp_path)}["MCP registration (claude-code)"]
+    assert item.wired is True and scope in item.detail
+
+
+def test_claude_code_plugin_switched_off_by_the_project(home, tmp_path):
+    _enable_plugin(home / ".claude" / "settings.json")
+    _enable_plugin(tmp_path / ".claude" / "settings.local.json", on=False)
+    assert wiring.claude_code_hook_scopes(tmp_path) == []
+
+
+def test_claude_code_plugin_in_claude_config_dir(home, tmp_path, monkeypatch):
+    config = tmp_path / "claude-config"
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+    _enable_plugin(config / "settings.json")
+    assert wiring.claude_code_plugin_scopes(tmp_path) == [
+        "plugin neuralmind@neuralmind, user settings"
+    ]
 
 
 def test_cursor_registered_user_wide(home, tmp_path):

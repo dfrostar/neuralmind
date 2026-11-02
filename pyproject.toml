@@ -16,6 +16,9 @@ maintainers = [
 ]
 keywords = [
     "ai-coding-agent",
+    "claude-code-plugin",
+    "claude-code-marketplace",
+    "claude-code-hooks",
     "lexical-anchoring",
     "agent-memory",
     "persistent-memory",
