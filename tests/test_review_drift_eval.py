@@ -74,23 +74,37 @@ def test_metrics():
     ranks = [1, 3, None, 12]
     assert analyze.hit_at(ranks, 5) == 0.5
     assert analyze.hit_at(ranks, 10) == 0.5
-    assert analyze.mrr(ranks) == pytest.approx((1 + 1 / 3 + 0 + 1 / 12) / 4)
+    # rank 12 is beyond the ten-entry cutoff every method is scored to
+    assert analyze.mrr(ranks) == pytest.approx((1 + 1 / 3 + 0 + 0) / 4)
+    assert analyze.mrr(ranks, k=12) == pytest.approx((1 + 1 / 3 + 0 + 1 / 12) / 4)
     pairs = [{"n_candidates": 40}, {"n_candidates": 5}]
     assert analyze.expected_random(pairs, 10) == pytest.approx((0.25 + 1.0) / 2)
 
 
 def test_decision_rule_uses_the_spec_thresholds():
-    review = {"pairs": 10, "review": {"hit@10": 0.6}, "cochange": {"hit@10": 0.5}}
-    drift = {"fix": {"commits": 10, "rate": 0.3}, "control": {"commits": 10, "rate": 0.1}}
-    v = analyze.decide(review, drift)
+    def rv(hr, hc, n):
+        return {
+            "pairs": n,
+            "review": {"hits@10": hr, "hit@10": round(hr / n, 3)},
+            "cochange": {"hits@10": hc, "hit@10": round(hc / n, 3)},
+        }
+
+    def dr(fh, fn, ch, cn):
+        return {
+            "fix": {"commits": fn, "with_a_finding": fh, "rate": round(fh / fn, 3)},
+            "control": {"commits": cn, "with_a_finding": ch, "rate": round(ch / cn, 3)},
+        }
+
+    v = analyze.decide(rv(60, 50, 100), dr(3, 10, 1, 10))
     assert v["review"]["worth_quoting"] is True
     assert v["drift"]["worth_quoting"] is True
-    v = analyze.decide(
-        {"pairs": 10, "review": {"hit@10": 0.54}, "cochange": {"hit@10": 0.5}},
-        {"fix": {"commits": 10, "rate": 0.2}, "control": {"commits": 10, "rate": 0.15}},
-    )
+    v = analyze.decide(rv(54, 50, 100), dr(2, 10, 15, 100))
     assert v["review"]["worth_quoting"] is False  # margin under 5 points
     assert v["drift"]["worth_quoting"] is False  # under twice the control rate
+    # Exact counts, not rounded rates: 500 of 1001 is below the 0.50 floor,
+    # and 60 of 100 against 55 of 100 is exactly the 5-point margin.
+    assert analyze.decide(rv(500, 0, 1001), {})["review"]["floor_met"] is False
+    assert analyze.decide(rv(60, 55, 100), {})["review"]["beats_cochange"] is True
 
 
 def _git(repo: Path, *args: str) -> str:

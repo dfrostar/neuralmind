@@ -159,7 +159,7 @@ def rank_of(target: str, ranking: list[str]) -> int | None:
 # --------------------------------------------------------------------- #
 
 
-def run_cli(binary: str, repo: Path, *args: str) -> tuple[dict | None, float, str]:
+def run_cli(binary: str, repo: Path, *args: str) -> tuple[dict | None, float, str, int]:
     env = {k: v for k, v in os.environ.items() if not k.startswith("NEURALMIND_")}
     started = time.perf_counter()
     proc = subprocess.run([binary, *args], cwd=str(repo), capture_output=True, text=True, env=env)
@@ -170,12 +170,12 @@ def run_cli(binary: str, repo: Path, *args: str) -> tuple[dict | None, float, st
         payload = json.loads(text[text.index("{") :]) if "{" in text else None
     except (ValueError, json.JSONDecodeError):
         payload = None
-    return payload, elapsed, (proc.stderr or "")[-2000:]
+    return payload, elapsed, (proc.stderr or "")[-2000:], proc.returncode
 
 
 def build(binary: str, repo: Path) -> dict:
     shutil.rmtree(repo / ".neuralmind", ignore_errors=True)
-    payload, elapsed, err = run_cli(binary, repo, "build", ".", "--json")
+    payload, elapsed, err, _code = run_cli(binary, repo, "build", ".", "--json")
     ok = (repo / ".neuralmind" / "graph.json").exists() and (
         repo / ".neuralmind" / "synapses.db"
     ).exists()
@@ -219,9 +219,14 @@ def review_pairs(
     for held in truth:
         seeds = [f for f in truth if f != held]
         git(repo, "checkout", commit, "--", *seeds)
-        payload, elapsed, err = run_cli(
+        payload, elapsed, err, code = run_cli(
             binary, repo, "review", ".", "--json", "--top-k", str(TOP_K)
         )
+        if code != 0 or payload is None or "at_risk" not in payload:
+            # A failed call is not a miss. Stop here; the parent never reaches
+            # parent_done, and the resume drops its partial records.
+            git(repo, "checkout", parent, "--", *seeds)
+            raise RuntimeError(f"review failed on {commit[:10]} ({code}): {err.strip()[-500:]}")
         git(repo, "checkout", parent, "--", *seeds)
         at_risk = [item["file"] for item in (payload or {}).get("at_risk", [])]
         seed_set = set(seeds)
@@ -245,7 +250,6 @@ def review_pairs(
                     held, adjacency_ranking(repo, node_file, seed_set, candidates)
                 ),
                 "elapsed_s": round(elapsed, 2),
-                "error": err if payload is None else "",
             }
         )
     return records
@@ -254,8 +258,11 @@ def review_pairs(
 def drift_record(
     binary: str, repo: Path, name: str, which: str, entry: dict, gold: list[str] | None = None
 ) -> dict:
-    payload, elapsed, err = run_cli(binary, repo, "drift", ".", "--json", "--diff", entry["commit"])
-    payload = payload or {}
+    payload, elapsed, err, code = run_cli(
+        binary, repo, "drift", ".", "--json", "--diff", entry["commit"]
+    )
+    if code != 0 or payload is None or "findings" not in payload:
+        raise RuntimeError(f"drift failed on {entry['commit'][:10]} ({code}): {err.strip()[-500:]}")
     findings = payload.get("findings", [])
     return {
         "kind": "drift",
@@ -273,7 +280,6 @@ def drift_record(
         "changed_files": payload.get("changed_files", []),
         "graph": payload.get("graph"),
         "elapsed_s": round(elapsed, 2),
-        "error": err if not payload else "",
     }
 
 
@@ -509,7 +515,9 @@ def run_hermes(args: argparse.Namespace) -> int:
                 continue
             cached = None
             for root in args.hermes_index:
-                candidate = Path(root) / t["id"] / ".neuralmind"
+                # Resolved: the link lives in the clone, so a relative root
+                # would otherwise resolve against the clone and dangle.
+                candidate = (Path(root).expanduser() / t["id"] / ".neuralmind").resolve()
                 if candidate.exists():
                     cached = candidate
                     break

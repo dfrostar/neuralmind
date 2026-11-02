@@ -214,3 +214,13 @@ level, as every other figure does.
   `review`'s closing text no longer says the files were "historically edited
   together"; on a cold index it reports structural coupling, and the text and
   the docs now say so.
+- 2026-11-02 — after review on #777, four harness corrections, none of which
+  changes a review rank: the co-change baseline breaks ties on count, then
+  recency, then **path** (it had left ties to set-iteration order, which
+  varies with the hash seed), and both baselines were re-scored for every
+  recorded pair under that sort, with any changed figure noted in the
+  results README; MRR is reported as **MRR@10** for every method (review
+  lists at most ten entries, so a baseline's rank 30 scores as a miss, as
+  review's does); the decision rule is evaluated on exact counts, not rounded
+  rates; and a `review` or `drift` call that fails now stops the run instead
+  of being recorded as a miss (the published run had no such failure).

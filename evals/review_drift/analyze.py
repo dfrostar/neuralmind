@@ -13,6 +13,7 @@ import collections
 import json
 import statistics
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 REVIEW_HIT10_FLOOR = 0.50
@@ -22,12 +23,25 @@ DRIFT_RATIO_OVER_CONTROL = 2.0
 METHODS = ("review", "cochange", "adjacency")
 
 
+CUTOFF = 10  # review lists at most ten entries; every method is scored to the same depth
+
+
+def hits_at(ranks: list[int | None], k: int) -> int:
+    return sum(1 for r in ranks if r is not None and r <= k)
+
+
 def hit_at(ranks: list[int | None], k: int) -> float:
-    return sum(1 for r in ranks if r is not None and r <= k) / len(ranks) if ranks else 0.0
+    return hits_at(ranks, k) / len(ranks) if ranks else 0.0
 
 
-def mrr(ranks: list[int | None]) -> float:
-    return sum(1 / r for r in ranks if r is not None) / len(ranks) if ranks else 0.0
+def mrr(ranks: list[int | None], k: int = CUTOFF) -> float:
+    """Mean reciprocal rank, with ranks beyond ``k`` scored as misses.
+
+    ``review`` returns at most ``k`` entries, so a baseline's rank 30 must
+    count for as little as review's miss does, or the baselines get credit
+    review cannot.
+    """
+    return sum(1 / r for r in ranks if r is not None and r <= k) / len(ranks) if ranks else 0.0
 
 
 def expected_random(pairs: list[dict], k: int) -> float:
@@ -41,9 +55,11 @@ def review_table(pairs: list[dict]) -> dict:
     for m in METHODS:
         ranks = [p[f"rank_{m}"] for p in pairs]
         out[m] = {
+            "hits@5": hits_at(ranks, 5),
+            "hits@10": hits_at(ranks, 10),
             "hit@5": round(hit_at(ranks, 5), 3),
             "hit@10": round(hit_at(ranks, 10), 3),
-            "mrr": round(mrr(ranks), 3),
+            "mrr@10": round(mrr(ranks), 3),
         }
     out["random"] = {
         "hit@5": round(expected_random(pairs, 5), 3),
@@ -117,30 +133,49 @@ def drift_table(records: list[dict]) -> dict:
 
 
 def decide(review: dict, drift: dict) -> dict:
+    """The spec's rule, evaluated on exact counts.
+
+    Rates in the tables are rounded for reading; a gate must not pass on a
+    rounding (500 of 1001 is not 0.50) or fail on floating-point addition
+    (0.55 + 0.05 is not 0.60 in binary), so each comparison is rewritten as
+    an integer inequality.
+    """
     verdict: dict = {}
-    if review.get("pairs"):
-        h = review["review"]["hit@10"]
-        c = review["cochange"]["hit@10"]
+    n = review.get("pairs")
+    if n:
+        hr, hc = review["review"]["hits@10"], review["cochange"]["hits@10"]
+        # Fraction(str(x)) is the decimal the spec wrote, not its binary float.
+        floor_num, floor_den = Fraction(str(REVIEW_HIT10_FLOOR)).as_integer_ratio()
+        margin_num, margin_den = Fraction(str(REVIEW_MARGIN_OVER_COCHANGE)).as_integer_ratio()
         verdict["review"] = {
-            "hit@10": h,
-            "cochange_hit@10": c,
-            "floor_met": h >= REVIEW_HIT10_FLOOR,
-            "beats_cochange": h >= c + REVIEW_MARGIN_OVER_COCHANGE,
+            "hit@10": review["review"]["hit@10"],
+            "cochange_hit@10": review["cochange"]["hit@10"],
+            "hits@10": hr,
+            "cochange_hits@10": hc,
+            "pairs": n,
+            # hr / n >= floor  <=>  hr * floor_den >= floor_num * n
+            "floor_met": hr * floor_den >= floor_num * n,
+            # (hr - hc) / n >= margin  <=>  (hr - hc) * margin_den >= margin_num * n
+            "beats_cochange": (hr - hc) * margin_den >= margin_num * n,
         }
         verdict["review"]["worth_quoting"] = (
             verdict["review"]["floor_met"] and verdict["review"]["beats_cochange"]
         )
     fix, ctl = drift.get("fix", {}), drift.get("control", {})
     if fix.get("commits"):
-        r = fix["rate"]
-        c = ctl.get("rate")
+        fh, fn = fix["with_a_finding"], fix["commits"]
+        ch, cn = ctl.get("with_a_finding"), ctl.get("commits")
+        floor_num, floor_den = Fraction(str(DRIFT_RECALL_FLOOR)).as_integer_ratio()
         verdict["drift"] = {
-            "recall_fix": r,
-            "rate_control": c,
-            "floor_met": r >= DRIFT_RECALL_FLOOR,
-            "beats_control": (
-                (c is not None and r >= DRIFT_RATIO_OVER_CONTROL * c) if c is not None else None
-            ),
+            "recall_fix": fix["rate"],
+            "rate_control": ctl.get("rate"),
+            "fix_hits": fh,
+            "fix_commits": fn,
+            "control_hits": ch,
+            "control_commits": cn,
+            "floor_met": fh * floor_den >= floor_num * fn,
+            # fh / fn >= ratio * ch / cn  <=>  fh * cn >= ratio * ch * fn
+            "beats_control": (fh * cn >= DRIFT_RATIO_OVER_CONTROL * ch * fn) if cn else None,
         }
         verdict["drift"]["worth_quoting"] = bool(
             verdict["drift"]["floor_met"] and verdict["drift"]["beats_control"]
@@ -161,11 +196,13 @@ def markdown(summary: dict) -> str:
     rv = summary["review"]
     if rv.get("pooled", {}).get("pairs"):
         lines.append("### Review: the held-out file's rank\n")
-        lines.append("| Set | Pairs | Method | hit@5 | hit@10 | MRR |\n|---|---|---|---|---|---|")
+        lines.append(
+            "| Set | Pairs | Method | hit@5 | hit@10 | MRR@10 |\n|---|---|---|---|---|---|"
+        )
         for name, t in [("pooled", rv["pooled"]), *sorted(rv["per_repo"].items())]:
             for m in METHODS:
                 lines.append(
-                    f"| {name} | {t['pairs']} | {m} | {t[m]['hit@5']:.3f} | {t[m]['hit@10']:.3f} | {t[m]['mrr']:.3f} |"
+                    f"| {name} | {t['pairs']} | {m} | {t[m]['hit@5']:.3f} | {t[m]['hit@10']:.3f} | {t[m]['mrr@10']:.3f} |"
                 )
             lines.append(
                 f"| {name} | {t['pairs']} | random (expected) | {t['random']['hit@5']:.3f} | {t['random']['hit@10']:.3f} | — |"
