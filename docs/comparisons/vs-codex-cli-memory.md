@@ -22,8 +22,8 @@ description: "OpenAI's Codex CLI ships with no persistent memory of its own. Hon
 > and real tool calls all work. What's still unverified is Codex's own
 > Rust MCP client actually driving those tools inside a live turn, which
 > needs an OpenAI API key this environment doesn't have. Assessed
-> September 2026 — re-check before relying on specifics; this space is
-> moving fast.
+> September 2026, Hindsight's details updated November 2026 — re-check
+> before relying on specifics; this space is moving fast.
 
 ## The gap: what Codex does and doesn't remember natively
 
@@ -47,20 +47,28 @@ the seam every tool below (and NeuralMind, in principle) plugs into.
 ## The three tools that filled it
 
 **[Hindsight](https://github.com/vectorize-io/hindsight)** (vectorize-io,
-MIT, 23.9k stars) is the most coding-CLI-native of the three. It builds a
+MIT, about 57.7k stars on 2 November 2026, up from 23.9k in September) is
+the most coding-CLI-native of the three. Its coding-agents package builds a
 per-repo memory bank two ways at once: mining git history automatically
-and accumulating live session context, with no setup command — install
-the npm package and ingestion starts. Its three operations are **retain**
-(LLM extracts facts, entities, relationships, and temporal data, then
-embeds them), **recall** (four parallel strategies — semantic, BM25,
-graph-based, temporal — merged and reranked), and **reflect** (an LLM
-synthesis pass that finds connections across memories, e.g. for risk
-assessment or pattern recognition). It exposes an MCP endpoint per memory
-bank and explicitly supports Codex CLI, Claude Code, Cursor CLI, GitHub
-Copilot CLI, opencode, and Cline CLI. Storage is PostgreSQL with pgvector
-(or Oracle AI Database 23ai) — a real database server, not an embedded
-file. Nothing in its documentation describes AST parsing or call-graph
-extraction; it operates entirely at the fact/entity level.
+(commit messages by default, diffs optionally) and accumulating live
+session transcripts, with no setup command — install the npm package and
+ingestion starts. Its three operations are **retain** (LLM extracts facts,
+entities, relationships, and temporal data, then embeds them), **recall**
+(four parallel strategies — semantic, BM25, graph-based, temporal — merged
+and reranked), and **reflect** (an LLM synthesis pass that finds
+connections across memories, e.g. for risk assessment or pattern
+recognition). It exposes an MCP endpoint per memory bank and explicitly
+supports Codex CLI, Claude Code, Cursor CLI, GitHub Copilot CLI, opencode,
+Cline CLI and several more. Storage is PostgreSQL with pgvector (or Oracle
+AI Database), but the Docker image and the Python package bundle an
+embedded Postgres (pg0), and the coding-agents package defaults to the
+hosted Hindsight Cloud, so a database server is optional. The nearest it
+comes to code structure: a headless LLM "codebase survey" of a cold repo,
+run through the agent's own CLI, feeds five LLM-written knowledge pages
+(component map, core concepts, conventions, key decisions, initiatives).
+Nothing in its documentation describes AST parsing or call-graph
+extraction. See [the Hindsight page](./vs-hindsight.md) for the full
+comparison and for running it alongside NeuralMind.
 
 **Mem0 for Codex** is not a separate product — it's [Mem0](./vs-mem0-zep.md)
 (the same conversational-memory layer compared elsewhere on this site),
@@ -108,12 +116,14 @@ Where NeuralMind's [synapse layer](../../neuralmind/synapses.py) and
   code index uses local ONNX embeddings (no LLM, no API key), and its
   decision memory is explicitly recorded by the caller — no extraction
   step to get wrong or pay for.
-- **No database server to run.** Hindsight needs Postgres+pgvector (or
-  Oracle AI DB) reachable from wherever the agent runs. NeuralMind and
-  Basic Memory are both embedded/local-file — `.neuralmind/` vs. Basic
-  Memory's markdown notes — with nothing to provision.
-- **Bootstrap direction is reversed.** Hindsight's git-history mining
-  gives it something useful on day one, before any live session happens.
+- **Nothing to provision, on any side now.** Hindsight's embedded Postgres
+  (pg0) or Hindsight Cloud removes the database server it used to need,
+  though the coding-agents default puts the bank in the cloud. NeuralMind
+  and Basic Memory are both embedded/local-file — `.neuralmind/` vs. Basic
+  Memory's markdown notes.
+- **Bootstrap direction is reversed.** Hindsight's git-history mining and
+  its LLM codebase survey give it something useful on day one, before any
+  live session happens.
   NeuralMind's static code graph is also available immediately (it's
   built from the current tree, not usage), but the *learning* half — the
   Hebbian synapse layer — starts from nothing and needs real usage to
@@ -127,23 +137,25 @@ Where NeuralMind's [synapse layer](../../neuralmind/synapses.py) and
 
 | Dimension | Hindsight | Mem0 (Codex) | Basic Memory | NeuralMind |
 |---|---|---|---|---|
-| Parses source code / builds a call graph | No | No | No | Yes — tree-sitter, ten languages plus JavaScript |
+| Parses source code / builds a call graph | No (an LLM survey writes a component map) | No | No | Yes — tree-sitter, ten languages plus JavaScript |
 | Ranked-file retrieval against a gold-file oracle | No | No | No | Yes — CI-gated, reproducible |
 | Extraction mechanism | LLM (retain), LLM synthesis (reflect) | LLM (single-pass extraction) | Manual / agent-written notes | Explicit record; local ONNX embeddings, no LLM |
-| Storage | PostgreSQL + pgvector (or Oracle AI DB) | Hosted (Mem0 platform) or self-hosted | Local markdown files, or hosted cloud | Local SQLite + files (`.neuralmind/`) |
-| Requires a database server | Yes | No (hosted) / Yes (self-hosted) | No | No |
-| Bootstraps from git history automatically | Yes | No | No | No — static graph from current tree; usage-learning starts at zero |
+| Storage | PostgreSQL + pgvector, embedded (pg0) or external, or Oracle AI DB; Hindsight Cloud by default for coding agents | Hosted (Mem0 platform) or self-hosted | Local markdown files, or hosted cloud | Local SQLite + files (`.neuralmind/`) |
+| Requires a database server | No (embedded or hosted) / Yes (external Postgres) | No (hosted) / Yes (self-hosted) | No | No |
+| Bootstraps from git history automatically | Yes, plus an LLM codebase survey | No | No | No — static graph from current tree; usage-learning starts at zero |
 | Setup on Codex | npm package, zero-config ingestion | One `[mcp_servers]` block | One `[mcp_servers]` block | One `[mcp_servers]` block — **config + protocol confirmed working; a live Codex agent turn is not** |
 | Cross-agent portability | Yes (multi-CLI MCP) | Yes (multi-CLI MCP) | Yes (multi-CLI MCP) | Yes (`.neuralmind-team-memory.json`, git-portable) |
 | License | MIT | Apache 2.0 | Not publicly specified in docs | MIT (core); source-available commercial modules for Team tier |
-| GitHub stars (point-in-time) | 23.9k | 65k+ (Mem0 overall) | Not found in docs | — |
+| GitHub stars (point-in-time) | ~57.7k (2 Nov 2026) | 65k+ (Mem0 overall) | Not found in docs | — |
 
 ## When to pick which
 
 **Pick Hindsight if:** you want a memory layer built specifically for
 coding-agent CLIs, with git-history mining giving you something useful
-immediately, and you're fine running Postgres to get four-strategy recall
-and an LLM-driven "reflect" synthesis step. It's the most direct answer
+immediately, and you're fine with an LLM writing its memories and, unless
+you pick the local daemon or self-host, with the bank living in Hindsight
+Cloud. You get four-strategy recall and an LLM-driven "reflect" synthesis
+step. It's the most direct answer
 to "give my coding agent memory" available today, and it's MIT-licensed
 and self-hostable — no lock-in.
 
@@ -190,9 +202,10 @@ is a materially stronger "Theoretical" than an unregistered guess.
   from their own docs and repos**, gathered directly, not reproduced or
   benchmarked by us. Star counts are a snapshot.
 - **No AST/call-graph claim here is airtight.** We read each project's
-  *public* documentation and found no mention of structural code
-  analysis; a feature added after September 2026 or undocumented could
-  change that.
+  *public* documentation and found no mention of parsing code structure.
+  Hindsight's LLM codebase survey, which its November 2026 docs describe,
+  is the closest any of them comes; a feature added later or undocumented
+  could change that.
 - **This is a young, fast-moving corner of the ecosystem.** Codex's own
   native memory is explicitly described as immature by third parties
   building around it; the tools filling the gap today may not be the
@@ -200,6 +213,8 @@ is a materially stronger "Theoretical" than an unregistered guess.
 
 ## See also
 
+- [vs. Hindsight](./vs-hindsight.md) — Hindsight on its own, and running
+  it alongside NeuralMind in Claude Code or Hermes
 - [vs. Mem0 and Zep](./vs-mem0-zep.md) — the general-purpose memory
   category Hindsight and Mem0 both belong to
 - [vs. Graft](./vs-graft.md) — the closest thing to an actual code-graph
