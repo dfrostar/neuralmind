@@ -17,7 +17,7 @@ in this repo so `tests/test_docs_claims.py` checks its claims.
       note had it: Hermes's `CONTRIBUTING.md` names that channel for promoting
       a standalone plugin. Read the server's rules and pinned messages first,
       and don't cross-post the same message to several channels.
-- [ ] **Check the message fits.** The body below is 1,967 characters, under 2,000
+- [ ] **Check the message fits.** The body below is 1,979 characters, under 2,000
       (the limit without Nitro), so any addition needs a cut. Paste it as is: Discord renders the bold,
       bullets and code block.
 - [ ] **Attach the demo** if you've recorded it (see the Reddit doc's "Demo to
@@ -33,7 +33,7 @@ in this repo so `tests/test_docs_claims.py` checks its claims.
 
 ---
 
-## Message (1,967 characters; the limit is 2,000)
+## Message (1,979 characters; the limit is 2,000)
 
 **NeuralMind plugin for Hermes: codebase memory on every turn, no tool call**
 
@@ -49,7 +49,7 @@ pip install -U neuralmind
 neuralmind build /path/to/repo
 neuralmind install-hermes-plugin
 ```
-Or install it from Hermes's plugin catalog: `hermes plugins install neuralmind --enable`. Needs Hermes 0.21.5 or later. On 0.22.2+ it follows each CLI, TUI and Desktop session's directory; pin a project for ACP sessions or older Hermes.
+Or install it from Hermes's plugin catalog: `hermes plugins install neuralmind --enable`. Needs Hermes 0.21.5 or later. On 0.22.2+ it follows each CLI, TUI and Desktop session's directory; pin a project for ACP sessions, or Desktop on older Hermes.
 
 **Numbers, misses included:** the right file was in the context for 40 of 40 pre-registered queries across requests, click, flask and rich, at 51–242x fewer tokens than pasting whole files. That's a small sample: a 150-question eval misses 10. A bare vector lookup costs fewer tokens and ranks the right file higher on 2 of the 4 repos.
 
@@ -82,7 +82,7 @@ its "Claim sources" table. Additions specific to this version:
 |---|---|
 | Needs Hermes 0.21.5 or later (the version it was tested with; Hermes skips it on older ones) | `neuralmind/hermes_plugin/plugin.yaml` (`requires_hermes: ">=0.21.5"`) |
 | Installs by name from Hermes's plugin catalog | NousResearch/hermes-agent#147375 adds `plugin-catalog/neuralmind.yaml`; true only once it has merged |
-| Follows each CLI, TUI and Desktop session's directory on Hermes 0.22.2 or later; pin for ACP sessions or older Hermes | `neuralmind/hermes_plugin/README.md` ("Which project"). No doc covers ACP sessions on 0.22.2+, so the pin advice stays for them |
+| Follows each CLI, TUI and Desktop session's directory on Hermes 0.22.2 or later, and the terminal CLI's on older Hermes; pin for ACP sessions, or Desktop on older Hermes | `neuralmind/hermes_plugin/README.md` ("Which project"); `docs/use-cases/hermes-agent.md` §5 ("only the terminal CLI and a standalone gateway"). No doc covers ACP sessions on 0.22.2+, so the pin advice stays for them |
 | `#plugins-skills-and-skins` is where to promote a plugin | Hermes's `CONTRIBUTING.md`, on standalone plugin repos |
 | `read_file` recorded only inside the project | `docs/use-cases/hermes-agent.md` §4 |
 | MIT-licensed core | `LICENSE` (excludes `neuralmind/tier2/`) |

@@ -138,9 +138,9 @@ one install serves every repo you've built and does nothing in the rest. If
 you installed with a path before, a re-run without one keeps that pin; run
 `neuralmind install-hermes-plugin --unpin` to go back to following the
 directory. On Hermes 0.22.2 or later that covers CLI, TUI and Desktop
-sessions: the plugin asks Hermes for each session's own directory. For ACP
-editor sessions, or on older Hermes, pin a project
-(`install-hermes-plugin /path`).
+sessions: the plugin asks Hermes for each session's own directory. On older
+Hermes it covers the terminal CLI. For ACP editor sessions, and for Desktop on
+older Hermes, pin a project (`install-hermes-plugin /path`).
 
 **Numbers, including where it loses.** On a public benchmark of 40 queries
 written before tuning, across `requests`, `click`, `flask` and `rich` pinned to
@@ -217,7 +217,7 @@ Don't put a stopwatch on any of these. No latency figure is allowed.
 |---|---|
 | Plugin hooks, per-turn block, appended to user message (cache untouched), first-turn recap, edit and read recording, the unrecorded cases | `docs/use-cases/hermes-agent.md` §2–§4; `neuralmind/hermes_plugin/plugin.yaml` |
 | `hermes plugins install neuralmind --enable` from Hermes's plugin catalog; `requires_hermes >=0.21.5` | NousResearch/hermes-agent#147375 adds `plugin-catalog/neuralmind.yaml`, true only once it has merged; `plugin.yaml` |
-| Project resolution; on Hermes 0.22.2+ it follows each CLI, TUI and Desktop session's directory; pin for ACP editor sessions and older Hermes | `docs/use-cases/hermes-agent.md` §5; `neuralmind/hermes_plugin/README.md` ("Which project"). No doc covers ACP sessions on 0.22.2+, so the pin advice stays for them |
+| Project resolution; it follows each CLI, TUI and Desktop session's directory on Hermes 0.22.2+, and the terminal CLI's (`TERMINAL_CWD`) on older Hermes; pin for ACP editor sessions and for Desktop on older Hermes | `docs/use-cases/hermes-agent.md` §5 and its "only the terminal CLI and a standalone gateway" note; `neuralmind/hermes_plugin/README.md` ("Which project"). No doc covers ACP sessions on 0.22.2+, so the pin advice stays for them |
 | Reads recorded (v4.14.0+) | `docs/use-cases/hermes-agent.md` §4 |
 | 40 of 40, 51–242x, 31–67x, ripgrep 32 of 40 | `site/claims.json` (`ratios`, `non_ratio_headline_claims`) → `docs/benchmarks/public.md`, v4.12.0 |
 | 150-question eval: 93.3% top-5, 10 misses | `site/claims.json` note; `docs/wiki/Benchmarks.md` |
