@@ -113,7 +113,6 @@ neuralmind/hermes_plugin/__init__.py: Item "None" of "Match[str] | None" has no 
 neuralmind/hermes_plugin/__init__.py: Returning Any from function declared to return "str"  [no-any-return]
 neuralmind/identity.py: Module has no attribute "windll"  [attr-defined]
 neuralmind/in_memory_backend.py: Dict entry 3 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
-neuralmind/judge_transcripts.py: Returning Any from function declared to return "dict[Any, Any]"  [no-any-return]
 neuralmind/l3_slots.py: Incompatible types in assignment (expression has type "dict[Any, Any] | None", variable has type "dict[Any, Any]")  [assignment]
 neuralmind/learned_decay.py: Returning Any from function declared to return "float | None"  [no-any-return]
 neuralmind/learned_decay.py: Returning Any from function declared to return "float | None"  [no-any-return]
