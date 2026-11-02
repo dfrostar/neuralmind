@@ -21,7 +21,8 @@ and the [CMMC CUI enclave](cmmc-cui-enclave.md) walkthrough.
 ```bash
 pip install neuralmind
 cd client-repo
-neuralmind build .            # the code graph, the index, structural seeds
+neuralmind scan-for-secrets . --strict   # credentials, before anything is indexed
+neuralmind build . --redact-secrets      # the code graph, the index, structural seeds
 neuralmind doctor .           # what's wired, what isn't, before you rely on it
 neuralmind install-hooks .    # Claude Code: related files at each prompt
 ```
@@ -42,10 +43,12 @@ neuralmind skeleton src/billing/invoices.py     # functions and call graph, not 
 What the numbers behind this say, and don't: on four public repositories the
 index found the gold file on 40 of 40 pre-registered queries, and on a
 150-question eval put a gold file in the top five on 93.3%, with every miss
-published. On held-out tasks in a million-line repository nobody tuned on,
-the prompt-time block named a file the fix touched on 4 of 12. The second
-number is closer to your day one than the first; both are on
-[/benchmark](https://neuralmind.uk/benchmark/).
+published. On 12 held-out tasks in a million-line repository, the prompt-time block
+named a file the fix touched on 4 of 12, in offline replays; the tasks were
+held out, the repository was not (five other tasks from it had tuned the
+ranking). The second number is closer to your day one than the first. The
+first is on [/benchmark](https://neuralmind.uk/benchmark/); the second is in
+[the replay report](https://github.com/dfrostar/neuralmind/blob/main/bench/task_outcome/hermes-agent-test-ranking/README.md).
 
 ## The review: what the client will act on
 
@@ -68,9 +71,9 @@ structural seeds the build wrote (calls, imports, inheritance); the "edited
 together" associations the command describes accumulate with use. `drift`
 needs only the code graph. Whether either beats the `git log` and the import
 graph you already have is being measured on real commits of public
-repositories; the pre-registration is
-[`docs/specs/REVIEW-DRIFT-EVAL-SPEC.md`](../specs/REVIEW-DRIFT-EVAL-SPEC.md),
-and the result will be published there whichever way it comes out.
+repositories, pre-registered in a separate pull request
+(`REVIEW-DRIFT-EVAL-SPEC.md`); the result will be published whichever way it
+comes out, and this page will link it when it lands.
 
 Record what you learned where the next engineer will find it:
 
@@ -97,8 +100,10 @@ and whether it can be installed inside their boundary.
 - `neuralmind data-locations .` lists every place NeuralMind keeps the
   client's data on your machine, and how to remove it at the end of the
   engagement.
-- `neuralmind scan-for-secrets .` reports credentials before they reach the
-  index, a commit or the agent's context.
+- `neuralmind scan-for-secrets . --strict`, run on day one before the first
+  build, reports credentials before they reach the index, a commit or the
+  agent's context, and `build --redact-secrets` scrubs what it finds from the
+  indexed text. Run the scan again before each commit.
 - For a defense contractor's CUI code, follow the [CMMC CUI
   enclave](cmmc-cui-enclave.md) walkthrough: `security.profile: cui` turns the
   posture on as one setting and `neuralmind hardening` checks the host.
