@@ -1532,10 +1532,14 @@ def cmd_review(args):
     """Warn about co-breakage risk before a commit or when reviewing a diff.
 
     Finds files changed in the current git diff (or a specified base ref),
-    runs spreading activation through the learned synapse graph to find
-    strongly associated files that are NOT in the diff, and reports them as
-    likely co-break candidates — files that have historically changed together
-    with the ones you're touching now.
+    runs spreading activation through the synapse graph to find strongly
+    associated files that are NOT in the diff, and reports them as likely
+    co-break candidates. On a fresh index the graph holds the structural seeds
+    the build wrote (calls, imports, inheritance), so the list is structural
+    coupling; files edited together join it as the project is used. Measured
+    on real commits of four public repositories with a cold index, the list
+    named the file a diff was missing about as often as ranking by git
+    co-change history did (bench/review_drift/2026-11-02/).
 
     Use this before committing to catch forgotten test files, config updates,
     or tightly-coupled modules that the agent didn't include.
@@ -1671,9 +1675,15 @@ def cmd_review(args):
         bars = "█" * min(int(weight * 10), 8)
         print(f"  {weight:.3f} {bars:<8}  {item['file']}")
     print()
+    # Not "historically edited together": on a fresh index the only edges are
+    # the structural seeds the build wrote, and the eval that checked this
+    # (bench/review_drift/2026-11-02/) found the list no better than git
+    # co-change history at naming a missing file. Say what the ranking is.
     print(
-        "These files have historically been edited together with the ones above.\n"
-        "Consider whether your change also needs to touch them."
+        "Ranked by association in the synapse graph: structural coupling (calls,\n"
+        "imports, inheritance) on a fresh index, plus files edited together once\n"
+        "the project has been used. Consider whether your change also needs to\n"
+        "touch them."
     )
 
 
