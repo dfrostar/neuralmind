@@ -28,18 +28,21 @@ export default function Hero() {
                     {/* ── Copy ───────────────────────────────────────────── */}
                     <div className="min-w-0">
                         <h1 className="font-display text-4xl sm:text-5xl lg:text-hero font-semibold text-white leading-display tracking-tighter mb-6">
-                            Your coding agent forgets your codebase. NeuralMind remembers it.
+                            Review code you&rsquo;ve never seen. Show the client the evidence.
                         </h1>
 
                         {/* tests/test_site_claims.py: the found count stays on one
                             line with ripgrep's, and the 150-question figure stays
                             in this file. */}
                         <p className="text-muted text-base sm:text-lg leading-relaxed max-w-xl mb-8">
-                            A local index of your repo that hands your agent the right code first —{' '}
+                            A local index of a repository, built on your machine, that hands your coding
+                            agent the right code first on day one —{' '}
                             <span className="text-ink font-medium">the gold file on 40 of 40 public-benchmark queries, where keyword ripgrep opening its top five files whole found 32 of 40, at 31–67× fewer tokens than ripgrep</span>{' '}
                             and 51–242× fewer than pasting every source file. On a larger 150-question
                             eval it puts a gold file in the top five on 93.3%, and all 10 misses are
-                            published. By default, no telemetry. MIT core, free at one seat.
+                            published. By default no telemetry and no repository content off your
+                            machine, with signed releases and compliance evidence a client&rsquo;s security
+                            review can check. MIT core, free at one seat.
                         </p>
 
                         <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in four commands">
