@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.24.0](https://github.com/dfrostar/neuralmind/compare/v4.23.3...v4.24.0) (2026-11-02)
+
+
+### Features
+
+* **cli:** neuralmind measure sessions reports what an agent's token bill goes to ([#767](https://github.com/dfrostar/neuralmind/issues/767)) ([53e3039](https://github.com/dfrostar/neuralmind/commit/53e3039e2e8fcf7039a3b00ca468382f4c66468d))
+* **evals:** pre-register and measure the exploration share of the token bill; track 1 spec ([#765](https://github.com/dfrostar/neuralmind/issues/765)) ([7910f82](https://github.com/dfrostar/neuralmind/commit/7910f82cf9ce483d2a8f5eb6cdf55591d65305d3))
+* **recall:** lexical anchoring for the prompt hook's block, flagged, pre-registered and replayed offline ([#764](https://github.com/dfrostar/neuralmind/issues/764)) ([e82663e](https://github.com/dfrostar/neuralmind/commit/e82663e8c9627f86d2247e35b7e60d28a03f9d9d))
+
+
+### Bug Fixes
+
+* **evals:** count only a carried run's own recap in the hook check ([#762](https://github.com/dfrostar/neuralmind/issues/762)) ([fcbdcbe](https://github.com/dfrostar/neuralmind/commit/fcbdcbe36465e5852117122d76dde846e747f4b3))
+* **site:** keep the liquid under its contrast cap on screen ([#758](https://github.com/dfrostar/neuralmind/issues/758)) ([6eeac94](https://github.com/dfrostar/neuralmind/commit/6eeac94ff7763df3a35006795957b640df92e599))
+
 ## [4.23.3](https://github.com/dfrostar/neuralmind/compare/v4.23.2...v4.23.3) (2026-10-29)
 
 
