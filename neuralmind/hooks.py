@@ -316,15 +316,16 @@ def _from_plugin() -> bool:
     return isinstance(manifest, dict) and manifest.get("name") == PLUGIN_NAME
 
 
-def _settings_hook_actions(project_dir: str) -> set[str]:
-    """The ``neuralmind _hook`` actions the settings files Claude Code reads register.
+def _settings_hook_handlers(project_dir: str) -> list[tuple[str, str, str]]:
+    """``(event, matcher, action)`` for each ``neuralmind _hook`` handler in the
+    settings files Claude Code reads.
 
     Those are the project's ``.claude/settings.json`` and
     ``settings.local.json`` and the user's ``settings.json``. A file that is
     missing or doesn't parse registers nothing.
     """
     project = Path(project_dir) / ".claude"
-    actions: set[str] = set()
+    handlers_found: list[tuple[str, str, str]] = []
     for path in (
         project / "settings.json",
         project / "settings.local.json",
@@ -335,14 +336,69 @@ def _settings_hook_actions(project_dir: str) -> set[str]:
         except (OSError, ValueError):
             continue
         hooks = data.get("hooks") if isinstance(data, dict) else None
-        for blocks in hooks.values() if isinstance(hooks, dict) else ():
+        for event, blocks in hooks.items() if isinstance(hooks, dict) else ():
             for block in blocks if isinstance(blocks, list) else ():
-                handlers = block.get("hooks") if isinstance(block, dict) else None
+                if not isinstance(block, dict):
+                    continue
+                matcher = block.get("matcher")
+                matcher = matcher if isinstance(matcher, str) else ""
+                handlers = block.get("hooks")
                 for handler in handlers if isinstance(handlers, list) else ():
                     command = handler.get("command") if isinstance(handler, dict) else None
                     if isinstance(command, str):
-                        actions.update(_HOOK_ACTION.findall(command))
-    return actions
+                        handlers_found.extend(
+                            (event, matcher, found) for found in _HOOK_ACTION.findall(command)
+                        )
+    return handlers_found
+
+
+# The payload field each event's matcher is tested against; Claude Code
+# ignores a matcher on any other event.
+_MATCHER_FIELD = {
+    "PreToolUse": "tool_name",
+    "PostToolUse": "tool_name",
+    "SessionStart": "source",
+    "PreCompact": "trigger",
+}
+
+
+def _matcher_fires(matcher: str, value: object) -> bool:
+    """Whether a settings ``matcher`` selects ``value`` (a tool name, a source).
+
+    An empty matcher or ``*`` selects everything, a plain name or ``A|B`` list
+    selects those names exactly, anything else is a regular expression. An
+    invalid pattern selects nothing, so the plugin's copy runs.
+    """
+    if matcher in ("", "*"):
+        return True
+    if not isinstance(value, str):
+        return False
+    if re.fullmatch(r"[A-Za-z0-9_|]+", matcher):
+        return value in matcher.split("|")
+    try:
+        return re.fullmatch(matcher, value) is not None
+    except re.error:
+        return False
+
+
+def _settings_copy_runs(action: str, payload: dict, project_dir: str) -> bool:
+    """True when a settings file's handler fires ``action`` for this payload's event.
+
+    The settings handler has to match the event as well as the action: one
+    registered for ``Edit`` alone doesn't run on ``Write``, so the plugin's
+    copy must. A payload without ``hook_event_name`` can't be matched, and
+    then the plugin's copy runs.
+    """
+    event = payload.get("hook_event_name")
+    if not isinstance(event, str):
+        return False
+    field = _MATCHER_FIELD.get(event)
+    for handler_event, matcher, handler_action in _settings_hook_handlers(project_dir):
+        if handler_event != event or handler_action != action:
+            continue
+        if field is None or _matcher_fires(matcher, payload.get(field)):
+            return True
+    return False
 
 
 # -----------------------------------------------------------------------------
@@ -395,11 +451,11 @@ def run_hook(action: str) -> int:
     if root is None:
         return 0
 
-    # The plugin's copy of a hook a settings file also registers stands
-    # aside, so the action runs once. The settings copy is the one that runs:
-    # it can't tell whether the plugin is enabled.
-    if _from_plugin() and action in _settings_hook_actions(
-        os.environ.get("CLAUDE_PROJECT_DIR") or session_cwd
+    # The plugin's copy of a hook a settings file also fires for this event
+    # stands aside, so the action runs once. The settings copy is the one that
+    # runs: it can't tell whether the plugin is enabled.
+    if _from_plugin() and _settings_copy_runs(
+        action, payload, os.environ.get("CLAUDE_PROJECT_DIR") or session_cwd
     ):
         return 0
 

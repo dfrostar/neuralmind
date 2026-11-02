@@ -67,11 +67,14 @@ block and every synapse update.
 Claude Code exports `CLAUDE_PLUGIN_ROOT` to a plugin's hooks and not to a
 settings file's. Now, when `neuralmind _hook` runs from the plugin and
 `.claude/settings.json`, `.claude/settings.local.json` or the user's
-`settings.json` (under `CLAUDE_CONFIG_DIR` when that's set) registers the same
-action, the plugin's copy exits at once and the settings copy does the work.
-In the same test project, the prompt was recorded once with both installed,
-and once with the plugin alone. An action an older `install-hooks` block lacks
-(a v3 block had no `Stop`) still runs from the plugin.
+`settings.json` (under `CLAUDE_CONFIG_DIR` when that's set) has a handler
+that fires the same action for this event, the plugin's copy exits at once and
+the settings copy does the work. "For this event" includes the matcher: a
+settings handler for `Edit` alone doesn't run on `Write`, so the plugin's
+`Write` hook still records the written file. In the same test project, the
+prompt was recorded once with both installed, and once with the plugin alone.
+An action an older `install-hooks` block lacks (a v3 block had no `Stop`)
+still runs from the plugin.
 
 MCP needed nothing: when a project `.mcp.json` already starts
 `neuralmind-mcp`, Claude Code doesn't start the plugin's server ("duplicates

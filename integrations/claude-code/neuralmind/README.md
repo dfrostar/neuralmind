@@ -45,8 +45,10 @@ switches every hook action off.
 You don't need to remove an earlier setup. Claude Code runs a plugin's hook
 beside an identical one from a settings file, so with both, each action would
 happen twice. From v4.25.0, `neuralmind` sees which copy is calling it, and the
-plugin's copy does nothing for an action that `.claude/settings.json`,
-`.claude/settings.local.json` or the user's `settings.json` already registers.
+plugin's copy does nothing when a handler in `.claude/settings.json`,
+`.claude/settings.local.json` or the user's `settings.json` fires the same
+action for the same event and matcher. A settings handler for `Edit` alone
+doesn't cover `Write`, so there the plugin's `Write` hook still runs.
 An older `neuralmind` on PATH runs both copies: upgrade it, or run
 `neuralmind install-hooks --uninstall` (and `--global` if you used it).
 

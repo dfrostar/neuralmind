@@ -2873,10 +2873,11 @@ pointer to `neuralmind decisions restore <id>` when one is STALE.
 dfrostar/neuralmind`, then `/plugin install neuralmind@neuralmind`, registers
 these same seven blocks and the MCP server for every project, with nothing
 written to `settings.json`. With both, the plugin's copy of a hook does
-nothing for an action the project's `.claude/settings.json` or
+nothing when a handler in the project's `.claude/settings.json` or
 `settings.local.json`, or the user's `settings.json` (`$CLAUDE_CONFIG_DIR`
-when set), already registers, so each action runs once. Claude Code would run
-both copies otherwise. `doctor` counts the enabled plugin as installed hooks
+when set), fires the same action for the same event and matcher (a settings
+`Edit` handler doesn't cover `Write`), so each action runs once. Claude Code
+would run both copies otherwise. `doctor` counts the enabled plugin as installed hooks
 ([plugin README](https://github.com/dfrostar/neuralmind/blob/main/integrations/claude-code/neuralmind/README.md)).
 
 ```bash

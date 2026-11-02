@@ -910,12 +910,17 @@ class TestPluginCopyStandsAside:
         monkeypatch.delenv("NEURALMIND_BYPASS", raising=False)
         return project, config
 
-    def _ran(self, project, monkeypatch, action="prompt-submit"):
+    def _ran(self, project, monkeypatch, action="prompt-submit", **fields):
         import neuralmind.hooks as hooks_mod
 
         calls = []
         monkeypatch.setattr(hooks_mod, "_run_action", lambda a, *rest: calls.append(a) or 0)
-        payload = {"cwd": str(project), "prompt": "how does login work?"}
+        payload = {
+            "cwd": str(project),
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "how does login work?",
+            **fields,
+        }
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
         monkeypatch.setattr(sys, "stdout", io.StringIO())
         assert run_hook(action) == 0
@@ -943,7 +948,52 @@ class TestPluginCopyStandsAside:
         settings.parent.mkdir()
         block = {"hooks": [{"type": "command", "command": "neuralmind _hook session-start"}]}
         settings.write_text(json.dumps({"hooks": {"SessionStart": [block]}}))
-        assert self._ran(project, monkeypatch, action="stop")
+        assert self._ran(project, monkeypatch, action="stop", hook_event_name="Stop")
+
+    def _settings(self, project, event, matcher, action):
+        settings = project / ".claude" / "settings.json"
+        settings.parent.mkdir(exist_ok=True)
+        block = {"hooks": [{"type": "command", "command": f"neuralmind _hook {action}"}]}
+        if matcher is not None:
+            block["matcher"] = matcher
+        settings.write_text(json.dumps({"hooks": {event: [block]}}))
+
+    def test_runs_for_a_tool_the_settings_matcher_leaves_out(self, tmp_path, monkeypatch):
+        # Settings register edit-activity for Edit only: the plugin's Write
+        # hook is the only one that records a written file.
+        project, _ = self._setup(tmp_path, monkeypatch)
+        self._settings(project, "PostToolUse", "Edit", "edit-activity")
+        post = {"hook_event_name": "PostToolUse"}
+        assert self._ran(project, monkeypatch, "edit-activity", tool_name="Write", **post)
+        assert not self._ran(project, monkeypatch, "edit-activity", tool_name="Edit", **post)
+
+    def test_pipe_list_and_regex_matchers(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        pre = {"hook_event_name": "PreToolUse"}
+        self._settings(project, "PreToolUse", "Edit|Write", "stale-guard")
+        assert not self._ran(project, monkeypatch, "stale-guard", tool_name="Write", **pre)
+        assert self._ran(project, monkeypatch, "stale-guard", tool_name="MultiEdit", **pre)
+        self._settings(project, "PreToolUse", ".*Edit", "stale-guard")
+        assert not self._ran(project, monkeypatch, "stale-guard", tool_name="MultiEdit", **pre)
+        self._settings(project, "PreToolUse", "*", "stale-guard")
+        assert not self._ran(project, monkeypatch, "stale-guard", tool_name="Bash", **pre)
+
+    def test_session_start_matcher_is_checked_against_the_source(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        self._settings(project, "SessionStart", "startup", "session-start")
+        start = {"hook_event_name": "SessionStart"}
+        assert self._ran(project, monkeypatch, "session-start", source="clear", **start)
+        assert not self._ran(project, monkeypatch, "session-start", source="startup", **start)
+
+    def test_a_handler_under_another_event_does_not_count(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        self._settings(project, "Stop", None, "prompt-submit")
+        assert self._ran(project, monkeypatch)
+
+    def test_a_payload_without_its_event_runs(self, tmp_path, monkeypatch):
+        project, _ = self._setup(tmp_path, monkeypatch)
+        install_hooks(scope="project", project_path=str(project))
+        assert self._ran(project, monkeypatch, hook_event_name=None)
 
     def test_settings_copy_always_runs(self, tmp_path, monkeypatch):
         project, _ = self._setup(tmp_path, monkeypatch)
