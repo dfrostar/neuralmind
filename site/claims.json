@@ -242,11 +242,109 @@
       "note": "Replaces the disclosure 'Task outcomes are not measured' (removed 2026-10-21, when this pilot was published). A RESULT, not a disclosure, and a null one: quote it with the same prominence as the retrieval wins, labelled 'pilot', with its interval, and never as a product claim (the spec says so). Say 'a 20-task pilot found no cost difference', with a link; never write that task outcomes are 'not measured' again, and never that NeuralMind makes agents cheaper, faster or more accurate. The finding: in the 60 neuralmind-arm runs the agent called none of the 28 MCP tools the server listed; NeuralMind reached it only through its Claude Code hooks (install-hooks), which ran in all 60. Pinned: claude-sonnet-5-5, Claude Code 2.1.287, NeuralMind 4.15.1; one repository (NeuralMind's own), cold start, cost is Claude Code's estimate at API prices. The confirmatory run follows the spec on new tasks; nothing about it may be claimed before it is run. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
     },
     {
-      "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture",
+      "claim": "Task outcomes, Hermes pilot: on the same 20 bug-fix tasks, Hermes-Agent on a local gpt-oss:20b model solved 10 with NeuralMind's plugin and 8 without, too few tasks apart to be significant (one-sided McNemar p = 0.25), with no measurable difference in tokens per task",
+      "source": "bench/task_outcome/hermes-pilot/report.txt",
+      "spec": "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md",
+      "reproduce": "python -m evals.task_outcome.run --agent hermes --tasks evals/task_outcome/tasks.json --out bench/task_outcome/hermes-pilot --model gpt-oss:20b-64k --seeds 1 --max-turns 120 --timeout 3600 --tool-venv <venv with neuralmind==4.23.1> --test-python <venv>/bin/python --work-dir <scratch>, then the same with --seeds 3 (stage 2 skips the recorded runs), then python -m evals.task_outcome.hermes_sessions bench/task_outcome/hermes-pilot && python -m evals.task_outcome.analyze bench/task_outcome/hermes-pilot",
+      "evidence": "pilot",
+      "figures": {
+        "date": "2026-10-30",
+        "tasks": 20,
+        "seeds": 3,
+        "runs": 120,
+        "hermes": "0.22.5",
+        "model": "gpt-oss:20b-64k",
+        "neuralmind": "4.23.1",
+        "tasks_solved": { "baseline": 8, "neuralmind": 10 },
+        "tasks_solved_by_one_arm_only": { "baseline": 0, "neuralmind": 2 },
+        "mcnemar_p": 0.25,
+        "runs_solved": { "baseline": 26, "neuralmind": 29 },
+        "median_tokens_change": "−2.3%",
+        "tokens_change_ci95": "−20.0% to +19.4%",
+        "median_minutes": { "baseline": 18.4, "neuralmind": 17.9 },
+        "median_turns": { "baseline": 91.3, "neuralmind": 88.3 },
+        "runs_timed_out": { "baseline": 3, "neuralmind": 0 },
+        "runs_judged_with_an_agent_command_running": 36,
+        "claim_supported": false
+      },
+      "note": "A separate exploratory study on the Claude Code pilot's 20 tasks, never pooled with it. Primary endpoint: tasks solved (most of a task's 3 seeds), one-sided McNemar on the tasks only one arm solved; supported only at p < 0.05, which needs at least 5 such tasks all one way. Two went to NeuralMind and none the other way, the lowest p two can give. Quote it as '10 vs 8 tasks, not significant', never as a percentage gain or a ratio of the two. NeuralMind reached the agent only through its Hermes plugin (a context block on every prompt, the session recap, edit learning); neither arm had an MCP server. Pinned: Hermes-Agent v0.22.5, gpt-oss:20b-64k on Ollama on one 16 GB GPU, NeuralMind 4.23.1; one repository (NeuralMind's own), a fresh index each run. Keep two caveats beside it: in 36 of the 120 runs a command the agent had started (33 of them pytest over the whole suite) was still running when judging began, and the verdicts stand as recorded (the spec, 2026-10-30; harness 2 now stops such commands first); and the machine's Hermes cron jobs were paused partway through, with both arms on both sides of the pause, which can move minutes. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
+    },
+    {
+      "claim": "Task outcomes, memory track: on the same 20 tasks in a fixed order, Hermes-Agent on a local gpt-oss:20b model solved 9 with NeuralMind's learned state carried from task to task and 7 starting fresh, too few tasks apart to be significant (one-sided McNemar p = 0.3125)",
+      "source": "bench/task_outcome/memory-track/report.txt",
+      "spec": "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md",
+      "reproduce": "python -m evals.task_outcome.run --agent hermes --track memory --chains 3 --fresh 3 --tasks evals/task_outcome/tasks.json --out bench/task_outcome/memory-track --model gpt-oss:20b-64k --max-turns 120 --timeout 3600 --tool-venv <venv with neuralmind==4.23.1> --test-python <venv>/bin/python --work-dir <scratch>, then python -m evals.task_outcome.hermes_sessions bench/task_outcome/memory-track && python -m evals.task_outcome.analyze bench/task_outcome/memory-track",
+      "evidence": "pilot",
+      "figures": {
+        "date": "2026-11-01",
+        "tasks": 20,
+        "chains": 3,
+        "fresh_runs_per_task": 3,
+        "runs": 120,
+        "hermes": "0.22.5",
+        "model": "gpt-oss:20b-64k",
+        "neuralmind": "4.23.1",
+        "tasks_solved": { "fresh": 7, "carried": 9 },
+        "tasks_solved_by_one_condition_only": { "fresh": 1, "carried": 3 },
+        "mcnemar_p": 0.3125,
+        "runs_solved": { "fresh": 21, "carried": 25 },
+        "tasks_most_blocks_name_a_gold_file_first": { "fresh": 11, "carried": 11 },
+        "median_learned_edges_carried_in": 36222,
+        "median_tokens_change": "+18.2%",
+        "tokens_change_ci95": "−2.4% to +28.5%",
+        "median_minutes": { "fresh": 14.7, "carried": 15.8 },
+        "median_turns": { "fresh": 86.8, "carried": 100.2 },
+        "hermes_pilot_neuralmind_tasks_solved": 10,
+        "carried_tasks_among_them": 9,
+        "harness_failures_rerun": 11,
+        "hook_check_false_alarms": 10,
+        "claim_supported": false
+      },
+      "note": "A separate exploratory study on the same 20 tasks, never pooled with the other two pilots. It asks whether NeuralMind's learned state (its synapse store and session recaps), carried along 3 chains through the tasks in a fixed order, helps the next task, against 3 fresh runs per task that start with nothing learned, side by side on the same days. Primary endpoint: tasks solved (most of a task's 3 runs), one-sided McNemar on the tasks only one condition solved; supported only at p < 0.05, which needs at least 5 such tasks all one way. Quote it as '9 vs 7 tasks, not significant', never as a percentage gain, a ratio, or evidence that NeuralMind learns a codebase. Keep beside it what the spec records: the fresh arm repeats the Hermes pilot's neuralmind arm, which solved 10 tasks two days earlier, and the 9 carried solved are all among those 10; the mechanism didn't move (most runs' blocks put a gold file first on 11 tasks in each condition); tokens per task rose a median 18.2% with the carried state, CI including no change. From position 17 a chain carries only the session recaps NeuralMind keeps (its newest 10, plus any from the last 24 hours), as shipped; the learned edges carry whole. The harness's check that NeuralMind ran was changed before the last 7 runs, after 10 false alarms, without changing what the agent saw (the spec, 2026-11-01). Pinned: Hermes-Agent v0.22.5, gpt-oss:20b-64k on Ollama on one 16 GB GPU, NeuralMind 4.23.1; one repository (NeuralMind's own). tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
+    },
+    {
+      "claim": "Exploration share, field report: reading and searching code was 19.0% of the prompt tokens billed for one developer's 90 interactive Claude Code sessions (29.6% of the context their transcripts record) and 10.5% for 67 interactive Hermes sessions, 2026-10-02 to 2026-11-01",
+      "source": "bench/exploration-share/2026-11-01/README.md",
+      "spec": "docs/specs/EXPLORATION-SHARE-SPEC.md",
+      "reproduce": "python -m evals.exploration_share claude-code --root ~/.claude/projects --since 2026-10-02T00:00:00Z --until 2026-11-02T00:00:00Z --out rows.jsonl && python -m evals.exploration_share hermes --db ~/.hermes/state.db --since 2026-10-02T00:00:00Z --until 2026-11-02T00:00:00Z --out rows.jsonl && python -m evals.exploration_share report --rows rows.jsonl --out-json summary.json --out-md summary.md",
+      "evidence": "field-report",
+      "figures": {
+        "since": "2026-10-02",
+        "until": "2026-11-01",
+        "tokenizer": "o200k_base",
+        "thresholds_pct": [10, 30],
+        "claude_code_interactive": {
+          "sessions": 90,
+          "billed_prompt_tokens": 3900183630,
+          "share_of_recorded_context_pct": 29.6,
+          "share_of_billed_prompt_pct": 19.0,
+          "median_session_pct": 20.4,
+          "calibration_pct": 64.2
+        },
+        "hermes_interactive": {
+          "sessions": 67,
+          "billed_prompt_tokens": 860795351,
+          "share_of_recorded_context_pct": 10.5,
+          "share_of_billed_prompt_pct": 10.5,
+          "median_session_pct": 5.4,
+          "calibration_pct": 100.0
+        },
+        "hermes_benchmark": {
+          "sessions": 261,
+          "share_of_recorded_context_pct": 50.6
+        },
+        "claude_code_headline_by_pass_pct": [27.4, 30.6, 30.7, 29.6],
+        "classifier_effect_points": { "recorded_context": 0.03, "billed_prompt": 0.02 },
+        "session_rule_sensitivity_pct": { "keep_first": 30.62, "keep_longest": 30.14, "each_file": 29.77, "drop_id": 30.83 }
+      },
+      "note": "A FIELD REPORT, label it so: one developer's two machines (Claude Code on a Mac, Hermes on ai-9970) over 30 days, 2026-10-02 to 2026-11-01. Figures are pass 6, the last for the pull request that committed them; `claude_code_headline_by_pass_pct` is the Mac headline at passes 3, 4, 5 and 6 (27.4%, 30.6%, 30.7%, 29.6% of recorded context; the report also lists a 30.1% from a run that isn't committed). Not a sample of developers or projects, and not a product claim. Run each source on the machine that holds its sessions; the per-session rows hold paths and project names and are never committed, only the aggregates in bench/exploration-share/2026-11-01/. Two shares, stated separately and never as a range: of the RECORDED CONTEXT (the spec's headline: exploration tool results present in each API call over everything the transcript records, one tokenizer and one presence model) and of the BILLED PROMPT (the same numerator over what the provider billed). The part of the prompt the transcript doesn't hold (tool schemas, system-reminders, thinking blocks) contains no tool results, so the billed-prompt share is the recorded share times the calibration ratio, not a bound; Claude Code's calibration is 64.2%, and Hermes bills per session so its estimate matches billing by construction and its two shares coincide. Both interactive figures sit within a few points of a pre-registered threshold (spec: under 10%, 10% to 30%, 30% or more), and the Mac's reading has been on both sides of the 30% line: pass 6's 29.6% of recorded context reads '10% to 30%', 0.4 points under the line, and its 19.0% of the billed prompt is in the same band; Hermes's 10.5% reads '10% to 30%', 0.5 points over the 10% line. Do not write 'a third' or '30% or more' for the Mac: the report's sentence is about a fifth of the billed prompt and about three in ten of the visible context. The report calls both within noise: the classifier fixes between two passes moved the pooled shares by only 0.03 and 0.02 points on identical sessions (`classifier_effect_points`, spec change log, pass 5), and what moves the Mac headline is how one resumed conversation, three transcript files under one session id, is counted (`session_rule_sensitivity_pct`, spec change log, pass 6: keep the first 30.62%, keep the longest 30.14%, count each file 29.77%, drop it 30.83%, about a point). Pass 6 counts each file, as the spec defines a session, chosen by the registered definition and not by its effect on the reading; the site session's sensitivity figures were computed from rows that stay on the machine, so they are quoted from the spec. The 261 Hermes benchmark-harness sessions (50.6%) are not usage and are never pooled; Claude Code subagent sessions (a separate row in the report) are not shown on the page. The nightly job on ai-9970 (Hermes cron neuralmind-exploration-share) accumulates new sessions and the Mac is re-run by hand, so these figures will move; a re-run means committing its summary under bench/exploration-share/<date>/ and updating this entry in the same change. The share bounds what any retrieval tool can save, it is not a saving: say 'the slice the per-question ratio applies inside', and keep it beside the task-outcome pilot, which measured cost per task and found no difference. Never write that NeuralMind saves a fifth of a bill. site/src/lib/evidence.ts computes every figure from the summary files (the headline by pass from the pass 3, 4 and 5 files and the current one) and throws if one disagrees with `figures` or if a headline's band no longer matches the summary's pre-registered reading; tests/test_site_claims.py recomputes them independently and checks the spec and the report still state `classifier_effect_points` and `session_rule_sensitivity_pct`."
+    },
+    {
+      "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture, and a 20-task pilot that carried NeuralMind's learned state from task to task found no significant difference",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "neuralmind eval . --synapse-ab",
       "evidence": "disclosure",
-      "note": "A disclosure, not a result. `neuralmind eval . --synapse-ab` runs a project's own gold questions with synapse recall on and off and records the difference in .neuralmind/eval_history.jsonl, with the usage-learned counts (LTP edges, transitions), so a user can see whether it grows as usage teaches the layer more. Recall also follows the call and import edges every build seeds, so a fresh build can already differ. No such history is published. Do not write that the layer 'compounds', 'gets smarter over time' or 'improves retrieval continuously' until one is."
+      "note": "A disclosure, not a result. `neuralmind eval . --synapse-ab` runs a project's own gold questions with synapse recall on and off and records the difference in .neuralmind/eval_history.jsonl, with the usage-learned counts (LTP edges, transitions), so a user can see whether it grows as usage teaches the layer more. Recall also follows the call and import edges every build seeds, so a fresh build can already differ. No such history is published. The memory-track pilot (bench/task_outcome/memory-track/, 2026-11-01) carried the synapse store and session recaps through 20 tasks on NeuralMind's own repository and found 9 vs 7 tasks solved, p = 0.3125, with the block's gold-file ranking unchanged: it doesn't show the benefit either. Do not write that the layer 'compounds', 'gets smarter over time' or 'improves retrieval continuously' until one is."
     }
   ],
   "unsourced_do_not_use": [

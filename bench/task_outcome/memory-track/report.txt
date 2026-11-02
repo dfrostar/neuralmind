@@ -1,0 +1,18 @@
+Agent: Hermes, memory track. Tasks paired: 20 (120 runs)
+Tasks solved: fresh 7, carried 9; only fresh 1, only carried 3 (one-sided McNemar p = 0.3125)
+Solved runs: fresh 21, carried 25
+Mechanism, reported:
+  Tasks where most blocks name a gold file: fresh 16, carried 16
+  Tasks where most blocks name a gold file first: fresh 11, carried 11
+  Runs with no block read back: fresh 1, carried 1
+Prediction (12 repeat tasks, 8 others): repeats solved fresh 3, carried 5; others fresh 4, carried 4; held
+Carry-over, 57 carried runs after position 1: median learned edges in 36222, after the build 36222; share with both ends in the graph 96%; starting with nothing learned 0; off their chain (recaps in other than position - 1) 12
+Carried minus fresh solve share by position: 1:+0.33 2:+0.00 3:-0.67 4:+0.33 5:+0.00 6:+0.00 7:+0.00 8:+0.00 9:+0.00 10:+0.67 11:+0.67 12:+0.00 13:+0.00 14:+0.33 15:+0.00 16:-0.33 17:+0.00 18:+0.00 19:+0.00 20:+0.00
+Secondary, not tested:
+  Median tokens per task: fresh 2,828,952, carried 3,425,163; median change carried +18.2% (95% CI -2.4% to +28.5%, 20 tasks)
+  Median minutes per task: fresh 14.7, carried 15.8
+  Median turns per task: fresh 86.8, carried 100.2
+  Median tool calls before the first edit: fresh 30.2, carried 30.8
+  Runs that edited a gold file: fresh 44, carried 52
+  Runs that hit the timeout (unsolved): fresh 1, carried 1
+Claim supported: NO (more tasks solved with carried state, p<0.05)
