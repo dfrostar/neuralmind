@@ -170,6 +170,11 @@ class TestChapterIndexerStandalone:
     on the synthetic chapters, with no embedder.
     """
 
+    @pytest.fixture(autouse=True)
+    def _synthetic_chapters(self):
+        """Write the synthetic chapters before each test, not after the previous one."""
+        ensure_test_chapters()
+
     def test_multi_entity_search_merges(self):
         """Multi-entity search should merge results from multiple queries."""
         from neuralmind.medical_retriever import ChapterIndexer
@@ -182,8 +187,6 @@ class TestChapterIndexerStandalone:
         sources = [r["source_file"] for r in results]
         assert len(sources) == len(set(sources)), "Results should be deduplicated"
 
-        ensure_test_chapters()
-
     def test_chapter_section_two_level_indexing(self):
         """Two-level indexing should return chapter + section info."""
         from neuralmind.medical_retriever import ChapterIndexer
@@ -193,8 +196,6 @@ class TestChapterIndexerStandalone:
         # Chapter documents should have sections
         for doc in indexer._documents:
             assert hasattr(doc, "sections") or isinstance(doc, dict)
-
-        ensure_test_chapters()
 
     def test_heading_tokens_extracted(self):
         """Heading tokens should be extracted from chapters."""
