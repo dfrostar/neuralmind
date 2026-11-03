@@ -312,7 +312,6 @@ jobs:
           assert any(origin.startswith(root + os.sep) for root in roots), (origin, roots)
           import neuralmind.cli
           import neuralmind.core
-          import neuralmind.config
           import neuralmind.compressors
           import neuralmind.hooks
           import neuralmind.backend_manager
