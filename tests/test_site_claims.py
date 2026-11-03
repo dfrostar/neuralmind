@@ -1478,7 +1478,9 @@ def test_held_out_hook_figures_match_the_committed_replays() -> None:
     f = entry["figures"]
     base = REPO_ROOT / "bench" / "task_outcome" / "lexical-anchoring" / "heldout"
     for arm, key in (("flag-off", "default"), ("flag-on", "lexical_flag")):
-        tasks = json.loads((base / arm / "replay-results.json").read_text(encoding="utf-8"))["tasks"]
+        tasks = json.loads((base / arm / "replay-results.json").read_text(encoding="utf-8"))[
+            "tasks"
+        ]
         assert len(tasks) == f["tasks"], arm
         assert sum(t["named"] for t in tasks) == f[key]["named"], arm
         assert sum(t["first"] for t in tasks) == f[key]["first"], arm
@@ -1491,7 +1493,9 @@ def test_review_drift_figures_match_the_committed_summary() -> None:
     assert entry["evidence"] == "pilot"
     f = entry["figures"]
     summary = json.loads(
-        (REPO_ROOT / "bench" / "review_drift" / "2026-11-02" / "summary.json").read_text(encoding="utf-8")
+        (REPO_ROOT / "bench" / "review_drift" / "2026-11-02" / "summary.json").read_text(
+            encoding="utf-8"
+        )
     )
     v = summary["verdict"]
     assert (v["review"]["pairs"], v["review"]["hits@10"], v["review"]["cochange_hits@10"]) == (
@@ -1499,7 +1503,10 @@ def test_review_drift_figures_match_the_committed_summary() -> None:
         f["review_hits_at_10"],
         f["cochange_hits_at_10"],
     )
-    assert (v["drift"]["fix_commits"], v["drift"]["fix_hits"]) == (f["drift_fix_commits"], f["drift_fix_hits"])
+    assert (v["drift"]["fix_commits"], v["drift"]["fix_hits"]) == (
+        f["drift_fix_commits"],
+        f["drift_fix_hits"],
+    )
     assert (v["drift"]["control_commits"], v["drift"]["control_hits"]) == (
         f["drift_control_commits"],
         f["drift_control_hits"],
@@ -1510,7 +1517,13 @@ def test_review_drift_figures_match_the_committed_summary() -> None:
 
 def test_consultancies_page_renders_its_figures() -> None:
     page = CONSULTANCIES_PAGE.read_text(encoding="utf-8")
-    for name in ("heldOutHook", "reviewDrift", "taskOutcomePilot", "explorationShare", "publicBenchmark"):
+    for name in (
+        "heldOutHook",
+        "reviewDrift",
+        "taskOutcomePilot",
+        "explorationShare",
+        "publicBenchmark",
+    ):
         assert name in page, f"/consultancies no longer renders {name} from evidence.ts"
     held = _entry(HELD_OUT_SOURCE)["figures"]
     rd = _entry(REVIEW_DRIFT_SOURCE)["figures"]
@@ -1523,4 +1536,6 @@ def test_consultancies_page_renders_its_figures() -> None:
         str(rd["cochange_hits_at_10"]),
         f"{share['share_of_billed_prompt_pct']:.1f}",
     ):
-        assert literal not in page, f"{literal!r} is typed into /consultancies; render it from evidence.ts"
+        assert (
+            literal not in page
+        ), f"{literal!r} is typed into /consultancies; render it from evidence.ts"
