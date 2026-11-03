@@ -57,8 +57,12 @@ hooks:
   workspace documentation: `CLAUDE.md`, `.claude/**/*.md`, `**/*.md` and
   `**/*.mdx` by default, at most 25 files per run.
 - **`UserPromptSubmit`** recalls from HydraDB and injects a
-  `<hydradb-context>` block of up to 7,000 characters (six memory chunks and
-  four knowledge chunks by default, with graph entity paths).
+  `<hydradb-context>` block of up to 7,000 characters with graph entity
+  paths. By default (`searchMode: "memory"`) that's up to six memory chunks;
+  `searchMode: "both"` adds up to four knowledge chunks, which is where
+  synced docs land with `ingestionMode: "knowledge"` (or, for larger files,
+  `"auto"`). With the default `ingestionMode: "memory"`, synced docs are
+  memories and the default search finds them.
 - **`PostToolUse`** records file writes for the next incremental sync.
 - **`Stop`** captures the finished turn, by default upserting one evolving
   transcript of the session.
@@ -116,7 +120,7 @@ structure.
   no telemetry and transmits no repository content off your machine.
 - *What's measured.* HydraDB publishes no retrieval figures for the plugin
   that we found, and it returns memory chunks rather than ranked files, so
-  [`evals/public/COMPETITORS.md`](../../evals/public/COMPETITORS.md) has no
+  [`evals/public/COMPETITORS.md`](https://github.com/dfrostar/neuralmind/blob/main/evals/public/COMPETITORS.md) has no
   head-to-head to run.
 
 ## Where they overlap, and running both

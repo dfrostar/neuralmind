@@ -125,8 +125,9 @@ Where NeuralMind's [synapse layer](../../neuralmind/synapses.py) and
   its LLM codebase survey give it something useful on day one, before any
   live session happens.
   NeuralMind's static code graph is also available immediately (it's
-  built from the current tree, not usage), but the *learning* half — the
-  Hebbian synapse layer — starts from nothing and needs real usage to
+  built from the current tree, not usage), and the build seeds the
+  Hebbian synapse layer from the call graph, but the associations it
+  *learns* from how you work start at zero and need real usage to
   accumulate. Hindsight's approach to "useful before you've used it" is
   a genuine edge worth naming rather than glossing over.
 - **Cross-client interoperability exists on both sides.** Basic Memory's

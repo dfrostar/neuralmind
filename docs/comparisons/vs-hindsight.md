@@ -65,8 +65,9 @@ which is no longer maintained. For each repo it:
   patterns, key decisions and rationale, initiatives and enhancements), each
   refreshed by one LLM synthesis when stale, hourly by default;
 - writes each session's transcript back to the bank when the agent stops;
-- injects a low-budget reflect on a session's first prompt (a 2,000-token
-  recall budget by default) and the page roster and tool guide on each turn.
+- injects a low-budget reflect on a session's first prompt, falling back
+  to knowledge-page search and then to a recall capped at 2,000 tokens by
+  default, and the page roster and tool guide on each turn.
 
 The package stores the bank in Hindsight Cloud by default; a self-hosted
 server or a local daemon are the alternatives.
@@ -117,7 +118,7 @@ content off your machine.
 (LongMemEval). NeuralMind measures code retrieval (gold-file recall).
 Neither has published a number on the other's axis, and no head-to-head is
 possible under our fairness contract,
-[`evals/public/COMPETITORS.md`](../../evals/public/COMPETITORS.md), which
+[`evals/public/COMPETITORS.md`](https://github.com/dfrostar/neuralmind/blob/main/evals/public/COMPETITORS.md), which
 needs a tool that returns ranked files. Hindsight doesn't.
 
 ## Where they overlap
@@ -149,8 +150,10 @@ We haven't tested them together. From the two sides' docs:
   On each prompt NeuralMind adds a short list of the files the prompt
   matches, the code linked to them and matching docs, with at most one
   40-line excerpt, plus any recorded decisions the prompt mentions.
-  Hindsight adds a reflect of up to 2,000 tokens on the first prompt and its
-  page roster after. Check what the two add per turn before keeping both on.
+  Hindsight adds a low-budget reflect on the first prompt, whose size its
+  docs don't cap (the 2,000-token cap is on the recall it falls back to),
+  and its page roster after. Check what the two add per turn before keeping
+  both on.
   NeuralMind's block has two switches: `NEURALMIND_SYNAPSE_INJECT=0` drops
   the code recall and `NEURALMIND_PROVENANCE_INJECT=0` the decisions. With
   both set it adds nothing to the prompt, and its MCP tools still work.
@@ -210,8 +213,9 @@ the pair adds per turn on your own sessions.
 - **Hindsight is ahead on things NeuralMind doesn't attempt**: an
   independently reproduced benchmark, 60+ integrations across agent
   frameworks, automatic capture, and memory that's useful before the first
-  session thanks to git seeding. NeuralMind's code graph is ready on the
-  first build, but its synapse layer starts empty and learns only from use.
+  session thanks to git seeding. NeuralMind's first build gives it the code
+  graph and seeds the synapse layer from the call graph, but the associations
+  it learns from how you work start at zero and need real use.
 - **This moves fast.** Our September page described Hindsight as needing a
   Postgres server and having no view of the code. Its docs on 2 November
   describe embedded storage, an LLM codebase survey with knowledge pages,
