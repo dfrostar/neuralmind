@@ -27,9 +27,11 @@ export default function TeamsSecurity() {
     return (
         <section id="teams" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader title="Memory your team shares, evidence your reviewer asks for">
+                <SectionHeader title="Memory your team shares, evidence your client’s reviewer asks for">
                     Every feature runs free at one seat: the license issues itself on first run, never
-                    expires and needs no signup. You pay for seats and support, not for features.
+                    expires and needs no signup. You pay for seats and support, not for features. A
+                    consultancy moving between client repositories keeps one install and indexes each
+                    client on its own machine.
                 </SectionHeader>
 
                 <div className="grid md:grid-cols-2 gap-4 md:gap-6">
