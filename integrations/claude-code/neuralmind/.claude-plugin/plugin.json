@@ -1,0 +1,21 @@
+{
+  "name": "neuralmind",
+  "version": "4.24.0",
+  "description": "Codebase memory for Claude Code: registers the NeuralMind MCP server and its lifecycle hooks (session recap, per-prompt recall of related files, stale-decision guard). Needs the neuralmind Python package on PATH (pipx install neuralmind) and a built project (neuralmind build .).",
+  "author": {
+    "name": "dfrostar",
+    "email": "hello@neuralmind.uk",
+    "url": "https://github.com/dfrostar"
+  },
+  "homepage": "https://neuralmind.uk",
+  "repository": "https://github.com/dfrostar/neuralmind",
+  "license": "MIT",
+  "keywords": [
+    "code-intelligence",
+    "codebase-memory",
+    "mcp",
+    "hooks",
+    "retrieval",
+    "local-first"
+  ]
+}

@@ -2869,6 +2869,17 @@ its full id and the reason it left ACTIVE (for example
 `commit 3f9c2ab changed db.py since this decision was recorded`), plus a
 pointer to `neuralmind decisions restore <id>` when one is STALE.
 
+**Or the Claude Code plugin** *(v4.25.0)*: `/plugin marketplace add
+dfrostar/neuralmind`, then `/plugin install neuralmind@neuralmind`, registers
+these same seven blocks and the MCP server for every project, with nothing
+written to `settings.json`. With both, the plugin's copy of a hook does
+nothing when a handler in the project's `.claude/settings.json` or
+`settings.local.json`, or the user's `settings.json` (`$CLAUDE_CONFIG_DIR`
+when set), fires the same action for the same event and matcher (a settings
+`Edit` handler doesn't cover `Write`), so each action runs once. Claude Code
+would run both copies otherwise. `doctor` counts the enabled plugin as installed hooks
+([plugin README](https://github.com/dfrostar/neuralmind/blob/main/integrations/claude-code/neuralmind/README.md)).
+
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
 ```

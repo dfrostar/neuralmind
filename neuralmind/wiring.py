@@ -288,8 +288,35 @@ def _read_json(path: Path) -> object | None:
     return data
 
 
+def claude_code_plugin_scopes(project: Path) -> list[str]:
+    """Where NeuralMind's Claude Code plugin is enabled for ``project``, if it is.
+
+    ``/plugin install`` records ``"neuralmind@<marketplace>": true`` under
+    ``enabledPlugins`` in the scope's settings file; a later scope (user, then
+    project, then project local) overrides an earlier one, so a project can
+    switch off a plugin the user enabled. The plugin carries both the hooks
+    and the MCP server.
+    """
+    from .hooks import PLUGIN_NAME, _claude_config_dir
+
+    project_settings = project / ".claude" / "settings.json"
+    enabled: dict[str, str | None] = {}
+    for label, path in (
+        ("user", _claude_config_dir() / "settings.json"),
+        ("project", project_settings),
+        ("project local", project_settings.with_name("settings.local.json")),
+    ):
+        data = _read_json(path)
+        plugins = data.get("enabledPlugins") if isinstance(data, dict) else None
+        for plugin_id, on in (plugins if isinstance(plugins, dict) else {}).items():
+            if str(plugin_id).startswith(f"{PLUGIN_NAME}@") and isinstance(on, bool):
+                enabled[plugin_id] = label if on else None
+    return [f"plugin {pid}, {label} settings" for pid, label in enabled.items() if label]
+
+
 def claude_code_hook_scopes(project: Path) -> list[str]:
-    """The settings scopes (``project``, ``project local``, ``global``) holding NeuralMind's hooks.
+    """The settings scopes (``project``, ``project local``, ``global``) holding NeuralMind's hooks,
+    then any enabling NeuralMind's Claude Code plugin, which registers the same hooks.
 
     Raises if :mod:`neuralmind.hooks` can't be imported, so doctor can say it
     couldn't check rather than "not installed".
@@ -315,7 +342,7 @@ def claude_code_hook_scopes(project: Path) -> list[str]:
         ]
         if any(_is_neuralmind_block(b) for b in blocks):
             installed.append(label)
-    return installed
+    return installed + claude_code_plugin_scopes(project)
 
 
 # --------------------------------------------------------------------------- #
@@ -501,7 +528,9 @@ def mcp_items(project: Path, project_arg: str | None = None) -> list[WiringItem]
         try:
             state = mcp_install.registration(client, project)
             scopes = {
-                "claude-code": lambda: _claude_json_scopes(project),
+                "claude-code": lambda: (
+                    _claude_json_scopes(project) + claude_code_plugin_scopes(project)
+                ),
                 "cursor": _cursor_global_scope,
             }
             extra = scopes[client]() if client in scopes else []
