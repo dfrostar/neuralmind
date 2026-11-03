@@ -109,31 +109,26 @@ An egress firewall rule blocking the NeuralMind process/container from
 reaching `api.anthropic.com` is effective defense-in-depth if you want a
 belt-and-suspenders guarantee beyond the env-var gate.
 
-### 3.2 Local-model path (Ollama) — local by default, operator-configurable
-
-`neuralmind/local_client.py` (`OllamaClient`) is an optional local-model
-query path, disabled unless `local_models.enabled` is set in
-`~/.config/neuralmind/config.toml`. Its default endpoint is
-`http://localhost:11434` — a local Ollama server, not a cloud endpoint.
-The endpoint is operator-configurable (`local_models.endpoint`); if your
-deployment sets it to anything other than a loopback/private address, that
-becomes a real egress path and should go through the same review as any
-other outbound connection.
-
-### 3.3 Dead configuration — removed
+### 3.2 Dead configuration and the local-model client — removed
 
 `neuralmind/config.py` previously defined `LocalModelsConfig.fallback_to_api`
 (default `True`) and an `ApiConfig(provider="openrouter")` section. As of
-this review, no code path ever read either field — they were schema-only
-and never caused a call to OpenRouter or any other API provider. They were
-removed (not wired up) precisely because leaving a dead field named after a
-hosted third-party API in the config schema is confusing for exactly the
-audience this document serves: a client security reviewer grepping the
+an earlier review, no code path ever read either field — they were
+schema-only and never caused a call to OpenRouter or any other API provider.
+They were removed (not wired up) precisely because leaving a dead field named
+after a hosted third-party API in the config schema is confusing for exactly
+the audience this document serves: a client security reviewer grepping the
 codebase for `openrouter` would find it and reasonably ask whether it does
-something. `neuralmind/config.py` now only carries the local-Ollama section
-described in §3.2.
+something.
 
-### 3.4 Hugging Face — not a dependency of any kind
+The rest of that file, and the `OllamaClient` in `neuralmind/local_client.py`
+that was its only reader, went the same way: no command, hook, MCP tool or
+plugin ever called the client, so the `local_models` section of
+`~/.config/neuralmind/config.toml` configured nothing. Both files have since been
+removed. NeuralMind has no local-model query path and makes no request to
+`localhost:11434` or any other model server.
+
+### 3.3 Hugging Face — not a dependency of any kind
 
 A natural follow-up to §3.3's OpenRouter finding: does NeuralMind depend on
 Hugging Face the way some "local" AI tools quietly do (fetching model

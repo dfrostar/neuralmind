@@ -291,7 +291,7 @@ Publish no "better recall" number unless it has been measured. The eval set exis
 
 | mem0 feature | Why not |
 |---|---|
-| LLM extraction on write (mem0's core: it decides what to remember from conversation) | This keeps N2: the write path stays deterministic, free and offline. **Possibly later (open decision 8):** an opt-in `POST …/memories/propose` that drafts candidate decisions from a commit message, PR description or transcript, using the local Ollama client NeuralMind already has (`local_client.py`). It would store nothing; the caller reviews the drafts and posts the ones it wants. |
+| LLM extraction on write (mem0's core: it decides what to remember from conversation) | This keeps N2: the write path stays deterministic, free and offline. **Possibly later (open decision 8):** an opt-in `POST …/memories/propose` that drafts candidate decisions from a commit message, PR description or transcript, using a local model. It would store nothing; the caller reviews the drafts and posts the ones it wants. |
 | Webhooks | Outbound calls from NeuralMind would end the README's "one outbound request" statement (`README.md:67`). `/v1/events` (PR 3) delivers the same events to anything that subscribes. |
 | Telemetry | mem0's open-source library sends anonymous usage data to PostHog unless `MEM0_TELEMETRY` is set to a false value. "No telemetry" is a NeuralMind headline, and nothing in this spec adds any. |
 | Graph-database memory (Neo4j and similar) | NeuralMind already has the structural code graph and the synapse graph, both in SQLite. |
