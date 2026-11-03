@@ -29,6 +29,8 @@ Each page follows the same structure:
 | [Mem0 / Zep](./vs-mem0-zep.md) | "Isn't this just AI agent memory, like Mem0 or Zep?" |
 | [Claude Code native subagent memory](./vs-claude-code-native-memory.md) | "Claude Code subagents already have a `memory` field — why do I need this too?" |
 | [Codex CLI memory ecosystem (Hindsight, Mem0, Basic Memory)](./vs-codex-cli-memory.md) | "Codex has no memory — which of these should I use, and where does NeuralMind fit?" |
+| [Hindsight](./vs-hindsight.md) | "Hindsight gives agents long-term memory and has a coding-agent plugin — do I need both?" |
+| [HydraDB / Open Glean](./vs-hydradb-open-glean.md) | "HydraDB has a Claude Code memory plugin and Open Glean answers across my apps — where does NeuralMind fit?" |
 | [Headroom](./vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 | [Context Engineering Stack (NeuralMind + Ponytail + Headroom)](./context-engineering-stack.md) | "How do I deploy all three tools together as an end-to-end pipeline?" |
 

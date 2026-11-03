@@ -25,6 +25,8 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | [Mem0 / Zep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-mem0-zep.md) | "Isn't this just AI agent memory, like Mem0 or Zep?" |
 | [Claude Code native subagent memory](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-claude-code-native-memory.md) | "Claude Code subagents already have a `memory` field — why do I need this too?" |
 | [Codex CLI memory ecosystem (Hindsight, Mem0, Basic Memory)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codex-cli-memory.md) | "Codex has no memory — which of these should I use, and where does NeuralMind fit?" |
+| [Hindsight](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-hindsight.md) | "Hindsight gives agents long-term memory and has a coding-agent plugin — do I need both?" |
+| [HydraDB / Open Glean](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-hydradb-open-glean.md) | "HydraDB has a Claude Code memory plugin and Open Glean answers across my apps — where does NeuralMind fit?" |
 | [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 | [The Context Engineering Stack (NeuralMind + Ponytail + Headroom)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md) | "How do NeuralMind, Ponytail, and Headroom work together as a unified token optimization stack?" |
 
@@ -46,6 +48,8 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | Tree-sitter / ctags / grep | Deterministic but syntactic; use alongside NeuralMind, not instead of |
 | Graft | Closest architectural neighbour — both build local code graphs; Graft's is rebuilt fresh per query, NeuralMind's learns from usage. Graft publishes agent-loop SWE-bench results we don't have; no head-to-head run |
 | codebase-memory-mcp | The one competitor we've scored live: better ranking (MRR 0.96 vs 0.23 on `requests`, 0.60 vs 0.50 on `click`) at about 1,000 mean tokens per query against its 25,214–38,538, in a June 2026 run (v0.33.0) on those two Python repos, not re-run since — but it indexes 162 languages to our ten plus JavaScript and scales to kernel-size repos |
+| Hindsight | Complementary — Hindsight remembers conversations, commits and decisions in LLM-written memory; NeuralMind indexes the code and learns from use. Both keep decisions and inject on every prompt; untested together |
+| HydraDB / Open Glean | Open Glean (cited answers across your apps) doesn't overlap; HydraDB's Claude Code plugin hooks the same events but remembers Markdown docs and chats in a hosted store, not code |
 | Headroom | Use both — Headroom compresses what flows to the model; NeuralMind stops most of it from flowing in the first place |
 | Context Engineering Stack (NeuralMind + Ponytail + Headroom) | These compose: NeuralMind (retrieval) + Headroom (transport) + Ponytail (generation) address token waste at every pipeline stage |
 
