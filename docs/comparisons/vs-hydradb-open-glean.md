@@ -130,10 +130,12 @@ surface Markdown: NeuralMind's prompt block lists matching docs beside the
 code. We haven't tested them together. From the two READMEs:
 
 - Each prompt gets two blocks: NeuralMind's short list of matching files,
-  linked code and docs, with at most one 40-line excerpt, and HydraDB's up to
-  7,000 characters. Check what they add per turn together.
-  `NEURALMIND_SYNAPSE_INJECT=0` turns off NeuralMind's block and keeps its MCP
-  tools.
+  linked code and docs, with at most one 40-line excerpt, plus any recorded
+  decisions the prompt mentions; and HydraDB's up to 7,000 characters. Check
+  what they add per turn together. NeuralMind's block has two switches:
+  `NEURALMIND_SYNAPSE_INJECT=0` drops the code recall and
+  `NEURALMIND_PROVENANCE_INJECT=0` the decisions. With both set it adds
+  nothing to the prompt, and its MCP tools still work.
 - Each prompt waits for both. HydraDB's reads time out at 15 s; NeuralMind's
   recall takes 1.3 s a prompt on hermes-agent's 269,151-node index on an M3.
 - Pick one place to record decisions. NeuralMind's stale-decision guard only

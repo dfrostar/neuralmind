@@ -148,10 +148,12 @@ We haven't tested them together. From the two sides' docs:
 - **Claude Code.** Each installs its own hooks; neither removes the other's.
   On each prompt NeuralMind adds a short list of the files the prompt
   matches, the code linked to them and matching docs, with at most one
-  40-line excerpt. Hindsight adds a reflect of up to 2,000 tokens on the
-  first prompt and its page roster after. Check what the two add per turn
-  before keeping both on. `NEURALMIND_SYNAPSE_INJECT=0` turns off
-  NeuralMind's prompt-time block while keeping its MCP tools.
+  40-line excerpt, plus any recorded decisions the prompt mentions.
+  Hindsight adds a reflect of up to 2,000 tokens on the first prompt and its
+  page roster after. Check what the two add per turn before keeping both on.
+  NeuralMind's block has two switches: `NEURALMIND_SYNAPSE_INJECT=0` drops
+  the code recall and `NEURALMIND_PROVENANCE_INJECT=0` the decisions. With
+  both set it adds nothing to the prompt, and its MCP tools still work.
 - **Hermes.** Hindsight takes the memory-provider slot, which only one
   provider can hold. NeuralMind's plugin is enabled through
   `plugins.enabled`, so it doesn't compete for that slot (see the
@@ -159,7 +161,9 @@ We haven't tested them together. From the two sides' docs:
   recall is capped at 4,096 tokens by default.
 - **Decisions.** Choose one place to record them on purpose. NeuralMind's
   are tied to files and commits, which the stale-decision guard needs;
-  Hindsight will still pick decisions up from conversation by itself.
+  Hindsight will still pick decisions up from conversation by itself. To
+  keep decisions out of NeuralMind's prompt block and leave them to
+  Hindsight, set `NEURALMIND_PROVENANCE_INJECT=0`.
 - **Latency.** Every prompt waits for both. Hindsight's first-prompt reflect
   times out at 20 s and its injection at 7 s; NeuralMind's recall takes 1.3 s
   a prompt on hermes-agent's 269,151-node index on an M3.
