@@ -5,6 +5,10 @@ import SectionHeader from '@/components/ui/SectionHeader';
 // page and the structured data. Every figure is sourced in site/claims.json.
 const faqs = [
     {
+        q: 'Who is NeuralMind for?',
+        a: 'Anyone reviewing or changing code they didn’t write with a coding agent, and in particular small consultancies whose engineers rotate between client repositories. On day one in a stranger’s codebase the index and the prompt-time hook put the likely files in front of the agent; "neuralmind impact", "neuralmind review" and "neuralmind drift" turn a diff into a review the client can act on; "Decision:" trailers and "neuralmind why" leave the reasoning in the client’s history; and for a regulated client the signed releases, SBOM, CUI profile and SP 800-53 hardening check are the evidence their security review asks for. It runs on the engineer’s machine: by default no telemetry and no repository content leaves it. The walkthrough is docs.neuralmind.uk/use-cases/consultancy-client-code-review.html.',
+    },
+    {
         q: 'Does NeuralMind work with Claude Code, Cursor, Codex and other agents?',
         a: 'NeuralMind runs as a standard MCP server, so any MCP-compatible agent can use it. Claude Code is tested end to end and also gets lifecycle hooks — memory at session start, prompt-time recall and a stale-decision guard. Cursor, Cline, Continue and Codex connect through the same protocol; the MCP handshake is verified against Codex, but we have not driven those agents end to end in CI, so the README labels them theoretical. "neuralmind install-mcp" registers the server with Claude Code (add --client for Cursor, Cline, VS Code or Claude Desktop), and other clients point their MCP config at "neuralmind-mcp". There is also a CLI and a Python API.',
     },

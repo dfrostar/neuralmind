@@ -264,8 +264,7 @@ gates it in CI on keeping the pre-registered must-keep lines. Walkthrough:
 
 Also in v4.10.0: `neuralmind validate` stops reporting the chapter files the
 prose path records, such as `ch01.md`, as stale synapses while the index
-still holds `chapters/ch01.md`, and the `neuralmind.sleep` API's long-term
-promotion no longer boosts ephemeral edges, which decay never protects.
+still holds `chapters/ch01.md`.
 
 ### v4.9.2 — `--` works again in the decisions and memory subcommands (October 2026)
 
