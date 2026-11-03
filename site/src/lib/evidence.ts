@@ -19,6 +19,10 @@
  *   field report's aggregates; its shares are computed from them and checked
  *   against the claims.json entry, so a re-run that moves one breaks the build
  *   until the entry is updated with it.
+ * - `bench/task_outcome/lexical-anchoring/heldout/` and
+ *   `bench/review_drift/2026-11-02/summary.json` hold two published misses:
+ *   the prompt hook on held-out tasks, and `review` / `drift` on real commits.
+ *   Their counts are read here and checked against claims.json the same way.
  *
  * Server-only: these imports are large, and only server components (every
  * page here is statically exported) may import this module.
@@ -31,6 +35,9 @@ import explorationClaudeCodePass3 from '../../../bench/exploration-share/2026-11
 import explorationClaudeCodePass4 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass4.json';
 import explorationClaudeCodePass5 from '../../../bench/exploration-share/2026-11-01/claude-code.summary.pass5.json';
 import explorationHermes from '../../../bench/exploration-share/2026-11-01/hermes.summary.json';
+import heldOutFlagOff from '../../../bench/task_outcome/lexical-anchoring/heldout/flag-off/replay-results.json';
+import heldOutFlagOn from '../../../bench/task_outcome/lexical-anchoring/heldout/flag-on/replay-results.json';
+import reviewDriftRun from '../../../bench/review_drift/2026-11-02/summary.json';
 import type { EvidenceLevel } from '@/components/ui/EvidenceBadge';
 
 export const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
@@ -532,5 +539,77 @@ export const explorationShare = (() => {
             ofContext: percent('Hermes benchmark harness', bench.exploration_share_billed, quoted.hermes_benchmark.share_of_recorded_context_pct),
         },
         dataFiles: [`${EXPLORATION_DIR}/claude-code.summary.json`, `${EXPLORATION_DIR}/hermes.summary.json`],
+    };
+})();
+
+// ---------------------------------------------------------------------------
+// Published misses: the prompt hook on held-out tasks, review and drift on
+// real commits. Counted from the committed runs, checked against claims.json.
+// ---------------------------------------------------------------------------
+
+function entryFor(source: string) {
+    const c = claims.non_ratio_headline_claims.find((e) => e.source === source);
+    if (!c || !('figures' in c)) throw new Error(`site/claims.json has no entry with figures for ${source}.`);
+    return c;
+}
+
+function agree(what: string, computed: number, claimed: number): number {
+    if (computed !== claimed) {
+        throw new Error(`${what}: the committed run gives ${computed} but site/claims.json says ${claimed}. Update the entry first, then the copy.`);
+    }
+    return claimed;
+}
+
+type ReplayRow = { named: boolean; first: boolean };
+
+/** The UserPromptSubmit block on the 12 held-out hermes-agent tasks, flag off (default) and on. */
+export const heldOutHook = (() => {
+    const c = entryFor('bench/task_outcome/lexical-anchoring/README.md');
+    const f = c.figures as unknown as {
+        tasks: number;
+        default: { named: number; first: number };
+        lexical_flag: { named: number; first: number };
+        flag: string;
+    };
+    const count = (what: string, rows: ReplayRow[], q: { named: number; first: number }) => {
+        agree(`Held-out hook, ${what}: tasks`, rows.length, f.tasks);
+        return {
+            named: agree(`Held-out hook, ${what}: named`, rows.filter((r) => r.named).length, q.named),
+            first: agree(`Held-out hook, ${what}: first`, rows.filter((r) => r.first).length, q.first),
+        };
+    };
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        spec: (c as { spec?: string }).spec ?? '',
+        reproduce: c.reproduce,
+        tasks: f.tasks,
+        flag: f.flag,
+        byDefault: count('default', heldOutFlagOff.tasks as ReplayRow[], f.default),
+        withFlag: count('flag on', heldOutFlagOn.tasks as ReplayRow[], f.lexical_flag),
+    };
+})();
+
+/** `neuralmind review` against git co-change, and `neuralmind drift` on fixes against other commits. */
+export const reviewDrift = (() => {
+    const c = entryFor('bench/review_drift/2026-11-02/README.md');
+    const f = c.figures as unknown as Record<string, number>;
+    const v = reviewDriftRun.verdict;
+    if (v.review.worth_quoting || v.drift.worth_quoting) {
+        throw new Error('The review/drift verdict now says a result is worth quoting; rewrite the copy that calls both a miss.');
+    }
+    return {
+        claim: c.claim,
+        evidence: c.evidence as EvidenceLevel,
+        source: c.source,
+        reproduce: c.reproduce,
+        pairs: agree('Review: pairs', v.review.pairs, f.review_pairs),
+        reviewHits: agree('Review: hits@10', v.review['hits@10'], f.review_hits_at_10),
+        cochangeHits: agree('Review: co-change hits@10', v.review['cochange_hits@10'], f.cochange_hits_at_10),
+        fixCommits: agree('Drift: fix commits', v.drift.fix_commits, f.drift_fix_commits),
+        fixHits: agree('Drift: fix hits', v.drift.fix_hits, f.drift_fix_hits),
+        controlCommits: agree('Drift: control commits', v.drift.control_commits, f.drift_control_commits),
+        controlHits: agree('Drift: control hits', v.drift.control_hits, f.drift_control_hits),
     };
 })();

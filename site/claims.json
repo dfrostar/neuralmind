@@ -340,6 +340,37 @@
       "note": "A FIELD REPORT, label it so: one developer's two machines (Claude Code on a Mac, Hermes on ai-9970) over 30 days, 2026-10-02 to 2026-11-01. Figures are pass 6, the last for the pull request that committed them; `claude_code_headline_by_pass_pct` is the Mac headline at passes 3, 4, 5 and 6 (27.4%, 30.6%, 30.7%, 29.6% of recorded context; the report also lists a 30.1% from a run that isn't committed). Not a sample of developers or projects, and not a product claim. Run each source on the machine that holds its sessions; the per-session rows hold paths and project names and are never committed, only the aggregates in bench/exploration-share/2026-11-01/. Two shares, stated separately and never as a range: of the RECORDED CONTEXT (the spec's headline: exploration tool results present in each API call over everything the transcript records, one tokenizer and one presence model) and of the BILLED PROMPT (the same numerator over what the provider billed). The part of the prompt the transcript doesn't hold (tool schemas, system-reminders, thinking blocks) contains no tool results, so the billed-prompt share is the recorded share times the calibration ratio, not a bound; Claude Code's calibration is 64.2%, and Hermes bills per session so its estimate matches billing by construction and its two shares coincide. Both interactive figures sit within a few points of a pre-registered threshold (spec: under 10%, 10% to 30%, 30% or more), and the Mac's reading has been on both sides of the 30% line: pass 6's 29.6% of recorded context reads '10% to 30%', 0.4 points under the line, and its 19.0% of the billed prompt is in the same band; Hermes's 10.5% reads '10% to 30%', 0.5 points over the 10% line. Do not write 'a third' or '30% or more' for the Mac: the report's sentence is about a fifth of the billed prompt and about three in ten of the visible context. The report calls both within noise: the classifier fixes between two passes moved the pooled shares by only 0.03 and 0.02 points on identical sessions (`classifier_effect_points`, spec change log, pass 5), and what moves the Mac headline is how one resumed conversation, three transcript files under one session id, is counted (`session_rule_sensitivity_pct`, spec change log, pass 6: keep the first 30.62%, keep the longest 30.14%, count each file 29.77%, drop it 30.83%, about a point). Pass 6 counts each file, as the spec defines a session, chosen by the registered definition and not by its effect on the reading; the site session's sensitivity figures were computed from rows that stay on the machine, so they are quoted from the spec. The 261 Hermes benchmark-harness sessions (50.6%) are not usage and are never pooled; Claude Code subagent sessions (a separate row in the report) are not shown on the page. The nightly job on ai-9970 (Hermes cron neuralmind-exploration-share) accumulates new sessions and the Mac is re-run by hand, so these figures will move; a re-run means committing its summary under bench/exploration-share/<date>/ and updating this entry in the same change. The share bounds what any retrieval tool can save, it is not a saving: say 'the slice the per-question ratio applies inside', and keep it beside the task-outcome pilot, which measured cost per task and found no difference. Never write that NeuralMind saves a fifth of a bill. site/src/lib/evidence.ts computes every figure from the summary files (the headline by pass from the pass 3, 4 and 5 files and the current one) and throws if one disagrees with `figures` or if a headline's band no longer matches the summary's pre-registered reading; tests/test_site_claims.py recomputes them independently and checks the spec and the report still state `classifier_effect_points` and `session_rule_sensitivity_pct`."
     },
     {
+      "claim": "Prompt hook, held out: on 12 hermes-agent bug-fix tasks kept out of all tuning, the block the UserPromptSubmit hook adds to each prompt named a file the fix changed on 4 of 12 by default, and on 7 of 12 with NEURALMIND_RECALL_LEXICAL=1 (offline replays through the real hook, no agent runs)",
+      "source": "bench/task_outcome/lexical-anchoring/README.md",
+      "spec": "docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md",
+      "reproduce": "cd bench/task_outcome/lexical-anchoring && python replay_lexical.py prepare heldout && python replay_lexical.py capture heldout && python replay_lexical.py hook heldout <shim with the flag unset> flag-off && python replay_lexical.py hook heldout <shim with NEURALMIND_RECALL_LEXICAL=1> flag-on && python replay_lexical.py summary (each task's v4.22.1 index cached under $NM_BENCH; see the script's docstring)",
+      "evidence": "pilot",
+      "figures": {
+        "tasks": 12,
+        "default": { "named": 4, "first": 3 },
+        "lexical_flag": { "named": 7, "first": 5 },
+        "flag": "NEURALMIND_RECALL_LEXICAL=1"
+      },
+      "note": "The miss the site publishes beside the 40 of 40: on a large repository the hook had never seen, its default block named the file to fix on 4 of 12 tasks. Quote it as '4 of 12', and the flag's '7 of 12' only as opt-in: the flag is off by default in v4.24.0 until a confirmation replay. Offline replays score what the block lists against each task's real fix; whether an agent then does anything differently is not measured, and 12 tasks on one repository is a small sample. Never pool it with the public benchmark or call it recall. site/src/lib/evidence.ts counts both rows from heldout/flag-off and heldout/flag-on replay-results.json and throws if they disagree with `figures`; tests/test_site_claims.py recomputes them independently."
+    },
+    {
+      "claim": "neuralmind review and neuralmind drift on real commits: review named a file the commit changed in its top ten on 270 of 430 held-out pairs against git co-change history's 279, and drift fired on 6 of 121 bug fixes and 6 of 121 other commits; both fail their pre-registered gate",
+      "source": "bench/review_drift/2026-11-02/README.md",
+      "spec": "docs/specs/REVIEW-DRIFT-EVAL-SPEC.md",
+      "reproduce": "python -m evals.review_drift.select --repos <dir with requests/ click/ flask/ rich/ clones> --out <out>/sets.json && python -m evals.review_drift.run --sets <out>/sets.json --out <out> --neuralmind <venv>/bin/neuralmind && python -m evals.review_drift.analyze <out>",
+      "evidence": "pilot",
+      "figures": {
+        "review_pairs": 430,
+        "review_hits_at_10": 270,
+        "cochange_hits_at_10": 279,
+        "drift_fix_commits": 121,
+        "drift_fix_hits": 6,
+        "drift_control_commits": 121,
+        "drift_control_hits": 6
+      },
+      "note": "A published miss, not a product claim: the summary's own verdict is worth_quoting false for both commands, so the site quotes this only as what NeuralMind does NOT do better than tools a reviewer already has. Cold indexes, structural synapses only, no learned associations. Do not write that review 'finds the file your diff forgot' or that drift 'catches bugs'. site/src/lib/evidence.ts reads the counts from summary.json and throws if they disagree with `figures`; tests/test_site_claims.py recomputes them independently."
+    },
+    {
       "claim": "The synapse layer's benefit on a real repository over time is not shown: the CI gate is directional, on a ~500-line fixture, and a 20-task pilot that carried NeuralMind's learned state from task to task found no significant difference",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "neuralmind eval . --synapse-ab",

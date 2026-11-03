@@ -1453,3 +1453,74 @@ def test_cost_cta_guard_trips_on_the_copy_that_shipped() -> None:
     for line in shipped:
         assert COST_CTA_RE.search(line), line
     assert not COST_CTA_RE.search("The right code in fewer tokens, with the misses published.")
+
+
+# ---------------------------------------------------------------------------
+# Published misses quoted on /consultancies: the prompt hook on held-out tasks
+# and review/drift on real commits. Recomputed here from the committed runs,
+# independently of site/src/lib/evidence.ts.
+# ---------------------------------------------------------------------------
+
+HELD_OUT_SOURCE = "bench/task_outcome/lexical-anchoring/README.md"
+REVIEW_DRIFT_SOURCE = "bench/review_drift/2026-11-02/README.md"
+CONSULTANCIES_PAGE = SITE_ROOT / "app" / "consultancies" / "page.tsx"
+
+
+def _entry(source: str) -> dict:
+    entries = [c for c in _claims()["non_ratio_headline_claims"] if c["source"] == source]
+    assert len(entries) == 1, f"expected one claims.json entry for {source}"
+    return entries[0]
+
+
+def test_held_out_hook_figures_match_the_committed_replays() -> None:
+    entry = _entry(HELD_OUT_SOURCE)
+    assert entry["evidence"] == "pilot"
+    f = entry["figures"]
+    base = REPO_ROOT / "bench" / "task_outcome" / "lexical-anchoring" / "heldout"
+    for arm, key in (("flag-off", "default"), ("flag-on", "lexical_flag")):
+        tasks = json.loads((base / arm / "replay-results.json").read_text(encoding="utf-8"))["tasks"]
+        assert len(tasks) == f["tasks"], arm
+        assert sum(t["named"] for t in tasks) == f[key]["named"], arm
+        assert sum(t["first"] for t in tasks) == f[key]["first"], arm
+    assert f"{f['default']['named']} of {f['tasks']}" in entry["claim"]
+    assert f"{f['lexical_flag']['named']} of {f['tasks']}" in entry["claim"]
+
+
+def test_review_drift_figures_match_the_committed_summary() -> None:
+    entry = _entry(REVIEW_DRIFT_SOURCE)
+    assert entry["evidence"] == "pilot"
+    f = entry["figures"]
+    summary = json.loads(
+        (REPO_ROOT / "bench" / "review_drift" / "2026-11-02" / "summary.json").read_text(encoding="utf-8")
+    )
+    v = summary["verdict"]
+    assert (v["review"]["pairs"], v["review"]["hits@10"], v["review"]["cochange_hits@10"]) == (
+        f["review_pairs"],
+        f["review_hits_at_10"],
+        f["cochange_hits_at_10"],
+    )
+    assert (v["drift"]["fix_commits"], v["drift"]["fix_hits"]) == (f["drift_fix_commits"], f["drift_fix_hits"])
+    assert (v["drift"]["control_commits"], v["drift"]["control_hits"]) == (
+        f["drift_control_commits"],
+        f["drift_control_hits"],
+    )
+    # Quoted as a miss only while the pre-registered verdict says neither is worth quoting.
+    assert not v["review"]["worth_quoting"] and not v["drift"]["worth_quoting"]
+
+
+def test_consultancies_page_renders_its_figures() -> None:
+    page = CONSULTANCIES_PAGE.read_text(encoding="utf-8")
+    for name in ("heldOutHook", "reviewDrift", "taskOutcomePilot", "explorationShare", "publicBenchmark"):
+        assert name in page, f"/consultancies no longer renders {name} from evidence.ts"
+    held = _entry(HELD_OUT_SOURCE)["figures"]
+    rd = _entry(REVIEW_DRIFT_SOURCE)["figures"]
+    share = _share_entry()["figures"]["claude_code_interactive"]
+    for literal in (
+        f"{held['default']['named']} of {held['tasks']}",
+        f"{held['lexical_flag']['named']} of {held['tasks']}",
+        str(rd["review_pairs"]),
+        str(rd["review_hits_at_10"]),
+        str(rd["cochange_hits_at_10"]),
+        f"{share['share_of_billed_prompt_pct']:.1f}",
+    ):
+        assert literal not in page, f"{literal!r} is typed into /consultancies; render it from evidence.ts"
