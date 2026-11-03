@@ -32,7 +32,7 @@ mcp==2.3.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 black==26.10.0
-ruff==0.16.10
+ruff==0.17.2
 mypy==2.4.0
 
 # External tools (required separately)
