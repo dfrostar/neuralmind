@@ -1,10 +1,9 @@
 # Known mypy errors: CI fails on any error not listed here, and on any
 # listed error mypy no longer reports. Regenerate after fixing errors with
 #   python scripts/check_mypy_baseline.py --update
-# 225 errors
+# 221 errors
 neuralmind/bge_embedder.py: Returning Any from function declared to return "list[list[float]]"  [no-any-return]
 neuralmind/bm25.py: Function "builtins.callable" is not valid as a type  [valid-type]
-neuralmind/chapter_indexer.py: Item "None" of "Any | None" has no attribute "embed"  [union-attr]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "_track_book_assets"  [attr-defined]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "embed_content"  [attr-defined]
 neuralmind/cli.py: "EmbeddingBackend" has no attribute "embed_content"  [attr-defined]
@@ -113,11 +112,9 @@ neuralmind/hermes_plugin/__init__.py: Item "None" of "Match[str] | None" has no 
 neuralmind/hermes_plugin/__init__.py: Returning Any from function declared to return "str"  [no-any-return]
 neuralmind/identity.py: Module has no attribute "windll"  [attr-defined]
 neuralmind/in_memory_backend.py: Dict entry 3 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
-neuralmind/judge_transcripts.py: Returning Any from function declared to return "dict[Any, Any]"  [no-any-return]
 neuralmind/l3_slots.py: Incompatible types in assignment (expression has type "dict[Any, Any] | None", variable has type "dict[Any, Any]")  [assignment]
 neuralmind/learned_decay.py: Returning Any from function declared to return "float | None"  [no-any-return]
 neuralmind/learned_decay.py: Returning Any from function declared to return "float | None"  [no-any-return]
-neuralmind/local_client.py: Returning Any from function declared to return "str"  [no-any-return]
 neuralmind/mcp_http.py: Incompatible types in assignment (expression has type "Starlette", variable has type "None")  [assignment]
 neuralmind/mcp_install.py: Item "None" of "Any | list[Any] | None" has no attribute "__iter__" (not iterable)  [union-attr]
 neuralmind/mcp_server.py: "Collection[str]" has no attribute "get"  [attr-defined]
@@ -154,7 +151,6 @@ neuralmind/retrieval_enhancement.py: Need type annotation for "all_nodes"  [var-
 neuralmind/retrieval_enhancement.py: Need type annotation for "new_results" (hint: "new_results: list[<type>] = ...")  [var-annotated]
 neuralmind/retrieval_enhancement.py: Returning Any from function declared to return "str"  [no-any-return]
 neuralmind/retrieval_enhancement.py: Returning Any from function declared to return "str"  [no-any-return]
-neuralmind/scip_backend.py: Incompatible types in assignment (expression has type "ScipIndex", variable has type "None")  [assignment]
 neuralmind/security_config.py: Module has no attribute "windll"  [attr-defined]
 neuralmind/security_profile.py: Argument 1 to "_is_loopback_address" has incompatible type "str | int"; expected "str"  [arg-type]
 neuralmind/server.py: Argument "days" to "full_dashboard" has incompatible type "str"; expected "int"  [arg-type]

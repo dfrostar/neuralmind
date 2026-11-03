@@ -110,8 +110,6 @@ neuralmind/
 │   ├── backend_manager.py       # Pluggable embedding backend (Chroma / in-memory)
 │   ├── embedding_backend.py     # Backend abstraction
 │   ├── in_memory_backend.py     # Test-only backend
-│   ├── local_client.py          # Local-only MCP client helper
-│   ├── config.py                # Config loader
 │   ├── cli.py                   # `neuralmind` CLI entry point
 │   ├── demo_data/               # Bundled fixture for `neuralmind demo`
 │   └── web/                     # Graph-view canvas assets
