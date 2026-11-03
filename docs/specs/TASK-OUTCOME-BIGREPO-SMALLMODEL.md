@@ -92,3 +92,9 @@ pilot 18 / 13 against 17 / 11; test share 14 of 84 unchanged. **Passed.**
   - **If it fails:** the flag stays default-off and stage 1 does not start. The
     result is stated with the flag-off row and every task's outcome, misses
     included.
+- 2026-11-03 — correction to the entry above, made before any task of the set was
+  read or any prompt written. The exclusion reasons are the screen's (a), (b) and
+  (c) (`docs/specs/TASK-OUTCOME-HERMES-AGENT-SCREEN.md`), not (c) alone: the entry
+  above named only the one the first held-out set happened to use. The writing
+  agent records each exclusion under its letter in `confirm/exclusions.json`, and
+  the walk still goes on until 12 tasks have prompts.
