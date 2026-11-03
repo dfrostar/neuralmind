@@ -68,3 +68,27 @@ pilot 18 / 13 against 17 / 11; test share 14 of 84 unchanged. **Passed.**
 - 2026-11-01 — Track pre-registered after the memory track completed and the
   lexical gate passed. Stage 0b (confirmation) added to the lexical PR's own
   plan; stages 1–2 wait for it.
+- 2026-11-03 — stage 0b's procedure, fixed before the walk is continued.
+  - **Gate, unchanged:** flag on, the first-listed file is one the fix changed
+    on at least 5 of 12 tasks ("first", chosen before the replay as registered;
+    "named" is not used). The flag-off row is reported beside it.
+  - **Population:** the seeded walk (seed 20261025, hermes-agent pinned at
+    `710fa8a`) from position 25 on, in walk order, with `draw.py` as committed
+    in `evals/task_outcome/studies/hermes-agent-screen/`; a commit qualifies as
+    it has so far (a fail-to-pass test). Positions 0–24 are the screen and the
+    first held-out set.
+  - **Prompts and exclusions:** a separate agent that sees only each fix's tests
+    and diff writes the prompt, as for the first held-out set. It may mark a task
+    unwritable only where its tests check names the fix introduces. It sees no
+    ranking, replay output, threshold or stage. Each exclusion is recorded with
+    its reason, and the walk goes on until 12 tasks have prompts.
+  - **Order of work:** the task list (ids, commits, gold files, prompts,
+    exclusions) is committed before any replay runs.
+  - **Replay:** NeuralMind v4.24.0, the first release carrying the flag, through
+    `bench/task_outcome/lexical-anchoring/replay_lexical.py`: one index per task
+    built once with that version, then `neuralmind _hook prompt-submit` with the
+    flag off and with it on on a fresh clone of each index, scored by
+    `evals/task_outcome/replay.py`'s `score()`.
+  - **If it fails:** the flag stays default-off and stage 1 does not start. The
+    result is stated with the flag-off row and every task's outcome, misses
+    included.
