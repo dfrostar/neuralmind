@@ -865,3 +865,12 @@ drawn by the same rule, that the pilot didn't use.
     the other 259, so every recorded run (stages 1 and 2, the memory track)
     stands as recorded. The agent logs that survive begin 10-30 10:56 UTC;
     for the earlier sessions the price is the only evidence, and it is zero.
+- 2026-11-03 — lexical anchoring confirmed on 12 new held-out tasks (track 1,
+  stage 0b), offline. Flag on, a changed file listed first on 5 of 12 against
+  2 with the flag off (named 7 of 12 both ways): the registered gate (first >= 5
+  of 12), met exactly. Procedure, the tasks, the blind prompts and the two
+  exclusions are in
+  [`bench/task_outcome/lexical-anchoring/`](../../bench/task_outcome/lexical-anchoring/README.md#confirmation-12-new-tasks-stage-0b)
+  and the [track-1 spec](TASK-OUTCOME-BIGREPO-SMALLMODEL.md). The *first* gains
+  replicate (no task lost it); the *named* gain on the first held-out set did not
+  (7 to 7). The flag stays default-off.
