@@ -1,6 +1,6 @@
 {
   "name": "neuralmind",
-  "version": "4.24.0",
+  "version": "4.25.0",
   "description": "Codebase memory for Claude Code: registers the NeuralMind MCP server and its lifecycle hooks (session recap, per-prompt recall of related files, stale-decision guard). Needs the neuralmind Python package on PATH (pipx install neuralmind) and a built project (neuralmind build .).",
   "author": {
     "name": "dfrostar",
