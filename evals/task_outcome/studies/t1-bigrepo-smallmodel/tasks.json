@@ -851,7 +851,6 @@
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_emits_distinct_watch_matches_once",
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_live_loop_drops_addressed_orphan[a34c51c9b931]",
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_live_loop_drops_addressed_orphan[a555cb2a93a9]",
-      "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_live_loop_requeues_foreign_completion_for_owner",
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_requeues_when_busy",
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_skips_consumed",
       "tests.tui_gateway.test_tui_gateway_server::test_notification_poller_starts_no_turn_after_stop",
