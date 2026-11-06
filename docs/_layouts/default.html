@@ -9,11 +9,21 @@
       their own opening prose, not the site-wide description: 112 of 122
       pages had served the same one, so search showed them as duplicates.
     {%- endcomment -%}
-    {%- capture page_title -%}{% if page.title %}{{ page.title | escape }} · NeuralMind{% else %}NeuralMind Docs{% endif %}{%- endcapture -%}
+    {%- comment -%}
+      A title taken from a page's first heading (jekyll-titles-from-headings)
+      and a description taken from its content have both been through
+      markdown → HTML, so they arrive with `&`, `<`, `>` and `"` already
+      escaped; a front-matter or _config.yml title arrives as plain text.
+      Decode the basic entities (`&amp;` last, so `&amp;lt;` stays text), and
+      every use below escapes exactly once. Escaping the raw value showed
+      "Benchmarks &amp; Results" in tabs, search results and the breadcrumb.
+    {%- endcomment -%}
+    {%- assign title_text = page.title | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&amp;', '&' -%}
+    {%- capture page_title -%}{% if page.title %}{{ title_text | escape }} · NeuralMind{% else %}NeuralMind Docs{% endif %}{%- endcapture -%}
     {%- if page.description -%}
       {%- assign page_desc = page.description | strip_newlines -%}
     {%- else -%}
-      {%- assign page_desc = content | strip_html | normalize_whitespace | remove_first: page.title | strip | truncate: 155 -%}
+      {%- assign page_desc = content | strip_html | normalize_whitespace | remove_first: page.title | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&amp;', '&' | strip | truncate: 155 -%}
       {%- if page_desc == "" -%}{%- assign page_desc = site.description | strip_newlines -%}{%- endif -%}
     {%- endif -%}
     {%- assign page_canonical = page.url | replace: '.html', '' | absolute_url -%}
@@ -272,10 +282,10 @@
     <div class="crumbs">
         {% if page.url contains '/wiki/' %}
             <a href="https://neuralmind.uk/">neuralmind.uk</a> <span>/</span> <a href="/wiki/Home">Docs</a>
-            {% if page.title and page.url != '/wiki/Home.html' %}<span>/</span> <span>{{ page.title | escape }}</span>{% endif %}
+            {% if page.title and page.url != '/wiki/Home.html' %}<span>/</span> <span>{{ title_text | escape }}</span>{% endif %}
         {% else %}
             <a href="https://neuralmind.uk/">neuralmind.uk</a>
-            {% if page.title %}<span>/</span> <span>{{ page.title | escape }}</span>{% endif %}
+            {% if page.title %}<span>/</span> <span>{{ title_text | escape }}</span>{% endif %}
         {% endif %}
         <a class="edit" href="https://github.com/dfrostar/neuralmind/edit/main/docs/{{ page.path }}">Edit this page on GitHub ↗</a>
     </div>
