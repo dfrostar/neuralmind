@@ -107,6 +107,8 @@ When a new document is authored, file it in the right repo:
 | BRD / TRD / strategy doc | `dfrostar/neuralmind-marketing/internal/plans/` |
 | Competitive analysis / market research | `dfrostar/neuralmind-marketing/internal/` |
 | Release notes | `dfrostar/neuralmind/docs/releases/RELEASE_NOTES_v*.md` (here — see the shipping checklist) |
+| Performance-record narrative (published on `/performance`) | `dfrostar/neuralmind/benchmarks/ai9970/narratives/YYYY-MM.md` (here) |
+| Performance-record integrity notes (how the rows were produced; never published) | `dfrostar/neuralmind-marketing/internal/performance-record/ai9970/YYYY-MM.md` |
 | CLI reference / wiki | `dfrostar/neuralmind/docs/wiki/` (here) |
 | Use-case walkthrough | `dfrostar/neuralmind/docs/use-cases/` (here) |
 | Marketing site page | `dfrostar/neuralmind/site/` (here — see "Marketing site" above) |
