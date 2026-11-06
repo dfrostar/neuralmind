@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.25.0](https://github.com/dfrostar/neuralmind/compare/v4.24.0...v4.25.0) (2026-11-06)
+
+
+### Features
+
+* a Claude Code plugin that installs the MCP server and the hooks in one step ([#775](https://github.com/dfrostar/neuralmind/issues/775)) ([fc271a9](https://github.com/dfrostar/neuralmind/commit/fc271a93813313c1f826e1d3aec2414852ea6393))
+
 ## [4.24.0](https://github.com/dfrostar/neuralmind/compare/v4.23.3...v4.24.0) (2026-11-02)
 
 
