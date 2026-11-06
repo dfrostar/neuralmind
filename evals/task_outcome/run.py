@@ -62,6 +62,7 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -158,9 +159,23 @@ def pytest_command(agent: str, test_python: str) -> str:
     answered with that venv, which lacks the project's dependencies, and ``No
     module named`` answered 88 of the agent's pytest commands over the 120
     sessions, in both arms alike. The prompt now names the test venv's
-    interpreter for Hermes.
+    interpreter for Hermes, quoted for the shell the agent types it into.
     """
-    return PYTEST if agent == "claude" else f"{test_python} -m pytest"
+    return PYTEST if agent == "claude" else f"{shlex.quote(test_python)} -m pytest"
+
+
+def recorded_elsewhere(record: dict, versions: dict[str, str], pytest: str) -> dict:
+    """What a recorded run was made with that this run isn't: ``{field: (then, now)}``.
+
+    A run file holds one study, so a resume with other binaries, or with another
+    test line in the prompt, is refused. Records before harness 6 carry no
+    ``pytest_command``; theirs was ``python -m pytest``.
+    """
+    mixed = {k: (record.get(k), v) for k, v in versions.items() if record.get(k) != v}
+    then = record.get("pytest_command", PYTEST)
+    if then != pytest:
+        mixed["pytest_command"] = (then, pytest)
+    return mixed
 
 
 class RunAbortedError(RuntimeError):
@@ -1213,6 +1228,7 @@ def main(argv: list[str] | None = None) -> int:
     runs_file = args.out / "runs.jsonl"
     done = set()
     chain_last: dict[int, dict] = {}  # each chain's last recorded run
+    pytest = pytest_command(args.agent, args.test_python)
     if runs_file.is_file():
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
@@ -1220,10 +1236,12 @@ def main(argv: list[str] | None = None) -> int:
             last = chain_last.get(r["seed"])
             if r.get("condition") == "carried" and (not last or r["position"] > last["position"]):
                 chain_last[r["seed"]] = {"task": r["task"], "position": r["position"]}
-            mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
+            mixed = recorded_elsewhere(r, args.versions, pytest)
             if mixed:
                 print(
-                    f"error: {runs_file} was recorded with other versions: {mixed}", file=sys.stderr
+                    f"error: {runs_file} was recorded with other versions or another "
+                    f"test line in the prompt: {mixed}",
+                    file=sys.stderr,
                 )
                 return 2
     todo = [t for t in triples if t[:3] not in done]

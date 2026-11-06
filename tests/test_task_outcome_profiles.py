@@ -228,7 +228,27 @@ def test_the_prompt_names_a_test_command_true_for_where_the_agent_runs() -> None
     gateway, under Hermes's own venv, so the prompt spells the test venv's interpreter out."""
     assert run.pytest_command("claude", "/venv/bin/python") == "python -m pytest"
     assert run.pytest_command("hermes", "/venv/bin/python") == "/venv/bin/python -m pytest"
+    # The agent types the line into a shell: a path with a space stays one word.
+    spaced = run.pytest_command("hermes", "/home/u/test venv/bin/python")
+    assert spaced == "'/home/u/test venv/bin/python' -m pytest"
     profile = profiles.get("hermes-agent")
     assert "`python -m pytest <path>`" in run.render_prompt("x", profile)
     spelled = run.render_prompt("x", profile, run.pytest_command("hermes", "/venv/bin/python"))
     assert "`/venv/bin/python -m pytest <path>`" in spelled
+
+
+def test_a_resume_refuses_runs_recorded_with_another_test_line() -> None:
+    """One run file is one study: harness-6 Hermes runs can't be appended to a
+    harness-5 file (whose prompts said `python -m pytest`), nor the reverse."""
+    versions = {"neuralmind_version": "neuralmind 4.24.0"}
+    legacy = {"neuralmind_version": "neuralmind 4.24.0"}  # before harness 6: no field
+    assert run.recorded_elsewhere(legacy, versions, "python -m pytest") == {}
+    assert run.recorded_elsewhere(legacy, versions, "/venv/bin/python -m pytest") == {
+        "pytest_command": ("python -m pytest", "/venv/bin/python -m pytest")
+    }
+    six = {**legacy, "pytest_command": "/venv/bin/python -m pytest"}
+    assert run.recorded_elsewhere(six, versions, "/venv/bin/python -m pytest") == {}
+    other = run.recorded_elsewhere(
+        six, {"neuralmind_version": "neuralmind 4.23.1"}, six["pytest_command"]
+    )
+    assert other == {"neuralmind_version": ("neuralmind 4.24.0", "neuralmind 4.23.1")}
