@@ -62,6 +62,7 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -81,7 +82,10 @@ from evals.task_outcome import harness, profiles
 # 5: 4 plus a Hermes run that used a paid provider is aborted whatever its final
 # model label says: Hermes prices it above zero, or its agent log shows an
 # OpenRouter call.
-HARNESS_VERSION = 5
+# 6: 5 plus Hermes on a profile that gives workspaces their own HERMES_HOME
+# (hermes-agent), which 5 refused: `hermes chat` keeps the host's home and the
+# judge's test runs get the workspace's (agent_env).
+HARNESS_VERSION = 6
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -139,8 +143,39 @@ PROMPT = """{symptom}
 
 You are working in a checkout of the {repo} repository. Find the cause and \
 fix it in the source code. Don't add or change tests: the fix is judged by tests \
-you can't see. You can run the existing tests with `python -m pytest <path>`. \
+you can't see. You can run the existing tests with `{pytest} <path>`. \
 Stop when the fix is done."""
+
+PYTEST = "python -m pytest"
+
+
+def pytest_command(agent: str, test_python: str) -> str:
+    """The test command the prompt names, true for where the agent's commands run.
+
+    Claude Code's commands run in the arm's environment, where the test venv's
+    directory leads ``PATH``, so ``python -m pytest`` is that venv's. Hermes's
+    run in the gateway, where its terminal tool puts Hermes's own venv first:
+    in the Hermes pilot (harness 2 to 5) every ``which python`` the agent ran
+    answered with that venv, which lacks the project's dependencies, and ``No
+    module named`` answered 88 of the agent's pytest commands over the 120
+    sessions, in both arms alike. The prompt now names the test venv's
+    interpreter for Hermes, quoted for the shell the agent types it into.
+    """
+    return PYTEST if agent == "claude" else f"{shlex.quote(test_python)} -m pytest"
+
+
+def recorded_elsewhere(record: dict, versions: dict[str, str], pytest: str) -> dict:
+    """What a recorded run was made with that this run isn't: ``{field: (then, now)}``.
+
+    A run file holds one study, so a resume with other binaries, or with another
+    test line in the prompt, is refused. Records before harness 6 carry no
+    ``pytest_command``; theirs was ``python -m pytest``.
+    """
+    mixed = {k: (record.get(k), v) for k, v in versions.items() if record.get(k) != v}
+    then = record.get("pytest_command", PYTEST)
+    if then != pytest:
+        mixed["pytest_command"] = (then, pytest)
+    return mixed
 
 
 class RunAbortedError(RuntimeError):
@@ -168,8 +203,8 @@ def check_guard(guard: list[Path], before: dict[str, str], where: str, ws: Path)
         )
 
 
-def render_prompt(symptom: str, profile: profiles.Profile) -> str:
-    return PROMPT.format(symptom=symptom.strip(), repo=profile.name)
+def render_prompt(symptom: str, profile: profiles.Profile, pytest: str = PYTEST) -> str:
+    return PROMPT.format(symptom=symptom.strip(), repo=profile.name, pytest=pytest)
 
 
 def _clean_path(host_path: str) -> list[str]:
@@ -202,6 +237,25 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
     if found != expected:
         raise RunAbortedError(f"{arm} arm: `neuralmind` resolves to {found}, expected {expected}")
     return env
+
+
+def agent_env(env: dict[str, str], agent: str) -> dict[str, str]:
+    """The agent's own environment: the arm's, minus a workspace ``HERMES_HOME`` for Hermes.
+
+    Claude Code gets the workspace's home where the profile makes one
+    (hermes-agent), so hermes-agent's code run by its session publishes
+    launchers inside the workspace. Hermes *is* the host's install: ``hermes
+    chat`` under any other home would re-publish the host's launchers for it
+    and bootstrap a new home there, so it keeps the host's ``HERMES_HOME``, or
+    none. Its commands run in the gateway, under the gateway's home, whatever
+    this says; the judge's test runs still get the workspace's home.
+    """
+    if agent != "hermes":
+        return env
+    kept = {k: v for k, v in env.items() if k != "HERMES_HOME"}
+    if "HERMES_HOME" in os.environ:
+        kept["HERMES_HOME"] = os.environ["HERMES_HOME"]
+    return kept
 
 
 def _build_index(
@@ -884,7 +938,8 @@ def run_one(
     )
     harness.workspace_env(ws, args.profile.isolated_hermes_home)
     check_guard(args.guard, guarded, f"{where} (setup)", ws)
-    prompt = render_prompt(task["prompt"], args.profile)
+    pytest = pytest_command(args.agent, args.test_python)
+    prompt = render_prompt(task["prompt"], args.profile, pytest)
     if args.agent == "hermes":
         # Outside the workspace, so the agent's file tools don't list it.
         prompt_file = ws.parent / f"{ws.name}.prompt.txt"
@@ -898,7 +953,12 @@ def run_one(
     stderr = ""
     try:
         proc = subprocess.run(
-            cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=args.timeout
+            cmd,
+            cwd=ws,
+            env=agent_env(env, args.agent),
+            capture_output=True,
+            text=True,
+            timeout=args.timeout,
         )
         stdout, stderr, exit_code, timed_out = proc.stdout, proc.stderr, proc.returncode, False
     except subprocess.TimeoutExpired as exc:
@@ -997,6 +1057,7 @@ def run_one(
         "seed": seed,
         "agent": args.agent,
         "model": args.model,
+        "pytest_command": pytest,
         **args.versions,
         "harness_version": HARNESS_VERSION,
         "budget_usd": args.budget if args.agent == "claude" else None,
@@ -1115,16 +1176,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.repo:
         harness.use_repo(args.repo)
     args.profile = profiles.get(args.profile)
-    if args.agent == "hermes" and args.profile.isolated_hermes_home:
-        # The isolated home would reach `hermes chat` itself, and a Hermes run
-        # with a temporary HERMES_HOME rewrites the real install's launchers.
-        # The agent's commands run in the gateway, out of this env's reach anyway.
-        print(
-            f"error: --agent hermes can't run the {args.profile.name} profile, which "
-            "gives every process its own HERMES_HOME",
-            file=sys.stderr,
-        )
-        return 2
+    # A profile's own HERMES_HOME reaches the index build and the judge's test
+    # runs, never `hermes chat`: see agent_env. Harness 5 refused the pair.
 
     tasks = json.loads(args.tasks.read_text())
     if args.task:
@@ -1175,6 +1228,7 @@ def main(argv: list[str] | None = None) -> int:
     runs_file = args.out / "runs.jsonl"
     done = set()
     chain_last: dict[int, dict] = {}  # each chain's last recorded run
+    pytest = pytest_command(args.agent, args.test_python)
     if runs_file.is_file():
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
@@ -1182,10 +1236,12 @@ def main(argv: list[str] | None = None) -> int:
             last = chain_last.get(r["seed"])
             if r.get("condition") == "carried" and (not last or r["position"] > last["position"]):
                 chain_last[r["seed"]] = {"task": r["task"], "position": r["position"]}
-            mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
+            mixed = recorded_elsewhere(r, args.versions, pytest)
             if mixed:
                 print(
-                    f"error: {runs_file} was recorded with other versions: {mixed}", file=sys.stderr
+                    f"error: {runs_file} was recorded with other versions or another "
+                    f"test line in the prompt: {mixed}",
+                    file=sys.stderr,
                 )
                 return 2
     todo = [t for t in triples if t[:3] not in done]
@@ -1201,7 +1257,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 cmd = claude_command(
                     args.agent_bin,
-                    render_prompt(by_id[tid]["prompt"], args.profile),
+                    render_prompt(
+                        by_id[tid]["prompt"],
+                        args.profile,
+                        pytest_command(args.agent, args.test_python),
+                    ),
                     arm,
                     args.model,
                     Path("<ws>/.bench-mcp.json"),

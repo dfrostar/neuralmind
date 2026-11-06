@@ -1,6 +1,7 @@
 # Task outcomes, track 1: a small model on a big repository
 
-**Status:** pre-registered 2026-11-01; stage 0 complete, stage 1 not started.
+**Status:** pre-registered 2026-11-01; stages 0 and 0b complete; stage 1's
+prerequisites under way (2026-11-05), no agent run yet.
 **Owner:** Darren Frost. **Machine:** ai-9970 (`~/nm-bench/tracks/t1-bigrepo-smallmodel/STATUS.md`
 mirrors this table). **Harness:** `evals/task_outcome/run.py`, as in
 [`TASK-OUTCOME-BENCHMARK-SPEC.md`](TASK-OUTCOME-BENCHMARK-SPEC.md), whose
@@ -118,3 +119,67 @@ both ways). **Passed, exactly at the gate.**
   - **The three confirmation tasks for stage 1**, in walk order, named here before
     its first run: `f94d72f7e8`, `ebf002cd3e`, `5381678d03`. The floor check may
     replace tasks only as its "if it fails" column says.
+- 2026-11-05 — stage 1's prerequisites, before its first run. Every change to
+  the frozen ai-9970 baseline is recorded in `~/nm-pilot/environment.json` as it
+  is made, and `preflight.py` stops the chain if anything else moves.
+  - **The harness could not run the design.** Since 2026-10-30 (harness 3) the
+    runner refused `--agent hermes` with the `hermes-agent` profile, whose
+    workspaces get their own `HERMES_HOME`, because that home would reach
+    `hermes chat`. This track's design, written two days later, is that pair,
+    and nothing in it said so. Harness 6 runs it (main spec, 2026-11-05):
+    `hermes chat` keeps the host's home, the index build and the judge's test
+    runs get the workspace's, `--guard ~/.hermes/hermes-agent/.hermes/bin` is
+    the net. The agent's own commands run in the gateway under the host's home
+    either way.
+  - **The prompt's test line.** In the Hermes pilot, `python -m pytest` in the
+    gateway was Hermes's own venv, without the project's dependencies; `No
+    module named` answered 88 of the agent's pytest commands, both arms alike
+    (main spec, 2026-11-05). For Hermes the prompt now spells out the test
+    venv's interpreter, and each run records the line (`pytest_command`). The
+    task prompts are the committed ones, unchanged.
+  - **Tasks:** `evals/task_outcome/studies/t1-bigrepo-smallmodel/tasks.json`,
+    the 20 named above in the registered order, committed before any run, each
+    entry copied unchanged from its source. Before the first run they are
+    re-harvested on ai-9970 with the stage 1 test venv (select_tasks' rule: the
+    same FAIL_TO_PASS and PASS_TO_PASS as committed); the result is logged
+    below.
+  - **Environment, recorded as it is set:** Hermes 0.22.6, not the 0.22.5
+    baseline — the user ran `hermes update` on ai-9970 on 2026-11-03 15:22 UTC;
+    stage 1 and 2 run on the one version, and a further update stops the chain.
+    Compression provider `custom` at `http://127.0.0.1:11434/v1` — Hermes
+    rewrote the baseline's `ollama` into that equivalent form on 11-03 (same
+    model, same local endpoint). NeuralMind **4.24.0** as the tool and the
+    Hermes plugin: the pin move from 4.23.1 named in the design; 4.23.1 remains
+    the baseline for every earlier track. Test venv: Python 3.14.7 with
+    hermes-agent's locked dependencies at `710fa8a` (`uv export --frozen`,
+    installed without re-resolution) plus `pyyaml`, `pytest 9.1.1`,
+    `pytest-asyncio 1.4.0`, as the screen's. hermes-agent clone at `710fa8a`.
+  - **Runs:** out dir `~/nm-bench/tracks/t1-bigrepo-smallmodel/runs`,
+    `--order-seed 20261014` (the runner's default, as the pilot), `--max-turns
+    120 --timeout 3600`. The floor check is `--arms baseline --seeds 1`; its 20
+    runs are stage 2's baseline seed-0 runs, as in the Hermes pilot, so stage 2
+    adds 100. Hermes's cron jobs are paused and the apt and
+    `neuralmind-maintain` timers stopped for the runs, as for the memory track;
+    the 20 indexes are built once into `~/nm-bench/index-cache/` with 4.24.0
+    before the floor check, so no measured run builds one.
+  - **Re-harvest on ai-9970 (2026-11-06), before the first run:** 18 of 20
+    identical. `24b4f90e97`: the same FAIL_TO_PASS, and the committed 8
+    PASS_TO_PASS all pass, among 23 that pass there (15 process-custody tests
+    the Mac skipped); judged by the committed lists, unchanged. `696f6e9ff9`:
+    `tests.tui_gateway.test_tui_gateway_server::test_notification_poller_live_loop_requeues_foreign_completion_for_owner`,
+    PASS_TO_PASS as committed, failed at the base commit inside the full suite
+    in both harvests there and passed at the fix in one of the two, while
+    passing 5 of 5 alone at either commit: flaky in the suite under load, and
+    no evidence about the fix. It is removed from that task's PASS_TO_PASS
+    (723 to 722 judged tests); the task's FAIL_TO_PASS and everything else
+    stand. No other task changed.
+  - **Done on ai-9970 at 04:38 UTC 2026-11-06,** recorded in
+    `environment.json`: NeuralMind 4.24.0 as the tool and the plugin;
+    `NEURALMIND_RECALL_LEXICAL=1` in the gateway's environment for the whole
+    track (a baseline workspace has no index, so nothing to anchor there); 13
+    cron jobs paused (`~/nm-bench/cron-paused-for-t1.txt`), the apt and
+    `neuralmind-maintain` timers stopped; gateway restarted; preflight exit 0
+    against the updated record. The index builds and then the floor check run
+    from a chain (`~/nm-bench/t1_floor_chain.sh`) that stops on drift or a
+    fifth harness failure and does not start stage 2: the floor result is read
+    first.

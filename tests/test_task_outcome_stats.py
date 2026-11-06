@@ -857,6 +857,7 @@ def test_the_memory_track_hands_each_chain_its_own_state_once_a_run_is_recorded(
             "solved": False,
             "total_tokens": 1,
             "num_turns": 1,
+            "pytest_command": run.pytest_command(args.agent, args.test_python),
             **args.versions,
         }
 
