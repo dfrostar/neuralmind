@@ -32,6 +32,11 @@ right file there more often.
 Stage 0 result (2026-11-01, PR #764): held-out 7 named / 5 first against 4 / 3;
 pilot 18 / 13 against 17 / 11; test share 14 of 84 unchanged. **Passed.**
 
+Stage 0b result (2026-11-03,
+[`bench/task_outcome/lexical-anchoring/`](../../bench/task_outcome/lexical-anchoring/README.md#confirmation-12-new-tasks-stage-0b)):
+flag on, a changed file listed first on **5 of 12** (flag off 2; named 7 of 12
+both ways). **Passed, exactly at the gate.**
+
 ## Stage 1 and 2 design, fixed now
 
 - **Tasks:** the 12 held-out tasks of
@@ -68,3 +73,48 @@ pilot 18 / 13 against 17 / 11; test share 14 of 84 unchanged. **Passed.**
 - 2026-11-01 — Track pre-registered after the memory track completed and the
   lexical gate passed. Stage 0b (confirmation) added to the lexical PR's own
   plan; stages 1–2 wait for it.
+- 2026-11-03 — stage 0b's procedure, fixed before the walk is continued.
+  - **Gate, unchanged:** flag on, the first-listed file is one the fix changed
+    on at least 5 of 12 tasks ("first", chosen before the replay as registered;
+    "named" is not used). The flag-off row is reported beside it.
+  - **Population:** the seeded walk (seed 20261025, hermes-agent pinned at
+    `710fa8a`) from position 25 on, in walk order, with `draw.py` as committed
+    in `evals/task_outcome/studies/hermes-agent-screen/`; a commit qualifies as
+    it has so far (a fail-to-pass test). Positions 0–24 are the screen and the
+    first held-out set.
+  - **Prompts and exclusions:** a separate agent that sees only each fix's tests
+    and diff writes the prompt, as for the first held-out set. It may mark a task
+    unwritable only where its tests check names the fix introduces. It sees no
+    ranking, replay output, threshold or stage. Each exclusion is recorded with
+    its reason, and the walk goes on until 12 tasks have prompts.
+  - **Order of work:** the task list (ids, commits, gold files, prompts,
+    exclusions) is committed before any replay runs.
+  - **Replay:** NeuralMind v4.24.0, the first release carrying the flag, through
+    `bench/task_outcome/lexical-anchoring/replay_lexical.py`: one index per task
+    built once with that version, then `neuralmind _hook prompt-submit` with the
+    flag off and with it on on a fresh clone of each index, scored by
+    `evals/task_outcome/replay.py`'s `score()`.
+  - **If it fails:** the flag stays default-off and stage 1 does not start. The
+    result is stated with the flag-off row and every task's outcome, misses
+    included.
+- 2026-11-03 — correction to the entry above, made before any task of the set was
+  read or any prompt written. The exclusion reasons are the screen's (a), (b) and
+  (c) (`docs/specs/TASK-OUTCOME-HERMES-AGENT-SCREEN.md`), not (c) alone: the entry
+  above named only the one the first held-out set happened to use. The writing
+  agent records each exclusion under its letter in `confirm/exclusions.json`, and
+  the walk still goes on until 12 tasks have prompts.
+- 2026-11-03 — stage 0b run, as registered above. Walk positions 25 to 39; 12
+  tasks with prompts, 2 commits excluded under (c) (`cf94a29319`, `e68c489c96`);
+  NeuralMind 4.24.0, one index per task, the real hook, flag off and on.
+  - **Result:** flag on, a changed file listed first on 5 of 12; flag off 2 of 12.
+    Named: 7 of 12 both ways. The flag gained *first* on 3 tasks and lost none.
+  - **The gate is met at its threshold, with no margin.** It counts tasks, so one
+    task moving either way flips it. Stage 0's *first* count was also exactly at
+    its threshold. The *first* gains replicate across the two held-out sets
+    (3 to 5, then 2 to 5, no losses); the *named* gain (4 to 7) did not (7 to
+    7): this set's flag-off block already named 7 of 12.
+  - **What follows:** stage 1 may start once its prerequisites are met. The
+    flag's default is unchanged (off); turning it on is a separate decision.
+  - **The three confirmation tasks for stage 1**, in walk order, named here before
+    its first run: `f94d72f7e8`, `ebf002cd3e`, `5381678d03`. The floor check may
+    replace tasks only as its "if it fails" column says.

@@ -1,0 +1,4 @@
+{
+  "cf94a29319": "(c) The only fail-to-pass test imports LOCAL_RUNTIME_ROOT_DIRS, a constant the fix itself adds to the constants module, and asserts object identity between it and backup._EXCLUDED_ROOT_DIRS; the change is a refactor with no user-visible behaviour difference (the exclusion lists already held the same three names), so no symptom exists to describe.",
+  "e68c489c96": "(c) The only fail-to-pass test (test_reused_early_pid_after_reboot_is_not_the_gateway) calls monkeypatch.setattr(hr, \"_cmdline_contradicts_gateway\", ...) on a helper that the fix itself introduces; with the default raising=True it errors with AttributeError unless a function of exactly that private name exists, so a correct behavioural fix under any other name cannot pass."
+}

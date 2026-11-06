@@ -1,0 +1,441 @@
+[
+  {
+    "id": "f94d72f7e8",
+    "fix_commit": "f94d72f7e8ba13713e5724678157856e42608787",
+    "base_commit": "05c4c402195da7283c376e3b9ca2d5d3cbb5f310",
+    "subject": "fix(mcp): keep structuredContent unless content is its verbatim JSON dual-emit",
+    "gold_files": [
+      "tools/mcp_tool_handlers.py"
+    ],
+    "test_files": [
+      "tests/tools/test_mcp_structured_content.py"
+    ],
+    "run_files": [
+      "tests/tools/test_mcp_structured_content.py"
+    ],
+    "fail_to_pass": [
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_prose_summary_keeps_structured",
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_summary_plus_data_keeps_structured",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_meta_with_structured_content"
+    ],
+    "pass_to_pass": [
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_dual_emit_key_order_insensitive",
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_dual_emit_suppresses_structured",
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_structured_only_still_surfaced",
+      "tests.tools.test_mcp_structured_content.TestContentStructuredArbitration::test_whitespace_only_content_falls_back",
+      "tests.tools.test_mcp_structured_content.TestDroppedBlockNotice::test_drop_notice_does_not_suppress_structured",
+      "tests.tools.test_mcp_structured_content.TestDroppedBlockNotice::test_notice_helper_minimal_block",
+      "tests.tools.test_mcp_structured_content.TestDroppedBlockNotice::test_unsupported_block_renders_notice",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_all_reserved_meta_omits_field",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_non_dict_meta_ignored",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_non_serializable_meta_dropped",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_reserved_meta_keys_dropped",
+      "tests.tools.test_mcp_structured_content.TestMetaPassthrough::test_vendor_meta_passes_through",
+      "tests.tools.test_mcp_structured_content.TestReservedMetaKeyPredicate::test_reserved_prefixes",
+      "tests.tools.test_mcp_structured_content.TestReservedMetaKeyPredicate::test_vendor_and_unprefixed_not_reserved",
+      "tests.tools.test_mcp_structured_content.TestStructuredContentPreservation::test_empty_text_with_structured_content",
+      "tests.tools.test_mcp_structured_content.TestStructuredContentPreservation::test_structured_content_none_falls_back_to_text",
+      "tests.tools.test_mcp_structured_content.TestStructuredContentPreservation::test_text_only_result"
+    ],
+    "prompt": "I connect Hermes to an MCP server whose tools put a short status line in `content` and the real data only in `structuredContent`. For example, a WhatsApp server answers 'Retrieved 1 chats (offset 0, limit 1)' as text, while the chat list with the JIDs I need for follow-up calls is in `structuredContent`. By the time the result reaches the model, `structuredContent` is gone and only the status line is left, so the model can never get those identifiers. The same happens with any text that is not literally the structured JSON, such as '3 item(s) found' beside `{items: [1, 2, 3]}`, and when the result also carries `_meta`. Expected: the result JSON keeps the text under `result` and the structured payload under `structuredContent`, with `_meta` riding along as before. The one case where `structuredContent` should still be dropped is when the text is simply that same data serialized as JSON, whatever the key order or whitespace, because then it is a pure duplicate."
+  },
+  {
+    "id": "ebf002cd3e",
+    "fix_commit": "ebf002cd3e08805345c81dce61454b492c30c87a",
+    "base_commit": "c42e9f6211c60c570b9f10d65fb0ff99b60d39ac",
+    "subject": "fix(update): a stdlib-named file in the checkout never runs ahead of the launch repair (review N03)",
+    "gold_files": [
+      "hermes_cli/_launchers.py"
+    ],
+    "test_files": [
+      "tests/hermes_cli/test_update_recovery_closure.py"
+    ],
+    "run_files": [
+      "tests/hermes_cli/test_update_recovery_closure.py"
+    ],
+    "fail_to_pass": [
+      "tests.hermes_cli.test_update_recovery_closure::test_a_stdlib_named_file_in_the_tree_never_runs_before_the_repair[3cbc87c7681f]"
+    ],
+    "pass_to_pass": [
+      "tests.hermes_cli.test_update_recovery_closure::test_a_damaged_published_closure_is_rebuilt_from_git_objects_not_trusted[227b1c2e53cf]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_damaged_published_closure_is_rebuilt_from_git_objects_not_trusted[656771905e1e]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_launch_repairs_a_move_killed_while_writing_the_repairs_own_code[155899c693b8]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_launch_repairs_a_move_killed_while_writing_the_repairs_own_code[4840e8e45fb2]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_launch_repairs_a_move_killed_while_writing_the_repairs_own_code[5087de57c94d]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_launch_repairs_a_move_killed_while_writing_the_repairs_own_code[7e5caea10469]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_launch_repairs_a_move_killed_while_writing_the_repairs_own_code[82e86cb395b1]",
+      "tests.hermes_cli.test_update_recovery_closure::test_a_stdlib_named_file_in_the_tree_never_runs_before_the_repair[60a33e6cf515]",
+      "tests.hermes_cli.test_update_recovery_closure::test_git_object_bytes_that_do_not_hash_to_pres_blob_never_run[3cbc87c7681f]",
+      "tests.hermes_cli.test_update_recovery_closure::test_git_object_bytes_that_do_not_hash_to_pres_blob_never_run[60a33e6cf515]",
+      "tests.hermes_cli.test_update_recovery_closure::test_the_published_repair_leaves_the_tree_to_a_live_writer_holding_the_checkout[3cbc87c7681f]",
+      "tests.hermes_cli.test_update_recovery_closure::test_the_published_repair_leaves_the_tree_to_a_live_writer_holding_the_checkout[60a33e6cf515]"
+    ],
+    "prompt": "My Hermes checkout was torn by an interrupted `hermes update`: git was killed after it had deleted one of the tree's core files but before writing it back. Normally the next `hermes` start notices this and repairs the tree before anything else runs. But the repository root also contains a committed file named `shutil.py` (a test one of mine that creates a marker file and then raises ImportError). When I run `hermes`, that file is executed in place of the standard library's `shutil` during the repair, so the marker appears, the command fails with `ImportError` and exit status 1, and the tree stays broken. Expected: the repair uses only the real standard library, so a stdlib-named file in the checkout (shutil, hashlib, subprocess and the like) never runs ahead of it. The missing file is restored with its original bytes, the `.git/hermes-update-pull` marker is gone, and `hermes` starts normally and exits 0."
+  },
+  {
+    "id": "5381678d03",
+    "fix_commit": "5381678d033e91d37131f5cd8d3d3236860d4aa5",
+    "base_commit": "b9e34b1284cccf710b34ee4a82d7a3ba3a5b24fa",
+    "subject": "fix(debug): scrub the key after a masked scheme on API-key headers",
+    "gold_files": [
+      "hermes_cli/debug_redaction.py"
+    ],
+    "test_files": [
+      "tests/tui_gateway/test_diagnostics_share_nous.py"
+    ],
+    "run_files": [
+      "tests/tui_gateway/test_diagnostics_share_nous.py"
+    ],
+    "fail_to_pass": [
+      "tests.tui_gateway.test_diagnostics_share_nous::test_redacted_support_egress_scrubs_structured_values_and_errors"
+    ],
+    "pass_to_pass": [
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_attaches_redacted_error_context",
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_client_text_gets_upload_safe_log_redaction",
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_extra_files_sanitized_and_redacted",
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_linkless_success_is_a_failure",
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_upload_failure_is_structured",
+      "tests.tui_gateway.test_diagnostics_share_nous::test_share_nous_uploads_redacted_bundle"
+    ],
+    "prompt": "When a debug/share upload fails, the error text it reports back is supposed to have secrets scrubbed first, but headers written like `x-api-key: Basic <key>` still leak the key. This covers `x-api-key`, `api-key` and `x-auth-token` with Bearer, Basic or Digest, both bare and inside `-H '...'`. The general redaction runs first and masks the scheme word, giving `x-api-key: *** <raw key>`; the support scrub then treats `***` as the whole value and stops, so the raw key goes out right behind the mask. Expected: the raw key never appears in the scrubbed text and is replaced by the usual `[REDACTED]` marker. A `***` that is followed by another secret header, such as `x-api-key: *** cookie=...`, is not a scheme, and that following header must not be swallowed as the key. Running the standard redaction over the scrubbed output a second time must change nothing."
+  },
+  {
+    "id": "1693c071a7",
+    "fix_commit": "1693c071a76edf2394163349ddafdfad11966935",
+    "base_commit": "52c35fe0266145c06acd8efce9ce00a43a309c65",
+    "subject": "fix: session.create refuses a model its provider cannot serve",
+    "gold_files": [
+      "hermes_cli/models_validate.py",
+      "tui_gateway/methods_session.py",
+      "tui_gateway/methods_session_model_guard.py"
+    ],
+    "test_files": [
+      "tests/tui_gateway/test_session_create_model_provider_guard.py"
+    ],
+    "run_files": [
+      "tests/tui_gateway/test_session_create_model_provider_guard.py"
+    ],
+    "fail_to_pass": [
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_rejects_incoherent_model_provider_pair_before_any_state[273551d862ef]",
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_rejects_incoherent_model_provider_pair_before_any_state[7a02d82e908c]",
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_rejects_incoherent_model_provider_pair_before_any_state[ec182c791de3]"
+    ],
+    "pass_to_pass": [
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_keeps_coherent_unlisted_and_custom_pairs[273551d862ef]",
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_keeps_coherent_unlisted_and_custom_pairs[7a02d82e908c]",
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_keeps_coherent_unlisted_and_custom_pairs[c94bb2698d54]",
+      "tests.tui_gateway.test_session_create_model_provider_guard::test_session_create_keeps_coherent_unlisted_and_custom_pairs[ec182c791de3]"
+    ],
+    "prompt": "Through the gateway's `session.create` JSON-RPC call, a client (a composer, a script, an older app) can pin a `model` override that the selected `provider` does not serve, for example `gpt-5.5` with provider `anthropic`, or `deepseek/deepseek-v4-flash-0731` with `openai-codex`. The session gets created anyway and the first turn dies with the provider's 404, leaving a dead chat. When `provider` is omitted, the model should be judged against the provider the session would actually use from the profile config. Expected: `session.create` refuses up front, leaving no session behind, with JSON-RPC error -32602. The message names the model, the provider and up to five closest models from that provider's curated list, and `error.data` carries `model`, `provider` and `suggestions` too. Refuse only what Hermes knows belongs elsewhere: a coherent pair, a same-family name the list lacks (`claude-opus-5-20261001` on anthropic), custom endpoints (`custom:local`) and aggregators such as openrouter all still succeed."
+  },
+  {
+    "id": "e4e8f9bbc9",
+    "fix_commit": "e4e8f9bbc92ddcade28465b30686ca8a2014a173",
+    "base_commit": "e01fdd1c43e299e48250f589d6157f6976af9c95",
+    "subject": "fix(gateway): a picked legacy custom provider survives a profile reorder on cold start",
+    "gold_files": [
+      "gateway/session_policy_credentials.py"
+    ],
+    "test_files": [
+      "tests/gateway/test_session_mutation_model.py"
+    ],
+    "run_files": [
+      "tests/gateway/test_session_mutation_model.py"
+    ],
+    "fail_to_pass": [
+      "tests.gateway.test_session_mutation_model::test_picked_legacy_custom_provider_survives_a_profile_reorder_on_cold_start"
+    ],
+    "pass_to_pass": [
+      "tests.gateway.test_session_mutation_model::test_committed_model_selection_is_the_next_resolved_runtime",
+      "tests.gateway.test_session_mutation_model::test_guarded_model_target_commits_only_with_its_confirmation_token",
+      "tests.gateway.test_session_mutation_model::test_input_queued_while_a_model_receipt_commits_still_runs",
+      "tests.gateway.test_session_mutation_model::test_large_context_guard_reads_the_persisted_anchor_with_no_resident_agent",
+      "tests.gateway.test_session_mutation_model::test_model_commit_republishes_session_info",
+      "tests.gateway.test_session_mutation_model::test_model_pick_freezes_legacy_custom_provider_for_the_next_runtime",
+      "tests.gateway.test_session_mutation_model::test_model_pick_reads_current_provider_config_when_legacy_policy_lacks_it",
+      "tests.gateway.test_session_mutation_model::test_model_pick_resolves_the_profiles_current_entry_over_a_frozen_one",
+      "tests.gateway.test_session_mutation_model::test_provider_change_drops_the_launch_key_and_keeps_config_secrets"
+    ],
+    "prompt": "In a gateway session I picked a model from a legacy `custom_providers` entry in my profile's config.yaml: an entry named `inkstone` with its own `api_key`, listed after another entry. The session works. But after a cold start, where a fresh gateway process holds no secrets in memory, if I have reordered the `custom_providers` list or changed the capitalization of that name (`Inkstone`), the session refuses with `launch_credentials_unavailable` until I pick the model again. Expected: the picked entry is found again by its identity (its provider name or slug) wherever it now sits in the list, and the session runs with that entry's own base URL and `api_key`. If I have deleted the entry, it must still refuse with `launch_credentials_unavailable`, and never borrow the key of whatever other entry now sits at the old position."
+  },
+  {
+    "id": "6ca41cbe8b",
+    "fix_commit": "6ca41cbe8bb3cba07dd8c2ad258426e04919790b",
+    "base_commit": "f7f000de993f26eeb62ad2bd89e9101b7ce8256d",
+    "subject": "fix(opencode): send ephemeral x-opencode-session header on one-shot requests",
+    "gold_files": [
+      "agent/opencode_affinity.py"
+    ],
+    "test_files": [
+      "tests/agent/test_opencode_session_affinity.py"
+    ],
+    "run_files": [
+      "tests/agent/test_opencode_session_affinity.py"
+    ],
+    "fail_to_pass": [
+      "tests.agent.test_opencode_session_affinity::test_stateless_oneshot_still_sends_an_opencode_session_header"
+    ],
+    "pass_to_pass": [
+      "tests.agent.test_opencode_session_affinity::test_async_out_of_turn_call_binds_the_explicit_main_runtime_session",
+      "tests.agent.test_opencode_session_affinity::test_auxiliary_calls_share_the_main_turn_session_key",
+      "tests.agent.test_opencode_session_affinity::test_main_turn_sends_stable_session_header_on_every_transport[1cbe38c35c51]",
+      "tests.agent.test_opencode_session_affinity::test_main_turn_sends_stable_session_header_on_every_transport[60394ae31149]",
+      "tests.agent.test_opencode_session_affinity::test_main_turn_sends_stable_session_header_on_every_transport[79398cbb620b]",
+      "tests.agent.test_opencode_session_affinity::test_main_turn_sends_stable_session_header_on_every_transport[b46549a49848]",
+      "tests.agent.test_opencode_session_affinity::test_sync_out_of_turn_call_binds_the_explicit_main_runtime_session",
+      "tests.agent.test_opencode_session_affinity::test_tui_gateway_oneshot_runtime_snapshot_carries_the_session"
+    ],
+    "prompt": "With the `opencode-go` provider (https://opencode.ai/zen/go/v1), one-shot requests that are not part of a conversation fail with HTTP 400 `MissingSessionID`: generating a commit message from the Desktop review panel when no chat is active, summaries, and auxiliary tasks with no parent session. OpenCode Go requires an `x-opencode-session` header on every request. Chat turns and auxiliary calls that belong to a session already send it, derived from the conversation or session ID, but a request with no conversation and no session ID goes out without it. Expected: those stateless requests still carry a non-empty `x-opencode-session` header holding a freshly generated ephemeral ID, both when made as an auxiliary LLM call and when the session headers are built directly with no session ID. Requests to other providers, such as OpenRouter, keep getting no such header."
+  },
+  {
+    "id": "96eae3542e",
+    "fix_commit": "96eae3542ea37dae4ffe239b2c4af4e32ec47cb1",
+    "base_commit": "bc7b2033979f94c71db988c3822a060f8ffc3ae3",
+    "subject": "fix(tools): a saved disabled MCP server no longer enables every other one",
+    "gold_files": [
+      "hermes_cli/tools_config.py"
+    ],
+    "test_files": [
+      "tests/hermes_cli/test_tools_config.py"
+    ],
+    "run_files": [
+      "tests/hermes_cli/test_tools_config.py"
+    ],
+    "fail_to_pass": [
+      "tests.hermes_cli.test_tools_config::test_a_saved_disabled_mcp_server_does_not_enable_every_other_server[28a3a5e81d1e]",
+      "tests.hermes_cli.test_tools_config::test_a_saved_disabled_mcp_server_does_not_enable_every_other_server[de1f13f1f22f]"
+    ],
+    "pass_to_pass": [
+      "tests.hermes_cli.test_tools_config.TestAgentBrowserPostSetup::test_install_failure_reports_error[96f2f0811df8]",
+      "tests.hermes_cli.test_tools_config.TestAgentBrowserPostSetup::test_install_failure_reports_error[f77d1bb58da8]",
+      "tests.hermes_cli.test_tools_config.TestBrowserUseCliInstalledForAllNonCamofoxBackends::test_browser_post_setup_attempts_cli_install[10d39f44d006]",
+      "tests.hermes_cli.test_tools_config.TestBrowserUseCliInstalledForAllNonCamofoxBackends::test_browser_post_setup_attempts_cli_install[5349d7bd0320]",
+      "tests.hermes_cli.test_tools_config.TestBrowserUseCliInstalledForAllNonCamofoxBackends::test_browser_post_setup_attempts_cli_install[9d800b766e83]",
+      "tests.hermes_cli.test_tools_config.TestBrowserUseCliInstalledForAllNonCamofoxBackends::test_camofox_post_setup_never_touches_browser_use",
+      "tests.hermes_cli.test_tools_config.TestBrowserUseCliInstalledForAllNonCamofoxBackends::test_ensure_helper_missing_harness_is_non_fatal",
+      "tests.hermes_cli.test_tools_config.TestImagegenBackendRegistry::test_image_gen_providers_tagged_with_registered_backend",
+      "tests.hermes_cli.test_tools_config.TestImagegenModelPicker::test_picker_repairs_corrupt_config_section",
+      "tests.hermes_cli.test_tools_config.TestImagegenModelPicker::test_picker_with_gpt_image_does_not_prompt_quality",
+      "tests.hermes_cli.test_tools_config.TestImagegenModelPicker::test_picker_writes_chosen_model_to_config",
+      "tests.hermes_cli.test_tools_config.TestImagegenModelPicker::test_plugin_picker_falls_back_when_default_is_missing_from_catalog",
+      "tests.hermes_cli.test_tools_config.TestLightpandaPostSetup::test_post_setup_key_is_valid_and_readiness_gated",
+      "tests.hermes_cli.test_tools_config.TestLightpandaPostSetup::test_prints_install_hint_when_missing",
+      "tests.hermes_cli.test_tools_config.TestLightpandaPostSetup::test_reports_binary_when_found",
+      "tests.hermes_cli.test_tools_config.TestPlatformToolsetConsistency::test_all_platforms_have_toolset_definitions",
+      "tests.hermes_cli.test_tools_config.TestPlatformToolsetConsistency::test_gateway_toolset_includes_all_messaging_platforms",
+      "tests.hermes_cli.test_tools_config.TestPlatformToolsetConsistency::test_skills_config_covers_tools_config_platforms",
+      "tests.hermes_cli.test_tools_config::test_all_invalid_platform_toolsets_logs_runtime_warning",
+      "tests.hermes_cli.test_tools_config::test_disabled_composite_debugging_prunes_constituent_platform_toolsets",
+      "tests.hermes_cli.test_tools_config::test_disabled_composite_display_matches_runtime_tool_selection",
+      "tests.hermes_cli.test_tools_config::test_discord_toolsets_do_not_leak_to_other_platforms",
+      "tests.hermes_cli.test_tools_config::test_enable_on_string_platform_toolsets_keeps_listed_entries",
+      "tests.hermes_cli.test_tools_config::test_exactly_one_image_row_is_active_for_a_managed_selection",
+      "tests.hermes_cli.test_tools_config::test_explicit_plugin_toolset_admitted_against_real_a2a_plugin",
+      "tests.hermes_cli.test_tools_config::test_explicit_plugin_toolset_admitted_in_platform_toolsets",
+      "tests.hermes_cli.test_tools_config::test_first_install_nous_auto_configures_video_gen",
+      "tests.hermes_cli.test_tools_config::test_get_effective_configurable_toolsets_dedupes_bundled_plugins",
+      "tests.hermes_cli.test_tools_config::test_get_platform_tools_legacy_hermes_alias_alone",
+      "tests.hermes_cli.test_tools_config::test_get_platform_tools_legacy_hermes_alias_expands",
+      "tests.hermes_cli.test_tools_config::test_gui_model_catalog_for_the_managed_row_spans_every_managed_gateway",
+      "tests.hermes_cli.test_tools_config::test_kanban_checklist_reports_and_persists_explicit_removal",
+      "tests.hermes_cli.test_tools_config::test_malformed_list_string_platform_toolsets_warns_then_falls_back",
+      "tests.hermes_cli.test_tools_config::test_null_platform_toolsets_fall_back_to_platform_default",
+      "tests.hermes_cli.test_tools_config::test_numeric_mcp_server_name_does_not_crash_sorted",
+      "tests.hermes_cli.test_tools_config::test_partially_valid_platform_toolsets_no_runtime_warning",
+      "tests.hermes_cli.test_tools_config::test_pool_only_account_is_offered_fal_models_only",
+      "tests.hermes_cli.test_tools_config::test_save_platform_tools_preserves_mcp_server_names",
+      "tests.hermes_cli.test_tools_config::test_scalar_platform_toolsets_fall_back_to_platform_default",
+      "tests.hermes_cli.test_tools_config::test_toolset_has_keys_for_vision_accepts_codex_auth",
+      "tests.hermes_cli.test_tools_config::test_valid_platform_toolsets_no_runtime_warning",
+      "tests.hermes_cli.test_tools_config::test_visible_providers_reuses_logged_out_feature_snapshot",
+      "tests.hermes_cli.test_tools_config::test_visible_providers_reuses_pool_video_feature_snapshot",
+      "tests.hermes_cli.test_tools_config::test_vision_picker_custom_endpoint"
+    ],
+    "prompt": "My config has two MCP servers: `dead` with `enabled: false` and `live`, enabled. I saved `platform_toolsets: {cli: [terminal, dead]}` (the same happens when I write `mcp-dead`). Selecting the disabled `dead` server for the CLI platform ends up turning on `live`, which I never selected: the resolved toolset list for cli picks up every enabled MCP server because my listed one matched nothing, and the disabled server's own name also leaks into the list. Expected: a listed server that is configured but disabled still counts as my explicit server selection. It stays off and no other MCP server is added, so neither `dead`, `mcp-dead` nor `live` appears in the cli toolsets, while `terminal` is still enabled. With no MCP server listed at all, enabled servers still come in by default as before."
+  },
+  {
+    "id": "398867326d",
+    "fix_commit": "398867326dbe2df83a18400093afd6d23f747d54",
+    "base_commit": "01dfbe87074a0981767a662bb6b7f2eb2e61f6bc",
+    "subject": "fix(voice): requirement checks answer from state, never install",
+    "gold_files": [
+      "tools/transcription_local.py",
+      "tools/transcription_tools.py",
+      "tools/tts_tool.py"
+    ],
+    "test_files": [
+      "tests/hermes_cli/test_install_lock_timeout.py",
+      "tests/pm/test_extras.py",
+      "tests/pm/test_uv_cache_seed.py",
+      "tests/tools/test_stt_resolution_passive.py",
+      "tests/tools/test_tts_requirements_passive.py"
+    ],
+    "run_files": [
+      "tests/hermes_cli/test_install_lock_timeout.py",
+      "tests/pm/test_extras.py",
+      "tests/pm/test_uv_cache_seed.py",
+      "tests/tools/test_stt_resolution_passive.py",
+      "tests/tools/test_tts_requirements_passive.py"
+    ],
+    "fail_to_pass": [
+      "tests.tools.test_stt_resolution_passive::test_resolution_reports_unavailable_without_installing",
+      "tests.tools.test_tts_requirements_passive::test_installable_sdk_reads_ready_without_installing",
+      "tests.tools.test_tts_requirements_passive::test_missing_sdk_reports_unavailable_when_install_cannot_help",
+      "tests.tools.test_tts_requirements_passive::test_second_provider_needs_its_own_credential_before_first_use_counts"
+    ],
+    "pass_to_pass": [
+      "tests.pm.test_extras::test_available_counts_sys_modules_fakes[127cd1bab180]",
+      "tests.pm.test_extras::test_available_counts_sys_modules_fakes[a6fbb1b75255]",
+      "tests.pm.test_extras::test_available_missing_module",
+      "tests.pm.test_extras::test_available_unknown_extra_uses_underscore_guess",
+      "tests.pm.test_extras::test_declared_extra_gates_match_dependency_selection",
+      "tests.pm.test_extras::test_ensure_and_bind_preserves_target_on_failure[1e142e6277b1]",
+      "tests.pm.test_extras::test_ensure_and_bind_preserves_target_on_failure[d942f6488657]",
+      "tests.pm.test_extras::test_ensure_and_bind_preserves_target_on_failure[dc937b598926]",
+      "tests.pm.test_extras::test_ensure_import_noop_when_available",
+      "tests.pm.test_extras::test_ensure_import_propagates_install_error",
+      "tests.pm.test_extras::test_ensure_import_raises_on_gated_off_extra",
+      "tests.pm.test_extras::test_ensure_import_syncs_when_missing",
+      "tests.pm.test_extras::test_every_anchor_extra_exists_in_pyproject",
+      "tests.pm.test_extras::test_extra_supported_ungated_extra_is_true",
+      "tests.pm.test_extras::test_google_readiness_requires_its_oauth_imports",
+      "tests.pm.test_extras::test_sync_refuses_python_gated_extra_before_touching_environment",
+      "tests.tools.test_stt_resolution_passive::test_transcription_is_what_installs"
+    ],
+    "prompt": "Merely asking for voice status makes Hermes install packages. With no faster-whisper and no local whisper CLI, resolving the local speech-to-text backend (which `/voice status`, `GET /api/audio/voice-config` and the desktop's `wake.status` on every gateway open all do) starts a whole-environment dependency rebuild. The `text_to_speech` tool's availability check, run on every tool listing, can also install the Edge, ElevenLabs or Mistral SDK. The install holds the per-install lock for tens of seconds and can keep another profile's backend off its port. Expected: these checks answer from current state and never install. Local speech-to-text resolves as unavailable (`none`), while transcription itself still installs on demand. For `text_to_speech`, a provider whose SDK is missing still counts as available when lazy installs are allowed (`security.allow_lazy_installs`) and its own credential is present, such as `ELEVENLABS_API_KEY`; with lazy installs off, or no key, it is unavailable. Judge 'installed' by the package manager's own availability answer."
+  },
+  {
+    "id": "3c9aad4562",
+    "fix_commit": "3c9aad4562d58cdd1c9edb6a3ac823f2c19e8efc",
+    "base_commit": "d812d97ecc7f5123591e22a9a805676d34e4a545",
+    "subject": "fix(browser): browser_cdp opens a blank tab while the private-page guard is on",
+    "gold_files": [
+      "tools/browser_cdp_tool.py"
+    ],
+    "test_files": [
+      "tests/tools/test_browser_cdp_tool.py"
+    ],
+    "run_files": [
+      "tests/tools/test_browser_cdp_tool.py"
+    ],
+    "fail_to_pass": [
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[c25296e805c9]"
+    ],
+    "pass_to_pass": [
+      "tests.tools.test_browser_cdp_tool::test_binary_payload_field_sibling_string_still_redacted",
+      "tests.tools.test_browser_cdp_tool::test_binary_payload_flag_keeps_secret_redaction_off_method_list",
+      "tests.tools.test_browser_cdp_tool::test_browser_level_redacts_secret_result",
+      "tests.tools.test_browser_cdp_tool::test_check_fn_does_not_probe_network",
+      "tests.tools.test_browser_cdp_tool::test_check_fn_false_when_browser_requirements_fail",
+      "tests.tools.test_browser_cdp_tool::test_fetch_get_response_body_base64_discriminator_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_frame_id_is_judged_by_its_own_target_not_the_first_page",
+      "tests.tools.test_browser_cdp_tool::test_frame_id_route_allowed_when_page_is_not_private",
+      "tests.tools.test_browser_cdp_tool::test_frame_id_route_blocked_when_current_page_is_private",
+      "tests.tools.test_browser_cdp_tool::test_get_request_post_data_flagged_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_get_request_post_data_unflagged_still_redacts",
+      "tests.tools.test_browser_cdp_tool::test_get_response_body_base64_discriminator_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_get_response_body_text_discriminator_still_redacts",
+      "tests.tools.test_browser_cdp_tool::test_io_read_base64_discriminator_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_missing_method_returns_error",
+      "tests.tools.test_browser_cdp_tool::test_nested_unflagged_binary_path_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_no_endpoint_returns_helpful_error",
+      "tests.tools.test_browser_cdp_tool::test_non_page_target_fails_closed_while_any_page_is_private[119ed48c4fa0]",
+      "tests.tools.test_browser_cdp_tool::test_non_page_target_fails_closed_while_any_page_is_private[5d5e2220405c]",
+      "tests.tools.test_browser_cdp_tool::test_non_page_target_fails_closed_while_any_page_is_private[819c96cdcc3a]",
+      "tests.tools.test_browser_cdp_tool::test_non_page_target_fails_closed_while_any_page_is_private[91dd0fd59c67]",
+      "tests.tools.test_browser_cdp_tool::test_page_navigate_to_private_url_blocked_before_cdp",
+      "tests.tools.test_browser_cdp_tool::test_page_url_probe_reads_the_target_over_the_same_endpoint[b60e4d184ff9]",
+      "tests.tools.test_browser_cdp_tool::test_page_url_probe_reads_the_target_over_the_same_endpoint[cb784b7ebd8a]",
+      "tests.tools.test_browser_cdp_tool::test_print_to_pdf_base64_passes_through_unredacted",
+      "tests.tools.test_browser_cdp_tool::test_private_guard_inactive_does_not_probe",
+      "tests.tools.test_browser_cdp_tool::test_runtime_evaluate_blocked_when_current_page_is_private",
+      "tests.tools.test_browser_cdp_tool::test_runtime_evaluate_spoofed_base64_flag_still_redacts",
+      "tests.tools.test_browser_cdp_tool::test_screenshot_base64_passes_through_unredacted",
+      "tests.tools.test_browser_cdp_tool::test_stream_resource_content_unflagged_buffered_data_passes_through",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[0a2bd83217ad]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[0b850ce15305]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[157a0e540e33]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[35e344a45371]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[55ab7909fe3f]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[aad42ed93143]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[b81f09a5139d]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[d3b0d88e0e23]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[d443e99dd7c7]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[e476bd8b920f]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[f1047d82edc9]",
+      "tests.tools.test_browser_cdp_tool::test_tab_management_stays_usable_while_a_tab_is_private[fb463255b6ef]",
+      "tests.tools.test_browser_cdp_tool::test_unreadable_target_list_fails_closed",
+      "tests.tools.test_browser_cdp_tool::test_websockets_missing_returns_error"
+    ],
+    "prompt": "With private-address blocking on and one of my open tabs being a local dev server (`http://127.0.0.1:3000/`), the model cannot open a blank tab through the `browser_cdp` tool. `Target.createTarget` with url `about:blank` is refused with 'Blocked: CDP Target.createTarget url is a private or internal address (about:blank)', even though a blank tab reaches nothing and is where Hermes's own helpers start before installing scripts or navigating. Expected: `about:blank`, and an empty or omitted url (which Chrome also treats as a blank tab), are allowed. Any other url is still held to the same rule as `Page.navigate`, so private or local addresses, `file:` and `data:` URLs, and tricks like `about:blank@127.0.0.1` stay refused. Activating and closing tabs keeps working, and other browser-level calls stay refused."
+  },
+  {
+    "id": "ebb9bc5699",
+    "fix_commit": "ebb9bc56999ef7c0d3b36a9f47645e7ec39e0f3b",
+    "base_commit": "a39efc94664a203ce3107eca250a9ee0136a3ba6",
+    "subject": "fix(env-policy): a profile gate is a platform prefix plus a gate suffix, not a bare name shape",
+    "gold_files": [
+      "tools/environments/local_env_policy.py"
+    ],
+    "test_files": [
+      "tests/tools/test_profile_gate_env_shape.py"
+    ],
+    "run_files": [
+      "tests/tools/test_profile_gate_env_shape.py"
+    ],
+    "fail_to_pass": [
+      "tests.tools.test_profile_gate_env_shape::test_operator_allowlist_shaped_vars_are_not_gates_but_platform_gates_are",
+      "tests.tools.test_profile_gate_env_shape::test_routed_no_agent_script_env_keeps_operator_allowlist_and_drops_platform_gate"
+    ],
+    "pass_to_pass": [],
+    "prompt": "I run `no_agent` cron scripts under the host gateway for a profile other than the one the gateway was launched with. The child's environment is built with Hermes's per-profile authorization gates stripped, which is right for `DISCORD_ALLOWED_CHANNELS`, but my own script variables `DEMO_ALLOWED_SENDER` and `ACCESS_ALLOWED_CALLBACK_ACE_TYPE` are deleted too and the script breaks, because any name containing `_ALLOWED_` or a similar marker is treated as a gate. Expected: a variable is a gate only when its owner prefix is a platform plus a gate-style suffix. Owners are the built-in platforms (`DISCORD_`, `TELEGRAM_`, `WHATSAPP_`), bundled platform plugins such as `IRC_`, runtime-registered plugin platforms, plus `GATEWAY_` (pairing) and `QQ_` (qqbot). So `TELEGRAM_GROUP_ALLOWED_CHATS`, `GATEWAY_ALLOW_ALL_USERS`, `WHATSAPP_GROUP_ALLOW_FROM`, `QQ_GROUP_ALLOWED_USERS` and `IRC_ALLOW_ALL_USERS` are still stripped, while operator variables and `HERMES_MEDIA_ALLOW_DIRS` survive. The gateway's own environment must not be modified."
+  },
+  {
+    "id": "39de69b19c",
+    "fix_commit": "39de69b19c33631f806332a6b0fbf84f8259e926",
+    "base_commit": "d09b10e08da3790dde28d71f572a98faee9c9851",
+    "subject": "fix(irc): give each inbound line a unique message identity",
+    "gold_files": [
+      "plugins/platforms/irc/adapter.py"
+    ],
+    "test_files": [
+      "tests/plugins/test_irc_inbound_identity.py"
+    ],
+    "run_files": [
+      "tests/plugins/test_irc_inbound_identity.py"
+    ],
+    "fail_to_pass": [
+      "tests.plugins.test_irc_inbound_identity::test_same_millisecond_irc_lines_get_separate_admissions[4b768a67c496]",
+      "tests.plugins.test_irc_inbound_identity::test_same_millisecond_irc_lines_get_separate_admissions[6228a0603ae4]"
+    ],
+    "pass_to_pass": [],
+    "prompt": "On my IRC gateway, when one user sends two lines that arrive within the same millisecond (a pasted burst, or even identical text twice, like `same` then `same`), only one of them gets handled. The gateway's durable input queue treats the second line as a duplicate of the first and drops it, so the bot never answers it. Lines arriving at different times are fine. Expected: every inbound IRC line gets its own message identity, so each one is admitted as a separate input, in arrival order, with its own text recorded and its own admission ID, even when the timestamps are identical or the text is the same. Redelivering an event that was already captured must still resolve to its original admission instead of creating a new one."
+  },
+  {
+    "id": "eb11e7eac9",
+    "fix_commit": "eb11e7eac932b33b804a90a524825be93cbb0e64",
+    "base_commit": "49dae87cc5a93a325ca5f9f08620d4d349df371c",
+    "subject": "fix(agent): reasoning promoted on a reasoning-only clean stop is never persisted as an ordinary reply",
+    "gold_files": [
+      "agent/turn_final_response.py"
+    ],
+    "test_files": [
+      "tests/agent/test_empty_terminal_reasoning_surface.py",
+      "tests/agent/test_reasoning_only_stop_persistence.py"
+    ],
+    "run_files": [
+      "tests/agent/test_empty_terminal_reasoning_surface.py",
+      "tests/agent/test_reasoning_only_stop_persistence.py"
+    ],
+    "fail_to_pass": [
+      "tests.agent.test_empty_terminal_reasoning_surface::test_clean_stop_reasoning_only_returns_on_first_call",
+      "tests.agent.test_reasoning_only_stop_persistence::test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty",
+      "tests.agent.test_reasoning_only_stop_persistence::test_reasoning_only_clean_stop_logs_warning_with_route"
+    ],
+    "pass_to_pass": [
+      "tests.agent.test_empty_terminal_reasoning_surface::test_exhausted_truly_empty_keeps_existing_behavior",
+      "tests.agent.test_empty_terminal_reasoning_surface::test_length_cut_reasoning_is_not_promoted"
+    ],
+    "prompt": "I run a reasoning model behind a vLLM server (the nemotron parser) where a turn can end with finish_reason \"stop\", empty content, and the whole answer filed as reasoning. Hermes correctly returns that reasoning as the final response after one API call, but what gets saved is wrong: the assistant message ends up with its `content` set to the reasoning text, so state.db and the session history show chain-of-thought as an ordinary reply, indistinguishable from a real one. Expected: the turn still returns the reasoning as the answer in a single call, but the stored assistant message keeps `content` empty, the text stays in `reasoning`, and the same text rides in the `api_content` column, so the next request still sends it as that assistant message's content, with role alternation intact. Also, the \"Reasoning-only clean stop\" log line is INFO; it should be a WARNING that includes `model=`, `provider=`, `api_calls=` and `tool_turns=` (assistant messages that made tool calls), since a model that ends every turn this way is stalled."
+  }
+]
