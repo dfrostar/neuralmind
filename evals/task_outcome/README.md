@@ -81,13 +81,23 @@ gives the agent; the `neuralmind` profile is the pilot's, unchanged. For
   NeuralMind version; anything else is rebuilt. On a large repository it saves
   the build per run: hermes-agent (about a million lines) takes 22 minutes to
   index.
-- **Hermes-Agent:** its `hermes-agent` profile gives every test run and agent
-  run a `HERMES_HOME` inside its workspace. Hermes's code re-publishes its
-  launchers for the active `HERMES_HOME`, so also pass
+- **Hermes-Agent:** its `hermes-agent` profile gives every index build, test
+  run and Claude Code agent run a `HERMES_HOME` inside its workspace. Hermes's
+  code re-publishes its launchers for the active `HERMES_HOME`, so also pass
   `--guard ~/.hermes/hermes-agent/.hermes/bin` on a machine that has Hermes
   installed: a run that changes any file there stops the benchmark (exit 4,
   nothing recorded, workspace kept), checked after setup, after the session
-  (before a failed session is cleaned up) and after the tests.
+  (before a failed session is cleaned up) and after the tests. With
+  `--agent hermes` the agent *is* the host's Hermes, so `hermes chat` keeps the
+  host's home (under a workspace home it would re-publish the host's launchers
+  for that home and bootstrap it; harness 5 refused the pair, 6 runs it); its
+  commands run in the gateway either way, with the guard as the net.
+- **The prompt's test command** is `python -m pytest <path>` for Claude Code,
+  whose commands run with the test venv first on `PATH`, and the test venv's
+  interpreter spelled out for Hermes, whose commands run in the gateway under
+  Hermes's own venv: in the Hermes pilot that venv answered `No module named`
+  to 88 of the agent's pytest commands, in both arms alike. Each run records
+  the line it was given (`pytest_command`).
 
 **What it doesn't measure.**
 - **Learning over time,** in the task runs: each starts from a fresh index, so

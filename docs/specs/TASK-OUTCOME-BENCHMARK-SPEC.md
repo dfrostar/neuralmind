@@ -874,3 +874,30 @@ drawn by the same rule, that the pilot didn't use.
   and the [track-1 spec](TASK-OUTCOME-BIGREPO-SMALLMODEL.md). The *first* gains
   replicate (no task lost it); the *named* gain on the first held-out set did not
   (7 to 7). The flag stays default-off.
+- 2026-11-05 — harness 6, before track 1's first agent run. Changes no recorded
+  result; two things it found about the Hermes runs are recorded here.
+  - **Hermes on the hermes-agent profile.** Harness 3 refused `--agent hermes`
+    with a profile that gives workspaces their own `HERMES_HOME` (10-30 above),
+    and track 1's design, written after it, is exactly that pair. Harness 6 runs
+    it: `hermes chat` keeps the host's home (the agent *is* the host's Hermes,
+    and a launch under a workspace home would re-publish the host's launchers
+    for it and bootstrap a new home there), while the index build and the
+    judge's test runs keep the workspace's. Read at hermes-agent `710fa8a`,
+    a workspace checkout's code publishes launchers only into its own
+    `<ws>/.hermes/bin`; the host's are touched only by the host's own code
+    under a foreign home. `--guard ~/.hermes/hermes-agent/.hermes/bin` stays
+    the net. The agent's own commands run in the gateway, under its home,
+    whichever home the client had.
+  - **The prompt's test line was not true for Hermes.** Every run's prompt says
+    the tests run with `python -m pytest <path>`. For Claude Code that is the
+    test venv's Python, first on the arm's `PATH`. For Hermes the command runs
+    in the gateway, whose terminal tool puts Hermes's own venv first: in the
+    Hermes pilot (harness 2 to 5), every `which python` the agent ran answered
+    with that venv, and `No module named` (`yaml` 178 times, `neuralmind`,
+    `numpy`, `chromadb`, `pydantic`, `turbovec`) answered 88 of the agent's
+    pytest commands over the 120 sessions, in both arms alike; a captured
+    pytest result with passes appears in 6 sessions. The pilot's and the memory
+    track's results stand as recorded, with this as an added threat: their
+    agent mostly could not run the project's tests, in either arm. From
+    harness 6 the prompt names the test venv's interpreter for Hermes, and each
+    run records the line it was given (`pytest_command`).
