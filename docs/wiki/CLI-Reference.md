@@ -2942,12 +2942,17 @@ path or `--unpin`. A re-run doesn't re-enable a plugin you turned off with
 fresh install (no `plugins/neuralmind` yet) enables it whatever an earlier one left
 on Hermes's disabled list.
 
-*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
-repository: `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
-For a plugin Hermes installed (it keeps an install record in
+Hermes can also install the plugin itself, by name from its
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind):
+`hermes plugins install neuralmind --enable`, which clones the commit of this
+repository the catalog entry pins. *(v4.10.0+)* Or from a clone of this
+repository, without the catalog:
+`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
+For a plugin Hermes installed either way (it keeps an install record in
 `plugins/.install-metadata.json`), this command writes only `config.json` and
 prints `✓ NeuralMind plugin configured at …`: the code is Hermes's to update,
-with `hermes plugins update neuralmind`.
+with `hermes plugins update neuralmind`, which moves a catalog install to the
+commit the catalog pins at the time.
 
 | File | Contents |
 |------|----------|

@@ -117,7 +117,7 @@ The isolation is physical (separate `.neuralmind/` dirs) but only works if the *
 ## Checklist for multi-project operators
 
 - [ ] Each project has its own `.neuralmind/` (automatic with `build .`)
-- [ ] The Hermes plugin isn't pinned (installed without a path, or with `--unpin`), unless Hermes serves a single project or the gateway; in Hermes Desktop, ACP editor sessions and per-session workspaces it can't follow the directory, so pin or set `NEURALMIND_PROJECT` there
+- [ ] The Hermes plugin isn't pinned (installed without a path, or with `--unpin`), unless Hermes serves a single project or the gateway. Unpinned, it follows each CLI, TUI and Desktop session's directory on Hermes 0.22.2 and later, and the terminal CLI's on older Hermes; for ACP editor sessions, per-session workspaces and Desktop on older Hermes, pin or set `NEURALMIND_PROJECT`
 - [ ] memU retrieve queries always start with `[project]`
 - [ ] Hermes memory entries always carry `[project]` prefix
 - [ ] session_search queries always include project name
