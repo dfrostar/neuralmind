@@ -181,9 +181,16 @@ Both comparisons must pass, so this is an intersection-union test and no
 multiplicity adjustment is applied: it can only be harder to pass than
 either test alone.
 
-If A passes and B does not, the supported sentence is **"a prompt-time hint
-helps on this repository, and a free keyword hook gives the same help"**.
-That is published as the finding, and it is not a NeuralMind product claim.
+If A passes and B does not, the finding is **"NeuralMind's hook beat no hook
+on this repository; its advantage over a free keyword hook was not
+established"**, with B's interval beside it. B can fail because the interval
+is wide as well as because the hooks are alike, and the two are not read the
+same way. The stronger sentence, **"a free keyword hook gives the same
+help"**, is published only on a pre-specified equivalence margin: when B's
+95% bootstrap interval on the median relative cost change lies entirely
+within ±5%, and the two arms' solve counts differ by at most one. Otherwise
+the comparison is reported as not established, in either direction. Neither
+sentence is a NeuralMind product claim.
 
 If A does not pass, the result is reported as what it is: no difference
 shown, or a loss, as for every study before it.
@@ -191,9 +198,17 @@ shown, or a loss, as for every study before it.
 **Size.** 20 tasks × 3 arms × 3 seeds = 180 runs. The pilot's and the
 screen's per-task relative cost changes both had a standard deviation of
 about 0.13, so 20 tasks detect a median reduction of about 7.5% at 80% power
-(one-sided α = 0.05, the main spec's formula); a null here rules out any
-saving a buyer would notice on these tasks. At the screen's rate (about $0.21
-per run, cap $3) the run costs about $40; at the cap throughout, $540.
+(one-sided α = 0.05, the main spec's formula). Power is not a verdict: a
+non-significant result still has a 20% chance of having missed an effect of
+that size. So **a null result is read by its interval, not by the power
+calculation.** The practically meaningful saving is fixed here at a 10%
+median cost reduction, the threshold the hermes-agent screen used to
+recommend a full study. A null result is published as "a 10% saving is ruled
+out on these tasks" only when the lower bound of comparison A's 95% interval
+on the median relative change is above −10%; otherwise it is published as
+"no difference shown, and a 10% saving is not ruled out". At the screen's
+rate (about $0.21 per run, cap $3) the run costs about $40; at the cap
+throughout, $540.
 
 ## Stages
 
@@ -296,3 +311,8 @@ here.
   hook does not exist. Open before registration: whether track 1's floor
   check has replaced any task; the NeuralMind release to pin; the Claude Code
   sign-in the Mac will use.
+- 2026-11-07 — from review on the draft's PR, before registration: the "A
+  passes, B does not" branch no longer asserts that the keyword hook gives the
+  same help; that sentence now needs a pre-specified equivalence margin (B's
+  interval within ±5%, solve counts within one). And a null result is read by
+  its interval against a fixed 10% threshold, not by the power calculation.
