@@ -1,7 +1,12 @@
 # Task outcomes, track 2: a frontier agent on an unfamiliar large repository, against a free keyword hook
 
-**Status:** draft, not yet pre-registered. It becomes pre-registered when it is
-committed on `main` before any run; until then every section may change.
+**Status:** draft, not pre-registered. Merging this document does not
+register it. Registration is a dated change-log entry, committed on `main`
+before the first agent run, that freezes what is open: the task list by id,
+the pinned model, Claude Code and NeuralMind versions, the keyword hook's
+commit, and the analysis code's commit. Until that entry exists every section
+may change; after it, changes go in the change log with their reason, as in
+the main spec.
 **Owner:** Darren Frost. **Machine:** a Mac with a Claude Code sign-in that is
 not an employer's (the pilot's standalone login). **Harness:**
 `evals/task_outcome/run.py`, as in
@@ -48,9 +53,16 @@ What a result buys:
 ## Question
 
 On the same real bug-fix tasks in a large repository the agent has never
-seen, does the same coding agent cost less per task with NeuralMind's prompt
-hook than with no hook, and less than with a free keyword hook in the same
-place, without solving fewer tasks?
+seen, does the same coding agent cost less per task with NeuralMind's
+installed hooks than with no hook, and less than with a free keyword hook in
+the prompt hook's place, without solving fewer tasks?
+
+"NeuralMind's installed hooks" is the bundle `neuralmind install-hooks`
+gives a user: the prompt-time block, and also the session-start recap, edit
+learning and the stale-decision guard. The block is the channel the earlier
+studies found to matter, and the keyword arm replaces only that channel, so
+comparison B isolates the block's ranking while comparison A measures the
+bundle. The claims below say "hooks", not "the block", for that reason.
 
 ## Arms
 
@@ -77,8 +89,12 @@ bulk. Each (task, arm) pair runs 3 times.
 **Why `neuralmind` runs with lexical anchoring on.** Track 1's stages 0 and
 0b passed their gates with the flag on, at the threshold both times. The flag
 is default-off in the release. This track measures the block at its best
-offline configuration; if that configuration shows nothing with an agent,
-the default-off question is settled too.
+offline configuration, and its conclusions are about that configuration
+only. Offline ranking accuracy and agent outcomes need not move together,
+and the default-off configuration is not run here, so a null result leaves
+the default-off question where track 1's offline rows leave it. Adding a
+default-off arm would make this a four-arm, 240-run study; it is not added,
+and the limit is stated.
 
 ### The keyword hook
 
@@ -181,9 +197,9 @@ Both comparisons must pass, so this is an intersection-union test and no
 multiplicity adjustment is applied: it can only be harder to pass than
 either test alone.
 
-If A passes and B does not, the finding is **"NeuralMind's hook beat no hook
-on this repository; its advantage over a free keyword hook was not
-established"**, with B's interval beside it. B can fail because the interval
+If A passes and B does not, the finding is **"NeuralMind's hooks beat no
+hook on this repository; the block's advantage over a free keyword hook was
+not established"**, with B's interval beside it. B can fail because the interval
 is wide as well as because the hooks are alike, and the two are not read the
 same way. The stronger sentence, **"a free keyword hook gives the same
 help"**, is published only on a pre-specified equivalence margin: when B's
@@ -198,10 +214,12 @@ shown, or a loss, as for every study before it.
 **Size.** 20 tasks × 3 arms × 3 seeds = 180 runs. The pilot's and the
 screen's per-task relative cost changes both had a standard deviation of
 about 0.13, so 20 tasks detect a median reduction of about 7.5% at 80% power
-(one-sided α = 0.05, the main spec's formula). Power is not a verdict: a
-non-significant result still has a 20% chance of having missed an effect of
-that size. So **a null result is read by its interval, not by the power
-calculation.** The practically meaningful saving is fixed here at a 10%
+(one-sided α = 0.05, the main spec's formula). That spread comes from
+NeuralMind-against-no-hook studies; comparison B's spread has never been
+measured, so the calculation is provisional for B. Power is not a verdict
+either way: a non-significant result still has a 20% chance of having missed
+an effect of that size. So **a null result is read by its interval, not by
+the power calculation.** The practically meaningful saving is fixed here at a 10%
 median cost reduction, the threshold the hermes-agent screen used to
 recommend a full study. A null result is published as "a 10% saving is ruled
 out on these tasks" only when the lower bound of comparison A's 95% interval
@@ -214,7 +232,7 @@ throughout, $540.
 
 | Stage | What | Gate to go on |
 |---|---|---|
-| 0. Prerequisites | the keyword hook and its tests; the runner gains the `keyword` arm (records `harness_version` as a new number); pins recorded; the three blocks' offline accuracy on the 20 tasks published in the results folder | the keyword hook names a gold file on at least as many of the 20 as the assessment's figure would predict (its baseline named 22 of 25 of its own prompts; here the count is reported, not gated), and NeuralMind flag-on reproduces track 1's stage 0/0b rows task for task |
+| 0. Prerequisites | the keyword hook and its tests; the runner gains the `keyword` arm (records `harness_version` as a new number); pins recorded; the three blocks' offline accuracy on the 20 tasks published in the results folder | two rules. (i) NeuralMind flag-on reproduces track 1's stage 0 and 0b rows task for task, else the harness is wrong and nothing runs. (ii) The keyword hook names a gold file on at least as many of the 20 tasks as NeuralMind's flag-off block does on the same 20. If it doesn't, its tokenisation or fields are reworked and it is replayed again, each attempt logged, at most three times; if the third attempt still falls short, the study runs with the best attempt and the results state the shortfall beside every comparison B figure. The assessment's own counts (22 of 25 on its prompts) are context, not a threshold: its prompts are not these |
 | 1. Smoke | the first 2 tasks × 3 arms × 1 seed, to `bench/task_outcome/unfamiliar-repo-smoke/`, never pooled | all 6 runs recorded; every `neuralmind` run recorded NeuralMind's prompt hook, every `keyword` run its block, and no `baseline` run either |
 | 2. Full run | 180 runs to `bench/task_outcome/unfamiliar-repo/` | the decision rule, applied by `analyze.py` after the analysis code for the three-arm variant is committed and before any arm comparison is read |
 | 3. Replication | only if stage 2 supports the full sentence: the same design on a second repository (below), before any site claim | the same decision rule |
@@ -255,9 +273,12 @@ here.
   Transcripts stay out of git; each run records its transcript's SHA-256.
 - The keyword hook, its tests and its index format are in the repository
   before stage 1, so the free arm can be rerun by anyone.
-- A supported sentence quoted on the site gets a `site/claims.json` entry
-  naming this spec and the command that reproduces it, and says it was
-  measured on one repository until stage 3 completes.
+- **No site claim before stage 3 passes.** A supported stage 2 result stays
+  in the study report, the honest assessment and the business case, named as
+  a one-repository finding. Only when stage 3 supports the same sentence on
+  the second repository does it go on the site, with a `site/claims.json`
+  entry naming this spec, both repositories and the command that reproduces
+  it.
 - A null result is published with the same prominence, and the honest
   assessment and the business case are updated to cite it in the same change.
 
@@ -316,3 +337,10 @@ here.
   same help; that sentence now needs a pre-specified equivalence margin (B's
   interval within ±5%, solve counts within one). And a null result is read by
   its interval against a fixed 10% threshold, not by the power calculation.
+- 2026-11-07 — from a second review, before registration: merging the draft
+  is not registration (the status paragraph says what is); the question and
+  claims name the installed hook bundle, which is what the `neuralmind` arm
+  runs, with comparison B isolating the block; a null result on the flag-on
+  configuration says nothing about default-off; stage 0's keyword-hook rule
+  is one numeric gate with a defined failure action; and no site claim is
+  made before stage 3 passes.
