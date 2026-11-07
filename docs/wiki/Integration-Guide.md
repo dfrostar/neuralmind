@@ -377,12 +377,16 @@ removes that step.
 ```bash
 neuralmind build /absolute/path/to/repo
 hermes plugins install neuralmind --enable
+cd /absolute/path/to/repo && hermes   # the plugin serves the built project Hermes works in
 ```
 
-The second command installs the plugin from Hermes's
+`hermes plugins install neuralmind` installs the plugin from Hermes's
 [plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind)
 (Hermes 0.21.5 or later), at the commit of this repository the catalog entry
-pins. Hermes owns the code: `hermes plugins update neuralmind` moves it to the
+pins. It isn't pinned to a project: it serves the built project Hermes works
+in, so start Hermes there, or pin one with
+`neuralmind install-hermes-plugin /absolute/path/to/repo` (see
+[Which project a Hermes session belongs to](#which-project-a-hermes-session-belongs-to) below). Hermes owns the code: `hermes plugins update neuralmind` moves it to the
 commit the catalog pins at the time. The plugin runs the `neuralmind` command
 on Hermes's PATH. Where Hermes's PATH doesn't include it (a gateway run as a
 service, Hermes Desktop) or finds an older NeuralMind, run

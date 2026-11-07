@@ -25,9 +25,10 @@ the same.
 pip install -U neuralmind
 neuralmind build /path/to/project
 hermes plugins install neuralmind --enable
+cd /path/to/project && hermes   # the plugin serves the built project Hermes works in
 ```
 
-The last command installs the plugin from Hermes's
+`hermes plugins install neuralmind` installs the plugin from Hermes's
 [plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind),
 where a Hermes maintainer merged its entry
 ([NousResearch/hermes-agent#147375](https://github.com/NousResearch/hermes-agent/pull/147375)).
@@ -36,6 +37,11 @@ description, including what the plugin runs, reads and writes, before it
 clones that commit. It needs Hermes 0.21.5 or later. From then on Hermes owns
 the code: `hermes plugins update neuralmind` moves it to the commit the
 catalog pins at the time, and `hermes plugins remove neuralmind` removes it.
+
+Installed this way, the plugin isn't pinned to a project: it serves the built
+project Hermes works in, so start Hermes from it, as the last line above does.
+To pin one instead (for the gateway, say), see
+[section 5](#5-which-project-a-session-belongs-to).
 
 The plugin is a stdlib-only shim around the `neuralmind` command, which it
 finds on Hermes's PATH, so `pip install -U neuralmind` changes the context it
