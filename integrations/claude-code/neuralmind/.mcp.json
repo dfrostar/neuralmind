@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": []
+    }
+  }
+}

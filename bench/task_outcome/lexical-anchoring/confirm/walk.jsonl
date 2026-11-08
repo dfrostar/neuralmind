@@ -1,0 +1,15 @@
+{"position": 25, "commit": "f94d72f7e8ba13713e5724678157856e42608787", "qualified": true, "before": {"passed": 17, "failed": 3}, "after": {"passed": 20}, "f2p": 3, "p2p": 17}
+{"position": 26, "commit": "ebf002cd3e08805345c81dce61454b492c30c87a", "qualified": true, "before": {"passed": 12, "failed": 1}, "after": {"passed": 13}, "f2p": 1, "p2p": 12}
+{"position": 27, "commit": "cf94a29319d46a446d57230e04ef39f7adf9b8fd", "qualified": true, "before": {"passed": 72, "skipped": 2, "failed": 1}, "after": {"passed": 73, "skipped": 2}, "f2p": 1, "p2p": 72}
+{"position": 28, "commit": "5381678d033e91d37131f5cd8d3d3236860d4aa5", "qualified": true, "before": {"passed": 6, "failed": 1}, "after": {"passed": 7}, "f2p": 1, "p2p": 6}
+{"position": 29, "commit": "1693c071a76edf2394163349ddafdfad11966935", "qualified": true, "before": {"failed": 3, "passed": 4}, "after": {"passed": 7}, "f2p": 3, "p2p": 4}
+{"position": 30, "commit": "e4e8f9bbc92ddcade28465b30686ca8a2014a173", "qualified": true, "before": {"passed": 9, "skipped": 2, "failed": 1}, "after": {"passed": 10, "skipped": 2}, "f2p": 1, "p2p": 9}
+{"position": 31, "commit": "6ca41cbe8bb3cba07dd8c2ad258426e04919790b", "qualified": true, "before": {"passed": 8, "failed": 1}, "after": {"passed": 9}, "f2p": 1, "p2p": 8}
+{"position": 32, "commit": "96eae3542ea37dae4ffe239b2c4af4e32ec47cb1", "qualified": true, "before": {"passed": 44, "failed": 2, "skipped": 6}, "after": {"passed": 46, "skipped": 6}, "f2p": 2, "p2p": 44}
+{"position": 33, "commit": "398867326dbe2df83a18400093afd6d23f747d54", "qualified": true, "before": {"error": 2, "passed": 17, "failed": 6}, "after": {"error": 2, "passed": 21, "failed": 2}, "f2p": 4, "p2p": 17}
+{"position": 34, "commit": "3c9aad4562d58cdd1c9edb6a3ac823f2c19e8efc", "qualified": true, "before": {"passed": 44, "failed": 1}, "after": {"passed": 45}, "f2p": 1, "p2p": 44}
+{"position": 35, "commit": "0b8dee00fafe975f10be40172322d0ccfabfa7f6", "qualified": false, "before": {"passed": 2}, "after": {"passed": 2}}
+{"position": 36, "commit": "ebb9bc56999ef7c0d3b36a9f47645e7ec39e0f3b", "qualified": true, "before": {"failed": 2}, "after": {"passed": 2}, "f2p": 2, "p2p": 0}
+{"position": 37, "commit": "39de69b19c33631f806332a6b0fbf84f8259e926", "qualified": true, "before": {"failed": 2}, "after": {"passed": 2}, "f2p": 2, "p2p": 0}
+{"position": 38, "commit": "e68c489c96d0253bb178678e7e86ddda30c2ccb0", "qualified": true, "before": {"passed": 9, "failed": 2}, "after": {"passed": 10, "failed": 1}, "f2p": 1, "p2p": 9}
+{"position": 39, "commit": "eb11e7eac932b33b804a90a524825be93cbb0e64", "qualified": true, "before": {"failed": 3, "passed": 2}, "after": {"passed": 5}, "f2p": 3, "p2p": 2}

@@ -5,10 +5,10 @@ import CondensingGraph from '@/components/ui/CondensingGraph';
 import LiquidBackground from '@/components/ui/LiquidBackground';
 
 const SITE_DESCRIPTION =
-    'A local code index for AI coding agents: the gold file on 40 of 40 queries vs keyword ripgrep’s 32 of 40, at 31–67× fewer tokens. Every miss published.';
+    'Review code you’ve never seen: a local index that hands your agent the gold file on 40 of 40 queries vs ripgrep’s 32 of 40, at 31–67× fewer tokens.';
 
 export const metadata = {
-    title: 'NeuralMind — Local Code Index for AI Coding Agents',
+    title: 'NeuralMind — Review Code You’ve Never Seen, with Your Agent',
     description: SITE_DESCRIPTION,
     keywords: [
         'local code index for AI coding agents',
@@ -31,9 +31,9 @@ export const metadata = {
         canonical: '/',
     },
     openGraph: {
-        title: 'NeuralMind — Finds the right code for a fraction of the tokens',
+        title: 'NeuralMind — Review code you’ve never seen. Show the client the evidence.',
         description:
-            'The gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file. 93.3% top-5 on a larger 150-question eval, every miss published. Local-first, no telemetry by default, MIT core.',
+            'A local index of a client’s repository that hands your coding agent the right code first: the gold file on 40 of 40 public-benchmark queries vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens. 93.3% top-5 on a 150-question eval, every miss published. No telemetry by default, signed releases, compliance evidence. MIT core.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -49,7 +49,7 @@ export const metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'NeuralMind — Local Code Index for AI Coding Agents',
+        title: 'NeuralMind — Review Code You’ve Never Seen, with Your Agent',
         description: SITE_DESCRIPTION,
         images: ['https://neuralmind.uk/social-preview.png'],
     },

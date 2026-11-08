@@ -19,6 +19,7 @@ buying it and what they will run it on:
 | A defense contractor handling CUI | NIST SP 800-171 (CMMC Level 2), assessed against *your* environment, with NeuralMind inside its scope |
 | An agency installing NeuralMind inside an authorized system | NIST SP 800-53 controls in *your* authorization (ATO). FedRAMP doesn't apply, because NeuralMind is local software with no hosted service |
 | Anyone running FIPS-mode hosts | FIPS 140-3, for the host's own cryptographic modules |
+| A consultancy reviewing a regulated client's code | Whichever of the above applies to the client; the client's vendor review asks you the same questions, and this page and the [client code-review walkthrough](../use-cases/consultancy-client-code-review.md) are the answers |
 | Anyone governing AI use | The NIST AI RMF, which is voluntary and has no certification |
 
 ## 2. Where NeuralMind stands

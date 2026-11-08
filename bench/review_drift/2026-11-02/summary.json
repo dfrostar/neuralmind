@@ -1,0 +1,364 @@
+{
+ "spec": "docs/specs/REVIEW-DRIFT-EVAL-SPEC.md",
+ "tool": {
+  "binary": "/Users/darrenfrost/nm-bench/review-drift/venv/bin/neuralmind",
+  "version": "neuralmind 4.24.0",
+  "module": "/Users/darrenfrost/neuralmind/neuralmind/__init__.py",
+  "installed_copy": false,
+  "checkout_commit": "d35bfbc583b8dadd6354fe5e68413542e2e29181"
+ },
+ "builds": {
+  "count": 319,
+  "failed": 0,
+  "median_s": 4.97,
+  "synapse_namespaces_seen": [
+   "structural"
+  ]
+ },
+ "review": {
+  "pooled": {
+   "pairs": 430,
+   "review": {
+    "hits@5": 193,
+    "hits@10": 270,
+    "hit@5": 0.449,
+    "hit@10": 0.628,
+    "mrr@10": 0.275
+   },
+   "cochange": {
+    "hits@5": 237,
+    "hits@10": 279,
+    "hit@5": 0.551,
+    "hit@10": 0.649,
+    "mrr@10": 0.359
+   },
+   "adjacency": {
+    "hits@5": 172,
+    "hits@10": 229,
+    "hit@5": 0.4,
+    "hit@10": 0.533,
+    "mrr@10": 0.237
+   },
+   "random": {
+    "hit@5": 0.057,
+    "hit@10": 0.114
+   },
+   "commits": 119,
+   "commits_with_a_hit@10": 0.916,
+   "list_length_median": 10.0,
+   "lists_shorter_than_10": 0.088,
+   "lists_empty": 0,
+   "test_entry_share": 0.221,
+   "held_out_is_test_share": 0.212,
+   "review_call_median_s": 0.26
+  },
+  "per_repo": {
+   "click": {
+    "pairs": 123,
+    "review": {
+     "hits@5": 69,
+     "hits@10": 97,
+     "hit@5": 0.561,
+     "hit@10": 0.789,
+     "mrr@10": 0.402
+    },
+    "cochange": {
+     "hits@5": 83,
+     "hits@10": 98,
+     "hit@5": 0.675,
+     "hit@10": 0.797,
+     "mrr@10": 0.412
+    },
+    "adjacency": {
+     "hits@5": 55,
+     "hits@10": 74,
+     "hit@5": 0.447,
+     "hit@10": 0.602,
+     "mrr@10": 0.281
+    },
+    "random": {
+     "hit@5": 0.082,
+     "hit@10": 0.164
+    },
+    "commits": 39,
+    "commits_with_a_hit@10": 1.0,
+    "list_length_median": 10,
+    "lists_shorter_than_10": 0.089,
+    "lists_empty": 0,
+    "test_entry_share": 0.211,
+    "held_out_is_test_share": 0.154,
+    "review_call_median_s": 0.25
+   },
+   "flask": {
+    "pairs": 166,
+    "review": {
+     "hits@5": 81,
+     "hits@10": 115,
+     "hit@5": 0.488,
+     "hit@10": 0.693,
+     "mrr@10": 0.267
+    },
+    "cochange": {
+     "hits@5": 95,
+     "hits@10": 108,
+     "hit@5": 0.572,
+     "hit@10": 0.651,
+     "mrr@10": 0.367
+    },
+    "adjacency": {
+     "hits@5": 65,
+     "hits@10": 88,
+     "hit@5": 0.392,
+     "hit@10": 0.53,
+     "mrr@10": 0.2
+    },
+    "random": {
+     "hit@5": 0.065,
+     "hit@10": 0.129
+    },
+    "commits": 39,
+    "commits_with_a_hit@10": 0.949,
+    "list_length_median": 10.0,
+    "lists_shorter_than_10": 0.09,
+    "lists_empty": 0,
+    "test_entry_share": 0.337,
+    "held_out_is_test_share": 0.229,
+    "review_call_median_s": 0.25
+   },
+   "requests": {
+    "pairs": 4,
+    "review": {
+     "hits@5": 1,
+     "hits@10": 2,
+     "hit@5": 0.25,
+     "hit@10": 0.5,
+     "mrr@10": 0.275
+    },
+    "cochange": {
+     "hits@5": 1,
+     "hits@10": 2,
+     "hit@5": 0.25,
+     "hit@10": 0.5,
+     "mrr@10": 0.156
+    },
+    "adjacency": {
+     "hits@5": 1,
+     "hits@10": 2,
+     "hit@5": 0.25,
+     "hit@10": 0.5,
+     "mrr@10": 0.15
+    },
+    "random": {
+     "hit@5": 0.132,
+     "hit@10": 0.263
+    },
+    "commits": 1,
+    "commits_with_a_hit@10": 1.0,
+    "list_length_median": 10.0,
+    "lists_shorter_than_10": 0.0,
+    "lists_empty": 0,
+    "test_entry_share": 0.2,
+    "held_out_is_test_share": 0.0,
+    "review_call_median_s": 0.21
+   },
+   "rich": {
+    "pairs": 137,
+    "review": {
+     "hits@5": 42,
+     "hits@10": 56,
+     "hit@5": 0.307,
+     "hit@10": 0.409,
+     "mrr@10": 0.17
+    },
+    "cochange": {
+     "hits@5": 58,
+     "hits@10": 71,
+     "hit@5": 0.423,
+     "hit@10": 0.518,
+     "mrr@10": 0.307
+    },
+    "adjacency": {
+     "hits@5": 51,
+     "hits@10": 65,
+     "hit@5": 0.372,
+     "hit@10": 0.474,
+     "mrr@10": 0.245
+    },
+    "random": {
+     "hit@5": 0.024,
+     "hit@10": 0.047
+    },
+    "commits": 40,
+    "commits_with_a_hit@10": 0.8,
+    "list_length_median": 10,
+    "lists_shorter_than_10": 0.088,
+    "lists_empty": 0,
+    "test_entry_share": 0.091,
+    "held_out_is_test_share": 0.248,
+    "review_call_median_s": 0.28
+   }
+  },
+  "dropped_commits": 2,
+  "errors": 0
+ },
+ "drift": {
+  "pooled": {
+   "fix": {
+    "commits": 121,
+    "with_a_finding": 6,
+    "rate": 0.05,
+    "no_examinable_lines": 10,
+    "rate_examinable": 0.054,
+    "findings_per_commit": 0.107,
+    "symbols_checked_median": 1,
+    "graph_missing": 0
+   },
+   "control": {
+    "commits": 121,
+    "with_a_finding": 6,
+    "rate": 0.05,
+    "no_examinable_lines": 7,
+    "rate_examinable": 0.053,
+    "findings_per_commit": 0.083,
+    "symbols_checked_median": 1,
+    "graph_missing": 0
+   }
+  },
+  "per_repo": {
+   "click": {
+    "fix": {
+     "commits": 37,
+     "with_a_finding": 1,
+     "rate": 0.027,
+     "no_examinable_lines": 2,
+     "rate_examinable": 0.029,
+     "findings_per_commit": 0.162,
+     "symbols_checked_median": 1,
+     "graph_missing": 0
+    },
+    "control": {
+     "commits": 37,
+     "with_a_finding": 1,
+     "rate": 0.027,
+     "no_examinable_lines": 1,
+     "rate_examinable": 0.028,
+     "findings_per_commit": 0.027,
+     "symbols_checked_median": 1,
+     "graph_missing": 0
+    }
+   },
+   "flask": {
+    "fix": {
+     "commits": 40,
+     "with_a_finding": 4,
+     "rate": 0.1,
+     "no_examinable_lines": 3,
+     "rate_examinable": 0.108,
+     "findings_per_commit": 0.15,
+     "symbols_checked_median": 1.0,
+     "graph_missing": 0
+    },
+    "control": {
+     "commits": 40,
+     "with_a_finding": 3,
+     "rate": 0.075,
+     "no_examinable_lines": 2,
+     "rate_examinable": 0.079,
+     "findings_per_commit": 0.075,
+     "symbols_checked_median": 1.0,
+     "graph_missing": 0
+    }
+   },
+   "requests": {
+    "fix": {
+     "commits": 4,
+     "with_a_finding": 0,
+     "rate": 0.0,
+     "no_examinable_lines": 2,
+     "rate_examinable": 0.0,
+     "findings_per_commit": 0.0,
+     "symbols_checked_median": 0.5,
+     "graph_missing": 0
+    },
+    "control": {
+     "commits": 4,
+     "with_a_finding": 0,
+     "rate": 0.0,
+     "no_examinable_lines": 0,
+     "rate_examinable": 0.0,
+     "findings_per_commit": 0.0,
+     "symbols_checked_median": 1.5,
+     "graph_missing": 0
+    }
+   },
+   "rich": {
+    "fix": {
+     "commits": 40,
+     "with_a_finding": 1,
+     "rate": 0.025,
+     "no_examinable_lines": 3,
+     "rate_examinable": 0.027,
+     "findings_per_commit": 0.025,
+     "symbols_checked_median": 1.0,
+     "graph_missing": 0
+    },
+    "control": {
+     "commits": 40,
+     "with_a_finding": 2,
+     "rate": 0.05,
+     "no_examinable_lines": 4,
+     "rate_examinable": 0.056,
+     "findings_per_commit": 0.15,
+     "symbols_checked_median": 1.0,
+     "graph_missing": 0
+    }
+   }
+  },
+  "hermes_agent": {
+   "fix": {
+    "commits": 17,
+    "with_a_finding": 2,
+    "rate": 0.118,
+    "no_examinable_lines": 2,
+    "rate_examinable": 0.133,
+    "findings_per_commit": 0.294,
+    "symbols_checked_median": 2,
+    "graph_missing": 0
+   },
+   "control": {
+    "commits": 0,
+    "with_a_finding": 0,
+    "rate": null,
+    "no_examinable_lines": 0,
+    "rate_examinable": null,
+    "findings_per_commit": null,
+    "symbols_checked_median": null,
+    "graph_missing": 0
+   }
+  },
+  "errors": 0
+ },
+ "verdict": {
+  "review": {
+   "hit@10": 0.628,
+   "cochange_hit@10": 0.649,
+   "hits@10": 270,
+   "cochange_hits@10": 279,
+   "pairs": 430,
+   "floor_met": true,
+   "beats_cochange": false,
+   "worth_quoting": false
+  },
+  "drift": {
+   "recall_fix": 0.05,
+   "rate_control": 0.05,
+   "fix_hits": 6,
+   "fix_commits": 121,
+   "control_hits": 6,
+   "control_commits": 121,
+   "floor_met": false,
+   "beats_control": false,
+   "worth_quoting": false
+  }
+ }
+}

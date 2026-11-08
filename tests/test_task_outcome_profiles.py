@@ -209,13 +209,46 @@ def test_the_guard_stops_a_failed_session_before_any_cleanup(tmp_path, monkeypat
     assert [p.name.startswith("abc123-baseline-s0") for p in work.iterdir()] == [True]
 
 
-def test_hermes_agent_refuses_a_profile_with_its_own_hermes_home(tmp_path, capsys) -> None:
-    """That HERMES_HOME would reach `hermes chat`, and a temporary one rewrites the launchers."""
-    code = run.main(
-        ["--tasks", str(tmp_path / "tasks.json"), "--out", str(tmp_path / "out")]
-        + ["--model", "m", "--tool-venv", str(tmp_path), "--test-python", "python"]
-        + ["--work-dir", str(tmp_path / "work"), "--agent", "hermes", "--profile", "hermes-agent"]
+def test_hermes_keeps_the_hosts_home_and_the_judge_gets_the_workspaces(
+    tmp_path, monkeypatch
+) -> None:
+    """A workspace HERMES_HOME reaches the index build and the tests, never `hermes chat`:
+    the host's Hermes would re-publish its launchers for that home and bootstrap it."""
+    ws_env = harness.workspace_env(tmp_path / "ws", isolated_hermes_home=True, create=False)
+    env = {"PATH": "/bin", **ws_env}
+    assert run.agent_env(env, "claude") == env
+    monkeypatch.delenv("HERMES_HOME", raising=False)
+    assert run.agent_env(env, "hermes") == {"PATH": "/bin"}
+    monkeypatch.setenv("HERMES_HOME", "/home/u/.hermes")
+    assert run.agent_env(env, "hermes") == {"PATH": "/bin", "HERMES_HOME": "/home/u/.hermes"}
+
+
+def test_the_prompt_names_a_test_command_true_for_where_the_agent_runs() -> None:
+    """Claude Code's commands run with the test venv first on PATH; Hermes's run in its
+    gateway, under Hermes's own venv, so the prompt spells the test venv's interpreter out."""
+    assert run.pytest_command("claude", "/venv/bin/python") == "python -m pytest"
+    assert run.pytest_command("hermes", "/venv/bin/python") == "/venv/bin/python -m pytest"
+    # The agent types the line into a shell: a path with a space stays one word.
+    spaced = run.pytest_command("hermes", "/home/u/test venv/bin/python")
+    assert spaced == "'/home/u/test venv/bin/python' -m pytest"
+    profile = profiles.get("hermes-agent")
+    assert "`python -m pytest <path>`" in run.render_prompt("x", profile)
+    spelled = run.render_prompt("x", profile, run.pytest_command("hermes", "/venv/bin/python"))
+    assert "`/venv/bin/python -m pytest <path>`" in spelled
+
+
+def test_a_resume_refuses_runs_recorded_with_another_test_line() -> None:
+    """One run file is one study: harness-6 Hermes runs can't be appended to a
+    harness-5 file (whose prompts said `python -m pytest`), nor the reverse."""
+    versions = {"neuralmind_version": "neuralmind 4.24.0"}
+    legacy = {"neuralmind_version": "neuralmind 4.24.0"}  # before harness 6: no field
+    assert run.recorded_elsewhere(legacy, versions, "python -m pytest") == {}
+    assert run.recorded_elsewhere(legacy, versions, "/venv/bin/python -m pytest") == {
+        "pytest_command": ("python -m pytest", "/venv/bin/python -m pytest")
+    }
+    six = {**legacy, "pytest_command": "/venv/bin/python -m pytest"}
+    assert run.recorded_elsewhere(six, versions, "/venv/bin/python -m pytest") == {}
+    other = run.recorded_elsewhere(
+        six, {"neuralmind_version": "neuralmind 4.23.1"}, six["pytest_command"]
     )
-    assert code == 2
-    assert "HERMES_HOME" in capsys.readouterr().err
-    assert not (tmp_path / "out").exists()
+    assert other == {"neuralmind_version": ("neuralmind 4.24.0", "neuralmind 4.23.1")}

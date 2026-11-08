@@ -7,6 +7,7 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 - [How Agents Share Memory (v0.6.0+)](#how-agents-share-memory-v060)
 - [Graphify Integration](#graphify-integration)
 - [MCP Integration](#mcp-integration)
+  - [Claude Code](#claude-code) — the plugin: MCP server and hooks in one install *(v4.25.0+)*
   - [Claude Desktop](#claude-desktop)
   - [Cursor](#cursor)
   - [Hermes-Agent](#hermes-agent) — the plugin for context in every turn *(v4.9.0+)*, then MCP and the skill
@@ -239,6 +240,29 @@ python -m neuralmind.mcp_server
 # With custom port (if supported)
 neuralmind-mcp --port 8080
 ```
+
+### Claude Code
+
+*(v4.25.0+)* The Claude Code plugin registers the MCP server and the lifecycle
+hooks (`neuralmind install-hooks`) for every project in one install. It needs
+the Python package on the PATH Claude Code starts with:
+
+```bash
+pipx install neuralmind
+cd your-project && neuralmind build .
+```
+
+```
+/plugin marketplace add dfrostar/neuralmind
+/plugin install neuralmind@neuralmind
+```
+
+The tools appear as `mcp__plugin_neuralmind_neuralmind__*`. A project that
+already has `install-hooks` or a `.mcp.json` entry keeps working: each hook
+action runs once, from the settings file, and the project's server is the one
+Claude Code starts. Without the plugin, `neuralmind install-mcp --client
+claude-code` and `neuralmind install-hooks` do the same per project
+([plugin README](https://github.com/dfrostar/neuralmind/blob/main/integrations/claude-code/neuralmind/README.md)).
 
 ### Claude Desktop
 

@@ -1,0 +1,20 @@
+{
+  "name": "neuralmind",
+  "owner": {
+    "name": "dfrostar",
+    "email": "hello@neuralmind.uk"
+  },
+  "metadata": {
+    "description": "NeuralMind's Claude Code plugin, published from the NeuralMind repository."
+  },
+  "plugins": [
+    {
+      "name": "neuralmind",
+      "source": "./integrations/claude-code/neuralmind",
+      "description": "Codebase memory for Claude Code: the NeuralMind MCP server and its lifecycle hooks in one install. Needs the neuralmind Python package on PATH.",
+      "category": "development",
+      "homepage": "https://neuralmind.uk",
+      "license": "MIT"
+    }
+  ]
+}

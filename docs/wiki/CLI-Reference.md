@@ -2869,6 +2869,17 @@ its full id and the reason it left ACTIVE (for example
 `commit 3f9c2ab changed db.py since this decision was recorded`), plus a
 pointer to `neuralmind decisions restore <id>` when one is STALE.
 
+**Or the Claude Code plugin** *(v4.25.0)*: `/plugin marketplace add
+dfrostar/neuralmind`, then `/plugin install neuralmind@neuralmind`, registers
+these same seven blocks and the MCP server for every project, with nothing
+written to `settings.json`. With both, the plugin's copy of a hook does
+nothing when a handler in the project's `.claude/settings.json` or
+`settings.local.json`, or the user's `settings.json` (`$CLAUDE_CONFIG_DIR`
+when set), fires the same action for the same event and matcher (a settings
+`Edit` handler doesn't cover `Write`), so each action runs once. Claude Code
+would run both copies otherwise. `doctor` counts the enabled plugin as installed hooks
+([plugin README](https://github.com/dfrostar/neuralmind/blob/main/integrations/claude-code/neuralmind/README.md)).
+
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
 ```
@@ -4305,7 +4316,7 @@ The equivalent MCP tool is `neuralmind_structural_gaps`.
 
 Warn about likely co-breakage before a commit or when reviewing a diff.
 
-Reads the current `git diff` (or a specified base ref), finds changed files, and runs spreading activation through the learned synapse graph to surface files that are **strongly associated but NOT in your diff** — files that have historically been edited together with the ones you're changing.
+Reads the current `git diff` (or a specified base ref), finds changed files, and runs spreading activation through the synapse graph to surface files that are **strongly associated but NOT in your diff**. On a fresh index the graph holds only the structural seeds the build wrote (calls, imports, inheritance), so the list is structural coupling; files edited together join it as the project is used. Measured on 430 held-out pairs from real commits of four public repositories with a cold index *(v4.25.0)*, it named the missing file in its top ten on 63%, where ranking files by git co-change history managed 65% and direct structural adjacency 53% ([results](https://github.com/dfrostar/neuralmind/blob/main/bench/review_drift/2026-11-02/README.md)).
 
 ```bash
 neuralmind review [project_path] [OPTIONS]
@@ -4351,11 +4362,13 @@ Co-break candidates — files NOT in diff but strongly associated (4):
   0.431 ████      config/settings.py
   0.198 ██        docs/auth.md
 
-These files have historically been edited together with the ones above.
-Consider whether your change also needs to touch them.
+Ranked by association in the synapse graph: structural coupling (calls,
+imports, inheritance) on a fresh index, plus files edited together once
+the project has been used. Consider whether your change also needs to
+touch them.
 ```
 
-Requires the synapse graph to have accumulated edges. Cold graphs (first few sessions) return empty results. Also available as the `neuralmind_review` MCP tool.
+A fresh index answers from the structural seeds the build wrote; learned associations are added as the project is used. Also available as the `neuralmind_review` MCP tool.
 
 *Wiki reference: [Tier2-Operator-Guide](Tier2-Operator-Guide.md) · [Upgrade-Guide](Upgrade-Guide.md)*
 

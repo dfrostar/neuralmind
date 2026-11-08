@@ -1,0 +1,5245 @@
+{
+ "spec": "docs/specs/REVIEW-DRIFT-EVAL-SPEC.md",
+ "window": 600,
+ "cap": 40,
+ "repos": {
+  "requests": {
+   "path": "/Users/darrenfrost/nm-bench/review-drift/repos/requests",
+   "pinned": "0e322af87745eff34caffe4df68456ebc20d9068",
+   "subdir": "src/requests",
+   "commits_walked": 600,
+   "review": [
+    {
+     "commit": "555b870eb19d497ddb67042645420083ec8efb02",
+     "parent": "d6dded3f00afcf56a7e866cb0732799045301eb0",
+     "subject": "Allow character detection dependencies to be optional in post-packaging steps",
+     "source_files": [
+      "src/requests/__init__.py",
+      "src/requests/compat.py",
+      "src/requests/models.py",
+      "src/requests/packages.py"
+     ],
+     "changed_files": [
+      ".github/workflows/run-tests.yml",
+      "src/requests/__init__.py",
+      "src/requests/compat.py",
+      "src/requests/models.py",
+      "src/requests/packages.py"
+     ]
+    }
+   ],
+   "fix": [
+    {
+     "commit": "1604e20fc87ce212cf3a02474a6d7509b640cbbb",
+     "parent": "eeafb6ab3a54ab01cbf864d452ea30f5fdb67ce8",
+     "subject": "Fix the proxy_bypass_registry function all returning true in some cases.",
+     "source_files": [
+      "src/requests/utils.py"
+     ],
+     "changed_files": [
+      "src/requests/utils.py"
+     ]
+    },
+    {
+     "commit": "3ff3ff21dd45957c9e143cd500291959bb15f690",
+     "parent": "96b22fa18c00831656ee4b286bf1c9062459b00a",
+     "subject": "Fix #6628 - JSONDecodeError are not deserializable",
+     "source_files": [
+      "src/requests/exceptions.py"
+     ],
+     "changed_files": [
+      "src/requests/exceptions.py",
+      "tests/test_requests.py"
+     ]
+    },
+    {
+     "commit": "15849947ec4b8b7c3c136a47e950499edfd36921",
+     "parent": "c6de5a14e55588d2d3ff5726eaf92824ab1be4dc",
+     "subject": "fix docstring typo: a -> as",
+     "source_files": [
+      "src/requests/utils.py"
+     ],
+     "changed_files": [
+      "src/requests/utils.py"
+     ]
+    },
+    {
+     "commit": "c32b046243dcbf0dceb952da1317261109ac45c4",
+     "parent": "839a8edec37c81a18ac8332cfbd44f44e1ae6206",
+     "subject": "Fix missing space in error message",
+     "source_files": [
+      "src/requests/utils.py"
+     ],
+     "changed_files": [
+      "src/requests/utils.py"
+     ]
+    }
+   ],
+   "control": [
+    {
+     "commit": "0e322af87745eff34caffe4df68456ebc20d9068",
+     "parent": "e18879932287c2bf4bcee4ddf6ccb8a69b6fc656",
+     "subject": "v2.32.3",
+     "source_files": [
+      "src/requests/__version__.py"
+     ],
+     "changed_files": [
+      "HISTORY.md",
+      "src/requests/__version__.py"
+     ]
+    },
+    {
+     "commit": "e18879932287c2bf4bcee4ddf6ccb8a69b6fc656",
+     "parent": "145b5399486b56e00250204f033441f3fdf2f3c9",
+     "subject": "Don't create default SSLContext if ssl module isn't present (#6724)",
+     "source_files": [
+      "src/requests/adapters.py"
+     ],
+     "changed_files": [
+      "src/requests/adapters.py"
+     ]
+    },
+    {
+     "commit": "b1d73ddb509a3a2d3e10744e85f9cdebdbde90f0",
+     "parent": "6badbac6e0d6b5a53872f26401761ad37a9002b8",
+     "subject": "Don't use default SSLContext with custom poolmanager kwargs",
+     "source_files": [
+      "src/requests/adapters.py"
+     ],
+     "changed_files": [
+      "src/requests/adapters.py"
+     ]
+    },
+    {
+     "commit": "a62a2d35d918baa8e793f7aa4fb41527644dfca5",
+     "parent": "88dce9d854797c05d0ff296b70e0430535ef8aaf",
+     "subject": "Allow for overriding of specific pool key params",
+     "source_files": [
+      "src/requests/adapters.py"
+     ],
+     "changed_files": [
+      "HISTORY.md",
+      "src/requests/adapters.py"
+     ]
+    }
+   ]
+  },
+  "click": {
+   "path": "/Users/darrenfrost/nm-bench/review-drift/repos/click",
+   "pinned": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
+   "subdir": "src/click",
+   "commits_walked": 600,
+   "review": [
+    {
+     "commit": "ecb99836a44367bad62960045d586e31e4a95766",
+     "parent": "9a536eebd958558c2cd24c17fb66fac112f1ac91",
+     "subject": "echo doesn't fail with no streams",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "43c2e7f331e78684d2549439c3338335f0ddb854",
+     "parent": "0c8f301d2a28b67451eef872e327ef67e3993ec6",
+     "subject": "format_filename replaces invalid bytes",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/arguments.rst",
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py",
+      "tests/conftest.py",
+      "tests/test_types.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "b5280c608574d867e5e76c8f295c99868f18d763",
+     "parent": "fcdedf82e8515f1046893248a9295fa012854f09",
+     "subject": "update dependencies",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      ".github/workflows/tests.yaml",
+      ".pre-commit-config.yaml",
+      "requirements/build.txt",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "setup.cfg",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "77838f86fa647ca82f53a88d6495dfc009b24c41",
+     "parent": "8473b3ced140296b9dd869957e0026eebd94634b",
+     "subject": "Docs: add references for varargs and kwargs (#2281)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "8473b3ced140296b9dd869957e0026eebd94634b",
+     "parent": "e002dbc40ceb6a7e78dbe5e5868744690ba3120f",
+     "subject": "Use t.Mapping not t.Dict for parameters (#2265)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "d19d0def9a2a5979312b705bbfd53725aa1d5081",
+     "parent": "6e05e1fa1c2804410f9916b27edc07076e3b156d",
+     "subject": "Correct some typos (#2496)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/parser.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/parser.py"
+     ]
+    },
+    {
+     "commit": "a63679e77f9be2eb99e2f0884d617f9635a485e2",
+     "parent": "085f414a046bd5f15dfa08bedd0aa50f25410520",
+     "subject": "Type hinting: improve decorator annotations",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "085f414a046bd5f15dfa08bedd0aa50f25410520",
+     "parent": "a1093bbe0dae00eea8342247a0c2739b07a6acd8",
+     "subject": "Type hinting: Low-hanging fruit improvements",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "06a2c0f2ec24ef0a3e5ee97ce9ccbcc51ab49d3a",
+     "parent": "bd8735ba43ce5349f4d6d17aae880cffab537519",
+     "subject": "update dependencies",
+     "source_files": [
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ]
+    },
+    {
+     "commit": "e234cf958d2416d4b20b53ae850c487fed32fa35",
+     "parent": "fb7c6dbab505c319dfcbb882e66f313fcbf06a0f",
+     "subject": "fix(types): decorator typing fails",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "f2e579ab187ca8fdfbe6ce86de08f0e9f62fe4ae",
+     "parent": "d251cb0abc9b0dbda2402d4d831c18718cfb51bf",
+     "subject": "shell completion prioritizes option values over new options",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/shell_completion.py",
+      "tests/test_commands.py",
+      "tests/test_context.py",
+      "tests/test_parser.py",
+      "tests/test_shell_completion.py"
+     ]
+    },
+    {
+     "commit": "721c8b0d58c2b7124cedd33a779626f14cf1b1d2",
+     "parent": "2c70a0c15a3c154c587e351062be66bb75cbf3f2",
+     "subject": "cleandoc for Command help, epilog, and short_help",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "2c70a0c15a3c154c587e351062be66bb75cbf3f2",
+     "parent": "c9c406bebdf2b027864216fb881278a8bfa14bb8",
+     "subject": "Option calls cleandoc on help instead of @option",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "f85a35daa401b1aa2e9303e092890884fd11a890",
+     "parent": "166b31261f55ba3126456bbc2ff9e16142115e56",
+     "subject": "param=None is the same as not passing the param",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "74e7f7079cb31578fa2578f219d93a33cfeb46f8",
+     "parent": "77961478cdaf9cf55c8b15fd1db0681ff75ffcfb",
+     "subject": "command and group decorator parentheses are optional",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "tests/test_command_decorators.py"
+     ]
+    },
+    {
+     "commit": "0ccada0e64dbb42eecea8386b5e4e41146b9b0f6",
+     "parent": "e7cff2a3dcb40df267e8cf92b80396a4875dece8",
+     "subject": "remove utf-8 detection",
+     "source_files": [
+      "src/click/_unicodefun.py",
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_unicodefun.py",
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "9bf84f86bb878d8e337acc562ded3294f2e9a6ea",
+     "parent": "83beb9f24a1af210ca255ca34d7d1bdd71111018",
+     "subject": "fix typos",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "1e561ec5d600b7e1f90b3db3df8421f949f04aaa",
+     "parent": "e3388809b1ccc34984d229a7e63e2257aef70fcf",
+     "subject": "remove duplicate typing imports",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/globals.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/globals.py",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "2814073e04e7811ce0f4cf70d7b23073e876fc72",
+     "parent": "3510c69cf57efb7038a2af4601bada294c2f7907",
+     "subject": "fix new mypy findings",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ],
+     "changed_files": [
+      "setup.cfg",
+      "src/click/core.py",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ]
+    },
+    {
+     "commit": "3510c69cf57efb7038a2af4601bada294c2f7907",
+     "parent": "df6b72d3e079a8bf1f8455486cf7ac6663ea1916",
+     "subject": "update requirements",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py"
+     ]
+    },
+    {
+     "commit": "60a5eafaf5f2a71b2a8a4f93ad1faefb2b8b0f76",
+     "parent": "d88e771a004c34e4b863123333a259b28a2bf8f4",
+     "subject": "remove deprecated get_os_args",
+     "source_files": [
+      "src/click/__init__.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "d88e771a004c34e4b863123333a259b28a2bf8f4",
+     "parent": "51736b9566637351362f1eaeb32ea42aecdec704",
+     "subject": "remove deprecated get_terminal_size",
+     "source_files": [
+      "src/click/__init__.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "src/click/__init__.py",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "99bf3ccfdd245c818362f3b9c505b81a060326ea",
+     "parent": "df114b1eb791dfa1175d138f3a2108bba9bca080",
+     "subject": "update docs for open_file and types.Path",
+     "source_files": [
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/types.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "905b1bfd6e90f0fd6a2d4f0afa08f8ddebc4f488",
+     "parent": "737cf793f5e5625c36e3627250beee34ee285f9d",
+     "subject": "use exception chaining",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/globals.py",
+      "src/click/termui.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/globals.py",
+      "src/click/termui.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "ad52b19c84ab47cf6ec4df25b4e89ac939c3b253",
+     "parent": "b131f71de8bba96e367da7c7e9b5fbf721670e28",
+     "subject": "detect type from flag_value",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/types.py",
+      "tests/test_options.py"
+     ]
+    },
+    {
+     "commit": "0dcfc32faa8020fa57ae7b2c2a409ac979cdd1e6",
+     "parent": "c49a72f63d351ab58cea744ea7168b377f95fac2",
+     "subject": "ProgressBar inherits Generic",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "5295f0402644a1e3748e8c5891638743c5eaa5cc",
+     "parent": "5a74def4c506c044301a79a0dfc00593b047b662",
+     "subject": "fix typing that wasn't available in Python 3.6.0",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/parser.py",
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/parser.py",
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "b3ee5307705549e1d85f7a509b22d8368e68a4b2",
+     "parent": "6143675b5b022f09943579c683337f9ef3e82968",
+     "subject": "remove _winconsole.WindowsChunkedWriter",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_winconsole.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py",
+      "src/click/_winconsole.py"
+     ]
+    },
+    {
+     "commit": "6143675b5b022f09943579c683337f9ef3e82968",
+     "parent": "0103c9570650daa59560baf42ad0a27e57b3157f",
+     "subject": "remove _compat.get_strerror",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "77ce48f8d7d3b64a09741cf53dd2995d668317cf",
+     "parent": "56e79c9675101a46d0865a4f83be780801c4aaa7",
+     "subject": "inline some unneeded constants",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "11b28625b94cabf3a0abaa1aaddc0292e24929a4",
+     "parent": "82a83fda1fafd4a43c67755140555bfd5afbd592",
+     "subject": "refactor type_cast_value",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/types.py",
+      "tests/test_arguments.py",
+      "tests/test_options.py"
+     ]
+    },
+    {
+     "commit": "1167ebe1f2b678b58394332e82675300d4a0299a",
+     "parent": "3f7319081113a0bdfa8fa0b8c4ff018a8f5e5278",
+     "subject": "use os.fsdecode to display paths",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "03e2fee8a99f08976aef0d38cb3fa372a94c928a",
+     "parent": "c0f9c06aa123e75466829bd41985a44a70b6c625",
+     "subject": "mark cli messages for translation",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/exceptions.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/exceptions.py",
+      "src/click/termui.py",
+      "tests/test_imports.py"
+     ]
+    },
+    {
+     "commit": "ee4feaaa99a50831fb52963a08e16c9d3e70aacd",
+     "parent": "08583da150d9df25f1566c7390ebf7fa4a2a9395",
+     "subject": "expand patterns in Windows args",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "2ba2fe0cf80a76e09a6e44c3750034574acd33d0",
+     "parent": "af584b212c25f8479dcedf116f5895ee92c71f2c",
+     "subject": "progress bar shows current item",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "src/click/termui.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "3cc31b10e8187035d81f5c08163ecf15dad0e5ef",
+     "parent": "3018f577cc1d5e7682fd091845df999b86007a6c",
+     "subject": "don't hide fast progress bars",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "src/click/termui.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "e74508119a1e8ba59bf96a45fa1a149cd292a79d",
+     "parent": "69a25da0c0a8a78564f0fef700e1d6e5b21c1e8a",
+     "subject": "progressbar: fix regression with hidden bars",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "src/click/termui.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "06aa862c4530925188436a4481155b09051cf990",
+     "parent": "0805f60cfc7a48b9a951733a81639e7fda430152",
+     "subject": "customize confirmation prompt",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/termui.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "d7fac6e16099005c642f4dcb71d84a091a787073",
+     "parent": "ea3bb6f1bf5db675f2dec0350f57e704da6ea00b",
+     "subject": "always install colorama on Windows",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/termui.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/quickstart.rst",
+      "docs/utils.rst",
+      "examples/colors/README",
+      "examples/colors/colors.py",
+      "examples/colors/setup.py",
+      "examples/termui/setup.py",
+      "requirements/dev.txt",
+      "requirements/tests.in",
+      "requirements/tests.txt",
+      "setup.py",
+      "src/click/_compat.py",
+      "src/click/termui.py",
+      "src/click/utils.py",
+      "tests/test_imports.py"
+     ]
+    },
+    {
+     "commit": "5ab1ac229558b40ac87a16ac80603d0330c2e6e1",
+     "parent": "b28bc4c6439d7b01c011e72c09d80574fe75b85b",
+     "subject": "Deprecate click.get_terminal_size() in favor of stdlib shutil.",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/formatting.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/formatting.py",
+      "src/click/termui.py"
+     ]
+    }
+   ],
+   "fix": [
+    {
+     "commit": "d69d2106d821c43507829100f36774bbb7a1092b",
+     "parent": "af2da1ef9b9f7a5a19b6f77d432459afb699f408",
+     "subject": "fix flake8 finding",
+     "source_files": [
+      "src/click/_compat.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py"
+     ]
+    },
+    {
+     "commit": "af2da1ef9b9f7a5a19b6f77d432459afb699f408",
+     "parent": "bb6a8727aa4aab62e5a388b15c4443fedf422622",
+     "subject": "Fix incorrect passing of flags to re.sub",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "20280d4f76928db0617fbc4c0059fabb42b8d77e",
+     "parent": "56b15be8b843a26a8065c65f8a208eef7b7c05bc",
+     "subject": "fix `group` overload with `cls` arg",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/decorators.py",
+      "tests/typing/typing_group_kw_options.py"
+     ]
+    },
+    {
+     "commit": "449d38f517845f39b0ffd4df64f90403933b0e0e",
+     "parent": "d17dbc2c0faee0017ea2c8d2260e72cb71848f2f",
+     "subject": "Fix types, introduce type tests (#2562)",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "requirements/dev.txt",
+      "requirements/typing.in",
+      "requirements/typing.txt",
+      "setup.cfg",
+      "src/click/decorators.py",
+      "tests/typing/typing_aliased_group.py",
+      "tests/typing/typing_confirmation_option.py",
+      "tests/typing/typing_help_option.py",
+      "tests/typing/typing_options.py",
+      "tests/typing/typing_password_option.py",
+      "tests/typing/typing_simple_example.py",
+      "tests/typing/typing_version_option.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "aa4a38e9aa6970e29942ce3beecdac833f30bdb3",
+     "parent": "850bffe0b9db27f52f6f3f0a66eb6df432ce8bcd",
+     "subject": "fix zsh completion loaded from fpath",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "e002dbc40ceb6a7e78dbe5e5868744690ba3120f",
+     "parent": "eb1d760fb433d08278816d7ba49477ce86b691a7",
+     "subject": "Fix return value and type signature of `shell_completion.add_completion_class` function (#2421)",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py",
+      "tests/test_shell_completion.py"
+     ]
+    },
+    {
+     "commit": "eb1d760fb433d08278816d7ba49477ce86b691a7",
+     "parent": "d19d0def9a2a5979312b705bbfd53725aa1d5081",
+     "subject": "fix minor typo in `make_context` docs (#2381)",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "292a27d7052b085fa40dba55f850279c490f1c6b",
+     "parent": "8e2fbd87148fcb4f814cbf292351532645640d96",
+     "subject": "Fix typo",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "73d7de5f7423eab0673935a5120c65a27fd2804c",
+     "parent": "5a42c3160b499de5ed20d36e679374aed50961a9",
+     "subject": "Fix versionchanged entry for click.Path (#2345)",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "92cebe902aa7f03a89f6b261d897964dd9c5fa43",
+     "parent": "456fbb6b0053fb01bedf90b64999b0a3c645a3cd",
+     "subject": "fix readable path check error message",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "e234cf958d2416d4b20b53ae850c487fed32fa35",
+     "parent": "fb7c6dbab505c319dfcbb882e66f313fcbf06a0f",
+     "subject": "fix(types): decorator typing fails",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "e0033315510510acdba14e880a361ccca091fb4b",
+     "parent": "19be092b6db4e4300e31906498e354ec0adf870c",
+     "subject": "fix ParamType.to_info_dict() with no name",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/shell-completion.rst",
+      "src/click/types.py",
+      "tests/test_info_dict.py"
+     ]
+    },
+    {
+     "commit": "bda6381ad05e3b0d2ed07b1489db80b10eed8bd8",
+     "parent": "e8b350b6662c4b688122567109a848438cf19a66",
+     "subject": "Fix type for `file` argument",
+     "source_files": [
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "f30d0128c9aa854a83decf21b3f5f756f5c91098",
+     "parent": "928ee5b3764eadbe24d7cb3d1d914482a89e13a6",
+     "subject": "Fix typing in click.secho function",
+     "source_files": [
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "03963b2e7de4a9f835534df75f79eea4ee04fcc3",
+     "parent": "490ac01891e726c8b70a700b91da6c137699382a",
+     "subject": "Fix TypeVar for decorators that handle Commands",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "e5f36f3e7e6fcc960691c0b9bf5864c4b34322c5",
+     "parent": "dd3a8654db91bbf28d2f0ec624c6ac3b81218c81",
+     "subject": "Fix typo in docs",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "9bf84f86bb878d8e337acc562ded3294f2e9a6ea",
+     "parent": "83beb9f24a1af210ca255ca34d7d1bdd71111018",
+     "subject": "fix typos",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "2814073e04e7811ce0f4cf70d7b23073e876fc72",
+     "parent": "3510c69cf57efb7038a2af4601bada294c2f7907",
+     "subject": "fix new mypy findings",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ],
+     "changed_files": [
+      "setup.cfg",
+      "src/click/core.py",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ]
+    },
+    {
+     "commit": "05b795c917f4146edfe83b2d08c189886b301785",
+     "parent": "01e4dac0b1f855a54eb923380d6af64171c66f22",
+     "subject": "Fix copy-paste errors in `click.style()`",
+     "source_files": [
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/termui.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "2703f8f37393c0dc7ad4235310fa3a95762f6c9f",
+     "parent": "737cf793f5e5625c36e3627250beee34ee285f9d",
+     "subject": "Fix type annotation for `type` arg",
+     "source_files": [
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "7e6a98f7effee29e304af9e0ed16a01947077c79",
+     "parent": "f40631ba97b7d399fef680291b0fecdc7c1f5151",
+     "subject": "revert path prefix stripping, modify test to work with prefix",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "src/click/types.py",
+      "tests/test_types.py"
+     ]
+    },
+    {
+     "commit": "f40631ba97b7d399fef680291b0fecdc7c1f5151",
+     "parent": "c7c217901d7a68d695b074d9759a272b886e8da1",
+     "subject": "add url to page explaining win32 path prefixes",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "c7c217901d7a68d695b074d9759a272b886e8da1",
+     "parent": "b4581b47748adb982a05f88897c3f3205094eb76",
+     "subject": "strip win32 path prefixes from resolved absolute symlinks",
+     "source_files": [
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "18070584fc0bd34925092b15af3381e9605b5517",
+     "parent": "8967b81b69958c4607a72769c38dbda80d6d7606",
+     "subject": "fix type for show_default, can be str",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "ee56925bc4f5451a125317e183f498e8bd1aecb3",
+     "parent": "da2b658e6185b5ae69abcefe755077336024a5e6",
+     "subject": "Fix is_bool_flag being set to True even if is_flag is False",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_options.py"
+     ]
+    },
+    {
+     "commit": "c159967b474a232b24181da369af47f2f8b978d4",
+     "parent": "ec94dd54c99612fee2315232081866e1a488bb8f",
+     "subject": "Fix help text when using env vars with defaults",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "ec94dd54c99612fee2315232081866e1a488bb8f",
+     "parent": "ba578d7ae304d6e1ff57ab5874d72e34572129c1",
+     "subject": "Fix typo in docstring (change \"appnd\" to \"append\") (#1950)",
+     "source_files": [
+      "src/click/parser.py"
+     ],
+     "changed_files": [
+      "src/click/parser.py"
+     ]
+    },
+    {
+     "commit": "8b48450d5d63c747600e069d4c3e2274f41c8360",
+     "parent": "d09ef712972df060080a43cade589405f777369d",
+     "subject": "Fix typo in docstring (change \"appnd\" to \"append\") (#1950)",
+     "source_files": [
+      "src/click/parser.py"
+     ],
+     "changed_files": [
+      "src/click/parser.py"
+     ]
+    },
+    {
+     "commit": "5295f0402644a1e3748e8c5891638743c5eaa5cc",
+     "parent": "5a74def4c506c044301a79a0dfc00593b047b662",
+     "subject": "fix typing that wasn't available in Python 3.6.0",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/parser.py",
+      "src/click/types.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/parser.py",
+      "src/click/types.py"
+     ]
+    },
+    {
+     "commit": "d48b59be391f9f9bfb41dd62db07e46519d08bfe",
+     "parent": "30e7f76a383b7ddba23f564f96871261d6f8800e",
+     "subject": "fix make_default_short_help max_length, refactor",
+     "source_files": [
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "0d01686fe6be5c335f50098a06b7e847a2753452",
+     "parent": "0dc6d74df5c984ff923f5d17e97bf94a21b3a3cd",
+     "subject": "fix output when using echo_stdin",
+     "source_files": [
+      "src/click/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/testing.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "043511294a9eec59d08e64c351621e790ae74b76",
+     "parent": "6c7624491911f0b18f869e5d0a989506e7b416f8",
+     "subject": "Fixed inconsistency in forwarding params",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_commands.py"
+     ]
+    },
+    {
+     "commit": "4aff02676c0d9628e095731c124b647ed256ee5a",
+     "parent": "b625b9f39082f366dd85ad13024e43c8f5e78b87",
+     "subject": "fix backspace in prompt with readline enabled",
+     "source_files": [
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/termui.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "e74508119a1e8ba59bf96a45fa1a149cd292a79d",
+     "parent": "69a25da0c0a8a78564f0fef700e1d6e5b21c1e8a",
+     "subject": "progressbar: fix regression with hidden bars",
+     "source_files": [
+      "src/click/_termui_impl.py",
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "src/click/termui.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "42ee8a1f6011e0f4a8a19c34a545f3eb7ae978fa",
+     "parent": "8efb348e2bc820aeba60d4cce6939708c6b2b11c",
+     "subject": "fix formatting with empty options_metavar",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_formatting.py"
+     ]
+    },
+    {
+     "commit": "11c286a37d55357b82c7e5db7237544cd79fe25a",
+     "parent": "77cb2574cb98e0afb9bf294b086425501cc051ce",
+     "subject": "fix edit() require_save check for fast editors",
+     "source_files": [
+      "src/click/_termui_impl.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_termui_impl.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "15b4418f630320af3fe9918aaefc0a9270266dfa",
+     "parent": "c3eac6b887ecc2012b28356c229c443a50523f7f",
+     "subject": "Minor typo fix in bash completion template",
+     "source_files": [
+      "src/click/_bashcomplete.py"
+     ],
+     "changed_files": [
+      "src/click/_bashcomplete.py"
+     ]
+    }
+   ],
+   "control": [
+    {
+     "commit": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
+     "parent": "6e1f6d3052b6459fa3e43392d728376c423a7d4c",
+     "subject": "release version 8.1.7",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "3c1529e6bc12118ff5a83b2f81fc52f625367736",
+     "parent": "a260ca6fa7675a87dc55c4c79cebad3de2d9ed6d",
+     "subject": "add back semicolons in fish script",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "d9db70cabdc9cb10cd5584464b8adb9a24545b92",
+     "parent": "22b9b1ce7945518fa7838321d991f5e766bceb32",
+     "subject": "bash version support shows warning instead of error",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "bb6a8727aa4aab62e5a388b15c4443fedf422622",
+     "parent": "ce6e066a4b58dabe18f6ee5d6f55cf9ce303c941",
+     "subject": "start version 8.1.7",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "3793f5b2d79d5999552b970bf17c37588efcf008",
+     "parent": "1a15373bf35e004dbf31826df8d7fe1765aafb77",
+     "subject": "release version 8.1.6",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "56b15be8b843a26a8065c65f8a208eef7b7c05bc",
+     "parent": "aca9f753afd9877ae8ee86609ace18eadf3ea116",
+     "subject": "start version 8.1.6",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "63c171612889102dfae5f7270be78b567cf4251b",
+     "parent": "449d38f517845f39b0ffd4df64f90403933b0e0e",
+     "subject": "release version 8.1.5",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "d17dbc2c0faee0017ea2c8d2260e72cb71848f2f",
+     "parent": "f20395dfe397be7746380bd8768553ce4065752b",
+     "subject": "start version 8.1.5",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "3d873a3f567d1bbcb6fb25f0fbe3c3128488d99d",
+     "parent": "dd691da8028a090657f081b584ce1efb1bb149d2",
+     "subject": "release version 8.1.4",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "4cf7c6cdb10e441da775b4a3a7ee55caec83249e",
+     "parent": "549947111c4af2191dd4b245e1de2c25d20c36d6",
+     "subject": "completion works for expose_value=False",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "ecb99836a44367bad62960045d586e31e4a95766",
+     "parent": "9a536eebd958558c2cd24c17fb66fac112f1ac91",
+     "subject": "echo doesn't fail with no streams",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "daca3cfce4dcc98451362da0785e4db5fd2b1d8a",
+     "parent": "8f019ba54eb6838c182c8bfe9310a8d526602071",
+     "subject": "remove app engine detection",
+     "source_files": [
+      "src/click/_compat.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_compat.py"
+     ]
+    },
+    {
+     "commit": "8f019ba54eb6838c182c8bfe9310a8d526602071",
+     "parent": "af1e8d44d64181484a60dd63044da706bcc13439",
+     "subject": "remove msys2 detection",
+     "source_files": [
+      "src/click/_compat.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/_compat.py"
+     ]
+    },
+    {
+     "commit": "43c2e7f331e78684d2549439c3338335f0ddb854",
+     "parent": "0c8f301d2a28b67451eef872e327ef67e3993ec6",
+     "subject": "format_filename replaces invalid bytes",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/arguments.rst",
+      "src/click/_compat.py",
+      "src/click/exceptions.py",
+      "src/click/types.py",
+      "src/click/utils.py",
+      "tests/conftest.py",
+      "tests/test_types.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "b4df3b9c5bae55f1f49128d68eff138864583faa",
+     "parent": "2a7543e46ac43463354e1f7d30b17ae8332a3907",
+     "subject": "Add `cls` to signature of `argument` and `option`",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "b36e3ede781b388ae8135af61e83269e211acdf1",
+     "parent": "d34d31f6dde4350f9508f0327698f851c595d91c",
+     "subject": "allow multiple=True with flags",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_defaults.py",
+      "tests/test_options.py"
+     ]
+    },
+    {
+     "commit": "7ed114f89a5997736c372faa0fa3b12d2bba377a",
+     "parent": "e4066e1f325088ee42ae7bc0bc6c2e47533ff2c3",
+     "subject": "move command cls setting after assert check",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_command_decorators.py"
+     ]
+    },
+    {
+     "commit": "422e211018e9ef8ff9a840878464d35c4c6519ac",
+     "parent": "df9ad4085d60710b507b54c8fc369ee186eb1d64",
+     "subject": "Do not suppress EOFError/KeyboardInterrupt when standalone is disabled",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_commands.py"
+     ]
+    },
+    {
+     "commit": "589ca314ae8d200ff55263a2c49c8ae6341866f3",
+     "parent": "a4f5450a2541e2f2f8cacf57f50435eb78422f99",
+     "subject": "avoid empty lines if help text is empty",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_commands.py",
+      "tests/test_formatting.py"
+     ]
+    },
+    {
+     "commit": "bcd3faaaaf03933915394f6c24d4f06d22aa8a1d",
+     "parent": "a825ebd79c124022da43694477e24534c46b4f59",
+     "subject": "completions: style improvements for fish completion function",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "0de3704747c1399d019f1d94caeefe20123b6ef0",
+     "parent": "6e704050f1149b00f3b3e7576e25b1e28c76ccf3",
+     "subject": "detect exe name when using shiv/pex",
+     "source_files": [
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/utils.py",
+      "tests/test_utils.py"
+     ]
+    },
+    {
+     "commit": "8924144905dedaa2e43cd7206e7b8d2de84e1a9f",
+     "parent": "dcdca58646df51f502dc96274b05cee74b57b545",
+     "subject": "flush output on clear() to improve responsiveness",
+     "source_files": [
+      "src/click/termui.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/termui.py"
+     ]
+    },
+    {
+     "commit": "36e3765f792d9619ab2d63faefd4382b9f450d84",
+     "parent": "bdb81e4693c3ca79ab85149964022933235234bf",
+     "subject": "normalize dots in prog_name for completion",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py"
+     ]
+    },
+    {
+     "commit": "ab7b6c3001763e487aedc048ea4df3a37e74b15d",
+     "parent": "936b47708cbe90fff491a24b43809bf506eaa716",
+     "subject": "wrap BASH_VERSION to handle special characters",
+     "source_files": [
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "b5280c608574d867e5e76c8f295c99868f18d763",
+     "parent": "fcdedf82e8515f1046893248a9295fa012854f09",
+     "subject": "update dependencies",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      ".github/workflows/tests.yaml",
+      ".pre-commit-config.yaml",
+      "requirements/build.txt",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "setup.cfg",
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "ac15816133ef12001ebf6d6aecb7a3cf14487761",
+     "parent": "9affb021ff0fc71a676511226ac3cf721d2f9e3c",
+     "subject": "update dependencies",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "requirements/build.txt",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "setup.cfg",
+      "src/click/decorators.py",
+      "tests/test_termui.py"
+     ]
+    },
+    {
+     "commit": "25dfd27c302e212afb436efab2f9b52099f97683",
+     "parent": "5f802ac459557685bd6748c6cc75cb4a4a82617e",
+     "subject": "affect vs effect, simple mistake (#2298)",
+     "source_files": [
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "77838f86fa647ca82f53a88d6495dfc009b24c41",
+     "parent": "8473b3ced140296b9dd869957e0026eebd94634b",
+     "subject": "Docs: add references for varargs and kwargs (#2281)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/decorators.py"
+     ]
+    },
+    {
+     "commit": "8473b3ced140296b9dd869957e0026eebd94634b",
+     "parent": "e002dbc40ceb6a7e78dbe5e5868744690ba3120f",
+     "subject": "Use t.Mapping not t.Dict for parameters (#2265)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/shell_completion.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "src/click/shell_completion.py"
+     ]
+    },
+    {
+     "commit": "d19d0def9a2a5979312b705bbfd53725aa1d5081",
+     "parent": "6e05e1fa1c2804410f9916b27edc07076e3b156d",
+     "subject": "Correct some typos (#2496)",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/parser.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/parser.py"
+     ]
+    },
+    {
+     "commit": "a63679e77f9be2eb99e2f0884d617f9635a485e2",
+     "parent": "085f414a046bd5f15dfa08bedd0aa50f25410520",
+     "subject": "Type hinting: improve decorator annotations",
+     "source_files": [
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/core.py",
+      "src/click/decorators.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "085f414a046bd5f15dfa08bedd0aa50f25410520",
+     "parent": "a1093bbe0dae00eea8342247a0c2739b07a6acd8",
+     "subject": "Type hinting: Low-hanging fruit improvements",
+     "source_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ],
+     "changed_files": [
+      "src/click/_compat.py",
+      "src/click/_termui_impl.py",
+      "src/click/core.py",
+      "src/click/types.py",
+      "src/click/utils.py"
+     ]
+    },
+    {
+     "commit": "a6c7ee060b02eaa62fd15264a669220914cfad4c",
+     "parent": "b6b5d6280c40b8963b4fa607d00ee0629cbd8a9e",
+     "subject": "start version 8.1.4",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "06a2c0f2ec24ef0a3e5ee97ce9ccbcc51ab49d3a",
+     "parent": "bd8735ba43ce5349f4d6d17aae880cffab537519",
+     "subject": "update dependencies",
+     "source_files": [
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "src/click/termui.py",
+      "src/click/testing.py"
+     ]
+    },
+    {
+     "commit": "5ec77494bdf2c294d3b082bed429ebce78321431",
+     "parent": "2ac3211cb79a63bae8e6f0441136b432ec2126bc",
+     "subject": "release version 8.1.3",
+     "source_files": [
+      "src/click/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/__init__.py"
+     ]
+    },
+    {
+     "commit": "daa2d8e44332f66f09be83a9872218fde318bb8d",
+     "parent": "afdfb120fff5cb5f8d0184d411369f5dddaed5b3",
+     "subject": "disallow use of is_flag and multiple in option",
+     "source_files": [
+      "src/click/core.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/core.py",
+      "tests/test_options.py"
+     ]
+    },
+    {
+     "commit": "4695370071b543f6261fcaa26705323ae064050b",
+     "parent": "6f35455ddf500d57aa746a4dc06d812ca535dd0e",
+     "subject": "use verbose Callable for @command and @group",
+     "source_files": [
+      "src/click/decorators.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/click/decorators.py"
+     ]
+    }
+   ]
+  },
+  "flask": {
+   "path": "/Users/darrenfrost/nm-bench/review-drift/repos/flask",
+   "pinned": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
+   "subdir": "src/flask",
+   "commits_walked": 600,
+   "review": [
+    {
+     "commit": "5fdce4c331ac530280cc941179d364a07f4a1088",
+     "parent": "adb7dd99c295a28726c8d818fba54c7b3f958ecc",
+     "subject": "Don't set the cli attribute in the sansio scaffold",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/scaffold.py"
+     ]
+    },
+    {
+     "commit": "87d5f5b9a9697434e6d972b021201105eabb54e6",
+     "parent": "d5e321b792cd6f3cd7b072d175f47eacbd5ee14f",
+     "subject": "update project files (#5457)",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/config.py",
+      "src/flask/json/tag.py"
+     ],
+     "changed_files": [
+      ".devcontainer/on-create-command.sh",
+      ".editorconfig",
+      ".github/ISSUE_TEMPLATE/bug-report.md",
+      ".github/ISSUE_TEMPLATE/config.yml",
+      ".github/SECURITY.md",
+      ".github/dependabot.yml",
+      ".github/pull_request_template.md",
+      ".github/workflows/lock.yaml",
+      ".github/workflows/publish.yaml",
+      ".github/workflows/tests.yaml",
+      ".gitignore",
+      ".pre-commit-config.yaml",
+      ".readthedocs.yaml",
+      "LICENSE.txt",
+      "README.md",
+      "README.rst",
+      "docs/conf.py",
+      "docs/index.rst",
+      "docs/license.rst",
+      "docs/web-security.rst",
+      "pyproject.toml",
+      "requirements/build.txt",
+      "requirements/dev.in",
+      "requirements/dev.txt",
+      "requirements/docs.in",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.in",
+      "requirements/typing.txt",
+      "src/flask/cli.py",
+      "src/flask/config.py",
+      "src/flask/json/tag.py",
+      "tests/test_json.py",
+      "tests/typing/typing_app_decorators.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "08d3185e87cfeccc4bf4d26ee5c4c0dfd4ec8564",
+     "parent": "6000e80acf931b05b4911c3fa7f3ba33e2b80e64",
+     "subject": "update pre-commit hooks",
+     "source_files": [
+      "src/flask/ctx.py",
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py"
+     ]
+    },
+    {
+     "commit": "54e05a282428e9a44dbd414ca70231a83ebd710d",
+     "parent": "14232513fd618be02e0ab4b223f3105fcdde3cfe",
+     "subject": "use ruff linter and formatter",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/json/provider.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sessions.py",
+      "src/flask/views.py"
+     ],
+     "changed_files": [
+      ".flake8",
+      ".gitignore",
+      ".pre-commit-config.yaml",
+      "examples/celery/pyproject.toml",
+      "examples/javascript/js_example/views.py",
+      "examples/javascript/pyproject.toml",
+      "examples/tutorial/flaskr/__init__.py",
+      "examples/tutorial/flaskr/auth.py",
+      "examples/tutorial/flaskr/blog.py",
+      "examples/tutorial/pyproject.toml",
+      "pyproject.toml",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/json/provider.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sessions.py",
+      "src/flask/views.py",
+      "tests/test_appctx.py",
+      "tests/test_apps/subdomaintestmodule/__init__.py",
+      "tests/test_basic.py",
+      "tests/test_blueprints.py",
+      "tests/test_signals.py",
+      "tests/test_testing.py",
+      "tests/test_views.py",
+      "tests/typing/typing_app_decorators.py",
+      "tests/typing/typing_route.py"
+     ]
+    },
+    {
+     "commit": "9f9550247a2798b9dcc28081c15e266442f4e28a",
+     "parent": "02736640095ed6d5a4a409a9658eaca373fd1d48",
+     "subject": "bump werkzeug 2.3.7",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "src/flask/cli.py",
+      "src/flask/testing.py",
+      "tests/test_cli.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "5bb30270d2e68d8d9278ac6f5abf67049acba662",
+     "parent": "02736640095ed6d5a4a409a9658eaca373fd1d48",
+     "subject": "bump werkzeug 2.3.7",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "src/flask/cli.py",
+      "src/flask/testing.py",
+      "tests/test_cli.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "3f6b243cec6859185ea4064e84b33c07cc7febf6",
+     "parent": "72c85e80c8ef9e6d5b5644f7bb23cdc175ca3873",
+     "subject": "Support async template context processors",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "a64588f87a2bd7ba557814ec039e3b2af2ce842d",
+     "parent": "0e0e8ddcdc2bd572cdecd371bc0f309ac62ee9c4",
+     "subject": "Move file to sansio",
+     "source_files": [
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/blueprints.py",
+      "src/flask/sansio/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/blueprints.py",
+      "src/flask/sansio/scaffold.py"
+     ]
+    },
+    {
+     "commit": "04994df59f2f642e52ba46ca656088bcdb931262",
+     "parent": "6a12b191f7058a179237b4b3dfc146e559777d9b",
+     "subject": "remove deprecated code",
+     "source_files": [
+      "src/flask/__init__.py",
+      "src/flask/app.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/signals.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "src/flask/__init__.py",
+      "src/flask/app.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/signals.py"
+     ]
+    },
+    {
+     "commit": "bda295d37fa3809c95a93d01dd605d0222109889",
+     "parent": "c8cf4694c60f0d81809468a1b45ec730496cc546",
+     "subject": "fix use of importlib.util.find_spec",
+     "source_files": [
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "84e11a1e827c0f55f9b9ee15952eddcf8a6492e0",
+     "parent": "367e1df785a71e9004d9a87a221652bfc5a964ac",
+     "subject": "use importlib instead of pkgutil",
+     "source_files": [
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "2e8fe7b2f2b541a60c90c625446647b22c5cacc2",
+     "parent": "9659b11a45281662c6aa1194dc95b46b1f566ba6",
+     "subject": "drop support for python 3.7",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      ".github/workflows/tests.yaml",
+      ".pre-commit-config.yaml",
+      "CHANGES.rst",
+      "docs/extensiondev.rst",
+      "docs/installation.rst",
+      "examples/celery/pyproject.toml",
+      "pyproject.toml",
+      "requirements/tests.in",
+      "requirements/tests.txt",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/sessions.py",
+      "tests/typing/typing_route.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "8239765a4410d13d489e299a99e4a4c6951e190b",
+     "parent": "a05c0c6b7232aac38899234a6c4f071f9005a502",
+     "subject": "allow async signal receivers",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py"
+     ]
+    },
+    {
+     "commit": "9cb1a7a52d7927071e2b737d52f902f006969e82",
+     "parent": "e1e4e82096efbf25aa3c65b706aec60f1b00dec7",
+     "subject": "blinker is required, signals are always available",
+     "source_files": [
+      "src/flask/__init__.py",
+      "src/flask/signals.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "docs/appcontext.rst",
+      "docs/installation.rst",
+      "docs/reqcontext.rst",
+      "docs/signals.rst",
+      "examples/javascript/pyproject.toml",
+      "pyproject.toml",
+      "requirements/build.txt",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "requirements/tests.in",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "src/flask/__init__.py",
+      "src/flask/signals.py",
+      "tests/test_signals.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "c24f8c8199f8ceda7a7cfb5e91773eba595f5b67",
+     "parent": "fa0ceb62f26579c3c7d9e18926af3e6f3e6e425c",
+     "subject": "no cookie domain by default",
+     "source_files": [
+      "src/flask/helpers.py",
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/config.rst",
+      "src/flask/helpers.py",
+      "src/flask/sessions.py",
+      "tests/test_basic.py"
+     ]
+    },
+    {
+     "commit": "c4b39ba2f3fede0555f18fc03b0f2499bb0d424b",
+     "parent": "e7f8ae016696a6224d1db5c121bcf0282d528da8",
+     "subject": "replace werkzeug.urls with urllib.parse",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/testing.py"
+     ]
+    },
+    {
+     "commit": "4256fc63044fa0d9c2135443461689b1adaf386d",
+     "parent": "c690f529f28a8fd7ecdac90939944475613760a5",
+     "subject": "deprecate locked_cached_property",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "ab93222bd6d4ea26e3aa832a0409489530f3f5e0",
+     "parent": "d5527264f0506504fd2fd400192c8f696ce6d979",
+     "subject": "point to app-scoped blueprint methods",
+     "source_files": [
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "09112cfc477a270f4b2990e1daf39db1dbe30e98",
+     "parent": "d9e56c7f4b04b050b28cf90778f44dcb2e0287f4",
+     "subject": "template_folder type allows pathlib",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "d178653b5f7a5ee2ba15e215ce60caeeb9ed82e1",
+     "parent": "9f99425aaf3433c892d0aeb941427f0766b02e2d",
+     "subject": "update requirements",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/testing.py",
+      "src/flask/wrappers.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "requirements/dev.txt",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.txt",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/testing.py",
+      "src/flask/wrappers.py",
+      "tests/typing/typing_app_decorators.py"
+     ]
+    },
+    {
+     "commit": "714ccefeca33db9e87e8ef4abd0008af05c32a4d",
+     "parent": "9a1b25fce4ddd553d7cba01bab3df5841a24aeff",
+     "subject": "show deprecation warning on json_encoder/decoder access",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/json/provider.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/json/provider.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "bfdd37110c67ebeb42061fb43cf684b05291241f",
+     "parent": "98ca00d54532bfdf858fe663f8fb3cc260c2048b",
+     "subject": "deprecate config attributes",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py",
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py",
+      "src/flask/sessions.py",
+      "tests/test_config.py",
+      "tests/test_templating.py"
+     ]
+    },
+    {
+     "commit": "ef95998d79eed3b8350d8db825e3d98f25c179f2",
+     "parent": "4c08e3a2ba3d42fbee63577bceedfe325f51b81d",
+     "subject": "deprecate FLASK_ENV",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "src/flask/helpers.py",
+      "tests/test_helpers.py"
+     ]
+    },
+    {
+     "commit": "5d8e35653fca0d7ee01519d556c7851089de82ea",
+     "parent": "095651be9eec58ddb0c2eb6158318b1c703c67c5",
+     "subject": "refactor lazy loading",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/quickstart.rst",
+      "docs/server.rst",
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "tests/test_cli.py"
+     ]
+    },
+    {
+     "commit": "91044c4d769efa7f20455e1b70457a7da95c26d8",
+     "parent": "979e0adbacfb3c5cc1ac678b4ef5373dadde83d3",
+     "subject": "Change _cv_req -> _cv_request",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py",
+      "src/flask/testing.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "e0dad454810dd081947d3ca2ff376c5096185698",
+     "parent": "82c2e0366ce6b74a3786a64631ce58b85b3a7d4e",
+     "subject": "update docs about contexts",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "docs/api.rst",
+      "docs/appcontext.rst",
+      "docs/extensiondev.rst",
+      "docs/patterns/sqlite3.rst",
+      "docs/reqcontext.rst",
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py"
+     ]
+    },
+    {
+     "commit": "d597db67ded68d4aedf42b9d1d4570573fb79cd6",
+     "parent": "0b2f809f9b56861dae3ae5154d73b4afaf632a0a",
+     "subject": "contexts no longer use LocalStack",
+     "source_files": [
+      "src/flask/__init__.py",
+      "src/flask/ctx.py",
+      "src/flask/globals.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py",
+      "src/flask/ctx.py",
+      "src/flask/globals.py",
+      "src/flask/testing.py"
+     ]
+    },
+    {
+     "commit": "9b44bf2818d8e3cde422ad7f43fb33dfc6737289",
+     "parent": "d7482cd765351e7495bfce45f9fb55732e91ab3a",
+     "subject": "Improve decorator typing (#4676)",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py",
+      "src/flask/views.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py",
+      "src/flask/views.py",
+      "tests/typing/typing_route.py"
+     ]
+    },
+    {
+     "commit": "ca2bfbb0ac66fbbeeedbf6bbe317bee45cb23d29",
+     "parent": "1626aff602e3316642e69927333041370095c321",
+     "subject": "Support returning list as JSON",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py",
+      "tests/test_basic.py"
+     ]
+    },
+    {
+     "commit": "84c722044ad03f7f5384f5314c8350b3a13d8dfa",
+     "parent": "3635583ce27f70a3d9efd1e2212d5efc1d256333",
+     "subject": "new debug/test preserve context implementation",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/config.rst",
+      "docs/reqcontext.rst",
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py",
+      "tests/test_basic.py",
+      "tests/test_signals.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "5544d09477af3221d988ec18b086930c2d9e67cd",
+     "parent": "ab36542260c61f178b6e8f61312b706ac4c5f73e",
+     "subject": "re-add flag to skip unguarded app.run from CLI",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "tests/test_cli.py"
+     ]
+    },
+    {
+     "commit": "46433e9807a1c960d6b2bb0e125cf16a90167d97",
+     "parent": "762382e436062183b1e1fa6f3bda594090a452e7",
+     "subject": "add generate_template and generate_template_string functions",
+     "source_files": [
+      "src/flask/__init__.py",
+      "src/flask/templating.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "docs/patterns/streaming.rst",
+      "docs/templating.rst",
+      "src/flask/__init__.py",
+      "src/flask/templating.py",
+      "tests/test_templating.py"
+     ]
+    },
+    {
+     "commit": "762382e436062183b1e1fa6f3bda594090a452e7",
+     "parent": "7f2a0f4806e40fb5c139b5b20ca443948ce1f4dd",
+     "subject": "view functions can return generators as responses directly",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/typing.py",
+      "tests/test_basic.py",
+      "tests/typing/typing_route.py"
+     ]
+    },
+    {
+     "commit": "99fa3c36abc03cd5b3407df34dce74e879ea377a",
+     "parent": "fe4003b3c998fde4c9ad8b2340f773f50079ede1",
+     "subject": "add --app, --env, --debug, and --env-file CLI options",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py",
+      "src/flask/helpers.py"
+     ]
+    },
+    {
+     "commit": "4f03a769d44f6740490dd4ddf70e094c12a6090c",
+     "parent": "97298e06fe19298c3ff9d2e0ed9ba70bb3fda2c8",
+     "subject": "edit some cli messages",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "src/flask/debughelpers.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/cli.py",
+      "src/flask/debughelpers.py"
+     ]
+    },
+    {
+     "commit": "96c97dec095f204b8a557c5ea804afdd329e3c43",
+     "parent": "7a2d5fb6df1f2c066b94dd88686137353ada9cc6",
+     "subject": "deprecate before_first_request",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "tests/test_async.py",
+      "tests/test_basic.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "3351a8677e5bd1e1b8cfe2860b73b3422cde4f31",
+     "parent": "81be290ec8889c157c84bc7ce857f883396c5daf",
+     "subject": "add errorhandler type check tests",
+     "source_files": [
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py",
+      "tests/typing/typing_error_handler.py"
+     ]
+    },
+    {
+     "commit": "81be290ec8889c157c84bc7ce857f883396c5daf",
+     "parent": "8c6f1d96ded2a22429b1ee7da6c3870cb140b587",
+     "subject": "view function is actually type checked",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py",
+      "src/flask/typing.py",
+      "tests/typing/typing_route.py"
+     ]
+    },
+    {
+     "commit": "61f62e6005f72c44a90026e2589b6bc5234f2f24",
+     "parent": "8cb950671f39c64707b6aaebfc60d7a8f1157da5",
+     "subject": "access flask types through namespace alias",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/views.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/views.py"
+     ]
+    },
+    {
+     "commit": "a406c297aafa28074d11ec6fd27c246c70418cb4",
+     "parent": "eb36135cfe6a17350617e47b70b9ad383206eded",
+     "subject": "apply setupmethod consistently",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/scaffold.py"
+     ]
+    }
+   ],
+   "fix": [
+    {
+     "commit": "1af8f95785b85d0937153ee63d504c0b51934d80",
+     "parent": "3435d2ff1589eb0c1a85cc294a20985910a1a606",
+     "subject": "fix super call in list comprehension",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py",
+      "tests/test_cli.py"
+     ]
+    },
+    {
+     "commit": "ecc057dd4857e655f0844b781899a917852042a4",
+     "parent": "3207af8827d4162ef5841249c46fbb9da043c551",
+     "subject": "fix jinja_loader annotation",
+     "source_files": [
+      "src/flask/sansio/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/sansio/scaffold.py"
+     ]
+    },
+    {
+     "commit": "1d5abfadd7132c9a78e14e5ba6c07aed47115280",
+     "parent": "b97165db75c6f4e99c3307b4a5a1f3b0d9f4de25",
+     "subject": "Fixing issue 5342: 'The double quote is missing in the string'",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py"
+     ]
+    },
+    {
+     "commit": "4104f29956b16f3e351462651ec3c6cc5a0dd069",
+     "parent": "66743d4f9d865775258c845db339d3fcccd016b5",
+     "subject": "type hint fix for flask.send_file",
+     "source_files": [
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/helpers.py"
+     ]
+    },
+    {
+     "commit": "bda295d37fa3809c95a93d01dd605d0222109889",
+     "parent": "c8cf4694c60f0d81809468a1b45ec730496cc546",
+     "subject": "fix use of importlib.util.find_spec",
+     "source_files": [
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "9532cba45d2339e90ebf04f178b1e4f2064e7328",
+     "parent": "0bc7356ce1ae11e633426902aba76d525f4523da",
+     "subject": "fix mypy finding",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "0ec9192cf25f5187d6521f2539489fa8d55336bb",
+     "parent": "345f18442ceb29f9e365af99fc85bdc5986323d2",
+     "subject": "fix importing Markup from flask",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "cabda5935322d75e7aedb3ee6d59fb7ab62bd674",
+     "parent": "d7b6c1f6703df405c69da45e7e0ba3d1aed512ce",
+     "subject": "Ensure that blueprint subdomains suffix-chain",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/blueprints.rst",
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "d7b6c1f6703df405c69da45e7e0ba3d1aed512ce",
+     "parent": "fa1ee7066807c21256e90089731c548b313394d2",
+     "subject": "Fix subdomain inheritance for nested blueprints.",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "bd26928fdb2476fca62f0e621e8f2870250ac2bc",
+     "parent": "4bc0e4943dfa637361aec2bb18dc9e1fabeaad12",
+     "subject": "Prefer flask run --debug in docs",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "docs/_static/pycharm-run-config.png",
+      "docs/cli.rst",
+      "docs/config.rst",
+      "docs/debugging.rst",
+      "docs/quickstart.rst",
+      "docs/server.rst",
+      "docs/tutorial/factory.rst",
+      "examples/tutorial/README.rst",
+      "src/flask/cli.py"
+     ]
+    },
+    {
+     "commit": "4bc0e4943dfa637361aec2bb18dc9e1fabeaad12",
+     "parent": "79032ca5f1c4747e5aeaa193bdeb2e4eae410ea6",
+     "subject": "Add --debug option to flask run",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py"
+     ]
+    },
+    {
+     "commit": "0d8c8ba71bc6362e6ea9af08146dc97e1a0a8abc",
+     "parent": "9c3deeee963e62dfb60c9343fad4ec2ec752fdba",
+     "subject": "Fix docstring of test_request_context (#4821)",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "746455d1038fd5479f396cbf2d19b48edfeb8290",
+     "parent": "e0c157f7ee99bde3376e456a914bb07260eb6017",
+     "subject": "Fix misrendered docstring",
+     "source_files": [
+      "src/flask/config.py"
+     ],
+     "changed_files": [
+      "src/flask/config.py"
+     ]
+    },
+    {
+     "commit": "00b07c863ec147256b68f71c3fe9b6b2f9dbe6bc",
+     "parent": "a1c478bc93d3dc018a6e7a1ba3cf5409553c9df3",
+     "subject": "fix typo",
+     "source_files": [
+      "src/flask/globals.py"
+     ],
+     "changed_files": [
+      "src/flask/globals.py"
+     ]
+    },
+    {
+     "commit": "a6a7a57380cd8f7410753c3b819ba6d09198d8c9",
+     "parent": "4984753dbf5a247f46e2903011c981d0709973ff",
+     "subject": "fix default value of app.env",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "095651be9eec58ddb0c2eb6158318b1c703c67c5",
+     "parent": "02a08512527f997e43d1c01d03d4d473cab3b239",
+     "subject": "fix has_app_context and has_request_context",
+     "source_files": [
+      "src/flask/ctx.py"
+     ],
+     "changed_files": [
+      "src/flask/ctx.py"
+     ]
+    },
+    {
+     "commit": "84c722044ad03f7f5384f5314c8350b3a13d8dfa",
+     "parent": "3635583ce27f70a3d9efd1e2212d5efc1d256333",
+     "subject": "new debug/test preserve context implementation",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/config.rst",
+      "docs/reqcontext.rst",
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/scaffold.py",
+      "src/flask/testing.py",
+      "tests/test_basic.py",
+      "tests/test_signals.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "99fa3c36abc03cd5b3407df34dce74e879ea377a",
+     "parent": "fe4003b3c998fde4c9ad8b2340f773f50079ede1",
+     "subject": "add --app, --env, --debug, and --env-file CLI options",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py",
+      "src/flask/helpers.py"
+     ]
+    },
+    {
+     "commit": "3ba37d2afe6511c3f3153248f7342174bea5b131",
+     "parent": "88bcf78439b66b5fcba9f4d3a1c56307f98dbf1d",
+     "subject": "fix uninstalled package tests under tox",
+     "source_files": [
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/scaffold.py",
+      "tests/test_instance_config.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "8ddbad9ccdc176b9d57a4aff0076c1c58c455318",
+     "parent": "50374e3cfe815acd24fd390c861561a0dd17bfbb",
+     "subject": "Fix linting error.",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "src/flask/cli.py"
+     ]
+    },
+    {
+     "commit": "eede1a3685e21deaeb6686e9de9b76a73b6a510c",
+     "parent": "69f71b4d94006678a2463f76a4504208d195c367",
+     "subject": "fix annotation for json.loads",
+     "source_files": [
+      "src/flask/json/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/json/__init__.py"
+     ]
+    },
+    {
+     "commit": "cd4ab005a92ff996e9104c92017fe1e6daeccd46",
+     "parent": "41aaaf7fa07f28ef15fd1d343142e96440889a8b",
+     "subject": "fix typing",
+     "source_files": [
+      "src/flask/wrappers.py"
+     ],
+     "changed_files": [
+      "src/flask/wrappers.py"
+     ]
+    },
+    {
+     "commit": "41aaaf7fa07f28ef15fd1d343142e96440889a8b",
+     "parent": "2f5a2ab82ee17f5e14b8ecf0a4b3b07ceafeee98",
+     "subject": "clean up unused function from prefixed_env pr",
+     "source_files": [
+      "src/flask/config.py"
+     ],
+     "changed_files": [
+      "src/flask/config.py"
+     ]
+    },
+    {
+     "commit": "4eb5e9455b2a8f15f3dc5065a47f8e43ac47e539",
+     "parent": "08a283af5efc999d4f1e29275317a5c0c05c6f7b",
+     "subject": "more from_prefixed_env features",
+     "source_files": [
+      "src/flask/config.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/config.rst",
+      "src/flask/config.py",
+      "tests/test_config.py"
+     ]
+    },
+    {
+     "commit": "6f79cb8a23467aa01f94f6ad53790f468ba77c76",
+     "parent": "b6a8ccd2cf65939401fe4ccb6b550d2b19423b06",
+     "subject": "Fix typing on `app.session_interface`",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "633449a36c959d25577799eb3da76005a803d5cd",
+     "parent": "7b0c82dfdc867641dd6e1b200f735bffd66e4c12",
+     "subject": "fix error message",
+     "source_files": [
+      "src/flask/ctx.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/ctx.py"
+     ]
+    },
+    {
+     "commit": "46b39e2698697408c6f8f8693e526cd1bb085684",
+     "parent": "372066983fb206d4871a4a98c8db8b3953ce4394",
+     "subject": "fix errorhandler type check",
+     "source_files": [
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "166a2a6207027bff07fdfc5590ce04f9b37e9e8f",
+     "parent": "4346498c85848c53843b810537b83a8f6124c9d3",
+     "subject": "Fix callback order for nested blueprints",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "22933a8cb424ffd65f2bec5bbfdbfa7e42105470",
+     "parent": "56c8bddf6b3daea411dde9917a3cc47edcc5a61e",
+     "subject": "fix docs for Flask.test_client_class",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "aa1d34dc51fc63dabc46f388822ba73b15d3ef97",
+     "parent": "24aab7a08d0b3f40d9fc9e49706854ef8be7a05f",
+     "subject": "Fix grammatical error (#4268)",
+     "source_files": [
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "6e1b72096d5ae1e2cc4d8592ff8271b62548d9cf",
+     "parent": "7023145f797573b2386de90bd81ac67eced93b47",
+     "subject": "Fix typo in docs",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "a44c7228600044f530856a33c7da147c528644ff",
+     "parent": "399b851ed78ed985a222822114a01961c087f8fd",
+     "subject": "Fix registering a blueprint twice with differing names",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "8e589daaf2cec6a10262b8ff88801127f2fa14fd",
+     "parent": "a960236117442bec67f89c30dfa014e05483da5a",
+     "subject": "Fix typing of jinja decorators (#4109)",
+     "source_files": [
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "a960236117442bec67f89c30dfa014e05483da5a",
+     "parent": "f7adb2c813c5c10dcab5bc81ee173a6f9fbd406a",
+     "subject": "Fix type annotation for `before_request` and `before_app_request` decorators",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "3257b7574e7f010686a617197e0fb4596986f7f7",
+     "parent": "714b0a467acab54091d8aeb73403d808abfbcf5b",
+     "subject": "Fix blueprint renaming",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "714b0a467acab54091d8aeb73403d808abfbcf5b",
+     "parent": "9409be6e34e153bfdb0aac2c9eb7f60110109172",
+     "subject": "Fix blueprint self registration",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "c2920e2bd98cdb3dcccc2868c25b695d4780c620",
+     "parent": "141fde1d8ec8663b4be98777750d2f58c6fe44ad",
+     "subject": "Bugfix allow blueprints to be registered with a different name",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "141fde1d8ec8663b4be98777750d2f58c6fe44ad",
+     "parent": "99afbb277d25d3b052e00b9a8da216054d51d62a",
+     "subject": "Bugfix blueprint naming",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/wrappers.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/wrappers.py"
+     ]
+    },
+    {
+     "commit": "99afbb277d25d3b052e00b9a8da216054d51d62a",
+     "parent": "a541c2ac8b05c2b23e11bd8540088fce1abc2373",
+     "subject": "Fix blueprint nested url_prefix",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    },
+    {
+     "commit": "6fbdeb80c76b8a698ab366d21ccd786731b17361",
+     "parent": "f64fff64762c96b4ec1752f9a4e261fdc2ba4e33",
+     "subject": "Fix nested blueprint url_prefix",
+     "source_files": [
+      "src/flask/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/blueprints.py",
+      "tests/test_blueprints.py"
+     ]
+    }
+   ],
+   "control": [
+    {
+     "commit": "5fdce4c331ac530280cc941179d364a07f4a1088",
+     "parent": "adb7dd99c295a28726c8d818fba54c7b3f958ecc",
+     "subject": "Don't set the cli attribute in the sansio scaffold",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/blueprints.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/scaffold.py"
+     ]
+    },
+    {
+     "commit": "db461112c70d5f2bf93c7a6ac27eeb665c232dd0",
+     "parent": "7320e311a0a3f190351173f8be90cab31dadbf73",
+     "subject": "access sha1 lazily",
+     "source_files": [
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/sessions.py"
+     ]
+    },
+    {
+     "commit": "87d5f5b9a9697434e6d972b021201105eabb54e6",
+     "parent": "d5e321b792cd6f3cd7b072d175f47eacbd5ee14f",
+     "subject": "update project files (#5457)",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/config.py",
+      "src/flask/json/tag.py"
+     ],
+     "changed_files": [
+      ".devcontainer/on-create-command.sh",
+      ".editorconfig",
+      ".github/ISSUE_TEMPLATE/bug-report.md",
+      ".github/ISSUE_TEMPLATE/config.yml",
+      ".github/SECURITY.md",
+      ".github/dependabot.yml",
+      ".github/pull_request_template.md",
+      ".github/workflows/lock.yaml",
+      ".github/workflows/publish.yaml",
+      ".github/workflows/tests.yaml",
+      ".gitignore",
+      ".pre-commit-config.yaml",
+      ".readthedocs.yaml",
+      "LICENSE.txt",
+      "README.md",
+      "README.rst",
+      "docs/conf.py",
+      "docs/index.rst",
+      "docs/license.rst",
+      "docs/web-security.rst",
+      "pyproject.toml",
+      "requirements/build.txt",
+      "requirements/dev.in",
+      "requirements/dev.txt",
+      "requirements/docs.in",
+      "requirements/docs.txt",
+      "requirements/tests.txt",
+      "requirements/typing.in",
+      "requirements/typing.txt",
+      "src/flask/cli.py",
+      "src/flask/config.py",
+      "src/flask/json/tag.py",
+      "tests/test_json.py",
+      "tests/typing/typing_app_decorators.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "08d3185e87cfeccc4bf4d26ee5c4c0dfd4ec8564",
+     "parent": "6000e80acf931b05b4911c3fa7f3ba33e2b80e64",
+     "subject": "update pre-commit hooks",
+     "source_files": [
+      "src/flask/ctx.py",
+      "src/flask/helpers.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py"
+     ]
+    },
+    {
+     "commit": "700fc7d928b7a625b04e6865b3eb282043e90f7d",
+     "parent": "c275573147b426fbe1a37c6bce143f7895b603b2",
+     "subject": "untag without object_hook",
+     "source_files": [
+      "src/flask/json/tag.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/json/tag.py"
+     ]
+    },
+    {
+     "commit": "54e05a282428e9a44dbd414ca70231a83ebd710d",
+     "parent": "14232513fd618be02e0ab4b223f3105fcdde3cfe",
+     "subject": "use ruff linter and formatter",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/json/provider.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sessions.py",
+      "src/flask/views.py"
+     ],
+     "changed_files": [
+      ".flake8",
+      ".gitignore",
+      ".pre-commit-config.yaml",
+      "examples/celery/pyproject.toml",
+      "examples/javascript/js_example/views.py",
+      "examples/javascript/pyproject.toml",
+      "examples/tutorial/flaskr/__init__.py",
+      "examples/tutorial/flaskr/auth.py",
+      "examples/tutorial/flaskr/blog.py",
+      "examples/tutorial/pyproject.toml",
+      "pyproject.toml",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/json/provider.py",
+      "src/flask/sansio/app.py",
+      "src/flask/sessions.py",
+      "src/flask/views.py",
+      "tests/test_appctx.py",
+      "tests/test_apps/subdomaintestmodule/__init__.py",
+      "tests/test_basic.py",
+      "tests/test_blueprints.py",
+      "tests/test_signals.py",
+      "tests/test_testing.py",
+      "tests/test_views.py",
+      "tests/typing/typing_app_decorators.py",
+      "tests/typing/typing_route.py"
+     ]
+    },
+    {
+     "commit": "438edcdf01c392619449a6bdbb18f6cf72ef7bb9",
+     "parent": "b7c1290528f907c9f41afcdfd33a2227c73e26d3",
+     "subject": "Allow self as an argument to url_for",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "tests/test_helpers.py"
+     ]
+    },
+    {
+     "commit": "293041a290178dc1d526075372960c3ca589d366",
+     "parent": "153433f612585409f3494a3c44160d888c02612d",
+     "subject": "deprecate __version__ attribute",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "65271c105f7c247ecffc9a7121815276e092bd10",
+     "parent": "90967ccb9ab1f757c2637a68ea2e16b8da2605f4",
+     "subject": "Remove print left in by accident",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "3205b53c7cf69d17fee49cac6b84978175b7dd73",
+     "parent": "9f9550247a2798b9dcc28081c15e266442f4e28a",
+     "subject": "release version 2.3.3",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "9f9550247a2798b9dcc28081c15e266442f4e28a",
+     "parent": "02736640095ed6d5a4a409a9658eaca373fd1d48",
+     "subject": "bump werkzeug 2.3.7",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "src/flask/cli.py",
+      "src/flask/testing.py",
+      "tests/test_cli.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "5bb30270d2e68d8d9278ac6f5abf67049acba662",
+     "parent": "02736640095ed6d5a4a409a9658eaca373fd1d48",
+     "subject": "bump werkzeug 2.3.7",
+     "source_files": [
+      "src/flask/cli.py",
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "src/flask/cli.py",
+      "src/flask/testing.py",
+      "tests/test_cli.py",
+      "tests/test_testing.py"
+     ]
+    },
+    {
+     "commit": "80cf589a26d792820f135591eb8007bca891bf4f",
+     "parent": "cc80a47f5be6c60e53c42ef9378e6db3b0e183b1",
+     "subject": "Correct the error handler typing",
+     "source_files": [
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "cc80a47f5be6c60e53c42ef9378e6db3b0e183b1",
+     "parent": "3f6b243cec6859185ea4064e84b33c07cc7febf6",
+     "subject": "Widen the response typing",
+     "source_files": [
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "3f6b243cec6859185ea4064e84b33c07cc7febf6",
+     "parent": "72c85e80c8ef9e6d5b5644f7bb23cdc175ca3873",
+     "subject": "Support async template context processors",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ],
+     "changed_files": [
+      "src/flask/app.py",
+      "src/flask/typing.py"
+     ]
+    },
+    {
+     "commit": "72c85e80c8ef9e6d5b5644f7bb23cdc175ca3873",
+     "parent": "0ec7f713d679ceed2c605e62ac5d38d579f29fa0",
+     "subject": "Provide an extendable merge blueprint funcs method",
+     "source_files": [
+      "src/flask/sansio/blueprints.py"
+     ],
+     "changed_files": [
+      "src/flask/sansio/blueprints.py"
+     ]
+    },
+    {
+     "commit": "a64588f87a2bd7ba557814ec039e3b2af2ce842d",
+     "parent": "0e0e8ddcdc2bd572cdecd371bc0f309ac62ee9c4",
+     "subject": "Move file to sansio",
+     "source_files": [
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/blueprints.py",
+      "src/flask/sansio/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/sansio/app.py",
+      "src/flask/sansio/blueprints.py",
+      "src/flask/sansio/scaffold.py"
+     ]
+    },
+    {
+     "commit": "04994df59f2f642e52ba46ca656088bcdb931262",
+     "parent": "6a12b191f7058a179237b4b3dfc146e559777d9b",
+     "subject": "remove deprecated code",
+     "source_files": [
+      "src/flask/__init__.py",
+      "src/flask/app.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/signals.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "docs/api.rst",
+      "src/flask/__init__.py",
+      "src/flask/app.py",
+      "src/flask/globals.py",
+      "src/flask/helpers.py",
+      "src/flask/signals.py"
+     ]
+    },
+    {
+     "commit": "6a12b191f7058a179237b4b3dfc146e559777d9b",
+     "parent": "9e9acfb3fe5cf33549da1a8324b395e1fb4145b0",
+     "subject": "start version 3.0.0",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "17e146ad949b3d80438faf95e81b53c543cb50f5",
+     "parent": "8a72b741616556b4f739ea79ab502c2d2038844a",
+     "subject": "Pass maxsplit via kwarg to re.split",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "src/flask/cli.py"
+     ]
+    },
+    {
+     "commit": "84e11a1e827c0f55f9b9ee15952eddcf8a6492e0",
+     "parent": "367e1df785a71e9004d9a87a221652bfc5a964ac",
+     "subject": "use importlib instead of pkgutil",
+     "source_files": [
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/helpers.py",
+      "src/flask/scaffold.py"
+     ]
+    },
+    {
+     "commit": "367e1df785a71e9004d9a87a221652bfc5a964ac",
+     "parent": "2be71d323d87ec5e9f269666f8d08ec5af77eeb8",
+     "subject": "start version 2.3.3",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "2abb7513dc52e9d9f2c73dde91f3b89d8f9492e4",
+     "parent": "4911012cf426af25668e5d9beb756a732ca1a4f4",
+     "subject": "Allow for PathLike types for config file variables",
+     "source_files": [
+      "src/flask/config.py"
+     ],
+     "changed_files": [
+      "src/flask/config.py"
+     ]
+    },
+    {
+     "commit": "1d7281fe0770a97229a2a75189a712cff866b448",
+     "parent": "97c830190ff839b89b85c93781f3603f95365384",
+     "subject": "remove egg test",
+     "source_files": [
+      "src/flask/scaffold.py"
+     ],
+     "changed_files": [
+      "src/flask/scaffold.py",
+      "tests/conftest.py",
+      "tests/test_instance_config.py"
+     ]
+    },
+    {
+     "commit": "47af817c8fe01045c641b97f8fb784c7ad864eee",
+     "parent": "afd63b16170b7c047f5758eb910c416511e9c965",
+     "subject": "release version 2.2.5",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "8646edca6f47e2cd57464081b3911218d4734f8d",
+     "parent": "a6367dac747c1e149c60767eee7e8aa9c281c58e",
+     "subject": "set `Vary: Cookie` header consistently for session",
+     "source_files": [
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/sessions.py",
+      "tests/test_basic.py"
+     ]
+    },
+    {
+     "commit": "3fbfbad79fe294918459b70eb409d555b20de2c8",
+     "parent": "726d3f4fa9e8a2960541debc2d2713571da54441",
+     "subject": "werkzeug 2.3.3 compatibility",
+     "source_files": [
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/testing.py"
+     ]
+    },
+    {
+     "commit": "726d3f4fa9e8a2960541debc2d2713571da54441",
+     "parent": "ddc7accaa2e83b328f969c120af2ce0804876b4a",
+     "subject": "start version 2.2.5",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "f3b8f570545200c87465d18386f3fc9f2258307a",
+     "parent": "c990bba94ab9bc81adf2d33e83c9a9628a2098f2",
+     "subject": "release version 2.3.2",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "e1aedecdc689cc9a79131851dbdabf6c3bc49c9e",
+     "parent": "37badc3ce8b0665e3454547839196a676729309f",
+     "subject": "update werkzeug",
+     "source_files": [
+      "src/flask/testing.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "src/flask/testing.py"
+     ]
+    },
+    {
+     "commit": "8705dd39c4fa563ea0fe0bf84c85da8fcc98b88d",
+     "parent": "9532cba45d2339e90ebf04f178b1e4f2064e7328",
+     "subject": "set `Vary: Cookie` header consistently for session",
+     "source_files": [
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      "src/flask/sessions.py",
+      "tests/test_basic.py"
+     ]
+    },
+    {
+     "commit": "0bc7356ce1ae11e633426902aba76d525f4523da",
+     "parent": "f07fb2b607c1eaa724ca9bfe43e2dc20d97d34de",
+     "subject": "start version 2.3.2",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "721abdc3810057269503a72d2db80fb826f3c85c",
+     "parent": "0867dce42c1a193bfe7fb5f92f0ccaa622643f48",
+     "subject": "release version 2.3.1",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "345f18442ceb29f9e365af99fc85bdc5986323d2",
+     "parent": "5f4072423ec6ee0c71d5995bec41e59d044e7737",
+     "subject": "start version 2.3.1",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "8728c3e4cd4e929a4327d917acd4b96c75f963d0",
+     "parent": "eb33b8c8096322becac743fb6eb466aebf7af6b9",
+     "subject": "release version 2.3.0",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "79ebf6c39cba01b240a926b899b7d0828e63fc4b",
+     "parent": "73739a29f4c16cf539b57e711a4ea2a686cd707a",
+     "subject": "update minimum requirements",
+     "source_files": [
+      "src/flask/app.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "pyproject.toml",
+      "requirements/tests-pallets-min.in",
+      "requirements/tests-pallets-min.txt",
+      "src/flask/app.py"
+     ]
+    },
+    {
+     "commit": "74e03298200e33951ca350a35aa3a8c0b4ff8177",
+     "parent": "2d460685b1b3d66c713739ee91183c22fb2e5dc8",
+     "subject": "release version 2.2.4",
+     "source_files": [
+      "src/flask/__init__.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/__init__.py"
+     ]
+    },
+    {
+     "commit": "2e8fe7b2f2b541a60c90c625446647b22c5cacc2",
+     "parent": "9659b11a45281662c6aa1194dc95b46b1f566ba6",
+     "subject": "drop support for python 3.7",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/sessions.py"
+     ],
+     "changed_files": [
+      ".github/workflows/tests.yaml",
+      ".pre-commit-config.yaml",
+      "CHANGES.rst",
+      "docs/extensiondev.rst",
+      "docs/installation.rst",
+      "examples/celery/pyproject.toml",
+      "pyproject.toml",
+      "requirements/tests.in",
+      "requirements/tests.txt",
+      "src/flask/app.py",
+      "src/flask/helpers.py",
+      "src/flask/sessions.py",
+      "tests/typing/typing_route.py",
+      "tox.ini"
+     ]
+    },
+    {
+     "commit": "84c007d34f7f0b8737310fe4d67be12c463e0130",
+     "parent": "182ce3dd15dfa3537391c3efaf9c3ff407d134d4",
+     "subject": "show subdomain or host in routes output",
+     "source_files": [
+      "src/flask/cli.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/cli.py",
+      "tests/test_cli.py"
+     ]
+    },
+    {
+     "commit": "8239765a4410d13d489e299a99e4a4c6951e190b",
+     "parent": "a05c0c6b7232aac38899234a6c4f071f9005a502",
+     "subject": "allow async signal receivers",
+     "source_files": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py"
+     ],
+     "changed_files": [
+      "CHANGES.rst",
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "src/flask/templating.py"
+     ]
+    }
+   ]
+  },
+  "rich": {
+   "path": "/Users/darrenfrost/nm-bench/review-drift/repos/rich",
+   "pinned": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf",
+   "subdir": "rich",
+   "commits_walked": 600,
+   "review": [
+    {
+     "commit": "59b1aca63bf9ec69ada93af960d8b2a7bd920477",
+     "parent": "b32e42bda00c6275d4e18dcbe298268094359549",
+     "subject": "Fix double-width characters disappearing when wrapping (#3180)",
+     "source_files": [
+      "rich/_wrap.py",
+      "rich/cells.py"
+     ],
+     "changed_files": [
+      ".gitignore",
+      "CHANGELOG.md",
+      "rich/_wrap.py",
+      "rich/cells.py",
+      "tests/test_cells.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "b44fd1b337cf3336c68e1127d3f92f0cfefb3b0f",
+     "parent": "c7d6215cfe5a2a32182040539256a21bc6b7fd3b",
+     "subject": "Various docstring fixes, removing unused variables",
+     "source_files": [
+      "rich/markup.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/markup.py",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "f6eca21a9b3910456c5be7efee5c7f22c79d1873",
+     "parent": "a972ca05522577de2f98eb7c957deead9c87b38f",
+     "subject": "fix markdown on light",
+     "source_files": [
+      "rich/console.py",
+      "rich/markdown.py",
+      "rich/syntax.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "CHANGELOG.md",
+      "rich/console.py",
+      "rich/markdown.py",
+      "rich/syntax.py",
+      "rich/text.py",
+      "tests/test_markdown.py",
+      "tests/test_markdown_no_hyperlinks.py",
+      "tests/test_syntax.py"
+     ]
+    },
+    {
+     "commit": "b7ce2dc48d2974f56648793c4f5d9d5e5c80eb57",
+     "parent": "83c38ebe8b46278e7291d9f3506f732c87b8a848",
+     "subject": "Added reset method",
+     "source_files": [
+      "rich/style.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/style.py",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "73093c23636ffedf5e679bee94316ee2e688179f",
+     "parent": "89cd92f4d5f190092ddd634ecec16f13a4a3ee91",
+     "subject": "fix empty filename frames",
+     "source_files": [
+      "rich/syntax.py",
+      "rich/text.py",
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "rich/syntax.py",
+      "rich/text.py",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "3f316c5ed335c2e8483bd2435c1ac879fc20c0f5",
+     "parent": "d1813d2c931719f92a2cf3f7c72117d037122c0c",
+     "subject": "Add support for strikethrough text",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tools/README.md"
+     ]
+    },
+    {
+     "commit": "644e0c0baaa04232911dd94546acec733a9e629a",
+     "parent": "73a9ec0a5ef8ca6d812c19dc0acdeee7a7f9dbb5",
+     "subject": "Validate and fix some failed snapshot tests",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "poetry.lock",
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tests/_card_render.py",
+      "tests/test_markdown.py",
+      "tests/test_markdown_no_hyperlinks.py",
+      "tools/mdlink.md"
+     ]
+    },
+    {
+     "commit": "73a9ec0a5ef8ca6d812c19dc0acdeee7a7f9dbb5",
+     "parent": "8e87818d1948a6267fc6b40a6f9c220b2773883d",
+     "subject": "Fix Markdown link styling",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tools/mdlink.md",
+      "tools/test.md"
+     ]
+    },
+    {
+     "commit": "4346d3199fb5c283f685408c8b529c51121b514d",
+     "parent": "5f4e93efb159af99ed51f1fbfd8b793bb36448d9",
+     "subject": "fix for locals maz length",
+     "source_files": [
+      "rich/pretty.py",
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/pretty.py",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "066c024be2d6faa7eae2f3dd2ea1cb4543a3d454",
+     "parent": "0099f505c3dbf316e03afcf16f05dc4a86d172a2",
+     "subject": "fix for text in panel title",
+     "source_files": [
+      "rich/panel.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/panel.py",
+      "rich/text.py",
+      "tests/test_log.py",
+      "tests/test_panel.py"
+     ]
+    },
+    {
+     "commit": "30fa5c65ee32e8cdd8823ec825a29f7a748f6da2",
+     "parent": "28a05fa17721a20df55dae160bede89ff5873d7e",
+     "subject": "added meta to link id",
+     "source_files": [
+      "rich/console.py",
+      "rich/style.py"
+     ],
+     "changed_files": [
+      "rich/console.py",
+      "rich/style.py"
+     ]
+    },
+    {
+     "commit": "32def19a2a9f8bf9333a9b41ecbdc23b98b9765a",
+     "parent": "bfea226da7baddd3c5e31c9f0c0d2f2ca45e4c7c",
+     "subject": "fix default ensure_ascii value to match docs.",
+     "source_files": [
+      "rich/__init__.py",
+      "rich/console.py",
+      "rich/json.py"
+     ],
+     "changed_files": [
+      "rich/__init__.py",
+      "rich/console.py",
+      "rich/json.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "99ed636bea5698c309ddc713b98ded83b3b23dec",
+     "parent": "ffe9ae82f669b88ebf4a8312cce36121638ee43a",
+     "subject": "Add NullFile, use it when stdout/stderr are None",
+     "source_files": [
+      "rich/_null_file.py",
+      "rich/console.py",
+      "rich/logging.py"
+     ],
+     "changed_files": [
+      "rich/_null_file.py",
+      "rich/console.py",
+      "rich/logging.py"
+     ]
+    },
+    {
+     "commit": "ffe9ae82f669b88ebf4a8312cce36121638ee43a",
+     "parent": "50039b6e7e49b7442e2a9f3633929009379fd70d",
+     "subject": "Supporting no stdout, tests",
+     "source_files": [
+      "rich/console.py",
+      "rich/logging.py"
+     ],
+     "changed_files": [
+      "rich/console.py",
+      "rich/logging.py",
+      "tests/test_cells.py",
+      "tests/test_console.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "6910680877ccf0680ff8ec746b9ca9bd57a91ff7",
+     "parent": "8dbfc8d0f485ba739820af3cf336896f8c9561be",
+     "subject": "Fix typos",
+     "source_files": [
+      "rich/ansi.py",
+      "rich/filesize.py",
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "rich/ansi.py",
+      "rich/filesize.py",
+      "rich/traceback.py",
+      "tests/test_tree.py",
+      "tools/cats.json"
+     ]
+    },
+    {
+     "commit": "0425c792c11360185654a81ad53488ce8223d0f7",
+     "parent": "828db35a68535504e13d76467a2902fc0c3243f7",
+     "subject": "Parse escape codes in `Pretty` repr (#2470)",
+     "source_files": [
+      "rich/pretty.py",
+      "rich/repr.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/pretty.py",
+      "rich/repr.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "4760190e847a59194a48d78eb9b14877318d5c1b",
+     "parent": "15c41e7d7acc6a9c5546a56d73fe0e9971aefae1",
+     "subject": "Remove mapping of tag to style names, just add new `markdown.*` style keys where required",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "2e814dee472e61adba56a6fbf6dcc8f672d0a705",
+     "parent": "c8fbd61ddd47cec5134f905118f1584522d92e61",
+     "subject": "Map inline code to correct style",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "9383774fd9806c37bdf7994dfa781064e5af6349",
+     "parent": "90069d7251b8ac4c1b0f208d9bf58a0ea0acf5db",
+     "subject": "Switching off links",
+     "source_files": [
+      "rich/markdown.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py",
+      "rich/text.py",
+      "tests/test_markdown.py"
+     ]
+    },
+    {
+     "commit": "51acb0a5077c5cbab45db66de8247fb9bb99a01d",
+     "parent": "2ee992b17ef5ff3c34f89545b0d57ad4690a64fc",
+     "subject": "\ud83d\udca1 Update ProgressBar docstring",
+     "source_files": [
+      "rich/progress.py",
+      "rich/progress_bar.py"
+     ],
+     "changed_files": [
+      "rich/progress.py",
+      "rich/progress_bar.py"
+     ]
+    },
+    {
+     "commit": "76dfb9654b1ea469ca957a0312ef9ab536dc0f3e",
+     "parent": "8767e861582a904f64631cca3dbc2287815b9438",
+     "subject": "optimized divide",
+     "source_files": [
+      "rich/console.py",
+      "rich/segment.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/console.py",
+      "rich/segment.py",
+      "tests/test_panel.py"
+     ]
+    },
+    {
+     "commit": "36ffdcf7bdbd3041ea7ae325b51b0928ce38cf04",
+     "parent": "8b17bc61f826422b1fbd6aeb610631868ff47c35",
+     "subject": "[_inspect] Add docstrings to our generic functions that determine the type of an object",
+     "source_files": [
+      "rich/_inspect.py",
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/_inspect.py",
+      "rich/pretty.py",
+      "tests/test_inspect.py"
+     ]
+    },
+    {
+     "commit": "8b17bc61f826422b1fbd6aeb610631868ff47c35",
+     "parent": "6fb7d4b8567e2007b42cac09c5bb8708087497bb",
+     "subject": "[_inspect] Add generic functions to determine the type of an object",
+     "source_files": [
+      "rich/_inspect.py",
+      "rich/jupyter.py",
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/_inspect.py",
+      "rich/jupyter.py",
+      "rich/pretty.py",
+      "tests/test_inspect.py"
+     ]
+    },
+    {
+     "commit": "6fb7d4b8567e2007b42cac09c5bb8708087497bb",
+     "parent": "64991335a67926d76f0bc3ed182741e930af59cd",
+     "subject": "[jupyter] bypass the pretty-rendering of some specific graphics-related classes",
+     "source_files": [
+      "rich/jupyter.py",
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/jupyter.py",
+      "rich/pretty.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "442842f1baf77fe7c92d468363e2bd057e495492",
+     "parent": "8c4032c102d3454825254d8b115eb4620c5f669e",
+     "subject": "Prepend \"async def\" to Inspect coroutine functions",
+     "source_files": [
+      "rich/_inspect.py",
+      "rich/default_styles.py"
+     ],
+     "changed_files": [
+      "rich/_inspect.py",
+      "rich/default_styles.py"
+     ]
+    },
+    {
+     "commit": "d4e55f7629236085241ec46109631c010bd313dc",
+     "parent": "9aeb79f83120968481f94cfbb4aa2c5d2d0bf689",
+     "subject": "imports",
+     "source_files": [
+      "rich/_lru_cache.py",
+      "rich/cells.py",
+      "rich/style.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/_lru_cache.py",
+      "rich/cells.py",
+      "rich/style.py",
+      "tests/test_lrucache.py",
+      "tests/test_style.py"
+     ]
+    },
+    {
+     "commit": "3bc9b287e7865f81f1c61593d040e37e333d042f",
+     "parent": "017c9e39b4dfc112ee3701789bb1bd7459489fa5",
+     "subject": "type fixes",
+     "source_files": [
+      "rich/_lru_cache.py",
+      "rich/style.py"
+     ],
+     "changed_files": [
+      "rich/_lru_cache.py",
+      "rich/style.py"
+     ]
+    },
+    {
+     "commit": "7cc021d47cdd0079d91c5ed12099085ff840bf21",
+     "parent": "516a00e29b261e0cea67022ee04f74a9f24c257b",
+     "subject": "new lru cache implementation",
+     "source_files": [
+      "rich/_lru_cache.py",
+      "rich/style.py"
+     ],
+     "changed_files": [
+      "rich/_lru_cache.py",
+      "rich/style.py",
+      "tests/test_lrucache.py"
+     ]
+    },
+    {
+     "commit": "dbb27d30a7fde4f888506b7cbba79301344fedb5",
+     "parent": "d9a0d479464d27ee180aad8297774775e26e764e",
+     "subject": "Fix hang when Rule title greater than required space",
+     "source_files": [
+      "rich/cells.py",
+      "rich/rule.py"
+     ],
+     "changed_files": [
+      "rich/cells.py",
+      "rich/rule.py",
+      "tests/test_rule.py",
+      "tests/test_spinner.py"
+     ]
+    },
+    {
+     "commit": "2707a734359a8f8b6b617e37963ea30b5d67e843",
+     "parent": "aa7926c1431eebfb2ccaab9f3b63a4ac6cd8dfe6",
+     "subject": "Add Iso8601Highlighter",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/highlighter.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "docs/source/highlighting.rst",
+      "rich/default_styles.py",
+      "rich/highlighter.py",
+      "tests/test_highlighter.py"
+     ]
+    },
+    {
+     "commit": "51889e2e663bbda8d59b2a68f23322f578681cea",
+     "parent": "d68c6b2be3a67acd8994da59fd70ff97b83e87ea",
+     "subject": "Substituting plain headed box when show_header=False on Table (#2330)",
+     "source_files": [
+      "rich/box.py",
+      "rich/table.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "CHANGELOG.md",
+      "poetry.lock",
+      "rich/box.py",
+      "rich/table.py",
+      "tests/test_table.py"
+     ]
+    },
+    {
+     "commit": "25d0c0e89829685d2be17043812de82e97c460f7",
+     "parent": "236096ea8fcc0fc5d919a80ad9be78ea6151429e",
+     "subject": "[inspect] Address PR feedback on ASCII special characters' replacement with their escaped version",
+     "source_files": [
+      "rich/_inspect.py",
+      "rich/control.py"
+     ],
+     "changed_files": [
+      "rich/_inspect.py",
+      "rich/control.py",
+      "tests/test_control.py"
+     ]
+    },
+    {
+     "commit": "236096ea8fcc0fc5d919a80ad9be78ea6151429e",
+     "parent": "78a02294670ddd7091a4050b30a40029db3fc923",
+     "subject": "[inspect] Replace ASCII special characters with their \"non-special\" readable version",
+     "source_files": [
+      "rich/_inspect.py",
+      "rich/control.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/_inspect.py",
+      "rich/control.py",
+      "rich/text.py",
+      "tests/test_control.py"
+     ]
+    },
+    {
+     "commit": "0dc3985ea88603b38aaeed35a6493f81c9f73c9f",
+     "parent": "ca474c37af8b251d29d7095f128ba5320e00cfa1",
+     "subject": "Fix wrapping issue",
+     "source_files": [
+      "rich/_wrap.py",
+      "rich/cells.py"
+     ],
+     "changed_files": [
+      "rich/_wrap.py",
+      "rich/cells.py",
+      "tests/test_layout.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "ee60bc13bae79123545f1dda50bb2cccab3403d0",
+     "parent": "91740599492b4694c1e79185c73d109ca95294d6",
+     "subject": "Fix text wrapping edge case",
+     "source_files": [
+      "rich/_wrap.py",
+      "rich/cells.py"
+     ],
+     "changed_files": [
+      "rich/_wrap.py",
+      "rich/cells.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "80b5bcabf2050b3b8eb31a256e88f1c8dda46bbe",
+     "parent": "37cde9d5b55b95b027e6d24fbc2d29cf401ad1d3",
+     "subject": "improved SVG",
+     "source_files": [
+      "rich/_export_format.py",
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/_export_format.py",
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "2d441954825ce653528be677466cf7d687c90ea0",
+     "parent": "e8032fcf90e258b2d659d850efa60a2b2addbfad",
+     "subject": "svg fixes",
+     "source_files": [
+      "rich/_export_format.py",
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/_export_format.py",
+      "rich/console.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "fc5a1ad7b934a558c187206f94bf30ff6bb5506d",
+     "parent": "1772458f80924c78fa3a8d0260bca9762ad86e18",
+     "subject": "replace tspans with text",
+     "source_files": [
+      "rich/_export_format.py",
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/_export_format.py",
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "1e0e33e9440a17c3d041ad907bea554188f3a37f",
+     "parent": "fb8843bb49d534679d0b32ac6a475ee994e9d9aa",
+     "subject": "tweaked backgorund and border of terminal",
+     "source_files": [
+      "rich/_export_format.py",
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/_export_format.py",
+      "rich/console.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "8f066de5248ff860aa5eb7158abc1a3bc9c6c967",
+     "parent": "7cbbd6ba6a1956429cea8687abf32a38fa466cb7",
+     "subject": "tweaks to SVG output",
+     "source_files": [
+      "rich/_export_format.py",
+      "rich/console.py",
+      "rich/terminal_theme.py"
+     ],
+     "changed_files": [
+      "rich/_export_format.py",
+      "rich/console.py",
+      "rich/terminal_theme.py"
+     ]
+    }
+   ],
+   "fix": [
+    {
+     "commit": "59b1aca63bf9ec69ada93af960d8b2a7bd920477",
+     "parent": "b32e42bda00c6275d4e18dcbe298268094359549",
+     "subject": "Fix double-width characters disappearing when wrapping (#3180)",
+     "source_files": [
+      "rich/_wrap.py",
+      "rich/cells.py"
+     ],
+     "changed_files": [
+      ".gitignore",
+      "CHANGELOG.md",
+      "rich/_wrap.py",
+      "rich/cells.py",
+      "tests/test_cells.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "b32e42bda00c6275d4e18dcbe298268094359549",
+     "parent": "50d2a457c8ea273c14a0053b00493473b86dbe21",
+     "subject": "Fix issue with trailing whitespace (#3195)",
+     "source_files": [
+      "rich/box.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "CONTRIBUTORS.md",
+      "rich/box.py"
+     ]
+    },
+    {
+     "commit": "50d2a457c8ea273c14a0053b00493473b86dbe21",
+     "parent": "0177b0370024121a4914e242d5241b2d15b35fd0",
+     "subject": "Fix typing for FloatPrompt (#3151)",
+     "source_files": [
+      "rich/prompt.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/prompt.py"
+     ]
+    },
+    {
+     "commit": "7a168a27c5097805b3bafa495f35e3955004ff4a",
+     "parent": "e76f3c3ea78481342e21a7b3328075462ab69c2b",
+     "subject": "[docs] Fix typos and other small stuff (#3094)",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "docs/source/progress.rst",
+      "docs/source/tables.rst",
+      "docs/source/text.rst",
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "92e7164773ab1a0dd438ba43fee5d3b76b28ba1a",
+     "parent": "9f620dc50c0008c35e9f8493f198e6e593574a70",
+     "subject": "Fix #3104 (#3105)",
+     "source_files": [
+      "rich/_export_format.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/_export_format.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "cb211d5b89e7e80f61cb22f0e4b4dce0ee907d4b",
+     "parent": "6fd3734f12f6fabc3ac85d4fdcf194077ff9fa37",
+     "subject": "Fix docstring typos",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "b44fd1b337cf3336c68e1127d3f92f0cfefb3b0f",
+     "parent": "c7d6215cfe5a2a32182040539256a21bc6b7fd3b",
+     "subject": "Various docstring fixes, removing unused variables",
+     "source_files": [
+      "rich/markup.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/markup.py",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "c7d6215cfe5a2a32182040539256a21bc6b7fd3b",
+     "parent": "dfea426131f6c1ffe04e881a7b70c2a08e511755",
+     "subject": "Fix a few typos in the repository that were resulting in the codespel\u2026 (#3181)",
+     "source_files": [
+      "rich/align.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "docs/source/style.rst",
+      "rich/align.py"
+     ]
+    },
+    {
+     "commit": "f6eca21a9b3910456c5be7efee5c7f22c79d1873",
+     "parent": "a972ca05522577de2f98eb7c957deead9c87b38f",
+     "subject": "fix markdown on light",
+     "source_files": [
+      "rich/console.py",
+      "rich/markdown.py",
+      "rich/syntax.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      ".pre-commit-config.yaml",
+      "CHANGELOG.md",
+      "rich/console.py",
+      "rich/markdown.py",
+      "rich/syntax.py",
+      "rich/text.py",
+      "tests/test_markdown.py",
+      "tests/test_markdown_no_hyperlinks.py",
+      "tests/test_syntax.py"
+     ]
+    },
+    {
+     "commit": "e30b822ecc264c5c4f984a023124d31d8052de49",
+     "parent": "51603befe4769cd5507bec059d6c60919fefa86d",
+     "subject": "Fix markdown table rendering issue.",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "720800e6930d85ad027b1e9bd0cbb96b5e994ce3",
+     "parent": "4037906f2be2d07f864687ef324da2abdf2028b9",
+     "subject": "fix tab size issue",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "956bfa5fe558557cd5939bd44f522a6ccc5f8d18",
+     "parent": "1ad6f73a4d1d3b40ac3f879feccfaad66412bd1d",
+     "subject": "Allow tilde in URL (fixes #3057)",
+     "source_files": [
+      "rich/highlighter.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/highlighter.py"
+     ]
+    },
+    {
+     "commit": "ea1129af988530ea48020ebda2dbce6371a053f4",
+     "parent": "236e8e8dc3d82a7c7dd286675b59e111af8136ba",
+     "subject": "fix breakage",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "dbf66e8bb9d9391a268e4db8b0d3408a58a27da9",
+     "parent": "01b85ac116c4635b6ddb8b488be8254be6df2a84",
+     "subject": "fix for markdown table",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/markdown.py",
+      "tests/test_markdown.py"
+     ]
+    },
+    {
+     "commit": "58f54ca7a391c4f12a1737128e95757cc15587f9",
+     "parent": "2dc8398afa1a78e7bc4d3d17905e5fd2c82e1932",
+     "subject": "trailing slash fix",
+     "source_files": [
+      "rich/markup.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/markup.py"
+     ]
+    },
+    {
+     "commit": "368e8ad77c95a6bef8f9d332039091d1417296bc",
+     "parent": "293be90514e1f9ab8719826a27f1324479f5d7c1",
+     "subject": "fix negative time",
+     "source_files": [
+      "rich/progress.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/progress.py"
+     ]
+    },
+    {
+     "commit": "d9eff2aa44501ee1c6c9808543c493e4b2efe3c9",
+     "parent": "8c7449f987a5c423a162aacdf969d647e6085918",
+     "subject": "Fixed issue with custom classes (fixes #2875)",
+     "source_files": [
+      "rich/repr.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/repr.py",
+      "tests/test_repr.py"
+     ]
+    },
+    {
+     "commit": "1176f81a82ddbc01d33d5f4995c01ed113baa1b5",
+     "parent": "cf138826618dcabe3146b9178eaf312885ca28bb",
+     "subject": "fix for typing extension issue",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "4345f5131c63d5f366595c9e5de8d9d20e4c80a5",
+     "parent": "4db7de1f4dd2037d96c39de2ad4ca0dd7d08b606",
+     "subject": "Fix typing around Markdown tables",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "f540b003f4448fd4b1c399e1567bc5d632ab5b9d",
+     "parent": "86418dfd18f46b94cabf6807a1cad11c31b4960d",
+     "subject": "fix superfluous italics",
+     "source_files": [
+      "rich/syntax.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/syntax.py"
+     ]
+    },
+    {
+     "commit": "00181151a4a6ad845de6683df65eb366df91a5d8",
+     "parent": "076e0d208eb0b4e74cd8639e11a558b9319bd799",
+     "subject": "fix for is_terminal",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/console.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "6796675b0ec4d8305700b76c19ce4f92270522ee",
+     "parent": "c5f08908c7f3f305111be6ffda62962ea390c6ad",
+     "subject": "fix markup in console live",
+     "source_files": [
+      "rich/live.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/live.py"
+     ]
+    },
+    {
+     "commit": "3469674b528d75cc541331888623ce73f65bc1cd",
+     "parent": "73093c23636ffedf5e679bee94316ee2e688179f",
+     "subject": "fix traceback for missing frame file",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "73093c23636ffedf5e679bee94316ee2e688179f",
+     "parent": "89cd92f4d5f190092ddd634ecec16f13a4a3ee91",
+     "subject": "fix empty filename frames",
+     "source_files": [
+      "rich/syntax.py",
+      "rich/text.py",
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "rich/syntax.py",
+      "rich/text.py",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "4561734bf54fbddaf991ebd1e79dea503ac98686",
+     "parent": "a760ecaf31a15a84dc4c89f777f49150d74545a3",
+     "subject": "fix typing again",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "a760ecaf31a15a84dc4c89f777f49150d74545a3",
+     "parent": "3fc5541fe7bdd6c7fa58f827a1c14923406b098f",
+     "subject": "fix typing",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "c2df987b180c01ed36bef44d7054e4b2a5fe8514",
+     "parent": "0b845b39d9815c3219bf3b855a45b01e0b7c29f6",
+     "subject": "fix pre output",
+     "source_files": [
+      "rich/_export_format.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/_export_format.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "da4f6bc797544e30dc6546170d275c7ff6e8380e",
+     "parent": "b89d0362e8ebcb18902f0f0a206879f1829b5c0b",
+     "subject": "fix for empty dataclass",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/pretty.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "7bc022bda3daf1df5c42a5fe9babffd32db2c0f0",
+     "parent": "b89d0362e8ebcb18902f0f0a206879f1829b5c0b",
+     "subject": "fix: typo in align.py",
+     "source_files": [
+      "rich/align.py"
+     ],
+     "changed_files": [
+      "rich/align.py"
+     ]
+    },
+    {
+     "commit": "daf6e38f553cb76de3aefbc847e15d8055913f8d",
+     "parent": "0d062a73d67820e78e342f91a472dd87ed7ee48f",
+     "subject": "fix for color downgrade",
+     "source_files": [
+      "rich/color.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/color.py"
+     ]
+    },
+    {
+     "commit": "793d1f92ed386425cd52e9953ca193a14a7f0cf8",
+     "parent": "44cf059b14a0e6ac7ad91638e892b32d62c6b0fb",
+     "subject": "Fix typo",
+     "source_files": [
+      "rich/progress.py"
+     ],
+     "changed_files": [
+      "rich/progress.py"
+     ]
+    },
+    {
+     "commit": "644e0c0baaa04232911dd94546acec733a9e629a",
+     "parent": "73a9ec0a5ef8ca6d812c19dc0acdeee7a7f9dbb5",
+     "subject": "Validate and fix some failed snapshot tests",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "poetry.lock",
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tests/_card_render.py",
+      "tests/test_markdown.py",
+      "tests/test_markdown_no_hyperlinks.py",
+      "tools/mdlink.md"
+     ]
+    },
+    {
+     "commit": "73a9ec0a5ef8ca6d812c19dc0acdeee7a7f9dbb5",
+     "parent": "8e87818d1948a6267fc6b40a6f9c220b2773883d",
+     "subject": "Fix Markdown link styling",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tools/mdlink.md",
+      "tools/test.md"
+     ]
+    },
+    {
+     "commit": "bbd3914f98f534efdefd95d693315a36cdd127ea",
+     "parent": "c856e6b46901222f22b4e81473486d81de7a170a",
+     "subject": "fix typing",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "aa0929298bf85b9357edf8af239d715a18ab5ce8",
+     "parent": "d14b304aa45bf0759729f4e066606065daa341c8",
+     "subject": "fix issue splitting segments",
+     "source_files": [
+      "rich/segment.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/segment.py",
+      "tests/test_segment.py"
+     ]
+    },
+    {
+     "commit": "c8c116c9e257c15d66b1c1e6d89eebe7be4fa4e5",
+     "parent": "1f3f18cfd0e5b61189bc9cde602404ae3cff4e20",
+     "subject": "fix typing",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "17dee95f119e2ebab794708de43d40245e38cca7",
+     "parent": "5d3e44bbc6c1907f0a63dad118c86e079055f3be",
+     "subject": "fix pretty",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "9692794b88e352643088c6661ad06d9be6d6061f",
+     "parent": "8bcb7011cfb01462fcd08c7298e756c5e4486617",
+     "subject": "Fix syntax error when building with nuitka",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py"
+     ]
+    },
+    {
+     "commit": "c3a24505978756e7e5802cbb22dc2aecc8c1b136",
+     "parent": "090523e734368f62fc3b30ba51a8d52245d5c97c",
+     "subject": "fix for fileno",
+     "source_files": [
+      "rich/file_proxy.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/file_proxy.py"
+     ]
+    },
+    {
+     "commit": "4346d3199fb5c283f685408c8b529c51121b514d",
+     "parent": "5f4e93efb159af99ed51f1fbfd8b793bb36448d9",
+     "subject": "fix for locals maz length",
+     "source_files": [
+      "rich/pretty.py",
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/pretty.py",
+      "rich/traceback.py"
+     ]
+    }
+   ],
+   "control": [
+    {
+     "commit": "18ebb427bcd36e0b0b200cc41bf165d5fb758e95",
+     "parent": "26152e9cc95eef9c8f363d7bf1dfda426275348d",
+     "subject": "Update wcwidth and cell widths.",
+     "source_files": [
+      "rich/_cell_widths.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "poetry.lock",
+      "rich/_cell_widths.py"
+     ]
+    },
+    {
+     "commit": "26152e9cc95eef9c8f363d7bf1dfda426275348d",
+     "parent": "fd981823644ccf50d685ac9c0cfe8e1e56c9dd35",
+     "subject": "Export TextType into the docs. (#3257)",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "docs/source/reference/text.rst",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "b97abfcaccb7ff137360e922d557acf34c26a708",
+     "parent": "21c0f25869bcdd0ef4e8ebc8d48c4b362147f740",
+     "subject": "Add missing Panel.fit parameters (#3192)",
+     "source_files": [
+      "rich/panel.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/panel.py"
+     ]
+    },
+    {
+     "commit": "6fd3734f12f6fabc3ac85d4fdcf194077ff9fa37",
+     "parent": "b44fd1b337cf3336c68e1127d3f92f0cfefb3b0f",
+     "subject": "Improve wording in a docstring",
+     "source_files": [
+      "rich/containers.py"
+     ],
+     "changed_files": [
+      "rich/containers.py"
+     ]
+    },
+    {
+     "commit": "01d01ed5ee322f65ef5c333955570552c68a40d8",
+     "parent": "e9f75c9912ed25b9777bc0257853370951220b17",
+     "subject": "Update progress.py: doc: Progress.default_columns -> Progress.get_def\u2026 (#3170)",
+     "source_files": [
+      "rich/progress.py"
+     ],
+     "changed_files": [
+      "CONTRIBUTORS.md",
+      "rich/progress.py"
+     ]
+    },
+    {
+     "commit": "44e36aaf6f8c5b4aba4d66bcf895b25c3b5fa32e",
+     "parent": "32ec768f4e460dea5f043296c50fbeb909c8b616",
+     "subject": "Add default lexer",
+     "source_files": [
+      "rich/syntax.py"
+     ],
+     "changed_files": [
+      "rich/syntax.py",
+      "tests/test_syntax.py"
+     ]
+    },
+    {
+     "commit": "1e1a7b4c48ec207b2068dfb0fb49f0327cab98e1",
+     "parent": "dbf66e8bb9d9391a268e4db8b0d3408a58a27da9",
+     "subject": "more defensive",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "2dc8398afa1a78e7bc4d3d17905e5fd2c82e1932",
+     "parent": "368e8ad77c95a6bef8f9d332039091d1417296bc",
+     "subject": "escape last slash",
+     "source_files": [
+      "rich/markup.py"
+     ],
+     "changed_files": [
+      "rich/markup.py",
+      "tests/test_markup.py"
+     ]
+    },
+    {
+     "commit": "293be90514e1f9ab8719826a27f1324479f5d7c1",
+     "parent": "62c8abaf97b8e7e4b1e1ae167e05717e008a0ab9",
+     "subject": "remove superfluous doc",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "3215e61c12b99bf0d391d648846f74b1f748f22d",
+     "parent": "96d61284ba3fca230cf41377e6f54e64b8b7dc40",
+     "subject": "typing",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "96d61284ba3fca230cf41377e6f54e64b8b7dc40",
+     "parent": "482dcee134c4de5c49db781f100e1e99ad84a3fd",
+     "subject": "rename method",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "482dcee134c4de5c49db781f100e1e99ad84a3fd",
+     "parent": "fa0a62a72b30b29363d66bc6ce05bebd3c5c5de9",
+     "subject": "tests",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/text.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "fa0a62a72b30b29363d66bc6ce05bebd3c5c5de9",
+     "parent": "29dfa0e5c8fff7ad8a4fff4ca1adb6c56edaae08",
+     "subject": "test double width, optimization",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "29dfa0e5c8fff7ad8a4fff4ca1adb6c56edaae08",
+     "parent": "7a15d62e446050b91f1e68baafc39caf9b0b9cb3",
+     "subject": "tests",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "7a15d62e446050b91f1e68baafc39caf9b0b9cb3",
+     "parent": "f25cb164aa792a27cc4bdc02d8edab0d9609735c",
+     "subject": "refactor of tab_size",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py",
+      "tests/test_panel.py",
+      "tests/test_text.py"
+     ]
+    },
+    {
+     "commit": "f25cb164aa792a27cc4bdc02d8edab0d9609735c",
+     "parent": "aca9467ec6a482b3bed1ba7d2e3de72271c5f817",
+     "subject": "tabs to space changes",
+     "source_files": [
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "3089e9fb8a9363c64da144f324e668ad0b957ca9",
+     "parent": "bef287cd80b1ab1996f5adf021e4d2ceb22533aa",
+     "subject": "Move the <html> tag to before the <head> in the export template",
+     "source_files": [
+      "rich/_export_format.py"
+     ],
+     "changed_files": [
+      "rich/_export_format.py"
+     ]
+    },
+    {
+     "commit": "032481c498c3d0cbf22c897377fc08ccdf6e9a8b",
+     "parent": "cce649c6b8d74f6eb01ca32674ccd98a8aa0bf73",
+     "subject": "remove import",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "f3d8e9b72479aaa255039598689d7bead1c5c394",
+     "parent": "c40fdbb47a93509ac2f908ebd76737dab6d463fe",
+     "subject": "Update styling to be minimal in markdown tables, add inline style support",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py",
+      "tests/test_markdown.py",
+      "tools/movies.md"
+     ]
+    },
+    {
+     "commit": "53633c8a9ccf3eb4d7f1d8631cb91dde974a1cce",
+     "parent": "fe7fc300f851223d260077cd661de803b539121d",
+     "subject": "Supporting column alignment",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/markdown.py"
+     ]
+    },
+    {
+     "commit": "4db7de1f4dd2037d96c39de2ad4ca0dd7d08b606",
+     "parent": "356cec9706aaf47b262b936f3c3a7df208b2f1d8",
+     "subject": "Add support for tables in Markdown",
+     "source_files": [
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/markdown.py",
+      "tools/movies.md"
+     ]
+    },
+    {
+     "commit": "6aa25271fa836edde733b578515c800bf963876a",
+     "parent": "886fa894f78f8e10c4f0ddf483db217ff5b307b7",
+     "subject": "rename reset function",
+     "source_files": [
+      "rich/style.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/style.py"
+     ]
+    },
+    {
+     "commit": "b7ce2dc48d2974f56648793c4f5d9d5e5c80eb57",
+     "parent": "83c38ebe8b46278e7291d9f3506f732c87b8a848",
+     "subject": "Added reset method",
+     "source_files": [
+      "rich/style.py",
+      "rich/text.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/style.py",
+      "rich/text.py"
+     ]
+    },
+    {
+     "commit": "5e26525befd47d56839b74a2db355c5d72a02eec",
+     "parent": "4561734bf54fbddaf991ebd1e79dea503ac98686",
+     "subject": "remove hack",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "6c86f0e2b46c434bd559b9deb84b88a273e19bb0",
+     "parent": "cba485f6c4bd181756ae944f032e942902d698ee",
+     "subject": "bump markdown-it",
+     "source_files": [
+      "rich/segment.py"
+     ],
+     "changed_files": [
+      "poetry.lock",
+      "pyproject.toml",
+      "rich/segment.py"
+     ]
+    },
+    {
+     "commit": "d61491d0f31b92c88dc470f0154cce363ce2ee2c",
+     "parent": "cba485f6c4bd181756ae944f032e942902d698ee",
+     "subject": "use stderr=true instead of file=sys.stderr for traceback handler install",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "3fc5541fe7bdd6c7fa58f827a1c14923406b098f",
+     "parent": "b89d0362e8ebcb18902f0f0a206879f1829b5c0b",
+     "subject": "match expected IPython formatter spec in rich.pretty",
+     "source_files": [
+      "rich/pretty.py"
+     ],
+     "changed_files": [
+      "rich/pretty.py",
+      "tests/test_pretty.py"
+     ]
+    },
+    {
+     "commit": "1ebf82300fdf4960fd9a04afc60fdecee7ab50da",
+     "parent": "b89d0362e8ebcb18902f0f0a206879f1829b5c0b",
+     "subject": "avoid FORCE_COLOR implying a terminal in Jupyter",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py",
+      "tests/test_console.py"
+     ]
+    },
+    {
+     "commit": "af0948beab214660710958fd1c73cd8ba4f9703b",
+     "parent": "7e58225734f8db37e4c6da3642ac70b41983d0ae",
+     "subject": "Issue 2688: skip over '(' nF-escape control character (which can be used to change character set?)",
+     "source_files": [
+      "rich/ansi.py"
+     ],
+     "changed_files": [
+      "rich/ansi.py"
+     ]
+    },
+    {
+     "commit": "3f316c5ed335c2e8483bd2435c1ac879fc20c0f5",
+     "parent": "d1813d2c931719f92a2cf3f7c72117d037122c0c",
+     "subject": "Add support for strikethrough text",
+     "source_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py"
+     ],
+     "changed_files": [
+      "rich/default_styles.py",
+      "rich/markdown.py",
+      "tools/README.md"
+     ]
+    },
+    {
+     "commit": "34b8f2ed55b4a216e9040a39bd22312a4d568a05",
+     "parent": "629c35ddfd3e7c1762cda3f5de416d6a324a6a73",
+     "subject": "Docstring [skip ci]",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "629c35ddfd3e7c1762cda3f5de416d6a324a6a73",
+     "parent": "bbd3914f98f534efdefd95d693315a36cdd127ea",
+     "subject": "hide dunder defaults to True",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "c856e6b46901222f22b4e81473486d81de7a170a",
+     "parent": "80188f22a085690895b02b84f728d1378705f1b5",
+     "subject": "version bump",
+     "source_files": [
+      "rich/traceback.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "pyproject.toml",
+      "rich/traceback.py"
+     ]
+    },
+    {
+     "commit": "5f923e88b08566b2651a75e77af04b66a12da0b3",
+     "parent": "0c1aedac9c004d45d111c5258fe0f36ccbd88c91",
+     "subject": "Added `encoding` parameter in `Theme.read`",
+     "source_files": [
+      "rich/theme.py"
+     ],
+     "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/theme.py"
+     ]
+    },
+    {
+     "commit": "b66f1f041c47e18dbef207be3e4df8aa41a6dd13",
+     "parent": "c8c116c9e257c15d66b1c1e6d89eebe7be4fa4e5",
+     "subject": "comment",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "497177f7ab70e63091bd0390fc3387816ada1634",
+     "parent": "987c6e66abdfb04902930d1443295b998a0261d7",
+     "subject": "better batching",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "poetry.lock",
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "090523e734368f62fc3b30ba51a8d52245d5c97c",
+     "parent": "0e48776fb24a721ddb358bf8b8f242232f3b6e5d",
+     "subject": "methof ans tests",
+     "source_files": [
+      "rich/_fileno.py"
+     ],
+     "changed_files": [
+      "rich/_fileno.py",
+      "tests/test_getfileno.py"
+     ]
+    },
+    {
+     "commit": "0e48776fb24a721ddb358bf8b8f242232f3b6e5d",
+     "parent": "e8426756eff0d3392bd283bc24bd9de75a43f164",
+     "subject": "superfluous code",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "6f686e3f5bea4ea9fb7f5f37e88fbd09fdf5f7b9",
+     "parent": "323512594680e12891d139ac10c71ac23e89aa82",
+     "subject": "Refactor for tests",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    },
+    {
+     "commit": "323512594680e12891d139ac10c71ac23e89aa82",
+     "parent": "571cb3e63b9cd147c72913073f6fa19e684f09c8",
+     "subject": "comment typo",
+     "source_files": [
+      "rich/console.py"
+     ],
+     "changed_files": [
+      "rich/console.py"
+     ]
+    }
+   ]
+  }
+ }
+}

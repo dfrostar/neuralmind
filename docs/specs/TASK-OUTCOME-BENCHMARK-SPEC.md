@@ -847,3 +847,57 @@ drawn by the same rule, that the pilot didn't use.
     re-run; every one of the 72 blocks was identical to the first run's, so
     the counts stand as the single pre-registered replay. The committed rows
     and the hook times are the second run's.
+- 2026-11-02 — the Hermes harness's fallback check, widened (`harness_version` 5),
+  before any further Hermes run. Changes no recorded result.
+  - **What it missed.** Hermes names a session for the model it ended on but
+    the endpoint it started on, so "session ran on X, not `gpt-oss:20b-64k`"
+    passes a run that fell back to OpenRouter and came back. Checking the
+    ai-9970 labels found two benchmark sessions that had made paid calls,
+    both reading `qwen/qwen3.8-flash` on `http://127.0.0.1:11434/v1`: the
+    10-30 smoke attempt (31 OpenRouter calls, Hermes's estimate $0.058) and a
+    memory-track run on 11-01 (35 calls, $0.073). The model check caught both
+    and neither is a recorded run, but it caught them only because they ended
+    on the fallback model.
+  - **The check now.** A run is also aborted, nothing recorded, when Hermes
+    prices its session above zero, or when Hermes's agent log shows an
+    OpenRouter API call for it. The model check stays. Run against the 261
+    benchmark sessions in `state.db` it flags exactly those two and none of
+    the other 259, so every recorded run (stages 1 and 2, the memory track)
+    stands as recorded. The agent logs that survive begin 10-30 10:56 UTC;
+    for the earlier sessions the price is the only evidence, and it is zero.
+- 2026-11-03 — lexical anchoring confirmed on 12 new held-out tasks (track 1,
+  stage 0b), offline. Flag on, a changed file listed first on 5 of 12 against
+  2 with the flag off (named 7 of 12 both ways): the registered gate (first >= 5
+  of 12), met exactly. Procedure, the tasks, the blind prompts and the two
+  exclusions are in
+  [`bench/task_outcome/lexical-anchoring/`](../../bench/task_outcome/lexical-anchoring/README.md#confirmation-12-new-tasks-stage-0b)
+  and the [track-1 spec](TASK-OUTCOME-BIGREPO-SMALLMODEL.md). The *first* gains
+  replicate (no task lost it); the *named* gain on the first held-out set did not
+  (7 to 7). The flag stays default-off.
+- 2026-11-05 — harness 6, before track 1's first agent run. Changes no recorded
+  result; two things it found about the Hermes runs are recorded here.
+  - **Hermes on the hermes-agent profile.** Harness 3 refused `--agent hermes`
+    with a profile that gives workspaces their own `HERMES_HOME` (10-30 above),
+    and track 1's design, written after it, is exactly that pair. Harness 6 runs
+    it: `hermes chat` keeps the host's home (the agent *is* the host's Hermes,
+    and a launch under a workspace home would re-publish the host's launchers
+    for it and bootstrap a new home there), while the index build and the
+    judge's test runs keep the workspace's. Read at hermes-agent `710fa8a`,
+    a workspace checkout's code publishes launchers only into its own
+    `<ws>/.hermes/bin`; the host's are touched only by the host's own code
+    under a foreign home. `--guard ~/.hermes/hermes-agent/.hermes/bin` stays
+    the net. The agent's own commands run in the gateway, under its home,
+    whichever home the client had.
+  - **The prompt's test line was not true for Hermes.** Every run's prompt says
+    the tests run with `python -m pytest <path>`. For Claude Code that is the
+    test venv's Python, first on the arm's `PATH`. For Hermes the command runs
+    in the gateway, whose terminal tool puts Hermes's own venv first: in the
+    Hermes pilot (harness 2 to 5), every `which python` the agent ran answered
+    with that venv, and `No module named` (`yaml` 178 times, `neuralmind`,
+    `numpy`, `chromadb`, `pydantic`, `turbovec`) answered 88 of the agent's
+    pytest commands over the 120 sessions, in both arms alike; a captured
+    pytest result with passes appears in 6 sessions. The pilot's and the memory
+    track's results stand as recorded, with this as an added threat: their
+    agent mostly could not run the project's tests, in either arm. From
+    harness 6 the prompt names the test venv's interpreter for Hermes, and each
+    run records the line it was given (`pytest_command`).

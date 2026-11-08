@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Lexical anchoring, replayed offline on cached indexes: the script behind README.md.
 
+    python replay_lexical.py build <set> <shim-dir> [id ...]  one index per task, built once
     python replay_lexical.py prepare <set>                  export each task's base commit
     python replay_lexical.py capture <set>                  one search per task (n=128), cached
     python replay_lexical.py variants <set> [weight ...]    in-process recall(), flag off and on
@@ -10,10 +11,12 @@
 ``<set>`` is ``heldout`` (the 12 held-out hermes-agent tasks of
 ``../hermes-agent-test-ranking/heldout/tasks.json``), ``dev`` (the hermes-agent
 screen's 5 tasks, the ranking changes' tuning set) or ``pilot`` (the 20 tasks
-of ``evals/task_outcome/tasks.json`` on this repository). Each task's index was
-built once with v4.22.1 for the test-ranking study and is reused from the
-caches under ``$NM_BENCH`` (default ``~/nm-bench``), so the flag is the only
-difference between a flag-off and a flag-on row. Every hook call and every
+of ``evals/task_outcome/tasks.json`` on this repository) or ``confirm`` (stage 0b's
+12 new held-out tasks of ``confirm/tasks.json``). Each task's index was built once,
+with v4.22.1 for the test-ranking study and, for ``confirm``, by ``build`` with the
+v4.24.0 shim, and is reused from the caches under ``$NM_BENCH`` (default
+``~/nm-bench``), so the flag is the only difference between a flag-off and a
+flag-on row. Every hook call and every
 in-process recall runs on a fresh APFS clone of the task's index, so no replay
 sees another's writes.
 
@@ -67,6 +70,14 @@ SETS = {
         "repo": HERMES_REPO,
         "profile": "hermes-agent",
     },
+    "confirm": {
+        "tasks": HERE / "confirm" / "tasks.json",
+        "index": BENCH / "confirm" / "index",
+        "ws": BENCH / "confirm" / "ws",
+        "hits": BENCH / "confirm" / "hits",
+        "repo": HERMES_REPO,
+        "profile": "hermes-agent",
+    },
     "dev": {
         "tasks": REPO / "evals" / "task_outcome" / "studies" / "hermes-agent-screen" / "tasks.json",
         "index": BENCH / "index-cache",
@@ -106,6 +117,28 @@ def use_repo(which: str) -> None:
     repo = SETS[which]["repo"]
     if repo is not None:
         harness.use_repo(repo)
+
+
+def build(which: str, shim: str, ids: list[str]) -> None:
+    """One index per task, built once with the NeuralMind in ``shim`` and reused by every row."""
+    use_repo(which)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("NEURALMIND_")}
+    env["PATH"] = f"{shim}{os.pathsep}{env['PATH']}"
+    by_id = {task["id"]: task for task in tasks(which)}
+    for tid in ids or list(by_id):
+        idx = SETS[which]["index"] / tid
+        if (idx / ".neuralmind").is_dir():
+            print(f"{tid}: already built", flush=True)
+            continue
+        ws = OUT / "build-ws" / which / tid
+        shutil.rmtree(ws, ignore_errors=True)
+        harness.snapshot(by_id[tid]["base_commit"], ws)
+        t0 = time.monotonic()
+        subprocess.run(["neuralmind", "build", str(ws)], cwd=ws, env=env, check=True)
+        idx.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(ws / ".neuralmind"), str(idx / ".neuralmind"))
+        shutil.rmtree(ws)
+        print(f"{tid}: built in {time.monotonic() - t0:.0f}s", flush=True)
 
 
 def prepare(which: str) -> None:
@@ -326,7 +359,7 @@ def _load(which: str, label: str) -> dict | None:
 
 def summary() -> None:
     """The README's tables, from the committed results."""
-    for which in ("heldout", "dev", "pilot"):
+    for which in ("heldout", "confirm", "dev", "pilot"):
         off, on = _load(which, "flag-off"), _load(which, "flag-on")
         if off is None or on is None:
             continue
@@ -371,7 +404,9 @@ def _first(record: dict) -> str:
 
 if __name__ == "__main__":
     cmd, *rest = sys.argv[1:] or ["help"]
-    if cmd == "prepare":
+    if cmd == "build":
+        build(rest[0], rest[1], rest[2:])
+    elif cmd == "prepare":
         prepare(rest[0])
     elif cmd == "capture":
         use_repo(rest[0])
