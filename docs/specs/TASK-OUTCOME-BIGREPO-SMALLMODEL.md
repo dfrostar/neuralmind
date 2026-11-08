@@ -1,7 +1,8 @@
 # Task outcomes, track 1: a small model on a big repository
 
 **Status:** pre-registered 2026-11-01; stages 0, 0b and 1 complete (stage 1
-passed at its threshold, 2026-11-06); stage 2 not started.
+passed at its threshold, 2026-11-06); stage 2 running since 2026-11-08 16:03 UTC,
+all 120 runs on Hermes 0.23.0 (the 2026-11-08 entry).
 **Owner:** Darren Frost. **Machine:** ai-9970 (`~/nm-bench/tracks/t1-bigrepo-smallmodel/STATUS.md`
 mirrors this table). **Harness:** `evals/task_outcome/run.py`, as in
 [`TASK-OUTCOME-BENCHMARK-SPEC.md`](TASK-OUTCOME-BENCHMARK-SPEC.md), whose
@@ -220,3 +221,34 @@ ended at the turn cap, 10 never edited a file. **Passed, exactly at the gate.**
     the floor's runs across the version change, which puts the two arms' seed-0
     runs on different Hermes versions. The decision and the recorded version
     go in the next entry.
+- 2026-11-08 — **stage 2's form: (a), all 120 runs on Hermes 0.23.0,** in a
+  fresh out dir (`~/nm-bench/tracks/t1-bigrepo-smallmodel/full/`), started at
+  16:03 UTC. The floor check's 20 runs (0.22.6, `runs/`) stay stage 1's evidence
+  and are not reused as stage 2's baseline seed 0: the one departure from the
+  design above, made so that no arm comparison crosses a Hermes version. 0.23.0
+  is recorded in `~/nm-pilot/environment.json` (fifth change entry; the earlier
+  tracks' baseline, 0.22.5 and NeuralMind 4.23.1, is unchanged); the runner
+  records the Hermes version per run and refuses to append runs made under
+  another, so a further `hermes update` stops the stage rather than mixing it.
+  - **Found on the box before the start, both recorded.** The 20-index cache
+    (47 GB, built 11-06) had been deleted on 11-07 by a Hermes disk-cleanup
+    session the user asked for (the disk was at 96%; the session's own log has
+    the `rm -rf`). The chain rebuilds it first, from the same base commits with
+    the same builder, NeuralMind 4.24.0 (the cache key); as before, the build is
+    not part of the measured run. And the user's local Qwen3.8-27B, served by
+    Hermes 0.23.0's own llama-server (alias `deep`/`local`), held 14 GB of the
+    16 GB GPU at decision time; Hermes unloads it 15 minutes after its last
+    request. The chain starts the runner only when preflight passes (no other
+    GPU process, bge-m3 on the GPU or unloaded), re-checks before every resume,
+    and logs GPU use on change to `full/gpu-watch.log`, so contention during a
+    run is on record rather than silent. At 16:03 UTC the model had unloaded.
+  - **Chain** `~/nm-bench/t1_stage2_chain.sh` (log `~/nm-bench/t1-stage2-chain.log`):
+    runner clone pinned at the floor check's commit (`e286fbcf`, harness 6);
+    index rebuild (about 3.3 h); preflight wait;
+    `t1_stage.sh baseline,neuralmind 3 full`, resumable, harness failures
+    retried from the next unrecorded run up to five times, drift waits for
+    preflight, a version mix or the launcher guard stops it; then
+    `hermes_sessions` and `analyze` into `full/analyze.txt`. No arm comparison
+    is read before the 120 runs are recorded; about a day of runs after the
+    rebuild. Threats carried into the read: the prompt's interpreter line
+    (11-06 entry) and whatever the GPU watch records.
