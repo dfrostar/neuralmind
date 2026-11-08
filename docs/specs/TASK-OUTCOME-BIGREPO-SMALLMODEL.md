@@ -1,7 +1,7 @@
 # Task outcomes, track 1: a small model on a big repository
 
-**Status:** pre-registered 2026-11-01; stages 0 and 0b complete; stage 1's
-prerequisites under way (2026-11-05), no agent run yet.
+**Status:** pre-registered 2026-11-01; stages 0, 0b and 1 complete (stage 1
+passed at its threshold, 2026-11-06); stage 2 not started.
 **Owner:** Darren Frost. **Machine:** ai-9970 (`~/nm-bench/tracks/t1-bigrepo-smallmodel/STATUS.md`
 mirrors this table). **Harness:** `evals/task_outcome/run.py`, as in
 [`TASK-OUTCOME-BENCHMARK-SPEC.md`](TASK-OUTCOME-BENCHMARK-SPEC.md), whose
@@ -37,6 +37,11 @@ Stage 0b result (2026-11-03,
 [`bench/task_outcome/lexical-anchoring/`](../../bench/task_outcome/lexical-anchoring/README.md#confirmation-12-new-tasks-stage-0b)):
 flag on, a changed file listed first on **5 of 12** (flag off 2; named 7 of 12
 both ways). **Passed, exactly at the gate.**
+
+Stage 1 result (2026-11-06,
+[`bench/task_outcome/t1-bigrepo-smallmodel/stage1/`](../../bench/task_outcome/t1-bigrepo-smallmodel/stage1/README.md)):
+gpt-oss:20b-64k without NeuralMind solved **3 of 20** at seed 0; 11 runs
+ended at the turn cap, 10 never edited a file. **Passed, exactly at the gate.**
 
 ## Stage 1 and 2 design, fixed now
 
@@ -183,3 +188,35 @@ both ways). **Passed, exactly at the gate.**
     from a chain (`~/nm-bench/t1_floor_chain.sh`) that stops on drift or a
     fifth harness failure and does not start stage 2: the floor result is read
     first.
+- 2026-11-06 — stage 1, the floor check, run as registered: ai-9970, 08:03 to
+  11:46 UTC, Hermes 0.22.6, harness 6, NeuralMind 4.24.0 installed and unused,
+  the 20 tasks at seed 0, baseline arm only
+  ([`stage1/`](../../bench/task_outcome/t1-bigrepo-smallmodel/stage1/README.md)).
+  - **Result: 3 of 20 solved** (`a3537b6f04`, `d4fa373017`, `4a78de2805`, the
+    last on the final turn before the cap). **The gate (>= 3 of 20) is met at its
+    threshold, with no margin**, as stage 0's *first* count and stage 0b were.
+    The rule stands as written: stage 2 may run; the tasks are not replaced.
+  - **What the runs show.** 11 of 20 ended at Hermes's turn limit and 10 never
+    edited a file; the median session made 117 API calls and 3.9M prompt
+    tokens in 10.7 minutes. Seven runs touched a gold file, four of them
+    without passing. The pilot's baseline on NeuralMind's own repository solved
+    10 of 20 at seed 0: on a repository twenty times larger the same model
+    spends its budget searching, which is the condition this track was built
+    to test. No timeouts, no harness failures, no paid calls.
+  - **The agent mostly ignored the interpreter the prompt named** (10 of 48
+    pytest commands used it; `No module named` answered 15): harness 6's line
+    is true and a 20B model does not reliably follow it. Both arms alike;
+    logged as a threat, not fixed, since the mechanism endpoints don't depend
+    on the agent's own test runs.
+  - **The chain's cap count was wrong,** reading 4 where Hermes's own
+    `subtype: error` marks 11: `num_turns` is the client's count (117 to 120 at
+    the limit). The report counts by `subtype`; `analyze` already does.
+  - **Hermes moved again.** The user ran `hermes update` on ai-9970 at 19:40 UTC
+    on 11-06, eight hours after the last floor run: 0.22.6 to 0.23.0, with the
+    0.22.6 environment removed. Preflight now stops the chain. Stage 2's form
+    is therefore decided here before its first run, not in the design: either
+    (a) all 120 runs on 0.23.0, recording the version and leaving the floor's
+    20 runs as the gate's evidence only, or (b) the design as written, reusing
+    the floor's runs across the version change, which puts the two arms' seed-0
+    runs on different Hermes versions. The decision and the recorded version
+    go in the next entry.
