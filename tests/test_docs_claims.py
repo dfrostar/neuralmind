@@ -67,6 +67,11 @@ PUBLISHED_FILES = (
     # their ratios.
     "plugin.yaml",
     "integrations/a0-plugins/neuralmind/index.yaml",
+    # The Claude Code plugin: its manifest and marketplace descriptions are
+    # what `/plugin` lists, and the README is its page.
+    "integrations/claude-code/neuralmind/.claude-plugin/plugin.json",
+    "integrations/claude-code/neuralmind/README.md",
+    ".claude-plugin/marketplace.json",
 )
 PUBLISHED_GLOBS = (
     "docs/comparisons/*.md",

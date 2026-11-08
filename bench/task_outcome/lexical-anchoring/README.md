@@ -3,8 +3,9 @@
 **Offline replays only, no agent runs, and not a product claim.** What the
 `UserPromptSubmit` hook's block lists with lexical anchoring off and on
 (`NEURALMIND_RECALL_LEXICAL=1`), scored against each task's real fix, on the
-12 held-out hermes-agent tasks, the pilot's 20 tasks and the hermes-agent
-screen's 5. Pre-registered, with its gate, in
+12 held-out hermes-agent tasks, the pilot's 20 tasks, the hermes-agent
+screen's 5 and, since 2026-11-03, the 12 new tasks of the track-1 confirmation
+(stage 0b). Pre-registered, with its gate, in
 [the spec's change log](../../../docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)
 (2026-11-01), before any of the code here was written. Whether an agent does
 anything differently with the new block is not measured.
@@ -221,6 +222,81 @@ pilot records' `lexical_replica` changed because the first run's replica had
 counted grep hits in files the index doesn't hold (a minified chart bundle
 under `docs/benchmarks/`, the site's Tailwind config).
 
+## Confirmation: 12 new tasks (stage 0b)
+
+Pre-registered in [the track-1 spec](../../../docs/specs/TASK-OUTCOME-BIGREPO-SMALLMODEL.md)
+(2026-11-01), with its procedure fixed on 2026-11-03 before the walk continued.
+Gate: flag on, a file the fix changed listed first on **at least 5 of 12**
+(*first*, chosen before the replay; *named* is not used). **Result: 5 of 12,
+the gate met exactly, with no margin.**
+
+How the set was made:
+- **Walk:** positions 25 to 39 of the seeded order (seed 20261025, hermes-agent
+  pinned at `710fa8a`), `draw.py` as committed. 14 of the 15 positions
+  qualified; position 35 didn't (both runs passed). The rows are
+  [confirm/walk.jsonl](confirm/walk.jsonl).
+- **Prompts and exclusions:** written by separate agents that saw only each
+  fix's message, diff and failing tests. Two commits were excluded under (c),
+  with the evidence in [confirm/exclusions.json](confirm/exclusions.json): the
+  test imports or patches by name a constant or helper the fix adds
+  (`cf94a29319`, `e68c489c96`). The walk went on until 12 tasks had prompts.
+  [confirm/tasks.json](confirm/tasks.json) was committed before any index was
+  built.
+- **Replay:** the released NeuralMind **4.24.0** (a clean venv, one shim per
+  row), one index per task built once with it, then the real
+  `neuralmind _hook prompt-submit` on a fresh clone of each index, flag unset
+  and flag set to 1, weight 0.5. Rows:
+  [confirm/flag-off](confirm/flag-off/replay-results.json),
+  [confirm/flag-on](confirm/flag-on/replay-results.json).
+
+| | flag off | flag on |
+|---|---|---|
+| A file the fix changed is listed | 7 | 7 |
+| …and listed first | 2 | **5** |
+| Code quoted / from a changed file | 3 / 0 | 1 / 1 |
+| Test files among the files listed | 16 of 77 | 18 of 77 |
+| Median block size (characters) | 712 | 640 |
+| Median hook time (seconds) | 6.07 | 7.59 |
+
+| Task | Gold | Off: first file | named/first | On: first file | named/first |
+|---|---|---|---|---|---|
+| `f94d72f7e8` | tools/mcp_tool_handlers.py | tools/mcp_tool_handlers.py | named/first | tools/mcp_tool_handlers.py | named/first |
+| `ebf002cd3e` | hermes_cli/_launchers.py | hermes_cli/_early_recovery.py | - | hermes_cli/_early_recovery.py | - |
+| `5381678d03` | hermes_cli/debug_redaction.py | hermes_cli/debug.py | named | agent/redact.py | named |
+| `1693c071a7` | hermes_cli/models_validate.py, tui_gateway/methods_session.py, tui_gateway/methods_session_model_guard.py | hermes_cli/model_setup_flows.py | - | hermes_cli/models_catalog_static.py | - |
+| `e4e8f9bbc9` | gateway/session_policy_credentials.py | gateway/run_agent_cache.py | named | gateway/session_policy_credentials.py | named/first |
+| `6ca41cbe8b` | agent/opencode_affinity.py | hermes_cli/runtime_provider.py | named | agent/opencode_affinity.py | named/first |
+| `96eae3542e` | hermes_cli/tools_config.py | tools/mcp_tool_discovery.py | named | tools/mcp_tool_discovery.py | named |
+| `398867326d` | tools/transcription_local.py, tools/transcription_tools.py, tools/tts_tool.py | hermes_cli/setup_summary.py | - | hermes_cli/web_routers/audio.py | - |
+| `3c9aad4562` | tools/browser_cdp_tool.py | hermes_cli/browser_connect.py | named | tools/browser_cdp_tool.py | named/first |
+| `ebb9bc5699` | tools/environments/local_env_policy.py | tools/environments/local_env_policy.py | named/first | tools/environments/local_env_policy.py | named/first |
+| `39de69b19c` | plugins/platforms/irc/adapter.py | gateway/bot_loop_guard.py | - | gateway/bot_loop_guard.py | - |
+| `eb11e7eac9` | agent/turn_final_response.py | agent/context_compressor.py | - | agent/context_compressor.py | - |
+
+What it shows, and what it doesn't:
+- **The gain is in *first*, not *named*.** The flag put a changed file first on 3
+  tasks (`e4e8f9bbc9`, `6ca41cbe8b`, `3c9aad4562`) and lost it on none. The same 7
+  tasks have a changed file listed with the flag off and on, so on these tasks
+  it reordered the files the block already held and brought none in. On the
+  first held-out set it did bring files in (named 4 to 7) and gained *first* on
+  2 tasks, losing none (3 to 5). Put together the *first* gains replicate; the
+  *named* gain did not. The flag-off block already named 7 of these 12, against
+  4 of the first 12, so there was less to add.
+- **Nine of the 12 blocks changed** their list of files. Five tasks have no
+  changed file listed either way (`ebf002cd3e`, `1693c071a7`, `398867326d`,
+  `39de69b19c`, `eb11e7eac9`).
+- **The gate is met at its threshold.** It counts tasks, so one task moving
+  either way flips it. Stage 0's *first* count was also exactly at its
+  threshold. Two sets of 12 meeting a gate of 5 is the evidence; it is not a
+  margin.
+- **Cost:** the hook's median time on hermes-agent rose from 6.07 to 7.59
+  seconds.
+- **Threats, as before:** the prompts were written by agents from each fix's
+  tests and diff, which may quote identifiers more faithfully than a user's bug
+  report and favours lexical matching; 12 tasks; two of the 14 qualifying
+  commits were excluded by the writers' reading; and this scores what the block
+  lists, not what an agent does with it.
+
 ## Reproduce
 
 Needs the cached indexes from the test-ranking study under `~/nm-bench`
@@ -234,7 +310,8 @@ inside a NeuralMind checkout, as on the pilot's tasks, `-m` would otherwise
 import the checkout's own copy of `neuralmind`.
 
 ```bash
-python replay_lexical.py prepare <set>                  # set: heldout | dev | pilot
+python replay_lexical.py build <set> <shim-off> [id ...]  # confirm only: one index per task, once
+python replay_lexical.py prepare <set>                  # set: heldout | confirm | dev | pilot
 python replay_lexical.py capture <set>                  # cached search hits, for variants
 python replay_lexical.py variants <set> 0.25 0.5 1.0    # the weight grid, in-process
 python replay_lexical.py hook <set> <shim-off> flag-off

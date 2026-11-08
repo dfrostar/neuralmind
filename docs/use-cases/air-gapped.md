@@ -23,7 +23,6 @@ internet access by design, not something you'd run on an isolated host):
 |---|---|---|
 | `neuralmind/onnx_embedder.py` | one fixed HTTPS URL, `GET`, SHA256-pinned | **No.** It downloads a public model. The request carries nothing about your repository. |
 | `neuralmind/daemon_client.py` | `127.0.0.1` | **No.** A loopback socket to NeuralMind's own daemon — it is not an external connection at all. |
-| `neuralmind/local_client.py` | `http://localhost:11434` (Ollama default) | Loopback, unless you repoint `endpoint` yourself. |
 | `neuralmind/synapses.py::seed_from_documentation()` | Anthropic API | **Only if you explicitly opt in** with both `NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` set (both unset by default). Reads whatever bytes exist at two fixed paths (`README.md`, `docs/architecture.md`) and sends up to the first 8,000 characters combined — a path-based read, not a content classifier, so a README with embedded code snippets or a symlinked path sends that unfiltered. Fail-open: any error returns `0` and never blocks indexing. See [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) before opting in. |
 
 So under the default configuration there is exactly one request that
