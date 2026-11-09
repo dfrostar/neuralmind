@@ -376,10 +376,31 @@ removes that step.
 
 ```bash
 neuralmind build /absolute/path/to/repo
+hermes plugins install neuralmind --enable
+cd /absolute/path/to/repo && hermes   # the plugin serves the built project Hermes works in
+```
+
+`hermes plugins install neuralmind` installs the plugin from Hermes's
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind)
+(Hermes 0.21.5 or later), at the commit of this repository the catalog entry
+pins. It isn't pinned to a project: it serves the built project Hermes works
+in, so start Hermes there, or pin one with
+`neuralmind install-hermes-plugin /absolute/path/to/repo` (see
+[Which project a Hermes session belongs to](#which-project-a-hermes-session-belongs-to) below). Hermes owns the code: `hermes plugins update neuralmind` moves it to the
+commit the catalog pins at the time. The plugin runs the `neuralmind` command
+on Hermes's PATH. Where Hermes's PATH doesn't include it (a gateway run as a
+service, Hermes Desktop) or finds an older NeuralMind, run
+`neuralmind install-hermes-plugin` once: on a plugin Hermes installed, it
+writes only the interpreter and the project, and leaves the code alone.
+
+NeuralMind's own installer puts in the plugin code of the release you have,
+without the catalog:
+
+```bash
 neuralmind install-hermes-plugin /absolute/path/to/repo
 ```
 
-The command writes the plugin into the Hermes home's `plugins/neuralmind/`:
+That command writes the plugin into the Hermes home's `plugins/neuralmind/`:
 the one plain `hermes` uses: the active Hermes profile's home, if
 `hermes profile use` selected one (`<root>/profiles/<name>`), else
 `$HERMES_HOME`, else Hermes's root home, `~/.hermes` (on Windows, `%LOCALAPPDATA%\hermes`). The output names the
@@ -397,18 +418,15 @@ so re-run `neuralmind install-hermes-plugin` after upgrading NeuralMind. A
 re-run doesn't re-enable a plugin you turned off with
 `hermes plugins disable neuralmind`: it says so and leaves it disabled.
 
-*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
-repository:
+*(v4.10.0+)* Hermes can also install the plugin straight from this
+repository, without the catalog:
 
 ```bash
 hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable
 ```
 
-Then Hermes owns the code (`hermes plugins update neuralmind` updates it), and
-the plugin runs the `neuralmind` command on Hermes's PATH. Where Hermes's PATH
-doesn't include it (a gateway run as a service, Hermes Desktop), also run
-`neuralmind install-hermes-plugin`: on a plugin Hermes installed, it writes only
-the interpreter and the project, and leaves the code alone. The plugin's
+Hermes then owns the code just as it does a catalog install, and the PATH note
+above applies. The plugin's
 [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
 lists what it reads, writes and sends.
 

@@ -109,10 +109,10 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'local code index, code intelligence for AI agents, Claude Code, Hermes agent, MCP server, context engineering, code knowledge graph, progressive context disclosure',
             featureList: [
                 'The gold file on 40 of 40 pre-registered queries on four public repos vs keyword ripgrep’s 32 of 40 (top five files opened whole), at 31–67× fewer tokens, and 51–242× fewer than pasting every source file; 93.3% top-5 on a 150-question eval, misses published',
-                'Synapse layer that records which files are used together and re-ranks recall; a task-outcome run found no gain from carrying that state between tasks',
+                'Synapse layer that records which files are used together and re-ranks recall; an exploratory Hermes run that carried that state from task to task found no statistically significant gain in tasks solved',
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
                 'MCP server for MCP-compatible clients; agents did not call its tools in our task-outcome runs',
-                'Prompt hook for Claude Code and Hermes: session-start context, prompt-time recall, stale-decision guard',
+                'Prompt hook for Claude Code and Hermes: session-start context and prompt-time recall; in Claude Code, a stale-decision guard before each edit',
                 'Committed team bundle of recorded file associations that travels with git, with a review queue for imports and a hash-chained audit log',
                 'Bundled tree-sitter code graph indexing ten languages plus JavaScript (parsed with the TypeScript grammars)',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
