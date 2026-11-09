@@ -89,6 +89,32 @@ A later scope overrides an earlier one, so a project that switches the plugin
 off isn't counted. Before, a plugin user saw "Claude Code hooks: not
 installed", and `neuralmind build` offered `neuralmind install-hooks`.
 
+### A Hermes plugin from the catalog stops looking outdated
+
+`hermes plugins install neuralmind` installs the plugin at the commit Hermes's
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind)
+pins, and that commit's manifest says v4.23.3. `doctor` compared that version
+with the installed NeuralMind's, so on every later release it called the
+plugin outdated and offered `hermes plugins update neuralmind`. That update
+goes only as far as the catalog's pin, the commit already installed, so the
+warning never cleared, and `build`'s closing lines offered the same command.
+
+`doctor` now compares the plugin's code with this release's, leaving out the
+manifest's version line. Only that line has changed since the catalog's pin,
+so a catalog install passes. When the code does differ:
+
+- **From the catalog:** `doctor` still offers `hermes plugins update
+  neuralmind`, says it stops at the catalog's pin, and names the way to this
+  release's plugin: `neuralmind install-hermes-plugin --uninstall`, then
+  `neuralmind install-hermes-plugin`. `build` no longer offers it unasked.
+- **Newer than NeuralMind:** `doctor` says to upgrade NeuralMind, where it
+  offered a re-install or an update that couldn't help.
+- **The interpreter the plugin records is gone:** the fix is a re-run of
+  `neuralmind install-hermes-plugin`, which rewrites the plugin's
+  `config.json` however the plugin was installed. It was `hermes plugins
+  update neuralmind` for a plugin Hermes installed, which doesn't touch that
+  file.
+
 ## Per-agent expectations
 
 | Agent | What changes |
@@ -97,7 +123,8 @@ installed", and `neuralmind build` offered `neuralmind install-hooks`.
 | **Claude Code** (`install-hooks` / `install-mcp`, no plugin) | Nothing. Those commands keep working and stay supported. |
 | **Claude Code** (both) | Each hook action runs once, from the settings file. The project's MCP entry wins over the plugin's. |
 | **Claude Desktop / claude.ai** | Nothing. Claude Code plugins don't load there; Claude Desktop keeps `neuralmind install-mcp --client claude-desktop`. |
-| **Cursor / Cline / Hermes-Agent / generic MCP** | Nothing. |
+| **Hermes-Agent** | The plugin behaves as before. `doctor` and `build` stop calling a plugin from Hermes's catalog outdated while its code is this release's ([above](#a-hermes-plugin-from-the-catalog-stops-looking-outdated)). |
+| **Cursor / Cline / generic MCP** | Nothing. |
 
 ## Limits
 

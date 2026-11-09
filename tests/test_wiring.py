@@ -279,6 +279,93 @@ def test_hermes_plugin_hermes_installed_is_updated_by_hermes(home, tmp_path):
     assert wiring.hermes_plugin_item(tmp_path).fix == "hermes plugins update neuralmind"
 
 
+# `hermes plugins install neuralmind`, as Hermes v0.23.0 records it.
+_CATALOG_RECORD = {
+    "neuralmind": {
+        "catalog": {"name": "neuralmind", "sha": "e66f5010", "pin": "e66f5010"},
+        "pinned": True,
+    }
+}
+
+
+def _copy_of_this_release(hermes: Path, version: str, newline: str = "\n") -> Path:
+    """The plugin as this release ships it, with ``version`` in its manifest."""
+    from neuralmind.hermes_install import PLUGIN_SOURCE
+
+    target = _plugin(hermes)
+    for file in ("__init__.py", "plugin.yaml"):
+        text = (PLUGIN_SOURCE / file).read_text(encoding="utf-8")
+        if file == "plugin.yaml":
+            text = text.replace(f'"{__version__}"', f'"{version}"')
+        (target / file).write_bytes(text.replace("\n", newline).encode("utf-8"))
+    return target
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_a_catalog_install_from_an_earlier_release_with_this_releases_code_is_current(
+    home, tmp_path, newline
+):
+    # The catalog pins one commit, whose manifest names its own release: a
+    # later NeuralMind that didn't change the plugin has nothing to update.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _copy_of_this_release(hermes, "4.15.0", newline)
+    (hermes / "plugins" / ".install-metadata.json").write_text(json.dumps(_CATALOG_RECORD))
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.wired is True and not item.needs_fix and item.fix == ""
+
+
+def test_a_plugin_whose_code_changed_since_is_still_outdated(home, tmp_path):
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    target = _copy_of_this_release(hermes, "4.15.0")
+    (target / "__init__.py").write_text("# an older plugin\n", encoding="utf-8")
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.outdated and item.fix == "neuralmind install-hermes-plugin"
+
+
+@pytest.mark.parametrize(
+    "record",
+    [_CATALOG_RECORD, {"neuralmind": {"catalog_name": "neuralmind"}}],
+)
+def test_a_catalog_install_with_older_code_says_how_far_an_update_goes(home, tmp_path, record):
+    # `hermes plugins update` stops at the catalog's pin, so build doesn't push
+    # it, and doctor names the way to this release's code.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _plugin(hermes, version="4.15.0")
+    (hermes / "plugins" / ".install-metadata.json").write_text(json.dumps(record))
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.outdated and item.suggest is False
+    assert item.fix == "hermes plugins update neuralmind"
+    assert "the commit the catalog pins" in item.detail
+    assert "`neuralmind install-hermes-plugin --uninstall`, then" in item.detail
+
+
+@pytest.mark.parametrize("records", [None, '{"neuralmind": {}}', json.dumps(_CATALOG_RECORD)])
+def test_a_plugin_newer_than_neuralmind_asks_for_an_upgrade(home, tmp_path, records):
+    # Neither a re-install nor `hermes plugins update` would bring NeuralMind up.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _plugin(hermes, version="999.0.0")
+    if records:
+        (hermes / "plugins" / ".install-metadata.json").write_text(records)
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.outdated and item.fix == "" and item.suggest is False
+    assert f"newer than NeuralMind v{__version__}" in item.detail
+    assert "pip install -U neuralmind" in item.detail
+
+
+@pytest.mark.parametrize("records", [None, '{"neuralmind": {}}', json.dumps(_CATALOG_RECORD)])
+def test_a_missing_interpreter_is_fixed_by_a_reinstall_whoever_installed_the_code(
+    home, tmp_path, records
+):
+    # A re-run rewrites config.json for any install; `hermes plugins update` doesn't.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _plugin(hermes, python=str(tmp_path / "gone" / "python"))
+    if records:
+        (hermes / "plugins" / ".install-metadata.json").write_text(records)
+    item = wiring.hermes_plugin_item(tmp_path)
+    assert item.outdated and "no longer exists" in item.detail
+    assert item.fix == "neuralmind install-hermes-plugin"
+
+
 # --------------------------------------------------------------------------- #
 # MCP registrations
 # --------------------------------------------------------------------------- #

@@ -41,6 +41,8 @@ _BLOCK_END = "# neuralmind-hook-end"
 _REBUILD_TARGET = re.compile(r"\[ -f (.+?)/\.neuralmind/build_status\.json \]")
 _DRIFT_TARGET = re.compile(r'"\$_nm_bin" drift (.+?) --staged')
 _PLUGIN_VERSION = re.compile(r'^version:\s*["\']?([^"\'\s#]+)', re.MULTILINE)
+_MANIFEST_VERSION_LINE = re.compile(rb"^version:.*$", re.MULTILINE)
+_RELEASE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 # A Hermes config key `hermes config set` can address as one dotted segment.
 _PLAIN_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
 # Whether pasted commands are for cmd.exe / PowerShell (tests flip it).
@@ -55,8 +57,8 @@ class WiringItem:
     on this machine, a project outside Git). ``fix`` is the one command that
     wires it. ``host`` marks an item through which an agent calls NeuralMind.
     ``outdated`` marks a piece that is wired but runs old code (a daemon or
-    plugin copy from before an upgrade): it still works, and ``fix`` updates
-    it. ``suggest`` is False for a fix that undoes a deliberate choice
+    plugin copy from before an upgrade, or a plugin newer than NeuralMind): it
+    still works, and ``fix``, when there is one, updates it. ``suggest`` is False for a fix that undoes a deliberate choice
     (another project's pin, another project's Git hooks) or can't apply as
     printed, which ``build`` doesn't offer unasked.
     """
@@ -363,6 +365,42 @@ def _names(value) -> list[str]:
     return [str(v) for v in value] if isinstance(value, list) else []
 
 
+def _plugin_code(name: str, data: bytes) -> bytes:
+    """A plugin file without what doesn't change how it runs.
+
+    That's line endings (a Git checkout on Windows may convert them) and the
+    manifest's version line, which every release bumps.
+    """
+    data = data.replace(b"\r\n", b"\n")
+    return _MANIFEST_VERSION_LINE.sub(b"", data) if name == "plugin.yaml" else data
+
+
+def _plugin_code_is_current(target: Path) -> bool:
+    """Whether the installed plugin is this release's code, whatever version its manifest names.
+
+    A plugin from Hermes's catalog stays at the commit the catalog pins, whose
+    manifest names that commit's release. Most releases don't touch the
+    plugin, so the version alone would flag it after each one, with no update
+    that could clear it.
+    """
+    from .hermes_install import PLUGIN_FILES, PLUGIN_SOURCE
+
+    try:
+        return all(
+            _plugin_code(file, (target / file).read_bytes())
+            == _plugin_code(file, (PLUGIN_SOURCE / file).read_bytes())
+            for file in PLUGIN_FILES
+        )
+    except OSError:
+        return False
+
+
+def _later_release(version: str, than: str) -> bool:
+    """Whether ``version`` is a later release than ``than``; False unless both are X.Y.Z."""
+    a, b = _RELEASE.match(version), _RELEASE.match(than)
+    return bool(a and b) and tuple(map(int, a.groups())) > tuple(map(int, b.groups()))
+
+
 def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
     """not installed / installed / enabled, for the Hermes home plain `hermes` uses."""
     name = "Hermes plugin"
@@ -371,6 +409,7 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
         from .hermes_install import (
             PLUGIN_NAME,
             hermes_home,
+            installed_from_catalog,
             is_hermes_home,
             managed_by_hermes,
         )
@@ -453,27 +492,65 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
     except (OSError, ValueError):
         found = None
     plugin_version = found.group(1) if found else None
-    if plugin_version and plugin_version != __version__:
-        problems.append(f"its code is from v{plugin_version}, NeuralMind is v{__version__}")
-    if problems:
-        managed = managed_by_hermes(home)
-        detail = f"enabled in {where}, {serves}; but {'; '.join(problems)}"
-        if managed is None:
-            # install-hermes-plugin leaves the code alone while Hermes's install
-            # records can't be read, so re-running it wouldn't update anything.
-            records = home / "plugins" / ".install-metadata.json"
-            return WiringItem(
-                name,
-                True,
-                f"{detail}. {records} can't be read, so a re-install leaves the code "
-                f"alone: fix or delete it, then: {reinstall}",
-                host=True,
-                outdated=True,
-                suggest=False,
+    # None, "older" or "newer": how the plugin's code compares with this release's.
+    code = None
+    if plugin_version and plugin_version != __version__ and not _plugin_code_is_current(target):
+        if _later_release(plugin_version, __version__):
+            code = "newer"
+            problems.append(
+                f"its code is from v{plugin_version}, newer than NeuralMind v{__version__}"
             )
-        fix = f"hermes plugins update {PLUGIN_NAME}" if managed else reinstall
-        return WiringItem(name, True, detail, fix, host=True, outdated=True)
-    return WiringItem(name, True, f"enabled in {where}, {serves}", host=True)
+        else:
+            code = "older"
+            problems.append(f"its code is from v{plugin_version}, NeuralMind is v{__version__}")
+    if not problems:
+        return WiringItem(name, True, f"enabled in {where}, {serves}", host=True)
+    detail = f"enabled in {where}, {serves}; but {'; '.join(problems)}"
+    if code is None:
+        # Only the interpreter: a re-run rewrites config.json, whoever installed the code.
+        return WiringItem(name, True, detail, reinstall, host=True, outdated=True)
+    if code == "newer":
+        # Neither a re-install nor a Hermes update brings NeuralMind up to the plugin.
+        return WiringItem(
+            name,
+            True,
+            f"{detail}. Upgrade NeuralMind the way you installed it (`uv tool upgrade "
+            "neuralmind`, `pipx upgrade neuralmind` or `pip install -U neuralmind`)",
+            host=True,
+            outdated=True,
+            suggest=False,
+        )
+    managed = managed_by_hermes(home)
+    if managed is None:
+        # install-hermes-plugin leaves the code alone while Hermes's install
+        # records can't be read, so re-running it wouldn't update anything.
+        records = home / "plugins" / ".install-metadata.json"
+        return WiringItem(
+            name,
+            True,
+            f"{detail}. {records} can't be read, so a re-install leaves the code "
+            f"alone: fix or delete it, then: {reinstall}",
+            host=True,
+            outdated=True,
+            suggest=False,
+        )
+    update = f"hermes plugins update {PLUGIN_NAME}"
+    if managed and installed_from_catalog(home):
+        # The update stops at the catalog's pin, which may be the commit installed.
+        return WiringItem(
+            name,
+            True,
+            f"{detail}. It came from Hermes's plugin catalog, so `{update}` moves it only "
+            "as far as the commit the catalog pins; for this release's plugin now, "
+            f"replace it with NeuralMind's copy: `{reinstall} --uninstall`, then `{reinstall}`",
+            fix=update,
+            host=True,
+            outdated=True,
+            suggest=False,
+        )
+    return WiringItem(
+        name, True, detail, update if managed else reinstall, host=True, outdated=True
+    )
 
 
 # --------------------------------------------------------------------------- #
