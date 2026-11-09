@@ -144,7 +144,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (670–9
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | `codex mcp add neuralmind -- neuralmind-mcp`. Config registration and the MCP protocol itself (`initialize`, `tools/list`, real tool calls) are confirmed working against the actual binary; Codex's own agent loop calling a tool mid-conversation has not been observed (needs a live API key). See [the Codex ecosystem comparison](docs/comparisons/vs-codex-cli-memory.md) for what was actually checked. | 🔬 Theoretical |
-| **Hermes-Agent** | `neuralmind install-hermes-plugin` (v4.9.0+) adds a plugin that puts the related files and decisions into every turn, and the session recap into a session's first, with no tool call ([walkthrough](docs/use-cases/hermes-agent.md)). For tools the agent calls itself, `neuralmind install-mcp --client hermes` (v4.22.0+) adds `neuralmind-mcp` to Hermes's `config.yaml`, and Hermes's native MCP client starts it — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
+| **Hermes-Agent** | `hermes plugins install neuralmind --enable` installs NeuralMind's plugin from Hermes's [plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind), merged in [NousResearch/hermes-agent#147375](https://github.com/NousResearch/hermes-agent/pull/147375); `neuralmind install-hermes-plugin` (v4.9.0+) installs the same plugin without the catalog. It puts the related files and decisions into every turn, and the session recap into a session's first, with no tool call ([walkthrough](docs/use-cases/hermes-agent.md)). For tools the agent calls itself, `neuralmind install-mcp --client hermes` (v4.22.0+) adds `neuralmind-mcp` to Hermes's `config.yaml`, and Hermes's native MCP client starts it — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. An entry in Hermes's separate MCP catalog is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
 | **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. The portable skill is also listed on ClawHub (community channel): `openclaw skills install @dfrostar/neuralmind`. | 🔬 Theoretical |
 | **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. Listed in Agent Zero's in-app Plugin Hub: the [`a0-plugins` index entry](https://github.com/agent0ai/a0-plugins/tree/main/plugins/neuralmind) merged 2026-08-31 ([agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499)). Installing from the Hub clones this repository as a plugin, which exposes the portable skill — it does not install the package or register the MCP server, so `pip install neuralmind` and the MCP config are still manual. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) mirrors the merged entry. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
@@ -457,11 +457,14 @@ neuralmind install-hooks .
 # In Claude Code: /plugin marketplace add dfrostar/neuralmind, then /plugin install neuralmind@neuralmind
 
 # Hermes-Agent: a plugin that adds related files and decisions to every turn,
-# and the session recap to a session's first (v4.9.0+); --uninstall removes it.
-# A path pins that project for every Hermes session in that Hermes home; leave
-# it out to follow the directory Hermes works in (the terminal CLI's, or a
-# standalone gateway's; Hermes Desktop, ACP editor sessions and per-session
-# workspaces need a pin or NEURALMIND_PROJECT)
+# and the session recap to a session's first, from Hermes's plugin catalog
+hermes plugins install neuralmind --enable
+# ...or NeuralMind's own installer (v4.9.0+; --uninstall removes it). A path
+# pins that project for every Hermes session in that Hermes home. Without one,
+# the plugin follows each CLI, TUI and Desktop session's directory on Hermes
+# 0.22.2+, and the terminal CLI's or a standalone gateway's on older Hermes.
+# ACP editor sessions, per-session workspaces and Desktop on older Hermes
+# need a pin or NEURALMIND_PROJECT.
 neuralmind install-hermes-plugin .
 
 # Team memory: commit learned weights (no source code) for teammates
@@ -477,8 +480,13 @@ uv tool install neuralmind               # puts neuralmind and neuralmind-mcp on
 neuralmind build ~/code/your-project     # the code graph and its embeddings
 neuralmind init-hook ~/code/your-project # rebuild after commits, merges, branch switches, rebases
 neuralmind daemon start                  # keep the index warm for CLI queries
-neuralmind install-hermes-plugin         # NeuralMind context on every Hermes turn
+hermes plugins install neuralmind --enable  # NeuralMind context on every Hermes turn, from Hermes's plugin catalog
 ```
+
+The catalog plugin runs the `neuralmind` command on Hermes's PATH. Where that
+PATH doesn't include it (a gateway run as a service, Hermes Desktop), run
+`neuralmind install-hermes-plugin` once to record the interpreter; the same
+command also installs the plugin without the catalog.
 
 Then check it: `neuralmind doctor ~/code/your-project`. Its Wiring section
 comes first and says, line by line, whether the daemon is running, which Git
