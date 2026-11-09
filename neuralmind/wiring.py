@@ -398,7 +398,9 @@ def _plugin_code_is_current(target: Path) -> bool:
 def _later_release(version: str, than: str) -> bool:
     """Whether ``version`` is a later release than ``than``; False unless both are X.Y.Z."""
     a, b = _RELEASE.match(version), _RELEASE.match(than)
-    return bool(a and b) and tuple(map(int, a.groups())) > tuple(map(int, b.groups()))
+    if a is None or b is None:
+        return False
+    return tuple(map(int, a.groups())) > tuple(map(int, b.groups()))
 
 
 def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
