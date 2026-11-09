@@ -336,7 +336,22 @@ def test_a_catalog_install_with_older_code_says_how_far_an_update_goes(home, tmp
     assert item.outdated and item.suggest is False
     assert item.fix == "hermes plugins update neuralmind"
     assert "the commit the catalog pins" in item.detail
-    assert "`neuralmind install-hermes-plugin --uninstall`, then" in item.detail
+    assert (
+        "`neuralmind install-hermes-plugin --uninstall`, then `neuralmind install-hermes-plugin`"
+        in item.detail
+    )
+
+
+def test_replacing_a_pinned_catalog_install_keeps_the_pin(home, tmp_path):
+    # --uninstall deletes config.json, so a pathless reinstall would drop the pin.
+    hermes = _hermes_home(home, "plugins:\n  enabled: [neuralmind]\n")
+    _plugin(hermes, version="4.15.0", project=str(tmp_path))
+    (hermes / "plugins" / ".install-metadata.json").write_text(json.dumps(_CATALOG_RECORD))
+    item = wiring.hermes_plugin_item(tmp_path)
+    again = f"neuralmind install-hermes-plugin {wiring.shell_arg(str(tmp_path))}"
+    assert item.outdated and f"`neuralmind install-hermes-plugin --uninstall`, then `{again}`" in (
+        item.detail
+    )
 
 
 @pytest.mark.parametrize("records", [None, '{"neuralmind": {}}', json.dumps(_CATALOG_RECORD)])

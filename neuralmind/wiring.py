@@ -539,12 +539,16 @@ def hermes_plugin_item(project: Path, home: Path | None = None) -> WiringItem:
     update = f"hermes plugins update {PLUGIN_NAME}"
     if managed and installed_from_catalog(home):
         # The update stops at the catalog's pin, which may be the commit installed.
+        # --uninstall deletes config.json, so the reinstall names the pin again.
+        again = (
+            f"{reinstall} {shell_arg(pinned)}" if isinstance(pinned, str) and pinned else reinstall
+        )
         return WiringItem(
             name,
             True,
             f"{detail}. It came from Hermes's plugin catalog, so `{update}` moves it only "
             "as far as the commit the catalog pins; for this release's plugin now, "
-            f"replace it with NeuralMind's copy: `{reinstall} --uninstall`, then `{reinstall}`",
+            f"replace it with NeuralMind's copy: `{reinstall} --uninstall`, then `{again}`",
             fix=update,
             host=True,
             outdated=True,

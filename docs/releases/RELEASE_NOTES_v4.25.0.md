@@ -106,7 +106,9 @@ so a catalog install passes. When the code does differ:
 - **From the catalog:** `doctor` still offers `hermes plugins update
   neuralmind`, says it stops at the catalog's pin, and names the way to this
   release's plugin: `neuralmind install-hermes-plugin --uninstall`, then
-  `neuralmind install-hermes-plugin`. `build` no longer offers it unasked.
+  `neuralmind install-hermes-plugin`, with the project's path when the plugin
+  is pinned, since `--uninstall` deletes the pin with the plugin's
+  `config.json`. `build` no longer offers it unasked.
 - **Newer than NeuralMind:** `doctor` says to upgrade NeuralMind, where it
   offered a re-install or an update that couldn't help.
 - **The interpreter the plugin records is gone:** the fix is a re-run of
