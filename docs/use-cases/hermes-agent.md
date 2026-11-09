@@ -24,9 +24,42 @@ the same.
 ```bash
 pip install -U neuralmind
 neuralmind build /path/to/project
+hermes plugins install neuralmind --enable
+cd /path/to/project && hermes   # the plugin serves the built project Hermes works in
+```
+
+`hermes plugins install neuralmind` installs the plugin from Hermes's
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind),
+where a Hermes maintainer merged its entry
+([NousResearch/hermes-agent#147375](https://github.com/NousResearch/hermes-agent/pull/147375)).
+The entry pins one commit of this repository. Hermes prints the entry's
+description, including what the plugin runs, reads and writes, before it
+clones that commit. It needs Hermes 0.21.5 or later. From then on Hermes owns
+the code: `hermes plugins update neuralmind` moves it to the commit the
+catalog pins at the time, and `hermes plugins remove neuralmind` removes it.
+
+Installed this way, the plugin isn't pinned to a project: it serves the built
+project Hermes works in, so start Hermes from it, as the last line above does.
+To pin one instead (for the gateway, say), see
+[section 5](#5-which-project-a-session-belongs-to).
+
+The plugin is a stdlib-only shim around the `neuralmind` command, which it
+finds on Hermes's PATH, so `pip install -U neuralmind` changes the context it
+adds without touching the plugin. Where Hermes's PATH doesn't include
+`neuralmind` (a gateway run as a service, Hermes Desktop) or finds an older
+one, run `neuralmind install-hermes-plugin` once. On a plugin Hermes
+installed, it writes only `config.json` and leaves the code alone. That file
+holds the interpreter to run NeuralMind with, and the project if you pass a
+path (see [section 5](#5-which-project-a-session-belongs-to)).
+
+### Or with NeuralMind's own installer
+
+```bash
 neuralmind install-hermes-plugin /path/to/project
 ```
 
+This installs the plugin code of the NeuralMind release you have, rather than
+the commit the catalog pins, and it doesn't need to reach GitHub.
 `install-hermes-plugin` writes three files to the Hermes home's
 `plugins/neuralmind/`. The home is the one you pass with `--hermes-home`, else
 the one plain `hermes` uses: the active Hermes profile, if `hermes profile use`
@@ -55,13 +88,11 @@ path or `--unpin` (see [section 5](#5-which-project-a-session-belongs-to)).
 It doesn't re-enable a plugin you turned off with
 `hermes plugins disable neuralmind`: it says so and leaves it disabled.
 
-*(v4.10.0+)* Hermes can also install the plugin itself, from a clone of this
-repository: `hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
-Then Hermes owns the code (`hermes plugins update neuralmind` updates it), and
-the plugin runs the `neuralmind` command it finds on Hermes's PATH. Where
-Hermes's PATH doesn't include it (a gateway run as a service, Hermes Desktop),
-also run `neuralmind install-hermes-plugin`, which on a plugin Hermes installed
-writes only `config.json`. The plugin's
+*(v4.10.0+)* Hermes can also install the plugin straight from this
+repository, without the catalog:
+`hermes plugins install dfrostar/neuralmind#neuralmind/hermes_plugin --enable`.
+Hermes then owns the code just as it does a catalog install, and the PATH note
+above applies. The plugin's
 [README](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/hermes_plugin/README.md)
 lists what it reads, writes and sends.
 
@@ -368,9 +399,14 @@ from, or the gateway's service environment.
   dispatch, and `hermes plugins validate` passes. The manifest's
   `requires_hermes: ">=0.21.5"` makes an older Hermes skip it. It relies on
   `pre_llm_call` accepting `{"context": ...}`, which that version documents.
+- **Installed from the catalog and run live on Hermes v0.23.0** (2026-11-07):
+  `hermes plugins install neuralmind --enable` cloned the pinned commit, and a
+  `hermes chat` turn in a built project got the
+  `## NeuralMind associative recall` block.
 - **The plugin is a copy.** `pip install -U neuralmind` doesn't update it;
   re-run `neuralmind install-hermes-plugin` after upgrading. A plugin Hermes
-  installed is updated with `hermes plugins update neuralmind`.
+  installed is updated with `hermes plugins update neuralmind`, which for a
+  catalog install moves it to the commit the catalog pins.
 - **Not measured.** We haven't measured what the context changes in Hermes's
   answers.
 - **The interpreter is recorded at install.** The plugin runs NeuralMind with
@@ -398,7 +434,9 @@ neuralmind install-hermes-plugin --uninstall
 
 *(v4.10.0+)* This runs `hermes plugins remove neuralmind`, which removes the
 plugin's directory and its entries in Hermes's `config.yaml`, so installing it again
-later turns it back on. If `plugins/neuralmind` is a symlink, it disables the
+later turns it back on. A plugin installed from the catalog is removed the same
+way, along with Hermes's install record, and running
+`hermes plugins remove neuralmind` on its own does the same. If `plugins/neuralmind` is a symlink, it disables the
 plugin in Hermes and removes the link, never what it points to. Pass
 `--hermes-home` if you installed it into a home other than the
 default, or have switched Hermes profiles since. The project's session records
