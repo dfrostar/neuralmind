@@ -4,7 +4,9 @@
 **Applies to:** v4.22.0+ (the doctor Wiring section and `install-mcp --client hermes`); the rest from v4.9.0
 
 NeuralMind pairs with Hermes in two ways. The **plugin**
-(`neuralmind install-hermes-plugin`) adds related files, the code linked to
+(`hermes plugins install neuralmind --enable` from Hermes's
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind),
+or `neuralmind install-hermes-plugin`) adds related files, the code linked to
 them, and recorded decisions to every Hermes turn, and the last session's
 recap to a session's first, with no tool call. The **MCP entry**
 (`neuralmind install-mcp --client hermes`) gives the agent NeuralMind's tools
@@ -30,8 +32,10 @@ neuralmind savings . --cost    # what the logged queries saved, priced for your 
   `ok` or `warn`, never `fail`, and a warning carries the command that fixes
   it. When no agent host is wired (no Claude Code hooks, no enabled Hermes
   plugin, no MCP registration) its last line says *Installed but not wired*.
-  It also warns when the plugin's copied code or the running daemon is older
-  than the installed NeuralMind. `--json` puts the same lines under
+  It also warns when the running daemon is older than the installed
+  NeuralMind, or the plugin's code differs from the installed release's (its
+  version alone doesn't count: a catalog install stays at the commit the
+  catalog pins, which names its own release). `--json` puts the same lines under
   `wiring.checks`, and `wiring.state` (`inert`, `partial` or `wired`) for a
   script to gate on. The exit code still depends on the core checks only.
 - **`benchmark`** measures how much context a query returns, not whether the
@@ -80,9 +84,12 @@ neuralmind daemon restart          # the running daemon keeps the old code until
 
 - The plugin runs NeuralMind through the interpreter recorded at install, so
   per-turn recall uses the upgraded package at once. Its own shim is a copy,
-  updated by the re-run; for a plugin Hermes installed from a clone, run
-  `hermes plugins update neuralmind` instead. `doctor` flags a copy from an
-  older release.
+  updated by the re-run; for a plugin Hermes installed (from the catalog or a
+  clone), run `hermes plugins update neuralmind` instead, which moves a
+  catalog install to the commit the catalog pins. `doctor` flags a plugin
+  whose code differs from the installed release's and, for a catalog install,
+  says the update stops at the catalog's pin and how to get this release's
+  plugin instead.
 - **A running MCP server keeps the code it started with** until its host
   restarts it. In Hermes, `/reload-mcp` restarts the MCP servers (and
   invalidates the provider's prompt cache, so the next message re-sends the
