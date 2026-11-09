@@ -14,6 +14,30 @@ neuralmind install-hooks .     # session memory, prompt recall, stale-decision g
 neuralmind init-hook .         # auto-rebuild on every git commit
 ```
 
+**Or install the plugin once instead of `install-hooks` in each project**
+*(v4.25.0+)*. In Claude Code, `/plugin marketplace add dfrostar/neuralmind`,
+then `/plugin install neuralmind@neuralmind`. It registers the same hooks and
+the MCP server for every project you open; they do nothing until a project has
+been built with `neuralmind build .`. The tools are then named
+`mcp__plugin_neuralmind_neuralmind__*`, so update any permission rule written
+for `mcp__neuralmind__*`. Both at once is fine: each hook action runs once
+([plugin README](https://github.com/dfrostar/neuralmind/blob/main/integrations/claude-code/neuralmind/README.md)).
+
+**For a whole team**, declare both at project scope and commit the file:
+
+```bash
+claude plugin marketplace add dfrostar/neuralmind --scope project
+claude plugin install neuralmind@neuralmind --scope project
+git add .claude/settings.json && git commit -m "chore: enable the NeuralMind Claude Code plugin"
+```
+
+That writes `extraKnownMarketplaces` and `enabledPlugins` into the project's
+`.claude/settings.json`, so the setup travels with the repository instead of
+being a step each teammate has to know about. Each teammate still installs the
+Python package and runs `neuralmind build .` once, because the index isn't
+committed. To share what NeuralMind learned as well, see `neuralmind memory
+publish` in the [CLI reference](../wiki/CLI-Reference.md).
+
 ## Daily workflow
 
 **At session start**, have Claude Code call:

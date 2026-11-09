@@ -62,6 +62,7 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -78,7 +79,13 @@ from evals.task_outcome import harness, profiles
 # 4: 3 plus the memory track (--track memory) and the block read back on every
 # Hermes run. The memory track's runs recorded 2: they ran on the Hermes
 # harness before 3 was merged in, which is 4 without profiles and the guard.
-HARNESS_VERSION = 4
+# 5: 4 plus a Hermes run that used a paid provider is aborted whatever its final
+# model label says: Hermes prices it above zero, or its agent log shows an
+# OpenRouter call.
+# 6: 5 plus Hermes on a profile that gives workspaces their own HERMES_HOME
+# (hermes-agent), which 5 refused: `hermes chat` keeps the host's home and the
+# judge's test runs get the workspace's (agent_env).
+HARNESS_VERSION = 6
 ARMS = ("baseline", "neuralmind")
 BASE_TOOLS = [
     "Read",
@@ -94,6 +101,9 @@ BASE_TOOLS = [
 AGENTS = ("claude", "hermes")
 HERMES_TOOLSETS = "file,terminal,no_mcp"
 HERMES_STATE_DB = Path.home() / ".hermes" / "state.db"
+HERMES_LOG_DIR = Path.home() / ".hermes" / "logs"
+# Providers a Hermes run must never have called: the fallback chain ends there.
+PAID_PROVIDERS = ("openrouter",)
 HERMES_PLUGIN_CONFIG = Path.home() / ".hermes" / "plugins" / "neuralmind" / "config.json"
 # The memory track's order, fixed in the spec before any of its runs: the fix
 # commits by author date, which also puts every fix after its ancestors.
@@ -133,8 +143,39 @@ PROMPT = """{symptom}
 
 You are working in a checkout of the {repo} repository. Find the cause and \
 fix it in the source code. Don't add or change tests: the fix is judged by tests \
-you can't see. You can run the existing tests with `python -m pytest <path>`. \
+you can't see. You can run the existing tests with `{pytest} <path>`. \
 Stop when the fix is done."""
+
+PYTEST = "python -m pytest"
+
+
+def pytest_command(agent: str, test_python: str) -> str:
+    """The test command the prompt names, true for where the agent's commands run.
+
+    Claude Code's commands run in the arm's environment, where the test venv's
+    directory leads ``PATH``, so ``python -m pytest`` is that venv's. Hermes's
+    run in the gateway, where its terminal tool puts Hermes's own venv first:
+    in the Hermes pilot (harness 2 to 5) every ``which python`` the agent ran
+    answered with that venv, which lacks the project's dependencies, and ``No
+    module named`` answered 88 of the agent's pytest commands over the 120
+    sessions, in both arms alike. The prompt now names the test venv's
+    interpreter for Hermes, quoted for the shell the agent types it into.
+    """
+    return PYTEST if agent == "claude" else f"{shlex.quote(test_python)} -m pytest"
+
+
+def recorded_elsewhere(record: dict, versions: dict[str, str], pytest: str) -> dict:
+    """What a recorded run was made with that this run isn't: ``{field: (then, now)}``.
+
+    A run file holds one study, so a resume with other binaries, or with another
+    test line in the prompt, is refused. Records before harness 6 carry no
+    ``pytest_command``; theirs was ``python -m pytest``.
+    """
+    mixed = {k: (record.get(k), v) for k, v in versions.items() if record.get(k) != v}
+    then = record.get("pytest_command", PYTEST)
+    if then != pytest:
+        mixed["pytest_command"] = (then, pytest)
+    return mixed
 
 
 class RunAbortedError(RuntimeError):
@@ -162,8 +203,8 @@ def check_guard(guard: list[Path], before: dict[str, str], where: str, ws: Path)
         )
 
 
-def render_prompt(symptom: str, profile: profiles.Profile) -> str:
-    return PROMPT.format(symptom=symptom.strip(), repo=profile.name)
+def render_prompt(symptom: str, profile: profiles.Profile, pytest: str = PYTEST) -> str:
+    return PROMPT.format(symptom=symptom.strip(), repo=profile.name, pytest=pytest)
 
 
 def _clean_path(host_path: str) -> list[str]:
@@ -196,6 +237,25 @@ def _arm_env(arm: str, tool_venv: Path, test_python: str) -> dict[str, str]:
     if found != expected:
         raise RunAbortedError(f"{arm} arm: `neuralmind` resolves to {found}, expected {expected}")
     return env
+
+
+def agent_env(env: dict[str, str], agent: str) -> dict[str, str]:
+    """The agent's own environment: the arm's, minus a workspace ``HERMES_HOME`` for Hermes.
+
+    Claude Code gets the workspace's home where the profile makes one
+    (hermes-agent), so hermes-agent's code run by its session publishes
+    launchers inside the workspace. Hermes *is* the host's install: ``hermes
+    chat`` under any other home would re-publish the host's launchers for it
+    and bootstrap a new home there, so it keeps the host's ``HERMES_HOME``, or
+    none. Its commands run in the gateway, under the gateway's home, whatever
+    this says; the judge's test runs still get the workspace's home.
+    """
+    if agent != "hermes":
+        return env
+    kept = {k: v for k, v in env.items() if k != "HERMES_HOME"}
+    if "HERMES_HOME" in os.environ:
+        kept["HERMES_HOME"] = os.environ["HERMES_HOME"]
+    return kept
 
 
 def _build_index(
@@ -452,6 +512,63 @@ def hermes_session(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> 
         "input_tokens": tokens_in,
         "output_tokens": tokens_out,
     }
+
+
+def hermes_session_cost(session_id: str | None, state_db: Path = HERMES_STATE_DB) -> float | None:
+    """What Hermes priced a session at, in USD; None when it has no figure to give.
+
+    A local model costs nothing and any provider it fell back to does. Hermes
+    names a session for the model it ended on but the endpoint it started on, so
+    the model label alone passes a run that fell back and came back; the price
+    does not depend on a label.
+    """
+    if not session_id:
+        return None
+    import sqlite3
+
+    try:
+        rows = _state_db_rows(
+            state_db,
+            "SELECT estimated_cost_usd, actual_cost_usd FROM sessions WHERE id = ?",
+            (session_id,),
+        )
+    except sqlite3.OperationalError:
+        return None  # a Hermes whose table has no cost columns
+    figures = [float(x) for x in (rows[0] if rows else ()) if x is not None]
+    return max(figures) if figures else None
+
+
+def hermes_paid_calls(session_id: str | None, log_dir: Path = HERMES_LOG_DIR) -> dict[str, int]:
+    """API calls a session made to a paid provider, by ``provider:model``, from the agent logs."""
+    if not session_id or not log_dir.is_dir():
+        return {}
+    call = re.compile(rf"\[{re.escape(session_id)}\].*API call #\d+: model=(\S+) provider=(\S+)")
+    counts: dict[str, int] = {}
+    for log in sorted(log_dir.glob("agent.log*")):
+        with open(log, errors="replace") as fh:
+            for line in fh:
+                found = call.search(line) if session_id in line else None
+                if found and found.group(2) in PAID_PROVIDERS:
+                    key = f"{found.group(2)}:{found.group(1)}"
+                    counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def hermes_paid_use(
+    session_id: str | None,
+    state_db: Path = HERMES_STATE_DB,
+    log_dir: Path = HERMES_LOG_DIR,
+) -> str:
+    """Why a Hermes session counts as having used a paid provider; "" when nothing says so."""
+    reasons = []
+    cost = hermes_session_cost(session_id, state_db)
+    if cost:
+        reasons.append(f"Hermes priced it at ${cost:.4f}")
+    calls = hermes_paid_calls(session_id, log_dir)
+    if calls:
+        listed = ", ".join(f"{n} call(s) to {key}" for key, n in sorted(calls.items()))
+        reasons.append(f"its agent log shows {listed}")
+    return "; ".join(reasons)
 
 
 def hermes_session_in(ws: Path, state_db: Path = HERMES_STATE_DB) -> str | None:
@@ -821,7 +938,8 @@ def run_one(
     )
     harness.workspace_env(ws, args.profile.isolated_hermes_home)
     check_guard(args.guard, guarded, f"{where} (setup)", ws)
-    prompt = render_prompt(task["prompt"], args.profile)
+    pytest = pytest_command(args.agent, args.test_python)
+    prompt = render_prompt(task["prompt"], args.profile, pytest)
     if args.agent == "hermes":
         # Outside the workspace, so the agent's file tools don't list it.
         prompt_file = ws.parent / f"{ws.name}.prompt.txt"
@@ -835,7 +953,12 @@ def run_one(
     stderr = ""
     try:
         proc = subprocess.run(
-            cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=args.timeout
+            cmd,
+            cwd=ws,
+            env=agent_env(env, args.agent),
+            capture_output=True,
+            text=True,
+            timeout=args.timeout,
         )
         stdout, stderr, exit_code, timed_out = proc.stdout, proc.stderr, proc.returncode, False
     except subprocess.TimeoutExpired as exc:
@@ -875,6 +998,13 @@ def run_one(
             # Hermes falls back to another provider when its own model fails:
             # that run measured some other model.
             failure = f"session ran on {session.get('model')!r}, not {args.model!r}"
+        elif not failure:
+            # The model label is where the session ended: a run that fell back to a
+            # paid provider and came back reads as local. Its price and log don't, and
+            # the log names the session by id, so a missing row doesn't hide it.
+            paid = hermes_paid_use(session_id)
+            if paid:
+                failure = f"session used a paid provider ({paid})"
     else:
         agent = parse_stream(stdout.splitlines())
     # After the background commands are stopped, before anything is cleaned up.
@@ -927,6 +1057,7 @@ def run_one(
         "seed": seed,
         "agent": args.agent,
         "model": args.model,
+        "pytest_command": pytest,
         **args.versions,
         "harness_version": HARNESS_VERSION,
         "budget_usd": args.budget if args.agent == "claude" else None,
@@ -1045,16 +1176,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.repo:
         harness.use_repo(args.repo)
     args.profile = profiles.get(args.profile)
-    if args.agent == "hermes" and args.profile.isolated_hermes_home:
-        # The isolated home would reach `hermes chat` itself, and a Hermes run
-        # with a temporary HERMES_HOME rewrites the real install's launchers.
-        # The agent's commands run in the gateway, out of this env's reach anyway.
-        print(
-            f"error: --agent hermes can't run the {args.profile.name} profile, which "
-            "gives every process its own HERMES_HOME",
-            file=sys.stderr,
-        )
-        return 2
+    # A profile's own HERMES_HOME reaches the index build and the judge's test
+    # runs, never `hermes chat`: see agent_env. Harness 5 refused the pair.
 
     tasks = json.loads(args.tasks.read_text())
     if args.task:
@@ -1105,6 +1228,7 @@ def main(argv: list[str] | None = None) -> int:
     runs_file = args.out / "runs.jsonl"
     done = set()
     chain_last: dict[int, dict] = {}  # each chain's last recorded run
+    pytest = pytest_command(args.agent, args.test_python)
     if runs_file.is_file():
         for line in runs_file.read_text().splitlines():
             r = json.loads(line)
@@ -1112,10 +1236,12 @@ def main(argv: list[str] | None = None) -> int:
             last = chain_last.get(r["seed"])
             if r.get("condition") == "carried" and (not last or r["position"] > last["position"]):
                 chain_last[r["seed"]] = {"task": r["task"], "position": r["position"]}
-            mixed = {k: (r.get(k), v) for k, v in args.versions.items() if r.get(k) != v}
+            mixed = recorded_elsewhere(r, args.versions, pytest)
             if mixed:
                 print(
-                    f"error: {runs_file} was recorded with other versions: {mixed}", file=sys.stderr
+                    f"error: {runs_file} was recorded with other versions or another "
+                    f"test line in the prompt: {mixed}",
+                    file=sys.stderr,
                 )
                 return 2
     todo = [t for t in triples if t[:3] not in done]
@@ -1131,7 +1257,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 cmd = claude_command(
                     args.agent_bin,
-                    render_prompt(by_id[tid]["prompt"], args.profile),
+                    render_prompt(
+                        by_id[tid]["prompt"],
+                        args.profile,
+                        pytest_command(args.agent, args.test_python),
+                    ),
                     arm,
                     args.model,
                     Path("<ws>/.bench-mcp.json"),

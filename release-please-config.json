@@ -18,6 +18,11 @@
         },
         {
           "type": "json",
+          "path": "integrations/claude-code/neuralmind/.claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "security/neuralmind.oscal-component-definition.json",
           "jsonpath": "$['component-definition'].metadata.version"
         }
