@@ -2,8 +2,8 @@
 
 **Draft, not posted.** Post only after
 [#785](https://github.com/dfrostar/neuralmind/pull/785) has merged, so the
-data link resolves to the committed run, and after the owner has decided what
-the last paragraph commits to.
+data link resolves to the committed run. The ending was settled by the owner
+on 2026-11-10: the post ends as drafted, with no sentence on what comes next.
 
 Company-page post leading with track 1's null result: the sixth task-outcome
 study, on the setting picked as the most favourable. Every task-outcome figure
@@ -67,5 +67,5 @@ Two sentences are judgment, not measurement, and are the poster's to stand
 behind: "mostly not failing at finding the file" (an inference from 26 of 60
 runs in each arm ending at the turn cap, and from gold-file edits that did not
 pass), and "This is the publishing", which quotes the registered consequence
-without saying what the company does next. Decide that before posting; the
-post can carry one more sentence on it or none.
+without saying what the company does next. The owner chose to end there
+(2026-11-10).
