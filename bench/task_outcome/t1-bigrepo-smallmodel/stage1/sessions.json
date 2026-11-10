@@ -1,0 +1,122 @@
+{
+ "local-09aad1593691bd675afabb2077ca5d3339144fb7b9c576bc149bdd1fdb39fcc8": {
+  "api_calls": 118,
+  "minutes": 15.301216769218446,
+  "output_tokens": 38277,
+  "prompt_tokens": 4087223
+ },
+ "local-0cf06e4cb3f450bdc4942b8b2d2b5f44c75efd64b5af01014848acec94f9135c": {
+  "api_calls": 108,
+  "minutes": 10.148391616344451,
+  "output_tokens": 28557,
+  "prompt_tokens": 3135620
+ },
+ "local-12ebcce45538c03092333282b324bf193a60e54c1cd446737e6d02b5a19774ea": {
+  "api_calls": 117,
+  "minutes": 14.505281599362691,
+  "output_tokens": 35464,
+  "prompt_tokens": 3875407
+ },
+ "local-224839fcf3d860c1a9d290df4f2338e807b0ccc7ae1858c7ac95db0724d29b99": {
+  "api_calls": 120,
+  "minutes": 9.136518919467926,
+  "output_tokens": 19488,
+  "prompt_tokens": 3978406
+ },
+ "local-535db1404b78bb4d773c56c970c9112a3c7daa2d2becb6ba62533b47589bc014": {
+  "api_calls": 105,
+  "minutes": 13.379445711771647,
+  "output_tokens": 36534,
+  "prompt_tokens": 3591410
+ },
+ "local-571a37e087f145602c99b464f4530aaee392c9a9cccdc625c862d35ae973d917": {
+  "api_calls": 106,
+  "minutes": 14.29917018810908,
+  "output_tokens": 25343,
+  "prompt_tokens": 3619254
+ },
+ "local-5c225e62037f64826854e2b33430a5b9f74d1b6f2948e6e3f9130d351ad9cde6": {
+  "api_calls": 59,
+  "minutes": 9.413613231976827,
+  "output_tokens": 23525,
+  "prompt_tokens": 2098673
+ },
+ "local-65195e3c86aa53205a1939ba40cc95f5794104545c5617a19cc399b1bec2eb09": {
+  "api_calls": 19,
+  "minutes": 1.05577286084493,
+  "output_tokens": 4799,
+  "prompt_tokens": 442940
+ },
+ "local-74a173a64f8bc39c536e33b2519831878f810f581fced46c275a5c038b4c8021": {
+  "api_calls": 119,
+  "minutes": 6.943936765193939,
+  "output_tokens": 15014,
+  "prompt_tokens": 4003178
+ },
+ "local-8f3859d0e5b846f0f6d584ac7624fb9fade890de8bd7116ef1ddc969d90f09fc": {
+  "api_calls": 28,
+  "minutes": 1.0211838841438294,
+  "output_tokens": 3758,
+  "prompt_tokens": 565421
+ },
+ "local-9763467b4a0cd01a673d7c42809dd689bf7c874589f56f8231862e3566b06be8": {
+  "api_calls": 109,
+  "minutes": 11.506355714797973,
+  "output_tokens": 24337,
+  "prompt_tokens": 3711857
+ },
+ "local-abfbe7d3ab87396dc8ddca388653f12fb3b1daf344579de36ddba7a034d78128": {
+  "api_calls": 19,
+  "minutes": 4.012635759512583,
+  "output_tokens": 17493,
+  "prompt_tokens": 482259
+ },
+ "local-d27fbff3cc4ea9d9af0ddbc8df56fe5de890b019252e1d50097929df4dc1747c": {
+  "api_calls": 119,
+  "minutes": 12.531022544701894,
+  "output_tokens": 31435,
+  "prompt_tokens": 4511343
+ },
+ "local-d280b384f85466aa5059b7255d58e1bb83d36484babd6961f8da31110823b55f": {
+  "api_calls": 119,
+  "minutes": 11.222823409239451,
+  "output_tokens": 38235,
+  "prompt_tokens": 4263777
+ },
+ "local-d368e5eaf8e2acaa85015afcd422fc1650ed929eeb65089f2e7aba266c1ea829": {
+  "api_calls": 120,
+  "minutes": 9.373211387793223,
+  "output_tokens": 17306,
+  "prompt_tokens": 4159061
+ },
+ "local-d4b1a01b9fcbc5d8137a46784851c5eb18439a1ce4b2be3299b682589d9ed85a": {
+  "api_calls": 118,
+  "minutes": 21.37018355925878,
+  "output_tokens": 40146,
+  "prompt_tokens": 4112769
+ },
+ "local-de90d280fa96b3f3e92b4cc48038f2b55a2c616fed3bca1a5537ec7f3d4eaab6": {
+  "api_calls": 17,
+  "minutes": 1.0032139380772909,
+  "output_tokens": 8451,
+  "prompt_tokens": 312381
+ },
+ "local-e62ea16da6aa64053a29fadb2d1a8f7266f9e3c2945b6ce05d2cb10178210781": {
+  "api_calls": 120,
+  "minutes": 15.38529706398646,
+  "output_tokens": 46643,
+  "prompt_tokens": 4061424
+ },
+ "local-f79592a5e6c0611c01340670218cce5a6d0155179771c9608c843f93e8d6cc08": {
+  "api_calls": 120,
+  "minutes": 9.1681831518809,
+  "output_tokens": 19326,
+  "prompt_tokens": 4247568
+ },
+ "local-f8be6e47c4afbda25b228fa8e0ddab6b7dafe09a58be4eb3164fb471905db5cc": {
+  "api_calls": 119,
+  "minutes": 14.752815326054892,
+  "output_tokens": 23034,
+  "prompt_tokens": 4420277
+ }
+}

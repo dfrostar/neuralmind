@@ -1,0 +1,77 @@
+2026-11-08T16:03:03Z gpu: /usr/local/lib/ollama/llama-server, 764 MiB; | ollama: bge-m3:latest GB 72%/28%;
+2026-11-08T16:21:04Z gpu:  | ollama: 
+2026-11-08T19:21:16Z gpu: /usr/local/lib/ollama/llama-server, 1162 MiB;/home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14104 MiB; | ollama: bge-m3:latest MB 100%;
+2026-11-08T19:23:16Z gpu: /usr/local/lib/ollama/llama-server, 1162 MiB;/home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14124 MiB; | ollama: bge-m3:latest MB 100%;
+2026-11-08T19:25:16Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14124 MiB;/usr/local/lib/ollama/llama-server, 528 MiB; | ollama: 
+2026-11-08T19:26:16Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14124 MiB;/usr/local/lib/ollama/llama-server, 620 MiB; | ollama: gpt-oss:20b-64k GB 98%/2%;
+2026-11-08T19:32:17Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14124 MiB;/usr/local/lib/ollama/llama-server, 746 MiB; | ollama: bge-m3:latest GB 72%/28%;
+2026-11-08T19:33:17Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14134 MiB;/usr/local/lib/ollama/llama-server, 746 MiB; | ollama: bge-m3:latest GB 72%/28%;
+2026-11-08T19:38:17Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14134 MiB; | ollama: 
+2026-11-08T19:39:17Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14134 MiB;/usr/local/lib/ollama/llama-server, 622 MiB; | ollama: gpt-oss:20b-64k GB 98%/2%;
+2026-11-08T19:44:18Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 14136 MiB;/usr/local/lib/ollama/llama-server, 622 MiB; | ollama: gpt-oss:20b-64k GB 98%/2%;
+2026-11-08T20:09:21Z gpu: /usr/local/lib/ollama/llama-server, 622 MiB; | ollama: gpt-oss:20b-64k GB 98%/2%;
+2026-11-08T20:12:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-08T20:14:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1186 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-08T20:22:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1186 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-08T20:25:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-08T20:26:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-08T20:28:21Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-08T20:38:22Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-08T20:47:22Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-08T20:49:22Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1192 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-08T21:18:24Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-08T21:19:24Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10018 MiB; | ollama: 
+2026-11-09T01:58:40Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10018 MiB;/usr/local/lib/ollama/llama-server, 4834 MiB; | ollama: gpt-oss:20b-64k GB 70%/30%;
+2026-11-09T01:59:40Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10018 MiB;/usr/local/lib/ollama/llama-server, 4834 MiB;/usr/local/lib/ollama/llama-server, 238 MiB; | ollama: gpt-oss:20b-64k GB 70%/30%;
+2026-11-09T02:00:40Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10018 MiB;/usr/local/lib/ollama/llama-server, 4834 MiB;/usr/local/lib/ollama/llama-server, 666 MiB; | ollama: bge-m3:latest GB 77%/23%;gpt-oss:20b-64k GB 70%/30%;
+2026-11-09T02:01:40Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10100 MiB;/usr/local/lib/ollama/llama-server, 4834 MiB;/usr/local/lib/ollama/llama-server, 666 MiB; | ollama: bge-m3:latest GB 77%/23%;gpt-oss:20b-64k GB 70%/30%;
+2026-11-09T02:02:40Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10100 MiB;/usr/local/lib/ollama/llama-server, 4834 MiB;/usr/local/lib/ollama/llama-server, 668 MiB; | ollama: bge-m3:latest GB 77%/23%;gpt-oss:20b-64k GB 70%/30%;
+2026-11-09T02:36:42Z gpu: /home/dtfrost5/.hermes/tools/llamacpp-cuda-11370-linux-x64/llama-server, 10100 MiB; | ollama: 
+2026-11-09T05:32:51Z gpu:  | ollama: 
+2026-11-09T05:33:51Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-09T22:47:37Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1162 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-09T22:49:37Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1180 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-09T22:51:37Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1180 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-09T23:22:38Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-10T01:37:44Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1180 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T01:39:44Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T01:40:44Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-10T01:50:45Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T01:54:45Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: gpt-oss:20b-64k GB 100%;bge-m3:latest MB 100%;
+2026-11-10T02:11:46Z gpu: /usr/local/lib/ollama/llama-server, 238 MiB; | ollama: 
+2026-11-10T02:12:46Z gpu: /usr/local/lib/ollama/llama-server, 14682 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:13:46Z gpu: /usr/local/lib/ollama/llama-server, 14688 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:15:46Z gpu: /usr/local/lib/ollama/llama-server, 238 MiB; | ollama: 
+2026-11-10T02:16:46Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:17:46Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:19:46Z gpu: /usr/local/lib/ollama/llama-server, 14682 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:20:46Z gpu: /usr/local/lib/ollama/llama-server, 13660 MiB; | ollama: 
+2026-11-10T02:21:46Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:22:46Z gpu: /usr/local/lib/ollama/llama-server, 12990 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-10T02:24:47Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:26:47Z gpu: /usr/local/lib/ollama/llama-server, 14688 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:27:47Z gpu: /usr/local/lib/ollama/llama-server, 13660 MiB; | ollama: 
+2026-11-10T02:28:47Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:30:47Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:31:47Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:33:47Z gpu: /usr/local/lib/ollama/llama-server, 12990 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-10T02:34:47Z gpu: /usr/local/lib/ollama/llama-server, 12968 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-10T02:35:47Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:37:47Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:38:47Z gpu: /usr/local/lib/ollama/llama-server, 238 MiB; | ollama: 
+2026-11-10T02:39:48Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:41:48Z gpu: /usr/local/lib/ollama/llama-server, 12990 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:42:48Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:43:48Z gpu: /usr/local/lib/ollama/llama-server, 238 MiB; | ollama: 
+2026-11-10T02:44:48Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:46:48Z gpu: /usr/local/lib/ollama/llama-server, 12990 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:47:48Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:48:48Z gpu: /usr/local/lib/ollama/llama-server, 13660 MiB; | ollama: 
+2026-11-10T02:49:48Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:52:48Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;
+2026-11-10T02:53:49Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:55:49Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1186 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:56:49Z gpu: /usr/local/lib/ollama/llama-server, 14692 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T02:57:49Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB;/usr/local/lib/ollama/llama-server, 1182 MiB; | ollama: bge-m3:latest MB 100%;gpt-oss:20b-64k GB 100%;
+2026-11-10T02:58:49Z gpu: /usr/local/lib/ollama/llama-server, 14690 MiB; | ollama: qwen3.8-27b-rvn:latest GB 15%/85%;
+2026-11-10T03:00:49Z gpu: /usr/local/lib/ollama/llama-server, 12992 MiB; | ollama: gpt-oss:20b-64k GB 100%;

@@ -1,5 +1,25 @@
 # 🧠 NeuralMind
 
+> **This project is no longer maintained (2026-11-10).** The repository is
+> archived and read-only: no new releases, no fixes, no support. The code stays
+> MIT-licensed and the published packages stay installable as they are.
+>
+> **What it is good at, and still does:** finding the right code cheaply. On
+> the public benchmark it finds the correct file on 40 of 40 pre-registered
+> queries, against 32 of 40 for keyword ripgrep opening its top five files,
+> using 31–67× fewer tokens. On the 150-question retrieval eval it puts a
+> correct file in the top five 93.3% of the time and misses 10. It runs
+> locally, with no model call per query. If you need code retrieval as such,
+> for a person or a tool, it is usable as it stands.
+>
+> **Why it stops:** six pre-registered studies found that this does not make a
+> coding agent solve more tasks or cost less per task, including the
+> [last one](bench/task_outcome/t1-bigrepo-smallmodel/stage2/README.md), run
+> on the setting chosen to favour it. The
+> [pre-registration](docs/specs/TASK-OUTCOME-BIGREPO-SMALLMODEL.md) said what a
+> null result there would mean, and this is it. Every result, pass and miss, is
+> in [`bench/`](bench/).
+
 [![PyPI version](https://badge.fury.io/py/neuralmind.svg)](https://pypi.org/project/neuralmind/)
 [![Downloads](https://static.pepy.tech/badge/neuralmind/month)](https://pepy.tech/project/neuralmind)
 [![CI](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml)
@@ -100,7 +120,7 @@ of questions; its 10 misses are published too.
 
 ## The Problem
 
-Every large engineering organization has the same AI spend problem: token costs compound as the codebase grows, context is re-discovered from scratch on every query, and nobody can explain the ROI.
+A coding agent rediscovers your codebase from scratch: every session it searches and reads files to find the code a question is about, and none of what it learned carries over. NeuralMind keeps a persistent index of the code and hands the agent the files a question is about, in a few hundred tokens instead of whole files. Fewer tokens in the window is measured below; whether that makes an agent finish real work for less is measured too, and so far it doesn't: a [pre-registered 20-task pilot](bench/task_outcome/pilot/report.txt) found no cost difference.
 
 ```
 You: "How does authentication work in my codebase?"
@@ -157,13 +177,14 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 
 ## Benefits
 
-### 1. Cheaper context
+### 1. Smaller context
 
 | Evidence | Where it's measured | Result |
 |----------|---------------------|--------|
 | **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **51–242× fewer tokens** than pasting every source file, with the gold file found on **40 of 40 queries** (the larger 150-question retrieval eval misses 10, published). Against ripgrep opening its top five files, the closer baseline: **31–67× fewer**, and ripgrep found the gold file on 32 of 40 |
 | **Retrieval eval (v4.12.0)** — reproducible on demand, not a CI gate | 150 pre-registered questions over 5 public repos (`requests`, `click`, `flask`, `rich`, this repo; committed); `pip install -e . tiktoken`, then `NEURALMIND_ORT_THREADS=1 python -m evals.retrieval.run`; raw output in [`bench/retrieval/`](bench/retrieval/) | hit@5 **80.0% → 93.3%** against v4.11.1 (21 questions won, 1 lost, exact McNemar p < 0.0001), MRR 0.671 → 0.750, context tokens per question 930 → 830; every repository improved, and 10 of 150 questions are still missed. Answer quality with a model in the loop is not measured |
 | **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | the build fails below **4.0×**; measured **5.1×** at v4.3.4 |
+| **Task outcomes, pilot** — pre-registered, exploratory | 20 bug-fix tasks from this repo, Claude Code with and without NeuralMind, 3 seeds each ([spec](docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md), [report](bench/task_outcome/pilot/report.txt)) | **no cost difference**: median per-task change +0.0% (95% CI −5.2% to +8.6%), 18 of 20 tasks solved either way; the agent never called NeuralMind's tools. An [exploratory rerun](bench/task_outcome/exploratory-agent-uptake/README.md) with the change released in v4.21.0, which tells the agent when to use them, found the same. Smaller context hasn't been shown to make the agent cheaper |
 | **Field reports** — `neuralmind benchmark .` | real private repos, before v4.5.0, against the fixed 50K-token estimate the CLI then used (it now divides your measured code) | **12–50×** typical range |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
@@ -346,7 +367,7 @@ logs, not build output in general.
 
 - **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all ten bundled tree-sitter languages, plus JavaScript, parsed with the TypeScript grammars since v4.12.0. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
 - **Synapse learning needs sessions.** The Hebbian layer learns from co-activation over time. A fresh install has no learned associations — they accumulate over days/weeks of real use. Whether they then improve retrieval on your repo is something to measure (`neuralmind eval . --synapse-ab`), not assume.
-- **Fewer tokens didn't make a cheaper agent, in the one pilot run.** A pre-registered 20-task pilot found no cost difference: 18 of 20 tasks solved with and without NeuralMind, median per-task cost change +0.0% (95% CI −5.2% to +8.6%). The agent never called NeuralMind's MCP tools; NeuralMind reached it only through its hooks ([report](bench/task_outcome/pilot/report.txt), [spec](docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)).
+- **Fewer tokens didn't make a cheaper agent, in the one pilot run.** A pre-registered 20-task pilot found no cost difference: 18 of 20 tasks solved with and without NeuralMind, median per-task cost change +0.0% (95% CI −5.2% to +8.6%). The agent never called NeuralMind's MCP tools; NeuralMind reached it only through its hooks ([report](bench/task_outcome/pilot/report.txt), [spec](docs/specs/TASK-OUTCOME-BENCHMARK-SPEC.md)). <!-- claims-guard:allow: states the pilot's null result -->
 - **A stale index answers confidently.** Results from an index built before the latest changes look as authoritative as fresh ones. `neuralmind init-hook .` rebuilds after commits (and, v4.13.0+, after pulls, merges and branch switches); `neuralmind health .` exits 1 when the index is behind the files, so scripts and CI can check before trusting it.
 - **No real-time cross-machine sync today.** Team memory uses a commit-and-pull model (`neuralmind memory publish`). Real-time sync is roadmap-only.
 
