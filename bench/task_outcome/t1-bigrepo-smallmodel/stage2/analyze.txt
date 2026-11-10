@@ -1,0 +1,12 @@
+Agent: Hermes. Tasks paired: 20 (120 runs)
+Tasks solved: baseline 3, NeuralMind 3; only baseline 1, only NeuralMind 1 (one-sided McNemar p = 0.7500)
+Solved runs: baseline 12, neuralmind 10
+Stage 1 (seed 0, both arms): 7 of 40 runs solved; stage 2 runs at 5 or more: yes
+Secondary, not tested:
+  Median tokens per task: baseline 3,134,905, neuralmind 3,302,606; median change with NeuralMind -7.7% (95% CI -12.2% to +11.6%, 20 tasks)
+  Median minutes per task: baseline 10.1, neuralmind 10.7
+  Median turns per task: baseline 97.0, neuralmind 98.0
+  Median tool calls before the first edit: baseline 61.0, neuralmind 54.3
+  Runs that edited a gold file: baseline 28, neuralmind 30
+  Runs that hit the timeout (unsolved): baseline 0, neuralmind 0
+Claim supported: NO (more tasks solved with NeuralMind, p<0.05)

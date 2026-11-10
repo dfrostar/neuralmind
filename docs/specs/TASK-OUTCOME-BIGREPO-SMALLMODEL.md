@@ -1,8 +1,9 @@
 # Task outcomes, track 1: a small model on a big repository
 
 **Status:** pre-registered 2026-11-01; stages 0, 0b and 1 complete (stage 1
-passed at its threshold, 2026-11-06); stage 2 running since 2026-11-08 16:03 UTC,
-all 120 runs on Hermes 0.23.0 (the 2026-11-08 entry).
+passed at its threshold, 2026-11-06); **stage 2 complete 2026-11-10: claim not
+supported** (3 tasks solved in each arm, p = 0.75; all 120 runs on Hermes
+0.23.0; the 2026-11-10 entry).
 **Owner:** Darren Frost. **Machine:** ai-9970 (`~/nm-bench/tracks/t1-bigrepo-smallmodel/STATUS.md`
 mirrors this table). **Harness:** `evals/task_outcome/run.py`, as in
 [`TASK-OUTCOME-BENCHMARK-SPEC.md`](TASK-OUTCOME-BENCHMARK-SPEC.md), whose
@@ -252,3 +253,31 @@ ended at the turn cap, 10 never edited a file. **Passed, exactly at the gate.**
     is read before the 120 runs are recorded; about a day of runs after the
     rebuild. Threats carried into the read: the prompt's interpreter line
     (11-06 entry) and whatever the GPU watch records.
+- 2026-11-10 — **stage 2's result: claim not supported.** 120 of 120 runs
+  recorded, 2026-11-09 05:33 UTC to 2026-11-10 06:54 UTC, read only after the
+  last one ([`stage2/`](../../bench/task_outcome/t1-bigrepo-smallmodel/stage2/README.md)).
+  Tasks solved by majority of 3: baseline 3, NeuralMind 3; one task only the
+  baseline solved, one only NeuralMind; one-sided McNemar p = 0.75. Solved
+  runs 12 and 10 of 60. Reported, not tested: runs that edited a gold file 28
+  and 30; runs at the turn cap 26 and 26; median tool calls before the first
+  edit 61.0 and 54.3; median per-task token change -7.7% (95% CI -12.2% to
+  +11.6%). The block named a gold file on 7 of 20 tasks, always first. The
+  agent made no NeuralMind tool call. The registered consequence stands as
+  written: "stop building for agents; publish". What that means for the
+  product is the owner's decision and is not made here.
+  - **Deviations.** The first run started 13.5 hours after the index rebuild
+    ended (19:38 UTC 11-08): preflight refused while a new local model server
+    (Fara1.5-9B, a systemd unit) held 10 GB of the GPU and the Hermes config
+    was newer than the gateway; with the owner's go-ahead the unit was stopped
+    for the window and the gateway restarted at 05:32 UTC 11-09. Harness
+    failures: 2 of the 5 allowed, both the model-fallback rule (the local
+    endpoint errored, Hermes fell back to qwen3.8-flash on OpenRouter, the
+    runner recorded nothing), both NeuralMind-arm attempts (`ebf002cd3e` and
+    `0cb3760383`, seed 1), both re-run and unsolved; no recorded run used the
+    fallback. GPU contention during one run: `859b999db5` NeuralMind seed 2,
+    02:11 to 03:05 UTC 11-10, while another Ollama model was loaded about
+    twenty times; 54 minutes, unsolved. None of the three tasks involved was
+    solved in any arm or seed, so no deviation can move the primary endpoint.
+  - **Not reported:** the index of the first tool call on a gold file and of
+    the first read of one, registered as mechanism endpoints. The pinned
+    analyzer does not compute them and the transcripts stay on ai-9970.
