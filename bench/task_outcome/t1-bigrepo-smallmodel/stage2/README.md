@@ -81,8 +81,9 @@ Bold marks a task solved by majority. The other 9 are `ebf002cd3e`,
   11-09). The local endpoint returned an internal server error, Hermes fell
   back to a cloud model (qwen3.8-flash through OpenRouter), and the runner
   refused to record a session on the wrong model. Both were re-run on
-  gpt-oss and recorded, both unsolved. Of the 81 Hermes sessions in the
-  window only those two used the fallback; none of the 120 recorded runs did.
+  gpt-oss and recorded, both unsolved. Only those two sessions used the
+  fallback (checked against Hermes's per-session model usage); none of the
+  120 recorded runs did.
   A re-run replaces an attempt whose outcome is unknown: neither task was
   solved in any arm or seed, so no re-run outcome could move the primary
   endpoint.
