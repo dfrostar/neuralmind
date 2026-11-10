@@ -4,9 +4,16 @@
 > archived and read-only: no new releases, no fixes, no support. The code stays
 > MIT-licensed and the published packages stay installable as they are.
 >
-> Why: NeuralMind finds the right code cheaply, and that part works. But six
-> pre-registered studies found that it does not make a coding agent solve more
-> tasks or cost less per task, including the
+> **What it is good at, and still does:** finding the right code cheaply. On
+> the public benchmark it finds the correct file on 40 of 40 pre-registered
+> queries, against 32 of 40 for keyword ripgrep opening its top five files,
+> using 31–67× fewer tokens. On the 150-question retrieval eval it puts a
+> correct file in the top five 93.3% of the time and misses 10. It runs
+> locally, with no model call per query. If you need code retrieval as such,
+> for a person or a tool, it is usable as it stands.
+>
+> **Why it stops:** six pre-registered studies found that this does not make a
+> coding agent solve more tasks or cost less per task, including the
 > [last one](bench/task_outcome/t1-bigrepo-smallmodel/stage2/README.md), run
 > on the setting chosen to favour it. The
 > [pre-registration](docs/specs/TASK-OUTCOME-BIGREPO-SMALLMODEL.md) said what a
