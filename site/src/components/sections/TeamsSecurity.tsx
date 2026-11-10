@@ -11,7 +11,7 @@ import { withCode } from '@/lib/ticks';
 // the canon for every commercial term; nothing here is typed by hand.
 
 const team = [
-    '`neuralmind memory publish` writes the learned associations — weights, no source code — to a file you commit. Teammates’ agents import it on their next session.',
+    '`neuralmind memory publish` writes the recorded associations — weights, no source code — to a file you commit. Teammates’ agents import it on their next session. We have not shown that sharing them helps an agent: a memory-track run found no significant gain.',
     'Publishing follows the scope and weight threshold an admin sets, borderline imports wait in a review queue, and removing an association retracts it for everyone.',
     'Every publish, import, review and admin change lands in a hash-chained audit log you can verify and export.',
 ];
@@ -27,7 +27,7 @@ export default function TeamsSecurity() {
     return (
         <section id="teams" className="relative py-20 md:py-28 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader title="Memory your team shares, evidence your client’s reviewer asks for">
+                <SectionHeader title="A bundle your team commits, evidence your client’s reviewer asks for">
                     Every feature runs free at one seat: the license issues itself on first run, never
                     expires and needs no signup. You pay for seats and support, not for features. A
                     consultancy moving between client repositories keeps one install and indexes each
@@ -37,7 +37,7 @@ export default function TeamsSecurity() {
                 <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                     <div className="panel rounded-card p-6 md:p-8 flex flex-col">
                         <h3 className="font-display text-2xl font-semibold text-white tracking-tight mb-5">
-                            Team memory travels with git
+                            The team bundle travels with git
                         </h3>
                         <ul className="space-y-3 mb-6">
                             {team.map((t) => (
