@@ -64,8 +64,8 @@ The pre-registration and its change log: https://github.com/dfrostar/neuralmind/
 | "Stop building for agents; publish" was written beforehand | the spec's stage table, row 2, in the file since 2026-11-01 |
 
 Two sentences are judgment, not measurement, and are the poster's to stand
-behind: "mostly not failing at finding the file" (an inference from 26 of 60
-runs in each arm ending at the turn cap, and from gold-file edits that did not
+behind: "mostly not failing at finding the file" (an inference from 31 and 34 of 60
+runs ending at the turn limit, and from gold-file edits that did not
 pass), and "This is the publishing", which quotes the registered consequence
 without saying what the company does next. The owner chose to end there
 (2026-11-10).

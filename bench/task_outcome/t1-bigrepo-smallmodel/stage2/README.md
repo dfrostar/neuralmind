@@ -53,7 +53,7 @@ Bold marks a task solved by majority. The other 9 are `ebf002cd3e`,
 |---|---|---|
 | Runs that edited a gold file | 28 of 60 | 30 of 60 |
 | Runs that edited anything | 37 of 60 | 38 of 60 |
-| Runs at the 120-turn cap (119 or more turns) | 26 of 60 | 26 of 60 |
+| Runs that exited nonzero with 117 to 120 API calls (limit 120) | 31 of 60 | 34 of 60 |
 | Median tool calls before the first edit, per task | 61.0 | 54.3 |
 | Median tokens per task | 3,134,905 | 3,302,606 |
 | Median minutes per task | 10.1 | 10.7 |
@@ -92,10 +92,15 @@ Bold marks a task solved by majority. The other 9 are `ebf002cd3e`,
   through Ollama about twenty times, evicting gpt-oss each time
   (`gpu-watch.log`). gpt-oss was fully on the GPU whenever it was loaded. The
   one run in that window, `859b999db5` NeuralMind seed 2, took 54 minutes
-  against a median of 10, hit the turn cap and was unsolved. That task was
+  against a median of 10, ended at the turn limit and was unsolved. That task was
   solved 0 of 6 times, so the run cannot move the primary endpoint either.
   Preflight gates a run's start, not its middle; the watch log is what caught
   this.
+- **One baseline run stopped early for an unrecorded reason.** `5381678d03`
+  seed 0 exited nonzero after 66 API calls and 3.2 minutes, the one nonzero
+  exit in either arm that is not at the turn limit. It ended six minutes
+  before the other model appeared, so the GPU log does not explain it, and the
+  record carries no termination reason. That task was solved 0 of 6 times.
 - The prompt's interpreter line (stage 1's finding) applies to both arms
   alike.
 

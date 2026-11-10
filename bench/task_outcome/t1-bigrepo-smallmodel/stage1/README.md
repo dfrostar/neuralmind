@@ -26,7 +26,7 @@ run to decide whether stage 2's 120 runs are worth running.
 
 ## The 20 runs
 
-| Task | Solved | F2P passed | P2P failed | Tool calls | Edited | Touched a gold file | Explore calls before the first edit | Minutes | Prompt tokens |
+| Task | Solved | F2P passed | P2P failed | API calls | Edited | Touched a gold file | Explore calls before the first edit | Minutes | Prompt tokens |
 |---|---|---|---|---|---|---|---|---|---|
 | `0968fa2631` | no | 0/2 | 0 | 28 | no | no | 27 | 1.0 | 0.57M |
 | `e9eba2188a` | no | 1/2 | 0 | 59 | yes | yes | 24 | 9.4 | 2.10M |
@@ -49,19 +49,26 @@ run to decide whether stage 2's 120 runs are worth running.
 | `44cf71f231` | no | 0/2 | 0 | 119 (cap) | no | no | 113 | 14.8 | 4.42M |
 | `f94d72f7e8` | no | 0/3 | 0 | 117 (cap) | no | no | 107 | 14.5 | 3.88M |
 
-"cap" marks a session Hermes ended at its turn limit (`subtype: error`,
-11 of 20); the client's `num_turns` reads 117 to 120 for those.
+The API calls column is `num_turns`, which the runner fills from the
+session's count of model requests; tool calls are in `tool_counts` and run a
+little lower. "cap" marks the 11 sessions that exited nonzero with 117 to 120
+API calls against the 120-turn limit. That is the evidence for calling them
+turn-limit endings: the runner writes `subtype: error` for any nonzero exit,
+the records carry no termination reason from Hermes, and no session that
+exited cleanly made more than 109 calls.
 
 ## What the runs show
 
-- **Solved 3 of 20:** `a3537b6f04` (19 calls, 1.1 min), `d4fa373017` (19
-  calls, 4.0 min) and `4a78de2805` (3 of 3 tests, solved on the last turn
+- **Solved 3 of 20:** `a3537b6f04` (19 API calls, 1.1 min), `d4fa373017` (19
+  API calls, 4.0 min) and `4a78de2805` (3 of 3 tests, solved on the last turn
   before the cap, 15.4 min). The Hermes pilot's baseline on NeuralMind's own
   repository (about 50k lines) solved 10 of 20 at seed 0 with a median of
-  101 tool calls; here, on about a million lines, the median is 117.5.
+  97 tool calls (99 API calls); here, on about a million lines, the median is
+  110 tool calls (117.5 API calls).
 - **Exploration ate the budget.** 11 runs ended at the turn cap, 10 never
-  edited a file, and in those the agent made 102 to 120 `search_files` and
-  `read_file` calls. Seven runs touched a file the fix changed; four of
+  edited a file, and in nine of those the agent made 101 to 120
+  `search_files` and `read_file` calls (the tenth, `0968fa2631`, stopped
+  after 27). Seven runs touched a file the fix changed; four of
   those still failed (`e9eba2188a` passed 1 of 2 tests, `cd69be6909` fixed
   its test but broke another, `24b4f90e97` and `3c53adbc1e` edited the
   right file and did not pass). Median session: 117 API calls, 3.9M prompt

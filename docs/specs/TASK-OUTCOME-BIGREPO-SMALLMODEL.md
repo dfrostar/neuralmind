@@ -210,9 +210,15 @@ ended at the turn cap, 10 never edited a file. **Passed, exactly at the gate.**
     is true and a 20B model does not reliably follow it. Both arms alike;
     logged as a threat, not fixed, since the mechanism endpoints don't depend
     on the agent's own test runs.
-  - **The chain's cap count was wrong,** reading 4 where Hermes's own
-    `subtype: error` marks 11: `num_turns` is the client's count (117 to 120 at
-    the limit). The report counts by `subtype`; `analyze` already does.
+  - **The chain's cap count was wrong,** reading 4 (it counted `num_turns`
+    of 120 or more) where 11 sessions ended at the limit. `num_turns` is the
+    session's count of API calls, not a client turn count, and reads 117 to
+    120 for a session that runs out of turns. The evidence for the 11 is a
+    nonzero exit together with 117 to 120 API calls against the 120-turn
+    limit; no clean exit made more than 109. `subtype: error` alone does not
+    establish it, since the runner writes it for any nonzero exit, and the
+    records carry no termination reason from Hermes. `analyze` does not count
+    cap hits; the report does, by that rule.
   - **Hermes moved again.** The user ran `hermes update` on ai-9970 at 19:40 UTC
     on 11-06, eight hours after the last floor run: 0.22.6 to 0.23.0, with the
     0.22.6 environment removed. Preflight now stops the chain. Stage 2's form
@@ -259,7 +265,7 @@ ended at the turn cap, 10 never edited a file. **Passed, exactly at the gate.**
   Tasks solved by majority of 3: baseline 3, NeuralMind 3; one task only the
   baseline solved, one only NeuralMind; one-sided McNemar p = 0.75. Solved
   runs 12 and 10 of 60. Reported, not tested: runs that edited a gold file 28
-  and 30; runs at the turn cap 26 and 26; median tool calls before the first
+  and 30; runs that exited nonzero with 117 to 120 API calls against the 120-turn limit 31 and 34 (a 32nd baseline run exited nonzero after 66 calls); median tool calls before the first
   edit 61.0 and 54.3; median per-task token change -7.7% (95% CI -12.2% to
   +11.6%). The block named a gold file on 7 of 20 tasks, always first. The
   agent made no NeuralMind tool call. The registered consequence stands as
