@@ -14,8 +14,9 @@ use`` picked one):
 
 then runs ``hermes plugins enable neuralmind``: Hermes loads a user plugin only
 once it's on the ``plugins.enabled`` list. Re-running updates the copy in place.
-When Hermes installed the plugin itself (from a clone, with an install record),
-only ``config.json`` is written: the code is Hermes's to update.
+When Hermes installed the plugin itself (from its plugin catalog or a clone,
+with an install record), only ``config.json`` is written: the code is Hermes's
+to update.
 """
 
 from __future__ import annotations
@@ -98,6 +99,29 @@ def managed_by_hermes(home: Path) -> bool | None:
     if not isinstance(records, dict):
         return None
     return PLUGIN_NAME in records
+
+
+def installed_from_catalog(home: Path) -> bool:
+    """Whether Hermes installed the plugin from its plugin catalog, by name.
+
+    ``hermes plugins install neuralmind`` pins the plugin to the commit the
+    catalog entry reviewed, and ``hermes plugins update`` moves it only as far as
+    the catalog's pin. Hermes records that in the plugin's install record (a
+    ``catalog`` block; a top-level ``catalog_name`` in records an earlier Hermes
+    wrote), which is what this reads, as Hermes does: never the
+    ``.hermes-catalog.json`` copy in the plugin directory, which a repository
+    can ship itself.
+    """
+    try:
+        records = json.loads(
+            (home / "plugins" / ".install-metadata.json").read_text(encoding="utf-8-sig")
+        )
+    except (OSError, ValueError):
+        return False
+    record = records.get(PLUGIN_NAME) if isinstance(records, dict) else None
+    if not isinstance(record, dict):
+        return False
+    return isinstance(record.get("catalog"), dict) or bool(record.get("catalog_name"))
 
 
 def _hermes(action: str, home: Path) -> bool | None:
