@@ -55,8 +55,9 @@ export default function Footer() {
                             </span>
                         </Link>
                         <p className="text-faint text-sm leading-relaxed max-w-xs">
-                            Persistent codebase memory for AI coding agents — Claude Code, Codex,
-                            Cursor and any MCP client. Local-first, no telemetry.
+                            A local code index for AI coding agents. A prompt hook reaches Claude
+                            Code and Hermes; an MCP server is there for other clients. Local-first,
+                            no telemetry.
                         </p>
                     </div>
 
