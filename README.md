@@ -1,5 +1,18 @@
 # 🧠 NeuralMind
 
+> **This project is no longer maintained (2026-11-10).** The repository is
+> archived and read-only: no new releases, no fixes, no support. The code stays
+> MIT-licensed and the published packages stay installable as they are.
+>
+> Why: NeuralMind finds the right code cheaply, and that part works. But six
+> pre-registered studies found that it does not make a coding agent solve more
+> tasks or cost less per task, including the
+> [last one](bench/task_outcome/t1-bigrepo-smallmodel/stage2/README.md), run
+> on the setting chosen to favour it. The
+> [pre-registration](docs/specs/TASK-OUTCOME-BIGREPO-SMALLMODEL.md) said what a
+> null result there would mean, and this is it. Every result, pass and miss, is
+> in [`bench/`](bench/).
+
 [![PyPI version](https://badge.fury.io/py/neuralmind.svg)](https://pypi.org/project/neuralmind/)
 [![Downloads](https://static.pepy.tech/badge/neuralmind/month)](https://pepy.tech/project/neuralmind)
 [![CI](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml)
