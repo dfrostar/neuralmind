@@ -31,7 +31,11 @@ export default function TeamsSecurity() {
                     Every feature runs free at one seat: the license issues itself on first run, never
                     expires and needs no signup. You pay for seats and support, not for features. A
                     consultancy moving between client repositories keeps one install and indexes each
-                    client on its own machine.
+                    client on its own machine.{' '}
+                    <a href="/consultancies/" className="link">
+                        What your client’s CTO, CISO and CFO will ask
+                    </a>
+                    .
                 </SectionHeader>
 
                 <div className="grid md:grid-cols-2 gap-4 md:gap-6">

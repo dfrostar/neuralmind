@@ -9,18 +9,20 @@
  * framework, no analytics. View source = ground truth.
  */
 
-// Text/grid tokens mirror dashboard.css (--text-dim / --border tones).
+// Text/grid tokens mirror dashboard.css (--text-dim, --text-faint, --border
+// tones, the deepest step for tooltips, --red for errors).
 const PALETTE = {
-    text: '#97a3ba',
-    faint: '#67748f',
-    grid: 'rgba(151, 163, 186, 0.10)',
-    tooltipBg: '#0c1322',
-    tooltipBorder: '#28395c',
-    error: '#f87171',
+    text: '#9da2a8',
+    faint: '#848a90',
+    grid: 'rgba(157, 162, 168, 0.12)',
+    tooltipBg: '#06080b',
+    tooltipBorder: '#484e54',
+    error: '#f66d67',
 };
 
 // Categorical slots validated (CVD separation + contrast) against the dark
-// card surface #0e1626. Assignment is by FIXED slot order per language —
+// card surface #0e1626; the graphite card #15191c that replaced it is within
+// 0.002 relative luminance of it, so the validation carries over. Assignment is by FIXED slot order per language —
 // never cycled — so a language keeps its color across both charts and
 // across dataset growth. One adjacent pair sits in the CVD floor band,
 // which is why every slot also carries a distinct point shape (secondary
@@ -61,17 +63,17 @@ const TOOLTIP_STYLE = {
     backgroundColor: PALETTE.tooltipBg,
     borderColor: PALETTE.tooltipBorder,
     borderWidth: 1,
-    titleColor: '#e7ecf5',
+    titleColor: '#eceff2',
     bodyColor: PALETTE.text,
     padding: 10,
-    cornerRadius: 8,
+    cornerRadius: 6,
     boxPadding: 4,
 };
 
 if (typeof Chart !== 'undefined') {
     Chart.defaults.color = PALETTE.text;
     Chart.defaults.borderColor = PALETTE.grid;
-    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    Chart.defaults.font.family = "'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 }
 
 async function loadEntries() {

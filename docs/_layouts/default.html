@@ -34,37 +34,41 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://neuralmind.uk/icon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#0d1013">
     <style>
-        /* Design tokens: the values of neuralmind.uk's (site/tailwind.config.ts,
-           documented in site/DESIGN.md), so the docs read as the same product.
-           Change them there first, then here. `accent` is the site's
-           `electric` (links, focus), `evidence` its `proton` (measured). */
+        /* Design tokens: neuralmind.uk's (site/tailwind.config.ts, documented in
+           site/DESIGN.md), so the docs read as the same product: Hallmark's
+           Console material in the "NeuralMind graphite" colourway. Change them
+           there first, then here. Two colours do jobs: amber (`accent`) is a
+           person (the current page, a hovered link, focus), blue (`evidence`)
+           is an instrument (a measured number). Everything else is graphite. */
         :root {
-            --bg: #0a0b0d;
-            --bg-raised: #0f1114;
-            --bg-card: #131518;
-            --border: #22262c;
-            --border-strong: #2e333b;
-            --text: #e8eaed;
-            --text-body: #c9ced6;
-            --text-dim: #9aa3af;
-            --text-faint: #7e8794;
-            --accent: #5b8cff;
-            --accent-bright: #93b4ff;
-            --accent-dim: #1b2742;
-            --evidence: #4fd1a5;
-            --green: #6ccb86;
-            --red: #f27b7b;
-            --amber: #e5b567;
+            --bg: #0d1013;
+            --bg-raised: #06080b;
+            --bg-card: #15191c;
+            --border: #2d3135;
+            --border-strong: #484e54;
+            --text: #eceff2;
+            --text-body: #c3c8cc;
+            --text-dim: #9da2a8;
+            --text-faint: #848a90;
+            --accent: #f7b83d;
+            --accent-bright: #ffcc69;
+            --accent-dim: #38280a;
+            --evidence: #92b3fb;
+            --green: #61cb7c;
+            --red: #f66d67;
+            --amber: #f7b83d;
             --radius-control: 0.375rem;
-            --radius-card: 0.75rem;
-            --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            --display: 'Inter Tight', var(--sans);
+            --radius-card: 0.625rem;
+            --mono: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --sans: 'Host Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --display: var(--sans);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
+        html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; overflow-x: clip; }
         body {
             font-family: var(--sans);
             background: var(--bg);
@@ -72,102 +76,107 @@
             line-height: 1.7;
             font-size: 16px;
             -webkit-font-smoothing: antialiased;
+            overflow-x: clip;
         }
-        a { color: var(--accent-bright); text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        a { color: var(--text); text-decoration: none; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+        ::selection { background: rgba(247, 184, 61, 0.25); color: var(--text); }
         .container { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
 
-        /* ── Nav ── */
+        /* ── Nav: a band of the ground colour, no glass ── */
         nav.site-nav {
             position: sticky; top: 0; z-index: 50;
-            background: rgba(10, 11, 13, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: var(--bg);
             border-bottom: 1px solid var(--border);
         }
         .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
-        .nav-logo { display: flex; align-items: center; gap: 0.55rem; font-family: var(--display); font-weight: 600; font-size: 1.0625rem; letter-spacing: -0.02em; color: var(--text); }
-        .nav-logo svg { color: var(--accent); }
-        .nav-logo:hover svg { color: var(--accent-bright); }
-        .nav-logo:hover { text-decoration: none; }
-        .nav-logo svg { width: 26px; height: 26px; }
+        .nav-logo { display: flex; align-items: center; gap: 0.6rem; font-family: var(--display); font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.03em; color: var(--text); }
+        .nav-logo svg { width: 24px; height: 24px; flex: none; }
         .nav-links { display: flex; align-items: center; gap: 1.75rem; }
-        .nav-links a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; }
-        .nav-links a:hover { color: var(--text); text-decoration: none; }
+        .nav-links a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; transition: color 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .nav-links a:hover { color: var(--text); }
         .nav-links a.active { color: var(--text); }
         .nav-gh {
-            display: inline-flex; align-items: center; gap: 0.4rem;
+            display: inline-flex; align-items: center;
             border: 1px solid var(--border-strong); border-radius: var(--radius-control);
             padding: 0.4rem 0.9rem; color: var(--text) !important; font-size: 0.875rem;
+            background: var(--bg-card);
         }
-        .nav-gh:hover { border-color: #3a414a; background: rgba(255, 255, 255, 0.035); }
-        .nav-toggle { display: none; background: none; border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text); padding: 0.35rem 0.6rem; font-size: 1.1rem; cursor: pointer; }
+        .nav-gh:hover { border-color: #5d646b; }
+        .nav-toggle { display: none; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text); padding: 0.35rem 0.6rem; font-size: 1.1rem; cursor: pointer; }
 
-        /* ── Docs subnav (wiki pages) ── */
-        .docs-subnav { border-bottom: 1px solid var(--border); background: var(--bg-raised); }
-        .docs-subnav .container { display: flex; gap: 1.4rem; overflow-x: auto; padding-top: 0.55rem; padding-bottom: 0.55rem; scrollbar-width: none; }
+        /* ── Docs subnav (wiki pages): the current page in amber, the current step ── */
+        .docs-subnav { border-bottom: 1px solid var(--border); background: var(--bg-card); }
+        .docs-subnav .container { display: flex; gap: 1.4rem; overflow-x: auto; scrollbar-width: none; }
         .docs-subnav .container::-webkit-scrollbar { display: none; }
-        .docs-subnav a { color: var(--text-faint); font-size: 0.82rem; font-weight: 500; white-space: nowrap; }
-        .docs-subnav a:hover { color: var(--text); text-decoration: none; }
-        .docs-subnav a.active { color: var(--accent-bright); }
+        .docs-subnav a { color: var(--text-faint); font-size: 0.84rem; font-weight: 500; white-space: nowrap; padding: 0.6rem 0; border-bottom: 2px solid transparent; }
+        .docs-subnav a:hover { color: var(--text); }
+        .docs-subnav a.active { color: var(--text); border-bottom-color: var(--accent); }
 
         /* ── Breadcrumb / page chrome ── */
         .page { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 4.5rem; }
-        .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.82rem; color: var(--text-faint); margin-bottom: 2rem; }
-        .crumbs a { color: var(--text-faint); }
-        .crumbs a:hover { color: var(--text-dim); }
+        .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.84rem; color: var(--text-faint); margin-bottom: 2rem; }
+        .crumbs a { color: var(--text-dim); }
+        .crumbs a:hover { color: var(--accent); }
         .crumbs .edit { margin-left: auto; }
 
         /* ── Markdown body ── */
-        .md-body h1, .md-body h2, .md-body h3, .md-body h4, .md-body h5, .md-body h6 {
-            font-family: var(--display); color: var(--text); font-weight: 700; letter-spacing: -0.03em; line-height: 1.25;
-            margin: 2.2rem 0 0.9rem;
+        .md-body a {
+            color: var(--text); text-decoration: underline;
+            text-decoration-color: var(--border-strong); text-decoration-thickness: 1px; text-underline-offset: 3px;
+            transition: color 140ms cubic-bezier(0.22, 1, 0.36, 1), text-decoration-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .md-body h1 { font-size: 2.15rem; letter-spacing: -0.045em; line-height: 1.1; margin-top: 0; }
+        .md-body a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+        /* Heads: one face, one weight (500), one colour. */
+        .md-body h1, .md-body h2, .md-body h3, .md-body h4, .md-body h5, .md-body h6 {
+            font-family: var(--display); color: var(--text); font-weight: 500; letter-spacing: -0.03em; line-height: 1.2;
+            margin: 2.2rem 0 0.9rem; text-wrap: balance; overflow-wrap: break-word;
+        }
+        .md-body h1 { font-size: 2.25rem; line-height: 1.05; margin-top: 0; }
         .md-body h2 { font-size: 1.5rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border); }
         .md-body h3 { font-size: 1.18rem; }
         .md-body h4 { font-size: 1rem; }
-        .md-body p { margin-bottom: 1.05rem; }
-        .md-body strong, .md-body b { color: var(--text); }
+        .md-body p { margin-bottom: 1.05rem; text-wrap: pretty; }
+        .md-body strong, .md-body b { color: var(--text); font-weight: 600; }
         .md-body ul, .md-body ol { margin: 0 0 1.05rem; padding-left: 1.5rem; }
         .md-body li { margin-bottom: 0.35rem; }
         .md-body li > ul, .md-body li > ol { margin-top: 0.35rem; margin-bottom: 0; }
         .md-body hr { border: none; border-top: 1px solid var(--border); margin: 2.2rem 0; }
         .md-body img { max-width: 100%; border-radius: var(--radius-card); border: 1px solid var(--border); }
         .md-body blockquote {
-            border-left: 3px solid var(--accent); background: var(--bg-card);
-            border-radius: 0 var(--radius-card) var(--radius-card) 0; padding: 0.85rem 1.2rem; margin: 0 0 1.05rem;
+            border: 1px solid var(--border); border-left: 2px solid var(--border-strong); background: var(--bg-card);
+            border-radius: var(--radius-card); padding: 0.85rem 1.2rem; margin: 0 0 1.05rem;
             color: var(--text-dim);
         }
         .md-body blockquote p:last-child { margin-bottom: 0; }
 
-        /* inline code */
+        /* inline code: ink on the deepest step */
         .md-body code {
-            font-family: var(--mono); font-size: 0.85em;
-            background: rgba(91, 140, 255, 0.07); border: 1px solid rgba(91, 140, 255, 0.16);
-            padding: 0.1em 0.35em; border-radius: var(--radius-control); color: var(--accent-bright);
+            font-family: var(--mono); font-size: 0.85em; font-variant-numeric: tabular-nums slashed-zero;
+            background: var(--bg-raised); border: 1px solid var(--border);
+            padding: 0.1em 0.35em; border-radius: var(--radius-control); color: var(--text);
         }
 
         /* code blocks (kramdown + rouge) */
         .md-body pre {
-            background: var(--bg-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-card);
+            background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-card);
             padding: 1.1rem 1.3rem; overflow-x: auto; margin: 0 0 1.05rem;
             font-family: var(--mono); font-size: 0.83rem; line-height: 1.7; color: var(--text-body);
         }
         .md-body pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
         .md-body .highlighter-rouge .highlight { background: transparent; }
 
-        /* rouge tokens — the site's palette: keywords in the accent, strings and
-           numbers in the two warm/cool verdict tones, names in plain text */
+        /* rouge tokens: keywords in the instrument's blue, strings in ok-green,
+           numbers in amber, names in plain ink, comments faint */
         .md-body .highlight .c, .md-body .highlight .c1, .md-body .highlight .cm,
-        .md-body .highlight .cp, .md-body .highlight .cs { color: var(--text-faint); font-style: italic; }
+        .md-body .highlight .cp, .md-body .highlight .cs { color: var(--text-faint); }
         .md-body .highlight .k, .md-body .highlight .kd, .md-body .highlight .kn,
         .md-body .highlight .kp, .md-body .highlight .kr, .md-body .highlight .kt,
-        .md-body .highlight .kc, .md-body .highlight .kv { color: var(--accent-bright); }
+        .md-body .highlight .kc, .md-body .highlight .kv { color: var(--evidence); }
         .md-body .highlight .s, .md-body .highlight .s1, .md-body .highlight .s2,
         .md-body .highlight .sb, .md-body .highlight .sh, .md-body .highlight .sx,
         .md-body .highlight .sr, .md-body .highlight .ss, .md-body .highlight .se,
-        .md-body .highlight .sa, .md-body .highlight .dl { color: var(--evidence); }
+        .md-body .highlight .sa, .md-body .highlight .dl { color: var(--green); }
         .md-body .highlight .m, .md-body .highlight .mi, .md-body .highlight .mf,
         .md-body .highlight .mh, .md-body .highlight .mo, .md-body .highlight .il { color: var(--amber); }
         .md-body .highlight .nf, .md-body .highlight .fm, .md-body .highlight .nc,
@@ -176,46 +185,54 @@
         .md-body .highlight .ne, .md-body .highlight .no, .md-body .highlight .nv { color: var(--text-body); }
         .md-body .highlight .o, .md-body .highlight .ow, .md-body .highlight .p,
         .md-body .highlight .pi { color: var(--text-dim); }
-        .md-body .highlight .gp { color: var(--green); }
+        .md-body .highlight .gp { color: var(--text-faint); }
         .md-body .highlight .err { color: inherit; background: transparent; }
 
-        /* tables — scroll inside their own box on overflow */
+        /* tables: one surface, heads in the label face (the Markdown's own case),
+           scrolling inside their own box on overflow */
         .md-body table {
             display: block; overflow-x: auto; max-width: 100%;
             border-collapse: collapse; margin: 0 0 1.4rem;
             font-size: 0.88rem; border: 1px solid var(--border); border-radius: var(--radius-card);
+            background: var(--bg-card);
         }
         .md-body th, .md-body td { padding: 0.7rem 1rem; text-align: left; vertical-align: top; }
         .md-body thead th {
-            font-family: var(--mono); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.14em;
-            color: var(--text-faint); background: var(--bg-raised);
-            border-bottom: 1px solid var(--border-strong); font-weight: 500; white-space: nowrap;
+            font-size: 0.8125rem; font-weight: 500; color: var(--text-dim);
+            border-bottom: 1px solid var(--border-strong); white-space: nowrap;
         }
         .md-body tbody tr + tr td { border-top: 1px solid var(--border); }
-        .md-body tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
         .md-body td:first-child { color: var(--text); }
 
         .md-body details { margin-bottom: 1.05rem; }
-        .md-body summary { cursor: pointer; color: var(--text); font-weight: 600; }
+        .md-body summary { cursor: pointer; color: var(--text); font-weight: 500; }
 
         /* ── Footer ── */
-        footer { border-top: 1px solid var(--border); background: var(--bg-raised); padding: 3rem 0; }
+        footer { border-top: 1px solid var(--border); background: var(--bg-card); padding: 3rem 0; }
         .foot-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
         .foot-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.875rem; }
         .foot-links a { color: var(--text-dim); }
-        .foot-links a:hover { color: var(--text); }
-        .foot-meta { width: 100%; margin-top: 1.2rem; font-size: 0.8rem; color: var(--text-faint); }
+        .foot-links a:hover { color: var(--accent); }
+        .foot-meta { width: 100%; font-size: 0.8125rem; color: var(--text-faint); }
+        .foot-meta + .foot-meta { margin-top: 0.35rem; }
+        .foot-meta:first-of-type { margin-top: 1.2rem; }
+        .foot-meta a { color: var(--text-dim); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { transition-duration: 0.01ms !important; }
+        }
 
         @media (max-width: 720px) {
             .nav-links {
                 display: none; position: absolute; top: 4rem; left: 0; right: 0;
                 flex-direction: column; align-items: flex-start; gap: 0;
-                background: var(--bg-raised); border-bottom: 1px solid var(--border); padding: 0.5rem 1.5rem 1rem;
+                background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.5rem 1.5rem 1rem;
             }
             .nav-links.open { display: flex; }
             .nav-links a { padding: 0.6rem 0; width: 100%; }
             .nav-toggle { display: block; }
-            .md-body h1 { font-size: 1.7rem; }
+            .md-body h1 { font-size: 1.75rem; }
             .md-body h2 { font-size: 1.3rem; }
             .page { padding-top: 1.8rem; }
             .crumbs .edit { margin-left: 0; width: 100%; }
@@ -227,14 +244,10 @@
 <nav class="site-nav">
     <div class="container nav-inner">
         <a class="nav-logo" href="https://neuralmind.uk/">
-            <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
-                <path d="M9.6 9.1 12.3 12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-                <path d="M15.9 12.6 19.4 10.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M14.6 16.5 16.2 20" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
-                <circle cx="14" cy="14" r="3.1" fill="currentColor"/>
-                <circle cx="7.4" cy="7.4" r="2.4" fill="currentColor"/>
-                <circle cx="21.4" cy="9" r="1.9" fill="currentColor" opacity="0.75"/>
-                <circle cx="17.2" cy="21.6" r="1.5" fill="currentColor" opacity="0.5"/>
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
             </svg>
             NeuralMind
         </a>
@@ -244,7 +257,7 @@
             <a href="/benchmarks/">Benchmarks</a>
             <a href="/wiki/Home" {% if page.url contains '/wiki/' %}class="active"{% endif %}>Docs</a>
             <a href="/about.html">About</a>
-            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub</a>
         </div>
     </div>
 </nav>
@@ -277,7 +290,7 @@
             <a href="https://neuralmind.uk/">neuralmind.uk</a>
             {% if page.title %}<span>/</span> <span>{{ page.title | escape }}</span>{% endif %}
         {% endif %}
-        <a class="edit" href="https://github.com/dfrostar/neuralmind/edit/main/docs/{{ page.path }}">Edit this page on GitHub ↗</a>
+        <a class="edit" href="https://github.com/dfrostar/neuralmind/edit/main/docs/{{ page.path }}">Edit this page on GitHub</a>
     </div>
     <article class="md-body">
 {{ content }}
@@ -287,14 +300,10 @@
 <footer>
     <div class="container foot-inner">
         <a class="nav-logo" href="https://neuralmind.uk/">
-            <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" width="20" height="20">
-                <path d="M9.6 9.1 12.3 12" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-                <path d="M15.9 12.6 19.4 10.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M14.6 16.5 16.2 20" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
-                <circle cx="14" cy="14" r="3.1" fill="currentColor"/>
-                <circle cx="7.4" cy="7.4" r="2.4" fill="currentColor"/>
-                <circle cx="21.4" cy="9" r="1.9" fill="currentColor" opacity="0.75"/>
-                <circle cx="17.2" cy="21.6" r="1.5" fill="currentColor" opacity="0.5"/>
+            <svg viewBox="0 0 26 26" aria-hidden="true">
+                <g fill="#484E54"><rect x="7" y="0" width="5" height="5" rx="1"/><rect x="14" y="0" width="5" height="5" rx="1"/><rect x="14" y="7" width="5" height="5" rx="1"/><rect x="7" y="14" width="5" height="5" rx="1"/><rect x="7" y="21" width="5" height="5" rx="1"/><rect x="14" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#ECEFF2"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="0" y="7" width="5" height="5" rx="1"/><rect x="0" y="14" width="5" height="5" rx="1"/><rect x="0" y="21" width="5" height="5" rx="1"/><rect x="21" y="0" width="5" height="5" rx="1"/><rect x="21" y="7" width="5" height="5" rx="1"/><rect x="21" y="14" width="5" height="5" rx="1"/><rect x="21" y="21" width="5" height="5" rx="1"/></g>
+                <g fill="#F7B83D"><rect x="7" y="7" width="5" height="5" rx="1"/><rect x="14" y="14" width="5" height="5" rx="1"/></g>
             </svg>
             NeuralMind
         </a>
@@ -307,7 +316,8 @@
             <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a>
             <a href="/about.html">About</a>
         </div>
-        <p class="foot-meta">© 2025–{{ site.time | date: '%Y' }} Cheval-Volant LLC, d/b/a NeuralMind · US-based · MIT core, source-available Team modules · Not affiliated with NeuralMind.ai. &nbsp;🔐 Local-first, no telemetry · ⚡ 51–242× fewer tokens than full files on the <a href="/benchmarks/">public benchmark</a> · ✅ NIST AI RMF mapped · 🛠 Works with any MCP agent</p>
+        <p class="foot-meta">© 2025–{{ site.time | date: '%Y' }} Cheval-Volant LLC, d/b/a NeuralMind. US-based. MIT core, source-available Team modules. Not affiliated with NeuralMind.ai.</p>
+        <p class="foot-meta">Local-first, no telemetry. 51–242× fewer tokens than full files on the <a href="/benchmarks/">public benchmark</a>. NIST AI RMF mapped. Works with any MCP agent.</p>
     </div>
 </footer>
 
