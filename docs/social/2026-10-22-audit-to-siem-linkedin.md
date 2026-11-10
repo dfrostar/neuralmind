@@ -2,7 +2,8 @@
 
 **Draft, ready to post** once v4.20.0 is on PyPI (the features shipped in
 v4.19.0; v4.20.0 puts them on the redesigned `/security` page this post links
-to).
+to). Updated 2026-10-27: the checkpoint sentence now claims only the records a
+checkpoint covers. If the post is already live, edit that sentence there too.
 
 Company-page post for compliance leads at defense contractors and federal
 suppliers. It covers three v4.19.0 features: audit forwarding to syslog with
@@ -32,7 +33,7 @@ Where the logs go: set `security.audit_syslog` and every audit record goes to
 syslog as it is written, from the CLI, the MCP server, the editor hooks and
 the daemon. Each record carries its hash-chain fields, so your SIEM can verify
 the chain it receives and spot gaps in it; signed, anchored checkpoints catch
-records removed from the end. If a record can't be written (say, a full disk),
+the removal of any record they cover. If a record can't be written (say, a full disk),
 an alert-severity message goes straight to syslog, without going through the
 log that failed. That's AU.L2-3.3.4 and 3.3.5. Under the hardened profile,
 records go only to the local syslog daemon; you configure that daemon to
@@ -60,7 +61,7 @@ https://neuralmind.uk/security
 | Claim | Source |
 |---|---|
 | Every record to syslog as written, from CLI, MCP server, hooks and daemon, once `security.audit_syslog` is set (off by default) | `docs/releases/RELEASE_NOTES_v4.19.0.md` ("Each record goes out right after it is written"); `AuditTrail._forward()` returns early with no target |
-| Records carry `sha256` and `prev_sha256`; the SIEM can verify what it receives, and checkpoints catch a removed tail | same, `docs/SECURITY-GUIDE.md#forwarding-to-syslog-v4190`, `docs/compliance/SP800-53-HARDENING.md` (NMH-13, NMH-14) |
+| Records carry `sha256` and `prev_sha256`; the SIEM can verify what it receives, and checkpoints catch a removed tail up to the newest checkpoint. Records written after it are covered only by the hash chain until the next one | same, `docs/SECURITY-GUIDE.md#forwarding-to-syslog-v4190`, `docs/compliance/SP800-53-HARDENING.md` (NMH-13, NMH-14), `neuralmind/audit_checkpoint.py` (module docstring) |
 | Alert-severity `audit_write_failed` sent straight to syslog, not through the log | release notes, "The AU.L2-3.3.4 alert" |
 | Under `security.profile: cui`, only a unix socket or loopback target; the daemon's TLS forwarding is the customer's configuration | release notes, "Under `security.profile: cui`, the target must be on this machine" |
 | OSCAL component definition | `security/neuralmind.oscal-component-definition.json` |
