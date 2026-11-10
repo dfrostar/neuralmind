@@ -862,22 +862,33 @@ neuralmind watch &            # always-on synapse learning from file edits (opti
 ```
 
 Hermes-Agent users, install the plugin (related files and decisions in every
-turn, and the recap on a session's first turn):
+turn, and the recap on a session's first turn) from Hermes's
+[plugin catalog](https://hermes-agent.nousresearch.com/docs/plugins/neuralmind):
+
+```bash
+hermes plugins install neuralmind --enable
+```
+
+It runs the `neuralmind` command on Hermes's PATH; where that PATH doesn't
+include it (a gateway run as a service, Hermes Desktop), run
+`neuralmind install-hermes-plugin` once to record the interpreter. Or install
+it with NeuralMind's own installer instead:
 
 ```bash
 neuralmind install-hermes-plugin .
 ```
 
-The plugin goes into a Hermes home: `--hermes-home`, else the one plain `hermes`
+That plugin goes into a Hermes home: `--hermes-home`, else the one plain `hermes`
 uses (the active Hermes profile, if `hermes profile use` selected one, else
 `$HERMES_HOME`, else `~/.hermes`; `%LOCALAPPDATA%\hermes` on Windows). The path pins that project for
 every Hermes session in that home, and sessions in other repositories then also
 put their edited files' paths into its synapse store, from where
 `neuralmind memory publish` can carry them into the committed team-memory
 bundle. If you use Hermes across several projects, install without a path, and
-the plugin follows the directory Hermes works in (the terminal CLI's, or a
-standalone gateway's); in Hermes Desktop, ACP editor sessions and per-session
-workspaces, pin a project or set `NEURALMIND_PROJECT`.
+the plugin follows the directory Hermes works in: each CLI, TUI and Desktop
+session's on Hermes 0.22.2 and later, and the terminal CLI's or a standalone
+gateway's on older Hermes. For ACP editor sessions, per-session workspaces and
+Desktop on older Hermes, pin a project or set `NEURALMIND_PROJECT`.
 
 ## Compare to alternatives
 

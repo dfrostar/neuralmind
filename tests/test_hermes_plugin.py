@@ -1031,6 +1031,42 @@ def test_absent_install_records_mean_a_manual_install(tmp_path):
     assert hermes_install.managed_by_hermes(home) is False
 
 
+@pytest.mark.parametrize(
+    "record, from_catalog",
+    [
+        # `hermes plugins install neuralmind`, as Hermes v0.23.0 records it.
+        (
+            {
+                "catalog": {"name": "neuralmind", "sha": "e66f5010", "pin": "e66f5010"},
+                "pinned": True,
+                "source": "https://github.com/dfrostar/neuralmind.git",
+            },
+            True,
+        ),
+        ({"catalog_name": "neuralmind", "revision": "e66f5010"}, True),  # an earlier Hermes
+        ({"source": "https://github.com/dfrostar/neuralmind.git"}, False),  # from a clone
+        ({"catalog": "neuralmind"}, False),
+        ("neuralmind", False),
+    ],
+)
+def test_installed_from_catalog_reads_hermes_install_record(tmp_path, record, from_catalog):
+    home = tmp_path / "hermes"
+    target = home / "plugins" / "neuralmind"
+    target.mkdir(parents=True)
+    # A repository can ship this file itself, so it proves nothing.
+    (target / ".hermes-catalog.json").write_text(json.dumps({"catalog_name": "neuralmind"}))
+    assert hermes_install.installed_from_catalog(home) is False
+    (home / "plugins" / ".install-metadata.json").write_text(json.dumps({"neuralmind": record}))
+    assert hermes_install.installed_from_catalog(home) is from_catalog
+
+
+def test_installed_from_catalog_is_false_on_unreadable_records(tmp_path):
+    home = tmp_path / "hermes"
+    (home / "plugins").mkdir(parents=True)
+    (home / "plugins" / ".install-metadata.json").write_text("{not json")
+    assert hermes_install.installed_from_catalog(home) is False
+
+
 def test_cli_says_turns_get_context_only_once_enabled(tmp_path, capsys, monkeypatch):
     from neuralmind.cli import main
 

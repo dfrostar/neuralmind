@@ -5,8 +5,8 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '3fe5a61';
 
 export const metadata = {
-    title: 'NeuralMind + OpenAI Codex: MCP Setup & Token Savings Guide',
-    description: 'Set up NeuralMind as an MCP server for OpenAI Codex: install it, register with any MCP client, measure L0–L3 token budgets and estimate their cost.',
+    title: 'NeuralMind + OpenAI Codex: MCP Setup & Token Measurement',
+    description: 'Set up NeuralMind as an MCP server for OpenAI Codex: install it, register with any MCP client, and measure L0–L3 token budgets on your own repo.',
     keywords: [
         'OpenAI Codex',
         'Codex CLI',
@@ -27,8 +27,8 @@ export const metadata = {
         canonical: '/publications/codex-setup',
     },
     openGraph: {
-        title: 'How to Use NeuralMind with OpenAI Codex — Setup, Token Measurement, Savings',
-        description: 'Step-by-step guide verified against the live codebase: install NeuralMind, register the MCP server with Codex, measure token budgets, and estimate what those tokens cost.',
+        title: 'How to Use NeuralMind with OpenAI Codex — Setup and Token Measurement',
+        description: 'Step-by-step guide verified against the live codebase: install NeuralMind, register the MCP server with Codex, and measure token budgets.',
         url: 'https://neuralmind.uk/publications/codex-setup',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -48,7 +48,7 @@ export const metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'How to Use NeuralMind with OpenAI Codex — Setup, Token Measurement, Savings',
+        title: 'How to Use NeuralMind with OpenAI Codex — Setup and Token Measurement',
         description: 'Step-by-step guide verified against the live codebase.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
@@ -73,8 +73,8 @@ export default function PublicationPage() {
                         __html: JSON.stringify({
                             '@context': 'https://schema.org',
                             '@type': 'Article',
-                            headline: 'How to Use NeuralMind with OpenAI Codex: Setup, Token Measurement, and Savings',
-                            description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, run the self-improvement loop, and estimate what those tokens would cost.',
+                            headline: 'How to Use NeuralMind with OpenAI Codex: Setup and Token Measurement',
+                            description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, and run the self-improvement loop.',
                             author: {
                                 '@type': 'Person',
                                 name: 'Darren Frost',
@@ -111,7 +111,7 @@ export default function PublicationPage() {
                         How to Use NeuralMind with OpenAI Codex
                     </h1>
                     <p className="text-lg text-body mb-2">
-                        Setup, Token Measurement, and Savings
+                        Setup and Token Measurement
                     </p>
                     <p className="text-muted text-sm mb-4">
                         Verified against the live codebase. DeepSeek v4 Pro QA-corrected.
