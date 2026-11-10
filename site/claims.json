@@ -6,6 +6,7 @@
     "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
     "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional.",
     "pilot": "Pre-registered and run exactly as its spec says, with raw data committed, but exploratory: small n, one repository, one agent and model. It sizes a confirmatory run; it is not a product claim and not a gate.",
+    "exploratory": "Run like a pilot, with raw data committed, but NOT pre-registered: a follow-up chosen after seeing an earlier result. Weaker than a pilot; it says what happened on those tasks, not what to expect.",
     "disclosure": "Not a result: something the site states is NOT measured or NOT shown, kept here so the copy can't quietly drop it. Its `reproduce` names how a reader could measure it."
   },
   "ratios": [
@@ -240,6 +241,36 @@
         "claim_supported": false
       },
       "note": "Replaces the disclosure 'Task outcomes are not measured' (removed 2026-10-21, when this pilot was published). A RESULT, not a disclosure, and a null one: quote it with the same prominence as the retrieval wins, labelled 'pilot', with its interval, and never as a product claim (the spec says so). Say 'a 20-task pilot found no cost difference', with a link; never write that task outcomes are 'not measured' again, and never that NeuralMind makes agents cheaper, faster or more accurate. The finding: in the 60 neuralmind-arm runs the agent called none of the 28 MCP tools the server listed; NeuralMind reached it only through its Claude Code hooks (install-hooks), which ran in all 60. Pinned: claude-sonnet-5-5, Claude Code 2.1.287, NeuralMind 4.15.1; one repository (NeuralMind's own), cold start, cost is Claude Code's estimate at API prices. The confirmatory run follows the spec on new tasks; nothing about it may be claimed before it is run. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
+    },
+    {
+      "claim": "Task outcomes, exploratory rerun: with the change released in v4.21.0, which tells the agent when to use NeuralMind's tools and lists six instead of 28, Claude Code on the pilot's 20 tasks still called none of them and showed no measurable difference in cost",
+      "source": "bench/task_outcome/exploratory-agent-uptake/report.txt",
+      "reproduce": "python -m evals.task_outcome.run --tasks evals/task_outcome/tasks.json --out <rerun> --model claude-sonnet-5-5 --seeds 3 --arms neuralmind --tool-venv <venv with neuralmind built from commit eee0a5be> --test-python <venv>/bin/python --work-dir <scratch>; then pair it with the pilot's baseline arm in a new directory and analyze that: mkdir <pair> && { grep '\"arm\": \"baseline\"' bench/task_outcome/pilot/runs.jsonl; cat <rerun>/runs.jsonl; } > <pair>/runs.jsonl && python -m evals.task_outcome.analyze <pair> (with bench/task_outcome/exploratory-agent-uptake for <rerun>, this reproduces report.txt's paired figures from the committed runs; bench/task_outcome/exploratory-agent-uptake/README.md)",
+      "evidence": "exploratory",
+      "figures": {
+        "date": "2026-10-21",
+        "tasks": 20,
+        "seeds": 3,
+        "runs": 60,
+        "neuralmind_reported": "4.18.1",
+        "neuralmind_commit": "eee0a5be",
+        "released_in": "4.21.0",
+        "mcp_tools_listed": 6,
+        "mcp_tool_calls": 0,
+        "median_cost_change": "\u22122.1%",
+        "cost_change_ci95": "\u22126.9% to +6.5%",
+        "wilcoxon_p": 0.34,
+        "tasks_solved": {
+          "baseline": 18,
+          "neuralmind": 18
+        },
+        "median_explore_calls_before_first_edit": {
+          "baseline": 4,
+          "neuralmind": 4
+        },
+        "claim_supported": false
+      },
+      "note": "A follow-up to the pilot, not part of its pre-registration: the neuralmind arm only, rerun with NeuralMind built from commit eee0a5be, the change released in v4.21.0 (MCP server instructions, six listed tools, a code excerpt in the prompt block); that build reports itself as 4.18.1, the version on main at the time, and compared with the pilot's own baseline runs from the day before. Label it 'exploratory', never 'pilot' or 'confirmatory', and never quote it as evidence that NeuralMind helps or hurts: it shows that telling the agent about the tools didn't change what it did on these tasks. tests/test_site_claims.py recomputes `figures` from report.txt and runs.jsonl."
     },
     {
       "claim": "Task outcomes, Hermes pilot: on the same 20 bug-fix tasks, Hermes-Agent on a local gpt-oss:20b model solved 10 with NeuralMind's plugin and 8 without, too few tasks apart to be significant (one-sided McNemar p = 0.25), with no measurable difference in tokens per task",

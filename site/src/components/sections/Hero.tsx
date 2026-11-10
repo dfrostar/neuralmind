@@ -4,14 +4,12 @@ import Stat, { StatGrid } from '@/components/ui/Stat';
 import { QUERY_ID, QUERY_REPO, QUERY_TEXT } from '@/lib/capturedQuery';
 import { headline, publicBenchmark, publicQuery, ratioRange, retrievalEval } from '@/lib/evidence';
 
-const AGENTS = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Hermes'];
-
 // The commands a reader runs to try it, verified against neuralmind/cli.py:
-// install, index, register the MCP server with Claude Code (`--client` picks
-// Cursor, Cline, VS Code or Claude Desktop instead), and install Claude Code's
-// hooks. In the task-outcome pilot the agent never called the MCP tools; the
-// hooks were how NeuralMind reached it, so they are part of the install.
-const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-mcp', 'neuralmind install-hooks .'];
+// install, index, install Claude Code's hooks, then measure on their own repo.
+// In every task-outcome run the agent never called the MCP tools (0 of 135
+// Claude Code runs); the hooks are how NeuralMind reaches it, so they are the
+// install. `neuralmind install-mcp` (with `--client`) is in the quickstart.
+const INSTALL = ['pip install neuralmind', 'neuralmind build .', 'neuralmind install-hooks .', 'neuralmind benchmark .'];
 
 export default function Hero() {
     // Every figure below is read from the committed runs through lib/evidence,
@@ -42,10 +40,11 @@ export default function Hero() {
                             eval it puts a gold file in the top five on 93.3%, and all 10 misses are
                             published. By default no telemetry and no repository content off your
                             machine, with signed releases and compliance evidence a client&rsquo;s security
-                            review can check. MIT core, free at one seat.
+                            review can check. It has not been shown to finish more tasks, and every run
+                            that tested that is published. MIT core, free at one seat.
                         </p>
 
-                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install in four commands">
+                        <ol className="space-y-2 mb-8 max-w-md" aria-label="Install and measure in four commands">
                             {INSTALL.map((cmd, i) => (
                                 <li key={cmd} className="flex items-center gap-3">
                                     <span className="w-6 shrink-0 font-mono text-xs text-faint tabular-nums">
@@ -57,8 +56,8 @@ export default function Hero() {
                         </ol>
 
                         <div className="flex flex-wrap items-center gap-3">
-                            <a href="/team" className="btn-primary py-3">
-                                For teams
+                            <a href="/measure-your-own" className="btn-primary py-3">
+                                Measure your own repo
                             </a>
                             <a href="#quickstart" className="btn-secondary py-3">
                                 Quickstart
@@ -69,8 +68,8 @@ export default function Hero() {
                         </div>
 
                         <p className="mt-6 text-faint text-sm">
-                            Persistent codebase memory and an MCP server. Works with {AGENTS.join(', ')} and
-                            any MCP client.
+                            A prompt hook reaches Claude Code and Hermes. An MCP server is there for other
+                            clients; agents did not call its tools in our task-outcome runs.
                         </p>
                     </div>
 

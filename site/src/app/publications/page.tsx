@@ -81,7 +81,7 @@ const publications = [
         title: 'How to Use NeuralMind with OpenAI Codex: Setup, Token Measurement, Savings',
         type: 'Guide',
         date: 'July 26, 2026',
-        description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (or any MCP client), measure L0–L3 token budgets, and verify real dollar savings. Verified against the live codebase.',
+        description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (or any MCP client), measure L0–L3 token budgets, and estimate what those tokens would cost. Verified against the live codebase.',
     },
     {
         slug: 'quality-weighted-merge',
