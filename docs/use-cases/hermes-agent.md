@@ -303,7 +303,9 @@ preferences, facts. NeuralMind remembers the code: which parts of it are used
 together, the decisions recorded against it, and what the last session asked
 and edited. The plugin is enabled through Hermes's `plugins.enabled` list, not
 `memory.provider`, so it doesn't replace your provider. Both add text to the
-same turn's user message, and we haven't tested them together.
+same turn's user message, and we haven't tested them together. For Hindsight
+specifically, [NeuralMind vs. Hindsight](../comparisons/vs-hindsight.md#running-both)
+covers where the two overlap and what each adds per turn.
 
 ## 7. Switch between Claude Code and Hermes
 

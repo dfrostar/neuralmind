@@ -602,7 +602,19 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/comparisons/vs-codex-cli-memory.html</loc>
-    <lastmod>2026-09-26</lastmod>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-hindsight.html</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-hydradb-open-glean.html</loc>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
@@ -866,7 +878,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/hermes-agent.html</loc>
-    <lastmod>2026-10-06</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
