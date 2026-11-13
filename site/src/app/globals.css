@@ -330,6 +330,16 @@ code, pre, kbd, samp {
     color: var(--text);
 }
 
+/* A run that fell from the one before it (/performance): a deviation, so on
+   amber's fill, and kept in place: a drop is never hidden. */
+.data-table tr.is-regressed {
+    background: var(--accent-dim);
+}
+
+.data-table tr.is-regressed > th {
+    color: var(--warn);
+}
+
 /* ---------------------------------------------------------------------------
    The liquid
 

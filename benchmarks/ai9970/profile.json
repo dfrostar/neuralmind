@@ -1,0 +1,12 @@
+{
+  "_comment": "What does not change from run to run behind benchmarks/ai9970/record.jsonl: the machine, the method, and each project's shape. The rows carry what does change. null means not recorded, and /performance says so instead of filling it in.",
+  "machine": {
+    "id": "ai9970",
+    "hardware": "single RTX 5000 Ada 16GB dev box"
+  },
+  "method": "neuralmind eval . on hand-written questions, each with the file that answers it, scored read-only: the eval never trains the synapse layer it measures.",
+  "projects": {
+    "rfnode-guide": { "shape": null },
+    "bible-llm": { "shape": null }
+  }
+}
