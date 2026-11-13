@@ -53,7 +53,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
 
@@ -130,7 +130,7 @@ jobs:
       - name: Commit team memory snapshot
         # Only commits when .neuralmind-team-memory.json actually changed.
         if: steps.snapshot.outcome == 'success'
-        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         with:
           commit_message: "chore: update NeuralMind team memory snapshot [skip ci]"
           file_pattern: ".neuralmind-team-memory.json"
